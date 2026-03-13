@@ -388,6 +388,24 @@ const taxSlice = createSlice({
       state.ejercicio = action.payload;
       recalcular(state);
     },
+
+    hydrateFromCalculation(state, action: PayloadAction<Omit<TaxState, 'ejercicio'>>) {
+      state.workIncome = action.payload.workIncome;
+      state.capitalMobiliario = action.payload.capitalMobiliario;
+      state.inmuebles = action.payload.inmuebles;
+      state.actividades = action.payload.actividades;
+      state.ganancias = action.payload.ganancias;
+      state.saldosNegativosBIA = action.payload.saldosNegativosBIA;
+      state.previsionSocial = action.payload.previsionSocial;
+      state.baseImponibleGeneral = action.payload.baseImponibleGeneral;
+      state.baseImponibleAhorro = action.payload.baseImponibleAhorro;
+      state.baseLiquidableGeneral = action.payload.baseLiquidableGeneral;
+      state.baseLiquidableAhorro = action.payload.baseLiquidableAhorro;
+      state.cuotaIntegra = action.payload.cuotaIntegra;
+      state.cuotaLiquida = action.payload.cuotaLiquida;
+      state.totalRetenciones = action.payload.totalRetenciones;
+      state.cuotaDiferencial = action.payload.cuotaDiferencial;
+    },
     updateWorkIncome(state, action: PayloadAction<Partial<WorkIncome>>) {
       Object.assign(state.workIncome, action.payload);
       recalcular(state);
@@ -519,6 +537,7 @@ export const {
   addGanancia,
   updateGanancia,
   removeGanancia,
+  hydrateFromCalculation,
 } = taxSlice.actions;
 
 export default taxSlice.reducer;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import WorkIncomeBlock from './blocks/WorkIncomeBlock';
@@ -7,19 +7,55 @@ import BusinessBlock from './blocks/BusinessBlock';
 import SavingsGPBlock from './blocks/SavingsGPBlock';
 import ResultBlock from './blocks/ResultBlock';
 import SimuladorBlock from './blocks/SimuladorBlock';
-import { setEjercicio } from '../../store/taxSlice';
+import DataTraceabilityBlock from './blocks/DataTraceabilityBlock';
+import { hydrateFromCalculation, setEjercicio } from '../../store/taxSlice';
+import { calcularDeclaracionIRPF } from '../../services/irpfCalculationService';
+import { mapDeclaracionToTaxState } from './taxHydrationMapper';
 import './tax-view.css';
 
-const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador'] as const;
+const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador', 'Trazabilidad'] as const;
 type Tab = typeof TABS[number];
 
 const TaxView: React.FC = () => {
   const dispatch = useDispatch();
   const tax = useSelector((state: RootState) => state.tax);
   const [tab, setTab] = useState<Tab>('Trabajo');
+  const [loadingDeclaracion, setLoadingDeclaracion] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
+  const isCurrentYear = tax.ejercicio === currentYear;
+
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const cargarDeclaracion = async () => {
+      setLoadingDeclaracion(true);
+      setLoadingError(null);
+
+      try {
+        const declaracion = await calcularDeclaracionIRPF(tax.ejercicio, { usarConciliacion: true });
+        if (cancelled) return;
+        dispatch(hydrateFromCalculation(mapDeclaracionToTaxState(declaracion)));
+      } catch {
+        if (cancelled) return;
+        setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
+      } finally {
+        if (!cancelled) setLoadingDeclaracion(false);
+      }
+    };
+
+    cargarDeclaracion();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, tax.ejercicio]);
 
   return (
     <div className="tv-root">
@@ -36,12 +72,23 @@ const TaxView: React.FC = () => {
             value={tax.ejercicio}
             onChange={e => dispatch(setEjercicio(Number(e.target.value)))}
           >
-            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 - i).map(y => (
-              <option key={y} value={y}>{y}</option>
+            {yearOptions.map(y => (
+              <option key={y} value={y}>
+                {y}{y === currentYear ? ' (en curso · previsión)' : ''}
+              </option>
             ))}
           </select>
         </div>
       </div>
+
+      {isCurrentYear && (
+        <div className="tv-forecast-note">
+          Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
+        </div>
+      )}
+
+      {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
+      {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
 
       {/* RESULTADO RÁPIDO */}
       <div className={`tv-result-banner ${tax.cuotaDiferencial > 0 ? 'banner-pagar' : 'banner-devolver'}`}>
@@ -80,6 +127,7 @@ const TaxView: React.FC = () => {
         {tab === 'Ahorro y G/P' && <SavingsGPBlock />}
         {tab === 'Resultado'   && <ResultBlock />}
         {tab === 'Simulador'   && <SimuladorBlock />}
+        {tab === 'Trazabilidad' && <DataTraceabilityBlock />}
       </div>
     </div>
   );
