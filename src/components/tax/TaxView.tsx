@@ -1,5 +1,5 @@
-import React, { useMemo, useReducer, useState } from 'react';
-import { ChevronRight, Info, Plus } from 'lucide-react';
+import React, { Component, ErrorInfo, ReactNode, useMemo, useReducer, useState } from 'react';
+import { ChevronRight, Info } from 'lucide-react';
 import taxReducer, {
   addGanancia,
   addInmueble,
@@ -28,6 +28,42 @@ const tabs = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'R
 type Tab = (typeof tabs)[number];
 
 const formatCurrency = (value: number): string => value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+interface TaxErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class TaxErrorBoundary extends Component<
+  { children: ReactNode; tabName: string },
+  TaxErrorBoundaryState
+> {
+  state: TaxErrorBoundaryState = { hasError: false, error: undefined };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error(`[TaxView] Error en tab "${this.props.tabName}":`, error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 32, textAlign: 'center', fontFamily: 'var(--font)' }}>
+          <p style={{ color: 'var(--s-neg)', fontWeight: 600 }}>
+            Error al cargar el módulo
+          </p>
+          <p style={{ color: 'var(--n-500)', fontSize: '0.85rem', marginTop: 8 }}>
+            {this.state.error?.message ?? 'Error desconocido'}
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const TaxView: React.FC = () => {
   const [state, dispatch] = useReducer(taxReducer, undefined, () => taxReducer(undefined, { type: '@@INIT' }));
@@ -64,21 +100,9 @@ const TaxView: React.FC = () => {
     dispatch(addGanancia(op));
   };
 
-  return (
-    <div className="tax-view">
-      <header className="tax-topbar">
-        <h2>Módulo fiscalidad</h2>
-        <div className="tax-topbar__right">
-          <label>Año fiscal</label>
-          <select value={state.ejercicio} onChange={(e) => dispatch(setEjercicio(Number(e.target.value)))}>
-            {[state.ejercicio, state.ejercicio - 1, state.ejercicio - 2].map((year) => <option key={year} value={year}>{year}</option>)}
-          </select>
-        </div>
-      </header>
-
-      <nav className="tax-tabs">{tabs.map((item) => <button key={item} className={tab === item ? 'is-active' : ''} onClick={() => setTab(item)}>{item}</button>)}</nav>
-
-      {tab === 'Resumen' && (
+  const renderTabContent = (currentTab: Tab) => {
+    if (currentTab === 'Resumen') {
+      return (
         <section className="tax-stack">
           <article className="tax-hero">
             <div className="tax-hero__eyebrow">IRPF estimado · Ejercicio {state.ejercicio}</div>
@@ -99,18 +123,41 @@ const TaxView: React.FC = () => {
             <div className="tax-breakdown-row"><span>Ahorro</span><span className="mono">{formatCurrency(state.baseLiquidableAhorro)} €</span><ChevronRight size={14} /></div>
           </div>
         </section>
-      )}
+      );
+    }
 
-      {tab === 'Trabajo' && <WorkIncomeBlock data={state.workIncome} onChange={(field, value) => dispatch(updateWorkIncomeField({ field: field as keyof WorkIncome, value }))} />}
-      {tab === 'Inmuebles' && <RealEstateBlock inmuebles={state.inmuebles} onUpdate={(id, field, value) => dispatch(updateInmuebleField({ id, field: field as keyof Inmueble, value }))} onAdd={addDefaultInmueble} />}
-      {tab === 'Actividad' && <BusinessBlock actividad={state.actividades[0]} onChange={(field, value) => dispatch(updateActividadField({ id: state.actividades[0].id, field, value }))} />}
-      {tab === 'Ahorro y G/P' && (
+    if (currentTab === 'Trabajo') return <WorkIncomeBlock data={state.workIncome} onChange={(field, value) => dispatch(updateWorkIncomeField({ field: field as keyof WorkIncome, value }))} />;
+    if (currentTab === 'Inmuebles') return <RealEstateBlock inmuebles={state.inmuebles} onUpdate={(id, field, value) => dispatch(updateInmuebleField({ id, field: field as keyof Inmueble, value }))} onAdd={addDefaultInmueble} />;
+    if (currentTab === 'Actividad') return <BusinessBlock actividad={state.actividades[0]} onChange={(field, value) => dispatch(updateActividadField({ id: state.actividades[0].id, field, value }))} />;
+    if (currentTab === 'Ahorro y G/P') {
+      return (
         <div className="tax-stack">
           <SavingsBlock data={state.capitalMobiliario} onChange={(field, value) => dispatch(updateCapitalMobiliarioField({ field: field as keyof CapitalMobiliario, value }))} />
           <PatrimGainsBlock ganancias={state.gananciasPatrimoniales} saldos={state.saldosNegativosBIA} onUpdateGanancia={(id, field, value) => dispatch(updateGananciaField({ id, field, value }))} onAdd={addDefaultGanancia} onRemove={(id) => dispatch(removeGanancia(id))} />
         </div>
-      )}
-      {tab === 'Resultado' && <ResultBlock state={state as TaxState} />}
+      );
+    }
+
+    return <ResultBlock state={state as TaxState} />;
+  };
+
+  return (
+    <div className="tax-view">
+      <header className="tax-topbar">
+        <h2>Módulo fiscalidad</h2>
+        <div className="tax-topbar__right">
+          <label>Año fiscal</label>
+          <select value={state.ejercicio} onChange={(e) => dispatch(setEjercicio(Number(e.target.value)))}>
+            {[state.ejercicio, state.ejercicio - 1, state.ejercicio - 2].map((year) => <option key={year} value={year}>{year}</option>)}
+          </select>
+        </div>
+      </header>
+
+      <nav className="tax-tabs">{tabs.map((item) => <button key={item} className={tab === item ? 'is-active' : ''} onClick={() => setTab(item)}>{item}</button>)}</nav>
+
+      <TaxErrorBoundary tabName={tab}>
+        {renderTabContent(tab)}
+      </TaxErrorBoundary>
 
       <footer className="tax-footnote"><Info size={14} />Sin campos de notas ni texto libre adicional en el modelo.</footer>
     </div>

@@ -151,71 +151,72 @@ export interface TaxState {
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
+const n = (v: unknown): number => Number(v) || 0;
 
 export function calcRendimientoTrabajo(w: WorkIncome): number {
-  const especieNeta = w.especieValoracion;
-  const totalIntegros = w.dinerarias + especieNeta + w.contribucionEmpresarialPP;
-  const netoPrevio = totalIntegros - w.cotizacionSS;
-  return Math.max(0, round2(netoPrevio - w.otrosGastosDeducibles));
+  const especieNeta = n(w.especieValoracion);
+  const totalIntegros = n(w.dinerarias) + especieNeta + n(w.contribucionEmpresarialPP);
+  const netoPrevio = totalIntegros - n(w.cotizacionSS);
+  return Math.max(0, round2(netoPrevio - n(w.otrosGastosDeducibles)));
 }
 
 export function calcLimiteInteresesReparacion(inmueble: Inmueble): number {
-  const suma = inmueble.interesesFinanciacion + inmueble.gastosReparacionConservacion;
-  return round2(Math.min(suma, inmueble.ingresosIntegros));
+  const suma = n(inmueble.interesesFinanciacion) + n(inmueble.gastosReparacionConservacion);
+  return round2(Math.min(suma, n(inmueble.ingresosIntegros)));
 }
 
 export function calcExcesoReparacion(inmueble: Inmueble): number {
-  const suma = inmueble.interesesFinanciacion + inmueble.gastosReparacionConservacion;
-  return round2(Math.max(0, suma - inmueble.ingresosIntegros));
+  const suma = n(inmueble.interesesFinanciacion) + n(inmueble.gastosReparacionConservacion);
+  return round2(Math.max(0, suma - n(inmueble.ingresosIntegros)));
 }
 
 export function calcBaseAmortizacion(inmueble: Inmueble): number {
-  const pctConstruccion = inmueble.pctConstruccion / 100;
-  const valorConstruccion = inmueble.valorCatastralConstruccion;
-  const costeTotalAdquisicion = inmueble.importeAdquisicion + inmueble.gastosTributos + inmueble.mejoras2024;
+  const pctConstruccion = n(inmueble.pctConstruccion) / 100;
+  const valorConstruccion = n(inmueble.valorCatastralConstruccion);
+  const costeTotalAdquisicion = n(inmueble.importeAdquisicion) + n(inmueble.gastosTributos) + n(inmueble.mejoras2024);
   return round2(Math.max(valorConstruccion, costeTotalAdquisicion * pctConstruccion));
 }
 
 export function calcAmortizacionInmueble(inmueble: Inmueble, diasTotalesEjercicio: number): number {
   const base = calcBaseAmortizacion(inmueble);
-  return round2(base * 0.03 * (inmueble.diasArrendados / diasTotalesEjercicio));
+  return round2(base * 0.03 * (n(inmueble.diasArrendados) / n(diasTotalesEjercicio)));
 }
 
 export function calcRendimientoNetoInmueble(inmueble: Inmueble): number {
   const gastosTotales =
     calcLimiteInteresesReparacion(inmueble) +
-    inmueble.gastosArrastreAplicados +
-    inmueble.gastosComunidad +
-    inmueble.serviciosPersonales +
-    inmueble.serviciosSuministros +
-    inmueble.seguro +
-    inmueble.tributosRecargos +
-    inmueble.amortizacionInmueble +
-    inmueble.amortizacionBienesMuebles;
-  return round2(inmueble.ingresosIntegros - gastosTotales);
+    n(inmueble.gastosArrastreAplicados) +
+    n(inmueble.gastosComunidad) +
+    n(inmueble.serviciosPersonales) +
+    n(inmueble.serviciosSuministros) +
+    n(inmueble.seguro) +
+    n(inmueble.tributosRecargos) +
+    n(inmueble.amortizacionInmueble) +
+    n(inmueble.amortizacionBienesMuebles);
+  return round2(n(inmueble.ingresosIntegros) - gastosTotales);
 }
 
 export function calcRendimientoNetoReducidoInmueble(inmueble: Inmueble): number {
   const rdtoNeto = calcRendimientoNetoInmueble(inmueble);
   if (!inmueble.tieneReduccionVivienda || rdtoNeto <= 0) return rdtoNeto;
-  const reduccion = rdtoNeto * (inmueble.pctReduccion / 100);
+  const reduccion = rdtoNeto * (n(inmueble.pctReduccion) / 100);
   return round2(rdtoNeto - reduccion);
 }
 
 export function calcRendimientoActividad(a: ActividadEconomica): number {
-  const gastosDeducibles = a.seguridadSocialTitular + a.serviciosProfesionales + a.otrosGastos;
-  const diferencia = a.ingresosExplotacion - gastosDeducibles;
+  const gastosDeducibles = n(a.seguridadSocialTitular) + n(a.serviciosProfesionales) + n(a.otrosGastos);
+  const diferencia = n(a.ingresosExplotacion) - gastosDeducibles;
   const provision = diferencia > 0 ? diferencia * 0.05 : 0;
   return round2(diferencia - provision);
 }
 
 export function calcSaldoBIA(gps: GananciaPatrimonial[], saldosNegativos: SaldoNegativoPendiente[]): number {
-  const sumaPositivos = gps.filter((g) => g.base === 'ahorro' && g.resultado > 0).reduce((acc, g) => acc + g.resultado, 0);
-  const sumaNegativos = gps.filter((g) => g.base === 'ahorro' && g.resultado < 0).reduce((acc, g) => acc + g.resultado, 0);
+  const sumaPositivos = gps.filter((g) => g.base === 'ahorro' && n(g.resultado) > 0).reduce((acc, g) => acc + n(g.resultado), 0);
+  const sumaNegativos = gps.filter((g) => g.base === 'ahorro' && n(g.resultado) < 0).reduce((acc, g) => acc + n(g.resultado), 0);
   const saldoNeto = sumaPositivos + sumaNegativos;
   if (saldoNeto <= 0) return round2(saldoNeto);
   const limiteCompensacion = saldoNeto * 0.25;
-  const totalPendiente = saldosNegativos.reduce((acc, s) => acc + s.pendienteInicioPeriodo, 0);
+  const totalPendiente = saldosNegativos.reduce((acc, s) => acc + n(s.aplicadoEsteEjercicio), 0);
   const compensacion = Math.min(totalPendiente, limiteCompensacion);
   return round2(saldoNeto - compensacion);
 }
@@ -230,7 +231,7 @@ export function calcCuotaEstatal(baseGeneral: number): number {
     { hasta: Infinity, tipo: 0.47 },
   ];
   let cuota = 0;
-  let baseRestante = baseGeneral;
+  let baseRestante = n(baseGeneral);
   let tramoAnterior = 0;
   for (const tramo of tramos) {
     if (baseRestante <= 0) break;
@@ -251,7 +252,7 @@ export function calcCuotaAutonoma_Madrid(baseGeneral: number): number {
     { hasta: Infinity, tipo: 0.2050 },
   ];
   let cuota = 0;
-  let baseRestante = baseGeneral;
+  let baseRestante = n(baseGeneral);
   let tramoAnterior = 0;
   for (const tramo of tramos) {
     if (baseRestante <= 0) break;
@@ -272,7 +273,7 @@ export function calcCuotaAhorro(baseAhorro: number): number {
     { hasta: Infinity, tipo: 0.28 },
   ];
   let cuota = 0;
-  let baseRestante = baseAhorro;
+  let baseRestante = n(baseAhorro);
   let tramoAnterior = 0;
   for (const tramo of tramos) {
     if (baseRestante <= 0) break;
@@ -284,10 +285,10 @@ export function calcCuotaAhorro(baseAhorro: number): number {
   return round2(cuota * 2);
 }
 
-const currentYear = new Date().getFullYear();
+const isDev = process.env.NODE_ENV === 'development';
 
 const initialState: TaxState = {
-  ejercicio: currentYear - 1,
+  ejercicio: isDev ? 2024 : new Date().getFullYear() - 1,
   workIncome: {
     dinerarias: 133350.85,
     especieValoracion: 2549.81,
@@ -342,15 +343,22 @@ const initialState: TaxState = {
   cuotaDiferencial: 0,
 };
 
-const recomputeTaxState = (state: TaxState): TaxState => {
+function calcTotalRetenciones(state: TaxState): number {
+  const retTrabajo = n(state.workIncome?.retencion);
+  const retCapital = n(state.capitalMobiliario?.retencion);
+  const retActividades = (state.actividades ?? []).reduce((acc, a) => acc + n(a.retencion), 0);
+  return round2(retTrabajo + retCapital + retActividades);
+}
+
+function recalcularTax(state: TaxState): Partial<TaxState> {
   const diasTotales = state.ejercicio % 4 === 0 ? 366 : 365;
   state.inmuebles = state.inmuebles.map((inmueble) => {
-    const pctConstruccion = inmueble.valorCatastral > 0 ? round2((inmueble.valorCatastralConstruccion / inmueble.valorCatastral) * 100) : inmueble.pctConstruccion;
+    const pctConstruccion = n(inmueble.valorCatastral) > 0 ? round2((n(inmueble.valorCatastralConstruccion) / n(inmueble.valorCatastral)) * 100) : n(inmueble.pctConstruccion);
     const baseAmortizacion = calcBaseAmortizacion({ ...inmueble, pctConstruccion });
-    const amortizacionInmueble = inmueble.baseAmortizacion > 0 ? inmueble.amortizacionInmueble : calcAmortizacionInmueble({ ...inmueble, pctConstruccion, baseAmortizacion }, diasTotales);
+    const amortizacionInmueble = n(inmueble.baseAmortizacion) > 0 ? n(inmueble.amortizacionInmueble) : calcAmortizacionInmueble({ ...inmueble, pctConstruccion, baseAmortizacion }, diasTotales);
     const limiteInteresesReparacion = calcLimiteInteresesReparacion(inmueble);
     const gastosReparacionNoDeducibles = calcExcesoReparacion(inmueble);
-    const gastosPendientesAnteriores = inmueble.gastosPendientesAnteriores.map((g) => ({ ...g, pendienteFuturos: round2(Math.max(0, g.pendienteInicioPeriodo - g.aplicadoEsteEjercicio)) }));
+    const gastosPendientesAnteriores = (inmueble.gastosPendientesAnteriores ?? []).map((g) => ({ ...g, pendienteFuturos: round2(Math.max(0, n(g.pendienteInicioPeriodo) - n(g.aplicadoEsteEjercicio))) }));
     const rendimientoNeto = calcRendimientoNetoInmueble({ ...inmueble, limiteInteresesReparacion, gastosReparacionNoDeducibles, baseAmortizacion, amortizacionInmueble });
     const rendimientoNetoReducido = calcRendimientoNetoReducidoInmueble({ ...inmueble, rendimientoNeto });
     const reduccionAplicada = round2(Math.max(0, rendimientoNeto - rendimientoNetoReducido));
@@ -358,41 +366,70 @@ const recomputeTaxState = (state: TaxState): TaxState => {
   });
 
   state.actividades = state.actividades.map((actividad) => {
-    const gastosDeducibles = actividad.seguridadSocialTitular + actividad.serviciosProfesionales + actividad.otrosGastos;
-    const diferencia = actividad.ingresosExplotacion - gastosDeducibles;
+    const gastosDeducibles = n(actividad.seguridadSocialTitular) + n(actividad.serviciosProfesionales) + n(actividad.otrosGastos);
+    const diferencia = n(actividad.ingresosExplotacion) - gastosDeducibles;
     const provisionSimplificada = actividad.modalidad === 'simplificada' && diferencia > 0 ? round2(diferencia * 0.05) : 0;
     return { ...actividad, provisionSimplificada, rendimientoNeto: round2(diferencia - provisionSimplificada) };
   });
 
-  state.gananciasPatrimoniales = state.gananciasPatrimoniales.map((gp) => ({ ...gp, resultado: round2(gp.valorTransmision - gp.valorAdquisicion) }));
+  state.gananciasPatrimoniales = state.gananciasPatrimoniales.map((gp) => ({ ...gp, resultado: round2(n(gp.valorTransmision) - n(gp.valorAdquisicion)) }));
 
-  const rendimientoTrabajo = calcRendimientoTrabajo(state.workIncome);
-  const rendimientoInmueblesReducido = state.inmuebles.reduce((acc, i) => acc + i.rendimientoNetoReducido, 0);
-  const imputacionInmuebles = state.inmuebles.reduce((acc, i) => acc + i.rentaImputada, 0);
-  const rendimientoActividad = state.actividades.reduce((acc, a) => acc + a.rendimientoNeto, 0);
-  const gpGeneral = state.gananciasPatrimoniales.filter((g) => g.base === 'general').reduce((acc, g) => acc + g.resultado, 0);
+  // 1. Rendimientos por fuente
+  const rdtoTrabajo = calcRendimientoTrabajo(state.workIncome);
+  const rdtoInmuebles = (state.inmuebles ?? []).reduce((acc, i) => acc + n(i.rendimientoNetoReducido), 0);
+  const imputacionInmuebles = (state.inmuebles ?? []).reduce((acc, i) => acc + n(i.rentaImputada), 0);
+  const rdtoActividad = (state.actividades ?? []).reduce((acc, a) => acc + n(a.rendimientoNeto), 0);
+  const rdtoCapitalMob = n(state.capitalMobiliario?.interesesCuentasDepositos) + n(state.capitalMobiliario?.otrosRendimientos);
 
-  state.baseImponibleGeneral = round2(rendimientoTrabajo + rendimientoInmueblesReducido + imputacionInmuebles + rendimientoActividad + gpGeneral);
-
-  const capitalMobiliarioTotal = state.capitalMobiliario.interesesCuentasDepositos + state.capitalMobiliario.otrosRendimientos;
-  state.baseImponibleAhorro = round2(capitalMobiliarioTotal + calcSaldoBIA(state.gananciasPatrimoniales, state.saldosNegativosBIA));
-
-  state.previsionSocial.totalConDerechoReduccion = round2(state.previsionSocial.aportacionTrabajador + state.previsionSocial.contribucionEmpresarial);
-  state.baseLiquidableGeneral = round2(Math.max(0, state.baseImponibleGeneral - state.previsionSocial.importeAplicado));
-  state.baseLiquidableAhorro = round2(Math.max(0, state.baseImponibleAhorro));
-
-  const cuotaGeneral = calcCuotaEstatal(state.baseLiquidableGeneral) + calcCuotaAutonoma_Madrid(state.baseLiquidableGeneral);
-  const cuotaAhorro = calcCuotaAhorro(state.baseLiquidableAhorro);
-
-  state.cuotaIntegra = round2(cuotaGeneral + cuotaAhorro);
-  state.cuotaLiquida = round2(state.cuotaIntegra - 0.5);
-  state.totalRetenciones = round2(
-    state.workIncome.retencion +
-    state.capitalMobiliario.retencion +
-    state.actividades.reduce((acc, a) => acc + a.retencion, 0),
+  // 2. Ganancias y pérdidas
+  const saldoBIG = (state.gananciasPatrimoniales ?? []).filter((g) => g.base === 'general').reduce((acc, g) => acc + n(g.resultado), 0);
+  const saldoBIABruto = (state.gananciasPatrimoniales ?? []).filter((g) => g.base === 'ahorro').reduce((acc, g) => acc + n(g.resultado), 0);
+  const compensacionBIA = Math.min(
+    saldoBIABruto > 0 ? saldoBIABruto * 0.25 : 0,
+    (state.saldosNegativosBIA ?? []).reduce((acc, s) => acc + n(s.aplicadoEsteEjercicio), 0),
   );
-  state.cuotaDiferencial = round2(state.cuotaLiquida - state.totalRetenciones);
+  const saldoBIA = saldoBIABruto - compensacionBIA;
 
+  // 3. Bases imponibles
+  const baseImponibleGeneral = rdtoTrabajo + rdtoInmuebles + imputacionInmuebles + rdtoActividad + saldoBIG;
+  const baseImponibleAhorro = Math.max(0, rdtoCapitalMob + saldoBIA);
+
+  // 4. Reducciones
+  state.previsionSocial.totalConDerechoReduccion = round2(n(state.previsionSocial.aportacionTrabajador) + n(state.previsionSocial.contribucionEmpresarial));
+  const reduccionPP = n(state.previsionSocial?.importeAplicado);
+
+  // 5. Bases liquidables
+  const baseLiquidableGeneral = Math.max(0, baseImponibleGeneral - reduccionPP);
+  const baseLiquidableAhorro = baseImponibleAhorro;
+
+  // 6. Mínimo personal y cuotas
+  const minimoPersonal = 5550;
+  const cuotaMinimoEstatal = calcCuotaEstatal(minimoPersonal);
+  const cuotaMinimoAutonomica = calcCuotaAutonoma_Madrid(minimoPersonal);
+  const cuotaIntegra =
+    Math.max(0, calcCuotaEstatal(baseLiquidableGeneral) - cuotaMinimoEstatal) +
+    Math.max(0, calcCuotaAutonoma_Madrid(baseLiquidableGeneral) - cuotaMinimoAutonomica) +
+    calcCuotaAhorro(baseLiquidableAhorro);
+
+  // 7. Cuota líquida y resultado
+  const cuotaLiquida = cuotaIntegra;
+  const totalRetenciones = calcTotalRetenciones(state);
+  const cuotaDiferencial = cuotaLiquida - totalRetenciones;
+
+  return {
+    baseImponibleGeneral: round2(baseImponibleGeneral),
+    baseImponibleAhorro: round2(baseImponibleAhorro),
+    baseLiquidableGeneral: round2(baseLiquidableGeneral),
+    baseLiquidableAhorro: round2(baseLiquidableAhorro),
+    cuotaIntegra: round2(cuotaIntegra),
+    cuotaLiquida: round2(cuotaLiquida),
+    totalRetenciones: round2(totalRetenciones),
+    cuotaDiferencial: round2(cuotaDiferencial),
+  };
+}
+
+const recomputeTaxState = (state: TaxState): TaxState => {
+  Object.assign(state, recalcularTax(state));
   return state;
 };
 
