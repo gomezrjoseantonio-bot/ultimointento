@@ -116,6 +116,16 @@ const calculateEstimatedCagr = (position: PosicionInversion): number => {
   return (Math.pow(valorActual / totalAportado, 1 / elapsedYears) - 1) * 100;
 };
 
+const resolveAnnualReturn = (position: PosicionInversion): number => {
+  const estimatedCagr = calculateEstimatedCagr(position);
+  if (Number.isFinite(estimatedCagr) && Math.abs(estimatedCagr) > 0.0001) {
+    return estimatedCagr;
+  }
+
+  const rendimientoPersistido = Number((position as any).rendimiento);
+  return Number.isFinite(rendimientoPersistido) ? rendimientoPersistido : 0;
+};
+
 const buildEvolucionInversiones = (positions: PositionRow[]) => {
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
@@ -688,10 +698,7 @@ export default function InversionesAnalisis() {
 
     const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
     const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
-      const rendimientoPersistido = Number((p as any).rendimiento);
-      const rentabilidadAnual = Number.isFinite(rendimientoPersistido)
-        ? rendimientoPersistido
-        : calculateEstimatedCagr(p);
+      const rentabilidadAnual = resolveAnnualReturn(p);
       const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
       return {
         id: String(p.id),
