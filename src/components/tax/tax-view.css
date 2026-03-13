@@ -140,3 +140,19 @@
   color: var(--n-700);
   vertical-align: top;
 }
+
+.tv-sync-note {
+  margin: 8px 24px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--n-300);
+  background: var(--n-50);
+  color: var(--n-700);
+  font-size: 0.8rem;
+}
+
+.tv-sync-note--error {
+  border-color: var(--s-neg);
+  background: var(--s-neg-bg);
+  color: var(--s-neg);
+}
