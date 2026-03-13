@@ -5,7 +5,14 @@ jest.mock('../../services/db', () => ({
   initDB: jest.fn(),
 }));
 
+jest.mock('../../services/fiscalSummaryService', () => ({
+  calculateFiscalSummary: jest.fn(),
+}));
+
 const { initDB } = jest.requireMock('../../services/db') as { initDB: jest.Mock };
+const { calculateFiscalSummary } = jest.requireMock('../../services/fiscalSummaryService') as {
+  calculateFiscalSummary: jest.Mock;
+};
 
 function buildDeclaracion(): DeclaracionIRPF {
   return {
@@ -68,11 +75,34 @@ function buildDeclaracion(): DeclaracionIRPF {
 
 describe('mapDeclaracionToTaxState', () => {
   it('incluye inmuebles alquilados, con imputación y activos sin datos fiscales', async () => {
+    calculateFiscalSummary.mockResolvedValue({
+      box0105: 100,
+      box0106: 50,
+      box0109: 200,
+      box0112: 25,
+      box0113: 125,
+      box0114: 300,
+      box0115: 400,
+      box0117: 75,
+      capexTotal: 1500,
+    });
+
     initDB.mockResolvedValue({
       getAll: jest.fn(async (storeName: string) => {
         if (storeName !== 'properties') return [];
         return [
-          { id: 1, alias: 'Tenderina 64 4D', state: 'activo' },
+          {
+            id: 1,
+            alias: 'Tenderina 64 4D',
+            state: 'activo',
+            acquisitionCosts: {
+              price: 100000,
+              itp: 7000,
+              notary: 900,
+              registry: 350,
+              management: 500,
+            },
+          },
           { id: 2, alias: 'Manresa', state: 'activo' },
           { id: 3, alias: 'Sant Fruitós', state: 'activo' },
           { id: 4, alias: 'Garaje Tenderina', state: 'activo', fiscalData: { isAccessory: true, mainPropertyId: 1 } },
@@ -85,5 +115,13 @@ describe('mapDeclaracionToTaxState', () => {
     expect(payload.inmuebles.map((i) => i.id).sort()).toEqual(['1', '2', '3']);
     expect(payload.inmuebles.find((i) => i.id === '2')?.rentaImputada).toBe(2000);
     expect(payload.inmuebles.find((i) => i.id === '3')?.direccion).toBe('Sant Fruitós');
+
+    const rented = payload.inmuebles.find((i) => i.id === '1');
+    expect(rented?.interesesFinanciacion).toBe(100);
+    expect(rented?.gastosReparacion).toBe(50);
+    expect(rented?.seguro).toBe(300);
+    expect(rented?.amortizacionMuebles).toBe(75);
+    expect(rented?.mejoras).toBe(1500);
+    expect(rented?.gastosTributos).toBe(8750);
   });
 });
