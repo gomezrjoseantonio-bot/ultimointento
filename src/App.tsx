@@ -47,7 +47,6 @@ const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Fin
 const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalDashboard = React.lazy(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = React.lazy(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
-const SimuladorPage = React.lazy(() => import('./modules/horizon/fiscalidad/simulador/SimuladorPage'));
 const PagosPage = React.lazy(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 
 const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
@@ -355,11 +354,7 @@ function App() {
                   <DeclaracionPage />
                 </React.Suspense>
               } />
-              <Route path="simulador" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <SimuladorPage />
-                </React.Suspense>
-              } />
+              <Route path="simulador" element={<Navigate to="/fiscalidad/resumen" replace />} />
               <Route path="pagos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PagosPage />

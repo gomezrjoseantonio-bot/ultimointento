@@ -106,7 +106,6 @@ export const navigationConfig: NavigationItem[] = [
     subTabs: [
       { name: 'Dashboard', href: '/fiscalidad/dashboard', icon: LayoutDashboard, module: 'horizon' },
       { name: 'Declaración', href: '/fiscalidad/declaracion', icon: Receipt, module: 'horizon' },
-      { name: 'Simulador', href: '/fiscalidad/simulador', icon: TrendingUp, module: 'horizon' },
       { name: 'Pagos', href: '/fiscalidad/pagos', icon: Calendar, module: 'horizon' },
       { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings2, module: 'horizon' },
     ]
