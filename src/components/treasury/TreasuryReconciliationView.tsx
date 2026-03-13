@@ -370,6 +370,11 @@ const TreasuryReconciliationView: React.FC = () => {
     setSelectedBankFilter(prev => (prev === accountId ? null : accountId));
   };
 
+  const handleAllBanksClick = () => {
+    setSelectedBankFilter(null);
+    setSelectedTypeFilter('all');
+  };
+
   const handleAmountClick = (ev: TreasuryEvent) => {
     if (ev.status === 'confirmado') return;
     setEditState({ eventId: ev.id, amount: String(ev.amount) });
@@ -585,6 +590,23 @@ const TreasuryReconciliationView: React.FC = () => {
     accounts.reduce((sum, a) => sum + (accountBreakdown.get(a.id)?.totalPunteado ?? a.balance), 0),
     [accounts, accountBreakdown]
   );
+
+  const allBanksSummary = useMemo(() => {
+    const totalEvents = events.length;
+    const doneEvents = events.filter(e => e.status === 'confirmado').length;
+    const pct = totalEvents > 0 ? Math.round((doneEvents / totalEvents) * 100) : 0;
+    const hoy = accounts.reduce((sum, account) => {
+      const dashboardBalance = currentMonthBalances.get(account.dbId);
+      return sum + (dashboardBalance?.hoy ?? account.balance);
+    }, 0);
+    const finMes = accounts.reduce((sum, account) => {
+      const bd = accountBreakdown.get(account.id);
+      const dashboardBalance = currentMonthBalances.get(account.dbId);
+      return sum + (dashboardBalance?.proyeccion ?? bd?.saldoFinalPrevisto ?? account.balance);
+    }, 0);
+
+    return { totalEvents, doneEvents, pct, hoy, finMes };
+  }, [accounts, accountBreakdown, currentMonthBalances, events]);
 
   const totalFiltradoPunteado = useMemo(() => {
     const seed = selectedBankFilter
@@ -873,7 +895,57 @@ const TreasuryReconciliationView: React.FC = () => {
             {loading ? (
               <span className="tv3-loading-msg">Cargando cuentas…</span>
             ) : (
-              accounts.map(account => {
+              [
+                <div
+                  key="all-banks"
+                  className={[
+                    'tv3-bank-chip',
+                    'tv3-bank-chip--all',
+                    selectedBankFilter === null ? 'tv3-bank-chip--active' : '',
+                    allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0 ? 'tv3-bank-chip--ok' : '',
+                    allBanksSummary.finMes < 0 ? 'tv3-bank-chip--warn' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={handleAllBanksClick}
+                >
+                  <div className="tv3-bank-chip-head">
+                    <span className="tv3-bank-name">Todos los bancos</span>
+                    <span className={`tv3-bank-status ${allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0 ? 'ok' : allBanksSummary.finMes < 0 ? 'warn' : 'pending'}`}>
+                      {allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0
+                        ? <CheckCircle2 size={14} />
+                        : allBanksSummary.finMes < 0
+                          ? <AlertTriangle size={14} />
+                          : <Circle size={14} />
+                      }
+                    </span>
+                  </div>
+
+                  <div className="tv3-bank-amounts">
+                    <div className="tv3-bank-hoy">
+                      Hoy&nbsp;<span>{formatAmount(allBanksSummary.hoy)} €</span>
+                    </div>
+                    <div className={`tv3-bank-finmes ${allBanksSummary.finMes < 0 ? 'tv3-bank-finmes--neg' : ''}`}>
+                      Fin mes&nbsp;<span>{formatAmount(allBanksSummary.finMes)} €</span>
+                    </div>
+                  </div>
+
+                  <div className="tv3-bank-track">
+                    <div
+                      className={[
+                        'tv3-bank-fill',
+                        allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0 ? 'tv3-bank-fill--full' : '',
+                        allBanksSummary.finMes < 0 ? 'tv3-bank-fill--neg' : 'tv3-bank-fill--blue',
+                      ].filter(Boolean).join(' ')}
+                      style={{ width: `${Math.min(allBanksSummary.pct, 100)}%` }}
+                    />
+                  </div>
+
+                  <span className={`tv3-bank-badge ${allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0 ? 'tv3-bank-badge--done' : 'tv3-bank-badge--pend'}`}>
+                    {allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0
+                      ? '100% ✓'
+                      : `${allBanksSummary.doneEvents} / ${allBanksSummary.totalEvents}`}
+                  </span>
+                </div>,
+                ...accounts.map(account => {
                 const bd = accountBreakdown.get(account.id);
                 const isActive = selectedBankFilter === account.id;
                 const totalEvts = events.filter(e => e.accountId === account.id).length;
@@ -938,6 +1010,7 @@ const TreasuryReconciliationView: React.FC = () => {
                   </div>
                 );
               })
+              ]
             )}
           </div>
         </div>
