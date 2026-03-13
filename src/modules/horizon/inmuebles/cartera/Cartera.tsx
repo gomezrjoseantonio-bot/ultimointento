@@ -385,6 +385,7 @@ const Cartera: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div ref={actionMenuContainerRef} className="relative flex items-center gap-1">
                             <button onClick={() => navigate(`/inmuebles/cartera/${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver detalle"><Eye className="h-4 w-4" /></button>
+                            <button onClick={() => navigate(`/inmuebles/gastos?propertyId=${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver gastos"><TrendingDown className="h-4 w-4" /></button>
                             <button onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Más opciones"><MoreHorizontal className="h-4 w-4" /></button>
                             {openMenuPropertyId === propId && (
                               <div className="absolute right-0 top-9 z-20 w-48 rounded-md border bg-white shadow-lg py-1">
