@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BarChart2 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
+import { useSelector } from 'react-redux';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
 import { Property } from '../../../../services/db';
@@ -27,6 +28,9 @@ type ReduxPropertiesState = RootState & {
   };
 };
 
+
+const requiresPropertySelection = new Set<TipoSimulacion>(['cambio_renta_alquiler']);
+
 const SIMULACIONES: SimulacionCard[] = [
   { tipo: 'venta_inversion', label: 'Vender inmueble / inversión', descripcion: 'Calcula el impacto fiscal de vender una posición', campos: [{ name: 'importeVenta', label: 'Importe de venta (€)', type: 'number' }, { name: 'costeAdquisicion', label: 'Coste de adquisición (€)', type: 'number' }] },
   { tipo: 'aportacion_plan_pensiones', label: 'Aportar a plan de pensiones', descripcion: 'Simula una aportación adicional al plan de pensiones (máx. 1.500 €)', campos: [{ name: 'aportacion', label: 'Aportación adicional (€)', type: 'number' }] },
@@ -41,6 +45,7 @@ const SimuladorPage: React.FC = () => {
   });
   const [selectedCard, setSelectedCard] = useState<SimulacionCard | null>(null);
   const [params, setParams] = useState<Record<string, string | number>>({});
+  const selectedPropertyId = params.inmuebleId;
   const [resultado, setResultado] = useState<Simulacion | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,9 +105,11 @@ const SimuladorPage: React.FC = () => {
                   <>
                     <select value={params[campo.name] ?? ''} onChange={e => setParams(prev => ({ ...prev, [campo.name]: Number(e.target.value) }))} style={fieldStyle}>
                       <option value="">Selecciona</option>
-                      <option value="1">Inmueble 1</option>
-                      <option value="2">Inmueble 2</option>
-                      <option value="3">Inmueble 3</option>
+                      {properties.map((property) => (
+                        <option key={property.id} value={property.id}>
+                          {property.alias || `Inmueble ${property.id}`}
+                        </option>
+                      ))}
                     </select>
                     <p style={{ fontSize: 'var(--t-xs)', color: 'var(--teal)', marginTop: 'var(--s1)' }}>Selecciona un inmueble del catálogo</p>
                   </>
