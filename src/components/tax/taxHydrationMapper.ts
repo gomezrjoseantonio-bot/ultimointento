@@ -1,6 +1,7 @@
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
 import { initDB, Property } from '../../services/db';
+import { calculateFiscalSummary } from '../../services/fiscalSummaryService';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -28,6 +29,17 @@ type PropertyFiscalHints = {
   importeAdquisicion: number;
   valorCatastral: number;
   valorCatastralConstruccion: number;
+};
+
+type PropertyExpenseBreakdown = {
+  interesesFinanciacion: number;
+  gastosReparacion: number;
+  gastosComunidad: number;
+  serviciosPersonales: number;
+  suministros: number;
+  seguro: number;
+  tributosRecargos: number;
+  amortizacionMuebles: number;
 };
 
 function getPropertyFiscalHintsById(properties: Property[]): Map<number, PropertyFiscalHints> {
@@ -64,6 +76,7 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
   const gyp = declaracion.baseAhorro.gananciasYPerdidas;
 
   let propertyHints = new Map<number, PropertyFiscalHints>();
+  const propertyExpenseBreakdowns = new Map<number, PropertyExpenseBreakdown>();
   try {
     const db = await initDB();
     const properties = await db.getAll('properties');
@@ -72,7 +85,41 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
     console.warn('[TAX_HYDRATION] No se pudieron cargar hints fiscales de inmuebles', error);
   }
 
+  await Promise.all(
+    declaracion.baseGeneral.rendimientosInmuebles.map(async (inmueble) => {
+      try {
+        const summary = await calculateFiscalSummary(inmueble.inmuebleId, declaracion.ejercicio);
+        const ratio = inmueble.diasTotal > 0 ? inmueble.diasAlquilado / inmueble.diasTotal : 0;
+        propertyExpenseBreakdowns.set(inmueble.inmuebleId, {
+          interesesFinanciacion: round2((summary.box0105 ?? 0) * ratio),
+          gastosReparacion: round2((summary.box0106 ?? 0) * ratio),
+          gastosComunidad: round2((summary.box0109 ?? 0) * ratio),
+          serviciosPersonales: round2((summary.box0112 ?? 0) * ratio),
+          suministros: round2((summary.box0113 ?? 0) * ratio),
+          seguro: round2((summary.box0114 ?? 0) * ratio),
+          tributosRecargos: round2((summary.box0115 ?? 0) * ratio),
+          amortizacionMuebles: round2((summary.box0117 ?? 0) * ratio),
+        });
+      } catch (error) {
+        console.warn('[TAX_HYDRATION] No se pudo cargar desglose de gastos del inmueble', {
+          inmuebleId: inmueble.inmuebleId,
+          error,
+        });
+      }
+    })
+  );
+
   const inmuebles: Inmueble[] = declaracion.baseGeneral.rendimientosInmuebles.map((i) => ({
+    ...(propertyExpenseBreakdowns.get(i.inmuebleId) ?? {
+      interesesFinanciacion: 0,
+      gastosReparacion: 0,
+      gastosComunidad: 0,
+      serviciosPersonales: 0,
+      suministros: 0,
+      seguro: 0,
+      tributosRecargos: 0,
+      amortizacionMuebles: 0,
+    }),
     ...(propertyHints.get(i.inmuebleId) ?? {
       refCatastral: '',
       fechaAdquisicion: '',
@@ -90,14 +137,6 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
     diasDisposicion: i.diasVacio,
     valorCatastralRevisado: false,
     ingresosIntegros: round2(i.ingresosIntegros),
-    interesesFinanciacion: round2(i.gastosFinanciacionYReparacion ?? 0),
-    gastosReparacion: 0,
-    gastosComunidad: round2(i.gastosDeducibles),
-    serviciosPersonales: 0,
-    suministros: 0,
-    seguro: 0,
-    tributosRecargos: 0,
-    amortizacionMuebles: 0,
     arrastres: i.arrastresAplicados && i.arrastresAplicados > 0
       ? [{ ejercicio: declaracion.ejercicio - 1, pendienteInicio: i.arrastresAplicados, aplicado: i.arrastresAplicados, pendienteFuturo: 0 }]
       : [],
