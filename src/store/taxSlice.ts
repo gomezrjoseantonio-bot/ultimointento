@@ -1,5 +1,13 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
+// ─── HELPER ──────────────────────────────────────────────────────────
+export const n = (v: unknown): number => {
+  const num = Number(v);
+  return isNaN(num) ? 0 : num;
+};
+
+// ─── INTERFACES ───────────────────────────────────────────────────────
+
 export interface WorkIncome {
   dinerarias: number;
   especieValoracion: number;
@@ -16,118 +24,91 @@ export interface CapitalMobiliario {
   retencion: number;
 }
 
-export type SituacionInmueble = 1 | 2 | 3;
-export type TipoUsoInmueble = 'arrendado' | 'disposicion' | 'mixto' | 'accesorio';
-
-export interface InmuebleAccesorio {
-  refCatastral: string;
-  fechaAdquisicion: string;
-  diasArrendados: number;
-  valorCatastral: number;
-  valorCatastralConstruccion: number;
-  pctConstruccion: number;
-  importeAdquisicion: number;
-  gastosTributos: number;
-  baseAmortizacion: number;
-  amortizacion: number;
-}
-
-export interface CarryForwardItem {
+export interface GastoArrastre {
   ejercicio: number;
-  pendienteInicioPeriodo: number;
-  aplicadoEsteEjercicio: number;
-  pendienteFuturos: number;
+  pendienteInicio: number;
+  aplicado: number;
+  pendienteFuturo: number;
 }
 
 export interface Inmueble {
   id: string;
   refCatastral: string;
   direccion: string;
-  situacion: SituacionInmueble;
-  urbana: boolean;
   pctPropiedad: number;
-  tipo: TipoUsoInmueble;
+  tipo: 'arrendado' | 'disposicion' | 'mixto';
+  // adquisición
   fechaAdquisicion: string;
   importeAdquisicion: number;
   gastosTributos: number;
-  mejoras2024: number;
+  mejoras: number;
   valorCatastral: number;
   valorCatastralConstruccion: number;
+  // uso
+  diasArrendados: number;
+  diasDisposicion: number;
+  valorCatastralRevisado: boolean;
+  // ingresos
+  ingresosIntegros: number;
+  // gastos
+  interesesFinanciacion: number;
+  gastosReparacion: number;
+  gastosComunidad: number;
+  serviciosPersonales: number;
+  suministros: number;
+  seguro: number;
+  tributosRecargos: number;
+  amortizacionMuebles: number;
+  // arrastre
+  arrastres: GastoArrastre[];
+  // reducción vivienda
+  tieneReduccion: boolean;
+  pctReduccion: number;
+  // calculados (se rellenan por el motor)
   pctConstruccion: number;
   baseAmortizacion: number;
   amortizacionInmueble: number;
-  amortizacionBienesMuebles: number;
-  diasDisposicion: number;
-  diasArrendados: number;
-  ingresosIntegros: number;
-  interesesFinanciacion: number;
-  gastosReparacionConservacion: number;
   limiteInteresesReparacion: number;
-  gastosReparacionNoDeducibles: number;
-  gastosComunidad: number;
-  serviciosPersonales: number;
-  serviciosSuministros: number;
-  seguro: number;
-  tributosRecargos: number;
-  gastosPendientesAnteriores: CarryForwardItem[];
-  gastosArrastreAplicados: number;
-  gastosDeduciblesProximos4Anios: number;
+  excesoReparacion: number;
   rentaImputada: number;
-  tieneReduccionVivienda: boolean;
-  pctReduccion: number;
-  reduccionAplicada: number;
-  accesorio?: InmuebleAccesorio;
   rendimientoNeto: number;
   rendimientoNetoReducido: number;
 }
-
-export type ModalidadED = 'simplificada' | 'normal';
 
 export interface ActividadEconomica {
   id: string;
   codigoActividad: string;
   epigafreIAE: string;
-  modalidad: ModalidadED;
   ingresosExplotacion: number;
   seguridadSocialTitular: number;
   serviciosProfesionales: number;
   otrosGastos: number;
+  retencion: number;
+  // calculados
   provisionSimplificada: number;
   rendimientoNeto: number;
-  retencion: number;
 }
-
-export type TipoGananciaPatrimonial =
-  | 'transmision_inmueble'
-  | 'transmision_fondos'
-  | 'cripto'
-  | 'otras_no_transmision'
-  | 'otras_transmision';
-
-export type BaseGP = 'general' | 'ahorro';
 
 export interface GananciaPatrimonial {
   id: string;
-  tipo: TipoGananciaPatrimonial;
-  base: BaseGP;
+  tipo: 'inmueble' | 'fondos' | 'cripto' | 'otra_bg' | 'otra_ba';
+  base: 'general' | 'ahorro';
   descripcion: string;
   valorTransmision: number;
   valorAdquisicion: number;
   resultado: number;
 }
 
-export interface SaldoNegativoPendiente {
+export interface SaldoNegativoBIA {
   ejercicio: number;
-  pendienteInicioPeriodo: number;
-  aplicadoEsteEjercicio: number;
-  pendienteFuturos: number;
+  pendienteInicio: number;
+  aplicado: number;
+  pendienteFuturo: number;
 }
 
-export interface PreviewSocial {
+export interface PrevisionSocial {
   aportacionTrabajador: number;
   contribucionEmpresarial: number;
-  nifEmpleador: string;
-  totalConDerechoReduccion: number;
   importeAplicado: number;
 }
 
@@ -137,9 +118,10 @@ export interface TaxState {
   capitalMobiliario: CapitalMobiliario;
   inmuebles: Inmueble[];
   actividades: ActividadEconomica[];
-  gananciasPatrimoniales: GananciaPatrimonial[];
-  saldosNegativosBIA: SaldoNegativoPendiente[];
-  previsionSocial: PreviewSocial;
+  ganancias: GananciaPatrimonial[];
+  saldosNegativosBIA: SaldoNegativoBIA[];
+  previsionSocial: PrevisionSocial;
+  // derivados
   baseImponibleGeneral: number;
   baseImponibleAhorro: number;
   baseLiquidableGeneral: number;
@@ -150,189 +132,242 @@ export interface TaxState {
   cuotaDiferencial: number;
 }
 
-const round2 = (n: number): number => Math.round(n * 100) / 100;
-const n = (v: unknown): number => Number(v) || 0;
+// ─── TARIFAS IRPF ─────────────────────────────────────────────────────
 
-export function calcRendimientoTrabajo(w: WorkIncome): number {
-  const especieNeta = n(w.especieValoracion);
-  const totalIntegros = n(w.dinerarias) + especieNeta + n(w.contribucionEmpresarialPP);
-  const netoPrevio = totalIntegros - n(w.cotizacionSS);
-  return Math.max(0, round2(netoPrevio - n(w.otrosGastosDeducibles)));
-}
-
-export function calcLimiteInteresesReparacion(inmueble: Inmueble): number {
-  const suma = n(inmueble.interesesFinanciacion) + n(inmueble.gastosReparacionConservacion);
-  return round2(Math.min(suma, n(inmueble.ingresosIntegros)));
-}
-
-export function calcExcesoReparacion(inmueble: Inmueble): number {
-  const suma = n(inmueble.interesesFinanciacion) + n(inmueble.gastosReparacionConservacion);
-  return round2(Math.max(0, suma - n(inmueble.ingresosIntegros)));
-}
-
-export function calcBaseAmortizacion(inmueble: Inmueble): number {
-  const pctConstruccion = n(inmueble.pctConstruccion) / 100;
-  const valorConstruccion = n(inmueble.valorCatastralConstruccion);
-  const costeTotalAdquisicion = n(inmueble.importeAdquisicion) + n(inmueble.gastosTributos) + n(inmueble.mejoras2024);
-  return round2(Math.max(valorConstruccion, costeTotalAdquisicion * pctConstruccion));
-}
-
-export function calcAmortizacionInmueble(inmueble: Inmueble, diasTotalesEjercicio: number): number {
-  const base = calcBaseAmortizacion(inmueble);
-  return round2(base * 0.03 * (n(inmueble.diasArrendados) / n(diasTotalesEjercicio)));
-}
-
-export function calcRendimientoNetoInmueble(inmueble: Inmueble): number {
-  const gastosTotales =
-    calcLimiteInteresesReparacion(inmueble) +
-    n(inmueble.gastosArrastreAplicados) +
-    n(inmueble.gastosComunidad) +
-    n(inmueble.serviciosPersonales) +
-    n(inmueble.serviciosSuministros) +
-    n(inmueble.seguro) +
-    n(inmueble.tributosRecargos) +
-    n(inmueble.amortizacionInmueble) +
-    n(inmueble.amortizacionBienesMuebles);
-  return round2(n(inmueble.ingresosIntegros) - gastosTotales);
-}
-
-export function calcRendimientoNetoReducidoInmueble(inmueble: Inmueble): number {
-  const rdtoNeto = calcRendimientoNetoInmueble(inmueble);
-  if (!inmueble.tieneReduccionVivienda || rdtoNeto <= 0) return rdtoNeto;
-  const reduccion = rdtoNeto * (n(inmueble.pctReduccion) / 100);
-  return round2(rdtoNeto - reduccion);
-}
-
-export function calcRendimientoActividad(a: ActividadEconomica): number {
-  const gastosDeducibles = n(a.seguridadSocialTitular) + n(a.serviciosProfesionales) + n(a.otrosGastos);
-  const diferencia = n(a.ingresosExplotacion) - gastosDeducibles;
-  const provision = diferencia > 0 ? diferencia * 0.05 : 0;
-  return round2(diferencia - provision);
-}
-
-export function calcSaldoBIA(gps: GananciaPatrimonial[], saldosNegativos: SaldoNegativoPendiente[]): number {
-  const sumaPositivos = gps.filter((g) => g.base === 'ahorro' && n(g.resultado) > 0).reduce((acc, g) => acc + n(g.resultado), 0);
-  const sumaNegativos = gps.filter((g) => g.base === 'ahorro' && n(g.resultado) < 0).reduce((acc, g) => acc + n(g.resultado), 0);
-  const saldoNeto = sumaPositivos + sumaNegativos;
-  if (saldoNeto <= 0) return round2(saldoNeto);
-  const limiteCompensacion = saldoNeto * 0.25;
-  const totalPendiente = saldosNegativos.reduce((acc, s) => acc + n(s.aplicadoEsteEjercicio), 0);
-  const compensacion = Math.min(totalPendiente, limiteCompensacion);
-  return round2(saldoNeto - compensacion);
-}
-
-export function calcCuotaEstatal(baseGeneral: number): number {
-  const tramos = [
-    { hasta: 12450, tipo: 0.19 },
-    { hasta: 20200, tipo: 0.24 },
-    { hasta: 35200, tipo: 0.30 },
-    { hasta: 60000, tipo: 0.37 },
-    { hasta: 300000, tipo: 0.45 },
-    { hasta: Infinity, tipo: 0.47 },
-  ];
+function aplicarTarifa(base: number, tramos: { hasta: number; tipo: number }[]): number {
   let cuota = 0;
-  let baseRestante = n(baseGeneral);
-  let tramoAnterior = 0;
+  let anterior = 0;
   for (const tramo of tramos) {
-    if (baseRestante <= 0) break;
-    const baseTramo = Math.min(baseRestante, tramo.hasta - tramoAnterior);
+    if (base <= anterior) break;
+    const baseTramo = Math.min(base - anterior, tramo.hasta - anterior);
     cuota += baseTramo * tramo.tipo;
-    baseRestante -= baseTramo;
-    tramoAnterior = tramo.hasta;
+    anterior = tramo.hasta;
   }
-  return round2(cuota);
+  return cuota;
 }
 
-export function calcCuotaAutonoma_Madrid(baseGeneral: number): number {
-  const tramos = [
-    { hasta: 12450, tipo: 0.0905 },
-    { hasta: 17707, tipo: 0.1290 },
-    { hasta: 33007, tipo: 0.1415 },
-    { hasta: 53407, tipo: 0.1760 },
-    { hasta: Infinity, tipo: 0.2050 },
-  ];
-  let cuota = 0;
-  let baseRestante = n(baseGeneral);
-  let tramoAnterior = 0;
-  for (const tramo of tramos) {
-    if (baseRestante <= 0) break;
-    const baseTramo = Math.min(baseRestante, tramo.hasta - tramoAnterior);
-    cuota += baseTramo * tramo.tipo;
-    baseRestante -= baseTramo;
-    tramoAnterior = tramo.hasta;
-  }
-  return round2(cuota);
+export function calcCuotaEstatal(base: number): number {
+  return aplicarTarifa(base, [
+    { hasta: 12450,   tipo: 0.095 },
+    { hasta: 20200,   tipo: 0.12  },
+    { hasta: 35200,   tipo: 0.15  },
+    { hasta: 60000,   tipo: 0.185 },
+    { hasta: 300000,  tipo: 0.225 },
+    { hasta: Infinity, tipo: 0.245 },
+  ]);
 }
 
-export function calcCuotaAhorro(baseAhorro: number): number {
-  const tramos = [
-    { hasta: 6000, tipo: 0.19 },
-    { hasta: 50000, tipo: 0.21 },
-    { hasta: 200000, tipo: 0.23 },
-    { hasta: 300000, tipo: 0.27 },
+export function calcCuotaAutonomica(base: number): number {
+  // Escala Madrid — ajustar si el usuario reside en otra CCAA
+  return aplicarTarifa(base, [
+    { hasta: 12450,   tipo: 0.0905 },
+    { hasta: 17707,   tipo: 0.129  },
+    { hasta: 33007,   tipo: 0.1415 },
+    { hasta: 53407,   tipo: 0.176  },
+    { hasta: Infinity, tipo: 0.205 },
+  ]);
+}
+
+export function calcCuotaAhorro(base: number): number {
+  // Tipo ahorro = estatal + autonómica (50/50), tarifa 2024
+  const tarifaAhorro = [
+    { hasta: 6000,    tipo: 0.19 },
+    { hasta: 50000,   tipo: 0.21 },
+    { hasta: 200000,  tipo: 0.23 },
+    { hasta: 300000,  tipo: 0.27 },
     { hasta: Infinity, tipo: 0.28 },
   ];
-  let cuota = 0;
-  let baseRestante = n(baseAhorro);
-  let tramoAnterior = 0;
-  for (const tramo of tramos) {
-    if (baseRestante <= 0) break;
-    const baseTramo = Math.min(baseRestante, tramo.hasta - tramoAnterior);
-    cuota += baseTramo * tramo.tipo;
-    baseRestante -= baseTramo;
-    tramoAnterior = tramo.hasta;
-  }
-  return round2(cuota * 2);
+  return aplicarTarifa(base, tarifaAhorro);
 }
 
-const isDev = process.env.NODE_ENV === 'development';
+// ─── MOTOR DE CÁLCULO ─────────────────────────────────────────────────
+
+function calcInmueble(i: Inmueble, diasEjercicio: number): Partial<Inmueble> {
+  const pctConstr = n(i.valorCatastral) > 0
+    ? n(i.valorCatastralConstruccion) / n(i.valorCatastral)
+    : 0;
+  const costeAdq = n(i.importeAdquisicion) + n(i.gastosTributos) + n(i.mejoras);
+  const baseAmort = Math.max(n(i.valorCatastralConstruccion), costeAdq * pctConstr);
+  const amortInmueble = diasEjercicio > 0
+    ? baseAmort * 0.03 * (n(i.diasArrendados) / diasEjercicio)
+    : 0;
+
+  const limiteIR = Math.min(
+    n(i.interesesFinanciacion) + n(i.gastosReparacion),
+    n(i.ingresosIntegros)
+  );
+  const excesoRep = Math.max(
+    0,
+    n(i.interesesFinanciacion) + n(i.gastosReparacion) - n(i.ingresosIntegros)
+  );
+
+  const arrastresAplicados = (i.arrastres ?? []).reduce(
+    (acc, a) => acc + n(a.aplicado), 0
+  );
+
+  const gastosTotal = limiteIR + arrastresAplicados
+    + n(i.gastosComunidad) + n(i.serviciosPersonales)
+    + n(i.suministros) + n(i.seguro) + n(i.tributosRecargos)
+    + amortInmueble + n(i.amortizacionMuebles);
+
+  const rentaImp = n(i.diasDisposicion) > 0
+    ? n(i.valorCatastral) * (i.valorCatastralRevisado ? 0.011 : 0.02)
+      * (n(i.diasDisposicion) / diasEjercicio)
+    : 0;
+
+  const rdtoNeto = n(i.ingresosIntegros) - gastosTotal;
+  const reduccion = i.tieneReduccion && rdtoNeto > 0
+    ? rdtoNeto * (n(i.pctReduccion) / 100)
+    : 0;
+  const rdtoReducido = rdtoNeto - reduccion;
+
+  return {
+    pctConstruccion: pctConstr * 100,
+    baseAmortizacion: baseAmort,
+    amortizacionInmueble: amortInmueble,
+    limiteInteresesReparacion: limiteIR,
+    excesoReparacion: excesoRep,
+    rentaImputada: rentaImp,
+    rendimientoNeto: rdtoNeto,
+    rendimientoNetoReducido: rdtoReducido,
+  };
+}
+
+function calcActividad(a: ActividadEconomica): Partial<ActividadEconomica> {
+  const gastos = n(a.seguridadSocialTitular) + n(a.serviciosProfesionales) + n(a.otrosGastos);
+  const diferencia = Math.max(0, n(a.ingresosExplotacion) - gastos);
+  const provision = diferencia * 0.05;
+  return {
+    provisionSimplificada: provision,
+    rendimientoNeto: diferencia - provision,
+  };
+}
+
+function recalcular(state: TaxState): void {
+  const anio = n(state.ejercicio);
+  const bisiesto = anio % 4 === 0 && (anio % 100 !== 0 || anio % 400 === 0);
+  const diasEjercicio = bisiesto ? 366 : 365;
+
+  // Inmuebles
+  state.inmuebles = state.inmuebles.map(i => ({
+    ...i,
+    ...calcInmueble(i, diasEjercicio),
+  }));
+
+  // Actividades
+  state.actividades = state.actividades.map(a => ({
+    ...a,
+    ...calcActividad(a),
+  }));
+
+  // Rendimiento trabajo
+  const rdtoTrabajo = n(state.workIncome.dinerarias)
+    + n(state.workIncome.especieValoracion)
+    + n(state.workIncome.contribucionEmpresarialPP)
+    - n(state.workIncome.cotizacionSS)
+    - n(state.workIncome.otrosGastosDeducibles);
+
+  // Suma inmuebles
+  const sumaRdtoInmuebles = state.inmuebles.reduce(
+    (acc, i) => acc + n(i.rendimientoNetoReducido), 0
+  );
+  const sumaImputacion = state.inmuebles.reduce(
+    (acc, i) => acc + n(i.rentaImputada), 0
+  );
+
+  // Actividades
+  const sumaActividades = state.actividades.reduce(
+    (acc, a) => acc + n(a.rendimientoNeto), 0
+  );
+
+  // Capital mobiliario
+  const rdtoCapMob = n(state.capitalMobiliario.interesesCuentasDepositos)
+    + n(state.capitalMobiliario.otrosRendimientos);
+
+  // G/P patrimoniales
+  const saldoBIG = state.ganancias
+    .filter(g => g.base === 'general')
+    .reduce((acc, g) => acc + n(g.resultado), 0);
+
+  const saldoBIABruto = state.ganancias
+    .filter(g => g.base === 'ahorro')
+    .reduce((acc, g) => acc + n(g.resultado), 0);
+
+  const compensacionBIA = saldoBIABruto > 0
+    ? Math.min(
+        saldoBIABruto * 0.25,
+        state.saldosNegativosBIA.reduce((acc, s) => acc + n(s.aplicado), 0)
+      )
+    : 0;
+  const saldoBIA = saldoBIABruto - compensacionBIA;
+
+  // Bases imponibles
+  state.baseImponibleGeneral = rdtoTrabajo + sumaRdtoInmuebles + sumaImputacion
+    + sumaActividades + saldoBIG;
+  state.baseImponibleAhorro = Math.max(0, rdtoCapMob + saldoBIA);
+
+  // Reducciones
+  const reduccionPP = n(state.previsionSocial.importeAplicado);
+  state.baseLiquidableGeneral = Math.max(0, state.baseImponibleGeneral - reduccionPP);
+  state.baseLiquidableAhorro = state.baseImponibleAhorro;
+
+  // Cuotas con mínimo personal (5.550 € estatal / 5.956,65 € Madrid)
+  const minimoEstatal = 5550;
+  const minimoAutonomico = 5956.65;
+  const cuotaMinimoEstatal = calcCuotaEstatal(minimoEstatal);
+  const cuotaMinimoAutonomico = calcCuotaAutonomica(minimoAutonomico);
+
+  const cuotaGeneral =
+    Math.max(0, calcCuotaEstatal(state.baseLiquidableGeneral) - cuotaMinimoEstatal) +
+    Math.max(0, calcCuotaAutonomica(state.baseLiquidableGeneral) - cuotaMinimoAutonomico);
+  const cuotaAhorro = calcCuotaAhorro(state.baseLiquidableAhorro);
+
+  state.cuotaIntegra = cuotaGeneral + cuotaAhorro;
+  state.cuotaLiquida = state.cuotaIntegra; // sin deducciones adicionales por ahora
+
+  // Retenciones
+  state.totalRetenciones = n(state.workIncome.retencion)
+    + n(state.capitalMobiliario.retencion)
+    + state.actividades.reduce((acc, a) => acc + n(a.retencion), 0);
+
+  state.cuotaDiferencial = state.cuotaLiquida - state.totalRetenciones;
+}
+
+// ─── ESTADO INICIAL ────────────────────────────────────────────────────
+
+const emptyWorkIncome: WorkIncome = {
+  dinerarias: 0,
+  especieValoracion: 0,
+  especieIngresoACuenta: 0,
+  contribucionEmpresarialPP: 0,
+  cotizacionSS: 0,
+  otrosGastosDeducibles: 2000,
+  retencion: 0,
+};
+
+const emptyCapitalMobiliario: CapitalMobiliario = {
+  interesesCuentasDepositos: 0,
+  otrosRendimientos: 0,
+  retencion: 0,
+};
+
+const emptyPrevisionSocial: PrevisionSocial = {
+  aportacionTrabajador: 0,
+  contribucionEmpresarial: 0,
+  importeAplicado: 0,
+};
+
+const currentYear = new Date().getFullYear();
 
 const initialState: TaxState = {
-  ejercicio: isDev ? 2024 : new Date().getFullYear() - 1,
-  workIncome: {
-    dinerarias: 133350.85,
-    especieValoracion: 2549.81,
-    especieIngresoACuenta: 907.51,
-    contribucionEmpresarialPP: 1862.16,
-    cotizacionSS: 3664.96,
-    otrosGastosDeducibles: 2000,
-    retencion: 48452.01,
-  },
-  capitalMobiliario: {
-    interesesCuentasDepositos: 476.84,
-    otrosRendimientos: 0,
-    retencion: 90.37,
-  },
-  inmuebles: [
-    {
-      id: 'acevedo', refCatastral: '7949807TP6074N0006YM', direccion: 'CL FUERTES ACEVEDO 0032 1 02 DR, OVIEDO', situacion: 1, urbana: true, pctPropiedad: 100, tipo: 'arrendado',
-      fechaAdquisicion: '', importeAdquisicion: 0, gastosTributos: 0, mejoras2024: 0, valorCatastral: 0, valorCatastralConstruccion: 0, pctConstruccion: 0, baseAmortizacion: 0,
-      amortizacionInmueble: 1699.66, amortizacionBienesMuebles: 0, diasDisposicion: 0, diasArrendados: 366, ingresosIntegros: 19675,
-      interesesFinanciacion: 1580.34, gastosReparacionConservacion: 209.33, limiteInteresesReparacion: 1789.67, gastosReparacionNoDeducibles: 0,
-      gastosComunidad: 1008, serviciosPersonales: 296.45, serviciosSuministros: 1930.41, seguro: 242.79, tributosRecargos: 399.22,
-      gastosPendientesAnteriores: [{ ejercicio: 2023, pendienteInicioPeriodo: 6157.99, aplicadoEsteEjercicio: 6157.99, pendienteFuturos: 0 }], gastosArrastreAplicados: 6157.99,
-      gastosDeduciblesProximos4Anios: 0, rentaImputada: 0, tieneReduccionVivienda: true, pctReduccion: 50, reduccionAplicada: 1390.94, rendimientoNeto: 5334.69, rendimientoNetoReducido: 3943.75,
-    },
-    {
-      id: 'manresa', refCatastral: '0000001DG0000S0001AA', direccion: 'C MANRESA 10, SANT FRUITÓS', situacion: 1, urbana: true, pctPropiedad: 100, tipo: 'mixto',
-      fechaAdquisicion: '2019-05-03', importeAdquisicion: 185000, gastosTributos: 21000, mejoras2024: 0, valorCatastral: 70361.25, valorCatastralConstruccion: 49252.88, pctConstruccion: 70,
-      baseAmortizacion: 49252.88, amortizacionInmueble: 1108.19, amortizacionBienesMuebles: 0, diasDisposicion: 122, diasArrendados: 244, ingresosIntegros: 7300,
-      interesesFinanciacion: 940, gastosReparacionConservacion: 0, limiteInteresesReparacion: 940, gastosReparacionNoDeducibles: 0,
-      gastosComunidad: 820, serviciosPersonales: 120, serviciosSuministros: 980, seguro: 192, tributosRecargos: 263.23,
-      gastosPendientesAnteriores: [], gastosArrastreAplicados: 0, gastosDeduciblesProximos4Anios: 0, rentaImputada: 562.89,
-      tieneReduccionVivienda: true, pctReduccion: 50, reduccionAplicada: 1498.42, rendimientoNeto: 2996.84, rendimientoNetoReducido: 1498.42,
-    },
-  ],
-  actividades: [{ id: 'act1', codigoActividad: 'A05', epigafreIAE: '724', modalidad: 'simplificada', ingresosExplotacion: 16259.71, seguridadSocialTitular: 3529.66, serviciosProfesionales: 198, otrosGastos: 0, provisionSimplificada: 626.6, rendimientoNeto: 11905.45, retencion: 2438.96 }],
-  gananciasPatrimoniales: [
-    { id: 'gp1', tipo: 'otras_no_transmision', base: 'general', descripcion: 'Otras ganancias imputables 2024', valorTransmision: 8.19, valorAdquisicion: 0, resultado: 8.19 },
-    { id: 'gp2', tipo: 'cripto', base: 'ahorro', descripcion: 'USDT', valorTransmision: 3060.13, valorAdquisicion: 3105.98, resultado: -45.85 },
-  ],
-  saldosNegativosBIA: [
-    { ejercicio: 2022, pendienteInicioPeriodo: 1418.35, aplicadoEsteEjercicio: 73.36, pendienteFuturos: 1344.99 },
-    { ejercicio: 2023, pendienteInicioPeriodo: 27764.23, aplicadoEsteEjercicio: 0, pendienteFuturos: 27764.23 },
-  ],
-  previsionSocial: { aportacionTrabajador: 1396.68, contribucionEmpresarial: 1862.16, nifEmpleador: 'A82009812', totalConDerechoReduccion: 3258.84, importeAplicado: 3258.84 },
+  ejercicio: currentYear - 1,
+  workIncome: emptyWorkIncome,
+  capitalMobiliario: emptyCapitalMobiliario,
+  inmuebles: [],
+  actividades: [],
+  ganancias: [],
+  saldosNegativosBIA: [],
+  previsionSocial: emptyPrevisionSocial,
   baseImponibleGeneral: 0,
   baseImponibleAhorro: 0,
   baseLiquidableGeneral: 0,
@@ -343,168 +378,147 @@ const initialState: TaxState = {
   cuotaDiferencial: 0,
 };
 
-function calcTotalRetenciones(state: TaxState): number {
-  const retTrabajo = n(state.workIncome?.retencion);
-  const retCapital = n(state.capitalMobiliario?.retencion);
-  const retActividades = (state.actividades ?? []).reduce((acc, a) => acc + n(a.retencion), 0);
-  return round2(retTrabajo + retCapital + retActividades);
-}
-
-function recalcularTax(state: TaxState): Partial<TaxState> {
-  const diasTotales = state.ejercicio % 4 === 0 ? 366 : 365;
-  state.inmuebles = state.inmuebles.map((inmueble) => {
-    const pctConstruccion = n(inmueble.valorCatastral) > 0 ? round2((n(inmueble.valorCatastralConstruccion) / n(inmueble.valorCatastral)) * 100) : n(inmueble.pctConstruccion);
-    const baseAmortizacion = calcBaseAmortizacion({ ...inmueble, pctConstruccion });
-    const amortizacionInmueble = n(inmueble.baseAmortizacion) > 0 ? n(inmueble.amortizacionInmueble) : calcAmortizacionInmueble({ ...inmueble, pctConstruccion, baseAmortizacion }, diasTotales);
-    const limiteInteresesReparacion = calcLimiteInteresesReparacion(inmueble);
-    const gastosReparacionNoDeducibles = calcExcesoReparacion(inmueble);
-    const gastosPendientesAnteriores = (inmueble.gastosPendientesAnteriores ?? []).map((g) => ({ ...g, pendienteFuturos: round2(Math.max(0, n(g.pendienteInicioPeriodo) - n(g.aplicadoEsteEjercicio))) }));
-    const rendimientoNeto = calcRendimientoNetoInmueble({ ...inmueble, limiteInteresesReparacion, gastosReparacionNoDeducibles, baseAmortizacion, amortizacionInmueble });
-    const rendimientoNetoReducido = calcRendimientoNetoReducidoInmueble({ ...inmueble, rendimientoNeto });
-    const reduccionAplicada = round2(Math.max(0, rendimientoNeto - rendimientoNetoReducido));
-    return { ...inmueble, pctConstruccion, baseAmortizacion, amortizacionInmueble, limiteInteresesReparacion, gastosReparacionNoDeducibles, gastosDeduciblesProximos4Anios: gastosReparacionNoDeducibles, gastosPendientesAnteriores, rendimientoNeto, rendimientoNetoReducido, reduccionAplicada };
-  });
-
-  state.actividades = state.actividades.map((actividad) => {
-    const gastosDeducibles = n(actividad.seguridadSocialTitular) + n(actividad.serviciosProfesionales) + n(actividad.otrosGastos);
-    const diferencia = n(actividad.ingresosExplotacion) - gastosDeducibles;
-    const provisionSimplificada = actividad.modalidad === 'simplificada' && diferencia > 0 ? round2(diferencia * 0.05) : 0;
-    return { ...actividad, provisionSimplificada, rendimientoNeto: round2(diferencia - provisionSimplificada) };
-  });
-
-  state.gananciasPatrimoniales = state.gananciasPatrimoniales.map((gp) => ({ ...gp, resultado: round2(n(gp.valorTransmision) - n(gp.valorAdquisicion)) }));
-
-  // 1. Rendimientos por fuente
-  const rdtoTrabajo = calcRendimientoTrabajo(state.workIncome);
-  const rdtoInmuebles = (state.inmuebles ?? []).reduce((acc, i) => acc + n(i.rendimientoNetoReducido), 0);
-  const imputacionInmuebles = (state.inmuebles ?? []).reduce((acc, i) => acc + n(i.rentaImputada), 0);
-  const rdtoActividad = (state.actividades ?? []).reduce((acc, a) => acc + n(a.rendimientoNeto), 0);
-  const rdtoCapitalMob = n(state.capitalMobiliario?.interesesCuentasDepositos) + n(state.capitalMobiliario?.otrosRendimientos);
-
-  // 2. Ganancias y pérdidas
-  const saldoBIG = (state.gananciasPatrimoniales ?? []).filter((g) => g.base === 'general').reduce((acc, g) => acc + n(g.resultado), 0);
-  const saldoBIABruto = (state.gananciasPatrimoniales ?? []).filter((g) => g.base === 'ahorro').reduce((acc, g) => acc + n(g.resultado), 0);
-  const compensacionBIA = Math.min(
-    saldoBIABruto > 0 ? saldoBIABruto * 0.25 : 0,
-    (state.saldosNegativosBIA ?? []).reduce((acc, s) => acc + n(s.aplicadoEsteEjercicio), 0),
-  );
-  const saldoBIA = saldoBIABruto - compensacionBIA;
-
-  // 3. Bases imponibles
-  const baseImponibleGeneral = rdtoTrabajo + rdtoInmuebles + imputacionInmuebles + rdtoActividad + saldoBIG;
-  const baseImponibleAhorro = Math.max(0, rdtoCapitalMob + saldoBIA);
-
-  // 4. Reducciones
-  state.previsionSocial.totalConDerechoReduccion = round2(n(state.previsionSocial.aportacionTrabajador) + n(state.previsionSocial.contribucionEmpresarial));
-  const reduccionPP = n(state.previsionSocial?.importeAplicado);
-
-  // 5. Bases liquidables
-  const baseLiquidableGeneral = Math.max(0, baseImponibleGeneral - reduccionPP);
-  const baseLiquidableAhorro = baseImponibleAhorro;
-
-  // 6. Mínimo personal y cuotas
-  const minimoPersonal = 5550;
-  const cuotaMinimoEstatal = calcCuotaEstatal(minimoPersonal);
-  const cuotaMinimoAutonomica = calcCuotaAutonoma_Madrid(minimoPersonal);
-  const cuotaIntegra =
-    Math.max(0, calcCuotaEstatal(baseLiquidableGeneral) - cuotaMinimoEstatal) +
-    Math.max(0, calcCuotaAutonoma_Madrid(baseLiquidableGeneral) - cuotaMinimoAutonomica) +
-    calcCuotaAhorro(baseLiquidableAhorro);
-
-  // 7. Cuota líquida y resultado
-  const cuotaLiquida = cuotaIntegra;
-  const totalRetenciones = calcTotalRetenciones(state);
-  const cuotaDiferencial = cuotaLiquida - totalRetenciones;
-
-  return {
-    baseImponibleGeneral: round2(baseImponibleGeneral),
-    baseImponibleAhorro: round2(baseImponibleAhorro),
-    baseLiquidableGeneral: round2(baseLiquidableGeneral),
-    baseLiquidableAhorro: round2(baseLiquidableAhorro),
-    cuotaIntegra: round2(cuotaIntegra),
-    cuotaLiquida: round2(cuotaLiquida),
-    totalRetenciones: round2(totalRetenciones),
-    cuotaDiferencial: round2(cuotaDiferencial),
-  };
-}
-
-const recomputeTaxState = (state: TaxState): TaxState => {
-  Object.assign(state, recalcularTax(state));
-  return state;
-};
+// ─── SLICE ─────────────────────────────────────────────────────────────
 
 const taxSlice = createSlice({
   name: 'tax',
-  initialState: recomputeTaxState(initialState),
+  initialState,
   reducers: {
     setEjercicio(state, action: PayloadAction<number>) {
       state.ejercicio = action.payload;
-      recomputeTaxState(state);
+      recalcular(state);
     },
-    updateWorkIncomeField<K extends keyof WorkIncome>(state: TaxState, action: PayloadAction<{ field: K; value: WorkIncome[K] }>) {
-      state.workIncome[action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    updateWorkIncome(state, action: PayloadAction<Partial<WorkIncome>>) {
+      Object.assign(state.workIncome, action.payload);
+      recalcular(state);
     },
-    updateCapitalMobiliarioField<K extends keyof CapitalMobiliario>(state: TaxState, action: PayloadAction<{ field: K; value: CapitalMobiliario[K] }>) {
-      state.capitalMobiliario[action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    updateCapitalMobiliario(state, action: PayloadAction<Partial<CapitalMobiliario>>) {
+      Object.assign(state.capitalMobiliario, action.payload);
+      recalcular(state);
     },
-    updatePrevisionSocialField<K extends keyof PreviewSocial>(state: TaxState, action: PayloadAction<{ field: K; value: PreviewSocial[K] }>) {
-      state.previsionSocial[action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    updatePrevisionSocial(state, action: PayloadAction<Partial<PrevisionSocial>>) {
+      Object.assign(state.previsionSocial, action.payload);
+      recalcular(state);
     },
-    updateInmuebleField<K extends keyof Inmueble>(state: TaxState, action: PayloadAction<{ id: string; field: K; value: Inmueble[K] }>) {
-      const idx = state.inmuebles.findIndex((i) => i.id === action.payload.id);
-      if (idx >= 0) state.inmuebles[idx][action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    addInmueble(state) {
+      const newInmueble: Inmueble = {
+        id: Date.now().toString(),
+        refCatastral: '',
+        direccion: 'Nuevo inmueble',
+        pctPropiedad: 100,
+        tipo: 'arrendado',
+        fechaAdquisicion: '',
+        importeAdquisicion: 0,
+        gastosTributos: 0,
+        mejoras: 0,
+        valorCatastral: 0,
+        valorCatastralConstruccion: 0,
+        diasArrendados: 365,
+        diasDisposicion: 0,
+        valorCatastralRevisado: false,
+        ingresosIntegros: 0,
+        interesesFinanciacion: 0,
+        gastosReparacion: 0,
+        gastosComunidad: 0,
+        serviciosPersonales: 0,
+        suministros: 0,
+        seguro: 0,
+        tributosRecargos: 0,
+        amortizacionMuebles: 0,
+        arrastres: [],
+        tieneReduccion: false,
+        pctReduccion: 50,
+        pctConstruccion: 0,
+        baseAmortizacion: 0,
+        amortizacionInmueble: 0,
+        limiteInteresesReparacion: 0,
+        excesoReparacion: 0,
+        rentaImputada: 0,
+        rendimientoNeto: 0,
+        rendimientoNetoReducido: 0,
+      };
+      state.inmuebles.push(newInmueble);
+      recalcular(state);
     },
-    addInmueble(state, action: PayloadAction<Inmueble>) {
-      state.inmuebles.push(action.payload);
-      recomputeTaxState(state);
+    updateInmueble(state, action: PayloadAction<{ id: string; data: Partial<Inmueble> }>) {
+      const idx = state.inmuebles.findIndex(i => i.id === action.payload.id);
+      if (idx >= 0) {
+        Object.assign(state.inmuebles[idx], action.payload.data);
+        recalcular(state);
+      }
     },
     removeInmueble(state, action: PayloadAction<string>) {
-      state.inmuebles = state.inmuebles.filter((i) => i.id !== action.payload);
-      recomputeTaxState(state);
+      state.inmuebles = state.inmuebles.filter(i => i.id !== action.payload);
+      recalcular(state);
     },
-    updateActividadField<K extends keyof ActividadEconomica>(state: TaxState, action: PayloadAction<{ id: string; field: K; value: ActividadEconomica[K] }>) {
-      const idx = state.actividades.findIndex((a) => a.id === action.payload.id);
-      if (idx >= 0) state.actividades[idx][action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    addActividad(state) {
+      state.actividades.push({
+        id: Date.now().toString(),
+        codigoActividad: '',
+        epigafreIAE: '',
+        ingresosExplotacion: 0,
+        seguridadSocialTitular: 0,
+        serviciosProfesionales: 0,
+        otrosGastos: 0,
+        retencion: 0,
+        provisionSimplificada: 0,
+        rendimientoNeto: 0,
+      });
+      recalcular(state);
     },
-    updateGananciaField<K extends keyof GananciaPatrimonial>(state: TaxState, action: PayloadAction<{ id: string; field: K; value: GananciaPatrimonial[K] }>) {
-      const idx = state.gananciasPatrimoniales.findIndex((g) => g.id === action.payload.id);
-      if (idx >= 0) state.gananciasPatrimoniales[idx][action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+    updateActividad(state, action: PayloadAction<{ id: string; data: Partial<ActividadEconomica> }>) {
+      const idx = state.actividades.findIndex(a => a.id === action.payload.id);
+      if (idx >= 0) {
+        Object.assign(state.actividades[idx], action.payload.data);
+        recalcular(state);
+      }
     },
-    addGanancia(state, action: PayloadAction<GananciaPatrimonial>) {
-      state.gananciasPatrimoniales.push(action.payload);
-      recomputeTaxState(state);
+    removeActividad(state, action: PayloadAction<string>) {
+      state.actividades = state.actividades.filter(a => a.id !== action.payload);
+      recalcular(state);
+    },
+    addGanancia(state) {
+      state.ganancias.push({
+        id: Date.now().toString(),
+        tipo: 'cripto',
+        base: 'ahorro',
+        descripcion: '',
+        valorTransmision: 0,
+        valorAdquisicion: 0,
+        resultado: 0,
+      });
+    },
+    updateGanancia(state, action: PayloadAction<{ id: string; data: Partial<GananciaPatrimonial> }>) {
+      const idx = state.ganancias.findIndex(g => g.id === action.payload.id);
+      if (idx >= 0) {
+        Object.assign(state.ganancias[idx], action.payload.data);
+        // calcular resultado
+        const g = state.ganancias[idx];
+        g.resultado = n(g.valorTransmision) - n(g.valorAdquisicion);
+        recalcular(state);
+      }
     },
     removeGanancia(state, action: PayloadAction<string>) {
-      state.gananciasPatrimoniales = state.gananciasPatrimoniales.filter((g) => g.id !== action.payload);
-      recomputeTaxState(state);
-    },
-    updateSaldoNegativoField<K extends keyof SaldoNegativoPendiente>(state: TaxState, action: PayloadAction<{ ejercicio: number; field: K; value: SaldoNegativoPendiente[K] }>) {
-      const idx = state.saldosNegativosBIA.findIndex((s) => s.ejercicio === action.payload.ejercicio);
-      if (idx >= 0) state.saldosNegativosBIA[idx][action.payload.field] = action.payload.value;
-      recomputeTaxState(state);
+      state.ganancias = state.ganancias.filter(g => g.id !== action.payload);
+      recalcular(state);
     },
   },
 });
 
 export const {
   setEjercicio,
-  updateWorkIncomeField,
-  updateCapitalMobiliarioField,
-  updatePrevisionSocialField,
-  updateInmuebleField,
+  updateWorkIncome,
+  updateCapitalMobiliario,
+  updatePrevisionSocial,
   addInmueble,
+  updateInmueble,
   removeInmueble,
-  updateActividadField,
-  updateGananciaField,
+  addActividad,
+  updateActividad,
+  removeActividad,
   addGanancia,
+  updateGanancia,
   removeGanancia,
-  updateSaldoNegativoField,
 } = taxSlice.actions;
 
 export default taxSlice.reducer;

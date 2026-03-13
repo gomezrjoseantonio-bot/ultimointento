@@ -1,92 +1,67 @@
 import React, { useState } from 'react';
-import { TaxState } from '../../../store/taxSlice';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { n } from '../../../store/taxSlice';
 
-interface Props { state: TaxState; }
-
-const SimuladorBlock: React.FC<Props> = ({ state }) => {
+const SimuladorBlock: React.FC = () => {
+  const tax = useSelector((s: RootState) => s.tax);
   const [extraPP, setExtraPP] = useState(0);
-  const n = (v: unknown) => Number(v) || 0;
-
-  const cuotaBase = n(state?.cuotaDiferencial);
-  const ahorroPP = extraPP > 0
-    ? Math.min(extraPP, 8000) * 0.37
-    : 0;
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // Estimación tramo marginal ~37% (simplificado para bases > 60.000€)
+  const tipoMarginal = tax.baseLiquidableGeneral > 60000 ? 0.37
+    : tax.baseLiquidableGeneral > 35200 ? 0.30
+    : 0.24;
+
+  const maxPP = Math.min(8000, tax.baseLiquidableGeneral * 0.10);
+  const ppEfectivo = Math.min(extraPP, Math.max(0, maxPP));
+  const ahorroPP = ppEfectivo * tipoMarginal;
+  const cuotaSimulada = n(tax.cuotaDiferencial) - ahorroPP;
+
   return (
-    <div style={{ padding: 24, fontFamily: 'var(--font)' }}>
-      <h3 style={{ color: 'var(--n-900)', marginBottom: 4 }}>Simulador fiscal</h3>
-      <p style={{ color: 'var(--n-500)', fontSize: '0.875rem', marginBottom: 24 }}>
-        Simula el impacto de aportaciones adicionales al plan de pensiones.
+    <div className="block-root">
+      <h3 className="block-title">Simulador fiscal</h3>
+      <p style={{ color: 'var(--n-500)', marginBottom: 24, fontSize: '0.875rem' }}>
+        Calcula el impacto de decisiones fiscales sobre tu cuota diferencial.
       </p>
 
-      <div style={{
-        background: 'var(--white)',
-        border: '1px solid var(--n-300)',
-        borderRadius: 12,
-        padding: 20,
-        maxWidth: 480,
-      }}>
-        <label style={{ display: 'block', marginBottom: 8, color: 'var(--n-700)', fontSize: '0.875rem' }}>
-          Aportación extra al PP (€/año)
-        </label>
-        <input
-          type="number"
-          value={extraPP}
-          onChange={(e) => setExtraPP(Number(e.target.value) || 0)}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid var(--n-300)',
-            borderRadius: 8,
-            fontFamily: 'var(--mono)',
-            fontSize: '1rem',
-            color: 'var(--n-900)',
-            marginBottom: 20,
-          }}
-        />
+      <div className="block-section" style={{ maxWidth: 520 }}>
+        <h4 className="block-section-title">Aportación extra al plan de pensiones</h4>
+        <div className="field-row">
+          <label className="field-label">Importe adicional (€/año)</label>
+          <input className="field-input" type="number" step="100"
+            value={extraPP === 0 ? '' : extraPP} placeholder="0"
+            onChange={e => setExtraPP(Number(e.target.value) || 0)}
+          />
+          <span className="field-unit">€</span>
+        </div>
+        <p className="field-hint">Límite disponible: {fmt(maxPP)} € · Tipo marginal estimado: {(tipoMarginal * 100).toFixed(0)}%</p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ color: 'var(--n-500)', fontSize: '0.875rem' }}>Cuota diferencial actual</span>
-            <span style={{
-              fontFamily: 'var(--mono)',
-              color: cuotaBase > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
-            }}>
-              {fmt(cuotaBase)} €
+        <div className="block-results" style={{ marginTop: 16 }}>
+          <div className="calc-row">
+            <span className="calc-label">Cuota diferencial actual</span>
+            <span className={`calc-value ${n(tax.cuotaDiferencial) > 0 ? 'color-neg' : 'color-pos'}`}>
+              {fmt(n(tax.cuotaDiferencial))} €
             </span>
           </div>
           {extraPP > 0 && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--n-500)', fontSize: '0.875rem' }}>Ahorro estimado con aportación</span>
-                <span style={{ fontFamily: 'var(--mono)', color: 'var(--s-pos)' }}>
-                  -{fmt(ahorroPP)} €
-                </span>
+              <div className="calc-row">
+                <span className="calc-label">Ahorro fiscal estimado</span>
+                <span className="calc-value color-pos">−{fmt(ahorroPP)} €</span>
               </div>
-              <hr style={{ border: 'none', borderTop: '1px solid var(--n-100)' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--n-900)', fontWeight: 600, fontSize: '0.875rem' }}>
-                  Cuota estimada resultante
-                </span>
-                <span style={{
-                  fontFamily: 'var(--mono)',
-                  fontWeight: 600,
-                  color: (cuotaBase - ahorroPP) > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
-                }}>
-                  {fmt(cuotaBase - ahorroPP)} €
+              <div className="calc-row calc-row--bold">
+                <span className="calc-label">Cuota diferencial resultante</span>
+                <span className={`calc-value ${cuotaSimulada > 0 ? 'color-neg' : 'color-pos'}`}>
+                  {fmt(cuotaSimulada)} €
                 </span>
               </div>
             </>
           )}
         </div>
       </div>
-
-      <p style={{ color: 'var(--n-500)', fontSize: '0.75rem', marginTop: 16 }}>
-        * El ahorro estimado es orientativo (tramo marginal 37%). El cálculo exacto depende del total de aportaciones del ejercicio.
-      </p>
     </div>
   );
 };
