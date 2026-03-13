@@ -1,5 +1,6 @@
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
+import { initDB, Property } from '../../services/db';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -21,24 +22,70 @@ export interface TaxHydrationPayload {
   cuotaDiferencial: number;
 }
 
-export function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): TaxHydrationPayload {
+type PropertyFiscalHints = {
+  refCatastral: string;
+  fechaAdquisicion: string;
+  importeAdquisicion: number;
+  valorCatastral: number;
+  valorCatastralConstruccion: number;
+};
+
+function getPropertyFiscalHintsById(properties: Property[]): Map<number, PropertyFiscalHints> {
+  const hints = new Map<number, PropertyFiscalHints>();
+
+  properties.forEach((property) => {
+    if (!property.id) return;
+
+    const aeat = property.aeatAmortization;
+    const fiscalData = property.fiscalData;
+
+    hints.set(property.id, {
+      refCatastral: property.cadastralReference ?? '',
+      fechaAdquisicion: aeat?.firstAcquisitionDate ?? property.purchaseDate ?? '',
+      importeAdquisicion: aeat?.onerosoAcquisition?.acquisitionAmount
+        ?? property.acquisitionCosts?.price
+        ?? 0,
+      valorCatastral: aeat?.cadastralValue
+        ?? fiscalData?.cadastralValue
+        ?? 0,
+      valorCatastralConstruccion: aeat?.constructionCadastralValue
+        ?? fiscalData?.constructionCadastralValue
+        ?? 0,
+    });
+  });
+
+  return hints;
+}
+
+export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Promise<TaxHydrationPayload> {
   const trabajo = declaracion.baseGeneral.rendimientosTrabajo;
   const autonomo = declaracion.baseGeneral.rendimientosAutonomo;
   const rcm = declaracion.baseAhorro.capitalMobiliario;
   const gyp = declaracion.baseAhorro.gananciasYPerdidas;
 
+  let propertyHints = new Map<number, PropertyFiscalHints>();
+  try {
+    const db = await initDB();
+    const properties = await db.getAll('properties');
+    propertyHints = getPropertyFiscalHintsById(properties);
+  } catch (error) {
+    console.warn('[TAX_HYDRATION] No se pudieron cargar hints fiscales de inmuebles', error);
+  }
+
   const inmuebles: Inmueble[] = declaracion.baseGeneral.rendimientosInmuebles.map((i) => ({
+    ...(propertyHints.get(i.inmuebleId) ?? {
+      refCatastral: '',
+      fechaAdquisicion: '',
+      importeAdquisicion: 0,
+      valorCatastral: 0,
+      valorCatastralConstruccion: 0,
+    }),
     id: String(i.inmuebleId),
-    refCatastral: '',
     direccion: i.alias,
     pctPropiedad: 100,
     tipo: i.diasAlquilado > 0 && i.diasVacio > 0 ? 'mixto' : i.diasAlquilado > 0 ? 'arrendado' : 'disposicion',
-    fechaAdquisicion: '',
-    importeAdquisicion: 0,
     gastosTributos: 0,
     mejoras: 0,
-    valorCatastral: 0,
-    valorCatastralConstruccion: 0,
     diasArrendados: i.diasAlquilado,
     diasDisposicion: i.diasVacio,
     valorCatastralRevisado: false,

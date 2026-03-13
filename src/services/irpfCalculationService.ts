@@ -616,11 +616,48 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
 
   let intereses = 0;
   let dividendos = 0;
+  let retencionesCapitalMobiliario = 0;
   let aportacionPensiones = 0;
+
+  const esDelEjercicio = (fecha?: string) => {
+    if (!fecha) return false;
+    const d = new Date(fecha);
+    return !Number.isNaN(d.getTime()) && d.getFullYear() === ejercicio;
+  };
 
   for (const p of posiciones) {
     if (!p.activo) continue;
-    if (p.dividendos) dividendos += p.dividendos;
+
+    const pAny = p as any;
+
+    // Rendimientos periódicos (cuentas remuneradas, depósitos, P2P)
+    const pagosGenerados = Array.isArray(pAny?.rendimiento?.pagos_generados)
+      ? pAny.rendimiento.pagos_generados
+      : [];
+    for (const pago of pagosGenerados) {
+      if (!esDelEjercicio(pago?.fecha_pago)) continue;
+      const bruto = Number(pago?.importe_bruto) || 0;
+      const retencion = Number(pago?.retencion_fiscal) || 0;
+      intereses += bruto;
+      retencionesCapitalMobiliario += retencion;
+    }
+
+    // Dividendos recibidos (acciones/ETF/REIT)
+    if (Array.isArray(pAny?.dividendos?.dividendos_recibidos)) {
+      for (const div of pAny.dividendos.dividendos_recibidos) {
+        if (!esDelEjercicio(div?.fecha_pago)) continue;
+        const bruto = Number(div?.importe_bruto) || 0;
+        const retencion = Number(div?.retencion_fiscal) || 0;
+        dividendos += bruto;
+        retencionesCapitalMobiliario += retencion;
+      }
+    } else {
+      // Legacy fallback: some positions store yearly dividend amount directly
+      const divLegacy = Number(pAny?.dividendos);
+      if (Number.isFinite(divLegacy) && divLegacy > 0) {
+        dividendos += divLegacy;
+      }
+    }
 
     if (p.tipo === 'plan_pensiones') {
       aportacionPensiones += p.total_aportado ?? 0;
@@ -645,7 +682,11 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
     minusvaliasPendientes.reduce((sum, item) => sum + item.importe, 0) - minusvaliasPendientesAplicadas,
   );
 
-  const retenciones = round2((intereses + dividendos) * CONSTANTES_IRPF.retencionCapitalMobiliario);
+  const retenciones = round2(
+    retencionesCapitalMobiliario > 0
+      ? retencionesCapitalMobiliario
+      : (intereses + dividendos) * CONSTANTES_IRPF.retencionCapitalMobiliario
+  );
   const compensado = round2(Math.max(0, plusvalias - minusvalias - minusvaliasPendientesAplicadas));
 
   return {
