@@ -908,7 +908,7 @@ const TreasuryReconciliationView: React.FC = () => {
                   onClick={handleAllBanksClick}
                 >
                   <div className="tv3-bank-chip-head">
-                    <span className="tv3-bank-name">Todos los bancos</span>
+                    <span className="tv3-bank-name" title="Todos los bancos" aria-label="Todos los bancos"><Plus size={14} /></span>
                     <span className={`tv3-bank-status ${allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0 ? 'ok' : allBanksSummary.finMes < 0 ? 'warn' : 'pending'}`}>
                       {allBanksSummary.pct === 100 && allBanksSummary.totalEvents > 0
                         ? <CheckCircle2 size={14} />
