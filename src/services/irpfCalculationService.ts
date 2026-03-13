@@ -421,18 +421,23 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       return inicio.getFullYear() <= ejercicio && fin.getFullYear() >= ejercicio;
     });
 
-    // Determine rental days: check propertyDays store first, then fall back to contracts
+    // Determine rental days.
+    // If user explicitly overrode occupancy (manualOverride), trust propertyDays.
+    // Otherwise prefer live contracts to avoid stale auto-generated 0 days values.
     let diasAlquilado = 0;
     let diasEnObras = 0;
     try {
       const pdList = await db.getAllFromIndex('propertyDays', 'property-year', [prop.id!, ejercicio]);
       const pd = pdList?.[0];
+      const diasDesdeContratos = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
       if (pd) {
-        diasAlquilado = pd.daysRented ?? 0;
+        const diasRentedPropertyDays = pd.daysRented ?? 0;
+        const shouldUsePropertyDays = Boolean(pd.manualOverride);
+        diasAlquilado = shouldUsePropertyDays ? diasRentedPropertyDays : diasDesdeContratos;
         const diasObrasFromDb = pd.daysUnderRenovation ?? 0;
         diasEnObras = Math.max(0, Math.min(diasTotal - diasAlquilado, diasObrasFromDb));
       } else {
-        diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
+        diasAlquilado = diasDesdeContratos;
       }
     } catch {
       diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);

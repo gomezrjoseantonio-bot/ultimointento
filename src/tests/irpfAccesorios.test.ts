@@ -39,7 +39,7 @@ function buildMockDB(properties: any[], contracts: any[] = [], propertyDays: any
       return Promise.resolve([]);
     }),
     getAllFromIndex: jest.fn().mockImplementation((store: string) => {
-      if (store === 'propertyDays') return Promise.resolve([]);
+      if (store === 'propertyDays') return Promise.resolve(propertyDays);
       return Promise.resolve([]);
     }),
   } as any;
@@ -326,6 +326,68 @@ describe('IRPF – Inmuebles accesorios', () => {
 
       expect(ids).toContain(1);
       expect(ids).not.toContain(2); // garaje must NOT appear independently
+    });
+  });
+
+
+
+  describe('Prioridad contratos vs propertyDays auto', () => {
+    it('usa contratos cuando propertyDays no es manual (evita 0€ por datos auto desfasados)', async () => {
+      const propertyDaysAuto = [{
+        propertyId: 1,
+        taxYear: EJERCICIO,
+        daysRented: 0,
+        daysAvailable: 365,
+        manualOverride: false,
+      }];
+
+      mockInitDB.mockResolvedValue(
+        buildMockDB([principalProperty], [fullYearContract], propertyDaysAuto)
+      );
+
+      mockCalculateFiscalSummary.mockResolvedValue({
+        annualDepreciation: 0,
+        box0105: 0, box0106: 0, box0109: 0,
+        box0112: 0, box0113: 0, box0114: 0,
+        box0115: 0, box0117: 0,
+      } as any);
+
+      const result = await calcularDeclaracionIRPF(EJERCICIO);
+      const rendimiento = result.baseGeneral.rendimientosInmuebles.find(r => r.inmuebleId === 1);
+
+      expect(rendimiento).toBeDefined();
+      expect(rendimiento!.diasAlquilado).toBe(365);
+      expect(rendimiento!.ingresosIntegros).toBe(12000);
+    });
+
+    it('respeta propertyDays cuando manualOverride=true', async () => {
+      const propertyDaysManual = [{
+        propertyId: 1,
+        taxYear: EJERCICIO,
+        daysRented: 100,
+        daysAvailable: 365,
+        manualOverride: true,
+      }];
+
+      mockInitDB.mockResolvedValue(
+        buildMockDB([principalProperty], [fullYearContract], propertyDaysManual)
+      );
+
+      mockCalculateFiscalSummary.mockResolvedValue({
+        annualDepreciation: 0,
+        box0105: 0, box0106: 0, box0109: 0,
+        box0112: 0, box0113: 0, box0114: 0,
+        box0115: 0, box0117: 0,
+      } as any);
+
+      const result = await calcularDeclaracionIRPF(EJERCICIO);
+      const rendimiento = result.baseGeneral.rendimientosInmuebles.find(r => r.inmuebleId === 1);
+
+      expect(rendimiento).toBeDefined();
+      expect(rendimiento!.diasAlquilado).toBe(100);
+      // ingresos siguen calculándose por contratos (motor actual), verificamos que al menos
+      // no se pierde el override de ocupación para imputación/ratios.
+      expect(rendimiento!.diasVacio).toBe(265);
     });
   });
 
