@@ -217,6 +217,52 @@ describe('Property Analysis Utils', () => {
       expect(decimalResult.inputs.amortizacionAnual).toBeCloseTo(percentageResult.inputs.amortizacionAnual, 2);
     });
 
+
+    it('applies proportional mortgage allocation when one loan is linked to multiple properties', () => {
+      const sharedLoan: Prestamo = {
+        ...prestamo,
+        id: 'loan-shared',
+        inmuebleId: undefined,
+        afectacionesInmueble: [
+          { inmuebleId: '10', porcentaje: 40, tipoRelacion: 'MIXTA' },
+          { inmuebleId: '11', porcentaje: 60, tipoRelacion: 'MIXTA' },
+        ],
+      };
+
+      const result = buildPropertyAnalysisInputs({
+        property,
+        contracts: [contract],
+        ingresos,
+        gastosOperativosOverride: 140,
+        prestamos: [sharedLoan],
+        valoraciones,
+      });
+
+      expect(result.inputs.deudaPendiente).toBeCloseTo(62000, 2);
+      expect(result.inputs.comisionCancelacion).toBeCloseTo(0, 2);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('excludes loans marked as PERSONAL purpose from property profitability', () => {
+      const personalPurposeLoan: Prestamo = {
+        ...prestamo,
+        finalidad: 'PERSONAL',
+      };
+
+      const result = buildPropertyAnalysisInputs({
+        property,
+        contracts: [contract],
+        ingresos,
+        gastosOperativosOverride: 140,
+        prestamos: [personalPurposeLoan],
+        valoraciones,
+      });
+
+      expect(result.inputs.deudaPendiente).toBe(0);
+      expect(result.inputs.cuotaHipoteca).toBe(0);
+      expect(result.inputs.interesesFuturosEvitados).toBe(0);
+    });
+
     it('reports missing required data when records are incomplete', () => {
       const result = buildPropertyAnalysisInputs({
         property,
