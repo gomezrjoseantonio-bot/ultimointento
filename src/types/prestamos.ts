@@ -5,6 +5,17 @@ export interface Prestamo {
   id: string;
   ambito: 'PERSONAL' | 'INMUEBLE';
   inmuebleId?: string;          // optional (required when ambito='INMUEBLE')
+  /**
+   * Distribución opcional del préstamo entre varios inmuebles.
+   * Permite modelar hipotecas cruzadas o préstamos puente sin romper
+   * la compatibilidad con `inmuebleId` (1 préstamo ↔ 1 inmueble).
+   */
+  afectacionesInmueble?: AfectacionInmueblePrestamo[];
+  /**
+   * Finalidad económica principal del préstamo.
+   * PERSONAL excluye el préstamo de métricas de rentabilidad por inmueble.
+   */
+  finalidad?: 'ADQUISICION' | 'REFORMA' | 'INVERSION' | 'PERSONAL' | 'OTRA';
   nombre: string;
 
   principalInicial: number;
@@ -86,6 +97,12 @@ export interface Prestamo {
   // Audit
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AfectacionInmueblePrestamo {
+  inmuebleId: string;
+  porcentaje: number; // 0..100
+  tipoRelacion?: 'GARANTIA' | 'DESTINO_CAPITAL' | 'MIXTA';
 }
 
 export interface Bonificacion {

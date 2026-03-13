@@ -47,6 +47,11 @@ interface BuildParams {
   valoraciones: ValoracionHistorica[];
 }
 
+interface LoanAllocation {
+  loan: Prestamo;
+  allocationFactor: number; // 0..1
+}
+
 /**
  * Calculate operational performance metrics
  */
@@ -212,24 +217,69 @@ export function buildPropertyAnalysisInputs({
     missingFields.push('gastos operativos');
   }
 
-  const propertyPrestamos = prestamos.filter((prestamo) => {
+  const propertyLoanAllocations = prestamos.reduce<LoanAllocation[]>((acc, prestamo) => {
     if (prestamo.ambito !== 'INMUEBLE' || !prestamo.activo) {
-      return false;
+      return acc;
+    }
+
+    if (prestamo.finalidad === 'PERSONAL') {
+      return acc;
+    }
+
+    const allocations = prestamo.afectacionesInmueble || [];
+    if (allocations.length > 0) {
+      const directAllocation = allocations.find((allocation) => {
+        const linkedId = String(allocation.inmuebleId || '').trim();
+        if (!linkedId) {
+          return false;
+        }
+
+        const numericLinkedId = Number(linkedId);
+        if (!Number.isNaN(numericLinkedId) && numericLinkedId === safePropertyId) {
+          return true;
+        }
+
+        return property.globalAlias !== undefined && linkedId === property.globalAlias;
+      });
+
+      if (!directAllocation) {
+        return acc;
+      }
+
+      const rawFactor = (directAllocation.porcentaje || 0) / 100;
+      const allocationFactor = Math.max(0, Math.min(1, rawFactor));
+      if (allocationFactor <= 0) {
+        return acc;
+      }
+
+      acc.push({ loan: prestamo, allocationFactor });
+      return acc;
     }
 
     const linkedId = String((prestamo as Prestamo & { propertyId?: string | number }).inmuebleId ?? (prestamo as Prestamo & { propertyId?: string | number }).propertyId ?? '').trim();
     if (!linkedId) {
-      return false;
+      return acc;
     }
 
     const numericLinkedId = Number(linkedId);
     if (!Number.isNaN(numericLinkedId) && numericLinkedId === safePropertyId) {
-      return true;
+      acc.push({ loan: prestamo, allocationFactor: 1 });
+      return acc;
     }
 
-    return property.globalAlias !== undefined && linkedId === property.globalAlias;
-  });
-  const deudaPendiente = propertyPrestamos.reduce((sum, prestamo) => sum + (prestamo.principalVivo || 0), 0);
+    if (property.globalAlias !== undefined && linkedId === property.globalAlias) {
+      acc.push({ loan: prestamo, allocationFactor: 1 });
+    }
+
+    return acc;
+  }, []);
+
+  const propertyPrestamos = propertyLoanAllocations.map((entry) => entry.loan);
+
+  const deudaPendiente = propertyLoanAllocations.reduce(
+    (sum, entry) => sum + (entry.loan.principalVivo || 0) * entry.allocationFactor,
+    0
+  );
 
   const prestamosConSaldoInvalido = propertyPrestamos.filter(
     (prestamo) => prestamo.principalVivo === null || prestamo.principalVivo === undefined || Number.isNaN(Number(prestamo.principalVivo))
@@ -245,26 +295,29 @@ export function buildPropertyAnalysisInputs({
     warnings.push('No se ha podido calcular la cuota mensual de una o más hipotecas por datos incompletos.');
   }
 
-  const cuotaHipoteca = propertyPrestamos.reduce((sum, prestamo) => {
+  const cuotaHipoteca = propertyLoanAllocations.reduce((sum, entry) => {
+    const prestamo = entry.loan;
     if (!prestamo.fechaFirma || !prestamo.plazoMesesTotal || prestamo.plazoMesesTotal <= 0) {
       return sum;
     }
     const monthsElapsed = getMonthsDifference(prestamo.fechaFirma, new Date());
     const monthsRemaining = Math.max(1, prestamo.plazoMesesTotal - monthsElapsed);
     const annualRate = getAnnualRate(prestamo);
-    return sum + calculateFrenchPayment(prestamo.principalVivo || 0, annualRate, monthsRemaining);
+    const cuotaCompleta = calculateFrenchPayment(prestamo.principalVivo || 0, annualRate, monthsRemaining);
+    return sum + cuotaCompleta * entry.allocationFactor;
   }, 0);
 
-  const comisionCancelacion = propertyPrestamos.reduce((sum, prestamo) => {
-    const commissionRate = prestamo.comisionCancelacionTotal || 0;
-    return sum + (prestamo.principalVivo || 0) * commissionRate;
+  const comisionCancelacion = propertyLoanAllocations.reduce((sum, entry) => {
+    const commissionRate = entry.loan.comisionCancelacionTotal || 0;
+    return sum + (entry.loan.principalVivo || 0) * commissionRate * entry.allocationFactor;
   }, 0);
 
-  const interesesFuturosEvitados = propertyPrestamos.reduce((sum, prestamo) => {
+  const interesesFuturosEvitados = propertyLoanAllocations.reduce((sum, entry) => {
+    const prestamo = entry.loan;
     const annualRate = getAnnualRate(prestamo) / 100;
     const monthsElapsed = getMonthsDifference(prestamo.fechaFirma, new Date());
     const monthsRemaining = Math.max(1, (prestamo.plazoMesesTotal || 0) - monthsElapsed);
-    return sum + calculateFutureInterestAvoided(prestamo.principalVivo || 0, annualRate, monthsRemaining);
+    return sum + calculateFutureInterestAvoided(prestamo.principalVivo || 0, annualRate, monthsRemaining) * entry.allocationFactor;
   }, 0);
 
   const propertyValoraciones = valoraciones
