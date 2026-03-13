@@ -41,7 +41,8 @@ const TaxView: React.FC = () => {
       try {
         const declaracion = await calcularDeclaracionIRPF(tax.ejercicio, { usarConciliacion: true });
         if (cancelled) return;
-        dispatch(hydrateFromCalculation(mapDeclaracionToTaxState(declaracion)));
+        const hydrationPayload = await mapDeclaracionToTaxState(declaracion);
+        dispatch(hydrateFromCalculation(hydrationPayload));
       } catch {
         if (cancelled) return;
         setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
