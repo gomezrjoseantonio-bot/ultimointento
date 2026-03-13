@@ -3,7 +3,7 @@ import { Edit3, Eye, Trash2, CreditCard, Home, User, ChevronDown, ChevronUp } fr
 import { prestamosService } from '../../../../services/prestamosService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { inmuebleService } from '../../../../services/inmuebleService';
-import { Prestamo } from '../../../../types/prestamos';
+import { PlanPagos, Prestamo } from '../../../../types/prestamos';
 import { Account } from '../../../../services/db';
 import { Inmueble } from '../../../../types/inmueble';
 import PrestamoDetailDrawer from './PrestamoDetailDrawer';
@@ -55,7 +55,21 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   const [personalesExpanded, setPersonalesExpanded] = useState(false);
   const [hipotecasOrder, setHipotecasOrder] = useState<string[]>([]);
   const [personalesOrder, setPersonalesOrder] = useState<string[]>([]);
+  const [capitalPendientePorPrestamo, setCapitalPendientePorPrestamo] = useState<Record<string, number>>({});
   const dragSrcRef = useRef<{ id: string; section: 'hipotecas' | 'personales' } | null>(null);
+
+  const getCapitalPendienteDesdeUltimaCuotaConfirmada = (prestamo: Prestamo, plan: PlanPagos | null): number => {
+    if (!plan?.periodos?.length) return prestamo.principalVivo;
+    const ultimaCuotaPagada = plan.periodos
+      .filter(periodo => periodo.pagado)
+      .sort((a, b) => b.periodo - a.periodo)[0];
+
+    return ultimaCuotaPagada ? ultimaCuotaPagada.principalFinal : prestamo.principalVivo;
+  };
+
+  const getCapitalPendiente = (prestamo: Prestamo): number => {
+    return capitalPendientePorPrestamo[prestamo.id] ?? prestamo.principalVivo;
+  };
 
   useEffect(() => {
     const loadAll = async () => {
@@ -66,7 +80,19 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
           cuentasService.list(),
           inmuebleService.getAll(),
         ]);
+        const planes = await Promise.all(
+          allPrestamos.map(async (prestamo) => {
+            try {
+              const plan = await prestamosService.getPaymentPlan(prestamo.id);
+              return [prestamo.id, getCapitalPendienteDesdeUltimaCuotaConfirmada(prestamo, plan)] as const;
+            } catch {
+              return [prestamo.id, prestamo.principalVivo] as const;
+            }
+          })
+        );
+
         setPrestamos(allPrestamos);
+        setCapitalPendientePorPrestamo(Object.fromEntries(planes));
         setAccounts(accountsList);
         setInmuebles(inmueblesList);
         // Initialize order
@@ -211,17 +237,17 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
 
   // Global KPIs
   const deudaTotal = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
-  const totalPagado = prestamos.reduce((sum, p) => sum + (p.principalInicial - p.principalVivo), 0);
-  const totalPendiente = prestamos.reduce((sum, p) => sum + p.principalVivo, 0);
+  const totalPagado = prestamos.reduce((sum, p) => sum + (p.principalInicial - getCapitalPendiente(p)), 0);
+  const totalPendiente = prestamos.reduce((sum, p) => sum + getCapitalPendiente(p), 0);
   const cuotaMensualTotal = prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
   const globalPct = deudaTotal > 0 ? (totalPagado / deudaTotal) * 100 : 0;
 
   const sectionStats = (list: Prestamo[]) => {
     const deuda = list.reduce((sum, p) => sum + p.principalInicial, 0);
-    const pendiente = list.reduce((sum, p) => sum + p.principalVivo, 0);
+    const pendiente = list.reduce((sum, p) => sum + getCapitalPendiente(p), 0);
     return {
       deuda,
-      pagado: list.reduce((sum, p) => sum + (p.principalInicial - p.principalVivo), 0),
+      pagado: list.reduce((sum, p) => sum + (p.principalInicial - getCapitalPendiente(p)), 0),
       pendiente,
       cuota: list.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0),
       capitalVivo: pendiente,
@@ -304,8 +330,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   const renderCard = (prestamo: Prestamo, section: 'hipotecas' | 'personales') => {
     const effectiveTIN = calculateEffectiveTIN(prestamo);
     const monthlyPayment = estimateMonthlyPayment(prestamo);
+    const capitalPendiente = getCapitalPendiente(prestamo);
     const pagadoPct = prestamo.principalInicial > 0
-      ? ((prestamo.principalInicial - prestamo.principalVivo) / prestamo.principalInicial) * 100
+      ? ((prestamo.principalInicial - capitalPendiente) / prestamo.principalInicial) * 100
       : 0;
     const inmueble = getInmueble(prestamo.inmuebleId);
     const account = getAccount(prestamo.cuentaCargoId);
@@ -378,7 +405,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         {/* Capital vivo */}
         <div style={{ margin: '10px 0 6px', fontVariantNumeric: 'tabular-nums' }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--atlas-navy-1)' }}>
-            {fmt(prestamo.principalVivo)} €
+            {fmt(capitalPendiente)} €
           </div>
         </div>
 
