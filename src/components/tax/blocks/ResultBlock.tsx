@@ -1,23 +1,51 @@
 import React from 'react';
-import { TaxState } from '../../../store/taxSlice';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../../store';
+import { n } from '../../../store/taxSlice';
 
-interface ResultBlockProps { state: TaxState }
+const ResultBlock: React.FC = () => {
+  const tax = useSelector((s: RootState) => s.tax);
 
-const ResultBlock: React.FC<ResultBlockProps> = ({ state }) => (
-  <section className="tax-section-card">
-    <h3>Resultado</h3>
-    <div className="tax-result-list">
-      <div><span>Base imponible general</span><span className="mono">{state.baseImponibleGeneral.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>(−) Reducción PP</span><span className="mono">−{state.previsionSocial.importeAplicado.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>Base liquidable general</span><span className="mono">{state.baseLiquidableGeneral.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>Base imponible del ahorro</span><span className="mono">{state.baseImponibleAhorro.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>Base liquidable del ahorro</span><span className="mono">{state.baseLiquidableAhorro.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>Cuota líquida</span><span className="mono">{state.cuotaLiquida.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div><span>(−) Retenciones</span><span className="mono">−{state.totalRetenciones.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
-      <div className="tax-result-final"><span>Cuota diferencial</span><span className={`mono ${state.cuotaDiferencial >= 0 ? 'neg' : 'pos'}`}>{state.cuotaDiferencial >= 0 ? '+' : ''}{state.cuotaDiferencial.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span></div>
+  const fmt = (v: number) =>
+    v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const rows: { label: string; value: number; indent?: boolean; bold?: boolean; sign?: boolean }[] = [
+    { label: 'Rendimiento neto trabajo', value: n(tax.workIncome.dinerarias) + n(tax.workIncome.especieValoracion) + n(tax.workIncome.contribucionEmpresarialPP) - n(tax.workIncome.cotizacionSS) - n(tax.workIncome.otrosGastosDeducibles), indent: true },
+    { label: 'Rendimientos netos reducidos inmuebles', value: tax.inmuebles.reduce((a, i) => a + n(i.rendimientoNetoReducido), 0), indent: true },
+    { label: 'Imputaciones de rentas inmobiliarias', value: tax.inmuebles.reduce((a, i) => a + n(i.rentaImputada), 0), indent: true },
+    { label: 'Rendimiento neto actividades económicas', value: tax.actividades.reduce((a, act) => a + n(act.rendimientoNeto), 0), indent: true },
+    { label: 'Saldo neto G/P base general', value: tax.ganancias.filter(g => g.base === 'general').reduce((a, g) => a + n(g.resultado), 0), indent: true },
+    { label: 'Base imponible general', value: tax.baseImponibleGeneral, bold: true },
+    { label: '(−) Reducción previsión social', value: -n(tax.previsionSocial.importeAplicado), indent: true },
+    { label: 'Base liquidable general', value: tax.baseLiquidableGeneral, bold: true },
+    { label: 'Base liquidable del ahorro', value: tax.baseLiquidableAhorro, bold: true },
+    { label: 'Cuota íntegra (estatal + autonómica)', value: tax.cuotaIntegra, bold: true },
+    { label: 'Cuota líquida', value: tax.cuotaLiquida, bold: true },
+    { label: '(−) Retenciones trabajo', value: -n(tax.workIncome.retencion), indent: true },
+    { label: '(−) Retenciones capital mobiliario', value: -n(tax.capitalMobiliario.retencion), indent: true },
+    { label: '(−) Retenciones actividades', value: -tax.actividades.reduce((a, act) => a + n(act.retencion), 0), indent: true },
+    { label: '(−) Total retenciones y pagos a cuenta', value: -tax.totalRetenciones, bold: true },
+    { label: 'CUOTA DIFERENCIAL', value: tax.cuotaDiferencial, bold: true, sign: true },
+  ];
+
+  return (
+    <div className="block-root">
+      <h3 className="block-title">Resultado de la declaración</h3>
+      <div className="result-table">
+        {rows.map(({ label, value, indent, bold, sign }) => (
+          <div key={label} className={`result-row ${bold ? 'result-row--bold' : ''} ${indent ? 'result-row--indent' : ''}`}>
+            <span className="result-label">{label}</span>
+            <span className={`result-value ${sign ? (value > 0 ? 'color-neg' : 'color-pos') : ''}`}>
+              {fmt(value)} €
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="result-disclaimer">
+        Estimación orientativa. Para la declaración oficial usa el programa Renta Web de la AEAT.
+      </p>
     </div>
-    <p className="tax-note">Este cálculo es una estimación basada en los datos introducidos. Para la declaración oficial usa el programa Renta Web de la AEAT.</p>
-  </section>
-);
+  );
+};
 
 export default ResultBlock;

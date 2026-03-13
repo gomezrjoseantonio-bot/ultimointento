@@ -1,34 +1,81 @@
 import React from 'react';
-import TaxSectionCard from '../shared/TaxSectionCard';
-import TaxFieldRow from '../shared/TaxFieldRow';
-import { ActividadEconomica } from '../../../store/taxSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { Plus, Trash2 } from 'lucide-react';
+import { RootState } from '../../../store';
+import { addActividad, updateActividad, removeActividad, n } from '../../../store/taxSlice';
 
-interface BusinessBlockProps {
-  actividad: ActividadEconomica;
-  onChange: <K extends keyof ActividadEconomica>(field: K, value: ActividadEconomica[K]) => void;
-}
+const BusinessBlock: React.FC = () => {
+  const dispatch = useDispatch();
+  const actividades = useSelector((s: RootState) => s.tax.actividades);
 
-const BusinessBlock: React.FC<BusinessBlockProps> = ({ actividad, onChange }) => {
-  const gastos = actividad.seguridadSocialTitular + actividad.serviciosProfesionales + actividad.otrosGastos;
-  const diferencia = actividad.ingresosExplotacion - gastos;
+  const fmt = (v: number) =>
+    v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   return (
-    <TaxSectionCard title="Actividades económicas (ED simplificada)">
-      <div className="tax-grid tax-grid--2">
-        <TaxFieldRow label="Código de actividad" type="text" value={actividad.codigoActividad} onChange={(v) => onChange('codigoActividad', String(v))} />
-        <TaxFieldRow label="Epígrafe IAE" type="text" value={actividad.epigafreIAE} onChange={(v) => onChange('epigafreIAE', String(v))} />
-        <TaxFieldRow label="Ingresos de explotación" value={actividad.ingresosExplotacion} onChange={(v) => onChange('ingresosExplotacion', Number(v))} />
-        <TaxFieldRow label="Seguridad Social del titular" value={actividad.seguridadSocialTitular} onChange={(v) => onChange('seguridadSocialTitular', Number(v))} />
-        <TaxFieldRow label="Servicios de profesionales" value={actividad.serviciosProfesionales} onChange={(v) => onChange('serviciosProfesionales', Number(v))} />
-        <TaxFieldRow label="Otros gastos deducibles" value={actividad.otrosGastos} onChange={(v) => onChange('otrosGastos', Number(v))} />
-        <TaxFieldRow label="Retención" value={actividad.retencion} onChange={(v) => onChange('retencion', Number(v))} />
+    <div className="block-root">
+      <div className="block-header-row">
+        <h3 className="block-title">Actividades económicas (estimación directa simplificada)</h3>
+        <button className="btn-add" onClick={() => dispatch(addActividad())}>
+          <Plus size={14}/> Añadir actividad
+        </button>
       </div>
-      <div className="tax-calculated-row">
-        <span>Gastos deducibles: {gastos.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
-        <span>Diferencia: {diferencia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
-        <span>Provisión 5%: {actividad.provisionSimplificada.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
-        <span>Rendimiento neto: {actividad.rendimientoNeto.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
-      </div>
-    </TaxSectionCard>
+
+      {actividades.length === 0 && (
+        <div className="block-empty">No hay actividades registradas.</div>
+      )}
+
+      {actividades.map(a => (
+        <div key={a.id} className="block-section business-card">
+          <div className="business-card-header">
+            <input className="field-input field-input--text inline-title"
+              value={a.codigoActividad}
+              placeholder="Código actividad (ej. A05)"
+              onChange={e => dispatch(updateActividad({ id: a.id, data: { codigoActividad: e.target.value }}))}
+            />
+            <input className="field-input field-input--text inline-iae"
+              value={a.epigafreIAE}
+              placeholder="Epígrafe IAE (ej. 724)"
+              onChange={e => dispatch(updateActividad({ id: a.id, data: { epigafreIAE: e.target.value }}))}
+            />
+            <button className="btn-icon-danger" onClick={() => dispatch(removeActividad(a.id))}>
+              <Trash2 size={14}/>
+            </button>
+          </div>
+
+          {[
+            { label: 'Ingresos de explotación', field: 'ingresosExplotacion' },
+            { label: 'Seguridad Social del titular', field: 'seguridadSocialTitular' },
+            { label: 'Servicios de profesionales independientes', field: 'serviciosProfesionales' },
+            { label: 'Otros gastos deducibles', field: 'otrosGastos' },
+            { label: 'Retención (pagos a cuenta 130)', field: 'retencion' },
+          ].map(({ label, field }) => (
+            <div key={field} className="field-row">
+              <label className="field-label">{label}</label>
+              <input className="field-input" type="number" step="0.01"
+                value={(a as any)[field] === 0 ? '' : (a as any)[field]}
+                placeholder="0,00"
+                onChange={e => dispatch(updateActividad({
+                  id: a.id,
+                  data: { [field]: parseFloat(e.target.value.replace(',', '.')) || 0 }
+                }))}
+              />
+              <span className="field-unit">€</span>
+            </div>
+          ))}
+
+          <div className="block-results">
+            <div className="calc-row">
+              <span className="calc-label">Provisión deducible 5% (dif. justificación)</span>
+              <span className="calc-value">{fmt(n(a.provisionSimplificada))} €</span>
+            </div>
+            <div className="calc-row calc-row--bold">
+              <span className="calc-label">Rendimiento neto</span>
+              <span className="calc-value">{fmt(n(a.rendimientoNeto))} €</span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 };
 
