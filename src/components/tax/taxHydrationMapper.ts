@@ -31,15 +31,9 @@ type PropertyFiscalHints = {
   valorCatastralConstruccion: number;
 };
 
-type PropertyExpenseBreakdown = {
-  interesesFinanciacion: number;
-  gastosReparacion: number;
-  gastosComunidad: number;
-  serviciosPersonales: number;
-  suministros: number;
-  seguro: number;
-  tributosRecargos: number;
-  amortizacionMuebles: number;
+type PropertyVisibilityIndex = {
+  activePropertyIds: number[];
+  aliasById: Map<number, string>;
 };
 
 function getPropertyFiscalHintsById(properties: Property[]): Map<number, PropertyFiscalHints> {
@@ -69,6 +63,36 @@ function getPropertyFiscalHintsById(properties: Property[]): Map<number, Propert
   return hints;
 }
 
+function getVisiblePropertyIds(properties: Property[]): PropertyVisibilityIndex {
+  const activeProperties = properties.filter((property) => property.state === 'activo' && property.id != null);
+  const mainPropertyIds = new Set<number>(
+    activeProperties
+      .filter((property: any) => !property.fiscalData?.isAccessory)
+      .map((property) => property.id as number)
+  );
+
+  const linkedAccessoryIds = new Set<number>(
+    activeProperties
+      .filter((property: any) => property.fiscalData?.isAccessory === true)
+      .filter((property: any) => {
+        const mainPropertyId = property.fiscalData?.mainPropertyId;
+        return mainPropertyId != null && mainPropertyIds.has(mainPropertyId);
+      })
+      .map((property) => property.id as number)
+  );
+
+  const activePropertyIds = activeProperties
+    .filter((property) => !linkedAccessoryIds.has(property.id as number))
+    .map((property) => property.id as number);
+
+  const aliasById = new Map<number, string>();
+  activeProperties.forEach((property) => {
+    aliasById.set(property.id as number, property.alias ?? 'Sin alias');
+  });
+
+  return { activePropertyIds, aliasById };
+}
+
 export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Promise<TaxHydrationPayload> {
   const trabajo = declaracion.baseGeneral.rendimientosTrabajo;
   const autonomo = declaracion.baseGeneral.rendimientosAutonomo;
@@ -76,50 +100,26 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
   const gyp = declaracion.baseAhorro.gananciasYPerdidas;
 
   let propertyHints = new Map<number, PropertyFiscalHints>();
-  const propertyExpenseBreakdowns = new Map<number, PropertyExpenseBreakdown>();
+  let visiblePropertyIds: number[] = [];
+  let propertyAliasById = new Map<number, string>();
   try {
     const db = await initDB();
     const properties = await db.getAll('properties');
     propertyHints = getPropertyFiscalHintsById(properties);
+    const visibilityIndex = getVisiblePropertyIds(properties);
+    visiblePropertyIds = visibilityIndex.activePropertyIds;
+    propertyAliasById = visibilityIndex.aliasById;
   } catch (error) {
     console.warn('[TAX_HYDRATION] No se pudieron cargar hints fiscales de inmuebles', error);
   }
 
-  await Promise.all(
-    declaracion.baseGeneral.rendimientosInmuebles.map(async (inmueble) => {
-      try {
-        const summary = await calculateFiscalSummary(inmueble.inmuebleId, declaracion.ejercicio);
-        const ratio = inmueble.diasTotal > 0 ? inmueble.diasAlquilado / inmueble.diasTotal : 0;
-        propertyExpenseBreakdowns.set(inmueble.inmuebleId, {
-          interesesFinanciacion: round2((summary.box0105 ?? 0) * ratio),
-          gastosReparacion: round2((summary.box0106 ?? 0) * ratio),
-          gastosComunidad: round2((summary.box0109 ?? 0) * ratio),
-          serviciosPersonales: round2((summary.box0112 ?? 0) * ratio),
-          suministros: round2((summary.box0113 ?? 0) * ratio),
-          seguro: round2((summary.box0114 ?? 0) * ratio),
-          tributosRecargos: round2((summary.box0115 ?? 0) * ratio),
-          amortizacionMuebles: round2((summary.box0117 ?? 0) * ratio),
-        });
-      } catch (error) {
-        console.warn('[TAX_HYDRATION] No se pudo cargar desglose de gastos del inmueble', {
-          inmuebleId: inmueble.inmuebleId,
-          error,
-        });
-      }
-    })
-  );
+  const rendimientos = declaracion.baseGeneral.rendimientosInmuebles;
+  const imputaciones = declaracion.baseGeneral.imputacionRentas;
 
-  const inmuebles: Inmueble[] = declaracion.baseGeneral.rendimientosInmuebles.map((i) => ({
-    ...(propertyExpenseBreakdowns.get(i.inmuebleId) ?? {
-      interesesFinanciacion: 0,
-      gastosReparacion: 0,
-      gastosComunidad: 0,
-      serviciosPersonales: 0,
-      suministros: 0,
-      seguro: 0,
-      tributosRecargos: 0,
-      amortizacionMuebles: 0,
-    }),
+  const inmueblesById = new Map<string, Inmueble>();
+
+  rendimientos.forEach((i) => {
+    inmueblesById.set(String(i.inmuebleId), {
     ...(propertyHints.get(i.inmuebleId) ?? {
       refCatastral: '',
       fechaAdquisicion: '',
@@ -150,7 +150,100 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
     rentaImputada: round2(i.imputacionRenta),
     rendimientoNeto: round2(i.rendimientoNeto),
     rendimientoNetoReducido: round2(i.rendimientoNeto),
-  }));
+    });
+  });
+
+  imputaciones.forEach((i) => {
+    const key = String(i.inmuebleId);
+    if (inmueblesById.has(key)) return;
+
+    inmueblesById.set(key, {
+      ...(propertyHints.get(i.inmuebleId) ?? {
+        refCatastral: '',
+        fechaAdquisicion: '',
+        importeAdquisicion: 0,
+        valorCatastral: i.valorCatastral ?? 0,
+        valorCatastralConstruccion: 0,
+      }),
+      id: key,
+      direccion: i.alias,
+      pctPropiedad: 100,
+      tipo: 'disposicion',
+      gastosTributos: 0,
+      mejoras: 0,
+      diasArrendados: 0,
+      diasDisposicion: i.diasVacio,
+      valorCatastralRevisado: i.porcentajeImputacion === 0.011,
+      ingresosIntegros: 0,
+      interesesFinanciacion: 0,
+      gastosReparacion: 0,
+      gastosComunidad: 0,
+      serviciosPersonales: 0,
+      suministros: 0,
+      seguro: 0,
+      tributosRecargos: 0,
+      amortizacionMuebles: 0,
+      arrastres: [],
+      tieneReduccion: false,
+      pctReduccion: 0,
+      pctConstruccion: 0,
+      baseAmortizacion: 0,
+      amortizacionInmueble: 0,
+      limiteInteresesReparacion: 0,
+      excesoReparacion: 0,
+      rentaImputada: round2(i.imputacion),
+      rendimientoNeto: round2(i.imputacion),
+      rendimientoNetoReducido: round2(i.imputacion),
+    });
+  });
+
+  if (visiblePropertyIds.length > 0) {
+    visiblePropertyIds.forEach((propertyId) => {
+      const key = String(propertyId);
+      if (inmueblesById.has(key)) return;
+
+      inmueblesById.set(key, {
+        ...(propertyHints.get(propertyId) ?? {
+          refCatastral: '',
+          fechaAdquisicion: '',
+          importeAdquisicion: 0,
+          valorCatastral: 0,
+          valorCatastralConstruccion: 0,
+        }),
+        id: key,
+        direccion: propertyAliasById.get(propertyId) ?? `Inmueble ${propertyId}`,
+        pctPropiedad: 100,
+        tipo: 'disposicion',
+        gastosTributos: 0,
+        mejoras: 0,
+        diasArrendados: 0,
+        diasDisposicion: 0,
+        valorCatastralRevisado: false,
+        ingresosIntegros: 0,
+        interesesFinanciacion: 0,
+        gastosReparacion: 0,
+        gastosComunidad: 0,
+        serviciosPersonales: 0,
+        suministros: 0,
+        seguro: 0,
+        tributosRecargos: 0,
+        amortizacionMuebles: 0,
+        arrastres: [],
+        tieneReduccion: false,
+        pctReduccion: 0,
+        pctConstruccion: 0,
+        baseAmortizacion: 0,
+        amortizacionInmueble: 0,
+        limiteInteresesReparacion: 0,
+        excesoReparacion: 0,
+        rentaImputada: 0,
+        rendimientoNeto: 0,
+        rendimientoNetoReducido: 0,
+      });
+    });
+  }
+
+  const inmuebles: Inmueble[] = Array.from(inmueblesById.values());
 
   const actividades: ActividadEconomica[] = autonomo
     ? [{
