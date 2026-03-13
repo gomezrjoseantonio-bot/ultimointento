@@ -7,10 +7,11 @@ import BusinessBlock from './blocks/BusinessBlock';
 import SavingsGPBlock from './blocks/SavingsGPBlock';
 import ResultBlock from './blocks/ResultBlock';
 import SimuladorBlock from './blocks/SimuladorBlock';
+import DataTraceabilityBlock from './blocks/DataTraceabilityBlock';
 import { setEjercicio } from '../../store/taxSlice';
 import './tax-view.css';
 
-const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador'] as const;
+const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador', 'Trazabilidad'] as const;
 type Tab = typeof TABS[number];
 
 const TaxView: React.FC = () => {
@@ -20,6 +21,10 @@ const TaxView: React.FC = () => {
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
+  const isCurrentYear = tax.ejercicio === currentYear;
 
   return (
     <div className="tv-root">
@@ -36,12 +41,20 @@ const TaxView: React.FC = () => {
             value={tax.ejercicio}
             onChange={e => dispatch(setEjercicio(Number(e.target.value)))}
           >
-            {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 1 - i).map(y => (
-              <option key={y} value={y}>{y}</option>
+            {yearOptions.map(y => (
+              <option key={y} value={y}>
+                {y}{y === currentYear ? ' (en curso · previsión)' : ''}
+              </option>
             ))}
           </select>
         </div>
       </div>
+
+      {isCurrentYear && (
+        <div className="tv-forecast-note">
+          Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
+        </div>
+      )}
 
       {/* RESULTADO RÁPIDO */}
       <div className={`tv-result-banner ${tax.cuotaDiferencial > 0 ? 'banner-pagar' : 'banner-devolver'}`}>
@@ -80,6 +93,7 @@ const TaxView: React.FC = () => {
         {tab === 'Ahorro y G/P' && <SavingsGPBlock />}
         {tab === 'Resultado'   && <ResultBlock />}
         {tab === 'Simulador'   && <SimuladorBlock />}
+        {tab === 'Trazabilidad' && <DataTraceabilityBlock />}
       </div>
     </div>
   );

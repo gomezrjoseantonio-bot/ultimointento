@@ -96,3 +96,47 @@
 /* ── G/P ──────────────────────────────────────────────────────── */
 .gp-row-header { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
 .gp-row-fields { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── PREVISIÓN EN CURSO ───────────────────────────────────────── */
+.tv-forecast-note {
+  margin: 8px 24px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--blue-200, #bfdcff);
+  background: var(--blue-50, #f1f8ff);
+  color: var(--blue-700, #0050a4);
+  font-size: 0.8rem;
+}
+
+/* ── TRAZABILIDAD ─────────────────────────────────────────────── */
+.trace-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--n-300);
+  border-radius: 10px;
+  background: var(--white);
+}
+
+.trace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  min-width: 980px;
+}
+
+.trace-table th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--n-500);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--n-300);
+  background: var(--n-50);
+}
+
+.trace-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--n-100);
+  color: var(--n-700);
+  vertical-align: top;
+}
