@@ -84,6 +84,48 @@ type PositionRow = {
   tag: string | null;
 };
 
+const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
+
+const parseDate = (value?: string): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const calculateEstimatedCagr = (position: PosicionInversion): number => {
+  const totalAportado = Number(position.total_aportado || 0);
+  const valorActual = Number(position.valor_actual || 0);
+  if (totalAportado <= 0 || valorActual <= 0) return 0;
+
+  const allDates = [
+    parseDate(position.fecha_compra),
+    parseDate(position.created_at),
+    ...((position.aportaciones || []).map((a) => parseDate(a.fecha))),
+  ].filter((date): date is Date => date instanceof Date);
+
+  if (!allDates.length) return 0;
+
+  const startDate = allDates.reduce((earliest, current) => (
+    current.getTime() < earliest.getTime() ? current : earliest
+  ));
+  const endDate = parseDate(position.fecha_valoracion) ?? new Date();
+  const elapsedYears = Math.max((endDate.getTime() - startDate.getTime()) / MS_PER_YEAR, 0);
+
+  if (elapsedYears <= 0) return 0;
+
+  return (Math.pow(valorActual / totalAportado, 1 / elapsedYears) - 1) * 100;
+};
+
+const resolveAnnualReturn = (position: PosicionInversion): number => {
+  const estimatedCagr = calculateEstimatedCagr(position);
+  if (Number.isFinite(estimatedCagr) && Math.abs(estimatedCagr) > 0.0001) {
+    return estimatedCagr;
+  }
+
+  const rendimientoPersistido = Number((position as any).rendimiento);
+  return Number.isFinite(rendimientoPersistido) ? rendimientoPersistido : 0;
+};
+
 const buildEvolucionInversiones = (positions: PositionRow[]) => {
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
@@ -656,7 +698,7 @@ export default function InversionesAnalisis() {
 
     const totalValor = data.reduce((sum, p) => sum + p.valor_actual, 0);
     const mapped: PositionRow[] = data.map((p: PosicionInversion, index) => {
-      const rentabilidadAnual = Number((p as any).rendimiento || 0);
+      const rentabilidadAnual = resolveAnnualReturn(p);
       const peso = totalValor > 0 ? (p.valor_actual / totalValor) * 100 : 0;
       return {
         id: String(p.id),
