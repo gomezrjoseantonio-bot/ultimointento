@@ -75,6 +75,7 @@ type PropertySnapshot = {
   alias: string;
   addr: string;
   ccaa: string;
+  purchaseDate: string;
   coste: number;
   valor: number;
   revalTotal: number;
@@ -113,6 +114,39 @@ const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmue
   });
 
   return latest;
+};
+
+const parseYear = (value?: string): number | null => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.getFullYear();
+  }
+
+  const yearMatch = value.match(/(19|20)\d{2}/);
+  return yearMatch ? Number(yearMatch[0]) : null;
+};
+
+const getPurchaseYear = (purchaseDate?: string) => {
+  const currentYear = new Date().getFullYear();
+  const year = parseYear(purchaseDate);
+  if (!year) return currentYear;
+  return Math.min(year, currentYear);
+};
+
+const getElapsedYearsFromPurchase = (purchaseDate?: string) => {
+  const purchaseYear = getPurchaseYear(purchaseDate);
+  return Math.max(1, new Date().getFullYear() - purchaseYear);
+};
+
+const getElapsedMonthsFromPurchase = (purchaseDate?: string) => {
+  if (!purchaseDate) return 12;
+  const purchase = new Date(purchaseDate);
+  if (Number.isNaN(purchase.getTime())) return 12;
+
+  const now = new Date();
+  const months = (now.getFullYear() - purchase.getFullYear()) * 12 + (now.getMonth() - purchase.getMonth());
+  return Math.max(1, months);
 };
 
 const mapToSnapshot = (
@@ -284,7 +318,8 @@ const mapToSnapshot = (
   const cuotaHipotecaMes = propertyLoans.reduce((sum, loan) => sum + getLoanMonthlyInstallment(loan), 0);
 
   const revalTotal = coste > 0 ? ((valor - coste) / coste) * 100 : 0;
-  const revalAnual = revalTotal / 5;
+  const elapsedYears = getElapsedYearsFromPurchase(property.purchaseDate);
+  const revalAnual = coste > 0 ? (Math.pow(valor / coste, 1 / elapsedYears) - 1) * 100 : 0;
   const annualIncome = ingresosMes * 12;
   const yieldValue = coste > 0 ? (annualIncome / coste) * 100 : 0;
 
@@ -293,6 +328,7 @@ const mapToSnapshot = (
     alias: property.alias,
     addr: property.address,
     ccaa: property.ccaa || 'Sin CCAA',
+    purchaseDate: property.purchaseDate,
     coste,
     valor,
     revalTotal,
@@ -338,15 +374,17 @@ const buildProyeccion = (years: number) => {
 };
 
 const buildIndividualValueSeries = (property: PropertySnapshot) => {
-  const pastYears = ['2005', '2008', '2010', '2013', '2015', '2018', '2020', '2022', '2024', '2026'];
+  const purchaseYear = getPurchaseYear(property.purchaseDate);
+  const currentYear = new Date().getFullYear();
+  const pastYears = Array.from({ length: currentYear - purchaseYear + 1 }, (_, index) => String(purchaseYear + index));
   const growth = Math.max(0.004, property.revalAnual / 100);
   const past = pastYears.map((year, index) => {
-    const progress = index / (pastYears.length - 1);
+    const progress = pastYears.length > 1 ? index / (pastYears.length - 1) : 1;
     const hist = Math.round(property.coste + (property.valor - property.coste) * progress);
     return { year, hist, proy: null as number | null };
   });
 
-  const proyYears = ['2028', '2030', '2032', '2034', '2036'];
+  const proyYears = Array.from({ length: 10 }, (_, index) => String(currentYear + index + 1));
   const projection = proyYears.map((year, index) => ({
     year,
     hist: null as number | null,
@@ -358,7 +396,9 @@ const buildIndividualValueSeries = (property: PropertySnapshot) => {
 };
 
 const buildIndividualCashflowSeries = (property: PropertySnapshot) => {
-  const years = ['2006', '2008', '2010', '2012', '2014', '2016', '2018', '2020', '2022', '2024', '2026'];
+  const purchaseYear = getPurchaseYear(property.purchaseDate);
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - purchaseYear + 1 }, (_, index) => String(purchaseYear + index));
   const yearlyIncome = Math.max(0, Math.round((property.cashflowMes + property.gastosMes) * 12));
   const yearlyExpenses = Math.max(0, Math.round(property.gastosMes * 12));
 
@@ -856,7 +896,9 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
   const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '0 €';
   const cashflowColor = prop.cashflowMes > 0 ? C.pos : prop.cashflowMes < 0 ? C.neg : C.n500;
   const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
-  const cashflowAcumulado = prop.cashflowMes * 12 * 10;
+  const monthsFromPurchase = getElapsedMonthsFromPurchase(prop.purchaseDate);
+  const cashflowAcumulado = prop.cashflowMes * monthsFromPurchase;
+  const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
   return (
     <div>
@@ -876,9 +918,9 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Compra', val: fmt(prop.coste), sub: 'Coste total', cls: 'past' },
-          { label: 'Hoy', val: fmt(prop.valor), sub: 'Valor estimado · mar 2026', cls: 'present' },
-          { label: 'Proyección 5 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1.1273, 5)))}`, sub: 'A 12,73% anual', cls: 'future' },
-          { label: 'Proyección 10 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1.1273, 10)))}`, sub: 'A 12,73% anual', cls: 'future' },
+          { label: 'Hoy', val: fmt(prop.valor), sub: 'Valor estimado actual', cls: 'present' },
+          { label: 'Proyección 5 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1 + projectionRate, 5)))}`, sub: `A ${(projectionRate * 100).toFixed(2)}% anual`, cls: 'future' },
+          { label: 'Proyección 10 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1 + projectionRate, 10)))}`, sub: `A ${(projectionRate * 100).toFixed(2)}% anual`, cls: 'future' },
         ].map(t => (
           <div key={t.label} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: `1px solid ${t.cls === 'present' ? C.blue : t.cls === 'future' ? C.teal : C.n200}`, background: t.cls === 'present' ? 'rgba(4,44,94,.04)' : t.cls === 'future' ? 'rgba(29,160,186,.04)' : C.n50 }}>
             <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: C.n500, marginBottom: 4 }}>{t.label}</div>
@@ -921,7 +963,7 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
               <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line type="monotone" dataKey="hist" name="Valor histórico" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} connectNulls={false} />
-              <Line type="monotone" dataKey="proy" name="Proyección (12,73%/a)" stroke={C.teal} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="proy" name={`Proyección (${(projectionRate * 100).toFixed(2)}%/a)`} stroke={C.teal} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
