@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BarChart2 } from 'lucide-react';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
+import { useSelector } from 'react-redux';
 import PageLayout from '../../../../components/common/PageLayout';
 import { ejecutarSimulacion, TipoSimulacion, Simulacion } from '../../../../services/simuladorFiscalService';
 import { Property } from '../../../../services/db';
