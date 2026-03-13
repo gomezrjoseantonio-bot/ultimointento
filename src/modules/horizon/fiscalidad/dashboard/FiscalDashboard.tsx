@@ -4,7 +4,7 @@ import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
 import PageLayout from '../../../../components/common/PageLayout';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
-import { generarEventosFiscales, EventoFiscal } from '../../../../services/fiscalPaymentsService';
+import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
 import FiscalKpiCard from '../../../../components/fiscal/ui/FiscalKpiCard';
 import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
@@ -23,7 +23,6 @@ const cardStyle: React.CSSProperties = {
 const FiscalDashboard: React.FC = () => {
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
-  const [eventos, setEventos] = useState<EventoFiscal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const currentYear = new Date().getFullYear();
@@ -34,8 +33,7 @@ const FiscalDashboard: React.FC = () => {
     try {
       const decl = await calcularDeclaracionIRPF(ejercicio);
       setDeclaracion(decl);
-      const ev = await generarEventosFiscales(ejercicio, decl);
-      setEventos(ev);
+      await generarEventosFiscales(ejercicio, decl);
     } catch (e) {
       console.error('Error loading fiscal dashboard:', e);
     } finally {
