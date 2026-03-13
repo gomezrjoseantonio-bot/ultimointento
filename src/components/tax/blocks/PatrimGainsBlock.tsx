@@ -1,11 +1,11 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import TaxSectionCard from '../shared/TaxSectionCard';
-import { GananciaPatrimonial, SaldoNegativoPendiente } from '../../../store/taxSlice';
+import { GananciaPatrimonial, SaldoNegativoBIA } from '../../../store/taxSlice';
 
 interface PatrimGainsBlockProps {
   ganancias: GananciaPatrimonial[];
-  saldos: SaldoNegativoPendiente[];
+  saldos: SaldoNegativoBIA[];
   onUpdateGanancia: <K extends keyof GananciaPatrimonial>(id: string, field: K, value: GananciaPatrimonial[K]) => void;
   onAdd: () => void;
   onRemove: (id: string) => void;
@@ -19,7 +19,7 @@ const PatrimGainsBlock: React.FC<PatrimGainsBlockProps> = ({ ganancias, saldos, 
         <tbody>
           {ganancias.map((g) => (
             <tr key={g.id}>
-              <td><select value={g.tipo} onChange={(e) => onUpdateGanancia(g.id, 'tipo', e.target.value as GananciaPatrimonial['tipo'])}><option value="transmision_inmueble">Transmisión de inmueble (BIA)</option><option value="transmision_fondos">Transmisión de fondos/acciones (BIA)</option><option value="cripto">Criptomonedas (BIA)</option><option value="otras_no_transmision">Otras ganancias no derivadas de transmisión (BIG)</option><option value="otras_transmision">Otras transmisiones (BIG)</option></select></td>
+              <td><select value={g.tipo} onChange={(e) => onUpdateGanancia(g.id, 'tipo', e.target.value as GananciaPatrimonial['tipo'])}><option value="inmueble">Transmisión de inmueble (BIA)</option><option value="fondos">Transmisión de fondos/acciones (BIA)</option><option value="cripto">Criptomonedas (BIA)</option><option value="otra_bg">Otras ganancias no derivadas de transmisión (BIG)</option><option value="otra_ba">Otras transmisiones (BIG)</option></select></td>
               <td><input value={g.descripcion} onChange={(e) => onUpdateGanancia(g.id, 'descripcion', e.target.value)} /></td>
               <td><input type="number" value={g.valorTransmision} onChange={(e) => onUpdateGanancia(g.id, 'valorTransmision', Number(e.target.value))} /></td>
               <td><input type="number" value={g.valorAdquisicion} onChange={(e) => onUpdateGanancia(g.id, 'valorAdquisicion', Number(e.target.value))} /></td>
@@ -34,7 +34,7 @@ const PatrimGainsBlock: React.FC<PatrimGainsBlockProps> = ({ ganancias, saldos, 
       <h4>Saldos negativos de años anteriores (BIA)</h4>
       {saldos.map((s) => (
         <div key={s.ejercicio} className="tax-inline-row">
-          <span>Ejercicio {s.ejercicio}</span><span className="mono">Pendiente inicio: {s.pendienteInicioPeriodo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span><span className="mono">Aplicado: {s.aplicadoEsteEjercicio.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span><span className="mono">Pendiente futuro: {s.pendienteFuturos.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
+          <span>Ejercicio {s.ejercicio}</span><span className="mono">Pendiente inicio: {s.pendienteInicio.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span><span className="mono">Aplicado: {s.aplicado.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span><span className="mono">Pendiente futuro: {s.pendienteFuturo.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>
         </div>
       ))}
     </div>

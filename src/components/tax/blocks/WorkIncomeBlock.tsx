@@ -7,7 +7,6 @@ const WorkIncomeBlock: React.FC = () => {
   const dispatch = useDispatch();
   const work = useSelector((s: RootState) => s.tax.workIncome);
   const prev = useSelector((s: RootState) => s.tax.previsionSocial);
-  const tax = useSelector((s: RootState) => s.tax);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
