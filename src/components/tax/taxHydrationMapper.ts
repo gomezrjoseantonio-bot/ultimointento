@@ -1,7 +1,6 @@
 import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
 import { initDB, Property } from '../../services/db';
-import { calculateFiscalSummary } from '../../services/fiscalSummaryService';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
