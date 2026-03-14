@@ -18,6 +18,7 @@ import { GastoRecurrente, PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRe
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
+import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversiones';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import {
   calculateOpexForMonth,
@@ -132,6 +133,89 @@ interface DeudaState {
   loans: LoanInfo[];
 }
 
+interface InvestmentProjectionData {
+  id: number;
+  tipo: PosicionInversion['tipo'];
+  valorActual: number;
+  rendimiento?: InversionRendimientoPeriodico['rendimiento'];
+  planLiquidacion?: PlanLiquidacion;
+}
+
+function getLiquidationAmount(plan: PlanLiquidacion, valorActual: number): number {
+  return plan.liquidacion_total ? valorActual : (plan.importe_estimado ?? valorActual);
+}
+
+function getInvestmentLiquidationMonth(inv: InvestmentProjectionData): string | undefined {
+  const planLiq = inv.planLiquidacion;
+  if (planLiq?.activo && planLiq.fecha_estimada) {
+    return planLiq.fecha_estimada.substring(0, 7);
+  }
+
+  if (inv.tipo === 'deposito_plazo' && inv.rendimiento?.fecha_fin_rendimiento) {
+    return inv.rendimiento.fecha_fin_rendimiento.substring(0, 7);
+  }
+
+  return undefined;
+}
+
+function getNetPeriodicReturnForMonth(inv: InvestmentProjectionData, month1to12: number): number {
+  const rendimiento = inv.rendimiento;
+  if (!rendimiento || rendimiento.reinvertir) return 0;
+  if (!['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(inv.tipo)) return 0;
+
+  const isMonthly = rendimiento.frecuencia_pago === 'mensual';
+  const mesesCobro = isMonthly
+    ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    : (Array.isArray(rendimiento.meses_cobro) ? rendimiento.meses_cobro : []);
+
+  if (!mesesCobro.includes(month1to12)) return 0;
+
+  const pagosAnuales = isMonthly
+    ? 12
+    : Math.max(1, mesesCobro.length);
+  const bruto = (inv.valorActual * (rendimiento.tasa_interes_anual / 100)) / pagosAnuales;
+  const retencion = rendimiento.retencion_porcentaje ?? 19;
+  return bruto * (1 - retencion / 100);
+}
+
+function getInvestmentInterestForMonth(
+  monthStr: string,
+  month1to12: number,
+  inversiones: InvestmentProjectionData[],
+): number {
+  return inversiones.reduce((sum, inv) => {
+    const rendimiento = inv.rendimiento;
+    if (!rendimiento) return sum;
+
+    const startMonth = rendimiento.fecha_inicio_rendimiento?.substring(0, 7);
+    const endMonth = rendimiento.fecha_fin_rendimiento?.substring(0, 7);
+
+    if (startMonth && monthStr < startMonth) return sum;
+    if (endMonth && monthStr > endMonth) return sum;
+
+    return sum + getNetPeriodicReturnForMonth(inv, month1to12);
+  }, 0);
+}
+
+function getInvestmentLiquidationCashflowForMonth(
+  monthStr: string,
+  inversiones: InvestmentProjectionData[],
+): number {
+  return inversiones.reduce((sum, inv) => {
+    const planLiq = inv.planLiquidacion;
+    if (planLiq?.activo && planLiq.fecha_estimada?.startsWith(monthStr)) {
+      return sum + getLiquidationAmount(planLiq, inv.valorActual);
+    }
+
+    const hasVencimientoPlan = planLiq?.activo && planLiq.tipo_liquidacion === 'vencimiento';
+    if (!hasVencimientoPlan && inv.tipo === 'deposito_plazo' && inv.rendimiento?.fecha_fin_rendimiento?.startsWith(monthStr)) {
+      return sum + inv.valorActual;
+    }
+
+    return sum;
+  }, 0);
+}
+
 interface AssetInitialValue {
   id: number;
   initialValue: number;
@@ -178,8 +262,10 @@ interface BaseData {
   inmuebleInitialValues: AssetInitialValue[];    // fallback: purchase price
   inversionInitialValues: AssetInitialValue[];   // fallback: valor_actual
 
-  // Investment periodic return payments (pagos_generados from cuenta_remunerada, prestamo_p2p, deposito_plazo)
+  // Investment periodic return payments (legacy pagos_generados support)
   pagosRendimiento: PagoRendimiento[];
+  inversionesProyeccion: InvestmentProjectionData[];
+  liquidationMonthByInvestmentId: Map<number, string>;
 
   // Scalars
   pensionNetaMensual: number;
@@ -340,9 +426,15 @@ function buildMonthRow(
   const rentasAlquiler = baseData.rentaMensualPorMes[monthOfYear];
 
   // D. Intereses Inversiones: sum pagos_generados whose fecha_pago falls in the current month
-  const dividendosInversiones = baseData.pagosRendimiento
+  const dividendosGenerados = baseData.pagosRendimiento
     .filter(p => p.fecha_pago.startsWith(monthStr))
     .reduce((sum, p) => sum + p.importe_neto, 0);
+  const dividendosCalculados = getInvestmentInterestForMonth(
+    monthStr,
+    month1to12,
+    baseData.inversionesProyeccion,
+  );
+  const dividendosInversiones = Math.max(dividendosGenerados, dividendosCalculados);
 
   // E. Otros ingresos: exact monthly amount based on frequency — respect actual months, not flat division
   const otrosIngresosMensual = baseData.otrosIngresosItems.reduce((sum, otro) => {
@@ -438,7 +530,11 @@ function buildMonthRow(
   const totalFinanciacion = cuotasHipotecas + cuotasPrestamos;
 
   // ── TESORERÍA ─────────────────────────────────────────────────────────────
-  const flujoCajaMes = totalIngresos - totalGastos - totalFinanciacion;
+  const liquidacionesInversiones = getInvestmentLiquidationCashflowForMonth(
+    monthStr,
+    baseData.inversionesProyeccion,
+  );
+  const flujoCajaMes = totalIngresos - totalGastos - totalFinanciacion + liquidacionesInversiones;
   const cajaFinal = cajaAnterior + flujoCajaMes;
 
   // ── PATRIMONIO ────────────────────────────────────────────────────────────
@@ -471,10 +567,14 @@ function buildMonthRow(
 
   const planesPension = baseData.valorPlanesPension;
   // Otras inversiones: use last known historical valuation; fallback to valor_actual
+  const inversionesActivas = baseData.inversionInitialValues.filter(asset => {
+    const liquidationMonth = baseData.liquidationMonthByInvestmentId.get(asset.id);
+    return !liquidationMonth || monthStr < liquidationMonth;
+  });
   const otrasInversiones = sumAssetValuesForMonth(
     baseData.valoracionIndex,
     'inversion',
-    baseData.inversionInitialValues,
+    inversionesActivas,
     monthStr,
   );
 
@@ -702,9 +802,27 @@ async function loadBaseData(): Promise<BaseData> {
   let valorPlanesPension = 0;
   const inversionInitialValues: AssetInitialValue[] = [];
   const pagosRendimiento: PagoRendimiento[] = [];
+  const inversionesProyeccion: InvestmentProjectionData[] = [];
+  const liquidationMonthByInvestmentId = new Map<number, string>();
   try {
     const inversiones = await inversionesService.getPosiciones();
     for (const inv of inversiones) {
+      const invAny = inv as unknown as InversionRendimientoPeriodico & PosicionInversion;
+      if (inv.id != null) {
+        const invProjection: InvestmentProjectionData = {
+          id: inv.id,
+          tipo: inv.tipo,
+          valorActual: inv.valor_actual,
+          rendimiento: invAny.rendimiento,
+          planLiquidacion: invAny.plan_liquidacion,
+        };
+        inversionesProyeccion.push(invProjection);
+
+        const liquidationMonth = getInvestmentLiquidationMonth(invProjection);
+        if (liquidationMonth) {
+          liquidationMonthByInvestmentId.set(inv.id, liquidationMonth);
+        }
+      }
       if (inv.tipo === 'plan_pensiones' || inv.tipo === 'plan_empleo') {
         valorPlanesPension += inv.valor_actual;
       } else {
@@ -713,7 +831,7 @@ async function loadBaseData(): Promise<BaseData> {
       }
       // Collect periodic return payments (cuenta_remunerada, prestamo_p2p, deposito_plazo)
       if (['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(inv.tipo)) {
-        const extInv = inv as unknown as InversionRendimientoPeriodico;
+        const extInv = invAny as InversionRendimientoPeriodico;
         if (extInv.rendimiento?.pagos_generados?.length) {
           pagosRendimiento.push(...extInv.rendimiento.pagos_generados);
         }
@@ -774,6 +892,8 @@ async function loadBaseData(): Promise<BaseData> {
     inmuebleInitialValues,
     inversionInitialValues,
     pagosRendimiento,
+    inversionesProyeccion,
+    liquidationMonthByInvestmentId,
     pensionNetaMensual,
     otrosIngresosItems,
     valorPlanesPension,
