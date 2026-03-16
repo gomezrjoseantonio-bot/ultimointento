@@ -84,7 +84,6 @@ const getIncomeSourceIcon = (label: string): React.ElementType => {
   if (label.toLowerCase().includes('nómina')) return Banknote;
   if (label.toLowerCase().includes('autónom')) return Briefcase;
   if (label.toLowerCase().includes('pensión')) return PiggyBank;
-  if (label.toLowerCase().includes('dividend') || label.toLowerCase().includes('invers')) return Landmark;
   return Coins;
 };
 
@@ -383,7 +382,6 @@ const monthPersonalIncome = (m: MonthlyProjectionRow): number =>
   m.ingresos.nomina
     + m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo
     + m.ingresos.pensiones
-    + m.ingresos.dividendosInversiones
     + m.ingresos.otrosIngresos;
 
 /** Personal expenses for a single month (property OPEX excluded; gastosAutonomo already netted in income). */
@@ -553,19 +551,17 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
   // Build annual income sources — no rental; autonomous shown as net (billing − business expenses)
   const incomeSources = proyeccion
     ? (() => {
-        const totals = { nomina: 0, pensiones: 0, otros: 0, dividendos: 0 };
+        const totals = { nomina: 0, pensiones: 0, otros: 0 };
         for (const m of proyeccion.months) {
           totals.nomina += m.ingresos.nomina;
           totals.pensiones += m.ingresos.pensiones;
           totals.otros += m.ingresos.otrosIngresos;
-          totals.dividendos += m.ingresos.dividendosInversiones;
         }
         return [
           { label: 'Nóminas', amount: totals.nomina },
           { label: 'Autónomos (neto anual)', amount: autonomoNetAnual },
           { label: 'Pensiones', amount: totals.pensiones },
           { label: 'Otros ingresos', amount: totals.otros },
-          { label: 'Dividendos inversiones', amount: totals.dividendos },
         ].filter(s => s.amount > 0);
       })()
     : resumen && resumen.ingresos.total > 0
