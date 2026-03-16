@@ -74,7 +74,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
         console.error(error);
         toast.error('No se pudieron cargar las cuentas de tesorería');
       });
-  }, [open, property?.id, initialDate]);
+  }, [open, property?.id, saleDate]);
 
   useEffect(() => {
     const effectiveSaleDate = saleDate || initialDate;
