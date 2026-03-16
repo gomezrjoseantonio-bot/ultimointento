@@ -316,6 +316,95 @@ describe('propertySaleService', () => {
     expect(summaries2027).toHaveLength(1);
   });
 
+
+  it('elimina movimientos y eventos de tesorería al anular venta legacy sin journal', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Legacy Movs', state: 'vendido' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES3300491500051234567892' })));
+
+    const saleId = Number(await db.add('property_sales', {
+      propertyId,
+      saleDate: '2026-02-12',
+      salePrice: 200000,
+      saleCosts: { agencyCommission: 2000, municipalTax: 1000, saleNotaryCosts: 500, otherCosts: 0 },
+      loanSettlement: { payoffAmount: 0, cancellationFee: 0, total: 0 },
+      grossProceeds: 200000,
+      netProceeds: 196500,
+      status: 'confirmed',
+      source: 'cartera',
+      notes: 'Venta legacy sin executionJournal',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any));
+
+    await db.add('movements', {
+      accountId,
+      date: '2026-02-12',
+      valueDate: '2026-02-12',
+      amount: 200000,
+      description: `Cobro venta inmueble #${propertyId}`,
+      counterparty: 'Venta inmueble',
+      reference: `property_sale:${saleId}`,
+      status: 'conciliado',
+      unifiedStatus: 'conciliado',
+      source: 'manual',
+      category: { tipo: 'Venta inmueble' },
+      type: 'Ingreso',
+      origin: 'Manual',
+      movementState: 'Conciliado',
+      ambito: 'INMUEBLE',
+      inmuebleId: String(propertyId),
+      statusConciliacion: 'match_manual',
+      tags: ['property_sale'],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+
+    await db.add('movements', {
+      accountId,
+      date: '2026-02-12',
+      valueDate: '2026-02-12',
+      amount: -3500,
+      description: `Costes venta inmueble #${propertyId}`,
+      counterparty: 'Venta inmueble',
+      reference: `property_sale:${saleId}`,
+      status: 'conciliado',
+      unifiedStatus: 'conciliado',
+      source: 'manual',
+      category: { tipo: 'Costes venta inmueble' },
+      type: 'Gasto',
+      origin: 'Manual',
+      movementState: 'Conciliado',
+      ambito: 'INMUEBLE',
+      inmuebleId: String(propertyId),
+      statusConciliacion: 'match_manual',
+      tags: ['property_sale'],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+
+    await db.add('treasuryEvents', {
+      type: 'income',
+      amount: 200000,
+      predictedDate: '2026-02-12',
+      description: `Cobro venta inmueble #${propertyId}`,
+      sourceType: 'manual',
+      sourceId: saleId,
+      accountId,
+      status: 'confirmed',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any);
+
+    await cancelPropertySale(saleId);
+
+    const saleLinkedMovements = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${saleId}`);
+    expect(saleLinkedMovements).toHaveLength(0);
+
+    const saleLinkedEvents = (await db.getAll('treasuryEvents')).filter((e: any) => e.sourceId === saleId);
+    expect(saleLinkedEvents).toHaveLength(0);
+  });
+
   it('falla si no se informa cuenta de tesorería', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Sin Cuenta' })));

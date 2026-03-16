@@ -745,9 +745,27 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
+  if (typeof sale.id === 'number') {
+    const linkedSaleMovements = (await tx.objectStore('movements').getAll() as any[])
+      .filter((movement) => movement.reference === `property_sale:${sale.id}` && typeof movement.id === 'number');
+
+    for (const movement of linkedSaleMovements) {
+      await tx.objectStore('movements').delete(movement.id as number);
+    }
+  }
+
   if (journal?.treasuryEventIds?.length) {
     for (const eventId of journal.treasuryEventIds) {
       await tx.objectStore('treasuryEvents').delete(eventId);
+    }
+  }
+
+  if (typeof sale.id === 'number') {
+    const linkedTreasuryEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
+      .filter((event) => event.sourceId === sale.id && typeof event.id === 'number');
+
+    for (const event of linkedTreasuryEvents) {
+      await tx.objectStore('treasuryEvents').delete(event.id as number);
     }
   }
 
