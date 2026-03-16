@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Property } from '../../../../services/db';
+import { Account, Property, initDB } from '../../../../services/db';
 import {
   confirmPropertySale,
   preparePropertySale,
@@ -36,11 +36,22 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
   const [autoTerminateContracts, setAutoTerminateContracts] = useState(false);
   const [activeContractsCount, setActiveContractsCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [settlementAccountId, setSettlementAccountId] = useState<number | ''>('');
+  const [showAdvancedFields, setShowAdvancedFields] = useState(false);
+  const [automationPreview, setAutomationPreview] = useState({
+    linkedLoansCount: 0,
+    suggestedOutstandingDebt: 0,
+    activeOpexRulesCount: 0,
+    futureIncomeCount: 0,
+    futureExpenseCount: 0,
+  });
 
   useEffect(() => {
     if (!open || !property?.id) return;
 
-    setSaleDate(initialDate ?? new Date().toISOString().slice(0, 10));
+    const defaultSaleDate = initialDate ?? new Date().toISOString().slice(0, 10);
+    setSaleDate(defaultSaleDate);
     setSalePrice(0);
     setAgencyCommission(0);
     setMunicipalTax(0);
@@ -50,14 +61,39 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
     setOtherCosts(0);
     setNotes('');
     setAutoTerminateContracts(false);
+    setShowAdvancedFields(false);
 
-    void preparePropertySale(property.id)
-      .then((result) => setActiveContractsCount(result.activeContracts.length))
+    void initDB()
+      .then((db) => db.getAll('accounts'))
+      .then((allAccounts) => {
+        const activeAccounts = allAccounts.filter((account) => !account.deleted_at && account.isActive !== false);
+        setAccounts(activeAccounts);
+        setSettlementAccountId(activeAccounts[0]?.id ?? '');
+      })
+      .catch((error) => {
+        console.error(error);
+        toast.error('No se pudieron cargar las cuentas de tesorería');
+      });
+  }, [open, property?.id, initialDate]);
+
+  useEffect(() => {
+    const effectiveSaleDate = saleDate || initialDate;
+    if (!open || !property?.id || !effectiveSaleDate) return;
+
+    void preparePropertySale(property.id, effectiveSaleDate)
+      .then((result) => {
+        setActiveContractsCount(result.activeContracts.length);
+        setAutomationPreview(result.automationPreview);
+        setLoanPayoffAmount((previousValue) => {
+          if (previousValue > 0) return previousValue;
+          return result.automationPreview.suggestedOutstandingDebt;
+        });
+      })
       .catch((error) => {
         console.error(error);
         toast.error('No se pudieron verificar los contratos activos');
       });
-  }, [open, property?.id, initialDate]);
+  }, [open, property?.id, saleDate, initialDate]);
 
   const simulation = useMemo(
     () =>
@@ -90,6 +126,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
         loanPayoffAmount,
         loanCancellationFee,
         otherCosts,
+        settlementAccountId: settlementAccountId === '' ? undefined : settlementAccountId,
         notes,
         source,
         autoTerminateContracts,
@@ -120,9 +157,52 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
               <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
             </label>
             <label className="text-sm text-neutral-700">
+              Cuenta de tesorería
+              <select
+                value={settlementAccountId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettlementAccountId(value ? Number(value) : '');
+                }}
+                className="mt-1 w-full rounded border border-neutral-300 px-3 py-2"
+              >
+                <option value="">Seleccionar cuenta</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.alias || account.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-neutral-700">
               Precio de venta (€)
               <input type="number" min={0} value={salePrice} onChange={(e) => setSalePrice(Number(e.target.value || 0))} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
             </label>
+          </div>
+
+          <div className="rounded border border-neutral-200 bg-neutral-50 p-3 text-sm">
+            <p className="font-semibold text-neutral-800 mb-2">Automatizaciones incluidas al vender</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-neutral-700">
+              <div>Contratos activos a cerrar: <strong>{activeContractsCount}</strong></div>
+              <div>Préstamos vinculados: <strong>{automationPreview.linkedLoansCount}</strong></div>
+              <div>Reglas recurrentes activas: <strong>{automationPreview.activeOpexRulesCount}</strong></div>
+              <div>Ingresos futuros previstos: <strong>{automationPreview.futureIncomeCount}</strong></div>
+              <div>Gastos futuros pendientes: <strong>{automationPreview.futureExpenseCount}</strong></div>
+              <div>Deuda sugerida a cancelar: <strong>{automationPreview.suggestedOutstandingDebt.toFixed(2)} €</strong></div>
+            </div>
+            <p className="mt-2 text-xs text-neutral-500">Se admiten fechas de venta pasadas; el sistema aplica la lógica con la fecha seleccionada.</p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvancedFields((prev) => !prev)}
+            className="w-full rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            {showAdvancedFields ? 'Ocultar ajustes avanzados' : 'Mostrar ajustes avanzados (opcional)'}
+          </button>
+
+          {showAdvancedFields && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <label className="text-sm text-neutral-700">
               Comisión agencia (€)
               <input type="number" min={0} value={agencyCommission} onChange={(e) => setAgencyCommission(Number(e.target.value || 0))} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
@@ -147,7 +227,8 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
               Comisión cancelación (€)
               <input type="number" min={0} value={loanCancellationFee} onChange={(e) => setLoanCancellationFee(Number(e.target.value || 0))} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
             </label>
-          </div>
+            </div>
+          )}
 
           {activeContractsCount > 0 && (
             <div className="rounded border border-warning-300 bg-warning-100 p-3 text-sm text-neutral-800">
@@ -182,7 +263,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading || !saleDate || salePrice <= 0 || (activeContractsCount > 0 && !autoTerminateContracts)}
+            disabled={loading || !saleDate || salePrice <= 0 || settlementAccountId === '' || (activeContractsCount > 0 && !autoTerminateContracts)}
             className="rounded bg-error-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Confirmar venta
