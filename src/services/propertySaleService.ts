@@ -43,6 +43,47 @@ interface SaleExecutionJournal {
   updatedGastos: Array<{ id: number; previous: Record<string, unknown> }>;
 }
 
+const normalizeToken = (value: unknown): string =>
+  String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
+  if (!loan || typeof loan !== 'object') return false;
+  const propertyIdAsString = String(property.id ?? '').trim();
+
+  const linkedIds = [
+    loan.inmuebleId,
+    loan.propertyId,
+    loan.activoAsociadoId,
+    loan.activoId,
+    loan.assetId,
+    loan.inmueble?.id,
+    property.globalAlias,
+  ].filter((value) => value !== undefined && value !== null);
+
+  if (Array.isArray(loan.afectacionesInmueble)) {
+    linkedIds.push(...loan.afectacionesInmueble.map((item: any) => item?.inmuebleId));
+  }
+
+  const propertyAliasToken = normalizeToken(property.alias);
+  const propertyGlobalAliasToken = normalizeToken(property.globalAlias);
+
+  return linkedIds.some((rawLinkedId) => {
+    const linkedId = String(rawLinkedId ?? '').trim();
+    if (!linkedId) return false;
+    if (linkedId === propertyIdAsString) return true;
+    if (Number(linkedId) === Number(propertyIdAsString)) return true;
+
+    const normalizedLinkedId = normalizeToken(linkedId);
+    if (!normalizedLinkedId) return false;
+    return normalizedLinkedId === propertyAliasToken || normalizedLinkedId === propertyGlobalAliasToken;
+  });
+};
+
 const calculateTotalAcquisitionCost = (property: Property): number => {
   const costs = property.acquisitionCosts;
   return costs.price +
@@ -177,15 +218,7 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   );
 
   const allLoans = await db.getAll('prestamos');
-  const propertyIdAsString = String(propertyId);
-  const linkedLoans = allLoans.filter((loan: any) => {
-    if (!loan || typeof loan !== 'object') return false;
-    if (loan.inmuebleId && String(loan.inmuebleId) === propertyIdAsString) return true;
-    if (Array.isArray(loan.afectacionesInmueble)) {
-      return loan.afectacionesInmueble.some((item: any) => String(item?.inmuebleId) === propertyIdAsString);
-    }
-    return false;
-  });
+  const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
 
   const suggestedOutstandingDebt = linkedLoans
     .filter((loan: any) => loan.activo !== false)
@@ -378,15 +411,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
 
   const loanStore = tx.objectStore('prestamos');
   const allLoans = await loanStore.getAll();
-  const propertyIdAsString = String(input.propertyId);
-  const linkedLoans = allLoans.filter((loan: any) => {
-    if (!loan || typeof loan !== 'object') return false;
-    if (loan.inmuebleId && String(loan.inmuebleId) === propertyIdAsString) return true;
-    if (Array.isArray(loan.afectacionesInmueble)) {
-      return loan.afectacionesInmueble.some((item: any) => String(item?.inmuebleId) === propertyIdAsString);
-    }
-    return false;
-  });
+  const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
 
   for (const loan of linkedLoans) {
     if (!loan?.id) continue;
@@ -394,7 +419,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     await loanStore.put({
       ...loan,
       activo: false,
-      principalVivo: input.loanPayoffAmount && input.loanPayoffAmount > 0 ? 0 : loan.principalVivo,
+      estado: 'cancelado',
+      principalVivo: 0,
       fechaUltimaCuotaPagada: input.saleDate,
       updatedAt: new Date().toISOString(),
     });
