@@ -1,4 +1,5 @@
-import { Contract, Property, initDB, PropertySale } from './db';
+import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
+import { PlanPagos } from '../types/prestamos';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 
 export interface SaleSimulationInput {
@@ -41,6 +42,8 @@ interface SaleExecutionJournal {
   deactivatedOpexRules: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedIngresos: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedGastos: Array<{ id: number; previous: Record<string, unknown> }>;
+  updatedPaymentPlans: Array<{ key: string; previous: PlanPagos }>;
+  deletedLoanForecastEvents: Array<{ id: number; previous: TreasuryEvent }>;
 }
 
 const normalizeToken = (value: unknown): string =>
@@ -62,7 +65,9 @@ const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
     loan.activoId,
     loan.assetId,
     loan.inmueble?.id,
-    property.globalAlias,
+    loan.globalAlias,
+    loan.alias,
+    loan.nombre,
   ].filter((value) => value !== undefined && value !== null);
 
   if (Array.isArray(loan.afectacionesInmueble)) {
@@ -269,7 +274,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents'], 'readwrite');
+  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -363,6 +368,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     deactivatedOpexRules: [],
     updatedIngresos: [],
     updatedGastos: [],
+    updatedPaymentPlans: [],
+    deletedLoanForecastEvents: [],
   };
 
   if (saleId) {
@@ -420,11 +427,46 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   for (const loan of linkedLoans) {
     if (!loan?.id) continue;
     executionJournal.updatedLoans.push({ id: loan.id, previous: loan });
+
+    const paymentPlanKey = `planpagos_${loan.id}`;
+    const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
+    if (paymentPlan?.periodos?.length) {
+      executionJournal.updatedPaymentPlans.push({ key: paymentPlanKey, previous: paymentPlan });
+      const updatedPlan: PlanPagos = {
+        ...paymentPlan,
+        periodos: paymentPlan.periodos.map((periodo) => {
+          if (periodo.fechaCargo < input.saleDate) {
+            return periodo;
+          }
+          return {
+            ...periodo,
+            pagado: true,
+            fechaPagoReal: periodo.fechaPagoReal ?? input.saleDate,
+          };
+        }),
+      };
+      await tx.objectStore('keyval').put(updatedPlan, paymentPlanKey);
+    }
+
+    const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
+      .filter((event) =>
+        (event.sourceType === 'hipoteca' || event.sourceType === 'prestamo') &&
+        event.prestamoId === loan.id &&
+        event.predictedDate >= input.saleDate &&
+        event.status !== 'executed' &&
+        typeof event.id === 'number'
+      );
+    for (const event of loanForecastEvents) {
+      executionJournal.deletedLoanForecastEvents.push({ id: event.id as number, previous: event });
+      await tx.objectStore('treasuryEvents').delete(event.id as number);
+    }
+
     await loanStore.put({
       ...loan,
       activo: false,
       estado: 'cancelado',
       principalVivo: 0,
+      cuotasPagadas: paymentPlan?.periodos?.length ?? loan.cuotasPagadas,
       fechaUltimaCuotaPagada: input.saleDate,
       updatedAt: new Date().toISOString(),
     });
@@ -503,6 +545,58 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     }
   }
 
+  if (saleId) {
+    const saleTreasuryEvents: Array<Omit<TreasuryEvent, 'id'>> = [
+      {
+        type: 'income',
+        amount: simulation.grossProceeds,
+        predictedDate: input.saleDate,
+        description: `Cobro venta inmueble #${input.propertyId}`,
+        sourceType: 'manual',
+        sourceId: saleId,
+        accountId: input.settlementAccountId,
+        status: 'confirmed',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      ...(simulation.totalSaleCosts > 0
+        ? [{
+            type: 'expense' as const,
+            amount: simulation.totalSaleCosts,
+            predictedDate: input.saleDate,
+            description: `Costes venta inmueble #${input.propertyId}`,
+            sourceType: 'manual' as const,
+            sourceId: saleId,
+            accountId: input.settlementAccountId,
+            status: 'confirmed' as const,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }]
+        : []),
+      ...(simulation.totalLoanSettlement > 0
+        ? [{
+            type: 'financing' as const,
+            amount: simulation.totalLoanSettlement,
+            predictedDate: input.saleDate,
+            description: `Cancelación deuda inmueble #${input.propertyId}`,
+            sourceType: 'manual' as const,
+            sourceId: saleId,
+            accountId: input.settlementAccountId,
+            status: 'confirmed' as const,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }]
+        : []),
+    ];
+
+    for (const event of saleTreasuryEvents) {
+      const treasuryEventId = await tx.objectStore('treasuryEvents').add(event);
+      if (typeof treasuryEventId === 'number') {
+        executionJournal.treasuryEventIds.push(treasuryEventId);
+      }
+    }
+  }
+
   const updatedProperty: Property = {
     ...property,
     state: 'vendido',
@@ -555,7 +649,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -613,6 +707,12 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
+  if (journal?.updatedPaymentPlans?.length) {
+    for (const snapshot of journal.updatedPaymentPlans) {
+      await tx.objectStore('keyval').put(snapshot.previous, snapshot.key);
+    }
+  }
+
   if (journal?.deactivatedOpexRules?.length) {
     for (const snapshot of journal.deactivatedOpexRules) {
       await tx.objectStore('opexRules').put(snapshot.previous as any);
@@ -628,6 +728,12 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   if (journal?.updatedGastos?.length) {
     for (const snapshot of journal.updatedGastos) {
       await tx.objectStore('gastos').put(snapshot.previous as any);
+    }
+  }
+
+  if (journal?.deletedLoanForecastEvents?.length) {
+    for (const snapshot of journal.deletedLoanForecastEvents) {
+      await tx.objectStore('treasuryEvents').put(snapshot.previous);
     }
   }
 

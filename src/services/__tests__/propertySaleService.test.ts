@@ -116,6 +116,51 @@ describe('propertySaleService', () => {
       ambito: 'INMUEBLE',
     } as any);
 
+    await db.put('keyval', {
+      prestamoId: 'loan-revert-1',
+      fechaGeneracion: new Date().toISOString(),
+      periodos: [
+        {
+          periodo: 1,
+          fechaCargo: '2026-03-20',
+          cuota: 999,
+          interes: 200,
+          amortizacion: 799,
+          principalFinal: 71701,
+          devengoDesde: '2026-02-21',
+          devengoHasta: '2026-03-20',
+          pagado: false,
+        },
+        {
+          periodo: 2,
+          fechaCargo: '2026-04-20',
+          cuota: 999,
+          interes: 198,
+          amortizacion: 801,
+          principalFinal: 70900,
+          devengoDesde: '2026-03-21',
+          devengoHasta: '2026-04-20',
+          pagado: false,
+        },
+      ],
+      resumen: { totalIntereses: 398, totalCuotas: 2, fechaFinalizacion: '2026-04-20' },
+    }, 'planpagos_loan-revert-1');
+
+    const loanForecastEventId = Number(await db.add('treasuryEvents', {
+      type: 'financing',
+      amount: 999,
+      predictedDate: '2026-03-20',
+      description: 'Cuota Hipoteca – Piso Completo',
+      sourceType: 'hipoteca',
+      sourceId: 1,
+      accountId,
+      status: 'predicted',
+      prestamoId: 'loan-revert-1',
+      numeroCuota: 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+
     await confirmPropertySale({
       propertyId,
       saleDate: '2026-03-10',
@@ -141,11 +186,23 @@ describe('propertySaleService', () => {
     expect(loanAfterSale?.activo).toBe(false);
     expect(loanAfterSale?.principalVivo).toBe(0);
 
+    const updatedPlanAfterSale = await db.get('keyval', 'planpagos_loan-revert-1') as any;
+    expect(updatedPlanAfterSale.periodos.every((p: any) => p.pagado)).toBe(true);
+
+    const removedLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
+    expect(removedLoanForecast).toBeUndefined();
+
     await cancelPropertySale(sale!.id!);
 
     const loanAfterCancel = await db.get('prestamos', 'loan-revert-1');
     expect(loanAfterCancel?.activo).toBe(true);
     expect(loanAfterCancel?.principalVivo).toBe(72500);
+
+    const restoredPlanAfterCancel = await db.get('keyval', 'planpagos_loan-revert-1') as any;
+    expect(restoredPlanAfterCancel.periodos.some((p: any) => !p.pagado)).toBe(true);
+
+    const restoredLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
+    expect(restoredLoanForecast).toBeTruthy();
 
     const movementsAfterCancel = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
     expect(movementsAfterCancel).toHaveLength(0);
