@@ -367,12 +367,16 @@ const CASHFLOW_DATA = [
   { year: '2026', cf: 1858 },
 ];
 
-const buildProyeccion = (years: number) => {
-  const base = 916000, equity0 = 642079, rate = 0.1273;
+const buildProyeccion = (years: number, base: number, equity0: number, rate: number) => {
+  const safeBase = Math.max(0, base);
+  const safeEquity = Math.max(0, equity0);
+  const safeRate = Number.isFinite(rate) ? Math.max(0, rate) : 0;
+  const startYear = new Date().getFullYear();
+
   return Array.from({ length: years + 1 }, (_, i) => ({
-    year: String(2026 + i),
-    valor: Math.round(base * Math.pow(1 + rate, i)),
-    equity: Math.round(equity0 * Math.pow(1.08, i)),
+    year: String(startYear + i),
+    valor: Math.round(safeBase * Math.pow(1 + safeRate, i)),
+    equity: Math.round(safeEquity * Math.pow(1 + safeRate * 0.75, i)),
   }));
 };
 
@@ -473,26 +477,57 @@ function ChartCard({ title, sub, children, right }: { title: string; sub?: strin
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
-function TabResumen() {
+function TabResumen({ properties }: { properties: PropertySnapshot[] }) {
   const [horizon, setHorizon] = useState(10);
-  const proyData = useMemo(() => buildProyeccion(horizon), [horizon]);
+  const totalCost = useMemo(() => properties.reduce((sum, property) => sum + property.coste, 0), [properties]);
+  const totalValue = useMemo(() => properties.reduce((sum, property) => sum + property.valor, 0), [properties]);
+  const totalCashflowMes = useMemo(() => properties.reduce((sum, property) => sum + property.cashflowMes, 0), [properties]);
+  const totalGastosMes = useMemo(() => properties.reduce((sum, property) => sum + property.gastosMes, 0), [properties]);
+  const totalDebt = useMemo(() => properties.reduce((sum, property) => sum + property.deudaPendiente, 0), [properties]);
+
+  const totalLatentGain = totalValue - totalCost;
+  const totalEquity = totalValue - totalDebt;
+  const weightedRevalRate = totalCost > 0
+    ? properties.reduce((sum, property) => sum + ((property.revalAnual / 100) * property.coste), 0) / totalCost
+    : 0;
+  const grossYield = totalCost > 0 ? (((totalCashflowMes + totalGastosMes) * 12) / totalCost) * 100 : 0;
+  const netAssetYield = totalCost > 0 ? ((totalCashflowMes * 12) / totalCost) * 100 : 0;
+  const netEquityYield = totalEquity > 0 ? ((totalCashflowMes * 12) / totalEquity) * 100 : 0;
+  const cashflowAcumulado = properties.reduce(
+    (sum, property) => sum + (property.cashflowMes * getElapsedMonthsFromPurchase(property.purchaseDate)),
+    0
+  );
+  const beneficioTotalVenta = cashflowAcumulado + totalLatentGain;
+  const multiploCapital = totalCost > 0 ? totalEquity / totalCost : 0;
+
+  const proyData = useMemo(
+    () => buildProyeccion(horizon, totalValue, totalEquity, weightedRevalRate),
+    [horizon, totalValue, totalEquity, weightedRevalRate]
+  );
 
   return (
     <div>
       {/* KPI row 1 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
-        <KpiCard label="Coste total" value="540.680 €" meta="Inversión acumulada desde 2005" accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
-        <KpiCard label="Valor actual" value="916.000 €" meta={<><Chip color={C.pos} bg={C.posBg}><TrendingUp size={10} /> +69,4%</Chip> sobre coste</>} accentColor={C.blue} icon={Building2} iconBg="rgba(4,44,94,.06)" />
-        <KpiCard label="Cashflow neto / mes" value="1.857,76 €" meta="Ingresos − gastos − hipotecas" accentColor={C.pos} icon={Wallet} iconBg={C.posBg} valueColor={C.pos} />
-        <KpiCard label="Plusvalía latente" value="375.320 €" meta="Si vendes hoy (antes de impuestos)" accentColor={C.teal} icon={ArrowUpRight} iconBg="rgba(29,160,186,.1)" />
+        <KpiCard label="Coste total" value={fmt(totalCost)} meta="Inversión acumulada en inmuebles activos" accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
+        <KpiCard
+          label="Valor actual"
+          value={fmt(totalValue)}
+          meta={<><Chip color={totalLatentGain >= 0 ? C.pos : C.neg} bg={totalLatentGain >= 0 ? C.posBg : C.negBg}><TrendingUp size={10} /> {`${totalCost > 0 ? ((totalLatentGain / totalCost) * 100).toFixed(1) : '0.0'}%`}</Chip> sobre coste</>}
+          accentColor={C.blue}
+          icon={Building2}
+          iconBg="rgba(4,44,94,.06)"
+        />
+        <KpiCard label="Cashflow neto / mes" value={fmt(totalCashflowMes)} meta="Ingresos − gastos − hipotecas" accentColor={C.pos} icon={Wallet} iconBg={C.posBg} valueColor={C.pos} />
+        <KpiCard label="Plusvalía latente" value={fmt(totalLatentGain)} meta="Si vendes hoy (antes de impuestos)" accentColor={C.teal} icon={ArrowUpRight} iconBg="rgba(29,160,186,.1)" />
       </div>
 
       {/* KPI row 2 */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 16 }}>
         {[
-          { label: 'Rentabilidad bruta', val: '10,48%', meta: '/ año · Ingresos anuales / Coste total' },
-          { label: 'Rentabilidad neta s/ activo', val: '4,12%', meta: '/ año · Cashflow neto anual / Coste total' },
-          { label: 'Rentabilidad neta s/ equity', val: '3,47%', meta: '/ año · Cashflow neto anual / Capital propio' },
+          { label: 'Rentabilidad bruta', val: `${grossYield.toFixed(2)}%`, meta: '/ año · Ingresos anuales / Coste total' },
+          { label: 'Rentabilidad neta s/ activo', val: `${netAssetYield.toFixed(2)}%`, meta: '/ año · Cashflow neto anual / Coste total' },
+          { label: 'Rentabilidad neta s/ equity', val: `${netEquityYield.toFixed(2)}%`, meta: '/ año · Cashflow neto anual / Capital propio' },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
@@ -506,7 +541,7 @@ function TabResumen() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <ChartCard
           title="Proyección de cartera"
-          sub={`Valor de mercado y equity · Tasa media 12,73%/año`}
+          sub={`Valor de mercado y equity · Tasa media ${(weightedRevalRate * 100).toFixed(2)}%/año`}
           right={
             <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3 }}>
               {[5, 10, 20].map(y => (
@@ -530,18 +565,18 @@ function TabResumen() {
 
         <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Resultado global y equity</div>
-          <ResultRow label="Cashflow neto acumulado" value="37.232,89 €" valueColor={C.pos} />
-          <ResultRow label="Beneficio total si vendes hoy" value="412.552,89 €" valueColor={C.pos} />
-          <ResultRow label="Múltiplo sobre capital" value="× 1,76" />
-          <ResultRow label="Rentabilidad anualizada" value="16,85%" valueColor={C.blue} />
-          <ResultRow label="Tasa media revalorización" value="12,73% / año" />
+          <ResultRow label="Cashflow neto acumulado" value={fmt(cashflowAcumulado)} valueColor={cashflowAcumulado >= 0 ? C.pos : C.neg} />
+          <ResultRow label="Beneficio total si vendes hoy" value={fmt(beneficioTotalVenta)} valueColor={beneficioTotalVenta >= 0 ? C.pos : C.neg} />
+          <ResultRow label="Múltiplo sobre capital" value={`× ${multiploCapital.toFixed(2)}`} />
+          <ResultRow label="Rentabilidad anualizada" value={`${(weightedRevalRate * 100).toFixed(2)}%`} valueColor={C.blue} />
+          <ResultRow label="Tasa media revalorización" value={`${(weightedRevalRate * 100).toFixed(2)}% / año`} />
           <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
-          <ResultRow label="Deuda pendiente" value="−273.921,30 €" valueColor={C.neg} />
+          <ResultRow label="Deuda pendiente" value={fmt(-totalDebt)} valueColor={C.neg} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Equity actual</span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.blue }}>642.078,70 €</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.blue }}>{fmt(totalEquity)}</span>
           </div>
-          <div style={{ fontSize: 11, color: C.n500, marginTop: 8 }}>Histórico agregado desde primera compra: 15/10/2005</div>
+          <div style={{ fontSize: 11, color: C.n500, marginTop: 8 }}>Métricas calculadas automáticamente con los inmuebles activos y sus últimas valoraciones.</div>
         </div>
       </div>
     </div>
@@ -1188,7 +1223,7 @@ export default function InmueblesAnalisis() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'resumen'    && <TabResumen />}
+        {activeTab === 'resumen'    && <TabResumen properties={properties} />}
         {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} onSellProperty={handleSellProperty} properties={properties} />}
         {activeTab === 'cartera' && soldProperties.length > 0 && (
           <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
