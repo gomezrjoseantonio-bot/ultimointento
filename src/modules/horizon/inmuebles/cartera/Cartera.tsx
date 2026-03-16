@@ -4,6 +4,7 @@ import {
   Plus,
   Search,
   Eye,
+  RotateCcw,
   Pencil,
   Trash2,
   ArrowUp,
@@ -422,6 +423,24 @@ const Cartera: React.FC = () => {
                           <div ref={actionMenuContainerRef} className="relative flex items-center gap-1">
                             <button onClick={() => navigate(`/inmuebles/cartera/${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver detalle"><Eye className="h-4 w-4" /></button>
                             <button onClick={() => navigate(`/inmuebles/gastos?propertyId=${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver gastos"><TrendingDown className="h-4 w-4" /></button>
+                            {property.state === 'activo' && (
+                              <button
+                                onClick={() => setSaleModalProperty(property)}
+                                className="p-1.5 text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                                title="Vender inmueble"
+                              >
+                                <CircleDollarSign className="h-4 w-4" />
+                              </button>
+                            )}
+                            {property.state === 'vendido' && (
+                              <button
+                                onClick={() => void handleRevertSale(property)}
+                                className="p-1.5 text-neutral-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                                title="Revertir venta"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </button>
+                            )}
                             <button onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Más opciones"><MoreHorizontal className="h-4 w-4" /></button>
                             {openMenuPropertyId === propId && (
                               <div className="absolute right-0 top-9 z-20 w-48 rounded-md border bg-white shadow-lg py-1">
