@@ -84,6 +84,25 @@ const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
   });
 };
 
+const resolveFallbackOutstandingPrincipal = (loan: any): number => {
+  const candidates = [
+    loan?.principalVivo,
+    loan?.capitalVivoAlImportar,
+    loan?.principalPendiente,
+    loan?.principalInicial,
+    loan?.importePrincipal,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate ?? 0);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return 0;
+};
+
 const calculateTotalAcquisitionCost = (property: Property): number => {
   const costs = property.acquisitionCosts;
   return costs.price +
@@ -610,6 +629,26 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   if (journal?.updatedLoans?.length) {
     for (const snapshot of journal.updatedLoans) {
       await tx.objectStore('prestamos').put(snapshot.previous as any);
+    }
+  } else {
+    const loanStore = tx.objectStore('prestamos');
+    const allLoans = await loanStore.getAll();
+    const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
+
+    for (const loan of linkedLoans) {
+      if (!loan?.id) continue;
+
+      const shouldReactivate = loan.activo === false || String(loan.estado ?? '').toLowerCase() === 'cancelado';
+      if (!shouldReactivate) continue;
+
+      const restoredPrincipal = resolveFallbackOutstandingPrincipal(loan);
+      await loanStore.put({
+        ...loan,
+        activo: true,
+        estado: 'vivo',
+        principalVivo: restoredPrincipal,
+        updatedAt: new Date().toISOString(),
+      });
     }
   }
 

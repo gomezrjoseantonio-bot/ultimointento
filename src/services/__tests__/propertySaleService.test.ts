@@ -154,6 +154,43 @@ describe('propertySaleService', () => {
     expect(eventsAfterCancel).toHaveLength(0);
   });
 
+  it('reactiva préstamos al anular una venta antigua sin executionJournal', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Legacy', state: 'vendido' })));
+
+    await db.add('prestamos', {
+      id: 'loan-legacy-1',
+      inmuebleId: String(propertyId),
+      activo: false,
+      principalVivo: 0,
+      capitalVivoAlImportar: 60500,
+      estado: 'cancelado',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    const saleId = Number(await db.add('property_sales', {
+      propertyId,
+      saleDate: '2026-02-12',
+      salePrice: 200000,
+      saleCosts: { agencyCommission: 0, municipalTax: 0, saleNotaryCosts: 0, otherCosts: 0 },
+      loanSettlement: { payoffAmount: 0, cancellationFee: 0, total: 0 },
+      grossProceeds: 200000,
+      netProceeds: 200000,
+      status: 'confirmed',
+      source: 'cartera',
+      notes: 'Venta antigua sin journal',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any));
+
+    await cancelPropertySale(saleId);
+
+    const restoredLoan = await db.get('prestamos', 'loan-legacy-1');
+    expect(restoredLoan?.activo).toBe(true);
+    expect(restoredLoan?.estado).toBe('vivo');
+    expect(restoredLoan?.principalVivo).toBe(60500);
+  });
+
   it('falla si no se informa cuenta de tesorería', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Sin Cuenta' })));
