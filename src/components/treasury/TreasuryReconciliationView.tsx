@@ -608,12 +608,11 @@ const TreasuryReconciliationView: React.FC = () => {
     return { totalEvents, doneEvents, pct, hoy, finMes };
   }, [accounts, accountBreakdown, currentMonthBalances, events]);
 
-  const totalFiltradoPunteado = useMemo(() => {
-    const seed = selectedBankFilter
-      ? (accounts.find(a => a.id === selectedBankFilter)?.balance ?? 0)
-      : accounts.reduce((s, a) => s + a.balance, 0);
-    return filteredEvents.filter(e => e.status === 'confirmado').reduce((s, e) => s + (e.type === 'income' ? e.amount : -e.amount), seed);
-  }, [accounts, filteredEvents, selectedBankFilter]);
+  const totalFiltradoPendiente = useMemo(() =>
+    filteredEvents
+      .filter(e => e.status !== 'confirmado')
+      .reduce((s, e) => s + (e.type === 'income' ? e.amount : -e.amount), 0),
+  [filteredEvents]);
 
   const eventListRows = useMemo<EventListRow[]>(() => {
     const rows: EventListRow[] = [];
@@ -1046,7 +1045,7 @@ const TreasuryReconciliationView: React.FC = () => {
                 {' / '}{filteredEvents.length} punteados
               </span>
               <span className="tv3-mov-stats">
-                Total: <strong>{formatAmount(totalFiltradoPunteado)} €</strong>
+                Pendiente: <strong>{formatAmount(totalFiltradoPendiente)} €</strong>
               </span>
               <button className="tv3-btn tv3-btn--ghost tv3-btn--sm" onClick={() => setShowAddModal(true)}>
                 <Plus size={14} /> Directo
