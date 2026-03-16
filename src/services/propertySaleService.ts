@@ -1,6 +1,7 @@
 import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
 import { PlanPagos } from '../types/prestamos';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
+import { getFiscalSummary } from './fiscalSummaryService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -106,6 +107,32 @@ const resolveFallbackOutstandingPrincipal = (loan: any): number => {
   }
 
   return 0;
+};
+
+const resolveProjectedOutstandingPrincipal = (
+  loan: any,
+  paymentPlan: PlanPagos | undefined,
+  saleDate: string
+): number => {
+  const saleTimestamp = new Date(saleDate).getTime();
+  if (Number.isNaN(saleTimestamp)) {
+    return resolveFallbackOutstandingPrincipal(loan);
+  }
+
+  const periodos = paymentPlan?.periodos ?? [];
+  const lastProjectedInstallment = periodos
+    .filter((periodo) => {
+      const installmentTimestamp = new Date(periodo.fechaCargo).getTime();
+      return Number.isFinite(installmentTimestamp) && installmentTimestamp <= saleTimestamp;
+    })
+    .sort((a, b) => new Date(a.fechaCargo).getTime() - new Date(b.fechaCargo).getTime())
+    .at(-1);
+
+  if (lastProjectedInstallment && Number.isFinite(lastProjectedInstallment.principalFinal)) {
+    return Math.max(0, Number(lastProjectedInstallment.principalFinal));
+  }
+
+  return resolveFallbackOutstandingPrincipal(loan);
 };
 
 const calculateTotalAcquisitionCost = (property: Property): number => {
@@ -244,9 +271,18 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const allLoans = await db.getAll('prestamos');
   const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
 
-  const suggestedOutstandingDebt = linkedLoans
-    .filter((loan: any) => loan.activo !== false)
-    .reduce((sum: number, loan: any) => sum + Number(loan.principalVivo || 0), 0);
+  const suggestedOutstandingDebtByLoan = await Promise.all(
+    linkedLoans
+      .filter((loan: any) => loan.activo !== false)
+      .map(async (loan: any) => {
+        if (!loan?.id) {
+          return resolveFallbackOutstandingPrincipal(loan);
+        }
+        const paymentPlan = await db.get('keyval', `planpagos_${loan.id}`) as PlanPagos | undefined;
+        return resolveProjectedOutstandingPrincipal(loan, paymentPlan, referenceDate);
+      })
+  );
+  const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
 
   const [allOpexRules, allIngresos, allGastos] = await Promise.all([
     db.getAll('opexRules').catch(() => []),
@@ -634,6 +670,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   await tx.done;
 
   await triggerTreasuryUpdate([input.settlementAccountId]);
+  await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);
 
   return {
     ...sale,
@@ -708,9 +745,27 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
+  if (typeof sale.id === 'number') {
+    const linkedSaleMovements = (await tx.objectStore('movements').getAll() as any[])
+      .filter((movement) => movement.reference === `property_sale:${sale.id}` && typeof movement.id === 'number');
+
+    for (const movement of linkedSaleMovements) {
+      await tx.objectStore('movements').delete(movement.id as number);
+    }
+  }
+
   if (journal?.treasuryEventIds?.length) {
     for (const eventId of journal.treasuryEventIds) {
       await tx.objectStore('treasuryEvents').delete(eventId);
+    }
+  }
+
+  if (typeof sale.id === 'number') {
+    const linkedTreasuryEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
+      .filter((event) => event.sourceId === sale.id && typeof event.id === 'number');
+
+    for (const event of linkedTreasuryEvents) {
+      await tx.objectStore('treasuryEvents').delete(event.id as number);
     }
   }
 
@@ -798,4 +853,12 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   }
 
   return revertedSale;
+};
+
+const ensureSaleTaxFiscalYearOpen = async (propertyId: number, saleDate: string): Promise<void> => {
+  const saleYear = new Date(saleDate).getFullYear();
+  if (!Number.isFinite(saleYear)) return;
+
+  const paymentFiscalYear = saleYear + 1;
+  await getFiscalSummary(propertyId, paymentFiscalYear);
 };
