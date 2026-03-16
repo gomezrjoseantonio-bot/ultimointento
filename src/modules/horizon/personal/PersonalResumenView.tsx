@@ -382,7 +382,6 @@ const monthPersonalIncome = (m: MonthlyProjectionRow): number =>
   m.ingresos.nomina
     + m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo
     + m.ingresos.pensiones
-    + m.ingresos.dividendosInversiones
     + m.ingresos.otrosIngresos;
 
 /** Personal expenses for a single month (property OPEX excluded; gastosAutonomo already netted in income). */
@@ -556,7 +555,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
         for (const m of proyeccion.months) {
           totals.nomina += m.ingresos.nomina;
           totals.pensiones += m.ingresos.pensiones;
-          totals.otros += m.ingresos.otrosIngresos + m.ingresos.dividendosInversiones;
+          totals.otros += m.ingresos.otrosIngresos;
         }
         return [
           { label: 'Nóminas', amount: totals.nomina },
