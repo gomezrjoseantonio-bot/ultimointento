@@ -531,9 +531,15 @@ export async function generateMonthlyForecasts(
 
     for (const prestamo of prestamos) {
       if (!prestamo.id) continue;
+      const legacyState = (prestamo as any).estado;
+      if (prestamo.activo === false || legacyState === 'cancelado') {
+        continue;
+      }
 
       const plan = await prestamosService.getPaymentPlan(prestamo.id);
-      const currentPeriodo = plan?.periodos.find(p => p.fechaCargo.startsWith(monthPrefix));
+      const currentPeriodo = plan?.periodos.find(
+        p => p.fechaCargo.startsWith(monthPrefix) && !p.pagado,
+      );
       const cuota = currentPeriodo?.cuota ?? 0;
       if (cuota <= 0) continue;
 

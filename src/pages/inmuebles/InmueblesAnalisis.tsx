@@ -46,6 +46,7 @@ import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
+import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../services/propertySaleService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -1023,6 +1024,8 @@ export default function InmueblesAnalisis() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
   const [activeProperties, setActiveProperties] = useState<Property[]>([]);
+  const [soldProperties, setSoldProperties] = useState<Property[]>([]);
+  const [latestSaleByPropertyId, setLatestSaleByPropertyId] = useState<Record<number, number>>({});
   const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
 
@@ -1067,7 +1070,24 @@ export default function InmueblesAnalisis() {
         });
 
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
+        const sold = dbProperties.filter((property) => property.state === 'vendido' && property.id != null);
         setActiveProperties(active);
+        setSoldProperties(sold);
+
+        const latestSales = await Promise.all(
+          sold.map(async (soldProperty) => {
+            const sale = await getLatestConfirmedSaleForProperty(soldProperty.id as number);
+            if (!sale?.id) return null;
+            return { propertyId: soldProperty.id as number, saleId: sale.id };
+          })
+        );
+        setLatestSaleByPropertyId(
+          latestSales.reduce<Record<number, number>>((acc, item) => {
+            if (!item) return acc;
+            acc[item.propertyId] = item.saleId;
+            return acc;
+          }, {})
+        );
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const snapshots = active.map((property) =>
           mapToSnapshot(
@@ -1123,6 +1143,23 @@ export default function InmueblesAnalisis() {
     }
   };
 
+  const handleRevertSale = async (propertyId: number) => {
+    const saleId = latestSaleByPropertyId[propertyId];
+    if (!saleId) {
+      window.alert('No se encontró una venta confirmada para este inmueble.');
+      return;
+    }
+    const confirmed = window.confirm('¿Seguro que quieres anular la venta y reactivar el inmueble?');
+    if (!confirmed) return;
+    try {
+      await cancelPropertySale(saleId);
+      setReloadCounter((current) => current + 1);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
+      window.alert(message);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       <div style={{ padding: 24 }}>
@@ -1153,6 +1190,28 @@ export default function InmueblesAnalisis() {
         {/* Tab content */}
         {activeTab === 'resumen'    && <TabResumen />}
         {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} onSellProperty={handleSellProperty} properties={properties} />}
+        {activeTab === 'cartera' && soldProperties.length > 0 && (
+          <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.n200}`, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>
+              Inmuebles vendidos
+            </div>
+            {soldProperties.map((property) => (
+              <div key={property.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${C.n100}` }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: C.n700 }}>{property.alias}</div>
+                  <div style={{ fontSize: 12, color: C.n500 }}>{property.address}</div>
+                </div>
+                <button
+                  onClick={() => handleRevertSale(property.id as number)}
+                  disabled={!latestSaleByPropertyId[property.id as number]}
+                  style={{ border: '1px solid #B91C1C', color: '#B91C1C', background: '#fff', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}
+                >
+                  Revertir venta
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {activeTab === 'evolucion'  && <TabEvolucion properties={properties} />}
         {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} />}
       </div>
