@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Property } from '../../../../services/db';
+import { Account, Property, initDB } from '../../../../services/db';
 import {
   confirmPropertySale,
   preparePropertySale,
@@ -36,11 +36,14 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
   const [autoTerminateContracts, setAutoTerminateContracts] = useState(false);
   const [activeContractsCount, setActiveContractsCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [settlementAccountId, setSettlementAccountId] = useState<number | ''>('');
 
   useEffect(() => {
     if (!open || !property?.id) return;
 
-    setSaleDate(initialDate ?? new Date().toISOString().slice(0, 10));
+    const defaultSaleDate = initialDate ?? new Date().toISOString().slice(0, 10);
+    setSaleDate(defaultSaleDate);
     setSalePrice(0);
     setAgencyCommission(0);
     setMunicipalTax(0);
@@ -51,13 +54,29 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
     setNotes('');
     setAutoTerminateContracts(false);
 
-    void preparePropertySale(property.id)
+    void initDB()
+      .then((db) => db.getAll('accounts'))
+      .then((allAccounts) => {
+        const activeAccounts = allAccounts.filter((account) => !account.deleted_at && account.isActive !== false);
+        setAccounts(activeAccounts);
+        setSettlementAccountId(activeAccounts[0]?.id ?? '');
+      })
+      .catch((error) => {
+        console.error(error);
+        toast.error('No se pudieron cargar las cuentas de tesorería');
+      });
+  }, [open, property?.id, initialDate]);
+
+  useEffect(() => {
+    if (!open || !property?.id || !saleDate) return;
+
+    void preparePropertySale(property.id, saleDate)
       .then((result) => setActiveContractsCount(result.activeContracts.length))
       .catch((error) => {
         console.error(error);
         toast.error('No se pudieron verificar los contratos activos');
       });
-  }, [open, property?.id, initialDate]);
+  }, [open, property?.id, saleDate]);
 
   const simulation = useMemo(
     () =>
@@ -90,6 +109,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
         loanPayoffAmount,
         loanCancellationFee,
         otherCosts,
+        settlementAccountId: settlementAccountId === '' ? undefined : settlementAccountId,
         notes,
         source,
         autoTerminateContracts,
@@ -118,6 +138,24 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
             <label className="text-sm text-neutral-700">
               Fecha de venta
               <input type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} className="mt-1 w-full rounded border border-neutral-300 px-3 py-2" />
+            </label>
+            <label className="text-sm text-neutral-700">
+              Cuenta de tesorería
+              <select
+                value={settlementAccountId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSettlementAccountId(value ? Number(value) : '');
+                }}
+                className="mt-1 w-full rounded border border-neutral-300 px-3 py-2"
+              >
+                <option value="">Seleccionar cuenta</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.alias || account.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="text-sm text-neutral-700">
               Precio de venta (€)
@@ -182,7 +220,7 @@ const PropertySaleModal: React.FC<PropertySaleModalProps> = ({
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading || !saleDate || salePrice <= 0 || (activeContractsCount > 0 && !autoTerminateContracts)}
+            disabled={loading || !saleDate || salePrice <= 0 || settlementAccountId === '' || (activeContractsCount > 0 && !autoTerminateContracts)}
             className="rounded bg-error-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             Confirmar venta
