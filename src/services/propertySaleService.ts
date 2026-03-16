@@ -23,14 +23,50 @@ export interface ConfirmPropertySaleInput extends SaleSimulationInput {
 export interface PrepareSaleResult {
   property: Property;
   activeContracts: Contract[];
+  automationPreview: {
+    linkedLoansCount: number;
+    suggestedOutstandingDebt: number;
+    activeOpexRulesCount: number;
+    futureIncomeCount: number;
+    futureExpenseCount: number;
+  };
 }
 
 interface SaleExecutionJournal {
   settlementAccountId?: number;
   movementIds: number[];
+  treasuryEventIds: number[];
   autoTerminatedContracts: Array<{ id: number; previous: Contract }>;
   updatedLoans: Array<{ id: string; previous: Record<string, unknown> }>;
+  deactivatedOpexRules: Array<{ id: number; previous: Record<string, unknown> }>;
+  updatedIngresos: Array<{ id: number; previous: Record<string, unknown> }>;
+  updatedGastos: Array<{ id: number; previous: Record<string, unknown> }>;
 }
+
+const calculateTotalAcquisitionCost = (property: Property): number => {
+  const costs = property.acquisitionCosts;
+  return costs.price +
+    (costs.itp || 0) +
+    (costs.iva || 0) +
+    (costs.notary || 0) +
+    (costs.registry || 0) +
+    (costs.management || 0) +
+    (costs.psi || 0) +
+    (costs.realEstate || 0) +
+    (costs.other?.reduce((sum, item) => sum + item.amount, 0) || 0);
+};
+
+const getSaleIrpfPredictionDate = (saleDate: string): string => {
+  const parsed = new Date(saleDate);
+  const fiscalYear = Number.isNaN(parsed.getTime()) ? new Date().getFullYear() : parsed.getFullYear();
+  return `${fiscalYear + 1}-06-30`;
+};
+
+const estimateSaleIrpf = (property: Property, salePrice: number): number => {
+  const gain = salePrice - calculateTotalAcquisitionCost(property);
+  if (gain <= 0) return 0;
+  return Number((gain * 0.19).toFixed(2));
+};
 
 const isActiveContract = (contract: Contract, referenceDateIso?: string): boolean => {
   const referenceDate = referenceDateIso ? new Date(referenceDateIso) : new Date();
@@ -133,13 +169,61 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   }
 
   const contracts = await db.getAll('contracts');
+  const referenceDate = saleDate ?? new Date().toISOString().slice(0, 10);
   const activeContracts = contracts.filter(
     (contract) =>
       (contract.inmuebleId === propertyId || contract.propertyId === propertyId) &&
-      isActiveContract(contract, saleDate)
+      isActiveContract(contract, referenceDate)
   );
 
-  return { property, activeContracts };
+  const allLoans = await db.getAll('prestamos');
+  const propertyIdAsString = String(propertyId);
+  const linkedLoans = allLoans.filter((loan: any) => {
+    if (!loan || typeof loan !== 'object') return false;
+    if (loan.inmuebleId && String(loan.inmuebleId) === propertyIdAsString) return true;
+    if (Array.isArray(loan.afectacionesInmueble)) {
+      return loan.afectacionesInmueble.some((item: any) => String(item?.inmuebleId) === propertyIdAsString);
+    }
+    return false;
+  });
+
+  const suggestedOutstandingDebt = linkedLoans
+    .filter((loan: any) => loan.activo !== false)
+    .reduce((sum: number, loan: any) => sum + Number(loan.principalVivo || 0), 0);
+
+  const [allOpexRules, allIngresos, allGastos] = await Promise.all([
+    db.getAll('opexRules').catch(() => []),
+    db.getAll('ingresos').catch(() => []),
+    db.getAll('gastos').catch(() => []),
+  ]);
+
+  const activeOpexRulesCount = allOpexRules.filter(
+    (rule: any) => rule.propertyId === propertyId && rule.activo !== false
+  ).length;
+  const futureIncomeCount = allIngresos.filter((ingreso: any) =>
+    ingreso.destino === 'inmueble_id' &&
+    ingreso.destino_id === propertyId &&
+    ingreso.estado === 'previsto' &&
+    ingreso.fecha_prevista_cobro >= referenceDate
+  ).length;
+  const futureExpenseCount = allGastos.filter((gasto: any) =>
+    gasto.destino === 'inmueble_id' &&
+    gasto.destino_id === propertyId &&
+    gasto.estado !== 'pagado' &&
+    gasto.fecha_pago_prevista >= referenceDate
+  ).length;
+
+  return {
+    property,
+    activeContracts,
+    automationPreview: {
+      linkedLoansCount: linkedLoans.length,
+      suggestedOutstandingDebt,
+      activeOpexRulesCount,
+      futureIncomeCount,
+      futureExpenseCount,
+    },
+  };
 };
 
 export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Promise<PropertySale> => {
@@ -152,7 +236,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos'], 'readwrite');
+  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents'], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -236,8 +320,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const executionJournal: SaleExecutionJournal = {
     settlementAccountId: input.settlementAccountId,
     movementIds: [],
+    treasuryEventIds: [],
     autoTerminatedContracts,
     updatedLoans: [],
+    deactivatedOpexRules: [],
+    updatedIngresos: [],
+    updatedGastos: [],
   };
 
   if (saleId && input.settlementAccountId !== undefined) {
@@ -312,6 +400,79 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
 
+  const opexStore = tx.objectStore('opexRules');
+  const allOpexRules = await opexStore.getAll();
+  for (const rule of allOpexRules as any[]) {
+    if (rule?.propertyId !== input.propertyId || rule.activo === false || typeof rule.id !== 'number') {
+      continue;
+    }
+    executionJournal.deactivatedOpexRules.push({ id: rule.id, previous: rule });
+    await opexStore.put({
+      ...rule,
+      activo: false,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  const ingresoStore = tx.objectStore('ingresos');
+  const allIngresos = await ingresoStore.getAll();
+  for (const ingreso of allIngresos as any[]) {
+    if (
+      ingreso?.destino !== 'inmueble_id' ||
+      ingreso?.destino_id !== input.propertyId ||
+      ingreso?.estado !== 'previsto' ||
+      ingreso?.fecha_prevista_cobro < input.saleDate ||
+      typeof ingreso.id !== 'number'
+    ) {
+      continue;
+    }
+    executionJournal.updatedIngresos.push({ id: ingreso.id, previous: ingreso });
+    await ingresoStore.put({
+      ...ingreso,
+      estado: 'incompleto',
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  const gastoStore = tx.objectStore('gastos');
+  const allGastos = await gastoStore.getAll();
+  for (const gasto of allGastos as any[]) {
+    if (
+      gasto?.destino !== 'inmueble_id' ||
+      gasto?.destino_id !== input.propertyId ||
+      gasto?.estado === 'pagado' ||
+      gasto?.fecha_pago_prevista < input.saleDate ||
+      typeof gasto.id !== 'number'
+    ) {
+      continue;
+    }
+    executionJournal.updatedGastos.push({ id: gasto.id, previous: gasto });
+    await gastoStore.put({
+      ...gasto,
+      estado: 'incompleto',
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  const estimatedIrpf = estimateSaleIrpf(property, input.salePrice);
+  if (estimatedIrpf > 0) {
+    const treasuryEventId = await tx.objectStore('treasuryEvents').add({
+      type: 'expense',
+      amount: estimatedIrpf,
+      predictedDate: getSaleIrpfPredictionDate(input.saleDate),
+      description: `IRPF estimado por venta inmueble #${input.propertyId}`,
+      sourceType: 'irpf_prevision',
+      sourceId: saleId,
+      accountId: input.settlementAccountId,
+      status: 'predicted',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    if (typeof treasuryEventId === 'number') {
+      executionJournal.treasuryEventIds.push(treasuryEventId);
+    }
+  }
+
   const updatedProperty: Property = {
     ...property,
     state: 'vendido',
@@ -366,7 +527,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -406,6 +567,12 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
+  if (journal?.treasuryEventIds?.length) {
+    for (const eventId of journal.treasuryEventIds) {
+      await tx.objectStore('treasuryEvents').delete(eventId);
+    }
+  }
+
   if (journal?.autoTerminatedContracts?.length) {
     for (const snapshot of journal.autoTerminatedContracts) {
       await tx.objectStore('contracts').put(snapshot.previous);
@@ -415,6 +582,24 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   if (journal?.updatedLoans?.length) {
     for (const snapshot of journal.updatedLoans) {
       await tx.objectStore('prestamos').put(snapshot.previous as any);
+    }
+  }
+
+  if (journal?.deactivatedOpexRules?.length) {
+    for (const snapshot of journal.deactivatedOpexRules) {
+      await tx.objectStore('opexRules').put(snapshot.previous as any);
+    }
+  }
+
+  if (journal?.updatedIngresos?.length) {
+    for (const snapshot of journal.updatedIngresos) {
+      await tx.objectStore('ingresos').put(snapshot.previous as any);
+    }
+  }
+
+  if (journal?.updatedGastos?.length) {
+    for (const snapshot of journal.updatedGastos) {
+      await tx.objectStore('gastos').put(snapshot.previous as any);
     }
   }
 
