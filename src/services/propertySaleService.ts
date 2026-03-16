@@ -1,4 +1,5 @@
 import { Contract, Property, initDB, PropertySale } from './db';
+import { triggerTreasuryUpdate } from './treasuryEventsService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -14,6 +15,7 @@ export interface ConfirmPropertySaleInput extends SaleSimulationInput {
   propertyId: number;
   saleDate: string;
   source: 'cartera' | 'detalle' | 'analisis';
+  settlementAccountId?: number;
   notes?: string;
   autoTerminateContracts?: boolean;
 }
@@ -23,16 +25,83 @@ export interface PrepareSaleResult {
   activeContracts: Contract[];
 }
 
-const isActiveContract = (contract: Contract): boolean => {
-  if (contract.estadoContrato === 'activo' || contract.status === 'active') return true;
+interface SaleExecutionJournal {
+  settlementAccountId?: number;
+  movementIds: number[];
+  autoTerminatedContracts: Array<{ id: number; previous: Contract }>;
+  updatedLoans: Array<{ id: string; previous: Record<string, unknown> }>;
+}
 
+const isActiveContract = (contract: Contract, referenceDateIso?: string): boolean => {
+  const referenceDate = referenceDateIso ? new Date(referenceDateIso) : new Date();
+  if (Number.isNaN(referenceDate.getTime())) return false;
+
+  const startDate = contract.fechaInicio || contract.startDate;
   const endDate = contract.fechaFin || contract.endDate;
-  if (!endDate) return false;
 
-  const end = new Date(endDate);
-  const now = new Date();
-  return !Number.isNaN(end.getTime()) && end >= now;
+  if (startDate) {
+    const parsedStart = new Date(startDate);
+    if (!Number.isNaN(parsedStart.getTime()) && parsedStart > referenceDate) {
+      return false;
+    }
+  }
+
+  if (endDate) {
+    const parsedEnd = new Date(endDate);
+    if (!Number.isNaN(parsedEnd.getTime()) && parsedEnd < referenceDate) {
+      return false;
+    }
+  }
+
+  if (contract.estadoContrato === 'rescindido' || contract.status === 'terminated') {
+    return false;
+  }
+
+  if (contract.estadoContrato === 'activo' || contract.status === 'active') {
+    return true;
+  }
+
+  return !endDate;
 };
+
+const createTreasuryMovement = ({
+  accountId,
+  amount,
+  date,
+  description,
+  propertyId,
+  saleId,
+}: {
+  accountId: number;
+  amount: number;
+  date: string;
+  description: string;
+  propertyId: number;
+  saleId: number;
+}) => ({
+  accountId,
+  date,
+  valueDate: date,
+  amount,
+  description,
+  counterparty: 'Venta inmueble',
+  reference: `property_sale:${saleId}`,
+  status: 'conciliado' as const,
+  unifiedStatus: 'conciliado' as const,
+  source: 'manual' as const,
+  category: {
+    tipo: amount >= 0 ? 'Venta inmueble' : 'Costes venta inmueble',
+  },
+  type: amount >= 0 ? 'Ingreso' as const : 'Gasto' as const,
+  origin: 'Manual' as const,
+  movementState: 'Conciliado' as const,
+  ambito: 'INMUEBLE' as const,
+  inmuebleId: String(propertyId),
+  statusConciliacion: 'match_manual' as const,
+  tags: ['property_sale'],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
 
 export const simulatePropertySale = (input: SaleSimulationInput) => {
   const salePrice = Number(input.salePrice || 0);
@@ -55,7 +124,7 @@ export const simulatePropertySale = (input: SaleSimulationInput) => {
   };
 };
 
-export const preparePropertySale = async (propertyId: number): Promise<PrepareSaleResult> => {
+export const preparePropertySale = async (propertyId: number, saleDate?: string): Promise<PrepareSaleResult> => {
   const db = await initDB();
   const property = await db.get('properties', propertyId);
 
@@ -65,7 +134,9 @@ export const preparePropertySale = async (propertyId: number): Promise<PrepareSa
 
   const contracts = await db.getAll('contracts');
   const activeContracts = contracts.filter(
-    (contract) => (contract.inmuebleId === propertyId || contract.propertyId === propertyId) && isActiveContract(contract)
+    (contract) =>
+      (contract.inmuebleId === propertyId || contract.propertyId === propertyId) &&
+      isActiveContract(contract, saleDate)
   );
 
   return { property, activeContracts };
@@ -81,7 +152,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales'], 'readwrite');
+  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos'], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -94,15 +165,29 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
 
   const allContracts = await tx.objectStore('contracts').getAll();
   const activeContracts = allContracts.filter(
-    (contract) => (contract.inmuebleId === input.propertyId || contract.propertyId === input.propertyId) && isActiveContract(contract)
+    (contract) =>
+      (contract.inmuebleId === input.propertyId || contract.propertyId === input.propertyId) &&
+      isActiveContract(contract, input.saleDate)
   );
+
+  if (input.settlementAccountId !== undefined) {
+    const settlementAccount = await tx.objectStore('accounts').get(input.settlementAccountId);
+    if (!settlementAccount || settlementAccount.deleted_at || settlementAccount.isActive === false) {
+      throw new Error('Selecciona una cuenta de tesorería válida para registrar la venta');
+    }
+  }
 
   if (activeContracts.length > 0 && !input.autoTerminateContracts) {
     throw new Error('Existen contratos activos. Ciérralos antes de vender o activa el cierre automático.');
   }
 
+  const autoTerminatedContracts: SaleExecutionJournal['autoTerminatedContracts'] = [];
   if (activeContracts.length > 0 && input.autoTerminateContracts) {
     for (const contract of activeContracts) {
+      if (typeof contract.id !== 'number') {
+        continue;
+      }
+      autoTerminatedContracts.push({ id: contract.id, previous: contract });
       await tx.objectStore('contracts').put({
         ...contract,
         fechaFin: input.saleDate,
@@ -148,6 +233,85 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const rawSaleId = await tx.objectStore('property_sales').add(sale);
   const saleId = typeof rawSaleId === 'number' ? rawSaleId : undefined;
 
+  const executionJournal: SaleExecutionJournal = {
+    settlementAccountId: input.settlementAccountId,
+    movementIds: [],
+    autoTerminatedContracts,
+    updatedLoans: [],
+  };
+
+  if (saleId && input.settlementAccountId !== undefined) {
+    const saleCostsTotal = simulation.totalSaleCosts;
+    const loanSettlementTotal = simulation.totalLoanSettlement;
+    const movementStore = tx.objectStore('movements');
+
+    const movementsToCreate = [
+      createTreasuryMovement({
+        accountId: input.settlementAccountId,
+        amount: simulation.grossProceeds,
+        date: input.saleDate,
+        description: `Cobro venta inmueble #${input.propertyId}`,
+        propertyId: input.propertyId,
+        saleId,
+      }),
+      ...(saleCostsTotal > 0
+        ? [
+            createTreasuryMovement({
+              accountId: input.settlementAccountId,
+              amount: -saleCostsTotal,
+              date: input.saleDate,
+              description: `Costes venta inmueble #${input.propertyId}`,
+              propertyId: input.propertyId,
+              saleId,
+            }),
+          ]
+        : []),
+      ...(loanSettlementTotal > 0
+        ? [
+            createTreasuryMovement({
+              accountId: input.settlementAccountId,
+              amount: -loanSettlementTotal,
+              date: input.saleDate,
+              description: `Cancelación deuda inmueble #${input.propertyId}`,
+              propertyId: input.propertyId,
+              saleId,
+            }),
+          ]
+        : []),
+    ];
+
+    for (const movement of movementsToCreate) {
+      const createdId = await movementStore.add(movement);
+      if (typeof createdId === 'number') {
+        executionJournal.movementIds.push(createdId);
+      }
+    }
+  }
+
+  const loanStore = tx.objectStore('prestamos');
+  const allLoans = await loanStore.getAll();
+  const propertyIdAsString = String(input.propertyId);
+  const linkedLoans = allLoans.filter((loan: any) => {
+    if (!loan || typeof loan !== 'object') return false;
+    if (loan.inmuebleId && String(loan.inmuebleId) === propertyIdAsString) return true;
+    if (Array.isArray(loan.afectacionesInmueble)) {
+      return loan.afectacionesInmueble.some((item: any) => String(item?.inmuebleId) === propertyIdAsString);
+    }
+    return false;
+  });
+
+  for (const loan of linkedLoans) {
+    if (!loan?.id) continue;
+    executionJournal.updatedLoans.push({ id: loan.id, previous: loan });
+    await loanStore.put({
+      ...loan,
+      activo: false,
+      principalVivo: input.loanPayoffAmount && input.loanPayoffAmount > 0 ? 0 : loan.principalVivo,
+      fechaUltimaCuotaPagada: input.saleDate,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   const updatedProperty: Property = {
     ...property,
     state: 'vendido',
@@ -155,7 +319,19 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   };
 
   await tx.objectStore('properties').put(updatedProperty);
+  if (saleId) {
+    await tx.objectStore('property_sales').put({
+      ...sale,
+      id: saleId,
+      notes: [sale.notes, `executionJournal:${JSON.stringify(executionJournal)}`].filter(Boolean).join(' | '),
+      updatedAt: new Date().toISOString(),
+    });
+  }
   await tx.done;
+
+  if (input.settlementAccountId !== undefined) {
+    await triggerTreasuryUpdate([input.settlementAccountId]);
+  }
 
   return {
     ...sale,
@@ -190,7 +366,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -209,6 +385,39 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     throw new Error('Inmueble no encontrado');
   }
 
+  const extractJournalFromNotes = (): SaleExecutionJournal | null => {
+    if (!sale.notes) return null;
+    const marker = 'executionJournal:';
+    const markerIndex = sale.notes.lastIndexOf(marker);
+    if (markerIndex === -1) return null;
+    const payload = sale.notes.slice(markerIndex + marker.length).trim();
+    try {
+      return JSON.parse(payload) as SaleExecutionJournal;
+    } catch {
+      return null;
+    }
+  };
+
+  const journal = extractJournalFromNotes();
+
+  if (journal?.movementIds?.length) {
+    for (const movementId of journal.movementIds) {
+      await tx.objectStore('movements').delete(movementId);
+    }
+  }
+
+  if (journal?.autoTerminatedContracts?.length) {
+    for (const snapshot of journal.autoTerminatedContracts) {
+      await tx.objectStore('contracts').put(snapshot.previous);
+    }
+  }
+
+  if (journal?.updatedLoans?.length) {
+    for (const snapshot of journal.updatedLoans) {
+      await tx.objectStore('prestamos').put(snapshot.previous as any);
+    }
+  }
+
   const now = new Date().toISOString();
   const revertedSale: PropertySale = {
     ...sale,
@@ -225,6 +434,10 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   });
 
   await tx.done;
+
+  if (journal?.settlementAccountId !== undefined) {
+    await triggerTreasuryUpdate([journal.settlementAccountId]);
+  }
 
   return revertedSale;
 };
