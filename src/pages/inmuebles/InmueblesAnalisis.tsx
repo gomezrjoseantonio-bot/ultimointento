@@ -18,6 +18,7 @@ import {
   Shield,
   AlertTriangle,
   CircleCheck,
+  CircleDollarSign,
   Eye,
   Pencil,
   SlidersHorizontal,
@@ -44,6 +45,7 @@ import {
 import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
+import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -549,9 +551,11 @@ function TabResumen() {
 
 function TabCartera({
   onSelectProperty,
+  onSellProperty,
   properties,
 }: {
   onSelectProperty: (id: string) => void;
+  onSellProperty: (id: string) => void;
   properties: PropertySnapshot[];
 }) {
   const navigate = useNavigate();
@@ -728,6 +732,7 @@ function TabCartera({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle"><Eye size={15} /></button>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/gastos?propertyId=${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Pack gastos alquileres"><TrendingDown size={15} /></button>
+                    <button onClick={e => { e.stopPropagation(); onSellProperty(p.id); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Vender inmueble"><CircleDollarSign size={15} /></button>
                     <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}/editar`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Editar inmueble"><Pencil size={15} /></button>
                   </div>
                 </td>
@@ -1017,6 +1022,9 @@ export default function InmueblesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
+  const [activeProperties, setActiveProperties] = useState<Property[]>([]);
+  const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
+  const [reloadCounter, setReloadCounter] = useState(0);
 
   useEffect(() => {
     const requestedTab = currentTabParam;
@@ -1059,6 +1067,7 @@ export default function InmueblesAnalisis() {
         });
 
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
+        setActiveProperties(active);
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const snapshots = active.map((property) =>
           mapToSnapshot(
@@ -1084,7 +1093,7 @@ export default function InmueblesAnalisis() {
     return () => {
       mounted = false;
     };
-  }, [selectedPropertyId, refreshFlag]);
+  }, [selectedPropertyId, refreshFlag, reloadCounter]);
 
   const handleTabChange = (tabId: Tab) => {
     setActiveTab(tabId);
@@ -1105,6 +1114,13 @@ export default function InmueblesAnalisis() {
   const handleSelectProperty = (id: string) => {
     setSelectedPropertyId(id);
     setActiveTab('individual');
+  };
+
+  const handleSellProperty = (id: string) => {
+    const property = activeProperties.find((item) => String(item.id) === id);
+    if (property) {
+      setSaleModalProperty(property);
+    }
   };
 
   return (
@@ -1136,10 +1152,20 @@ export default function InmueblesAnalisis() {
 
         {/* Tab content */}
         {activeTab === 'resumen'    && <TabResumen />}
-        {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} properties={properties} />}
+        {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} onSellProperty={handleSellProperty} properties={properties} />}
         {activeTab === 'evolucion'  && <TabEvolucion properties={properties} />}
         {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} />}
       </div>
+
+      <PropertySaleModal
+        open={Boolean(saleModalProperty)}
+        property={saleModalProperty}
+        source="analisis"
+        onClose={() => setSaleModalProperty(null)}
+        onConfirmed={() => {
+          setReloadCounter((current) => current + 1);
+        }}
+      />
     </div>
   );
 }
