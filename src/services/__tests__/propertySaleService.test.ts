@@ -101,4 +101,68 @@ describe('propertySaleService', () => {
     const revertedSale = await db.get('property_sales', latestSale!.id!);
     expect(revertedSale?.status).toBe('reverted');
   });
+
+  it('genera movimientos y revierte completamente los efectos al anular', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Completo' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES1000491500051234567892' })));
+
+    await db.add('prestamos', {
+      id: 'loan-revert-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 72500,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-10',
+      salePrice: 210000,
+      agencyCommission: 5000,
+      municipalTax: 1800,
+      loanPayoffAmount: 72500,
+      loanCancellationFee: 250,
+      settlementAccountId: accountId,
+      source: 'detalle',
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+
+    const movementsAfterSale = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
+    expect(movementsAfterSale).toHaveLength(3);
+
+    const eventAfterSale = (await db.getAll('treasuryEvents')).find((e: any) => e.sourceId === sale!.id);
+    expect(eventAfterSale).toBeTruthy();
+
+    const loanAfterSale = await db.get('prestamos', 'loan-revert-1');
+    expect(loanAfterSale?.activo).toBe(false);
+    expect(loanAfterSale?.principalVivo).toBe(0);
+
+    await cancelPropertySale(sale!.id!);
+
+    const loanAfterCancel = await db.get('prestamos', 'loan-revert-1');
+    expect(loanAfterCancel?.activo).toBe(true);
+    expect(loanAfterCancel?.principalVivo).toBe(72500);
+
+    const movementsAfterCancel = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
+    expect(movementsAfterCancel).toHaveLength(0);
+
+    const eventsAfterCancel = (await db.getAll('treasuryEvents')).filter((e: any) => e.sourceId === sale!.id);
+    expect(eventsAfterCancel).toHaveLength(0);
+  });
+
+  it('falla si no se informa cuenta de tesorería', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Sin Cuenta' })));
+
+    await expect(confirmPropertySale({
+      propertyId,
+      saleDate: '2026-02-10',
+      salePrice: 180000,
+      source: 'cartera',
+    })).rejects.toThrow('Selecciona una cuenta de tesorería para registrar la venta');
+  });
 });

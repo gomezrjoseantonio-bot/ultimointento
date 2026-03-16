@@ -298,6 +298,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     throw new Error('Existen contratos activos. Ciérralos antes de vender o activa el cierre automático.');
   }
 
+  if (input.settlementAccountId === undefined) {
+    throw new Error('Selecciona una cuenta de tesorería para registrar la venta');
+  }
+
   const autoTerminatedContracts: SaleExecutionJournal['autoTerminatedContracts'] = [];
   if (activeContracts.length > 0 && input.autoTerminateContracts) {
     for (const contract of activeContracts) {
@@ -361,7 +365,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     updatedGastos: [],
   };
 
-  if (saleId && input.settlementAccountId !== undefined) {
+  if (saleId) {
     const saleCostsTotal = simulation.totalSaleCosts;
     const loanSettlementTotal = simulation.totalLoanSettlement;
     const movementStore = tx.objectStore('movements');
@@ -516,9 +520,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
   await tx.done;
 
-  if (input.settlementAccountId !== undefined) {
-    await triggerTreasuryUpdate([input.settlementAccountId]);
-  }
+  await triggerTreasuryUpdate([input.settlementAccountId]);
 
   return {
     ...sale,
