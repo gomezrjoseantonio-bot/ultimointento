@@ -43,6 +43,7 @@ describe('propertySaleService', () => {
       db.clear('ingresos'),
       db.clear('gastos'),
       db.clear('treasuryEvents'),
+      db.clear('fiscalSummaries'),
     ]);
   });
 
@@ -246,6 +247,73 @@ describe('propertySaleService', () => {
     expect(restoredLoan?.activo).toBe(true);
     expect(restoredLoan?.estado).toBe('vivo');
     expect(restoredLoan?.principalVivo).toBe(60500);
+  });
+
+
+
+  it('calcula deuda sugerida con capital proyectado según fecha de venta', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Proyección' })));
+
+    await db.add('prestamos', {
+      id: 'loan-projected-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 100000,
+      capitalVivoAlImportar: 100000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    await db.put('keyval', {
+      prestamoId: 'loan-projected-1',
+      fechaGeneracion: new Date().toISOString(),
+      periodos: [
+        {
+          periodo: 1,
+          fechaCargo: '2026-01-15',
+          cuota: 1000,
+          interes: 200,
+          amortizacion: 800,
+          principalFinal: 92000,
+          devengoDesde: '2025-12-16',
+          devengoHasta: '2026-01-15',
+          pagado: false,
+        },
+        {
+          periodo: 2,
+          fechaCargo: '2026-02-15',
+          cuota: 1000,
+          interes: 180,
+          amortizacion: 820,
+          principalFinal: 84000,
+          devengoDesde: '2026-01-16',
+          devengoHasta: '2026-02-15',
+          pagado: false,
+        },
+      ],
+      resumen: { totalIntereses: 380, totalCuotas: 2, fechaFinalizacion: '2026-02-15' },
+    }, 'planpagos_loan-projected-1');
+
+    const salePreview = await preparePropertySale(propertyId, '2026-02-20');
+    expect(salePreview.automationPreview.suggestedOutstandingDebt).toBe(84000);
+  });
+
+  it('abre fiscalidad del año siguiente al confirmar una venta', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Fiscal' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES2212341234123412341234' })));
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-16',
+      salePrice: 200000,
+      settlementAccountId: accountId,
+      source: 'cartera',
+    });
+
+    const summaries2027 = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, 2027]);
+    expect(summaries2027).toHaveLength(1);
   });
 
   it('falla si no se informa cuenta de tesorería', async () => {
