@@ -4,6 +4,7 @@ import {
   Plus,
   Search,
   Eye,
+  RotateCcw,
   Pencil,
   Trash2,
   ArrowUp,
@@ -26,7 +27,8 @@ import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
 import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
-import { confirmDelete } from '../../../../services/confirmationService';
+import { confirmAction, confirmDelete } from '../../../../services/confirmationService';
+import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../../../services/propertySaleService';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
 
 const calculateTotalCost = (property: Property): number => {
@@ -98,6 +100,7 @@ const Cartera: React.FC = () => {
   const actionMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
+  const [latestSaleByPropertyId, setLatestSaleByPropertyId] = useState<Record<number, number | null>>({});
 
   useEffect(() => {
     void loadData();
@@ -174,6 +177,17 @@ const Cartera: React.FC = () => {
       setProperties(allProperties);
       const allValuations = await db.getAll('valoraciones_historicas');
       setValuations(allValuations as ValoracionHistorica[]);
+
+      const latestSalesEntries = await Promise.all(
+        allProperties
+          .filter((property) => typeof property.id === 'number')
+          .map(async (property) => {
+            const latestSale = await getLatestConfirmedSaleForProperty(property.id!);
+            return [property.id!, latestSale?.id ?? null] as const;
+          })
+      );
+      setLatestSaleByPropertyId(Object.fromEntries(latestSalesEntries));
+
       try {
         const allContracts = await getAllContracts();
         setContracts(allContracts);
@@ -229,6 +243,29 @@ const Cartera: React.FC = () => {
   const handleRowAction = (action: () => void) => {
     setOpenMenuPropertyId(null);
     action();
+  };
+
+  const handleRevertSale = async (property: Property) => {
+    if (!property.id) return;
+    const latestSaleId = latestSaleByPropertyId[property.id];
+
+    if (!latestSaleId) {
+      toast.error('No se encontró una venta confirmada para revertir');
+      return;
+    }
+
+    const confirmed = await confirmAction('revertir la venta', `Se restaurará el inmueble "${property.alias}" y sus movimientos asociados.`);
+    if (!confirmed) return;
+
+    try {
+      await cancelPropertySale(latestSaleId);
+      toast.success('Venta revertida correctamente');
+      void loadData();
+    } catch (error) {
+      console.error('Error reverting sale:', error);
+      const message = error instanceof Error ? error.message : 'No se pudo revertir la venta';
+      toast.error(message);
+    }
   };
 
   useEffect(() => {
@@ -386,6 +423,24 @@ const Cartera: React.FC = () => {
                           <div ref={actionMenuContainerRef} className="relative flex items-center gap-1">
                             <button onClick={() => navigate(`/inmuebles/cartera/${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver detalle"><Eye className="h-4 w-4" /></button>
                             <button onClick={() => navigate(`/inmuebles/gastos?propertyId=${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver gastos"><TrendingDown className="h-4 w-4" /></button>
+                            {property.state === 'activo' && (
+                              <button
+                                onClick={() => setSaleModalProperty(property)}
+                                className="p-1.5 text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                                title="Vender inmueble"
+                              >
+                                <CircleDollarSign className="h-4 w-4" />
+                              </button>
+                            )}
+                            {property.state === 'vendido' && (
+                              <button
+                                onClick={() => void handleRevertSale(property)}
+                                className="p-1.5 text-neutral-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                                title="Revertir venta"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                              </button>
+                            )}
                             <button onClick={() => setOpenMenuPropertyId(openMenuPropertyId === propId ? null : propId)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Más opciones"><MoreHorizontal className="h-4 w-4" /></button>
                             {openMenuPropertyId === propId && (
                               <div className="absolute right-0 top-9 z-20 w-48 rounded-md border bg-white shadow-lg py-1">
@@ -395,6 +450,9 @@ const Cartera: React.FC = () => {
                                 <button onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}?tab=fiscal`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><FileText className="h-4 w-4" /> Fiscal</button>
                                 {property.state === 'activo' && (
                                   <button onClick={() => handleRowAction(() => setSaleModalProperty(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Vender inmueble</button>
+                                )}
+                                {property.state === 'vendido' && (
+                                  <button onClick={() => handleRowAction(() => void handleRevertSale(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Revertir venta</button>
                                 )}
                                 <div className="my-1 border-t border-[var(--n-200)]" />
                                 <button onClick={() => handleRowAction(() => handleDelete(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--s-neg)] hover:bg-[var(--s-neg-bg)] inline-flex items-center gap-2"><Trash2 className="h-4 w-4" /> Eliminar</button>
