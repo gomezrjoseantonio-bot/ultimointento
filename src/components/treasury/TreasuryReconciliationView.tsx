@@ -27,6 +27,7 @@ import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/servic
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
 import { dashboardService } from '../../services/dashboardService';
+import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -347,6 +348,10 @@ const TreasuryReconciliationView: React.FC = () => {
             actualDate: newStatus === 'confirmado' ? new Date().toISOString().substring(0, 10) : undefined,
             updatedAt: new Date().toISOString(),
           });
+
+          if (newStatus === 'confirmado') {
+            await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
+          }
         }
       }
       const isLoanEvent = ev.sourceType === 'hipoteca' || ev.sourceType === 'prestamo';
@@ -400,6 +405,8 @@ const TreasuryReconciliationView: React.FC = () => {
             actualAmount: newAmount, actualDate: new Date().toISOString().substring(0, 10),
             updatedAt: new Date().toISOString(),
           });
+
+          await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
         }
       }
       toast.success(`Previsión ajustada a ${newAmount} €`);

@@ -906,6 +906,14 @@ export const finalizePropertySaleLoanCancellation = async (movementId: number): 
   const saleId = Number(String(movement.reference).replace('property_sale:', ''));
   if (!Number.isFinite(saleId)) return false;
 
+  return finalizePropertySaleLoanCancellationBySaleId(saleId);
+};
+
+const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Promise<boolean> => {
+  if (!Number.isFinite(saleId)) return false;
+
+  const db = await initDB();
+
   const sale = await db.get('property_sales', saleId);
   if (!sale || sale.status !== 'confirmed') return false;
   if (String(sale.notes || '').includes(LOAN_CANCELLATION_FINALIZED_MARKER)) return false;
@@ -973,6 +981,24 @@ export const finalizePropertySaleLoanCancellation = async (movementId: number): 
 
   await tx.done;
   return true;
+};
+
+export const finalizePropertySaleLoanCancellationFromTreasuryEvent = async (treasuryEventId: number): Promise<boolean> => {
+  if (!Number.isFinite(treasuryEventId)) return false;
+
+  const db = await initDB();
+  const treasuryEvent = await db.get('treasuryEvents', treasuryEventId) as TreasuryEvent | undefined;
+  if (!treasuryEvent) return false;
+
+  const isSaleLoanCancellationEvent =
+    treasuryEvent.type === 'financing' &&
+    treasuryEvent.sourceType === 'manual' &&
+    typeof treasuryEvent.sourceId === 'number' &&
+    String(treasuryEvent.description || '').includes('Cancelación deuda inmueble');
+
+  if (!isSaleLoanCancellationEvent) return false;
+
+  return finalizePropertySaleLoanCancellationBySaleId(treasuryEvent.sourceId as number);
 };
 
 const ensureSaleTaxFiscalYearOpen = async (propertyId: number, saleDate: string): Promise<void> => {

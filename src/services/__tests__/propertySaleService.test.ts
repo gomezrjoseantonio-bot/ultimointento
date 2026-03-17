@@ -1,5 +1,11 @@
 import { initDB } from '../db';
-import { cancelPropertySale, confirmPropertySale, getLatestConfirmedSaleForProperty, preparePropertySale } from '../propertySaleService';
+import {
+  cancelPropertySale,
+  confirmPropertySale,
+  finalizePropertySaleLoanCancellationFromTreasuryEvent,
+  getLatestConfirmedSaleForProperty,
+  preparePropertySale,
+} from '../propertySaleService';
 
 const createProperty = (overrides: Record<string, any> = {}) => ({
   alias: 'Piso Centro',
@@ -306,6 +312,46 @@ describe('propertySaleService', () => {
 
     const removedForecastAfterPunteo = await db.get('treasuryEvents', loanForecastEventId);
     expect(removedForecastAfterPunteo).toBeUndefined();
+  });
+
+  it('finaliza cancelación al confirmar evento de tesorería de cancelación aunque el importe difiera del cuadro', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Diferencia Importe' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES9900491500051234567892' })));
+
+    await db.add('prestamos', {
+      id: 'loan-diff-amount-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 64005.37,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-17',
+      salePrice: 210000,
+      settlementAccountId: accountId,
+      source: 'detalle',
+      loanPayoffAmount: 63892.83,
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+
+    const cancellationEvent = (await db.getAll('treasuryEvents')).find((e: any) =>
+      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda inmueble')
+    );
+    expect(cancellationEvent).toBeTruthy();
+
+    const finalized = await finalizePropertySaleLoanCancellationFromTreasuryEvent(cancellationEvent!.id);
+    expect(finalized).toBe(true);
+
+    const loanAfter = await db.get('prestamos', 'loan-diff-amount-1');
+    expect(loanAfter?.activo).toBe(false);
+    expect(loanAfter?.estado).toBe('cancelado');
+    expect(loanAfter?.principalVivo).toBe(0);
   });
 
   it('reactiva préstamos al anular una venta antigua sin executionJournal', async () => {
