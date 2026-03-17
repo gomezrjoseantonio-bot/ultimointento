@@ -2,6 +2,7 @@ import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
 import { PlanPagos } from '../types/prestamos';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
+import { prestamosCalculationService } from './prestamosCalculationService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -46,6 +47,8 @@ interface SaleExecutionJournal {
   updatedPaymentPlans: Array<{ key: string; previous: PlanPagos }>;
   deletedLoanForecastEvents: Array<{ id: number; previous: TreasuryEvent }>;
 }
+
+const LOAN_CANCELLATION_FINALIZED_MARKER = 'loanCancellationFinalized:true';
 
 const normalizeToken = (value: unknown): string =>
   String(value ?? '')
@@ -133,6 +136,59 @@ const resolveProjectedOutstandingPrincipal = (
   }
 
   return resolveFallbackOutstandingPrincipal(loan);
+};
+
+const diffDaysBetweenIsoDates = (fromIso: string, toIso: string): number => {
+  const from = new Date(fromIso);
+  const to = new Date(toIso);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return 0;
+  const diffMs = to.getTime() - from.getTime();
+  if (diffMs <= 0) return 0;
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+};
+
+const resolveAccruedInterestUntilDate = (
+  loan: any,
+  paymentPlan: PlanPagos | undefined,
+  saleDate: string,
+  outstandingPrincipal: number
+): number => {
+  if (outstandingPrincipal <= 0) return 0;
+
+  const annualRate = prestamosCalculationService.calculateBaseRate(loan);
+  if (!Number.isFinite(annualRate) || annualRate <= 0) return 0;
+
+  const sortedPeriods = [...(paymentPlan?.periodos ?? [])]
+    .filter((periodo) => periodo?.fechaCargo)
+    .sort((a, b) => new Date(a.fechaCargo).getTime() - new Date(b.fechaCargo).getTime());
+
+  const lastInstallment = sortedPeriods
+    .filter((periodo) => new Date(periodo.fechaCargo).getTime() <= new Date(saleDate).getTime())
+    .at(-1);
+
+  const accrualStartDate =
+    lastInstallment?.fechaCargo ??
+    loan?.fechaUltimaCuotaPagada ??
+    loan?.fechaPrimerCargo ??
+    loan?.fechaFirma;
+
+  if (!accrualStartDate) return 0;
+
+  const daysAccrued = diffDaysBetweenIsoDates(accrualStartDate, saleDate);
+  if (daysAccrued <= 0) return 0;
+
+  const accruedInterest = outstandingPrincipal * (annualRate / 100) * (daysAccrued / 365);
+  return Number(accruedInterest.toFixed(2));
+};
+
+const resolveProjectedLoanPayoffAmount = (
+  loan: any,
+  paymentPlan: PlanPagos | undefined,
+  saleDate: string
+): number => {
+  const outstandingPrincipal = resolveProjectedOutstandingPrincipal(loan, paymentPlan, saleDate);
+  const accruedInterest = resolveAccruedInterestUntilDate(loan, paymentPlan, saleDate, outstandingPrincipal);
+  return Number((outstandingPrincipal + accruedInterest).toFixed(2));
 };
 
 const calculateTotalAcquisitionCost = (property: Property): number => {
@@ -279,7 +335,7 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
           return resolveFallbackOutstandingPrincipal(loan);
         }
         const paymentPlan = await db.get('keyval', `planpagos_${loan.id}`) as PlanPagos | undefined;
-        return resolveProjectedOutstandingPrincipal(loan, paymentPlan, referenceDate);
+        return resolveProjectedLoanPayoffAmount(loan, paymentPlan, referenceDate);
       })
   );
   const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
@@ -362,6 +418,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     throw new Error('Selecciona una cuenta de tesorería para registrar la venta');
   }
 
+  const settlementAccountId: number = input.settlementAccountId;
+
   const autoTerminatedContracts: SaleExecutionJournal['autoTerminatedContracts'] = [];
   if (activeContracts.length > 0 && input.autoTerminateContracts) {
     for (const contract of activeContracts) {
@@ -385,6 +443,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const simulation = simulatePropertySale(input);
+  const saleExpenseBreakdown = [
+    { amount: Number(input.agencyCommission || 0), description: `Comisión agencia venta inmueble #${input.propertyId}` },
+    { amount: Number(input.municipalTax || 0), description: `Plusvalía municipal venta inmueble #${input.propertyId}` },
+    { amount: Number(input.saleNotaryCosts || 0), description: `Notaría venta inmueble #${input.propertyId}` },
+    { amount: Number(input.otherCosts || 0), description: `Otros costes venta inmueble #${input.propertyId}` },
+  ].filter((item) => item.amount > 0);
   const now = new Date().toISOString();
 
   const sale: Omit<PropertySale, 'id'> = {
@@ -415,7 +479,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const saleId = typeof rawSaleId === 'number' ? rawSaleId : undefined;
 
   const executionJournal: SaleExecutionJournal = {
-    settlementAccountId: input.settlementAccountId,
+    settlementAccountId,
     movementIds: [],
     treasuryEventIds: [],
     autoTerminatedContracts,
@@ -428,35 +492,32 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   };
 
   if (saleId) {
-    const saleCostsTotal = simulation.totalSaleCosts;
     const loanSettlementTotal = simulation.totalLoanSettlement;
     const movementStore = tx.objectStore('movements');
 
     const movementsToCreate = [
       createTreasuryMovement({
-        accountId: input.settlementAccountId,
+        accountId: settlementAccountId,
         amount: simulation.grossProceeds,
         date: input.saleDate,
         description: `Cobro venta inmueble #${input.propertyId}`,
         propertyId: input.propertyId,
         saleId,
       }),
-      ...(saleCostsTotal > 0
-        ? [
-            createTreasuryMovement({
-              accountId: input.settlementAccountId,
-              amount: -saleCostsTotal,
-              date: input.saleDate,
-              description: `Costes venta inmueble #${input.propertyId}`,
-              propertyId: input.propertyId,
-              saleId,
-            }),
-          ]
-        : []),
+      ...saleExpenseBreakdown.map((expense) =>
+        createTreasuryMovement({
+          accountId: settlementAccountId,
+          amount: -expense.amount,
+          date: input.saleDate,
+          description: expense.description,
+          propertyId: input.propertyId,
+          saleId,
+        })
+      ),
       ...(loanSettlementTotal > 0
         ? [
             createTreasuryMovement({
-              accountId: input.settlementAccountId,
+              accountId: settlementAccountId,
               amount: -loanSettlementTotal,
               date: input.saleDate,
               description: `Cancelación deuda inmueble #${input.propertyId}`,
@@ -487,20 +548,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
     if (paymentPlan?.periodos?.length) {
       executionJournal.updatedPaymentPlans.push({ key: paymentPlanKey, previous: paymentPlan });
-      const updatedPlan: PlanPagos = {
-        ...paymentPlan,
-        periodos: paymentPlan.periodos.map((periodo) => {
-          if (periodo.fechaCargo < input.saleDate) {
-            return periodo;
-          }
-          return {
-            ...periodo,
-            pagado: true,
-            fechaPagoReal: periodo.fechaPagoReal ?? input.saleDate,
-          };
-        }),
-      };
-      await tx.objectStore('keyval').put(updatedPlan, paymentPlanKey);
     }
 
     const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
@@ -513,16 +560,14 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       );
     for (const event of loanForecastEvents) {
       executionJournal.deletedLoanForecastEvents.push({ id: event.id as number, previous: event });
-      await tx.objectStore('treasuryEvents').delete(event.id as number);
     }
 
     await loanStore.put({
       ...loan,
-      activo: false,
-      estado: 'cancelado',
-      principalVivo: 0,
-      cuotasPagadas: paymentPlan?.periodos?.length ?? loan.cuotasPagadas,
-      fechaUltimaCuotaPagada: input.saleDate,
+      activo: true,
+      estado: 'pendiente_cancelacion_venta',
+      cancelacionPendienteVenta: true,
+      fechaSolicitudCancelacionVenta: input.saleDate,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -590,7 +635,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       description: `IRPF estimado por venta inmueble #${input.propertyId}`,
       sourceType: 'irpf_prevision',
       sourceId: saleId,
-      accountId: input.settlementAccountId,
+      accountId: settlementAccountId,
       status: 'predicted',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -609,25 +654,23 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         description: `Cobro venta inmueble #${input.propertyId}`,
         sourceType: 'manual',
         sourceId: saleId,
-        accountId: input.settlementAccountId,
+        accountId: settlementAccountId,
         status: 'confirmed',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-      ...(simulation.totalSaleCosts > 0
-        ? [{
-            type: 'expense' as const,
-            amount: simulation.totalSaleCosts,
-            predictedDate: input.saleDate,
-            description: `Costes venta inmueble #${input.propertyId}`,
-            sourceType: 'manual' as const,
-            sourceId: saleId,
-            accountId: input.settlementAccountId,
-            status: 'confirmed' as const,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }]
-        : []),
+      ...saleExpenseBreakdown.map((expense) => ({
+        type: 'expense' as const,
+        amount: expense.amount,
+        predictedDate: input.saleDate,
+        description: expense.description,
+        sourceType: 'manual' as const,
+        sourceId: saleId,
+        accountId: settlementAccountId,
+        status: 'confirmed' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })),
       ...(simulation.totalLoanSettlement > 0
         ? [{
             type: 'financing' as const,
@@ -636,7 +679,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
             description: `Cancelación deuda inmueble #${input.propertyId}`,
             sourceType: 'manual' as const,
             sourceId: saleId,
-            accountId: input.settlementAccountId,
+            accountId: settlementAccountId,
             status: 'confirmed' as const,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -669,7 +712,11 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
   await tx.done;
 
-  await triggerTreasuryUpdate([input.settlementAccountId]);
+  if (saleId && simulation.totalLoanSettlement > 0) {
+    await finalizePropertySaleLoanCancellationBySaleId(saleId);
+  }
+
+  await triggerTreasuryUpdate([settlementAccountId]);
   await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);
 
   return {
@@ -729,7 +776,8 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     const marker = 'executionJournal:';
     const markerIndex = sale.notes.lastIndexOf(marker);
     if (markerIndex === -1) return null;
-    const payload = sale.notes.slice(markerIndex + marker.length).trim();
+    const payloadWithSuffix = sale.notes.slice(markerIndex + marker.length).trim();
+    const payload = payloadWithSuffix.split(' | ')[0]?.trim() || payloadWithSuffix;
     try {
       return JSON.parse(payload) as SaleExecutionJournal;
     } catch {
@@ -853,6 +901,112 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   }
 
   return revertedSale;
+};
+
+export const finalizePropertySaleLoanCancellation = async (movementId: number): Promise<boolean> => {
+  const db = await initDB();
+  const movement = await db.get('movements', movementId) as any;
+
+  if (!movement || movement.amount >= 0) return false;
+  if (!String(movement.reference || '').startsWith('property_sale:')) return false;
+  if (!String(movement.description || '').includes('Cancelación deuda inmueble')) return false;
+
+  const saleId = Number(String(movement.reference).replace('property_sale:', ''));
+  if (!Number.isFinite(saleId)) return false;
+
+  return finalizePropertySaleLoanCancellationBySaleId(saleId);
+};
+
+const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Promise<boolean> => {
+  if (!Number.isFinite(saleId)) return false;
+
+  const db = await initDB();
+
+  const sale = await db.get('property_sales', saleId);
+  if (!sale || sale.status !== 'confirmed') return false;
+  if (String(sale.notes || '').includes(LOAN_CANCELLATION_FINALIZED_MARKER)) return false;
+
+  const property = await db.get('properties', sale.propertyId);
+  if (!property) return false;
+
+  const tx = db.transaction(['prestamos', 'keyval', 'treasuryEvents', 'property_sales'], 'readwrite');
+  const loanStore = tx.objectStore('prestamos');
+  const allLoans = await loanStore.getAll();
+  const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
+
+  for (const loan of linkedLoans) {
+    if (!loan?.id) continue;
+    if (loan.estado === 'cancelado' && loan.activo === false) continue;
+
+    const paymentPlanKey = `planpagos_${loan.id}`;
+    const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
+    if (paymentPlan?.periodos?.length) {
+      const updatedPlan: PlanPagos = {
+        ...paymentPlan,
+        periodos: paymentPlan.periodos.map((periodo) => {
+          if (periodo.fechaCargo < sale.saleDate) {
+            return periodo;
+          }
+          return {
+            ...periodo,
+            pagado: true,
+            fechaPagoReal: periodo.fechaPagoReal ?? sale.saleDate,
+          };
+        }),
+      };
+      await tx.objectStore('keyval').put(updatedPlan, paymentPlanKey);
+    }
+
+    const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
+      .filter((event) =>
+        (event.sourceType === 'hipoteca' || event.sourceType === 'prestamo') &&
+        event.prestamoId === loan.id &&
+        event.predictedDate >= sale.saleDate &&
+        event.status !== 'executed' &&
+        typeof event.id === 'number'
+      );
+    for (const event of loanForecastEvents) {
+      await tx.objectStore('treasuryEvents').delete(event.id as number);
+    }
+
+    await loanStore.put({
+      ...loan,
+      activo: false,
+      estado: 'cancelado',
+      principalVivo: 0,
+      cuotasPagadas: paymentPlan?.periodos?.length ?? loan.cuotasPagadas,
+      fechaUltimaCuotaPagada: sale.saleDate,
+      cancelacionPendienteVenta: false,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  await tx.objectStore('property_sales').put({
+    ...sale,
+    notes: [sale.notes, LOAN_CANCELLATION_FINALIZED_MARKER].filter(Boolean).join(' | '),
+    updatedAt: new Date().toISOString(),
+  });
+
+  await tx.done;
+  return true;
+};
+
+export const finalizePropertySaleLoanCancellationFromTreasuryEvent = async (treasuryEventId: number): Promise<boolean> => {
+  if (!Number.isFinite(treasuryEventId)) return false;
+
+  const db = await initDB();
+  const treasuryEvent = await db.get('treasuryEvents', treasuryEventId) as TreasuryEvent | undefined;
+  if (!treasuryEvent) return false;
+
+  const isSaleLoanCancellationEvent =
+    treasuryEvent.type === 'financing' &&
+    treasuryEvent.sourceType === 'manual' &&
+    typeof treasuryEvent.sourceId === 'number' &&
+    String(treasuryEvent.description || '').includes('Cancelación deuda inmueble');
+
+  if (!isSaleLoanCancellationEvent) return false;
+
+  return finalizePropertySaleLoanCancellationBySaleId(treasuryEvent.sourceId as number);
 };
 
 const ensureSaleTaxFiscalYearOpen = async (propertyId: number, saleDate: string): Promise<void> => {
