@@ -441,6 +441,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const simulation = simulatePropertySale(input);
+  const saleExpenseBreakdown = [
+    { amount: Number(input.agencyCommission || 0), description: `Comisión agencia venta inmueble #${input.propertyId}` },
+    { amount: Number(input.municipalTax || 0), description: `Plusvalía municipal venta inmueble #${input.propertyId}` },
+    { amount: Number(input.saleNotaryCosts || 0), description: `Notaría venta inmueble #${input.propertyId}` },
+    { amount: Number(input.otherCosts || 0), description: `Otros costes venta inmueble #${input.propertyId}` },
+  ].filter((item) => item.amount > 0);
   const now = new Date().toISOString();
 
   const sale: Omit<PropertySale, 'id'> = {
@@ -484,7 +490,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   };
 
   if (saleId) {
-    const saleCostsTotal = simulation.totalSaleCosts;
     const loanSettlementTotal = simulation.totalLoanSettlement;
     const movementStore = tx.objectStore('movements');
 
@@ -497,18 +502,16 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         propertyId: input.propertyId,
         saleId,
       }),
-      ...(saleCostsTotal > 0
-        ? [
-            createTreasuryMovement({
-              accountId: input.settlementAccountId,
-              amount: -saleCostsTotal,
-              date: input.saleDate,
-              description: `Costes venta inmueble #${input.propertyId}`,
-              propertyId: input.propertyId,
-              saleId,
-            }),
-          ]
-        : []),
+      ...saleExpenseBreakdown.map((expense) =>
+        createTreasuryMovement({
+          accountId: input.settlementAccountId,
+          amount: -expense.amount,
+          date: input.saleDate,
+          description: expense.description,
+          propertyId: input.propertyId,
+          saleId,
+        })
+      ),
       ...(loanSettlementTotal > 0
         ? [
             createTreasuryMovement({
@@ -654,20 +657,18 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
-      ...(simulation.totalSaleCosts > 0
-        ? [{
-            type: 'expense' as const,
-            amount: simulation.totalSaleCosts,
-            predictedDate: input.saleDate,
-            description: `Costes venta inmueble #${input.propertyId}`,
-            sourceType: 'manual' as const,
-            sourceId: saleId,
-            accountId: input.settlementAccountId,
-            status: 'confirmed' as const,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }]
-        : []),
+      ...saleExpenseBreakdown.map((expense) => ({
+        type: 'expense' as const,
+        amount: expense.amount,
+        predictedDate: input.saleDate,
+        description: expense.description,
+        sourceType: 'manual' as const,
+        sourceId: saleId,
+        accountId: input.settlementAccountId,
+        status: 'confirmed' as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })),
       ...(simulation.totalLoanSettlement > 0
         ? [{
             type: 'financing' as const,
@@ -708,6 +709,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
   await tx.done;
+
+  if (saleId && simulation.totalLoanSettlement > 0) {
+    await finalizePropertySaleLoanCancellationBySaleId(saleId);
+  }
 
   await triggerTreasuryUpdate([input.settlementAccountId]);
   await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);

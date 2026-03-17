@@ -81,6 +81,36 @@ describe('propertySaleService', () => {
     expect(updatedLoan?.estado).toBe('pendiente_cancelacion_venta');
   });
 
+
+  it('cierra préstamo automáticamente cuando la venta ya crea cancelación confirmada', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Auto Punteo' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES7700491500051234567892' })));
+
+    await db.add('prestamos', {
+      id: 'loan-auto-close-1',
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 50000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-02-10',
+      salePrice: 180000,
+      settlementAccountId: accountId,
+      source: 'cartera',
+      loanPayoffAmount: 50000,
+    });
+
+    const loanAfter = await db.get('prestamos', 'loan-auto-close-1');
+    expect(loanAfter?.activo).toBe(false);
+    expect(loanAfter?.estado).toBe('cancelado');
+    expect(loanAfter?.principalVivo).toBe(0);
+  });
+
   it('permite revertir una venta confirmada y reactivar el inmueble', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Retorno' })));
@@ -184,22 +214,23 @@ describe('propertySaleService', () => {
     expect(sale?.id).toBeDefined();
 
     const movementsAfterSale = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
-    expect(movementsAfterSale).toHaveLength(3);
+    expect(movementsAfterSale).toHaveLength(4);
+    expect(movementsAfterSale.some((m: any) => m.description.includes('Comisión agencia venta inmueble'))).toBe(true);
+    expect(movementsAfterSale.some((m: any) => m.description.includes('Plusvalía municipal venta inmueble'))).toBe(true);
 
     const eventAfterSale = (await db.getAll('treasuryEvents')).find((e: any) => e.sourceId === sale!.id);
     expect(eventAfterSale).toBeTruthy();
 
     const loanAfterSale = await db.get('prestamos', 'loan-revert-1');
-    expect(loanAfterSale?.activo).toBe(true);
-    expect(loanAfterSale?.estado).toBe('pendiente_cancelacion_venta');
-    expect(loanAfterSale?.cancelacionPendienteVenta).toBe(true);
-    expect(loanAfterSale?.principalVivo).toBe(72500);
+    expect(loanAfterSale?.activo).toBe(false);
+    expect(loanAfterSale?.estado).toBe('cancelado');
+    expect(loanAfterSale?.principalVivo).toBe(0);
 
     const updatedPlanAfterSale = await db.get('keyval', 'planpagos_loan-revert-1') as any;
-    expect(updatedPlanAfterSale.periodos.some((p: any) => !p.pagado)).toBe(true);
+    expect(updatedPlanAfterSale.periodos.every((p: any) => p.pagado)).toBe(true);
 
     const stillScheduledLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
-    expect(stillScheduledLoanForecast).toBeTruthy();
+    expect(stillScheduledLoanForecast).toBeUndefined();
 
     await cancelPropertySale(sale!.id!);
 
@@ -346,7 +377,7 @@ describe('propertySaleService', () => {
     expect(cancellationEvent).toBeTruthy();
 
     const finalized = await finalizePropertySaleLoanCancellationFromTreasuryEvent(cancellationEvent!.id);
-    expect(finalized).toBe(true);
+    expect(finalized).toBe(false);
 
     const loanAfter = await db.get('prestamos', 'loan-diff-amount-1');
     expect(loanAfter?.activo).toBe(false);
@@ -387,7 +418,7 @@ describe('propertySaleService', () => {
     expect(cancellationEvent).toBeTruthy();
 
     const finalized = await finalizePropertySaleLoanCancellationFromTreasuryEvent(cancellationEvent!.id);
-    expect(finalized).toBe(true);
+    expect(finalized).toBe(false);
 
     await cancelPropertySale(sale!.id!);
 
