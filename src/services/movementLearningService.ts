@@ -1,4 +1,5 @@
 import { initDB, Movement, MovementLearningRule, ReconciliationAuditLog, LearningLog } from './db';
+import { finalizePropertySaleLoanCancellation } from './propertySaleService';
 
 /**
  * V1.1 Treasury - Movement Learning Service
@@ -497,6 +498,12 @@ export async function performManualReconciliation(
     };
 
     await db.put('movements', updatedMovement);
+
+    try {
+      await finalizePropertySaleLoanCancellation(movementId);
+    } catch (error) {
+      console.error('Error finalizando cancelación de préstamo por venta:', error);
+    }
 
     // Create/update learning rule
     await createLearningRule(movement, categoria, ambito, inmuebleId);
