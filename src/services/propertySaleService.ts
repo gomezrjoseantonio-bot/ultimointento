@@ -418,6 +418,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     throw new Error('Selecciona una cuenta de tesorería para registrar la venta');
   }
 
+  const settlementAccountId: number = input.settlementAccountId;
+
   const autoTerminatedContracts: SaleExecutionJournal['autoTerminatedContracts'] = [];
   if (activeContracts.length > 0 && input.autoTerminateContracts) {
     for (const contract of activeContracts) {
@@ -477,7 +479,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const saleId = typeof rawSaleId === 'number' ? rawSaleId : undefined;
 
   const executionJournal: SaleExecutionJournal = {
-    settlementAccountId: input.settlementAccountId,
+    settlementAccountId,
     movementIds: [],
     treasuryEventIds: [],
     autoTerminatedContracts,
@@ -495,7 +497,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
 
     const movementsToCreate = [
       createTreasuryMovement({
-        accountId: input.settlementAccountId,
+        accountId: settlementAccountId,
         amount: simulation.grossProceeds,
         date: input.saleDate,
         description: `Cobro venta inmueble #${input.propertyId}`,
@@ -504,7 +506,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       }),
       ...saleExpenseBreakdown.map((expense) =>
         createTreasuryMovement({
-          accountId: input.settlementAccountId,
+          accountId: settlementAccountId,
           amount: -expense.amount,
           date: input.saleDate,
           description: expense.description,
@@ -515,7 +517,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       ...(loanSettlementTotal > 0
         ? [
             createTreasuryMovement({
-              accountId: input.settlementAccountId,
+              accountId: settlementAccountId,
               amount: -loanSettlementTotal,
               date: input.saleDate,
               description: `Cancelación deuda inmueble #${input.propertyId}`,
@@ -633,7 +635,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       description: `IRPF estimado por venta inmueble #${input.propertyId}`,
       sourceType: 'irpf_prevision',
       sourceId: saleId,
-      accountId: input.settlementAccountId,
+      accountId: settlementAccountId,
       status: 'predicted',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -652,7 +654,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         description: `Cobro venta inmueble #${input.propertyId}`,
         sourceType: 'manual',
         sourceId: saleId,
-        accountId: input.settlementAccountId,
+        accountId: settlementAccountId,
         status: 'confirmed',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -664,7 +666,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         description: expense.description,
         sourceType: 'manual' as const,
         sourceId: saleId,
-        accountId: input.settlementAccountId,
+        accountId: settlementAccountId,
         status: 'confirmed' as const,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -677,7 +679,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
             description: `Cancelación deuda inmueble #${input.propertyId}`,
             sourceType: 'manual' as const,
             sourceId: saleId,
-            accountId: input.settlementAccountId,
+            accountId: settlementAccountId,
             status: 'confirmed' as const,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -714,7 +716,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     await finalizePropertySaleLoanCancellationBySaleId(saleId);
   }
 
-  await triggerTreasuryUpdate([input.settlementAccountId]);
+  await triggerTreasuryUpdate([settlementAccountId]);
   await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);
 
   return {
