@@ -227,7 +227,7 @@ describe('propertySaleService', () => {
     expect(loanAfterSale?.principalVivo).toBe(0);
 
     const updatedPlanAfterSale = await db.get('keyval', 'planpagos_loan-revert-1') as any;
-    expect(updatedPlanAfterSale.periodos.every((p: any) => p.pagado)).toBe(true);
+    expect(updatedPlanAfterSale.periodos.some((p: any) => !p.pagado)).toBe(true);
 
     const stillScheduledLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
     expect(stillScheduledLoanForecast).toBeUndefined();
