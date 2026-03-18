@@ -49,6 +49,8 @@ interface SaleExecutionJournal {
 }
 
 const LOAN_CANCELLATION_FINALIZED_MARKER = 'loanCancellationFinalized:true';
+const EXECUTION_JOURNAL_MARKER = 'executionJournal:';
+const EXECUTION_JOURNAL_ENCODED_MARKER = 'executionJournalEncoded:';
 
 const normalizeToken = (value: unknown): string =>
   String(value ?? '')
@@ -286,6 +288,112 @@ const createTreasuryMovement = ({
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
+
+const encodeExecutionJournal = (journal: SaleExecutionJournal): string => {
+  const payload = JSON.stringify(journal);
+  return `${EXECUTION_JOURNAL_ENCODED_MARKER}${btoa(unescape(encodeURIComponent(payload)))}`;
+};
+
+const decodeExecutionJournal = (encodedPayload: string): SaleExecutionJournal | null => {
+  try {
+    const decodedPayload = decodeURIComponent(escape(atob(encodedPayload)));
+    return JSON.parse(decodedPayload) as SaleExecutionJournal;
+  } catch {
+    return null;
+  }
+};
+
+const extractLegacyRawJournalPayload = (notes: string, markerIndex: number): string | null => {
+  const payloadStart = markerIndex + EXECUTION_JOURNAL_MARKER.length;
+  const rawPayload = notes.slice(payloadStart).trimStart();
+  const firstBraceIndex = rawPayload.indexOf('{');
+
+  if (firstBraceIndex === -1) {
+    return null;
+  }
+
+  let inString = false;
+  let isEscaped = false;
+  let depth = 0;
+  let started = false;
+
+  for (let index = firstBraceIndex; index < rawPayload.length; index += 1) {
+    const char = rawPayload[index];
+
+    if (!started) {
+      if (char !== '{') continue;
+      started = true;
+      depth = 1;
+      continue;
+    }
+
+    if (inString) {
+      if (isEscaped) {
+        isEscaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        isEscaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+      }
+
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') {
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return rawPayload.slice(firstBraceIndex, index + 1);
+      }
+    }
+  }
+
+  return null;
+};
+
+const extractJournalFromSaleNotes = (notes?: string): SaleExecutionJournal | null => {
+  if (!notes) return null;
+
+  const encodedMarkerIndex = notes.lastIndexOf(EXECUTION_JOURNAL_ENCODED_MARKER);
+  if (encodedMarkerIndex !== -1) {
+    const encodedPayload = notes
+      .slice(encodedMarkerIndex + EXECUTION_JOURNAL_ENCODED_MARKER.length)
+      .split(' | ')[0]
+      ?.trim();
+
+    if (encodedPayload) {
+      const encodedJournal = decodeExecutionJournal(encodedPayload);
+      if (encodedJournal) return encodedJournal;
+    }
+  }
+
+  const markerIndex = notes.lastIndexOf(EXECUTION_JOURNAL_MARKER);
+  if (markerIndex === -1) return null;
+
+  const payload = extractLegacyRawJournalPayload(notes, markerIndex);
+  if (!payload) return null;
+
+  try {
+    return JSON.parse(payload) as SaleExecutionJournal;
+  } catch {
+    return null;
+  }
+};
 
 export const simulatePropertySale = (input: SaleSimulationInput) => {
   const salePrice = Number(input.salePrice || 0);
@@ -706,7 +814,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     await tx.objectStore('property_sales').put({
       ...sale,
       id: saleId,
-      notes: [sale.notes, `executionJournal:${JSON.stringify(executionJournal)}`].filter(Boolean).join(' | '),
+      notes: [sale.notes, encodeExecutionJournal(executionJournal)].filter(Boolean).join(' | '),
       updatedAt: new Date().toISOString(),
     });
   }
@@ -771,21 +879,7 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     throw new Error('Inmueble no encontrado');
   }
 
-  const extractJournalFromNotes = (): SaleExecutionJournal | null => {
-    if (!sale.notes) return null;
-    const marker = 'executionJournal:';
-    const markerIndex = sale.notes.lastIndexOf(marker);
-    if (markerIndex === -1) return null;
-    const payloadWithSuffix = sale.notes.slice(markerIndex + marker.length).trim();
-    const payload = payloadWithSuffix.split(' | ')[0]?.trim() || payloadWithSuffix;
-    try {
-      return JSON.parse(payload) as SaleExecutionJournal;
-    } catch {
-      return null;
-    }
-  };
-
-  const journal = extractJournalFromNotes();
+  const journal = extractJournalFromSaleNotes(sale.notes);
 
   if (journal?.movementIds?.length) {
     for (const movementId of journal.movementIds) {
