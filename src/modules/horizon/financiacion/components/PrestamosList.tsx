@@ -519,6 +519,50 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
 
   return (
     <div>
+      {canceladosCount > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 12,
+            padding: '10px 12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            backgroundColor: 'var(--bg)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-gray)', fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              Cancelados en grid:
+            </span>
+            <span
+              style={{
+                backgroundColor: mostrarCancelados ? 'rgba(220, 38, 38, 0.08)' : 'rgba(37,99,235,0.08)',
+                color: mostrarCancelados ? 'var(--error)' : 'var(--atlas-blue)',
+                borderRadius: 999,
+                padding: '2px 8px',
+                fontWeight: 700,
+              }}
+            >
+              {mostrarCancelados ? 'visibles' : 'ocultos'} · {canceladosCount}
+            </span>
+          </div>
+          <button
+            onClick={() => setMostrarCancelados(value => !value)}
+            title={mostrarCancelados ? 'Ocultar préstamos cancelados' : 'Mostrar préstamos cancelados'}
+            aria-label={mostrarCancelados ? 'Ocultar préstamos cancelados' : 'Mostrar préstamos cancelados'}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+            style={{ color: 'var(--atlas-navy-1)', backgroundColor: '#fff' }}
+          >
+            {mostrarCancelados ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>{mostrarCancelados ? 'Ocultar' : 'Mostrar'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Global KPIs */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 260, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
@@ -536,16 +580,6 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
           </div>
         ))}
         </div>
-        {canceladosCount > 0 && (
-          <button
-            onClick={() => setMostrarCancelados(value => !value)}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
-            style={{ color: 'var(--atlas-navy-1)', backgroundColor: 'var(--bg)' }}
-          >
-            {mostrarCancelados ? <EyeOff size={16} /> : <Eye size={16} />}
-            {mostrarCancelados ? 'Ocultar cancelados' : `Mostrar cancelados (${canceladosCount})`}
-          </button>
-        )}
       </div>
 
       {/* Global progress bar */}
@@ -567,7 +601,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
             color: 'var(--text-gray)',
           }}
         >
-          Todos los préstamos visibles están cancelados. Usa el botón “Mostrar cancelados” para revisarlos.
+          Todos los préstamos del grid están cancelados y ocultos. Usa el botón del ojo para desocultarlos temporalmente.
         </div>
       )}
 
