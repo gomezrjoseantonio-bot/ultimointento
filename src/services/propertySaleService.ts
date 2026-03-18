@@ -153,7 +153,7 @@ const truncatePaymentPlanAtCancellation = (
   const saleDateTs = new Date(saleDate).getTime();
   const paidPeriods = paymentPlan.periodos.filter((periodo) => {
     const chargeTs = new Date(periodo.fechaCargo).getTime();
-    return periodo.pagado || chargeTs < saleDateTs;
+    return chargeTs < saleDateTs || (periodo.pagado && chargeTs <= saleDateTs);
   });
 
   const lastPaidPeriod = paidPeriods[paidPeriods.length - 1] ?? null;
@@ -188,11 +188,17 @@ const truncatePaymentPlanAtCancellation = (
 
   return {
     ...paymentPlan,
+    fechaGeneracion: new Date().toISOString(),
     periodos,
     resumen: {
       totalIntereses,
       totalCuotas,
       fechaFinalizacion: saleDate,
+    },
+    metadata: {
+      source: 'property_sale',
+      operationType: 'TOTAL',
+      operationDate: saleDate,
     },
   };
 };

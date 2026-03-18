@@ -168,6 +168,12 @@ export interface PlanPagos {
     totalCuotas: number;
     fechaFinalizacion: string;
   };
+  metadata?: {
+    source?: 'generated' | 'property_sale' | 'loan_settlement';
+    operationType?: 'TOTAL' | 'PARTIAL';
+    operationDate?: string;
+    partialMode?: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA';
+  };
 }
 
 export interface CalculoAmortizacion {

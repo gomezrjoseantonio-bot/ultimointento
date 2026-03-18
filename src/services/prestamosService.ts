@@ -169,6 +169,28 @@ export class PrestamosService {
 
   private needsPlanRegeneration(prestamo: Prestamo, plan: PlanPagos): boolean {
     if (!plan.periodos || plan.periodos.length === 0) return true;
+
+    const customPlanSource = plan.metadata?.source;
+    const isCancelledLoan = prestamo.activo === false || prestamo.estado === 'cancelado';
+    const lastPeriod = plan.periodos[plan.periodos.length - 1];
+
+    if (isCancelledLoan) {
+      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
+      if (prestamo.fechaCancelacion && plan.resumen.fechaFinalizacion === prestamo.fechaCancelacion && finalPrincipalCentimos === 0) {
+        return false;
+      }
+    }
+
+    if (customPlanSource === 'loan_settlement') {
+      const amortizadoCentimos = plan.periodos.reduce(
+        (sum, p) => sum + Math.round(p.amortizacion * 100),
+        0,
+      );
+      const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
+      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
+      return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
+    }
+
     if (this.hasIrregularMonthlyCadence(plan)) return true;
 
     // Date sequence must match current generation rules exactly.

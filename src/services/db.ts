@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 30; // V3.0: property_sales store for real-estate sale workflow
+const DB_VERSION = 31; // V3.1: loan_settlements store for loan cancellation/amortization workflow
 
 export interface Property {
   id?: number;
@@ -130,6 +130,34 @@ export interface PropertySale {
   status: 'draft' | 'confirmed' | 'reverted';
   source: 'cartera' | 'detalle' | 'analisis';
   notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoanSettlement {
+  id?: number;
+  loanId: string;
+  operationType: 'TOTAL' | 'PARTIAL';
+  partialMode?: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA';
+  operationDate: string;
+  settlementAccountId: number;
+  principalBefore: number;
+  principalApplied: number;
+  accruedInterest: number;
+  feeAmount: number;
+  fixedCosts: number;
+  totalCashOut: number;
+  principalAfter: number;
+  monthlyPaymentBefore?: number;
+  monthlyPaymentAfter?: number;
+  termMonthsBefore?: number;
+  termMonthsAfter?: number;
+  interestSavings?: number;
+  status: 'confirmed' | 'reverted';
+  source: 'financiacion' | 'inmueble_venta';
+  notes?: string;
+  movementId?: number;
+  treasuryEventId?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -1522,6 +1550,7 @@ export interface ConfiguracionFiscal {
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
+  loan_settlements: LoanSettlement;
   documents: Document;
   contracts: Contract;
   rentCalendar: RentCalendar; // H7: Rent calendar entries
@@ -1597,6 +1626,14 @@ export const initDB = async () => {
           propertySalesStore.createIndex('saleDate', 'saleDate', { unique: false });
           propertySalesStore.createIndex('status', 'status', { unique: false });
           propertySalesStore.createIndex('property-status', ['propertyId', 'status'], { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('loan_settlements')) {
+          const loanSettlementsStore = db.createObjectStore('loan_settlements', { keyPath: 'id', autoIncrement: true });
+          loanSettlementsStore.createIndex('loanId', 'loanId', { unique: false });
+          loanSettlementsStore.createIndex('operationDate', 'operationDate', { unique: false });
+          loanSettlementsStore.createIndex('status', 'status', { unique: false });
+          loanSettlementsStore.createIndex('loan-status', ['loanId', 'status'], { unique: false });
         }
 
         // Documents store
