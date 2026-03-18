@@ -21,17 +21,28 @@ export interface PatrimonioData {
 export interface FlujosCaja {
   trabajo: {
     netoMensual: number;
+    netoHoy?: number;
+    pendienteMes?: number;
     tendencia: 'up' | 'down' | 'stable';
     variacionPorcentaje: number;
   };
   inmuebles: {
     cashflow: number;
+    cashflowHoy?: number;
+    pendienteMes?: number;
     ocupacion: number;
+    vacantes?: Array<{
+      propertyId?: number;
+      propertyAlias: string;
+      unidadLabel: string;
+    }>;
     tendencia: 'up' | 'down' | 'stable';
   };
   inversiones: {
     rendimientoMes: number;
     dividendosMes: number;
+    totalHoy?: number;
+    pendienteMes?: number;
     tendencia: 'up' | 'down' | 'stable';
   };
 }

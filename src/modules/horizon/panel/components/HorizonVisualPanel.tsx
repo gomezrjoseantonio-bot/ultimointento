@@ -106,13 +106,36 @@ const HorizonVisualPanel: React.FC = () => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
-  const netoMensual = (flujos?.trabajo.netoMensual ?? 0) + (flujos?.inmuebles.cashflow ?? 0) + ((flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0));
+  const roundDashboardAmount = (value: number): number => Math.round(value);
+
+  const trabajoNeto = flujos?.trabajo.netoMensual ?? 0;
+  const trabajoHoy = flujos?.trabajo.netoHoy ?? 0;
+  const trabajoPendiente = flujos?.trabajo.pendienteMes ?? (trabajoNeto - trabajoHoy);
+  const inmueblesCashflow = flujos?.inmuebles.cashflow ?? 0;
+  const inmueblesHoy = flujos?.inmuebles.cashflowHoy ?? 0;
+  const inmueblesPendiente = flujos?.inmuebles.pendienteMes ?? (inmueblesCashflow - inmueblesHoy);
+  const inversionesMensual = (flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0);
+  const inversionesHoy = flujos?.inversiones.totalHoy ?? inversionesMensual;
+  const inversionesPendiente = flujos?.inversiones.pendienteMes ?? (inversionesMensual - inversionesHoy);
+
+  // El panel muestra importes sin decimales. Para que el total del KPI coincida
+  // con lo que ve el usuario en el desglose, agregamos usando los mismos valores
+  // visibles ya redondeados en cada bloque.
+  const trabajoNetoVisible = roundDashboardAmount(trabajoNeto);
+  const trabajoHoyVisible = roundDashboardAmount(trabajoHoy);
+  const trabajoPendienteVisible = roundDashboardAmount(trabajoPendiente);
+  const inmueblesCashflowVisible = roundDashboardAmount(inmueblesCashflow);
+  const inmueblesHoyVisible = roundDashboardAmount(inmueblesHoy);
+  const inmueblesPendienteVisible = roundDashboardAmount(inmueblesPendiente);
+  const inversionesMensualVisible = roundDashboardAmount(inversionesMensual);
+  const inversionesHoyVisible = roundDashboardAmount(inversionesHoy);
+  const inversionesPendienteVisible = roundDashboardAmount(inversionesPendiente);
+  const netoMensual = trabajoNetoVisible + inmueblesCashflowVisible + inversionesMensualVisible;
+  const netoHoy = trabajoHoyVisible + inmueblesHoyVisible + inversionesHoyVisible;
+  const netoPendiente = trabajoPendienteVisible + inmueblesPendienteVisible + inversionesPendienteVisible;
   const colchonSeguro = data.salud.colchonMeses >= 6;
   const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
   const ocupacionParcial = ocupacion < 100;
-  const trabajoNeto = flujos?.trabajo.netoMensual ?? 0;
-  const inmueblesCashflow = flujos?.inmuebles.cashflow ?? 0;
-  const inversionesMensual = (flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0);
 
   return (
     <div className="exec-shell">
@@ -242,7 +265,7 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="pulso-value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div>
                 <div className="pulso-meta">
                   <span className="pulso-badge" style={{ background: netoMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    <TrendingUp size={10} /> {loading ? 'Calculando...' : 'Mes actual'}
+                    <TrendingUp size={10} /> {loading ? 'Calculando...' : `Hoy ${euro.format(netoHoy)} · Pendiente ${euro.format(netoPendiente)}`}
                   </span>
                 </div>
               </div>
@@ -257,14 +280,14 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="flujo-icon"><Home size={18} /></div>
                 <div className="flujo-body">
                   <div className="flujo-nombre">Economía familiar</div>
-                  <div className="flujo-importe" style={{ color: trabajoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    {euro.format(trabajoNeto)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  <div className="flujo-importe" style={{ color: trabajoNetoVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(trabajoNetoVisible)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
                   </div>
-                  <div className="flujo-sub">Ingresos − Gastos personales</div>
+                  <div className="flujo-sub">Ingresos − Gastos del mes</div>
                 </div>
                 <div className="flujo-right">
-                  <span className="flujo-delta" style={{ background: trabajoNeto >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: trabajoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    {flujos?.trabajo.tendencia === 'down' ? 'Tendencia ↓' : 'Tendencia ↑'}
+                  <span className="flujo-delta" style={{ background: trabajoNetoVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: trabajoNetoVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    Hoy {euro.format(trabajoHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>
@@ -274,14 +297,14 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="flujo-icon"><Building2 size={18} /></div>
                 <div className="flujo-body">
                   <div className="flujo-nombre">Inmuebles</div>
-                  <div className="flujo-importe" style={{ color: inmueblesCashflow >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    {euro.format(inmueblesCashflow)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  <div className="flujo-importe" style={{ color: inmueblesCashflowVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(inmueblesCashflowVisible)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
                   </div>
-                  <div className="flujo-sub">Ingresos alquiler − costes</div>
+                  <div className="flujo-sub">Ingresos alquiler − gastos − hipoteca</div>
                 </div>
                 <div className="flujo-right">
-                  <span className="flujo-delta" style={{ background: ocupacionParcial ? 'var(--s-warn-bg)' : 'var(--s-pos-bg)', color: ocupacionParcial ? 'var(--s-warn)' : 'var(--s-pos)' }}>
-                    Ocup. {ocupacion.toFixed(1)}%
+                  <span className="flujo-delta" style={{ background: inmueblesHoyVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inmueblesHoyVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    Hoy {euro.format(inmueblesHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>
@@ -291,14 +314,14 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="flujo-icon"><LineChart size={18} /></div>
                 <div className="flujo-body">
                   <div className="flujo-nombre">Inversiones</div>
-                  <div className="flujo-importe" style={{ color: inversionesMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    {euro.format(inversionesMensual)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
+                  <div className="flujo-importe" style={{ color: inversionesMensualVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    {euro.format(inversionesMensualVisible)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
                   </div>
                   <div className="flujo-sub">Rendimiento + dividendos</div>
                 </div>
                 <div className="flujo-right">
-                  <span className="flujo-delta" style={{ background: inversionesMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inversionesMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    Resultado mensual
+                  <span className="flujo-delta" style={{ background: inversionesMensualVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inversionesMensualVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    Hoy {euro.format(inversionesHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>
