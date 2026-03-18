@@ -1162,11 +1162,7 @@ class DashboardService {
           return predictedDateOnly >= startOfMonthDateOnly && predictedDateOnly <= endOfMonthDateOnly;
         });
 
-        const deltaRealMes = eventosMesCuenta
-          .filter((event) => !isForecastTreasuryEvent(event))
-          .reduce((sum, event) => sum + (event.type === 'income' ? toNumber(event.amount) : -toNumber(event.amount)), 0);
-
-        const hoy = currentBalance + deltaRealMes;
+        const hoy = currentBalance;
 
         const futurosCuenta = eventosMesCuenta.filter((event) => isForecastTreasuryEvent(event));
 
