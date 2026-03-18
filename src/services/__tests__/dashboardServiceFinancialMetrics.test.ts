@@ -244,15 +244,15 @@ describe('dashboardService financial metrics', () => {
     const panel = await dashboardService.getTesoreriaPanel();
 
     expect(panel.filas).toHaveLength(1);
-    expect(panel.filas[0].hoy).toBe(600);
+    expect(panel.filas[0].hoy).toBe(1000);
     expect(panel.filas[0].porCobrar).toBe(500);
     expect(panel.filas[0].porPagar).toBe(475);
-    expect(panel.filas[0].proyeccion).toBe(625);
-    expect(panel.totales.hoy).toBe(600);
+    expect(panel.filas[0].proyeccion).toBe(1025);
+    expect(panel.totales.hoy).toBe(1000);
     expect(panel.totales.porPagar).toBe(475);
   });
 
-  it('alinea patrimonio cuentas con tesorería hoy incluyendo eventos reales del mes', async () => {
+  it('alinea patrimonio cuentas con el saldo actual de tesorería sin descontar eventos ya reflejados', async () => {
     const datasets: Record<string, any[]> = {
       properties: [],
       valoraciones_historicas: [],
@@ -277,8 +277,8 @@ describe('dashboardService financial metrics', () => {
       dashboardService.getTesoreriaPanel()
     ]);
 
-    expect(panel.totales.hoy).toBe(5666);
-    expect(patrimonio.desglose.cuentas).toBe(5666);
-    expect(patrimonio.total).toBe(5666);
+    expect(panel.totales.hoy).toBe(6906);
+    expect(patrimonio.desglose.cuentas).toBe(6906);
+    expect(patrimonio.total).toBe(6906);
   });
 });
