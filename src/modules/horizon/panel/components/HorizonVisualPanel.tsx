@@ -109,8 +109,33 @@ const HorizonVisualPanel: React.FC = () => {
   const roundDashboardAmount = (value: number): number => Math.round(value);
 
   const trabajoNeto = flujos?.trabajo.netoMensual ?? 0;
+  const trabajoHoy = flujos?.trabajo.netoHoy ?? 0;
+  const trabajoPendiente = flujos?.trabajo.pendienteMes ?? (trabajoNeto - trabajoHoy);
   const inmueblesCashflow = flujos?.inmuebles.cashflow ?? 0;
+  const inmueblesHoy = flujos?.inmuebles.cashflowHoy ?? 0;
+  const inmueblesPendiente = flujos?.inmuebles.pendienteMes ?? (inmueblesCashflow - inmueblesHoy);
   const inversionesMensual = (flujos?.inversiones.rendimientoMes ?? 0) + (flujos?.inversiones.dividendosMes ?? 0);
+  const inversionesHoy = flujos?.inversiones.totalHoy ?? inversionesMensual;
+  const inversionesPendiente = flujos?.inversiones.pendienteMes ?? (inversionesMensual - inversionesHoy);
+
+  // El panel muestra importes sin decimales. Para que el total del KPI coincida
+  // con lo que ve el usuario en el desglose, agregamos usando los mismos valores
+  // visibles ya redondeados en cada bloque.
+  const trabajoNetoVisible = roundDashboardAmount(trabajoNeto);
+  const trabajoHoyVisible = roundDashboardAmount(trabajoHoy);
+  const trabajoPendienteVisible = roundDashboardAmount(trabajoPendiente);
+  const inmueblesCashflowVisible = roundDashboardAmount(inmueblesCashflow);
+  const inmueblesHoyVisible = roundDashboardAmount(inmueblesHoy);
+  const inmueblesPendienteVisible = roundDashboardAmount(inmueblesPendiente);
+  const inversionesMensualVisible = roundDashboardAmount(inversionesMensual);
+  const inversionesHoyVisible = roundDashboardAmount(inversionesHoy);
+  const inversionesPendienteVisible = roundDashboardAmount(inversionesPendiente);
+  const netoMensual = trabajoNetoVisible + inmueblesCashflowVisible + inversionesMensualVisible;
+  const netoHoy = trabajoHoyVisible + inmueblesHoyVisible + inversionesHoyVisible;
+  const netoPendiente = trabajoPendienteVisible + inmueblesPendienteVisible + inversionesPendienteVisible;
+  const colchonSeguro = data.salud.colchonMeses >= 6;
+  const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
+  const ocupacionParcial = ocupacion < 100;
 
   // El panel muestra importes sin decimales. Para que el total del KPI coincida
   // con lo que ve el usuario en el desglose, agregamos usando los mismos valores
@@ -256,7 +281,7 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="pulso-value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div>
                 <div className="pulso-meta">
                   <span className="pulso-badge" style={{ background: netoMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    <TrendingUp size={10} /> {loading ? 'Calculando...' : 'Mes completo'}
+                    <TrendingUp size={10} /> {loading ? 'Calculando...' : `Hoy ${euro.format(netoHoy)} · Pendiente ${euro.format(netoPendiente)}`}
                   </span>
                 </div>
               </div>
@@ -278,7 +303,7 @@ const HorizonVisualPanel: React.FC = () => {
                 </div>
                 <div className="flujo-right">
                   <span className="flujo-delta" style={{ background: trabajoNetoVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: trabajoNetoVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    {trabajoTrendLabel}
+                    Hoy {euro.format(trabajoHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>
@@ -294,8 +319,8 @@ const HorizonVisualPanel: React.FC = () => {
                   <div className="flujo-sub">Ingresos alquiler − gastos − hipoteca</div>
                 </div>
                 <div className="flujo-right">
-                  <span className="flujo-delta" style={{ background: ocupacionParcial ? 'var(--s-warn-bg)' : 'var(--s-pos-bg)', color: ocupacionParcial ? 'var(--s-warn)' : 'var(--s-pos)' }}>
-                    Ocup. {ocupacion.toFixed(1)}%
+                  <span className="flujo-delta" style={{ background: inmueblesHoyVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inmueblesHoyVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                    Hoy {euro.format(inmueblesHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>
@@ -312,7 +337,7 @@ const HorizonVisualPanel: React.FC = () => {
                 </div>
                 <div className="flujo-right">
                   <span className="flujo-delta" style={{ background: inversionesMensualVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: inversionesMensualVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    Resultado mensual
+                    Hoy {euro.format(inversionesHoyVisible)}
                   </span>
                   <div className="flujo-arrow"><ChevronRight size={16} /></div>
                 </div>

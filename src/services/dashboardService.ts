@@ -714,17 +714,28 @@ class DashboardService {
   async getFlujosCaja(): Promise<{
     trabajo: {
       netoMensual: number;
+      netoHoy: number;
+      pendienteMes: number;
       tendencia: 'up' | 'down' | 'stable';
       variacionPorcentaje: number;
     };
     inmuebles: {
       cashflow: number;
+      cashflowHoy: number;
+      pendienteMes: number;
       ocupacion: number;
+      vacantes: Array<{
+        propertyId?: number;
+        propertyAlias: string;
+        unidadLabel: string;
+      }>;
       tendencia: 'up' | 'down' | 'stable';
     };
     inversiones: {
       rendimientoMes: number;
       dividendosMes: number;
+      totalHoy: number;
+      pendienteMes: number;
       tendencia: 'up' | 'down' | 'stable';
     };
   }> {
@@ -733,6 +744,7 @@ class DashboardService {
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
+      const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
       const toNumber = (value: unknown): number => {
         const parsed = Number(value);
@@ -775,6 +787,14 @@ class DashboardService {
         const d = getRentPaymentDate(payment);
         return !!d && d.getMonth() === month && d.getFullYear() === year;
       };
+      const rentPaymentThroughToday = (payment: any, month: number, year: number): boolean => {
+        const d = getRentPaymentDate(payment);
+        return !!d && d.getMonth() === month && d.getFullYear() === year && d <= todayDate;
+      };
+      const inMonthThroughToday = (item: any, month: number, year: number): boolean => {
+        const d = getDate(item);
+        return !!d && d.getMonth() === month && d.getFullYear() === year && d <= todayDate;
+      };
 
       const isActiveContractForMonth = (contract: any, month: number, year: number): boolean => {
         const status = String(contract?.estadoContrato ?? contract?.estado ?? contract?.status ?? '').toLowerCase();
@@ -806,6 +826,36 @@ class DashboardService {
       const isCancelledRentPayment = (payment: any): boolean => {
         const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
         return ['cancelado', 'cancelada', 'cancelled', 'anulado', 'anulada', 'void'].includes(status);
+      };
+      const isCollectedRentPayment = (payment: any): boolean => {
+        const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+        if (!status) return true;
+        return [
+          'pagada',
+          'pagado',
+          'paid',
+          'cobrada',
+          'cobrado',
+          'confirmada',
+          'confirmado',
+          'confirmed',
+          'ejecutada',
+          'ejecutado',
+          'executed',
+          'partial',
+          'parcial'
+        ].includes(status);
+      };
+      const getCollectedRentIncomeThroughToday = (month: number, year: number, rentPaymentsData: any[]): number => {
+        return rentPaymentsData
+          .filter((payment: any) => rentPaymentThroughToday(payment, month, year) && !isCancelledRentPayment(payment) && isCollectedRentPayment(payment))
+          .reduce((sum: number, payment: any) => {
+            const partialStatus = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+            const amount = partialStatus === 'partial' || partialStatus === 'parcial'
+              ? toNumber(payment?.paidAmount ?? payment?.importe ?? payment?.amount)
+              : getRentPaymentAmount(payment);
+            return sum + amount;
+          }, 0);
       };
 
       const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
@@ -845,12 +895,19 @@ class DashboardService {
       const ingresosPersonalMes = ingresos
         .filter((ing: any) => inMonth(ing, currentMonth, currentYear) && isPersonalIngreso(ing))
         .reduce((sum: number, ing: any) => sum + getImporte(ing), 0);
+      const ingresosPersonalHoy = ingresos
+        .filter((ing: any) => inMonthThroughToday(ing, currentMonth, currentYear) && isPersonalIngreso(ing))
+        .reduce((sum: number, ing: any) => sum + getImporte(ing), 0);
 
       const gastosPersonalMes = gastos
         .filter((gasto: any) => inMonth(gasto, currentMonth, currentYear) && isPersonalGasto(gasto))
         .reduce((sum: number, gasto: any) => sum + getImporte(gasto), 0);
+      const gastosPersonalHoy = gastos
+        .filter((gasto: any) => inMonthThroughToday(gasto, currentMonth, currentYear) && isPersonalGasto(gasto))
+        .reduce((sum: number, gasto: any) => sum + getImporte(gasto), 0);
 
       const trabajoBase = ingresosPersonalMes - gastosPersonalMes;
+      const trabajoBaseHoy = ingresosPersonalHoy - gastosPersonalHoy;
 
       let autonomoNetoMensual = 0;
       try {
@@ -866,21 +923,38 @@ class DashboardService {
       }
 
       const trabajoMensual = trabajoBase + autonomoNetoMensual;
+      const elapsedDays = Math.max(1, now.getDate());
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const autonomoHoy = daysInMonth > 0 ? autonomoNetoMensual * (elapsedDays / daysInMonth) : 0;
+      const trabajoHoy = trabajoBaseHoy + autonomoHoy;
 
       // INMUEBLES (rentas cobradas - gastos - cuotas de préstamos de inmueble)
       const rentasMes = getRentalIncomeForMonth(currentMonth, currentYear, rentPayments, contracts);
+      const rentasHoy = getCollectedRentIncomeThroughToday(currentMonth, currentYear, rentPayments);
 
       const gastosInmueblesMes = [
         ...expenses.filter((expense: any) => inMonth(expense, currentMonth, currentYear) && isInmuebleExpense(expense)),
         ...gastos.filter((gasto: any) => inMonth(gasto, currentMonth, currentYear) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
       ].reduce((sum: number, expense: any) => sum + getImporte(expense), 0);
+      const gastosInmueblesHoy = [
+        ...expenses.filter((expense: any) => inMonthThroughToday(expense, currentMonth, currentYear) && isInmuebleExpense(expense)),
+        ...gastos.filter((gasto: any) => inMonthThroughToday(gasto, currentMonth, currentYear) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
+      ].reduce((sum: number, expense: any) => sum + getImporte(expense), 0);
 
       const prestamos = await db.getAll('prestamos').catch(() => []);
-      const cuotasHipotecaMes = (prestamos as any[])
+      const hipotecasActivas = (prestamos as any[])
         .filter((prestamo) => prestamo?.activo !== false && prestamo?.ambito === 'INMUEBLE')
-        .reduce((sum, prestamo) => sum + toNumber(prestamo.cuotaMensual ?? prestamo.cuota_mensual ?? 0), 0);
+        .map((prestamo) => ({
+          cuota: toNumber(prestamo.cuotaMensual ?? prestamo.cuota_mensual ?? 0),
+          diaCargoMes: toNumber(prestamo.diaCargoMes ?? prestamo.dia_cargo_mes ?? 1)
+        }));
+      const cuotasHipotecaMes = hipotecasActivas.reduce((sum, prestamo) => sum + prestamo.cuota, 0);
+      const cuotasHipotecaHoy = hipotecasActivas
+        .filter((prestamo) => prestamo.diaCargoMes <= now.getDate())
+        .reduce((sum, prestamo) => sum + prestamo.cuota, 0);
 
       const cashflowInmuebles = rentasMes - gastosInmueblesMes - cuotasHipotecaMes;
+      const cashflowInmueblesHoy = rentasHoy - gastosInmueblesHoy - cuotasHipotecaHoy;
 
       const properties = await db.getAll('properties');
       const activeProperties = properties.filter((p: any) => {
@@ -943,6 +1017,46 @@ class DashboardService {
 
       const ocupacionBase = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
       const ocupacion = Math.max(0, Math.min(100, ocupacionBase));
+      const vacantes = Array.from(activePropertyIds).flatMap((propertyId) => {
+        const property = activeProperties.find((item: any) => toNumericId(item?.id ?? item?.propertyId ?? item?.inmueble_id) === propertyId);
+        const propertyAlias = String(property?.alias ?? property?.globalAlias ?? property?.address ?? `Inmueble ${propertyId}`);
+        const propertyActiveContracts = activeContracts.filter((c: any) => {
+          const contractPropertyId = toNumericId(c?.inmuebleId ?? c?.inmueble_id ?? c?.propertyId ?? c?.property_id);
+          return contractPropertyId === propertyId;
+        });
+
+        if (roomPropertyIds.has(propertyId)) {
+          const roomCount = Math.max(1, Math.floor(toNumber(property?.bedrooms ?? property?.habitaciones ?? 0)));
+          const occupiedRooms = new Set(
+            propertyActiveContracts
+              .map((c: any) => String(c?.habitacionId ?? c?.habitacion_id ?? '').trim().toUpperCase())
+              .filter((roomId: string) => roomId !== '')
+          );
+
+          return Array.from({ length: roomCount }, (_, index) => {
+            const roomNumber = index + 1;
+            const canonicalId = `H${roomNumber}`;
+            const numericId = String(roomNumber);
+            if (occupiedRooms.has(canonicalId) || occupiedRooms.has(numericId)) return null;
+
+            return {
+              propertyId,
+              propertyAlias,
+              unidadLabel: `Habitación ${canonicalId}`
+            };
+          }).filter(Boolean) as Array<{ propertyId?: number; propertyAlias: string; unidadLabel: string }>;
+        }
+
+        if (propertyActiveContracts.length === 0) {
+          return [{
+            propertyId,
+            propertyAlias,
+            unidadLabel: 'Vivienda completa'
+          }];
+        }
+
+        return [];
+      });
 
       const last3Months = Array.from({ length: 3 }, (_, i) => {
         const date = new Date(currentYear, currentMonth - (i + 1), 1);
@@ -1004,30 +1118,61 @@ class DashboardService {
           .reduce((acc: number, pago: any) => acc + toNumber(pago?.importe_neto ?? pago?.importe_bruto ?? pago?.importe), 0);
         return sum + importePagado;
       }, 0);
+      const rendimientoHoy = inversionesActivas.reduce((sum: number, inv: any) => {
+        const pagos = inv?.rendimiento?.pagos_generados ?? [];
+        const importePagado = (Array.isArray(pagos) ? pagos : [])
+          .filter((pago: any) => {
+            const fecha = new Date(pago?.fecha_pago);
+            if (Number.isNaN(fecha.getTime())) return false;
+            return fecha.getMonth() === currentMonth && fecha.getFullYear() === currentYear && fecha <= todayDate;
+          })
+          .reduce((acc: number, pago: any) => acc + toNumber(pago?.importe_neto ?? pago?.importe_bruto ?? pago?.importe), 0);
+        return sum + importePagado;
+      }, 0);
+      const dividendosHoy = inversionesActivas.reduce((sum: number, inv: any) => {
+        const pagos = inv?.dividendos?.dividendos_recibidos ?? [];
+        const importePagado = (Array.isArray(pagos) ? pagos : [])
+          .filter((pago: any) => {
+            const fecha = new Date(pago?.fecha_pago);
+            if (Number.isNaN(fecha.getTime())) return false;
+            return fecha.getMonth() === currentMonth && fecha.getFullYear() === currentYear && fecha <= todayDate;
+          })
+          .reduce((acc: number, pago: any) => acc + toNumber(pago?.importe_neto ?? pago?.importe_bruto ?? pago?.importe), 0);
+        return sum + importePagado;
+      }, 0);
+      const inversionesHoy = rendimientoHoy + dividendosHoy;
+      const inversionesPendiente = (rendimientoMes + dividendosMes) - inversionesHoy;
 
       return {
         trabajo: {
           netoMensual: trabajoMensual,
+          netoHoy: trabajoHoy,
+          pendienteMes: trabajoMensual - trabajoHoy,
           tendencia: trabajoTendencia,
           variacionPorcentaje: trabajoVariacion
         },
         inmuebles: {
           cashflow: cashflowInmuebles,
+          cashflowHoy: cashflowInmueblesHoy,
+          pendienteMes: cashflowInmuebles - cashflowInmueblesHoy,
           ocupacion,
+          vacantes,
           tendencia: inmueblesTendencia
         },
         inversiones: {
           rendimientoMes,
           dividendosMes,
+          totalHoy: inversionesHoy,
+          pendienteMes: inversionesPendiente,
           tendencia: 'stable'
         }
       };
     } catch (error) {
       console.error('Error calculating flujos de caja:', error);
       return {
-        trabajo: { netoMensual: 0, tendencia: 'stable', variacionPorcentaje: 0 },
-        inmuebles: { cashflow: 0, ocupacion: 0, tendencia: 'stable' },
-        inversiones: { rendimientoMes: 0, dividendosMes: 0, tendencia: 'stable' }
+        trabajo: { netoMensual: 0, netoHoy: 0, pendienteMes: 0, tendencia: 'stable', variacionPorcentaje: 0 },
+        inmuebles: { cashflow: 0, cashflowHoy: 0, pendienteMes: 0, ocupacion: 0, vacantes: [], tendencia: 'stable' },
+        inversiones: { rendimientoMes: 0, dividendosMes: 0, totalHoy: 0, pendienteMes: 0, tendencia: 'stable' }
       };
     }
   }
@@ -1457,7 +1602,8 @@ class DashboardService {
       });
       
       unpaidRents.forEach((payment: any, index: number) => {
-        const diasVencido = Math.floor((now.getTime() - new Date(payment.fecha).getTime()) / (1000 * 60 * 60 * 24));
+        const fechaReferencia = new Date(payment.fecha ?? payment.paymentDate ?? `${payment.period}-01`);
+        const diasVencido = Math.floor((now.getTime() - fechaReferencia.getTime()) / (1000 * 60 * 60 * 24));
         alerts.push({
           id: `rent-${payment.id || index}`,
           tipo: 'cobro',
@@ -1544,11 +1690,19 @@ class DashboardService {
       if (activeProperties.length > 0) {
         const flujos = await this.getFlujosCaja();
         if (flujos.inmuebles.ocupacion < 100) {
+          const vacantes = flujos.inmuebles.vacantes ?? [];
+          const resumenVacantes = vacantes
+            .slice(0, 2)
+            .map((vacante) => `${vacante.propertyAlias} · ${vacante.unidadLabel}`)
+            .join('; ');
+          const vacantesExtra = vacantes.length > 2 ? ` (+${vacantes.length - 2} más)` : '';
           alerts.push({
             id: 'occupancy-warning',
             tipo: 'contrato',
-            titulo: 'Ocupación por debajo del objetivo',
-            descripcion: `La ocupación actual es del ${flujos.inmuebles.ocupacion.toFixed(1)}% y hay unidades vacantes`,
+            titulo: `${vacantes.length || 1} vacante${(vacantes.length || 1) > 1 ? 's' : ''} hoy`,
+            descripcion: resumenVacantes
+              ? `Ocupación ${flujos.inmuebles.ocupacion.toFixed(1)}% · Libres hoy: ${resumenVacantes}${vacantesExtra}`
+              : `La ocupación actual es del ${flujos.inmuebles.ocupacion.toFixed(1)}% y hay unidades vacantes`,
             urgencia: flujos.inmuebles.ocupacion < 90 ? 'alta' : 'media',
             diasVencimiento: 0,
             link: '/inmuebles/cartera'

@@ -163,6 +163,8 @@ describe('dashboardService financial metrics', () => {
     // Debe proyectar el mes completo: 1000 esperado - 200 gastos = 800
     // y no quedarse solo con lo cobrado hasta hoy (100).
     expect(flujos.inmuebles.cashflow).toBeCloseTo(800, 2);
+    expect(flujos.inmuebles.cashflowHoy).toBeCloseTo(-100, 2);
+    expect(flujos.inmuebles.pendienteMes).toBeCloseTo(900, 2);
   });
 
 
@@ -214,8 +216,8 @@ describe('dashboardService financial metrics', () => {
       inversiones: [],
       prestamos: [],
       properties: [
-        { id: 1, estado: 'activo' },
-        { id: 2, estado: 'activo' }
+        { id: 1, estado: 'activo', alias: 'Piso Centro' },
+        { id: 2, estado: 'activo', alias: 'Piso Norte' }
       ],
       contracts: [
         {
@@ -239,8 +241,9 @@ describe('dashboardService financial metrics', () => {
     const alertaOcupacion = alertas.find((alerta) => alerta.id === 'occupancy-warning');
 
     expect(alertaOcupacion).toBeDefined();
-    expect(alertaOcupacion?.titulo).toContain('Ocupación');
+    expect(alertaOcupacion?.titulo).toContain('vacante');
     expect(alertaOcupacion?.descripcion).toContain('50.0%');
+    expect(alertaOcupacion?.descripcion).toContain('Piso Norte');
   });
 
 
