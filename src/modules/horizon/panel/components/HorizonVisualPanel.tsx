@@ -136,13 +136,6 @@ const HorizonVisualPanel: React.FC = () => {
   const colchonSeguro = data.salud.colchonMeses >= 6;
   const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
   const ocupacionParcial = ocupacion < 100;
-
-  const trabajoTrendLabel = flujos?.trabajo.tendencia === 'down'
-    ? 'Tendencia ↓'
-    : flujos?.trabajo.tendencia === 'stable'
-      ? 'Tendencia ='
-      : 'Tendencia ↑';
-
   return (
     <div className="exec-shell">
       <div className="exec-main">
