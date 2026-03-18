@@ -26,8 +26,8 @@ import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
-import { dashboardService } from '../../services/dashboardService';
 import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
+import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -61,11 +61,6 @@ interface SimpleAccount {
 
 interface CardSettlementConfig {
   chargeAccountId: number;
-}
-
-interface CurrentMonthBalance {
-  hoy: number;
-  proyeccion: number;
 }
 
 interface DisplayAccountResolverInput {
@@ -125,12 +120,6 @@ const DEFAULT_NEW_MOVEMENT: NewMovementForm = {
 const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
 
-const toDateOnly = (value: string): Date => {
-  const [y, m, d] = value.substring(0, 10).split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-};
-
-
 function formatGroupDate(dateStr: string): string {
   const d = new Date(dateStr.includes('/')
     ? dateStr.split('/').reverse().join('-')
@@ -170,8 +159,6 @@ const TreasuryReconciliationView: React.FC = () => {
   const [savingMovement, setSavingMovement] = useState(false);
   const [syncingForecasts, setSyncingForecasts] = useState(false);
   const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
-  const [currentMonthBalances, setCurrentMonthBalances] = useState<Map<number, CurrentMonthBalance>>(new Map());
-
   useEffect(() => {
     if (editState && amountInputRef.current) {
       amountInputRef.current.focus();
@@ -264,19 +251,6 @@ const TreasuryReconciliationView: React.FC = () => {
 
       setAccounts(simpleAccounts);
       setEvents(localEvents);
-
-      const now = new Date();
-      const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
-      if (isCurrentMonth) {
-        const panel = await dashboardService.getTesoreriaPanel();
-        const balances = new Map<number, CurrentMonthBalance>();
-        panel.filas.forEach((row) => {
-          balances.set(row.accountId, { hoy: row.hoy, proyeccion: row.proyeccion });
-        });
-        setCurrentMonthBalances(balances);
-      } else {
-        setCurrentMonthBalances(new Map());
-      }
     } catch (err) {
       console.error('Error loading treasury data:', err);
       toast.error('Error al cargar datos de tesorería');
@@ -557,39 +531,32 @@ const TreasuryReconciliationView: React.FC = () => {
   const selectedBankName = accounts.find(a => a.id === selectedBankFilter)?.name;
 
   const accountBreakdown = useMemo(() => {
-    const [selectedYear, selectedMonth] = currentMonth.split('-').map(Number);
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const viewingCurrentMonth =
-      selectedYear === now.getFullYear() &&
-      selectedMonth === now.getMonth() + 1;
+    const today = new Date();
 
     return new Map(accounts.map(account => {
       const acctEvents = events.filter(e => e.accountId !== '' && e.accountId === account.id);
-      const remainingMonthEvents = viewingCurrentMonth
-        ? acctEvents.filter(e => toDateOnly(e.date) > today)
-        : acctEvents;
+      const summary = calculateAccountTreasurySummary({
+        account: { id: account.id, balance: account.balance },
+        events: acctEvents,
+        selectedMonth: currentMonth,
+        today,
+      });
+
       const ingresosPrevistos = acctEvents.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
       const ingresosReales = acctEvents.filter(e => e.type === 'income' && e.status === 'confirmado').reduce((s, e) => s + e.amount, 0);
       const gastosPrevistos = acctEvents.filter(e => e.type !== 'income').reduce((s, e) => s + e.amount, 0);
       const gastosReales = acctEvents.filter(e => e.type !== 'income' && e.status === 'confirmado').reduce((s, e) => s + e.amount, 0);
-      const ingresosRestantes = remainingMonthEvents
-        .filter(e => e.type === 'income')
-        .reduce((s, e) => s + e.amount, 0);
-      const gastosRestantes = remainingMonthEvents
-        .filter(e => e.type !== 'income')
-        .reduce((s, e) => s + e.amount, 0);
-      const ingresosRestantesConfirmados = remainingMonthEvents
-        .filter(e => e.type === 'income' && e.status === 'confirmado')
-        .reduce((s, e) => s + e.amount, 0);
-      const gastosRestantesConfirmados = remainingMonthEvents
-        .filter(e => e.type !== 'income' && e.status === 'confirmado')
-        .reduce((s, e) => s + e.amount, 0);
 
-      const saldoFinalPrevisto = account.balance + ingresosRestantes - gastosRestantes;
-      const saldoFinalReal = account.balance + ingresosRestantesConfirmados - gastosRestantesConfirmados;
-      const totalPunteado = account.balance + acctEvents.filter(e => e.status === 'confirmado').reduce((s, e) => s + (e.type === 'income' ? e.amount : -e.amount), 0);
-      return [account.id, { ingresosPrevistos, ingresosReales, gastosPrevistos, gastosReales, saldoFinalPrevisto, saldoFinalReal, totalPunteado }] as const;
+      return [account.id, {
+        ingresosPrevistos,
+        ingresosReales,
+        gastosPrevistos,
+        gastosReales,
+        hoy: summary.hoy,
+        saldoFinalPrevisto: summary.finMes,
+        saldoFinalReal: summary.totalPunteado,
+        totalPunteado: summary.totalPunteado,
+      }] as const;
     }));
   }, [accounts, currentMonth, events]);
 
@@ -602,18 +569,11 @@ const TreasuryReconciliationView: React.FC = () => {
     const totalEvents = events.length;
     const doneEvents = events.filter(e => e.status === 'confirmado').length;
     const pct = totalEvents > 0 ? Math.round((doneEvents / totalEvents) * 100) : 0;
-    const hoy = accounts.reduce((sum, account) => {
-      const dashboardBalance = currentMonthBalances.get(account.dbId);
-      return sum + (dashboardBalance?.hoy ?? account.balance);
-    }, 0);
-    const finMes = accounts.reduce((sum, account) => {
-      const bd = accountBreakdown.get(account.id);
-      const dashboardBalance = currentMonthBalances.get(account.dbId);
-      return sum + (dashboardBalance?.proyeccion ?? bd?.saldoFinalPrevisto ?? account.balance);
-    }, 0);
+    const hoy = accounts.reduce((sum, account) => sum + (accountBreakdown.get(account.id)?.hoy ?? account.balance), 0);
+    const finMes = accounts.reduce((sum, account) => sum + (accountBreakdown.get(account.id)?.saldoFinalPrevisto ?? account.balance), 0);
 
     return { totalEvents, doneEvents, pct, hoy, finMes };
-  }, [accounts, accountBreakdown, currentMonthBalances, events]);
+  }, [accounts, accountBreakdown, events]);
 
   const totalFiltradoPendiente = useMemo(() =>
     filteredEvents
@@ -658,7 +618,7 @@ const TreasuryReconciliationView: React.FC = () => {
 
   const bankosNegativos = accounts.filter(a => {
     const bd = accountBreakdown.get(a.id);
-    return bd && bd.saldoFinalReal < 0;
+    return bd && bd.saldoFinalPrevisto < 0;
   });
 
   // ─── HELPERS FOR ROW RENDER ─────────────────────────────────────────────────
@@ -957,11 +917,10 @@ const TreasuryReconciliationView: React.FC = () => {
                 const totalEvts = events.filter(e => e.accountId === account.id).length;
                 const doneEvts = events.filter(e => e.accountId === account.id && e.status === 'confirmado').length;
                 const pct = totalEvts > 0 ? Math.round((doneEvts / totalEvts) * 100) : 0;
-                const isNeg = bd && bd.saldoFinalReal < 0;
+                const isNeg = bd && bd.saldoFinalPrevisto < 0;
                 const isFull = pct === 100 && totalEvts > 0;
-                const dashboardBalance = currentMonthBalances.get(account.dbId);
-                const displayedHoy = dashboardBalance?.hoy ?? account.balance;
-                const displayedFinMes = dashboardBalance?.proyeccion ?? bd?.saldoFinalPrevisto ?? account.balance;
+                const displayedHoy = bd?.hoy ?? account.balance;
+                const displayedFinMes = bd?.saldoFinalPrevisto ?? account.balance;
 
                 return (
                   <div
