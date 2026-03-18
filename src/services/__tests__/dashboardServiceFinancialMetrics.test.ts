@@ -76,7 +76,7 @@ describe('dashboardService financial metrics', () => {
   });
 
 
-  it('usa renta mensual de contratos activos cuando no hay cobros pagados en rentPayments', async () => {
+  it('usa renta mensual de contratos activos cuando no hay pagos generados en rentPayments', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
       gastos: [
@@ -85,9 +85,7 @@ describe('dashboardService financial metrics', () => {
       expenses: [
         { fecha: '2026-03-08', importe: 50, propertyId: 1 }
       ],
-      rentPayments: [
-        { fecha: '2026-03-10', importe: 900, estado: 'pendiente' }
-      ],
+      rentPayments: [],
       contratos: [],
       contracts: [
         {
@@ -121,7 +119,7 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inmuebles.ocupacion).toBeCloseTo(100, 2);
   });
 
-  it('prioriza cobros reales pagados aunque el neto mensual sea cero o negativo', async () => {
+  it('proyecta el mes completo de inmuebles con expectedAmount aunque el cobro vaya parcial a mitad de mes', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
       gastos: [
@@ -129,8 +127,13 @@ describe('dashboardService financial metrics', () => {
       ],
       expenses: [],
       rentPayments: [
-        { fecha: '2026-03-10', importe: 100, estado: 'pagada' },
-        { fecha: '2026-03-11', importe: -150, estado: 'paid' }
+        {
+          contractId: 1,
+          period: '2026-03',
+          expectedAmount: 1000,
+          status: 'partial',
+          paidAmount: 100
+        }
       ],
       contracts: [
         {
@@ -157,19 +160,20 @@ describe('dashboardService financial metrics', () => {
 
     const flujos = await dashboardService.getFlujosCaja();
 
-    // Debe usar cobros reales: (100 - 150) - 200 = -250
-    // y NO caer al fallback de contrato (1000) porque sí hay cobros pagados.
-    expect(flujos.inmuebles.cashflow).toBeCloseTo(-250, 2);
+    // Debe proyectar el mes completo: 1000 esperado - 200 gastos = 800
+    // y no quedarse solo con lo cobrado hasta hoy (100).
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(800, 2);
   });
 
 
-  it('trata estado confirmado como cobro real para evitar fallback de contrato', async () => {
+  it('usa pagos generados del mes aunque sigan pendientes y evita caer al fallback del contrato', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
       gastos: [],
       expenses: [],
       rentPayments: [
-        { fecha: '2026-03-10', importe: 700, estado: 'confirmado' }
+        { fecha: '2026-03-10', importe: 700, estado: 'confirmado' },
+        { fecha: '2026-03-20', importe: 300, estado: 'pendiente' }
       ],
       contracts: [
         {
@@ -196,8 +200,47 @@ describe('dashboardService financial metrics', () => {
 
     const flujos = await dashboardService.getFlujosCaja();
 
-    // Debe usar 700 (confirmado real) y no 1000 del contrato fallback.
-    expect(flujos.inmuebles.cashflow).toBeCloseTo(700, 2);
+    // Debe usar 700 + 300 generados en marzo, sin caer al fallback del contrato.
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(1000, 2);
+  });
+
+  it('genera una alerta cuando la ocupación está por debajo del objetivo y hay inmuebles activos', async () => {
+    const datasets: Record<string, any[]> = {
+      rentPayments: [],
+      documents: [],
+      expenses: [],
+      gastos: [],
+      ingresos: [],
+      inversiones: [],
+      prestamos: [],
+      properties: [
+        { id: 1, estado: 'activo' },
+        { id: 2, estado: 'activo' }
+      ],
+      contracts: [
+        {
+          id: 1,
+          inmuebleId: 1,
+          rentaMensual: 1000,
+          fechaInicio: '2026-01-01',
+          fechaFin: '2026-12-31',
+          estadoContrato: 'activo'
+        }
+      ]
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
+    });
+
+    const alertas = await dashboardService.getAlertas();
+    const alertaOcupacion = alertas.find((alerta) => alerta.id === 'occupancy-warning');
+
+    expect(alertaOcupacion).toBeDefined();
+    expect(alertaOcupacion?.titulo).toContain('Ocupación');
+    expect(alertaOcupacion?.descripcion).toContain('50.0%');
   });
 
 

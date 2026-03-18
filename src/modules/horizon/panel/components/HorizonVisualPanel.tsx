@@ -256,7 +256,7 @@ const HorizonVisualPanel: React.FC = () => {
                 <div className="pulso-value" style={{ color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{euro.format(netoMensual)}</div>
                 <div className="pulso-meta">
                   <span className="pulso-badge" style={{ background: netoMensual >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: netoMensual >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
-                    <TrendingUp size={10} /> {loading ? 'Calculando...' : 'Mes actual'}
+                    <TrendingUp size={10} /> {loading ? 'Calculando...' : 'Mes completo'}
                   </span>
                 </div>
               </div>
@@ -274,7 +274,7 @@ const HorizonVisualPanel: React.FC = () => {
                   <div className="flujo-importe" style={{ color: trabajoNetoVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
                     {euro.format(trabajoNetoVisible)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
                   </div>
-                  <div className="flujo-sub">Ingresos − Gastos personales</div>
+                  <div className="flujo-sub">Ingresos − Gastos del mes</div>
                 </div>
                 <div className="flujo-right">
                   <span className="flujo-delta" style={{ background: trabajoNetoVisible >= 0 ? 'var(--s-pos-bg)' : 'var(--s-neg-bg)', color: trabajoNetoVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
@@ -291,7 +291,7 @@ const HorizonVisualPanel: React.FC = () => {
                   <div className="flujo-importe" style={{ color: inmueblesCashflowVisible >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
                     {euro.format(inmueblesCashflowVisible)} <span style={{ fontSize: '0.75rem', color: 'var(--n-500)', fontWeight: 400 }}>/mes</span>
                   </div>
-                  <div className="flujo-sub">Ingresos alquiler − costes</div>
+                  <div className="flujo-sub">Ingresos alquiler − gastos − hipoteca</div>
                 </div>
                 <div className="flujo-right">
                   <span className="flujo-delta" style={{ background: ocupacionParcial ? 'var(--s-warn-bg)' : 'var(--s-pos-bg)', color: ocupacionParcial ? 'var(--s-warn)' : 'var(--s-pos)' }}>

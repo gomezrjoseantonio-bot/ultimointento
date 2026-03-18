@@ -747,6 +747,34 @@ class DashboardService {
       };
 
       const getImporte = (item: any): number => toNumber(item?.importe ?? item?.total ?? item?.amount);
+      const getRentPaymentAmount = (payment: any): number => {
+        const candidates = [
+          payment?.expectedAmount,
+          payment?.paidAmount,
+          payment?.importe,
+          payment?.amount,
+          payment?.total
+        ];
+        const firstDefined = candidates.find((value) => value !== undefined && value !== null);
+        return toNumber(firstDefined);
+      };
+      const getRentPaymentDate = (payment: any): Date | null => {
+        const period = String(payment?.period ?? '').trim();
+        if (/^\d{4}-\d{2}$/.test(period)) {
+          const [year, month] = period.split('-').map(Number);
+          const d = new Date(year, month - 1, 1);
+          return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        const raw = payment?.fecha ?? payment?.paymentDate ?? payment?.fecha_prevista_cobro ?? payment?.fechaPago;
+        if (!raw) return null;
+        const d = new Date(raw);
+        return Number.isNaN(d.getTime()) ? null : d;
+      };
+      const rentPaymentInMonth = (payment: any, month: number, year: number): boolean => {
+        const d = getRentPaymentDate(payment);
+        return !!d && d.getMonth() === month && d.getFullYear() === year;
+      };
 
       const isActiveContractForMonth = (contract: any, month: number, year: number): boolean => {
         const status = String(contract?.estadoContrato ?? contract?.estado ?? contract?.status ?? '').toLowerCase();
@@ -775,33 +803,21 @@ class DashboardService {
       const getContractMonthlyRent = (contract: any): number =>
         toNumber(contract?.rentaMensual ?? contract?.renta_mensual ?? contract?.monthlyRent ?? contract?.importeMensual);
 
-      const isPaidRentPayment = (payment: any): boolean => {
+      const isCancelledRentPayment = (payment: any): boolean => {
         const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
-        return [
-          'pagada',
-          'pagado',
-          'paid',
-          'cobrada',
-          'cobrado',
-          'confirmada',
-          'confirmado',
-          'confirmed',
-          'ejecutada',
-          'ejecutado',
-          'executed',
-          'parcial',
-          'partial',
-        ].includes(status);
+        return ['cancelado', 'cancelada', 'cancelled', 'anulado', 'anulada', 'void'].includes(status);
       };
 
       const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
-        const paidPayments = rentPaymentsData
-          .filter((payment: any) => inMonth(payment, month, year) && isPaidRentPayment(payment));
+        const scheduledPayments = rentPaymentsData
+          .filter((payment: any) => rentPaymentInMonth(payment, month, year) && !isCancelledRentPayment(payment));
 
-        // Important: if there are paid records, always trust real collections,
-        // even when net amount is 0 or negative (refunds/ajustes).
-        if (paidPayments.length > 0) {
-          return paidPayments.reduce((sum: number, payment: any) => sum + getImporte(payment), 0);
+        // En el dashboard mensual mostramos el flujo previsto del mes completo.
+        // Si existen pagos planificados/generados para ese mes, se suman todos sus
+        // importes esperados (o el mejor fallback disponible), no solo lo cobrado
+        // hasta hoy. La foto "a día de hoy" ya vive en tesorería/liquidez.
+        if (scheduledPayments.length > 0) {
+          return scheduledPayments.reduce((sum: number, payment: any) => sum + getRentPaymentAmount(payment), 0);
         }
 
         return contractsData
@@ -873,7 +889,8 @@ class DashboardService {
       });
       const activeContracts = contracts.filter((c: any) => {
         const status = String(c?.estado ?? c?.estadoContrato ?? c?.status ?? '').toLowerCase();
-        return status === 'activo' || status === 'active';
+        if (status === 'activo' || status === 'active') return true;
+        return isActiveContractForMonth(c, currentMonth, currentYear);
       });
 
       const activePropertyIds = new Set(
@@ -1434,8 +1451,9 @@ class DashboardService {
       // Check for unpaid rent (cobro type)
       const rentPayments = await db.getAll('rentPayments');
       const unpaidRents = rentPayments.filter((payment: any) => {
-        const fechaVencimiento = new Date(payment.fecha);
-        return payment.estado !== 'pagada' && fechaVencimiento < now;
+        const fechaVencimiento = new Date(payment.fecha ?? payment.paymentDate ?? `${payment.period}-01`);
+        const status = String(payment.estado ?? payment.status ?? '').toLowerCase();
+        return status !== 'pagada' && status !== 'paid' && fechaVencimiento < now;
       });
       
       unpaidRents.forEach((payment: any, index: number) => {
@@ -1516,6 +1534,27 @@ class DashboardService {
           link: '/inmuebles/gastos-capex'
         });
       });
+
+      const properties = await db.getAll('properties');
+      const activeProperties = properties.filter((property: any) => {
+        const status = String(property?.state ?? property?.status ?? property?.estado ?? '').toLowerCase();
+        return status === '' || status === 'activo' || status === 'active';
+      });
+
+      if (activeProperties.length > 0) {
+        const flujos = await this.getFlujosCaja();
+        if (flujos.inmuebles.ocupacion < 100) {
+          alerts.push({
+            id: 'occupancy-warning',
+            tipo: 'contrato',
+            titulo: 'Ocupación por debajo del objetivo',
+            descripcion: `La ocupación actual es del ${flujos.inmuebles.ocupacion.toFixed(1)}% y hay unidades vacantes`,
+            urgencia: flujos.inmuebles.ocupacion < 90 ? 'alta' : 'media',
+            diasVencimiento: 0,
+            link: '/inmuebles/cartera'
+          });
+        }
+      }
       
       // TODO: Add hipoteca type alerts when prestamos are integrated
       // TODO: Add ipc type alerts when contracts support IPC tracking
