@@ -251,6 +251,96 @@ describe('propertySaleService', () => {
     expect(eventsAfterCancel).toHaveLength(0);
   });
 
+  it('restaura gastos previstos y reactiva el préstamo al anular una venta legacy con executionJournal crudo', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Journal Legacy' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES1200491500051234567892' })));
+
+    const loanId = 'loan-legacy-journal-1';
+    await db.add('prestamos', {
+      id: loanId,
+      inmuebleId: String(propertyId),
+      activo: true,
+      principalVivo: 81234.56,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+      notas: 'Configuración original | tramo variable',
+    } as any);
+
+    const opexRuleId = Number(await db.add('opexRules', {
+      propertyId,
+      categoria: 'impuesto',
+      concepto: 'IBI | cuota anual',
+      importeEstimado: 1200,
+      frecuencia: 'anual',
+      activo: true,
+      accountId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any));
+
+    const gastoId = Number(await db.add('gastos', {
+      contraparte_nombre: 'Seguro hogar | anual',
+      fecha_emision: '2026-04-01',
+      fecha_pago_prevista: '2026-04-15',
+      total: 430,
+      categoria_AEAT: '0114',
+      destino: 'inmueble_id',
+      destino_id: propertyId,
+      estado: 'completo',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as any));
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-03-10',
+      salePrice: 210000,
+      settlementAccountId: accountId,
+      source: 'detalle',
+      loanPayoffAmount: 81234.56,
+    });
+
+    const sale = await getLatestConfirmedSaleForProperty(propertyId);
+    expect(sale?.id).toBeDefined();
+    expect(sale?.notes).toContain('executionJournalEncoded:');
+
+    const encodedJournal = String(sale?.notes)
+      .split('executionJournalEncoded:')[1]
+      ?.split(' | ')[0];
+    const rawJournal = decodeURIComponent(escape(atob(encodedJournal)));
+
+    await db.put('property_sales', {
+      ...sale!,
+      notes: [sale!.notes?.split(' | executionJournalEncoded:')[0], `executionJournal:${rawJournal}`]
+        .filter(Boolean)
+        .join(' | '),
+    });
+
+    const loanAfterSale = await db.get('prestamos', loanId);
+    expect(loanAfterSale?.activo).toBe(false);
+    expect(loanAfterSale?.estado).toBe('cancelado');
+
+    const opexAfterSale = await db.get('opexRules', opexRuleId);
+    expect(opexAfterSale?.activo).toBe(false);
+
+    const gastoAfterSale = await db.get('gastos', gastoId);
+    expect(gastoAfterSale?.estado).toBe('incompleto');
+
+    await cancelPropertySale(sale!.id!);
+
+    const restoredLoan = await db.get('prestamos', loanId);
+    expect(restoredLoan?.activo).toBe(true);
+    expect(restoredLoan?.estado).toBe('vivo');
+    expect(restoredLoan?.principalVivo).toBe(81234.56);
+
+    const restoredOpex = await db.get('opexRules', opexRuleId);
+    expect(restoredOpex?.activo).toBe(true);
+
+    const restoredGasto = await db.get('gastos', gastoId);
+    expect(restoredGasto?.estado).toBe('completo');
+  });
+
 
   it('finaliza cancelación de préstamo al puntear gasto de cancelación de venta', async () => {
     const db = await initDB();
