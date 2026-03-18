@@ -26,7 +26,12 @@ export function calculateAccountBalanceAtDate(params: {
     .reduce((sum, e) => sum + getSignedEventAmount(e), 0);
 
   const movementsDelta = movements
-    .filter(m => m.accountId === account.id && toDateOnly(m.date) && toDateOnly(m.date)! < cutoffDate)
+    .filter(m => (
+      m.accountId === account.id &&
+      !m.isOpeningBalance &&
+      toDateOnly(m.date) &&
+      toDateOnly(m.date)! < cutoffDate
+    ))
     .reduce((sum, m) => sum + m.amount, 0);
 
   return openingBalance + eventsDelta + movementsDelta;

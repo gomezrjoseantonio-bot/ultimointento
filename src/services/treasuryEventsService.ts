@@ -75,6 +75,7 @@ export const recalculateAccountBalance = async (accountId: number): Promise<void
     let balance = account.openingBalance || 0;
     
     for (const movement of accountMovements) {
+      if (movement.isOpeningBalance) continue;
       balance += movement.amount;
     }
     

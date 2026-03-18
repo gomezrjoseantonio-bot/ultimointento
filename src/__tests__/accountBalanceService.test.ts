@@ -47,6 +47,38 @@ describe('accountBalanceService', () => {
     expect(value).toBe(1130);
   });
 
+  it('ignores the synthetic opening balance movement to avoid double counting across months', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 1000,
+        openingBalanceDate: '2024-03-01',
+      },
+      cutoffDate: '2024-04-01',
+      treasuryEvents: [],
+      movements: [
+        {
+          accountId: 1,
+          amount: 1000,
+          date: '2024-03-01',
+          isOpeningBalance: true,
+        } as any,
+        {
+          accountId: 1,
+          amount: -50,
+          date: '2024-03-15',
+        } as any,
+      ],
+    });
+
+    expect(value).toBe(950);
+  });
+
   it('sums all active accounts as total initial cash', async () => {
     mockDB.getAll.mockImplementation(async (table: string) => {
       if (table === 'accounts') {
