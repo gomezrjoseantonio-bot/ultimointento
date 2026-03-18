@@ -85,6 +85,8 @@ export interface Prestamo {
   // Estado de pagos
   cuotasPagadas: number;
   fechaUltimaCuotaPagada?: string;
+  estado?: 'vivo' | 'cancelado' | 'pendiente_cancelacion_venta';
+  fechaCancelacion?: string;
 
   // Importación
   origenCreacion: 'MANUAL' | 'FEIN' | 'IMPORTACION';

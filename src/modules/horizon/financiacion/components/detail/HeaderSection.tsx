@@ -48,10 +48,11 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEd
     periodo.cuota > 0 && !periodo.esProrrateado && !periodo.esSoloIntereses
   )?.cuota;
 
-  const cuotaResumen = cuotaDefinitiva ?? cuotaEstimada;
-
-  const fechaFin = new Date(prestamo.fechaFirma);
-  fechaFin.setMonth(fechaFin.getMonth() + prestamo.plazoMesesTotal);
+  const fechaFinPrevista = new Date(prestamo.fechaFirma);
+  fechaFinPrevista.setMonth(fechaFinPrevista.getMonth() + prestamo.plazoMesesTotal);
+  const fechaFinReal = planPagos?.resumen?.fechaFinalizacion || prestamo.fechaCancelacion;
+  const estaCancelado = prestamo.activo === false || prestamo.estado === 'cancelado';
+  const cuotaResumen = estaCancelado ? 0 : (cuotaDefinitiva ?? cuotaEstimada);
 
   return (
     <div className="bg-white border border-gray-200 p-6 space-y-5">
@@ -76,6 +77,14 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEd
                 style={{ backgroundColor: 'rgba(107,114,128,0.08)', color: 'var(--text-gray)' }}>
                 {isPersonal ? 'Personal' : 'Inmueble'}
               </span>
+              {estaCancelado && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{ backgroundColor: 'rgba(220, 38, 38, 0.08)', color: 'var(--error)' }}
+                >
+                  Cancelado
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -104,7 +113,7 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEd
           { label: 'Principal', value: `${fmt(prestamo.principalInicial)} €` },
           { label: 'Capital Vivo', value: `${fmt(principalVivoResumen)} €` },
           { label: 'Cuota estimada', value: `${fmt(cuotaResumen)} €/mes` },
-          { label: 'Fin previsto', value: fechaFin.toLocaleDateString('es-ES') },
+          { label: estaCancelado ? 'Fin real' : 'Fin previsto', value: (estaCancelado && fechaFinReal ? new Date(fechaFinReal).toLocaleDateString('es-ES') : fechaFinPrevista.toLocaleDateString('es-ES')) },
         ].map(kpi => (
           <div key={kpi.label} className="border border-gray-100 rounded p-3"
             style={{ backgroundColor: 'var(--bg)' }}>
@@ -128,6 +137,11 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEd
 
       {/* Feature chips */}
       <div className="flex items-center gap-2 flex-wrap text-xs">
+        {estaCancelado && (
+          <span className="px-2 py-0.5 rounded-full border border-red-200" style={{ color: 'var(--error)' }}>
+            Fin previsto original: {fechaFinPrevista.toLocaleDateString('es-ES')}
+          </span>
+        )}
         {prestamo.cobroMesVencido && (
           <span className="px-2 py-0.5 rounded-full border border-gray-200" style={{ color: 'var(--text-gray)' }}>
             Cobro vencido
