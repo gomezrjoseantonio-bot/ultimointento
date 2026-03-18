@@ -120,12 +120,6 @@ const DEFAULT_NEW_MOVEMENT: NewMovementForm = {
 const dbStatusToLocal = (s: string): 'previsto' | 'confirmado' =>
   s === 'predicted' ? 'previsto' : 'confirmado';
 
-const toDateOnly = (value: string): Date => {
-  const [y, m, d] = value.substring(0, 10).split('-').map(Number);
-  return new Date(y, (m || 1) - 1, d || 1);
-};
-
-
 function formatGroupDate(dateStr: string): string {
   const d = new Date(dateStr.includes('/')
     ? dateStr.split('/').reverse().join('-')
