@@ -1,6 +1,8 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
 import { personalDataService } from './personalDataService';
+import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
+import { prestamosService } from './prestamosService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -149,6 +151,22 @@ const toNumericId = (value: unknown): number | undefined => {
 const isForecastTreasuryEvent = (event: any): boolean => {
   const status = String(event?.status || '').toLowerCase();
   return status === 'predicted' || status === 'pending';
+};
+
+const isConfirmedTreasuryEvent = (event: any): boolean => {
+  const status = String(event?.status || '').toLowerCase();
+  return status === 'confirmed' || status === 'executed';
+};
+
+const toDateOnlyString = (value: unknown): string | null => {
+  if (!value) return null;
+  const raw = String(value);
+  return raw.includes('T') ? raw.split('T')[0] : raw;
+};
+
+const isTreasuryEventInMonth = (value: unknown, monthStart: string, monthEnd: string): boolean => {
+  const dateOnly = toDateOnlyString(value);
+  return Boolean(dateOnly && dateOnly >= monthStart && dateOnly <= monthEnd);
 };
 
 const resolveTreasuryEventDisplayAccountId = (
@@ -578,12 +596,24 @@ class DashboardService {
 
       // Deuda: include active loans from prestamos store.
       const prestamos = await db.getAll('prestamos').catch(() => []);
-      const deudaViva = (prestamos as any[])
-        .filter((prestamo) => prestamo?.activo !== false)
-        .reduce((sum, prestamo) => {
-          const principal = prestamo.principalVivo ?? prestamo.capital_pendiente ?? prestamo.capitalPendiente ?? 0;
-          return sum + toNumber(principal);
-        }, 0);
+      const deudaVivaPorPrestamo = await Promise.all((prestamos as any[])
+        .filter((prestamo) => prestamo?.activo !== false && prestamo?.estado !== 'cancelado')
+        .map(async (prestamo) => {
+          const principalFallback = prestamo.principalVivo ?? prestamo.capital_pendiente ?? prestamo.capitalPendiente ?? 0;
+
+          try {
+            const plan = await prestamosService.getPaymentPlan(prestamo.id);
+            const ultimaCuotaPagada = plan?.periodos
+              ?.filter((periodo) => periodo.pagado)
+              .sort((a, b) => b.periodo - a.periodo)[0];
+
+            return toNumber(ultimaCuotaPagada?.principalFinal ?? principalFallback);
+          } catch (error) {
+            console.warn('[DASHBOARD] No se pudo calcular capital vivo desde plan de pagos:', prestamo?.id, error);
+            return toNumber(principalFallback);
+          }
+        }));
+      const deudaViva = deudaVivaPorPrestamo.reduce((sum, principal) => sum + principal, 0);
 
       const total = valorInmuebles + valorInversiones + saldoCuentas - deudaViva;
 
@@ -1108,8 +1138,10 @@ class DashboardService {
     };
   }> {
     try {
-      const db = await initDB();
       const now = new Date();
+      await rollForwardAccountBalancesToMonth(now.getFullYear(), now.getMonth() + 1);
+
+      const db = await initDB();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -1118,7 +1150,6 @@ class DashboardService {
       };
 
       const accounts = await db.getAll('accounts');
-      const movements = await db.getAll('movements').catch(() => []);
       const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
 
       const cardSettlementByAccountId = new Map<number, { chargeAccountId: number }>();
@@ -1129,40 +1160,33 @@ class DashboardService {
 
       const activeAccounts = accounts.filter((acc: any) => (
         acc.isActive !== false
+        && acc.activa !== false
+        && acc.status !== 'DELETED'
         && !acc.deleted_at
         && !isCardAccount(acc)
       ));
 
-      const toDateOnly = (value: unknown): string | null => {
-        if (!value) return null;
-        const raw = String(value);
-        return raw.includes('T') ? raw.split('T')[0] : raw;
-      };
-      const startOfMonthDateOnly = toDateOnly(startOfMonth.toISOString())!;
-      const endOfMonthDateOnly = toDateOnly(endOfMonth.toISOString())!;
+      const startOfMonthDateOnly = toDateOnlyString(startOfMonth.toISOString())!;
+      const endOfMonthDateOnly = toDateOnlyString(endOfMonth.toISOString())!;
+      const todayDateOnly = toDateOnlyString(now.toISOString())!;
 
       const filas = activeAccounts.map((account: any) => {
         const accountId = account.id as number;
-        const currentBalance = toNumber(account.balance);
-
-        const monthMovements = (movements as any[]).filter((movement) => {
-          if (movement.accountId !== accountId) return false;
-          const movementDate = new Date(movement.date || movement.fecha || movement.valueDate || movement.fechaOperacion);
-          return !Number.isNaN(movementDate.getTime()) && movementDate >= startOfMonth && movementDate <= now;
-        });
-
-        const deltaMes = monthMovements.reduce((sum, movement) => sum + toNumber(movement.amount), 0);
-        const inicioMes = currentBalance - deltaMes;
+        const openingBalance = toNumber(account.balance);
 
         const eventosMesCuenta = (treasuryEvents as any[]).filter((event) => {
           const displayAccountId = resolveTreasuryEventDisplayAccountId(event, cardSettlementByAccountId);
-          if (displayAccountId !== accountId) return false;
-          const predictedDateOnly = toDateOnly(event.predictedDate);
-          if (!predictedDateOnly) return false;
-          return predictedDateOnly >= startOfMonthDateOnly && predictedDateOnly <= endOfMonthDateOnly;
+          return displayAccountId === accountId
+            && isTreasuryEventInMonth(event.predictedDate, startOfMonthDateOnly, endOfMonthDateOnly);
         });
 
-        const hoy = currentBalance;
+        const confirmadosHastaHoy = eventosMesCuenta
+          .filter((event) => isConfirmedTreasuryEvent(event))
+          .filter((event) => {
+            const predictedDateOnly = toDateOnlyString(event.predictedDate);
+            return Boolean(predictedDateOnly && predictedDateOnly <= todayDateOnly);
+          })
+          .reduce((sum, event) => sum + (event.type === 'income' ? 1 : -1) * toNumber(event.amount), 0);
 
         const futurosCuenta = eventosMesCuenta.filter((event) => isForecastTreasuryEvent(event));
 
@@ -1174,12 +1198,13 @@ class DashboardService {
           .filter((event) => event.type === 'expense' || event.type === 'financing')
           .reduce((sum, event) => sum + toNumber(event.amount), 0);
 
+        const hoy = openingBalance + confirmadosHastaHoy;
         const proyeccion = hoy + porCobrar - porPagar;
 
         return {
           accountId,
           banco: account.alias || account.name || account.bank || account.banco?.name || 'Cuenta sin nombre',
-          inicioMes,
+          inicioMes: openingBalance,
           hoy,
           porCobrar,
           porPagar,

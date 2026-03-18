@@ -1,5 +1,6 @@
 import { dashboardService } from '../dashboardService';
 import { initDB } from '../db';
+import { prestamosService } from '../prestamosService';
 
 jest.mock('../db', () => ({
   initDB: jest.fn()
@@ -52,7 +53,9 @@ describe('dashboardService financial metrics', () => {
     };
 
     (initDB as jest.Mock).mockResolvedValue({
-      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const liquidez = await dashboardService.getLiquidez();
@@ -64,8 +67,8 @@ describe('dashboardService financial metrics', () => {
     expect(liquidez.proyeccion30d).toBeCloseTo(1535.5, 2);
 
     expect(salud.liquidezHoy).toBeCloseTo(1500.5, 2);
-    expect(salud.gastoMedioMensual).toBeCloseTo(566.666666, 2);
-    expect(salud.colchonMeses).toBeCloseTo(1500.5 / 566.666666, 5);
+    expect(salud.gastoMedioMensual).toBeCloseTo(616.666666, 2);
+    expect(salud.colchonMeses).toBeCloseTo(1500.5 / 616.666666, 5);
     expect(salud.estado).toBe('warning');
     expect(salud.proyeccion30d.gastos).toBeCloseTo(615, 2);
     expect(salud.proyeccion30d.ingresos).toBeCloseTo(650, 2);
@@ -106,7 +109,9 @@ describe('dashboardService financial metrics', () => {
     };
 
     (initDB as jest.Mock).mockResolvedValue({
-      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const flujos = await dashboardService.getFlujosCaja();
@@ -145,7 +150,9 @@ describe('dashboardService financial metrics', () => {
     };
 
     (initDB as jest.Mock).mockResolvedValue({
-      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const flujos = await dashboardService.getFlujosCaja();
@@ -182,7 +189,9 @@ describe('dashboardService financial metrics', () => {
     };
 
     (initDB as jest.Mock).mockResolvedValue({
-      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const flujos = await dashboardService.getFlujosCaja();
@@ -211,7 +220,9 @@ describe('dashboardService financial metrics', () => {
     (initDB as jest.Mock).mockResolvedValue({
       getAll: jest.fn(async (store: string) => datasets[store] ?? []),
       getAllFromIndex: jest.fn(async () => []),
-      add: jest.fn(async () => 1)
+      add: jest.fn(async () => 1),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const patrimonio = await dashboardService.getPatrimonioNeto();
@@ -238,7 +249,9 @@ describe('dashboardService financial metrics', () => {
     };
 
     (initDB as jest.Mock).mockResolvedValue({
-      getAll: jest.fn(async (store: string) => datasets[store] ?? [])
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const panel = await dashboardService.getTesoreriaPanel();
@@ -250,6 +263,86 @@ describe('dashboardService financial metrics', () => {
     expect(panel.filas[0].proyeccion).toBe(1025);
     expect(panel.totales.hoy).toBe(1000);
     expect(panel.totales.porPagar).toBe(475);
+  });
+
+  it('alinea tesorería dashboard con saldo hoy y fin de mes de la vista de tesorería', async () => {
+    const datasets: Record<string, any[]> = {
+      accounts: [
+        { id: 1, isActive: true, activa: true, alias: 'Cuenta Banco', balance: 1000, openingBalance: 1000, openingBalanceDate: '2026-03-01' }
+      ],
+      treasuryEvents: [
+        { accountId: 1, type: 'expense', status: 'confirmed', amount: 200, predictedDate: '2026-03-04' },
+        { accountId: 1, type: 'income', status: 'executed', amount: 50, predictedDate: '2026-03-08' },
+        { accountId: 1, type: 'income', status: 'predicted', amount: 500, predictedDate: '2026-03-20' },
+        { accountId: 1, type: 'financing', status: 'predicted', amount: 300, predictedDate: '2026-03-22' }
+      ],
+      movements: []
+    };
+
+    const dbMock = {
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async (_store: string, value: any) => value),
+      get: jest.fn(async () => undefined)
+    };
+    (initDB as jest.Mock).mockResolvedValue(dbMock);
+
+    const panel = await dashboardService.getTesoreriaPanel();
+
+    expect(panel.filas).toHaveLength(1);
+    expect(panel.filas[0].inicioMes).toBe(1000);
+    expect(panel.filas[0].hoy).toBe(850);
+    expect(panel.filas[0].porCobrar).toBe(500);
+    expect(panel.filas[0].porPagar).toBe(300);
+    expect(panel.filas[0].proyeccion).toBe(1050);
+    expect(panel.totales.hoy).toBe(850);
+    expect(panel.totales.proyeccion).toBe(1050);
+  });
+
+  it('alinea deuda del dashboard con el capital vivo calculado en financiación', async () => {
+    const datasets: Record<string, any[]> = {
+      properties: [],
+      valoraciones_historicas: [],
+      inversiones: [],
+      accounts: [],
+      treasuryEvents: [],
+      prestamos: [
+        {
+          id: 'loan-1',
+          activo: true,
+          estado: 'activo',
+          principalInicial: 100000,
+          principalVivo: 92000,
+          plazoMesesTotal: 120,
+          tipo: 'FIJO',
+          tipoNominalAnualFijo: 2.2,
+          fechaFirma: '2024-01-01',
+          fechaPrimerCargo: '2024-02-01'
+        }
+      ]
+    };
+
+    const dbMock = {
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      getAllFromIndex: jest.fn(async () => []),
+      add: jest.fn(async () => 1),
+      put: jest.fn(async (_store: string, value: any) => value),
+      get: jest.fn(async () => undefined)
+    };
+    (initDB as jest.Mock).mockResolvedValue(dbMock);
+    const getPaymentPlanSpy = jest.spyOn(prestamosService, 'getPaymentPlan').mockResolvedValue({
+      periodos: [
+        { periodo: 1, pagado: true, principalFinal: 87500 }
+      ],
+      resumen: { totalIntereses: 0, fechaFinalizacion: '2034-01-01' },
+      metadata: { source: 'manual' }
+    } as any);
+
+    const patrimonio = await dashboardService.getPatrimonioNeto();
+
+    getPaymentPlanSpy.mockRestore();
+
+    expect(patrimonio.desglose.deuda).toBe(87500);
+    expect(patrimonio.total).toBe(-87500);
   });
 
   it('alinea patrimonio cuentas con el saldo actual de tesorería sin descontar eventos ya reflejados', async () => {
@@ -269,7 +362,9 @@ describe('dashboardService financial metrics', () => {
     (initDB as jest.Mock).mockResolvedValue({
       getAll: jest.fn(async (store: string) => datasets[store] ?? []),
       getAllFromIndex: jest.fn(async () => []),
-      add: jest.fn(async () => 1)
+      add: jest.fn(async () => 1),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
     });
 
     const [patrimonio, panel] = await Promise.all([
@@ -277,8 +372,8 @@ describe('dashboardService financial metrics', () => {
       dashboardService.getTesoreriaPanel()
     ]);
 
-    expect(panel.totales.hoy).toBe(6906);
-    expect(patrimonio.desglose.cuentas).toBe(6906);
-    expect(patrimonio.total).toBe(6906);
+    expect(panel.totales.hoy).toBe(5666);
+    expect(patrimonio.desglose.cuentas).toBe(5666);
+    expect(patrimonio.total).toBe(5666);
   });
 });
