@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Home, Edit3, Trash2, Zap } from 'lucide-react';
+import { User, Home, Edit3, Trash2, Zap, Landmark } from 'lucide-react';
 import { Prestamo, PlanPagos } from '../../../../../types/prestamos';
 import ProgressBar from '../ProgressBar';
 
@@ -9,11 +9,12 @@ interface HeaderSectionProps {
   onEdit: () => void;
   onDelete: () => void;
   onSimular: () => void;
+  onGestionarOperacion: () => void;
 }
 
 const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEdit, onDelete, onSimular }) => {
+const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEdit, onDelete, onSimular, onGestionarOperacion }) => {
   const isPersonal = prestamo.ambito === 'PERSONAL';
 
   const periodosPagados = (planPagos?.periodos || []).filter(periodo => periodo.pagado);
@@ -89,6 +90,13 @@ const HeaderSection: React.FC<HeaderSectionProps> = ({ prestamo, planPagos, onEd
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {!estaCancelado && (
+            <button onClick={onGestionarOperacion} className="flex items-center gap-1 px-3 py-1.5 text-sm border border-atlas-blue rounded hover:bg-primary-50"
+              style={{ color: 'var(--atlas-blue)' }}>
+              <Landmark className="h-3.5 w-3.5" />
+              Cancelar / amortizar
+            </button>
+          )}
           <button onClick={onSimular} className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50"
             style={{ color: 'var(--atlas-navy-1)' }}>
             <Zap className="h-3.5 w-3.5" />
