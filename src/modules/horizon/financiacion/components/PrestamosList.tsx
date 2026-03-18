@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Edit3, Eye, Trash2, CreditCard, Home, User, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit3, Eye, EyeOff, Trash2, CreditCard, Home, User, ChevronDown, ChevronUp } from 'lucide-react';
 import { prestamosService } from '../../../../services/prestamosService';
 import { cuentasService } from '../../../../services/cuentasService';
 import { inmuebleService } from '../../../../services/inmuebleService';
@@ -39,6 +39,9 @@ const applyOrder = (list: Prestamo[], storageKey: string): Prestamo[] => {
   return sortByEndDate(list);
 };
 
+const isCancelledLoan = (prestamo: Prestamo): boolean =>
+  prestamo.activo === false || prestamo.estado === 'cancelado';
+
 interface PrestamosListProps {
   onEdit: (prestamoId: string) => void;
   onViewDetail?: (prestamoId: string) => void;
@@ -56,6 +59,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   const [hipotecasOrder, setHipotecasOrder] = useState<string[]>([]);
   const [personalesOrder, setPersonalesOrder] = useState<string[]>([]);
   const [capitalPendientePorPrestamo, setCapitalPendientePorPrestamo] = useState<Record<string, number>>({});
+  const [mostrarCancelados, setMostrarCancelados] = useState(false);
   const dragSrcRef = useRef<{ id: string; section: 'hipotecas' | 'personales' } | null>(null);
 
   const getCapitalPendienteDesdeUltimaCuotaConfirmada = (prestamo: Prestamo, plan: PlanPagos | null): number => {
@@ -76,7 +80,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       try {
         setLoading(true);
         const [allPrestamos, accountsList, inmueblesList] = await Promise.all([
-          prestamosService.getAllPrestamos(),
+          prestamosService.reloadAllPrestamos(),
           cuentasService.list(),
           inmuebleService.getAll(),
         ]);
@@ -155,7 +159,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
     if (confirmed) {
       try {
         await prestamosService.deletePrestamo(prestamoId);
-        const allPrestamos = await prestamosService.getAllPrestamos();
+        const allPrestamos = await prestamosService.reloadAllPrestamos();
         setPrestamos(allPrestamos);
         handleCloseDetailDrawer();
       } catch (error) {
@@ -167,6 +171,9 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   // Split by ambito
   const hipotecas = prestamos.filter(p => p.ambito === 'INMUEBLE');
   const personales = prestamos.filter(p => p.ambito === 'PERSONAL');
+  const hipotecasVisibles = hipotecas.filter(p => mostrarCancelados || !isCancelledLoan(p));
+  const personalesVisibles = personales.filter(p => mostrarCancelados || !isCancelledLoan(p));
+  const canceladosCount = prestamos.filter(isCancelledLoan).length;
 
   // Apply saved/sorted order to each group
   const getOrderedList = (list: Prestamo[], order: string[]): Prestamo[] => {
@@ -236,10 +243,11 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
   }
 
   // Global KPIs
-  const deudaTotal = prestamos.reduce((sum, p) => sum + p.principalInicial, 0);
-  const totalPagado = prestamos.reduce((sum, p) => sum + (p.principalInicial - getCapitalPendiente(p)), 0);
-  const totalPendiente = prestamos.reduce((sum, p) => sum + getCapitalPendiente(p), 0);
-  const cuotaMensualTotal = prestamos.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0);
+  const prestamosVisibles = prestamos.filter(p => mostrarCancelados || !isCancelledLoan(p));
+  const deudaTotal = prestamosVisibles.reduce((sum, p) => sum + p.principalInicial, 0);
+  const totalPagado = prestamosVisibles.reduce((sum, p) => sum + (p.principalInicial - getCapitalPendiente(p)), 0);
+  const totalPendiente = prestamosVisibles.reduce((sum, p) => sum + getCapitalPendiente(p), 0);
+  const cuotaMensualTotal = prestamosVisibles.reduce((sum, p) => sum + (isCancelledLoan(p) ? 0 : estimateMonthlyPayment(p)), 0);
   const globalPct = deudaTotal > 0 ? (totalPagado / deudaTotal) * 100 : 0;
 
   const sectionStats = (list: Prestamo[]) => {
@@ -249,7 +257,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       deuda,
       pagado: list.reduce((sum, p) => sum + (p.principalInicial - getCapitalPendiente(p)), 0),
       pendiente,
-      cuota: list.reduce((sum, p) => sum + estimateMonthlyPayment(p), 0),
+      cuota: list.reduce((sum, p) => sum + (isCancelledLoan(p) ? 0 : estimateMonthlyPayment(p)), 0),
       capitalVivo: pendiente,
     };
   };
@@ -342,18 +350,19 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       <div
         key={prestamo.id}
         className="group"
-        draggable
-        onDragStart={() => handleDragStart(prestamo.id, section)}
+        draggable={!isCancelledLoan(prestamo)}
+        onDragStart={() => !isCancelledLoan(prestamo) && handleDragStart(prestamo.id, section)}
         onDragOver={handleDragOver}
-        onDrop={() => handleDrop(prestamo.id, section)}
+        onDrop={() => !isCancelledLoan(prestamo) && handleDrop(prestamo.id, section)}
         style={{
           backgroundColor: 'var(--bg)',
           border: '1px solid #e5e7eb',
           borderRadius: 10,
           padding: 16,
-          cursor: 'grab',
+          cursor: isCancelledLoan(prestamo) ? 'pointer' : 'grab',
           transition: 'box-shadow 0.15s ease',
           position: 'relative',
+          opacity: isCancelledLoan(prestamo) ? 0.72 : 1,
         }}
         onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.10)')}
         onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
@@ -367,6 +376,14 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
                 {displayName}
               </span>
               {renderBadge(prestamo.tipo)}
+              {isCancelledLoan(prestamo) && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                  backgroundColor: 'rgba(220, 38, 38, 0.08)', color: 'var(--error)',
+                }}>
+                  CANCELADO
+                </span>
+              )}
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-gray)', marginTop: 2 }}>
               {new Date(prestamo.fechaFirma).toLocaleDateString('es-ES')} – {calcEndDate(prestamo).toLocaleDateString('es-ES')}
@@ -413,7 +430,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         <div style={{ fontSize: 13, color: 'var(--text-gray)', marginBottom: 6, fontVariantNumeric: 'tabular-nums' }}>
           TIN: {effectiveTIN.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
           &nbsp;·&nbsp;
-          Cuota: {fmt(monthlyPayment)} €
+          Cuota: {isCancelledLoan(prestamo) ? '0,00' : fmt(monthlyPayment)} €
         </div>
 
         {/* Bank / account */}
@@ -502,8 +519,53 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
 
   return (
     <div>
+      {canceladosCount > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 12,
+            padding: '10px 12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            backgroundColor: 'var(--bg)',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-gray)', fontSize: 13 }}>
+            <span style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              Cancelados en grid:
+            </span>
+            <span
+              style={{
+                backgroundColor: mostrarCancelados ? 'rgba(220, 38, 38, 0.08)' : 'rgba(37,99,235,0.08)',
+                color: mostrarCancelados ? 'var(--error)' : 'var(--atlas-blue)',
+                borderRadius: 999,
+                padding: '2px 8px',
+                fontWeight: 700,
+              }}
+            >
+              {mostrarCancelados ? 'visibles' : 'ocultos'} · {canceladosCount}
+            </span>
+          </div>
+          <button
+            onClick={() => setMostrarCancelados(value => !value)}
+            title={mostrarCancelados ? 'Ocultar préstamos cancelados' : 'Mostrar préstamos cancelados'}
+            aria-label={mostrarCancelados ? 'Ocultar préstamos cancelados' : 'Mostrar préstamos cancelados'}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+            style={{ color: 'var(--atlas-navy-1)', backgroundColor: '#fff' }}
+          >
+            {mostrarCancelados ? <EyeOff size={16} /> : <Eye size={16} />}
+            <span>{mostrarCancelados ? 'Ocultar' : 'Mostrar'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Global KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 260, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
         {[
           { label: 'Deuda Total', value: deudaTotal },
           { label: 'Total Pagado', value: totalPagado },
@@ -517,6 +579,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Global progress bar */}
@@ -527,10 +590,25 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
         </div>
       </div>
 
+      {prestamosVisibles.length === 0 && canceladosCount > 0 && (
+        <div
+          style={{
+            marginBottom: 24,
+            backgroundColor: 'var(--bg)',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            padding: 16,
+            color: 'var(--text-gray)',
+          }}
+        >
+          Todos los préstamos del grid están cancelados y ocultos. Usa el botón del ojo para desocultarlos temporalmente.
+        </div>
+      )}
+
       {/* Hipotecas section */}
       {renderSection(
         'Hipotecas',
-        hipotecas,
+        hipotecasVisibles,
         <Home size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
         'hipotecas',
         hipotecasExpanded,
@@ -540,7 +618,7 @@ const PrestamosList: React.FC<PrestamosListProps> = ({ onEdit, onViewDetail }) =
       {/* Préstamos personales section */}
       {renderSection(
         'Préstamos Personales',
-        personales,
+        personalesVisibles,
         <User size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} />,
         'personales',
         personalesExpanded,
