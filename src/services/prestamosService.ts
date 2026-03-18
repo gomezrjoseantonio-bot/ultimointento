@@ -394,6 +394,14 @@ export class PrestamosService {
   }
 
   /**
+   * Reload all loans from IndexedDB, bypassing the in-memory cache.
+   */
+  async reloadAllPrestamos(): Promise<Prestamo[]> {
+    this.clearCache();
+    return this.getAllPrestamos();
+  }
+
+  /**
    * Clear all cached payment plans
    */
   clearCache(): void {

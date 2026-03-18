@@ -227,7 +227,10 @@ describe('propertySaleService', () => {
     expect(loanAfterSale?.principalVivo).toBe(0);
 
     const updatedPlanAfterSale = await db.get('keyval', 'planpagos_loan-revert-1') as any;
-    expect(updatedPlanAfterSale.periodos.some((p: any) => !p.pagado)).toBe(true);
+    expect(updatedPlanAfterSale.periodos.some((p: any) => !p.pagado)).toBe(false);
+    expect(updatedPlanAfterSale.resumen.fechaFinalizacion).toBe('2026-03-10');
+    expect(updatedPlanAfterSale.periodos[updatedPlanAfterSale.periodos.length - 1].fechaCargo).toBe('2026-03-10');
+    expect(updatedPlanAfterSale.periodos[updatedPlanAfterSale.periodos.length - 1].principalFinal).toBe(0);
 
     const stillScheduledLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
     expect(stillScheduledLoanForecast).toBeUndefined();
@@ -430,6 +433,10 @@ describe('propertySaleService', () => {
 
     const updatedPlan = await db.get('keyval', 'planpagos_loan-punteo-1') as any;
     expect(updatedPlan.periodos.every((p: any) => p.pagado)).toBe(true);
+    expect(updatedPlan.periodos).toHaveLength(2);
+    expect(updatedPlan.resumen.fechaFinalizacion).toBe('2026-02-10');
+    expect(updatedPlan.periodos[1].fechaCargo).toBe('2026-02-10');
+    expect(updatedPlan.periodos[1].principalFinal).toBe(0);
 
     const removedForecastAfterPunteo = await db.get('treasuryEvents', loanForecastEventId);
     expect(removedForecastAfterPunteo).toBeUndefined();

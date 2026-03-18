@@ -3,6 +3,7 @@ import { PlanPagos } from '../types/prestamos';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { prestamosCalculationService } from './prestamosCalculationService';
+import { prestamosService } from './prestamosService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -138,6 +139,62 @@ const resolveProjectedOutstandingPrincipal = (
   }
 
   return resolveFallbackOutstandingPrincipal(loan);
+};
+
+const truncatePaymentPlanAtCancellation = (
+  paymentPlan: PlanPagos,
+  saleDate: string,
+  outstandingPrincipal: number,
+): PlanPagos => {
+  if (!paymentPlan?.periodos?.length) {
+    return paymentPlan;
+  }
+
+  const saleDateTs = new Date(saleDate).getTime();
+  const paidPeriods = paymentPlan.periodos.filter((periodo) => {
+    const chargeTs = new Date(periodo.fechaCargo).getTime();
+    return periodo.pagado || chargeTs < saleDateTs;
+  });
+
+  const lastPaidPeriod = paidPeriods[paidPeriods.length - 1] ?? null;
+  const futurePeriods = paymentPlan.periodos.filter((periodo) => new Date(periodo.fechaCargo).getTime() >= saleDateTs);
+  const templatePeriod = futurePeriods[0] ?? paymentPlan.periodos[paymentPlan.periodos.length - 1];
+  const cancellationPeriodNumber = (lastPaidPeriod?.periodo ?? 0) + 1;
+
+  const cancellationPeriod = {
+    ...templatePeriod,
+    periodo: cancellationPeriodNumber,
+    devengoDesde: lastPaidPeriod?.fechaCargo ?? templatePeriod.devengoDesde,
+    devengoHasta: saleDate,
+    fechaCargo: saleDate,
+    cuota: outstandingPrincipal,
+    interes: 0,
+    amortizacion: outstandingPrincipal,
+    principalFinal: 0,
+    pagado: true,
+    fechaPagoReal: saleDate,
+    movimientoTesoreriaId: templatePeriod.movimientoTesoreriaId,
+    esProrrateado: false,
+    esSoloIntereses: false,
+    diasDevengo: undefined,
+  };
+
+  const periodos = outstandingPrincipal > 0
+    ? [...paidPeriods, cancellationPeriod]
+    : paidPeriods;
+
+  const totalIntereses = periodos.reduce((sum, periodo) => sum + (periodo.interes || 0), 0);
+  const totalCuotas = periodos.reduce((sum, periodo) => sum + (periodo.cuota || 0), 0);
+
+  return {
+    ...paymentPlan,
+    periodos,
+    resumen: {
+      totalIntereses,
+      totalCuotas,
+      fechaFinalizacion: saleDate,
+    },
+  };
 };
 
 const diffDaysBetweenIsoDates = (fromIso: string, toIso: string): number => {
@@ -819,6 +876,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
   await tx.done;
+  prestamosService.clearCache();
 
   if (saleId && simulation.totalLoanSettlement > 0) {
     await finalizePropertySaleLoanCancellationBySaleId(saleId);
@@ -994,6 +1052,8 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     await triggerTreasuryUpdate([journal.settlementAccountId]);
   }
 
+  prestamosService.clearCache();
+
   return revertedSale;
 };
 
@@ -1034,21 +1094,12 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
 
     const paymentPlanKey = `planpagos_${loan.id}`;
     const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
+    const outstandingPrincipal = resolveProjectedOutstandingPrincipal(loan, paymentPlan, sale.saleDate);
+    const truncatedPlan = paymentPlan?.periodos?.length
+      ? truncatePaymentPlanAtCancellation(paymentPlan, sale.saleDate, outstandingPrincipal)
+      : null;
     if (paymentPlan?.periodos?.length) {
-      const updatedPlan: PlanPagos = {
-        ...paymentPlan,
-        periodos: paymentPlan.periodos.map((periodo) => {
-          if (periodo.fechaCargo < sale.saleDate) {
-            return periodo;
-          }
-          return {
-            ...periodo,
-            pagado: true,
-            fechaPagoReal: periodo.fechaPagoReal ?? sale.saleDate,
-          };
-        }),
-      };
-      await tx.objectStore('keyval').put(updatedPlan, paymentPlanKey);
+      await tx.objectStore('keyval').put(truncatedPlan, paymentPlanKey);
     }
 
     const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
@@ -1067,8 +1118,9 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
       ...loan,
       activo: false,
       estado: 'cancelado',
+      fechaCancelacion: sale.saleDate,
       principalVivo: 0,
-      cuotasPagadas: paymentPlan?.periodos?.length ?? loan.cuotasPagadas,
+      cuotasPagadas: truncatedPlan?.periodos.length ?? loan.cuotasPagadas,
       fechaUltimaCuotaPagada: sale.saleDate,
       cancelacionPendienteVenta: false,
       updatedAt: new Date().toISOString(),
@@ -1082,6 +1134,7 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
   });
 
   await tx.done;
+  prestamosService.clearCache();
   return true;
 };
 
