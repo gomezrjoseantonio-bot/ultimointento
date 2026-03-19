@@ -3,12 +3,18 @@ import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, fmtEur } from './pdfHelpers';
 
-export async function generateDashboard(data: InformesData): Promise<void> {
-  const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+const HEADER_Y = 46;
+const KPI_RESERVED_HEIGHT = 28;
+const TABLE_BOTTOM_MARGIN = 20;
+const TABLE_ROW_HEIGHT = 7;
+const TABLE_ROW_HEIGHT_COMPACT = 6;
 
-  drawHeader(doc, 'Dashboard Ejecutivo', `Ejercicio ${data.año} · Generado el ${new Date(data.generadoEn).toLocaleString('es-ES')}`, 1, 1);
+const renderDashboardDoc = (data: InformesData, rowHeight: number): jsPDF => {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-  let y = 46;
+  drawHeader(doc, 'Dashboard Ejecutivo', `Ejercicio ${data.año} - Generado el ${new Date(data.generadoEn).toLocaleString('es-ES')}`, 1, 1);
+
+  let y = HEADER_Y;
   y = drawKpiRow(doc, y, [
     {
       label: 'Ingresos anuales',
@@ -36,9 +42,15 @@ export async function generateDashboard(data: InformesData): Promise<void> {
     },
   ]);
 
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerTop = pageHeight - 14;
+  const availableHeight = footerTop - y - TABLE_BOTTOM_MARGIN;
+  const estimatedTableHeight = (data.proyeccion.meses.length + 1) * rowHeight;
+  const startY = estimatedTableHeight <= availableHeight ? y : Math.max(HEADER_Y + KPI_RESERVED_HEIGHT, footerTop - TABLE_BOTTOM_MARGIN - estimatedTableHeight);
+
   autoTable(doc, {
-    startY: y,
-    margin: { left: 14, right: 14, bottom: 20 },
+    startY,
+    margin: { left: 10, right: 10, bottom: TABLE_BOTTOM_MARGIN },
     head: [[ 'Mes', 'Ingresos', 'Gastos', 'Financiación', 'Flujo caja', 'Caja final' ]],
     body: data.proyeccion.meses.map((month) => [
       month.mes,
@@ -51,9 +63,10 @@ export async function generateDashboard(data: InformesData): Promise<void> {
     theme: 'grid',
     styles: {
       font: 'helvetica',
-      fontSize: 9,
+      fontSize: 7,
       textColor: COLOR.gray1,
-      cellPadding: 3,
+      cellPadding: 1.6,
+      minCellHeight: rowHeight,
       lineColor: COLOR.graybd,
       lineWidth: 0.1,
     },
@@ -79,5 +92,15 @@ export async function generateDashboard(data: InformesData): Promise<void> {
   });
 
   drawFooter(doc);
+  return doc;
+};
+
+export async function generateDashboard(data: InformesData): Promise<void> {
+  let doc = renderDashboardDoc(data, TABLE_ROW_HEIGHT);
+
+  if (doc.getNumberOfPages() > 1) {
+    doc = renderDashboardDoc(data, TABLE_ROW_HEIGHT_COMPACT);
+  }
+
   doc.save(`ATLAS_Dashboard_${data.año}.pdf`);
 }

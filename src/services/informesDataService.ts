@@ -2,7 +2,8 @@ import { dashboardService } from './dashboardService';
 import { inmuebleService } from './inmuebleService';
 import { prestamosService } from './prestamosService';
 import { personalDataService } from './personalDataService';
-import { initDB } from './db';
+import { inversionesService } from './inversionesService';
+import { initDB, type Contract } from './db';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import type { ProyeccionAnual } from '../modules/horizon/proyeccion/mensual/types/proyeccionMensual';
 import type { Inmueble } from '../types/inmueble';
@@ -21,6 +22,10 @@ export interface InformesData {
       flujoCaja: number;
       cajaFinal: number;
       patrimonioNeto: number;
+      deudaInmuebles: number;
+      deudaPersonal: number;
+      deudaTotal: number;
+      inversionesPensiones: number;
     }>;
     totalesAnuales: {
       ingresosTotales: number;
@@ -63,6 +68,9 @@ export interface InformesData {
     equity: number;
     deudaHipotecaria: number;
     ocupacion: number;
+  };
+  resumenPatrimonio: {
+    inversionesPensiones: number;
   };
   prestamos: Array<{
     nombre: string;
@@ -143,6 +151,9 @@ const DEFAULT_DATA: InformesData = {
     equity: 0,
     deudaHipotecaria: 0,
     ocupacion: 0,
+  },
+  resumenPatrimonio: {
+    inversionesPensiones: 0,
   },
   prestamos: [],
   resumenFinanciacion: {
@@ -245,6 +256,10 @@ const getEmploymentLabel = (personalData: PersonalData | null): string | undefin
   return undefined;
 };
 
+const getInversionesPensionesValue = (posiciones: Array<{ tipo: string; valor_actual: number }>): number => {
+  return posiciones.reduce((sum, posicion) => sum + toNumber(posicion.valor_actual), 0);
+};
+
 const buildProjectionSummary = (projection: ProyeccionAnual | null): InformesData['proyeccion'] => {
   if (!projection) {
     return DEFAULT_DATA.proyeccion;
@@ -258,6 +273,10 @@ const buildProjectionSummary = (projection: ProyeccionAnual | null): InformesDat
     flujoCaja: toNumber(month.tesoreria.flujoCajaMes),
     cajaFinal: toNumber(month.tesoreria.cajaFinal),
     patrimonioNeto: toNumber(month.patrimonio.patrimonioNeto),
+    deudaInmuebles: toNumber(month.patrimonio.deudaInmuebles),
+    deudaPersonal: toNumber(month.patrimonio.deudaPersonal),
+    deudaTotal: toNumber(month.patrimonio.deudaTotal),
+    inversionesPensiones: toNumber(month.patrimonio.planesPension) + toNumber(month.patrimonio.otrasInversiones),
   }));
 
   const patrimonioNetoInicial = toNumber(projection.months[0]?.patrimonio.patrimonioNeto);
@@ -298,6 +317,7 @@ class InformesDataService {
       personal,
       patrimonio,
       flujos,
+      inversiones,
       tesoreria,
       dbPayload,
     ] = await Promise.all([
@@ -317,6 +337,7 @@ class InformesDataService {
         inmuebles: { cashflow: 0, cashflowHoy: 0, pendienteMes: 0, ocupacion: 0, vacantes: [], tendencia: 'stable' as const },
         inversiones: { rendimientoMes: 0, dividendosMes: 0, totalHoy: 0, pendienteMes: 0, tendencia: 'stable' as const },
       }),
+      safe(inversionesService.getPosiciones(), []),
       safe(dashboardService.getTesoreriaPanel(), {
         asOf: generatedAt,
         filas: [],
@@ -324,18 +345,24 @@ class InformesDataService {
       }),
       safe((async () => {
         const db = await initDB();
-        const [properties, valuations] = await Promise.all([
+        const [properties, valuations, contracts] = await Promise.all([
           safe(db.getAll('properties'), [] as PropertyRecord[]),
           safe(db.getAll('valoraciones_historicas'), [] as ValuationRecord[]),
+          safe(db.getAll('contracts'), [] as Contract[]),
         ]);
-        return { properties, valuations };
-      })(), { properties: [] as PropertyRecord[], valuations: [] as ValuationRecord[] }),
+        return { properties, valuations, contracts };
+      })(), { properties: [] as PropertyRecord[], valuations: [] as ValuationRecord[], contracts: [] as Contract[] }),
     ]);
 
     const projection = proyecciones.find((item) => item.year === año) ?? null;
     const projectionSummary = buildProjectionSummary(projection);
     const fallbackCajaFinal = projectionSummary.meses[projectionSummary.meses.length - 1]?.cajaFinal ?? toNumber(tesoreria.totales.proyeccion);
-    const fallbackPatrimonioFinal = projectionSummary.totalesAnuales.patrimonioNetoFinal || toNumber(patrimonio.total);
+    const fallbackPatrimonioFinal = projectionSummary.meses[11]?.patrimonioNeto
+      ?? projectionSummary.totalesAnuales.patrimonioNetoFinal
+      ?? toNumber(patrimonio.total);
+    const fallbackDebt = toNumber(patrimonio.desglose.deuda);
+    const fallbackInversiones = getInversionesPensionesValue(inversiones as Array<{ tipo: string; valor_actual: number }>) || toNumber(patrimonio.desglose.inversiones);
+
     const fallbackMonths = Array.from({ length: 12 }, (_, index) => ({
       mes: `${año}-${String(index + 1).padStart(2, '0')}`,
       totalIngresos: 0,
@@ -344,18 +371,32 @@ class InformesDataService {
       flujoCaja: 0,
       cajaFinal: fallbackCajaFinal,
       patrimonioNeto: fallbackPatrimonioFinal,
+      deudaInmuebles: 0,
+      deudaPersonal: 0,
+      deudaTotal: fallbackDebt,
+      inversionesPensiones: fallbackInversiones,
     }));
+
     const loanPlans = new Map<string, PlanPagos | null>(
       await Promise.all(
         prestamos.map(async (prestamo) => [
           prestamo.id,
           await safe(prestamosService.getPaymentPlan(prestamo.id), null as PlanPagos | null),
-        ] as const)
-      )
+        ] as const),
+      ),
     );
 
     const hipotecas = prestamos.filter((prestamo) => prestamo.ambito === 'INMUEBLE' || Boolean(prestamo.inmuebleId));
     const deudaHipotecaria = hipotecas.reduce((sum, prestamo) => sum + getOutstandingPrincipal(prestamo, loanPlans.get(prestamo.id) ?? null), 0);
+
+    const rentasPorInmueble = new Map<string, number>();
+    for (const contract of dbPayload.contracts) {
+      if (contract?.estadoContrato !== 'activo') continue;
+      rentasPorInmueble.set(
+        String(contract.inmuebleId),
+        (rentasPorInmueble.get(String(contract.inmuebleId)) ?? 0) + toNumber(contract.rentaMensual),
+      );
+    }
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
       const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
@@ -368,21 +409,15 @@ class InformesDataService {
           ?? rawProperty?.valuation
           ?? rawProperty?.valor_actual
           ?? rawProperty?.acquisitionCosts?.currentValue
-          ?? costeTotal
+          ?? costeTotal,
       );
 
       const loanForProperty = hipotecas.filter((prestamo) => String(prestamo.inmuebleId) === String(inmueble.id));
       const hipotecaMensual = loanForProperty.reduce((sum, prestamo) => sum + getLoanMonthlyInstallment(prestamo, loanPlans.get(prestamo.id) ?? null), 0);
-      const rentaMensual = projection?.months.reduce((sum, month) => {
-        const detail = month.ingresos.drillDown?.rentasAlquiler ?? [];
-        return sum + detail
-          .filter((item) => item.fuente === inmueble.alias || item.concepto.includes(inmueble.alias))
-          .reduce((subsum, item) => subsum + toNumber(item.importe), 0);
-      }, 0) ?? 0;
-      const rentaMensualMedia = rentaMensual > 0 ? rentaMensual / 12 : 0;
-      const cfNeto = rentaMensualMedia - hipotecaMensual;
+      const rentaMensual = inmueble.estado !== 'VENDIDO' ? (rentasPorInmueble.get(String(inmueble.id)) ?? 0) : 0;
+      const cfNeto = rentaMensual - hipotecaMensual;
       const plusvalia = valorActual - costeTotal;
-      const yieldBruto = costeTotal > 0 ? (rentaMensualMedia * 12 / costeTotal) * 100 : 0;
+      const yieldBruto = costeTotal > 0 ? ((rentaMensual * 12) / costeTotal) * 100 : 0;
 
       return {
         id: inmueble.id,
@@ -393,20 +428,21 @@ class InformesDataService {
         costeTotal,
         valorActual,
         plusvalia,
-        rentaMensual: rentaMensualMedia,
+        rentaMensual,
         yieldBruto,
         hipotecaMensual,
         cfNeto,
       };
     });
 
+    const inmueblesActivos = inmueblesMapeados.filter((item) => item.estado !== 'VENDIDO');
     const valorTotal = inmueblesMapeados.reduce((sum, item) => sum + item.valorActual, 0);
     const costeTotal = inmueblesMapeados.reduce((sum, item) => sum + item.costeTotal, 0);
-    const rentaMensualTotal = inmueblesMapeados.reduce((sum, item) => sum + item.rentaMensual, 0);
-    const cfMensualTotal = inmueblesMapeados.reduce((sum, item) => sum + item.cfNeto, 0);
+    const rentaMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.rentaMensual, 0);
+    const cfMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.cfNeto, 0);
     const plusvaliaTotal = inmueblesMapeados.reduce((sum, item) => sum + item.plusvalia, 0);
     const equity = valorTotal - deudaHipotecaria;
-    const yieldBruta = costeTotal > 0 ? (rentaMensualTotal * 12 / costeTotal) * 100 : 0;
+    const yieldBruta = costeTotal > 0 ? ((rentaMensualTotal * 12) / costeTotal) * 100 : 0;
     const ltv = valorTotal > 0 ? (deudaHipotecaria / valorTotal) * 100 : 0;
 
     const prestamosMapeados = prestamos.map((prestamo) => {
@@ -432,6 +468,7 @@ class InformesDataService {
 
     const nombreCompleto = [personal?.nombre, personal?.apellidos].filter(Boolean).join(' ').trim();
     const ingresoLaboralAnual = projectionSummary.desglose.nominas + projectionSummary.desglose.autonomos;
+    const inversionesPensiones = getInversionesPensionesValue(inversiones as Array<{ tipo: string; valor_actual: number }>) || projectionSummary.meses[11]?.inversionesPensiones || toNumber(patrimonio.desglose.inversiones);
 
     return {
       generadoEn: generatedAt,
@@ -456,6 +493,9 @@ class InformesDataService {
         equity,
         deudaHipotecaria,
         ocupacion: toNumber(flujos.inmuebles.ocupacion),
+      },
+      resumenPatrimonio: {
+        inversionesPensiones,
       },
       prestamos: prestamosMapeados,
       resumenFinanciacion: {
