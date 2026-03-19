@@ -3,6 +3,7 @@ import { autonomoService } from './autonomoService';
 import { personalDataService } from './personalDataService';
 import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
 import { prestamosService } from './prestamosService';
+import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -1150,6 +1151,20 @@ class DashboardService {
         return { month: date.getMonth(), year: date.getFullYear() };
       });
 
+      const getTrabajoProjectionValue = (row: any): number =>
+        toNumber(row?.ingresos?.nomina) +
+        toNumber(row?.ingresos?.serviciosFreelance) +
+        toNumber(row?.ingresos?.pensiones) +
+        toNumber(row?.ingresos?.otrosIngresos) -
+        toNumber(row?.gastos?.gastosPersonales) -
+        toNumber(row?.gastos?.gastosAutonomo) -
+        toNumber(row?.financiacion?.cuotasPrestamos);
+
+      const getInmueblesProjectionValue = (row: any): number =>
+        toNumber(row?.ingresos?.rentasAlquiler) -
+        toNumber(row?.gastos?.gastosOperativos) -
+        toNumber(row?.financiacion?.cuotasHipotecas);
+
       const trabajoLast3 = last3Months.map(({ month, year }) => {
         const ing = ingresos
           .filter((item: any) => inMonth(item, month, year) && isPersonalIngreso(item))
@@ -1159,10 +1174,6 @@ class DashboardService {
           .reduce((sum: number, item: any) => sum + getImporte(item), 0);
         return ing - gas + autonomoNetoMensual;
       });
-
-      const trabajoAvg = trabajoLast3.length > 0 ? trabajoLast3.reduce((sum, value) => sum + value, 0) / trabajoLast3.length : 0;
-      const trabajoVariacion = trabajoAvg !== 0 ? ((trabajoMensual - trabajoAvg) / Math.abs(trabajoAvg)) * 100 : 0;
-      const trabajoTendencia: 'up' | 'down' | 'stable' = trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
 
       const cashflowLast3 = last3Months.map(({ month, year }) => {
         const rentas = getRentalIncomeForMonth(month, year, rentPayments, contracts);
@@ -1174,8 +1185,43 @@ class DashboardService {
         return rentas - gastosMes - cuotasHipotecaMes;
       });
 
-      const cashflowAvg = cashflowLast3.length > 0 ? cashflowLast3.reduce((sum, value) => sum + value, 0) / cashflowLast3.length : 0;
-      const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmuebles - cashflowAvg) / Math.abs(cashflowAvg)) * 100 : 0;
+      let trabajoMensualProyectado = trabajoMensual;
+      let cashflowInmueblesProyectado = cashflowInmuebles;
+      let inversionesMensualProyectado = 0;
+      let trabajoSerieTendencia = trabajoLast3;
+      let inmueblesSerieTendencia = cashflowLast3;
+
+      try {
+        const projectionRows = await generateProyeccionMensual();
+        const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        const currentProjection = projectionRows.find((row: any) => row?.month === monthKey);
+        if (currentProjection) {
+          trabajoMensualProyectado = getTrabajoProjectionValue(currentProjection);
+          cashflowInmueblesProyectado = getInmueblesProjectionValue(currentProjection);
+          inversionesMensualProyectado = toNumber(currentProjection?.ingresos?.dividendosInversiones);
+        }
+
+        const projectionLookup = new Map((projectionRows || []).map((row: any) => [row?.month, row]));
+        trabajoSerieTendencia = last3Months.map(({ month, year }, index) => {
+          const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+          const row = projectionLookup.get(key);
+          return row ? getTrabajoProjectionValue(row) : trabajoLast3[index] ?? 0;
+        });
+        inmueblesSerieTendencia = last3Months.map(({ month, year }, index) => {
+          const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+          const row = projectionLookup.get(key);
+          return row ? getInmueblesProjectionValue(row) : cashflowLast3[index] ?? 0;
+        });
+      } catch {
+        inversionesMensualProyectado = 0;
+      }
+
+      const trabajoAvg = trabajoSerieTendencia.length > 0 ? trabajoSerieTendencia.reduce((sum, value) => sum + value, 0) / trabajoSerieTendencia.length : 0;
+      const trabajoVariacion = trabajoAvg !== 0 ? ((trabajoMensualProyectado - trabajoAvg) / Math.abs(trabajoAvg)) * 100 : 0;
+      const trabajoTendencia: 'up' | 'down' | 'stable' = trabajoVariacion > 5 ? 'up' : trabajoVariacion < -5 ? 'down' : 'stable';
+
+      const cashflowAvg = inmueblesSerieTendencia.length > 0 ? inmueblesSerieTendencia.reduce((sum, value) => sum + value, 0) / inmueblesSerieTendencia.length : 0;
+      const cashflowVariacion = cashflowAvg !== 0 ? ((cashflowInmueblesProyectado - cashflowAvg) / Math.abs(cashflowAvg)) * 100 : 0;
       const inmueblesTendencia: 'up' | 'down' | 'stable' = cashflowVariacion > 5 ? 'up' : cashflowVariacion < -5 ? 'down' : 'stable';
 
       // INVERSIONES (solo flujos cobrados en el mes; no plusvalía latente)
@@ -1232,25 +1278,25 @@ class DashboardService {
 
       return {
         trabajo: {
-          netoMensual: trabajoMensual,
+          netoMensual: trabajoMensualProyectado,
           netoHoy: trabajoHoy,
-          pendienteMes: trabajoMensual - trabajoHoy,
+          pendienteMes: trabajoMensualProyectado - trabajoHoy,
           tendencia: trabajoTendencia,
           variacionPorcentaje: trabajoVariacion
         },
         inmuebles: {
-          cashflow: cashflowInmuebles,
+          cashflow: cashflowInmueblesProyectado,
           cashflowHoy: cashflowInmueblesHoy,
-          pendienteMes: cashflowInmuebles - cashflowInmueblesHoy,
+          pendienteMes: cashflowInmueblesProyectado - cashflowInmueblesHoy,
           ocupacion,
           vacantes,
           tendencia: inmueblesTendencia
         },
         inversiones: {
-          rendimientoMes,
-          dividendosMes,
+          rendimientoMes: 0,
+          dividendosMes: inversionesMensualProyectado || (rendimientoMes + dividendosMes),
           totalHoy: inversionesHoy,
-          pendienteMes: inversionesPendiente,
+          pendienteMes: (inversionesMensualProyectado || (rendimientoMes + dividendosMes)) - inversionesHoy,
           tendencia: 'stable'
         }
       };

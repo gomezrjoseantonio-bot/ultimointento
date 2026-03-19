@@ -1,9 +1,14 @@
 import { dashboardService } from '../dashboardService';
 import { initDB } from '../db';
 import { prestamosService } from '../prestamosService';
+import { generateProyeccionMensual } from '../../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 
 jest.mock('../db', () => ({
   initDB: jest.fn()
+}));
+
+jest.mock('../../modules/horizon/proyeccion/mensual/services/proyeccionMensualService', () => ({
+  generateProyeccionMensual: jest.fn(async () => [])
 }));
 
 describe('dashboardService financial metrics', () => {
@@ -15,6 +20,7 @@ describe('dashboardService financial metrics', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
+    (generateProyeccionMensual as jest.Mock).mockResolvedValue([]);
   });
 
   it('normaliza importes string y alinea liquidez/salud con eventos de tesorería', async () => {
@@ -149,6 +155,81 @@ describe('dashboardService financial metrics', () => {
 
     expect(flujos.trabajo.netoMensual).toBeCloseTo(550, 2);
     expect(flujos.trabajo.netoHoy).toBeCloseTo(1750, 2);
+  });
+
+
+  it('alinea los importes mensuales del dashboard con la proyección mensual cuando existe forecast del mes actual', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [
+        { fecha_prevista_cobro: '2026-03-05', importe: 2000, destino: 'personal' }
+      ],
+      gastos: [],
+      expenses: [],
+      rentPayments: [
+        { period: '2026-03', expectedAmount: 4720, status: 'pendiente' }
+      ],
+      contracts: [],
+      prestamos: [],
+      properties: [
+        { id: 1, estado: 'activo' }
+      ],
+      inversiones: [
+        { activo: true, dividendos: { dividendos_recibidos: [] }, rendimiento: { pagos_generados: [] } }
+      ]
+    };
+
+    (generateProyeccionMensual as jest.Mock).mockResolvedValue([
+      {
+        month: '2026-03',
+        ingresos: {
+          nomina: 13393,
+          serviciosFreelance: 0,
+          pensiones: 0,
+          rentasAlquiler: 4720,
+          dividendosInversiones: 608,
+          otrosIngresos: 529
+        },
+        gastos: {
+          gastosOperativos: 1141,
+          gastosPersonales: 2901,
+          gastosAutonomo: 344
+        },
+        financiacion: {
+          cuotasHipotecas: 1269,
+          cuotasPrestamos: 3448
+        }
+      },
+      {
+        month: '2026-02',
+        ingresos: { nomina: 4008, serviciosFreelance: 0, pensiones: 0, rentasAlquiler: 4720, dividendosInversiones: 608, otrosIngresos: 529 },
+        gastos: { gastosOperativos: 1356, gastosPersonales: 2841, gastosAutonomo: 344 },
+        financiacion: { cuotasHipotecas: 1269, cuotasPrestamos: 3448 }
+      },
+      {
+        month: '2026-01',
+        ingresos: { nomina: 4008, serviciosFreelance: 0, pensiones: 0, rentasAlquiler: 4720, dividendosInversiones: 608, otrosIngresos: 529 },
+        gastos: { gastosOperativos: 1141, gastosPersonales: 2781, gastosAutonomo: 344 },
+        financiacion: { cuotasHipotecas: 1269, cuotasPrestamos: 3448 }
+      },
+      {
+        month: '2025-12',
+        ingresos: { nomina: 8477, serviciosFreelance: 4500, pensiones: 0, rentasAlquiler: 1585, dividendosInversiones: 608, otrosIngresos: 529 },
+        gastos: { gastosOperativos: 1574, gastosPersonales: 3011, gastosAutonomo: 344 },
+        financiacion: { cuotasHipotecas: 1269, cuotasPrestamos: 3017 }
+      }
+    ]);
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    expect(flujos.trabajo.netoMensual).toBeCloseTo(7229, 2);
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(2310, 2);
+    expect(flujos.inversiones.dividendosMes).toBeCloseTo(608, 2);
   });
 
   it('usa renta mensual de contratos activos cuando no hay pagos generados en rentPayments', async () => {
