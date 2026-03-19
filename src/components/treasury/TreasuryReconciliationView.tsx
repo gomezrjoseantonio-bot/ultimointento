@@ -22,7 +22,7 @@ import {
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
-import type { Account as DBAccount } from '../../services/db';
+import type { Account as DBAccount, Movement as DBMovement } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
@@ -149,6 +149,7 @@ const TreasuryReconciliationView: React.FC = () => {
 
   const [accounts, setAccounts] = useState<SimpleAccount[]>([]);
   const [events, setEvents] = useState<TreasuryEvent[]>([]);
+  const [movements, setMovements] = useState<DBMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBankFilter, setSelectedBankFilter] = useState<string | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<'all' | 'income' | 'expense' | 'financing'>('all');
@@ -173,9 +174,10 @@ const TreasuryReconciliationView: React.FC = () => {
       await rollForwardAccountBalancesToMonth(year, month);
 
       const db = await initDB();
-      const [dbAccounts, dbEvents, contracts, properties] = await Promise.all([
+      const [dbAccounts, dbEvents, dbMovements, contracts, properties] = await Promise.all([
         db.getAll('accounts'),
         db.getAll('treasuryEvents'),
+        db.getAll('movements'),
         db.getAll('contracts'),
         db.getAll('properties'),
       ]);
@@ -249,8 +251,14 @@ const TreasuryReconciliationView: React.FC = () => {
           };
         });
 
+      const monthlyMovements = dbMovements.filter(movement => {
+        const d = new Date(movement.date);
+        return d.getFullYear() === year && d.getMonth() + 1 === month;
+      });
+
       setAccounts(simpleAccounts);
       setEvents(localEvents);
+      setMovements(monthlyMovements);
     } catch (err) {
       console.error('Error loading treasury data:', err);
       toast.error('Error al cargar datos de tesorería');
@@ -538,6 +546,7 @@ const TreasuryReconciliationView: React.FC = () => {
       const summary = calculateAccountTreasurySummary({
         account: { id: account.id, balance: account.balance },
         events: acctEvents,
+        movements,
         selectedMonth: currentMonth,
         today,
       });
@@ -558,7 +567,7 @@ const TreasuryReconciliationView: React.FC = () => {
         totalPunteado: summary.totalPunteado,
       }] as const;
     }));
-  }, [accounts, currentMonth, events]);
+  }, [accounts, currentMonth, events, movements]);
 
   const totalGlobalPunteado = useMemo(() =>
     accounts.reduce((sum, a) => sum + (accountBreakdown.get(a.id)?.totalPunteado ?? a.balance), 0),
