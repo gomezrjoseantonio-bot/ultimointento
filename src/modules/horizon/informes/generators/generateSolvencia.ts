@@ -9,7 +9,6 @@ import {
   drawSectionTitle,
   fmtEur,
   fmtPct,
-  pageSize,
   parseIsoDate,
 } from './pdfHelpers';
 
@@ -21,6 +20,7 @@ const drawProgress = (
   percent: number,
   threshold: number,
   lowerIsBetter = true,
+  thresholdText?: string,
 ): number => {
   const x = 18;
   const width = 174;
@@ -41,8 +41,129 @@ const drawProgress = (
 
   doc.setFontSize(7.5);
   doc.setTextColor(...COLOR.gray2);
-  doc.text(`Umbral ${lowerIsBetter ? '≤' : '≥'} ${lowerIsBetter ? fmtPct(threshold) : threshold.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'x'}`, x, y + 11);
+  doc.text(`Ref. ${thresholdText ?? (lowerIsBetter ? `max. ${fmtPct(threshold)}` : `min. ${threshold.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`)}`, x, y + 11);
   return y + 16;
+};
+
+const drawCover = (doc: jsPDF, data: InformesData, dti: number): void => {
+  doc.setFillColor(...COLOR.navy);
+  doc.rect(0, 0, 210, 297, 'F');
+
+  doc.setFillColor(...COLOR.teal);
+  doc.rect(0, 0, 210, 3, 'F');
+
+  doc.setFillColor(...COLOR.teal);
+  doc.rect(0, 294, 210, 3, 'F');
+
+  doc.setFillColor(11, 61, 122);
+  doc.triangle(0, 297, 115, 297, 0, 100, 'F');
+
+  const lx = 18;
+  const ly = 40;
+  const lw = 30;
+  const lh = 30;
+  doc.setFillColor(26, 74, 130);
+  doc.triangle(lx + lw / 2, ly, lx, ly + lh, lx + lw, ly + lh, 'F');
+  const crossY = ly + lh * 0.52;
+  const crossXL = lx + lw / 2 - (lw / 2) * (1 - 0.52) * 0.9;
+  const crossXR = lx + lw / 2 + (lw / 2) * (1 - 0.52) * 0.9;
+  doc.setFillColor(...COLOR.teal);
+  doc.rect(crossXL, crossY - 1, crossXR - crossXL, 2, 'F');
+  doc.circle(lx + lw / 2, ly, 1.5, 'F');
+
+  doc.setTextColor(...COLOR.white);
+  doc.setFontSize(28);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ATLAS', 18, ly + lh + 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...COLOR.teal);
+  doc.text('HORIZON & PULSE', 18, ly + lh + 19);
+
+  doc.setDrawColor(...COLOR.teal);
+  doc.setLineWidth(0.5);
+  doc.line(18, ly + lh + 23, 108, ly + lh + 23);
+
+  doc.setTextColor(...COLOR.white);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Informe de Solvencia', 18, ly + lh + 32);
+  doc.text('y Capacidad Financiera', 18, ly + lh + 40);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(160, 184, 212);
+  doc.text(`Ejercicio ${data.año}  -  ${new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}`, 18, ly + lh + 48);
+
+  const bx = 115;
+  const by = 80;
+  const bw = 80;
+  const bh = 60;
+  doc.setFillColor(11, 61, 122);
+  doc.roundedRect(bx, by, bw, bh, 3, 3, 'F');
+  doc.setDrawColor(...COLOR.teal);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(bx, by, bw, bh, 3, 3, 'S');
+  doc.setTextColor(...COLOR.teal);
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TITULAR', bx + 4, by + 7);
+  doc.setTextColor(...COLOR.white);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.personal.nombreCompleto || 'José Antonio Gómez', bx + 4, by + 14);
+
+  const fields: Array<[string, string]> = [
+    ['Empresa', data.personal.empresa || 'No disponible'],
+    ['Actividad', 'Gestor de patrimonio inmobiliario'],
+    ['Cartera', `${data.inmuebles.filter((i) => i.estado !== 'VENDIDO').length} inmuebles activos`],
+    ['Sistema', 'ATLAS Horizon & Pulse'],
+  ];
+  let fy = by + 21;
+  fields.forEach(([label, value]) => {
+    doc.setTextColor(160, 184, 212);
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(label, bx + 4, fy);
+    doc.setTextColor(...COLOR.white);
+    doc.setFontSize(6.5);
+    doc.text(value, bx + 28, fy);
+    fy += 5;
+  });
+
+  const kpisPortada = [
+    { label: 'Ingresos anuales', value: fmtEur(data.proyeccion.totalesAnuales.ingresosTotales), sub: `Ejercicio ${data.año}`, color: COLOR.teal },
+    { label: 'Patrimonio neto', value: fmtEur(data.proyeccion.meses[11]?.patrimonioNeto ?? 0), sub: 'Cierre diciembre', color: COLOR.green },
+    { label: 'DTI mensual', value: fmtPct(dti), sub: 'Cuotas / ingreso', color: COLOR.amber },
+    { label: 'Flujo libre', value: fmtEur(data.proyeccion.totalesAnuales.flujoNeto), sub: 'Caja generada anual', color: COLOR.navy },
+  ];
+  const ky = 220;
+  const kh = 22;
+  const kw = (210 - 36 - 9) / 4;
+  kpisPortada.forEach((k, i) => {
+    const kx = 18 + i * (kw + 3);
+    doc.setFillColor(11, 61, 122);
+    doc.roundedRect(kx, ky, kw, kh, 2, 2, 'F');
+    doc.setFillColor(...k.color);
+    doc.roundedRect(kx, ky, 2.5, kh, 1, 1, 'F');
+    doc.rect(kx + 1, ky, 1.5, kh, 'F');
+    doc.setTextColor(160, 184, 212);
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(k.label.toUpperCase(), kx + 4.5, ky + 5.5);
+    doc.setTextColor(...COLOR.white);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(k.value, kx + 4.5, ky + 12);
+    doc.setTextColor(...k.color);
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(k.sub, kx + 4.5, ky + 19);
+  });
+
+  doc.setTextColor(90, 122, 154);
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Documento confidencial preparado con datos reales del sistema ATLAS  -  No distribuir sin autorización', 105, 290, { align: 'center' });
 };
 
 export async function generateSolvencia(data: InformesData): Promise<void> {
@@ -59,50 +180,10 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   const portfolioValue = data.resumenCartera.valorTotal;
   const ltv = data.resumenCartera.ltv;
 
-  const { width, height } = pageSize(doc);
-  doc.setFillColor(...COLOR.navy);
-  doc.rect(0, 0, width, height, 'F');
-
-  doc.setFillColor(...COLOR.teal);
-  doc.triangle(24, 88, 60, 34, 96, 88, 'F');
-  doc.setFillColor(...COLOR.white);
-  doc.triangle(42, 73, 60, 46, 78, 73, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(...COLOR.white);
-  doc.text('Informe de Solvencia y', 26, 118);
-  doc.text('Capacidad Financiera', 26, 130);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.text(`Ejercicio ${data.año}`, 26, 143);
-  doc.text(`Generado el ${new Date(data.generadoEn).toLocaleString('es-ES')}`, 26, 151);
-
-  doc.setFillColor(...COLOR.gray1);
-  doc.roundedRect(26, 164, width - 52, 38, 4, 4, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text('Titular', 32, 176);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.text(`Nombre: ${data.personal.nombreCompleto || 'No disponible'}`, 32, 185);
-  doc.text(`Empresa / actividad: ${data.personal.empresa || 'No disponible'}`, 32, 192);
-  doc.text(`Antigüedad: ${data.personal.antiguedad || 'No disponible'}`, 114, 185);
-  doc.text(`Nº inmuebles: ${data.inmuebles.length.toLocaleString('es-ES')}`, 114, 192);
-
-  drawKpiRow(doc, 214, [
-    { label: 'Ingresos anuales', value: fmtEur(data.proyeccion.totalesAnuales.ingresosTotales), sub: 'Capacidad acreditable', color: COLOR.teal },
-    { label: 'Patrimonio neto', value: fmtEur(data.proyeccion.totalesAnuales.patrimonioNetoFinal), sub: 'Cierre ejercicio', color: COLOR.green },
-    { label: 'DTI mensual', value: fmtPct(dti), sub: 'Cuotas / ingreso mensual', color: dti <= 43 ? COLOR.green : COLOR.amber },
-    { label: 'Flujo libre', value: fmtEur(freeCashFlow), sub: 'Caja libre anual', color: freeCashFlow >= 0 ? COLOR.green : COLOR.red },
-  ]);
-
-  doc.setFillColor(...COLOR.teal);
-  doc.rect(0, height - 16, width, 16, 'F');
+  drawCover(doc, data, dti);
 
   doc.addPage();
-  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero · ${data.año}`, 2, totalPages);
+  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 2, totalPages);
   let y = 48;
 
   if (data.personal.nombreCompleto || data.personal.empresa || data.personal.antiguedad) {
@@ -129,10 +210,10 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   ]);
 
   y = drawSectionTitle(doc, y, 'Ratios bancarios');
-  y = drawProgress(doc, y, 'DTI', fmtPct(dti), dti, 43, true);
-  y = drawProgress(doc, y, 'LTV hipotecario', fmtPct(ltv), ltv, 50, true);
-  y = drawProgress(doc, y, 'DSCR', `${dscr.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`, dscr * 100, 125, false);
-  y = drawProgress(doc, y, 'Tasa de ahorro', fmtPct(ahorro), ahorro, 10, false);
+  y = drawProgress(doc, y, 'DTI', fmtPct(dti), dti, 43, true, 'max. 43,00%');
+  y = drawProgress(doc, y, 'LTV hipotecario', fmtPct(ltv), ltv, 50, true, 'max. 50,00%');
+  y = drawProgress(doc, y, 'DSCR', `${dscr.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`, dscr, 1.25, false, 'min. 1,25x');
+  y = drawProgress(doc, y, 'Tasa de ahorro', fmtPct(ahorro), ahorro, 10, false, 'min. 10,00%');
 
   autoTable(doc, {
     startY: y + 2,
@@ -178,7 +259,7 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   drawFooter(doc);
 
   doc.addPage();
-  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Cartera y financiación · ${data.año}`, 3, totalPages);
+  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Cartera y financiación - ${data.año}`, 3, totalPages);
   y = 48;
   y = drawSectionTitle(doc, y, 'KPIs de cartera');
   y = drawKpiRow(doc, y, [

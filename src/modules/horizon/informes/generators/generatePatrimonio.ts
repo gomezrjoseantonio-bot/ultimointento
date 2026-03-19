@@ -6,14 +6,14 @@ import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fm
 export async function generatePatrimonio(data: InformesData): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const totalPages = 2;
-  const activosTotales = data.resumenCartera.valorTotal + (data.proyeccion.meses[data.proyeccion.meses.length - 1]?.cajaFinal ?? 0);
+  const activosTotales = data.resumenCartera.valorTotal + data.resumenPatrimonio.inversionesPensiones + (data.proyeccion.meses[data.proyeccion.meses.length - 1]?.cajaFinal ?? 0);
   const pasivoTotal = data.resumenFinanciacion.deudaTotal;
-  const patrimonioNeto = activosTotales - pasivoTotal;
+  const patrimonioNeto = data.proyeccion.meses[data.proyeccion.meses.length - 1]?.patrimonioNeto ?? 0;
   const equityInmobiliario = data.resumenCartera.equity;
   const variacionAnual = data.proyeccion.totalesAnuales.patrimonioNetoFinal - data.proyeccion.totalesAnuales.patrimonioNetoInicial;
   const deudaActivo = activosTotales > 0 ? (pasivoTotal / activosTotales) * 100 : 0;
 
-  drawHeader(doc, 'Informe Patrimonial', `Resumen patrimonial · ${data.año}`, 1, totalPages);
+  drawHeader(doc, 'Informe Patrimonial', `Resumen patrimonial - ${data.año}`, 1, totalPages);
   let y = 46;
   y = drawKpiRow(doc, y, [
     { label: 'Activos totales', value: fmtEur(activosTotales), sub: 'Valor agregado', color: COLOR.navy },
@@ -33,7 +33,7 @@ export async function generatePatrimonio(data: InformesData): Promise<void> {
     head: [[ 'Categoría', 'Valor activo', 'Deuda', 'Equity', '% s/total activos' ]],
     body: [
       ['Inmuebles', fmtEur(data.resumenCartera.valorTotal), fmtEur(data.resumenCartera.deudaHipotecaria), fmtEur(data.resumenCartera.equity), fmtPct(activosTotales > 0 ? (data.resumenCartera.valorTotal / activosTotales) * 100 : 0)],
-      ['Inversiones/Pensiones', fmtEur(0), fmtEur(0), fmtEur(0), fmtPct(0)],
+      ['Inversiones/Pensiones', fmtEur(data.resumenPatrimonio.inversionesPensiones), fmtEur(0), fmtEur(data.resumenPatrimonio.inversionesPensiones), fmtPct(activosTotales > 0 ? (data.resumenPatrimonio.inversionesPensiones / activosTotales) * 100 : 0)],
       ['Tesorería / Caja', fmtEur(cajaFinal), fmtEur(0), fmtEur(cajaFinal), fmtPct(activosTotales > 0 ? (cajaFinal / activosTotales) * 100 : 0)],
     ],
     foot: [[ 'TOTAL', fmtEur(activosTotales), fmtEur(pasivoTotal), fmtEur(patrimonioNeto), fmtPct(100) ]],
@@ -73,7 +73,7 @@ export async function generatePatrimonio(data: InformesData): Promise<void> {
   drawFooter(doc);
 
   doc.addPage();
-  drawHeader(doc, 'Informe Patrimonial', `Detalle de inmuebles y deuda · ${data.año}`, 2, totalPages);
+  drawHeader(doc, 'Informe Patrimonial', `Detalle de inmuebles y deuda - ${data.año}`, 2, totalPages);
   y = 48;
   y = drawSectionTitle(doc, y, 'Detalle de inmuebles');
 
@@ -111,16 +111,10 @@ export async function generatePatrimonio(data: InformesData): Promise<void> {
     margin: { left: 14, right: 14, bottom: 22 },
     head: [[ 'Mes', 'Deuda inmuebles', 'Deuda personal', 'Total deuda', 'Variación' ]],
     body: data.proyeccion.meses.map((month, index) => {
-      const total = data.resumenCartera.deudaHipotecaria + Math.max(0, data.resumenFinanciacion.deudaTotal - data.resumenCartera.deudaHipotecaria);
-      const remainingFactor = (data.proyeccion.meses.length - index) / data.proyeccion.meses.length;
-      const deudaInmuebles = data.resumenCartera.deudaHipotecaria * remainingFactor;
-      const deudaPersonal = Math.max(0, data.resumenFinanciacion.deudaTotal - data.resumenCartera.deudaHipotecaria) * remainingFactor;
-      const totalDeuda = deudaInmuebles + deudaPersonal;
-      const previous = index === 0 ? total : (() => {
-        const prevFactor = (data.proyeccion.meses.length - (index - 1)) / data.proyeccion.meses.length;
-        return data.resumenCartera.deudaHipotecaria * prevFactor + Math.max(0, data.resumenFinanciacion.deudaTotal - data.resumenCartera.deudaHipotecaria) * prevFactor;
-      })();
-      return [month.mes, fmtEur(deudaInmuebles), fmtEur(deudaPersonal), fmtEur(totalDeuda), fmtEur(totalDeuda - previous)];
+      const previous = index > 0
+        ? data.proyeccion.meses[index - 1]?.deudaTotal ?? data.resumenFinanciacion.deudaTotal
+        : data.resumenFinanciacion.deudaTotal;
+      return [month.mes, fmtEur(month.deudaInmuebles), fmtEur(month.deudaPersonal), fmtEur(month.deudaTotal), fmtEur(month.deudaTotal - previous)];
     }),
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 2.1, textColor: COLOR.gray1, lineColor: COLOR.graybd, lineWidth: 0.1 },
@@ -129,11 +123,11 @@ export async function generatePatrimonio(data: InformesData): Promise<void> {
     didParseCell: (hookData) => {
       if (hookData.section === 'body' && hookData.column.index === 4) {
         const rowIndex = hookData.row.index;
-        const currentFactor = (data.proyeccion.meses.length - rowIndex) / data.proyeccion.meses.length;
-        const currentTotal = data.resumenFinanciacion.deudaTotal * currentFactor;
-        const previousFactor = rowIndex === 0 ? 1 : (data.proyeccion.meses.length - (rowIndex - 1)) / data.proyeccion.meses.length;
-        const previousTotal = data.resumenFinanciacion.deudaTotal * previousFactor;
-        hookData.cell.styles.textColor = currentTotal - previousTotal <= 0 ? COLOR.green : COLOR.red;
+        const current = data.proyeccion.meses[rowIndex]?.deudaTotal ?? 0;
+        const previous = rowIndex > 0
+          ? data.proyeccion.meses[rowIndex - 1]?.deudaTotal ?? data.resumenFinanciacion.deudaTotal
+          : data.resumenFinanciacion.deudaTotal;
+        hookData.cell.styles.textColor = current - previous <= 0 ? COLOR.green : COLOR.red;
       }
     },
   });

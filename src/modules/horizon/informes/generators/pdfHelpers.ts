@@ -67,7 +67,7 @@ export function drawFooter(doc: jsPDF): void {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLOR.white);
-  doc.text('ATLAS Horizon · Uso confidencial', 14, height - 5.5);
+  doc.text('ATLAS Horizon - Uso confidencial', 14, height - 5.5);
   doc.text('atlas.app/horizon', width - 14, height - 5.5, { align: 'right' });
 }
 
