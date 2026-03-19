@@ -76,6 +76,81 @@ describe('dashboardService financial metrics', () => {
   });
 
 
+
+  it('incluye gastos de inmuebles guardados con el esquema H5 date/amount en el cashflow mensual', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [],
+      gastos: [],
+      expenses: [
+        { date: '2026-03-08', amount: 320, propertyId: 1, destino: 'inmueble' }
+      ],
+      rentPayments: [
+        { period: '2026-03', expectedAmount: 1000, status: 'pendiente' }
+      ],
+      contracts: [
+        {
+          id: 1,
+          inmuebleId: 1,
+          rentaMensual: 1000,
+          fechaInicio: '2026-01-01',
+          fechaFin: '2026-12-31',
+          estadoContrato: 'activo'
+        }
+      ],
+      prestamos: [],
+      properties: [
+        { id: 1, estado: 'activo' }
+      ],
+      inversiones: []
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    expect(flujos.inmuebles.cashflow).toBeCloseTo(680, 2);
+    expect(flujos.inmuebles.cashflowHoy).toBeCloseTo(-320, 2);
+  });
+
+  it('descuenta los gastos personales recurrentes y puntuales del módulo personal en economía familiar', async () => {
+    const datasets: Record<string, any[]> = {
+      ingresos: [
+        { fecha_prevista_cobro: '2026-03-05', importe: 2000, destino: 'personal' }
+      ],
+      gastos: [],
+      expenses: [],
+      rentPayments: [],
+      contracts: [],
+      prestamos: [],
+      properties: [],
+      inversiones: [],
+      personalExpenses: [
+        { personalDataId: 1, activo: true, frecuencia: 'mensual', importe: 900 }
+      ],
+      gastosRecurrentes: [
+        { personalDataId: 1, activo: true, frecuencia: 'mensual', importe: 300 }
+      ],
+      gastosPuntuales: [
+        { personalDataId: 1, fecha: '2026-03-04', importe: 250 }
+      ]
+    };
+
+    (initDB as jest.Mock).mockResolvedValue({
+      getAll: jest.fn(async (store: string) => datasets[store] ?? []),
+      put: jest.fn(async () => undefined),
+      get: jest.fn(async () => undefined)
+    });
+
+    const flujos = await dashboardService.getFlujosCaja();
+
+    expect(flujos.trabajo.netoMensual).toBeCloseTo(550, 2);
+    expect(flujos.trabajo.netoHoy).toBeCloseTo(1750, 2);
+  });
+
   it('usa renta mensual de contratos activos cuando no hay pagos generados en rentPayments', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
