@@ -1,0 +1,233 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.titleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  color: var(--atlas-navy-1);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-gray);
+  font-size: var(--text-base);
+}
+
+.yearControl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 180px;
+}
+
+.yearLabel {
+  font-size: var(--text-sm);
+  color: var(--atlas-navy-1);
+  font-weight: var(--font-medium);
+}
+
+.yearSelect {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--hz-neutral-300);
+  background: var(--hz-card-bg);
+  color: var(--atlas-navy-1);
+  padding: 0 var(--space-3);
+  font-size: var(--text-base);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: var(--space-6);
+}
+
+.panel {
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: 8px;
+  padding: var(--space-5);
+}
+
+.panelTitle {
+  margin: 0 0 var(--space-4);
+  color: var(--atlas-navy-1);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+}
+
+.reportList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reportCard {
+  width: 100%;
+  text-align: left;
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-left: 3px solid transparent;
+  border-radius: 8px;
+  padding: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.reportCard:hover {
+  border-color: var(--atlas-blue);
+  transform: translateY(-1px);
+}
+
+.reportCardSelected {
+  border-left-color: var(--atlas-blue);
+  border-color: var(--atlas-blue);
+}
+
+.iconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hz-neutral-100);
+  color: var(--atlas-blue);
+  flex-shrink: 0;
+}
+
+.reportContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.reportTitle {
+  margin: 0;
+  color: var(--atlas-navy-1);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.reportDescription,
+.detailDescription,
+.detailList,
+.placeholder,
+.loading,
+.error,
+.meta {
+  margin: 0;
+  color: var(--text-gray);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.detailHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.detailTitle {
+  margin: 0;
+  color: var(--atlas-navy-1);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+}
+
+.detailList {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.button {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--atlas-blue);
+  border-radius: 8px;
+  background: var(--atlas-blue);
+  color: var(--white);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--white);
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+.error {
+  color: var(--error);
+}
+
+.placeholder {
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.placeholderText {
+  margin: 0;
+  color: var(--text-gray);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}

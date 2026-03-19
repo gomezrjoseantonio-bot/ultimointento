@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  FileText,
   Building2,
   Wallet,
   Receipt,
@@ -130,6 +131,13 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Subidas', href: '/contratos/subidas', icon: TrendingUp, module: 'pulse' },
       { name: 'Envío a firmar', href: '/firmas', icon: CreditCard, module: 'pulse' },
     ]
+  },
+  {
+    name: 'Informes',
+    href: '/informes',
+    icon: FileText,
+    module: 'horizon',
+    section: 'horizon'
   },
   {
     name: 'Documentación',
