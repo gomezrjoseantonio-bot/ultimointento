@@ -1,3 +1,4 @@
+import type { Movement } from '../../services/db';
 import type { TreasuryEvent } from './TreasuryReconciliationView';
 
 interface SummaryAccount {
@@ -5,9 +6,12 @@ interface SummaryAccount {
   balance: number;
 }
 
+interface SummaryMovement extends Pick<Movement, 'accountId' | 'amount' | 'date' | 'isOpeningBalance'> {}
+
 interface AccountTreasurySummaryInput {
   account: SummaryAccount;
   events: TreasuryEvent[];
+  movements?: SummaryMovement[];
   selectedMonth: string;
   today?: Date;
 }
@@ -19,6 +23,8 @@ export interface AccountTreasurySummary {
   confirmadoHastaHoy: number;
   confirmadoTotal: number;
   pendienteTotal: number;
+  movimientosHastaHoy: number;
+  movimientosTotal: number;
 }
 
 const toDateOnlyString = (value: string): string => value.includes('T') ? value.split('T')[0] : value;
@@ -26,6 +32,8 @@ const toDateOnlyString = (value: string): string => value.includes('T') ? value.
 const toMonthKey = (value: string): string => toDateOnlyString(value).slice(0, 7);
 
 const getSignedAmount = (event: TreasuryEvent): number => (event.type === 'income' ? event.amount : -event.amount);
+
+const getMovementSignedAmount = (movement: SummaryMovement): number => movement.amount;
 
 const toLocalDateKey = (value: Date): string => {
   const year = value.getFullYear();
@@ -37,6 +45,7 @@ const toLocalDateKey = (value: Date): string => {
 export function calculateAccountTreasurySummary({
   account,
   events,
+  movements = [],
   selectedMonth,
   today = new Date(),
 }: AccountTreasurySummaryInput): AccountTreasurySummary {
@@ -45,6 +54,12 @@ export function calculateAccountTreasurySummary({
 
   const accountEvents = events.filter((event) => (
     event.accountId === account.id && toMonthKey(event.date) === selectedMonth
+  ));
+
+  const accountMovements = movements.filter((movement) => (
+    String(movement.accountId) === account.id &&
+    !movement.isOpeningBalance &&
+    toMonthKey(movement.date) === selectedMonth
   ));
 
   const confirmadoTotal = accountEvents
@@ -60,12 +75,21 @@ export function calculateAccountTreasurySummary({
     .filter((event) => event.status !== 'confirmado')
     .reduce((sum, event) => sum + getSignedAmount(event), 0);
 
+  const movimientosTotal = accountMovements
+    .reduce((sum, movement) => sum + getMovementSignedAmount(movement), 0);
+
+  const movimientosHastaHoy = accountMovements
+    .filter((movement) => !viewingCurrentMonth || toDateOnlyString(movement.date) <= todayOnly)
+    .reduce((sum, movement) => sum + getMovementSignedAmount(movement), 0);
+
   return {
-    hoy: account.balance + confirmadoHastaHoy,
-    finMes: account.balance + confirmadoTotal + pendienteTotal,
-    totalPunteado: account.balance + confirmadoTotal,
+    hoy: account.balance + confirmadoHastaHoy + movimientosHastaHoy,
+    finMes: account.balance + confirmadoTotal + pendienteTotal + movimientosTotal,
+    totalPunteado: account.balance + confirmadoTotal + movimientosTotal,
     confirmadoHastaHoy,
     confirmadoTotal,
     pendienteTotal,
+    movimientosHastaHoy,
+    movimientosTotal,
   };
 }
