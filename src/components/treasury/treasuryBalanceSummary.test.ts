@@ -1,11 +1,12 @@
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
+import type { Movement } from '../../services/db';
 import type { TreasuryEvent } from './TreasuryReconciliationView';
 
-const account = { id: 'bbva', balance: 940.92 };
+const account = { id: '1', balance: 940.92 };
 
 const makeEvent = (overrides: Partial<TreasuryEvent>): TreasuryEvent => ({
   id: overrides.id ?? Math.random().toString(),
-  accountId: overrides.accountId ?? 'bbva',
+  accountId: overrides.accountId ?? '1',
   concept: overrides.concept ?? 'Movimiento',
   amount: overrides.amount ?? 0,
   date: overrides.date ?? '2026-03-01',
@@ -14,8 +15,28 @@ const makeEvent = (overrides: Partial<TreasuryEvent>): TreasuryEvent => ({
   ...overrides,
 });
 
+const makeMovement = (overrides: Partial<Movement>): Movement => ({
+  id: overrides.id,
+  accountId: overrides.accountId ?? 0,
+  date: overrides.date ?? '2026-03-01',
+  amount: overrides.amount ?? 0,
+  description: overrides.description ?? 'Movimiento bancario',
+  status: overrides.status ?? 'pendiente',
+  unifiedStatus: overrides.unifiedStatus ?? 'confirmado',
+  source: overrides.source ?? 'manual',
+  category: overrides.category ?? { tipo: 'General' },
+  type: overrides.type ?? 'Ajuste',
+  origin: overrides.origin ?? 'Manual',
+  movementState: overrides.movementState ?? 'Confirmado',
+  ambito: overrides.ambito ?? 'PERSONAL',
+  statusConciliacion: overrides.statusConciliacion ?? 'sin_match',
+  createdAt: overrides.createdAt ?? '2026-03-01T00:00:00.000Z',
+  updatedAt: overrides.updatedAt ?? '2026-03-01T00:00:00.000Z',
+  ...overrides,
+});
+
 describe('calculateAccountTreasurySummary', () => {
-  it('calcula hoy con punteados hasta hoy y fin de mes con todos los eventos del mes', () => {
+  it('calcula hoy con punteados y movimientos reales hasta hoy, y fin de mes con toda la actividad del mes', () => {
     const events: TreasuryEvent[] = [
       makeEvent({ id: '1', amount: 351.43, date: '2026-03-05', status: 'confirmado', type: 'financing' }),
       makeEvent({ id: '2', amount: 140, date: '2026-03-05', status: 'confirmado', type: 'expense' }),
@@ -29,33 +50,74 @@ describe('calculateAccountTreasurySummary', () => {
       makeEvent({ id: '10', amount: 285.4, date: '2026-03-31', status: 'previsto', type: 'financing' }),
     ];
 
-    const summary = calculateAccountTreasurySummary({
-      account,
-      events,
-      selectedMonth: '2026-03',
-      today: new Date('2026-03-18T12:00:00.000Z'),
-    });
-
-    expect(summary.hoy).toBeCloseTo(584.26, 2);
-    expect(summary.totalPunteado).toBeCloseTo(584.26, 2);
-    expect(summary.finMes).toBeCloseTo(60.53, 2);
-    expect(summary.pendienteTotal).toBeCloseTo(-523.73, 2);
-  });
-
-  it('no adelanta al hoy movimientos confirmados con fecha futura, pero sí los refleja en total punteado', () => {
-    const events: TreasuryEvent[] = [
-      makeEvent({ id: '1', amount: 250, date: '2026-03-20', status: 'confirmado', type: 'income' }),
+    const movements: Movement[] = [
+      makeMovement({ accountId: Number.NaN, amount: 999, date: '2026-03-08' }),
+      makeMovement({ accountId: 1, amount: 25.5, date: '2026-03-10' }),
+      makeMovement({ accountId: 1, amount: -10.25, date: '2026-03-25' }),
     ];
 
     const summary = calculateAccountTreasurySummary({
       account,
       events,
+      movements,
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-18T12:00:00.000Z'),
+    });
+
+    expect(summary.hoy).toBeCloseTo(609.76, 2);
+    expect(summary.totalPunteado).toBeCloseTo(599.51, 2);
+    expect(summary.finMes).toBeCloseTo(75.78, 2);
+    expect(summary.pendienteTotal).toBeCloseTo(-523.73, 2);
+    expect(summary.movimientosHastaHoy).toBeCloseTo(25.5, 2);
+    expect(summary.movimientosTotal).toBeCloseTo(15.25, 2);
+  });
+
+  it('no adelanta al hoy movimientos o eventos fechados en futuro, pero sí los refleja en total punteado y fin de mes', () => {
+    const events: TreasuryEvent[] = [
+      makeEvent({ id: '1', amount: 250, date: '2026-03-20', status: 'confirmado', type: 'income' }),
+    ];
+
+    const movements: Movement[] = [
+      makeMovement({ accountId: 1, amount: -50, date: '2026-03-21' }),
+    ];
+
+    const summary = calculateAccountTreasurySummary({
+      account,
+      events,
+      movements,
       selectedMonth: '2026-03',
       today: new Date('2026-03-18T12:00:00.000Z'),
     });
 
     expect(summary.hoy).toBeCloseTo(940.92, 2);
-    expect(summary.totalPunteado).toBeCloseTo(1190.92, 2);
-    expect(summary.finMes).toBeCloseTo(1190.92, 2);
+    expect(summary.totalPunteado).toBeCloseTo(1140.92, 2);
+    expect(summary.finMes).toBeCloseTo(1140.92, 2);
+    expect(summary.movimientosHastaHoy).toBeCloseTo(0, 2);
+    expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
+  });
+
+  it('mantiene continuidad entre el cierre de un mes y la apertura del siguiente cuando solo hay movimientos bancarios', () => {
+    const marchSummary = calculateAccountTreasurySummary({
+      account,
+      events: [],
+      movements: [
+        makeMovement({ accountId: 1, amount: 120, date: '2026-03-12' }),
+        makeMovement({ accountId: 1, amount: -40, date: '2026-03-24' }),
+      ],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-31T12:00:00.000Z'),
+    });
+
+    const aprilSummary = calculateAccountTreasurySummary({
+      account: { id: '1', balance: marchSummary.finMes },
+      events: [],
+      movements: [],
+      selectedMonth: '2026-04',
+      today: new Date('2026-04-01T12:00:00.000Z'),
+    });
+
+    expect(marchSummary.finMes).toBeCloseTo(1020.92, 2);
+    expect(aprilSummary.hoy).toBeCloseTo(marchSummary.finMes, 2);
+    expect(aprilSummary.finMes).toBeCloseTo(marchSummary.finMes, 2);
   });
 });
