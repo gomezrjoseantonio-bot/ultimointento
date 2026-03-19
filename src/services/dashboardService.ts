@@ -1192,7 +1192,13 @@ class DashboardService {
       let inmueblesSerieTendencia = cashflowLast3;
 
       try {
-        const projectionRows = await generateProyeccionMensual();
+        const annualProjections = await generateProyeccionMensual();
+        const projectionRows = annualProjections.reduce((rows: any[], annualProjection: any) => {
+          if (Array.isArray(annualProjection?.months)) {
+            rows.push(...annualProjection.months);
+          }
+          return rows;
+        }, []);
         const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
         const currentProjection = projectionRows.find((row: any) => row?.month === monthKey);
         if (currentProjection) {
