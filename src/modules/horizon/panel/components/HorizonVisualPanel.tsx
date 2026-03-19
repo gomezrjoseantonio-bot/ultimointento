@@ -136,23 +136,6 @@ const HorizonVisualPanel: React.FC = () => {
   const colchonSeguro = data.salud.colchonMeses >= 6;
   const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
   const ocupacionParcial = ocupacion < 100;
-
-  // El panel muestra importes sin decimales. Para que el total del KPI coincida
-  // con lo que ve el usuario en el desglose, agregamos usando los mismos valores
-  // visibles ya redondeados en cada bloque.
-  const trabajoNetoVisible = roundDashboardAmount(trabajoNeto);
-  const inmueblesCashflowVisible = roundDashboardAmount(inmueblesCashflow);
-  const inversionesMensualVisible = roundDashboardAmount(inversionesMensual);
-  const netoMensual = trabajoNetoVisible + inmueblesCashflowVisible + inversionesMensualVisible;
-  const colchonSeguro = data.salud.colchonMeses >= 6;
-  const ocupacion = flujos?.inmuebles.ocupacion ?? 0;
-  const ocupacionParcial = ocupacion < 100;
-  const trabajoTrendLabel = flujos?.trabajo.tendencia === 'down'
-    ? 'Tendencia ↓'
-    : flujos?.trabajo.tendencia === 'stable'
-      ? 'Tendencia ='
-      : 'Tendencia ↑';
-
   return (
     <div className="exec-shell">
       <div className="exec-main">
