@@ -47,6 +47,30 @@ describe('accountBalanceService', () => {
     expect(value).toBe(1130);
   });
 
+
+  it('allows callers to ignore imported movements when projecting month openings for treasury forecast continuity', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 1000,
+        openingBalanceDate: '2024-01-01',
+      },
+      cutoffDate: '2024-03-01',
+      treasuryEvents: [
+        { accountId: 1, type: 'income', amount: 200, predictedDate: '2024-02-10' } as any,
+        { accountId: 1, type: 'expense', amount: 50, predictedDate: '2024-02-12' } as any,
+      ],
+      movements: [],
+    });
+
+    expect(value).toBe(1150);
+  });
+
   it('ignores the synthetic opening balance movement to avoid double counting across months', () => {
     const value = calculateAccountBalanceAtDate({
       account: {

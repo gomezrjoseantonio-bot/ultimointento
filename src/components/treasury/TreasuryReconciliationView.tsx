@@ -24,7 +24,7 @@ import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
-import { rollForwardAccountBalancesToMonth } from '../../services/accountBalanceService';
+import { calculateAccountBalanceAtDate } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
 import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
@@ -170,7 +170,7 @@ const TreasuryReconciliationView: React.FC = () => {
     setLoading(true);
     try {
       const [year, month] = currentMonth.split('-').map(Number);
-      await rollForwardAccountBalancesToMonth(year, month);
+      const monthStart = `${currentMonth}-01`;
 
       const db = await initDB();
       const [dbAccounts, dbEvents, contracts, properties] = await Promise.all([
@@ -212,7 +212,12 @@ const TreasuryReconciliationView: React.FC = () => {
           dbId: a.id as number,
           name: a.alias || a.banco?.name || a.name || `Cuenta ${a.id}`,
           type: getAccountType(a),
-          balance: a.balance || 0,
+          balance: calculateAccountBalanceAtDate({
+            account: a,
+            cutoffDate: monthStart,
+            treasuryEvents: dbEvents,
+            movements: [],
+          }),
         }));
 
       const localEvents: TreasuryEvent[] = dbEvents
