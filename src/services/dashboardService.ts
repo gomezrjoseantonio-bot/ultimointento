@@ -1192,8 +1192,13 @@ class DashboardService {
       let inmueblesSerieTendencia = cashflowLast3;
 
       try {
-        const projectionRows = await generateProyeccionMensual();
-        const projectionMonths = projectionRows.flatMap((projection) => projection.months);
+        const annualProjections = await generateProyeccionMensual();
+        const projectionRows = annualProjections.reduce((rows: any[], annualProjection: any) => {
+          if (Array.isArray(annualProjection?.months)) {
+            rows.push(...annualProjection.months);
+          }
+          return rows;
+        }, []);
         const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
         const currentProjection = projectionMonths.find((row) => row.month === monthKey);
         if (currentProjection) {
