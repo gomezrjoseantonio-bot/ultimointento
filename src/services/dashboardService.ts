@@ -1193,15 +1193,16 @@ class DashboardService {
 
       try {
         const projectionRows = await generateProyeccionMensual();
+        const projectionMonths = projectionRows.flatMap((projection) => projection.months);
         const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-        const currentProjection = projectionRows.find((row: any) => row?.month === monthKey);
+        const currentProjection = projectionMonths.find((row) => row.month === monthKey);
         if (currentProjection) {
           trabajoMensualProyectado = getTrabajoProjectionValue(currentProjection);
           cashflowInmueblesProyectado = getInmueblesProjectionValue(currentProjection);
-          inversionesMensualProyectado = toNumber(currentProjection?.ingresos?.dividendosInversiones);
+          inversionesMensualProyectado = toNumber(currentProjection.ingresos.dividendosInversiones);
         }
 
-        const projectionLookup = new Map((projectionRows || []).map((row: any) => [row?.month, row]));
+        const projectionLookup = new Map(projectionMonths.map((row) => [row.month, row]));
         trabajoSerieTendencia = last3Months.map(({ month, year }, index) => {
           const key = `${year}-${String(month + 1).padStart(2, '0')}`;
           const row = projectionLookup.get(key);
@@ -1274,7 +1275,6 @@ class DashboardService {
         return sum + importePagado;
       }, 0);
       const inversionesHoy = rendimientoHoy + dividendosHoy;
-      const inversionesPendiente = (rendimientoMes + dividendosMes) - inversionesHoy;
 
       return {
         trabajo: {

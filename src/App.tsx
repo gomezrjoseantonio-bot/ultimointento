@@ -53,6 +53,7 @@ const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyecc
 const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
 const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
 const ProyeccionMensual = React.lazy(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
+const InformesPage = React.lazy(() => import('./modules/horizon/informes/InformesPage'));
 const PresupuestosView = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
 const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
@@ -212,6 +213,11 @@ function App() {
             <Route path="documentacion/filtros" element={<Navigate to="/inbox" replace />} />
             <Route path="documentacion/fiscal" element={<Navigate to="/inbox" replace />} />
             <Route path="documentacion/inspecciones" element={<Navigate to="/inbox" replace />} />
+            <Route path="informes" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InformesPage />
+              </React.Suspense>
+            } />
             <Route path="herramientas" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <HerramientasPage />
