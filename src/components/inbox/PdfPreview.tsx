@@ -1,37 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { pdfjs } from 'react-pdf';
 
-// ── PDF.js se carga desde CDN en el primer uso ────────────────────────────────
-const PDFJS_VERSION = '3.11.174';
-const PDFJS_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-const WORKER_CDN = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-
-let pdfJsLoaded = false;
-let pdfJsLoading: Promise<void> | null = null;
-
-const loadPdfJs = (): Promise<void> => {
-  if (pdfJsLoaded) return Promise.resolve();
-  if (pdfJsLoading) return pdfJsLoading;
-
-  pdfJsLoading = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = PDFJS_CDN;
-    script.onload = () => {
-      const pdfjsLib = (window as any).pdfjsLib;
-      if (pdfjsLib) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER_CDN;
-        pdfJsLoaded = true;
-        resolve();
-      } else {
-        reject(new Error('PDF.js no disponible tras carga'));
-      }
-    };
-    script.onerror = () => reject(new Error('Error al cargar PDF.js'));
-    document.head.appendChild(script);
-  });
-
-  return pdfJsLoading;
-};
+// ── Worker local de PDF.js para evitar bloqueos por CSP ──────────────────────
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface PdfPreviewProps {
@@ -62,14 +37,10 @@ const PdfPreview: React.FC<PdfPreviewProps> = ({ blob, filename }) => {
 
     const load = async () => {
       try {
-        await loadPdfJs();
-        if (cancelled) return;
-
-        const pdfjsLib = (window as any).pdfjsLib;
         const arrayBuffer = await blob.arrayBuffer();
         if (cancelled) return;
 
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdfDoc = await loadingTask.promise;
         if (cancelled) { pdfDoc.destroy(); return; }
 
