@@ -103,6 +103,32 @@ describe('accountBalanceService', () => {
     expect(value).toBe(950);
   });
 
+  it('uses prior-month bank movements when calculating the opening balance of the next month', () => {
+    const aprilOpening = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 1000,
+        openingBalanceDate: '2024-03-01',
+      },
+      cutoffDate: '2024-04-01',
+      treasuryEvents: [
+        { accountId: 1, type: 'income', amount: 200, predictedDate: '2024-03-10' } as any,
+        { accountId: 1, type: 'expense', amount: 50, predictedDate: '2024-03-12' } as any,
+      ],
+      movements: [
+        { accountId: 1, amount: -25, date: '2024-03-20' } as any,
+        { accountId: 1, amount: 80, date: '2024-03-28' } as any,
+      ],
+    });
+
+    expect(aprilOpening).toBe(1205);
+  });
+
   it('sums all active accounts as total initial cash', async () => {
     mockDB.getAll.mockImplementation(async (table: string) => {
       if (table === 'accounts') {
