@@ -32,14 +32,18 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     .filter((m) => m.movementState !== 'Revisar' && (toDate(m.date) ?? new Date(0)) >= seisAtr)
     .sort((a, b) => (toDate(b.date)?.getTime() ?? 0) - (toDate(a.date)?.getTime() ?? 0));
 
-  // Resolver nombre de cuenta con prioridad: alias > banco.name > IBAN últimos 4 > id
+  // Resolver nombre de cuenta con prioridad: alias + banco > alias > banco + IBAN > id
   const resolverNombreCuenta = (c: Account): string => {
-    const alias = (c as Account & { alias?: string }).alias;
-    const banco = (c as Account & { banco?: { name?: string } }).banco?.name;
-    const iban = c.iban;
+    const alias = String((c as Account & { alias?: string }).alias ?? '').trim();
+    const banco = String((c as Account & { banco?: { name?: string } }).banco?.name ?? c.bank ?? '').trim();
+    const iban = String(c.iban ?? '').replace(/\s/g, '');
+    const ultimos4 = iban.length >= 4 ? `····${iban.slice(-4)}` : '';
+
+    if (alias && banco) return `${alias} · ${banco}`;
     if (alias) return alias;
+    if (banco && ultimos4) return `${banco} ${ultimos4}`;
     if (banco) return banco;
-    if (iban && iban.length >= 4) return `····${iban.slice(-4)}`;
+    if (ultimos4) return ultimos4;
     return `Cuenta ${c.id ?? '?'}`;
   };
 
@@ -67,20 +71,26 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     if (stored) {
       const lsAccounts = JSON.parse(stored) as Account[];
       for (const c of lsAccounts) {
+        const nombre = resolverNombreCuenta(c);
+        if (c.id != null && !mapaId.has(String(c.id))) mapaId.set(String(c.id), nombre);
         if (!c.iban) continue;
         const key = c.iban.replace(/\s/g, '').toUpperCase();
-        if (!mapaIban.has(key)) mapaIban.set(key, resolverNombreCuenta(c));
+        if (!mapaIban.has(key)) mapaIban.set(key, nombre);
       }
     }
   } catch {
     // silencioso
   }
 
-  const getAlias = (accountId: number | string | undefined | null): string => {
-    if (accountId == null) return '—';
-    const rawAccountId = String(accountId);
+  const getAlias = (movement: Movement): string => {
+    const rawAccountId = movement.accountId == null ? '' : String(movement.accountId);
     const normalizedAccountId = rawAccountId.replace(/\s/g, '').toUpperCase();
-    return mapaId.get(rawAccountId) ?? mapaIban.get(normalizedAccountId) ?? '—';
+    const sourceBank = String(movement.sourceBank ?? '').trim();
+    const resolvedAccount = mapaId.get(rawAccountId)
+      ?? mapaIban.get(normalizedAccountId)
+      ?? sourceBank;
+
+    return resolvedAccount || (rawAccountId ? `Cuenta ${rawAccountId}` : '—');
   };
 
   const ingresos = movimientos
@@ -195,30 +205,32 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
   });
   drawFooter(doc);
 
+  const movimientosConfirmados = movimientos
+    .filter((movement) => movement.movementState === 'Confirmado' || movement.movementState === 'Conciliado');
+
   doc.addPage();
   drawHeader(doc, 'Informe de Tesorería', 'Extracto de movimientos recientes', 2, 2);
   y = 48;
 
   y = drawSectionTitle(doc, y, 'Últimos movimientos confirmados');
-  const movimientosRows = movimientos.slice(0, 50).map((m) => {
+  const movimientosRows = movimientosConfirmados.slice(0, 50).map((m) => {
     const fecha = toDate(m.date);
     return [
       fecha ? fecha.toLocaleDateString('es-ES') : '—',
-      getAlias(m.accountId),
+      getAlias(m),
       formatMovementDescriptionForReport(m, propertyAliasById).slice(0, 40),
       String(m.counterparty ?? '—').slice(0, 30),
       fmtEur(m.amount),
-      String(m.movementState ?? '—'),
     ];
   });
 
   autoTable(doc, {
     startY: y,
     margin: { left: 9, right: 9, bottom: 28 },
-    head: [['Fecha', 'Cuenta', 'Descripción', 'Contrapartida', 'Importe', 'Estado']],
+    head: [['Fecha', 'Banco / Cuenta', 'Descripción', 'Contrapartida', 'Importe']],
     body: movimientosRows.length > 0
       ? movimientosRows
-      : [['No hay movimientos en el período seleccionado', '', '', '', '', '']],
+      : [['No hay movimientos confirmados en el período seleccionado', '', '', '', '']],
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 7.8, cellPadding: 2, textColor: COLOR.gray1, lineColor: COLOR.graybd, lineWidth: 0.1 },
     headStyles: { fillColor: COLOR.navy, textColor: COLOR.white },
@@ -231,17 +243,9 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
         return;
       }
       if (hookData.column.index === 4) {
-        const amount = movimientos[hookData.row.index]?.amount ?? 0;
+        const amount = movimientosConfirmados[hookData.row.index]?.amount ?? 0;
         hookData.cell.styles.textColor = amount > 0 ? COLOR.green : amount < 0 ? COLOR.red : COLOR.gray1;
         hookData.cell.styles.fontStyle = 'bold';
-      }
-      if (hookData.column.index === 5) {
-        const estado = movimientos[hookData.row.index]?.movementState ?? '';
-        hookData.cell.styles.textColor = estado === 'Previsto'
-          ? COLOR.amber
-          : estado === 'Confirmado' || estado === 'Conciliado'
-            ? COLOR.green
-            : COLOR.gray1;
       }
     },
   });
@@ -250,7 +254,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
   doc.setFontSize(8);
   doc.setTextColor(...COLOR.gray2);
   doc.text(
-    `Mostrando los 50 movimientos más recientes de los últimos 6 meses. Total de movimientos en el período: ${movimientos.length}`,
+    `Mostrando los 50 movimientos confirmados más recientes de los últimos 6 meses. Total de movimientos confirmados en el período: ${movimientosConfirmados.length}`,
     PAGE_MARGIN,
     Math.min(getLastAutoTableY(doc, y) + 7, doc.internal.pageSize.getHeight() - 24),
     { maxWidth: doc.internal.pageSize.getWidth() - PAGE_MARGIN * 2 },
