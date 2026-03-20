@@ -1,11 +1,11 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
+import { getObjetivos } from '../../../../services/objetivosService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
 const MAX_MESES = 600;
-const OBJETIVO_MENSUAL = 3_000;
 const RENTABILIDAD_NETA_ESTIMADA = 0.06;
 const COSTE_ENTRADA_PISO = 80_000;
 
@@ -28,6 +28,8 @@ const formatMonthYear = (date: Date | null): string => {
 };
 
 export async function generateLibertad(data: InformesData): Promise<void> {
+  const objetivos = await getObjetivos();
+  const OBJETIVO_MENSUAL = objetivos.rentaPasivaObjetivo;
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const cfInmueblesMensual = data.resumenCartera.cfMensualTotal;
   const ahorroMensualTotal = (data.proyeccion.totalesAnuales.ingresosTotales -

@@ -2,7 +2,7 @@
  * ATLAS Navigation Audit Test
  * 
  * This test validates the ATLAS navigation requirements:
- * 1. Exactly 12 navigation entries (including Herramientas y Glosario)
+ * 1. Exactly 14 navigation entries after adding Mi Plan and keeping Informes in Horizon
  * 2. Correct separators: "Horizon — Supervisión", "Pulse — Gestión", "Documentación"
  * 3. Configuración and Tareas are NOT in the sidebar
  * 4. Correct order of items
@@ -13,8 +13,8 @@ import { navigationConfig, getNavigationForModule } from '../config/navigation';
 describe('ATLAS Navigation Audit', () => {
   const navigation = getNavigationForModule();
 
-  test('should have exactly 12 navigation entries', () => {
-    expect(navigation).toHaveLength(12);
+  test('should have exactly 14 navigation entries', () => {
+    expect(navigation).toHaveLength(14);
   });
 
   test('should have correct navigation items in exact order', () => {
@@ -25,9 +25,11 @@ describe('ATLAS Navigation Audit', () => {
       'Inversiones',
       'Tesorería',
       'Previsiones',
+      'Mi Plan',
       'Impuestos',
       'Financiación',
       'Alquileres',
+      'Informes',
       'Documentación',
       'Herramientas',
       'Glosario'
@@ -42,8 +44,8 @@ describe('ATLAS Navigation Audit', () => {
     const pulseItems = navigation.filter(item => item.section === 'pulse');
     const documentationItems = navigation.filter(item => item.section === 'documentation');
 
-    // HORIZON — Supervisión should have 8 items
-    expect(horizonItems).toHaveLength(8);
+    // HORIZON — Supervisión should have 10 items
+    expect(horizonItems).toHaveLength(10);
     
     // PULSE — Gestión should have 1 item
     expect(pulseItems).toHaveLength(1);
@@ -80,8 +82,10 @@ describe('ATLAS Navigation Audit', () => {
       'Inversiones',
       'Tesorería',
       'Previsiones',
+      'Mi Plan',
       'Impuestos',
-      'Financiación'
+      'Financiación',
+      'Informes'
     ];
     
     const actualHorizonItems = horizonItems.map(item => item.name);

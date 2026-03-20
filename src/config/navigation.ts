@@ -20,6 +20,8 @@ import {
   Calendar,
   KeyRound,
   Wrench,
+  Target,
+  Rocket,
 } from 'lucide-react';
 import { AppModule } from '../contexts/ThemeContext';
 
@@ -97,6 +99,17 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Valoraciones', href: '/proyeccion/valoraciones', icon: Calculator, module: 'horizon' },
       { name: 'Proyección Mensual', href: '/proyeccion/mensual', icon: Calendar, module: 'horizon' },
     ]
+  },
+  {
+    name: 'Mi Plan',
+    href: '/mi-plan',
+    icon: Target,
+    module: 'horizon',
+    section: 'horizon',
+    subTabs: [
+      { name: 'Objetivos', href: '/mi-plan/objetivos', icon: Target, module: 'horizon' },
+      { name: 'Libertad financiera', href: '/mi-plan/libertad', icon: Rocket, module: 'horizon' },
+    ],
   },
   {
     name: 'Impuestos',

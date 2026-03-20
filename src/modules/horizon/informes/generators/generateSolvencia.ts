@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
+import { getObjetivos } from '../../../../services/objetivosService';
 import {
   COLOR,
   drawFooter,
@@ -167,6 +168,7 @@ const drawCover = (doc: jsPDF, data: InformesData, dti: number): void => {
 };
 
 export async function generateSolvencia(data: InformesData): Promise<void> {
+  const objetivos = await getObjetivos();
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const monthlyIncome = data.proyeccion.totalesAnuales.ingresosTotales / 12;
   const monthlyExpenses = data.proyeccion.totalesAnuales.gastosTotales / 12;
@@ -209,10 +211,10 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   ]);
 
   y = drawSectionTitle(doc, y, 'Ratios bancarios');
-  y = drawProgress(doc, y, 'DTI', fmtPct(dti), dti, 43, true, 'max. 43,00%');
-  y = drawProgress(doc, y, 'LTV hipotecario', fmtPct(ltv), ltv, 50, true, 'max. 50,00%');
+  y = drawProgress(doc, y, 'DTI', fmtPct(dti), dti, objetivos.dtiMaximo, true, `max. ${fmtPct(objetivos.dtiMaximo)}`);
+  y = drawProgress(doc, y, 'LTV hipotecario', fmtPct(ltv), ltv, objetivos.ltvMaximo, true, `max. ${fmtPct(objetivos.ltvMaximo)}`);
   y = drawProgress(doc, y, 'DSCR', `${dscr.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}x`, dscr, 1.25, false, 'min. 1,25x');
-  y = drawProgress(doc, y, 'Tasa de ahorro', fmtPct(ahorro), ahorro, 10, false, 'min. 10,00%');
+  y = drawProgress(doc, y, 'Tasa de ahorro', fmtPct(ahorro), ahorro, objetivos.tasaAhorroMinima, false, `min. ${fmtPct(objetivos.tasaAhorroMinima)}`);
 
   autoTable(doc, {
     startY: y + 2,

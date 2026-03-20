@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 31; // V3.1: loan_settlements store for loan cancellation/amortization workflow
+const DB_VERSION = 32; // V3.2: objetivos_financieros singleton store for Mi Plan
 
 export interface Property {
   id?: number;
@@ -1599,6 +1599,17 @@ interface AtlasHorizonDB {
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
+  objetivos_financieros: {
+    id: 1;
+    rentaPasivaObjetivo: number;
+    patrimonioNetoObjetivo: number;
+    cajaMinima: number;
+    dtiMaximo: number;
+    ltvMaximo: number;
+    yieldMinimaCartera: number;
+    tasaAhorroMinima: number;
+    updatedAt: string;
+  }; // V3.2: financial goals singleton store
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
   ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
@@ -1612,7 +1623,7 @@ let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 export const initDB = async () => {
   if (!dbPromise) {
     dbPromise = openDB<AtlasHorizonDB>(DB_NAME, DB_VERSION, {
-      upgrade(db, _oldVersion, _newVersion, transaction) {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         // Properties store
         if (!db.objectStoreNames.contains('properties')) {
           const propertyStore = db.createObjectStore('properties', { keyPath: 'id', autoIncrement: true });
@@ -1634,6 +1645,10 @@ export const initDB = async () => {
           loanSettlementsStore.createIndex('operationDate', 'operationDate', { unique: false });
           loanSettlementsStore.createIndex('status', 'status', { unique: false });
           loanSettlementsStore.createIndex('loan-status', ['loanId', 'status'], { unique: false });
+        }
+
+        if (oldVersion < 32 && !db.objectStoreNames.contains('objetivos_financieros')) {
+          db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
         }
 
         // Documents store
