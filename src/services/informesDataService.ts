@@ -16,8 +16,6 @@ import {
   getLoanMonthlyInstallment,
   getLoanTin,
   getOutstandingPrincipal,
-  mapInmuebleToRow,
-  mapPrestamoToRow,
   toNumber,
   type ExtendedProperty,
 } from '../modules/horizon/herramientas/exporters/mappers';
