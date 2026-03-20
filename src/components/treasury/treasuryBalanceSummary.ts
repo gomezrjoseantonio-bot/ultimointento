@@ -22,6 +22,7 @@ export interface AccountTreasurySummary {
   totalPunteado: number;
   confirmadoHastaHoy: number;
   confirmadoTotal: number;
+  pendienteHastaHoy: number;
   pendienteTotal: number;
   movimientosHastaHoy: number;
   movimientosTotal: number;
@@ -78,6 +79,11 @@ export function calculateAccountTreasurySummary({
     .filter((event) => !viewingCurrentMonth || toDateOnlyString(event.date) <= todayOnly)
     .reduce((sum, event) => sum + getSignedAmount(event), 0);
 
+  const pendienteHastaHoy = accountEvents
+    .filter((event) => event.status !== 'confirmado')
+    .filter((event) => !viewingCurrentMonth || toDateOnlyString(event.date) <= todayOnly)
+    .reduce((sum, event) => sum + getSignedAmount(event), 0);
+
   const pendienteTotal = accountEvents
     .filter((event) => event.status !== 'confirmado')
     .reduce((sum, event) => sum + getSignedAmount(event), 0);
@@ -90,11 +96,12 @@ export function calculateAccountTreasurySummary({
     .reduce((sum, movement) => sum + getMovementSignedAmount(movement), 0);
 
   return {
-    hoy: account.balance + confirmadoHastaHoy + movimientosHastaHoy,
+    hoy: account.balance + confirmadoHastaHoy + pendienteHastaHoy + movimientosHastaHoy,
     finMes: account.balance + confirmadoTotal + pendienteTotal + movimientosTotal,
     totalPunteado: account.balance + confirmadoTotal + movimientosTotal,
     confirmadoHastaHoy,
     confirmadoTotal,
+    pendienteHastaHoy,
     pendienteTotal,
     movimientosHastaHoy,
     movimientosTotal,
