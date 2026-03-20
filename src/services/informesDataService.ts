@@ -523,7 +523,7 @@ class InformesDataService {
 
       const costes = rawProperty?.acquisitionCosts;
       const otherCosts = Array.isArray(costes?.other)
-        ? costes.other.reduce((sum: number, item: { concept: string; amount: number }) => sum + toNumber(item?.amount), 0)
+        ? (costes?.other ?? []).reduce((sum: number, item: { concept: string; amount: number }) => sum + toNumber(item?.amount), 0)
         : 0;
       const costeLegacy = costes
         ? toNumber(costes.price ?? 0)
@@ -552,7 +552,6 @@ class InformesDataService {
           ?? rawProperty?.estimatedValue
           ?? rawProperty?.valuation
           ?? rawProperty?.valor_actual
-          ?? rawProperty?.acquisitionCosts?.currentValue
           ?? costeTotal,
       );
 
