@@ -1,8 +1,9 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
-import { initDB, type Account, type Movement } from '../../../../services/db';
+import { initDB, type Account, type Movement, type Property } from '../../../../services/db';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur } from './pdfHelpers';
+import { formatMovementDescriptionForReport } from './tesoreriaReportFormatting';
 
 const PAGE_MARGIN = 14;
 
@@ -23,6 +24,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
   const db = await initDB();
   const movimientosRaw = await db.getAll('movements');
   const cuentasDB = await db.getAll('accounts') as Account[];
+  const propertiesDB = await db.getAll('properties') as Property[];
 
   const seisAtr = new Date();
   seisAtr.setMonth(seisAtr.getMonth() - 6);
@@ -44,11 +46,19 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
   // Mapa por ID de IndexedDB (string para evitar mismatch number vs string)
   const mapaId = new Map<string, string>();
   const mapaIban = new Map<string, string>();
+  const propertyAliasById = new Map<string, string>();
 
   for (const c of cuentasDB) {
     const nombre = resolverNombreCuenta(c);
     if (c.id != null) mapaId.set(String(c.id), nombre);
     if (c.iban) mapaIban.set(c.iban.replace(/\s/g, '').toUpperCase(), nombre);
+  }
+
+  for (const property of propertiesDB) {
+    if (property.id == null) continue;
+    const alias = String(property.alias ?? '').trim();
+    if (!alias) continue;
+    propertyAliasById.set(String(property.id), alias);
   }
 
   // Completar con cuentas de localStorage (fuente alternativa de nombres)
@@ -195,7 +205,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     return [
       fecha ? fecha.toLocaleDateString('es-ES') : '—',
       getAlias(m.accountId),
-      String(m.description ?? '—').slice(0, 40),
+      formatMovementDescriptionForReport(m, propertyAliasById).slice(0, 40),
       String(m.counterparty ?? '—').slice(0, 30),
       fmtEur(m.amount),
       String(m.movementState ?? '—'),
