@@ -22,6 +22,21 @@ const getMonthStart = (monthKey: string): string => `${monthKey}-01`;
 
 const getEventSignedAmount = (event: DBTreasuryEvent): number => (event.type === 'income' ? event.amount : -event.amount);
 
+const calculateMonthDelta = ({
+  accountId,
+  monthKey,
+  treasuryEvents,
+  resolveEventAccountId,
+}: {
+  accountId: number | undefined;
+  monthKey: string;
+  treasuryEvents: DBTreasuryEvent[];
+  resolveEventAccountId: (event: DBTreasuryEvent) => number | undefined;
+}): number => treasuryEvents
+  .filter((event) => resolveEventAccountId(event) === accountId)
+  .filter((event) => toMonthKey(event.predictedDate) === monthKey)
+  .reduce((sum, event) => sum + getEventSignedAmount(event), 0);
+
 export function calculateTreasuryMonthOpeningBalance({
   account,
   selectedMonth,
@@ -50,10 +65,12 @@ export function calculateTreasuryMonthOpeningBalance({
 
   let monthCursor = todayMonth;
   while (monthCursor < selectedMonth) {
-    const monthDelta = treasuryEvents
-      .filter((event) => resolveEventAccountId(event) === account.id)
-      .filter((event) => toMonthKey(event.predictedDate) === monthCursor)
-      .reduce((sum, event) => sum + getEventSignedAmount(event), 0);
+    const monthDelta = calculateMonthDelta({
+      accountId: account.id,
+      monthKey: monthCursor,
+      treasuryEvents,
+      resolveEventAccountId,
+    });
 
     rollingBalance += monthDelta;
     monthCursor = nextMonthKey(monthCursor);

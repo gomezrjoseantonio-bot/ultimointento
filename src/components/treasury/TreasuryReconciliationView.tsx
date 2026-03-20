@@ -172,7 +172,6 @@ const TreasuryReconciliationView: React.FC = () => {
     setLoading(true);
     try {
       const [year, month] = currentMonth.split('-').map(Number);
-      const monthStart = `${currentMonth}-01`;
 
       const db = await initDB();
       const [dbAccounts, dbEvents, dbMovements, contracts, properties] = await Promise.all([
