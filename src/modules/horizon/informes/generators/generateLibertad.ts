@@ -30,9 +30,8 @@ const formatMonthYear = (date: Date | null): string => {
 
 export async function generateLibertad(data: InformesData): Promise<void> {
   const objetivos = await getObjetivos();
-  const objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
-  let objetivoMensual = objetivos.rentaPasivaObjetivo;
+  let objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
 
   try {
     const db = await initDB();
