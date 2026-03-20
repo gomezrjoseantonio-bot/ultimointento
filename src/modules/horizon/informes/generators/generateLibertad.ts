@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
 import { initDB } from '../../../../services/db';
+import { getObjetivos } from '../../../../services/objetivosService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
