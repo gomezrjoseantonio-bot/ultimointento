@@ -39,6 +39,7 @@ export interface TreasuryEvent {
   date: string;
   type: 'income' | 'expense' | 'financing';
   status: 'previsto' | 'confirmado';
+  movementId?: number;
   sourceType?: string;
   parentId?: string;
   prestamoId?: string;
@@ -248,6 +249,7 @@ const TreasuryReconciliationView: React.FC = () => {
             date: e.predictedDate,
             type: e.type as 'income' | 'expense' | 'financing',
             status: dbStatusToLocal(e.status),
+            movementId: e.movementId,
             sourceType: e.sourceType,
             prestamoId: e.prestamoId,
             numeroCuota: e.numeroCuota,

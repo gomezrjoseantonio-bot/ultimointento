@@ -120,4 +120,41 @@ describe('calculateAccountTreasurySummary', () => {
     expect(aprilSummary.hoy).toBeCloseTo(marchSummary.finMes, 2);
     expect(aprilSummary.finMes).toBeCloseTo(marchSummary.finMes, 2);
   });
+
+  it('no duplica movimientos bancarios ya conciliados con eventos de tesorería', () => {
+    const summary = calculateAccountTreasurySummary({
+      account,
+      events: [
+        makeEvent({
+          id: '1',
+          amount: 200,
+          date: '2026-03-12',
+          status: 'confirmado',
+          type: 'expense',
+          movementId: 9001,
+        }),
+      ],
+      movements: [
+        makeMovement({
+          id: 9001,
+          accountId: 1,
+          amount: -200,
+          date: '2026-03-12',
+          statusConciliacion: 'match_manual',
+        }),
+        makeMovement({
+          id: 9002,
+          accountId: 1,
+          amount: -50,
+          date: '2026-03-13',
+        }),
+      ],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-31T12:00:00.000Z'),
+    });
+
+    expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
+    expect(summary.totalPunteado).toBeCloseTo(690.92, 2);
+    expect(summary.finMes).toBeCloseTo(690.92, 2);
+  });
 });
