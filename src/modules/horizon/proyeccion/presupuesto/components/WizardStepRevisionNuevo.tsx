@@ -69,7 +69,7 @@ const WizardStepRevision: React.FC<WizardStepRevisionProps> = ({
       }
 
       // Success
-      toast.error('Presupuesto creado exitosamente');
+      toast.success('Presupuesto creado exitosamente');
       onComplete();
     } catch (error) {
       console.error('Error saving budget:', error);

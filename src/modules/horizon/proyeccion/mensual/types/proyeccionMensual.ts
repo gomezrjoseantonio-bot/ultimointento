@@ -37,8 +37,7 @@ export interface MonthlyProjectionRow {
     opexDesglose: OpexDetalleItem[];
     gastosPersonales: number;
     gastosAutonomo: number;
-    irpfDevengado: number;
-    irpfAPagar: number;
+    irpf: number;
     total: number;
     drillDown?: {
       gastosOperativos?: DrillDownItem[];
