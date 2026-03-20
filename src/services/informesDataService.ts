@@ -151,6 +151,23 @@ export interface InformesData {
       regimenFiscal: string;
     }>;
   };
+  tesoreria: {
+    totales: {
+      inicioMes: number;
+      hoy: number;
+      porCobrar: number;
+      porPagar: number;
+      proyeccion: number;
+    };
+    filas: Array<{
+      banco: string;
+      inicioMes: number;
+      hoy: number;
+      porCobrar: number;
+      porPagar: number;
+      proyeccion: number;
+    }>;
+  };
 }
 
 
@@ -222,6 +239,10 @@ const DEFAULT_DATA: InformesData = {
     calendario: [],
   },
   cartera: { detalleFiscal: [] },
+  tesoreria: {
+    totales: { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 },
+    filas: [],
+  },
 };
 
 const safe = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
@@ -313,7 +334,7 @@ class InformesDataService {
       patrimonio,
       flujos,
       inversiones,
-      tesoreria,
+      tesoreriaPanel,
       dbPayload,
       declaracionIRPF,
       eventosFiscales,
@@ -335,11 +356,7 @@ class InformesDataService {
         inversiones: { rendimientoMes: 0, dividendosMes: 0, totalHoy: 0, pendienteMes: 0, tendencia: 'stable' as const },
       }),
       safe(inversionesService.getPosiciones(), []),
-      safe(dashboardService.getTesoreriaPanel(), {
-        asOf: generatedAt,
-        filas: [],
-        totales: { inicioMes: 0, hoy: 0, porCobrar: 0, porPagar: 0, proyeccion: 0 },
-      }),
+      safe(dashboardService.getTesoreriaPanel(), null),
       safe((async () => {
         const db = await initDB();
         const [properties, valuations, contracts] = await Promise.all([
@@ -355,7 +372,7 @@ class InformesDataService {
 
     const projection = proyecciones.find((item) => item.year === año) ?? null;
     const projectionSummary = buildProjectionSummary(projection);
-    const fallbackCajaFinal = projectionSummary.meses[projectionSummary.meses.length - 1]?.cajaFinal ?? toNumber(tesoreria.totales.proyeccion);
+    const fallbackCajaFinal = projectionSummary.meses[projectionSummary.meses.length - 1]?.cajaFinal ?? toNumber(tesoreriaPanel?.totales.proyeccion);
     const fallbackPatrimonioFinal = projectionSummary.meses[11]?.patrimonioNeto
       ?? projectionSummary.totalesAnuales.patrimonioNetoFinal
       ?? toNumber(patrimonio.total);
@@ -618,6 +635,23 @@ class InformesDataService {
             regimenFiscal: 'Arrendamiento general',
           })),
       },
+      tesoreria: tesoreriaPanel ? {
+        totales: {
+          inicioMes: toNumber(tesoreriaPanel.totales.inicioMes),
+          hoy: toNumber(tesoreriaPanel.totales.hoy),
+          porCobrar: toNumber(tesoreriaPanel.totales.porCobrar),
+          porPagar: toNumber(tesoreriaPanel.totales.porPagar),
+          proyeccion: toNumber(tesoreriaPanel.totales.proyeccion),
+        },
+        filas: tesoreriaPanel.filas.map((f) => ({
+          banco: f.banco,
+          inicioMes: toNumber(f.inicioMes),
+          hoy: toNumber(f.hoy),
+          porCobrar: toNumber(f.porCobrar),
+          porPagar: toNumber(f.porPagar),
+          proyeccion: toNumber(f.proyeccion),
+        })),
+      } : DEFAULT_DATA.tesoreria,
     };
   }
 }
