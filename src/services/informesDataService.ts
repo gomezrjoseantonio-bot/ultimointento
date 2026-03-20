@@ -5,7 +5,7 @@ import { personalDataService } from './personalDataService';
 import { inversionesService } from './inversionesService';
 import { initDB, type Contract } from './db';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
-import { generarEventosFiscales } from './fiscalPaymentsService';
+import { generarEventosFiscales, type EventoFiscal } from './fiscalPaymentsService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import type { ProyeccionAnual } from '../modules/horizon/proyeccion/mensual/types/proyeccionMensual';
 import type { Inmueble } from '../types/inmueble';
@@ -255,6 +255,107 @@ const getLoanEndDate = (plan: PlanPagos | null, prestamo: Prestamo): string => (
   plan?.resumen.fechaFinalizacion ?? prestamo.fechaCancelacion ?? ''
 );
 
+const getLegacyProperty = (
+  properties: ExtendedProperty[],
+  inmuebleId: string | number,
+): ExtendedProperty | undefined => properties.find((property) => String(property.id) === String(inmuebleId));
+
+const getFiscalDetalle = (inmueble: Inmueble, rawProperty?: ExtendedProperty) => ({
+  valorCatastral: toNumber(inmueble.fiscalidad?.valor_catastral_total)
+    || toNumber(rawProperty?.fiscalData?.cadastralValue)
+    || toNumber(rawProperty?.aeatAmortization?.cadastralValue)
+    || 0,
+  vcConstruccion: toNumber(inmueble.fiscalidad?.valor_catastral_construccion)
+    || toNumber(rawProperty?.fiscalData?.constructionCadastralValue)
+    || toNumber(rawProperty?.aeatAmortization?.constructionCadastralValue)
+    || 0,
+  pctConstruccion: toNumber(inmueble.fiscalidad?.porcentaje_construccion)
+    || toNumber(rawProperty?.fiscalData?.constructionPercentage)
+    || toNumber(rawProperty?.aeatAmortization?.constructionPercentage)
+    || 0,
+});
+
+const buildEventosFiscalesFallback = (
+  año: number,
+  declaracionIRPF: NonNullable<Awaited<ReturnType<typeof calcularDeclaracionIRPF>>>,
+): Array<InformesData['fiscal']['calendario'][number]> => {
+  const calendario: Array<InformesData['fiscal']['calendario'][number]> = [];
+  const rendimientoAutonomo = toNumber(declaracionIRPF.baseGeneral?.rendimientosAutonomo?.rendimientoNeto);
+  const resultado = toNumber(declaracionIRPF.resultado);
+
+  if (rendimientoAutonomo > 0) {
+    const cuotaM130 = Math.round((((rendimientoAutonomo * 0.20) / 4) * 100)) / 100;
+
+    [
+      { fecha: `${año}-04-20`, concepto: `Modelo 130 — T1 ${año} (pago fraccionado)` },
+      { fecha: `${año}-07-20`, concepto: `Modelo 130 — T2 ${año} (pago fraccionado)` },
+      { fecha: `${año}-10-20`, concepto: `Modelo 130 — T3 ${año} (pago fraccionado)` },
+      { fecha: `${año + 1}-01-30`, concepto: `Modelo 130 — T4 ${año} (pago fraccionado)` },
+    ].forEach((evento) => {
+      calendario.push({
+        concepto: evento.concepto,
+        fecha: evento.fecha,
+        importe: cuotaM130,
+        estado: new Date(evento.fecha) < new Date() ? 'Pagado' : 'Pendiente',
+      });
+    });
+  }
+
+  if (resultado > 0) {
+    calendario.push(
+      {
+        concepto: `IRPF ${año} — Primera fracción (60%)`,
+        fecha: `${año + 1}-06-30`,
+        importe: Math.round((resultado * 0.6) * 100) / 100,
+        estado: 'Pendiente',
+      },
+      {
+        concepto: `IRPF ${año} — Segunda fracción (40%)`,
+        fecha: `${año + 1}-11-05`,
+        importe: Math.round((resultado * 0.4) * 100) / 100,
+        estado: 'Pendiente',
+      },
+    );
+  }
+
+  return calendario;
+};
+
+const buildFiscalCalendar = (
+  año: number,
+  declaracionIRPF: NonNullable<Awaited<ReturnType<typeof calcularDeclaracionIRPF>>>,
+  eventosFiscales: EventoFiscal[],
+): Array<InformesData['fiscal']['calendario'][number]> => {
+  const calendarioServicio = eventosFiscales.map((item) => ({
+    concepto: item.descripcion,
+    fecha: item.fechaLimite,
+    importe: toNumber(item.importe),
+    estado: item.pagado ? 'Pagado' : 'Pendiente',
+  }));
+
+  const calendarioFallback = buildEventosFiscalesFallback(año, declaracionIRPF);
+  if (calendarioServicio.length === 0) return calendarioFallback;
+
+  const rendimientoAutonomo = toNumber(declaracionIRPF.baseGeneral?.rendimientosAutonomo?.rendimientoNeto);
+  const resultado = toNumber(declaracionIRPF.resultado);
+  const hasM130 = eventosFiscales.some((item) => item.modelo === 'M130');
+  const hasIrpfFracciones = eventosFiscales.some((item) => item.modelo === 'IRPF_FRACCIONES');
+
+  const calendarioBase = resultado > 0 && !hasIrpfFracciones
+    ? calendarioServicio.filter((item) => !item.concepto.startsWith(`IRPF ${año} — A pagar`))
+    : [...calendarioServicio];
+
+  if (rendimientoAutonomo > 0 && !hasM130) {
+    calendarioBase.unshift(...calendarioFallback.filter((item) => item.concepto.startsWith('Modelo 130')));
+  }
+
+  if (resultado > 0 && !hasIrpfFracciones) {
+    calendarioBase.push(...calendarioFallback.filter((item) => item.concepto.startsWith(`IRPF ${año} — `)));
+  }
+
+  return calendarioBase;
+};
+
 const buildProjectionSummary = (projection: ProyeccionAnual | null): InformesData['proyeccion'] => {
   if (!projection) {
     return DEFAULT_DATA.proyeccion;
@@ -316,7 +417,6 @@ class InformesDataService {
       tesoreria,
       dbPayload,
       declaracionIRPF,
-      eventosFiscales,
     ] = await Promise.all([
       safe(generateProyeccionMensual(), [] as ProyeccionAnual[]),
       safe(inmuebleService.getAll(), [] as Inmueble[]),
@@ -350,8 +450,11 @@ class InformesDataService {
         return { properties, valuations, contracts };
       })(), { properties: [] as ExtendedProperty[], valuations: [] as ValoracionHistorica[], contracts: [] as Contract[] }),
       safe(calcularDeclaracionIRPF(año), null as Awaited<ReturnType<typeof calcularDeclaracionIRPF>> | null),
-      safe(generarEventosFiscales(año, null as never), [] as Awaited<ReturnType<typeof generarEventosFiscales>>),
     ]);
+
+    const eventosFiscales = declaracionIRPF
+      ? await safe(generarEventosFiscales(año, declaracionIRPF), [] as EventoFiscal[])
+      : [];
 
     const projection = proyecciones.find((item) => item.year === año) ?? null;
     const projectionSummary = buildProjectionSummary(projection);
@@ -409,7 +512,7 @@ class InformesDataService {
     }
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
-      const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
+      const rawProperty = getLegacyProperty(dbPayload.properties, inmueble.id);
       const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
       const precioCompra = toNumber(inmueble.compra?.precio_compra);
       const totalGastos = toNumber(inmueble.compra?.total_gastos);
@@ -596,27 +699,25 @@ class InformesDataService {
           ),
           rendimientoNetoReducido: toNumber(item.rendimientoNetoAlquiler),
         })) ?? [],
-        calendario: Array.isArray(eventosFiscales)
-          ? eventosFiscales.map((item) => ({
-            concepto: String(item.descripcion ?? ''),
-            fecha: String(item.fechaPago ?? item.fechaLimite ?? ''),
-            importe: toNumber(item.importe),
-            estado: item.pagado ? 'Pagado' : 'Pendiente',
-          }))
-          : [],
+        calendario: buildFiscalCalendar(año, declaracionIRPF, eventosFiscales),
       } : DEFAULT_DATA.fiscal,
       cartera: {
         detalleFiscal: inmuebles
           .filter((inm) => inm.estado !== 'VENDIDO')
-          .map((inm) => ({
-            alias: inm.alias,
-            valorCatastral: toNumber(inm.fiscalidad?.valor_catastral_total),
-            vcConstruccion: toNumber(inm.fiscalidad?.valor_catastral_construccion),
-            pctConstruccion: toNumber(inm.fiscalidad?.porcentaje_construccion),
-            metodoAmortizacion: inm.fiscalidad?.metodo_amortizacion ?? 'REGLA_GENERAL_3',
-            pctAmortizacion: toNumber(inm.fiscalidad?.porcentaje_amortizacion_info ?? 3),
-            regimenFiscal: 'Arrendamiento general',
-          })),
+          .map((inm) => {
+            const rawProperty = getLegacyProperty(dbPayload.properties, inm.id);
+            const detalleFiscal = getFiscalDetalle(inm, rawProperty);
+
+            return {
+              alias: inm.alias,
+              valorCatastral: detalleFiscal.valorCatastral,
+              vcConstruccion: detalleFiscal.vcConstruccion,
+              pctConstruccion: detalleFiscal.pctConstruccion,
+              metodoAmortizacion: inm.fiscalidad?.metodo_amortizacion ?? 'REGLA_GENERAL_3',
+              pctAmortizacion: toNumber(inm.fiscalidad?.porcentaje_amortizacion_info ?? 3),
+              regimenFiscal: 'Arrendamiento general',
+            };
+          }),
       },
     };
   }
