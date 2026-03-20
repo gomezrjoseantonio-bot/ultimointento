@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Building2, Download, FileText, Receipt } from 'lucide-react';
+import { BarChart3, Building2, Download, FileText, Receipt, TrendingUp, Wallet, CreditCard } from 'lucide-react';
 import styles from './InformesPage.module.css';
 import { informesDataService } from '../../../services/informesDataService';
 import { generateDashboard } from './generators/generateDashboard';
@@ -7,8 +7,11 @@ import { generatePatrimonio } from './generators/generatePatrimonio';
 import { generateSolvencia } from './generators/generateSolvencia';
 import { generateFiscal } from './generators/generateFiscal';
 import { generateCartera } from './generators/generateCartera';
+import { generatePrestamos } from './generators/generatePrestamos';
+import { generateLibertad } from './generators/generateLibertad';
+import { generateTesoreria } from './generators/generateTesoreria';
 
-type ReportKey = 'dashboard' | 'solvencia' | 'patrimonio' | 'fiscal' | 'cartera';
+type ReportKey = 'dashboard' | 'solvencia' | 'patrimonio' | 'fiscal' | 'cartera' | 'prestamos' | 'libertad' | 'tesoreria';
 
 interface ReportDefinition {
   key: ReportKey;
@@ -74,6 +77,39 @@ const REPORTS: ReportDefinition[] = [
     ],
     icon: Building2,
   },
+  {
+    key: 'prestamos',
+    name: 'Informe de Préstamos',
+    description: 'Coste total de financiación, calendario de vencimientos y estrategia de cancelación.',
+    sections: [
+      'Resumen de deuda hipotecaria y personal con intereses pendientes estimados.',
+      'Calendario de vencimientos y coste anual por año.',
+      'Estrategia de cancelación anticipada ordenada por ahorro real.',
+    ],
+    icon: CreditCard,
+  },
+  {
+    key: 'libertad',
+    name: 'Proyección de Libertad Financiera',
+    description: 'Simulación de bola de nieve inmobiliaria hasta alcanzar tu objetivo de renta pasiva.',
+    sections: [
+      'Situación actual: CF de alquileres, ahorro mensual y capital líquido.',
+      'Hoja de ruta de hitos hasta alcanzar 3.000 €/mes en renta pasiva.',
+      'Escenarios de sensibilidad y palancas de aceleración.',
+    ],
+    icon: TrendingUp,
+  },
+  {
+    key: 'tesoreria',
+    name: 'Informe de Tesorería',
+    description: 'Panel de cuentas bancarias y extracto de movimientos de los últimos 6 meses.',
+    sections: [
+      'Saldo actual, proyección de fin de mes y flujos pendientes por cuenta.',
+      'Resumen mensual de ingresos y gastos de los últimos 6 meses.',
+      'Extracto de los 50 movimientos más recientes.',
+    ],
+    icon: Wallet,
+  },
 ];
 
 const currentYear = new Date().getFullYear();
@@ -121,6 +157,12 @@ const InformesPage: React.FC = () => {
         await generateFiscal(data);
       } else if (selectedReport === 'cartera') {
         await generateCartera(data);
+      } else if (selectedReport === 'prestamos') {
+        await generatePrestamos(data);
+      } else if (selectedReport === 'libertad') {
+        await generateLibertad(data);
+      } else if (selectedReport === 'tesoreria') {
+        await generateTesoreria(data);
       } else {
         await generatePatrimonio(data);
       }
