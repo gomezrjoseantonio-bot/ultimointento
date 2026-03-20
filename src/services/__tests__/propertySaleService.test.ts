@@ -111,6 +111,25 @@ describe('propertySaleService', () => {
     expect(loanAfter?.principalVivo).toBe(0);
   });
 
+  it('usa el alias del inmueble en la previsión de IRPF tras confirmar la venta', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Alias PDF' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES9300491500051234567892' })));
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-02-10',
+      salePrice: 180000,
+      settlementAccountId: accountId,
+      source: 'cartera',
+    });
+
+    const treasuryEvents = await db.getAll('treasuryEvents');
+    const irpfEvent = treasuryEvents.find((event: any) => event.sourceType === 'irpf_prevision');
+
+    expect(irpfEvent?.description).toBe('IRPF estimado por venta Piso Alias PDF');
+  });
+
   it('permite revertir una venta confirmada y reactivar el inmueble', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Retorno' })));
