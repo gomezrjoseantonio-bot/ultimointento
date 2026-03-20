@@ -1,138 +1,76 @@
 import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
-import { AEAT_CLASSIFICATION_MAP, getExerciseStatus, isCapexType } from './aeatClassificationService';
-import { updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
-import { getInteresesHipotecaByPropertyAndYear } from './loanInterestService';
-import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
+import { getExerciseStatus } from './aeatClassificationService';
+import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
+import { calcularAmortizacionMobiliarioAnual } from './mobiliarioActivoService';
+import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
+import {
+  generarOperacionesDesdeIntereses,
+  generarOperacionesDesdeRecurrentes,
+  getResumenCasillasAEAT,
+} from './operacionFiscalService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
+
+const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
 /**
  * Calculate or update fiscal summary for a property and year
  */
 export const calculateFiscalSummary = async (
-  propertyId: number, 
+  propertyId: number,
   exerciseYear: number
 ): Promise<FiscalSummary> => {
   const db = await initDB();
-  
-  // Get all documents for this property and year
-  const allDocuments = await db.getAll('documents');
-  const propertyDocuments = allDocuments.filter(doc => 
-    doc.metadata.entityType === 'property' &&
-    doc.metadata.entityId === propertyId &&
-    doc.metadata.aeatClassification?.exerciseYear === exerciseYear &&
-    doc.metadata.status === 'Asignado' &&
-    doc.metadata.financialData?.amount
-  );
 
-  // Initialize totals
+  await generarOperacionesDesdeRecurrentes(propertyId, exerciseYear);
+  await generarOperacionesDesdeIntereses(propertyId, exerciseYear);
+
+  const casillas = await getResumenCasillasAEAT(propertyId, exerciseYear);
+  const diasArrendados = await getRentalDaysForYear(propertyId, exerciseYear);
+  const diasDisponibles = isLeapYear(exerciseYear) ? 366 : 365;
+  const box0117 = await calcularAmortizacionMobiliarioAnual(propertyId, exerciseYear, diasArrendados, diasDisponibles);
+  const capexTotal = await getTotalMejorasHastaEjercicio(propertyId, exerciseYear);
+
   const summary: Omit<FiscalSummary, 'id'> = {
     propertyId,
     exerciseYear,
-    box0105: 0, // Interests/financing
-    box0106: 0, // R&C
-    box0109: 0, // Community
-    box0112: 0, // Personal services
-    box0113: 0, // Utilities
-    box0114: 0, // Insurance
-    box0115: 0, // Local taxes
-    box0117: 0, // Furniture amortization
-    capexTotal: 0, // CAPEX total (increases construction value)
+    box0105: casillas['0105'] || 0,
+    box0106: casillas['0106'] || 0,
+    box0109: casillas['0109'] || 0,
+    box0112: casillas['0112'] || 0,
+    box0113: casillas['0113'] || 0,
+    box0114: casillas['0114'] || 0,
+    box0115: casillas['0115'] || 0,
+    box0117: box0117 || 0,
+    capexTotal,
     deductibleExcess: 0,
     constructionValue: 0,
     annualDepreciation: 0,
     status: getExerciseStatus(exerciseYear),
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
 
-  // Aggregate by AEAT box
-  for (const doc of propertyDocuments) {
-    const { aeatClassification, financialData } = doc.metadata;
-    if (!aeatClassification?.fiscalType || !financialData?.amount) continue;
-
-    const amount = financialData.amount;
-
-    if (isCapexType(aeatClassification.fiscalType)) {
-      summary.capexTotal += amount;
-    } else {
-      const box = AEAT_CLASSIFICATION_MAP[aeatClassification.fiscalType as keyof typeof AEAT_CLASSIFICATION_MAP];
-      switch (box) {
-        case '0105': summary.box0105 += amount; break;
-        case '0106': summary.box0106 += amount; break;
-        case '0109': summary.box0109 += amount; break;
-        case '0112': summary.box0112 += amount; break;
-        case '0113': summary.box0113 += amount; break;
-        case '0114': summary.box0114 += amount; break;
-        case '0115': summary.box0115 += amount; break;
-        case '0117': summary.box0117 += amount; break;
-      }
-    }
-  }
-
-  // Add auto-calculated loan interests to box0105 when no manual documents exist for it.
-  // This avoids double-counting when the user has already uploaded interest documents.
-  if (summary.box0105 === 0) {
-    const interesesAuto = await getInteresesHipotecaByPropertyAndYear(propertyId, exerciseYear);
-    if (interesesAuto > 0) {
-      summary.box0105 = interesesAuto;
-      summary.box0105_auto = interesesAuto;
-    }
-  }
-
-  // Get property to calculate construction value and depreciation using AEAT rules
   const property = await db.get('properties', propertyId);
 
-  // Add recurring OPEX expenses auto-classified by AEAT box
-  const gastosRecurrentes = await getGastosRecurrentesFiscales(propertyId, exerciseYear);
-  const boxToField: Record<string, keyof typeof summary> = {
-    '0105': 'box0105',
-    '0106': 'box0106',
-    '0109': 'box0109',
-    '0112': 'box0112',
-    '0113': 'box0113',
-    '0114': 'box0114',
-    '0115': 'box0115',
-    '0117': 'box0117',
-  };
-  for (const [box, amount] of Object.entries(gastosRecurrentes)) {
-    const field = boxToField[box];
-    if (field) {
-      (summary[field] as number) += amount;
-    }
-  }
-
   if (property && property.aeatAmortization) {
-    // Use AEAT amortization calculation
     const updatedSummary = await updateFiscalSummaryWithAEAT(propertyId, exerciseYear);
-    // Merge with our calculated summary, preserving AEAT calculations
     summary.constructionValue = updatedSummary.constructionValue;
     summary.annualDepreciation = updatedSummary.annualDepreciation;
     summary.aeatAmortization = updatedSummary.aeatAmortization;
   } else if (property) {
-    // Fallback to legacy calculation for properties without AEAT data
-    const baseConstructionValue = property.fiscalData?.constructionCadastralValue || 
-                                 (property.acquisitionCosts.price * 0.7); // 70% estimate if no cadastral value
-
-    // Add CAPEX from all previous years including current
-    const allSummaries = await db.getAllFromIndex('fiscalSummaries', 'propertyId', propertyId);
-    const historicalCapex = allSummaries
-      .filter(s => s.exerciseYear <= exerciseYear)
-      .reduce((total, s) => total + s.capexTotal, 0);
-
-    summary.constructionValue = baseConstructionValue + historicalCapex;
-    summary.annualDepreciation = summary.constructionValue * 0.03; // 3% annual depreciation
+    const baseConstructionValue = property.fiscalData?.constructionCadastralValue || (property.acquisitionCosts.price * 0.7);
+    summary.constructionValue = baseConstructionValue + capexTotal;
+    summary.annualDepreciation = summary.constructionValue * 0.03;
   }
 
-  // Calculate deductible excess: (0105 + 0106) limited to rental income per AEAT art. 23 LIRPF
   const financingAndRepairs = summary.box0105 + summary.box0106;
-
-  // Get rental income for this property in this year from contracts
   const contractsForProperty = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
   const propertyContracts = (contractsForProperty as any[]).filter((c: any) => {
     const inicio = new Date(c.fechaInicio ?? c.startDate);
     const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
     return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
   });
+
   let ingresosIntegros = 0;
   for (const contract of propertyContracts) {
     const renta = contract.rentaMensual ?? 0;
@@ -144,11 +82,9 @@ export const calculateFiscalSummary = async (
     ingresosIntegros += renta * meses;
   }
 
-  // Apply AEAT limit: 0105 + 0106 cannot exceed ingresos íntegros
   const { applied: limitApplied, excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
   summary.deductibleExcess = excess;
 
-  // Save or upsert AEATCarryForward record when there is excess; delete stale record when excess becomes 0
   if (excess > 0) {
     const cfRecord: Omit<AEATCarryForward, 'id'> = {
       propertyId,
@@ -163,7 +99,7 @@ export const calculateFiscalSummary = async (
       updatedAt: new Date().toISOString(),
     };
     const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
-    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
+    const existingCf = (allCfs as AEATCarryForward[]).find((cf) => cf.taxYear === exerciseYear);
     if (existingCf) {
       await db.put('aeatCarryForwards', {
         ...cfRecord,
@@ -175,81 +111,70 @@ export const calculateFiscalSummary = async (
       await db.add('aeatCarryForwards', cfRecord);
     }
   } else {
-    // Excess is zero: remove any stale record for this property/year (e.g. documents reclassified)
     const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
-    const existingCf = (allCfs as AEATCarryForward[]).find(cf => cf.taxYear === exerciseYear);
+    const existingCf = (allCfs as AEATCarryForward[]).find((cf) => cf.taxYear === exerciseYear);
     if (existingCf) {
       await db.delete('aeatCarryForwards', existingCf.id!);
     }
   }
 
-  // Save or update the summary
   const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
   if (existingIndex.length > 0) {
     const existing = existingIndex[0];
     const updated = { ...summary, id: existing.id, createdAt: existing.createdAt };
     await db.put('fiscalSummaries', updated);
     return updated;
-  } else {
-    const id = await db.add('fiscalSummaries', summary) as number;
-    return { ...summary, id };
   }
+
+  const id = (await db.add('fiscalSummaries', summary)) as number;
+  return { ...summary, id };
 };
 
 /**
  * Get fiscal summary for property and year, creating if needed
  */
 export const getFiscalSummary = async (
-  propertyId: number, 
+  propertyId: number,
   exerciseYear: number
 ): Promise<FiscalSummary> => {
   const db = await initDB();
-  
+
   const existing = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
   if (existing.length > 0) {
     return existing[0];
   }
-  
-  return await calculateFiscalSummary(propertyId, exerciseYear);
+
+  return calculateFiscalSummary(propertyId, exerciseYear);
 };
 
 /**
  * Refresh fiscal summaries when documents are updated
  */
 export const refreshFiscalSummariesForDocument = async (document: Document): Promise<void> => {
-  if (document.metadata.entityType !== 'property' || 
-      !document.metadata.entityId ||
-      !document.metadata.aeatClassification?.exerciseYear) {
+  if (document.metadata.entityType !== 'property' || !document.metadata.entityId) {
     return;
   }
 
-  await calculateFiscalSummary(
-    document.metadata.entityId,
-    document.metadata.aeatClassification.exerciseYear
-  );
+  const exerciseYear = document.metadata.aeatClassification?.exerciseYear
+    || (document.metadata.financialData?.issueDate
+      ? new Date(document.metadata.financialData.issueDate).getFullYear()
+      : new Date().getFullYear());
+
+  await calculateFiscalSummary(document.metadata.entityId, exerciseYear);
 };
 
-/**
- * Get all fiscal summaries for a property
- */
 export const getPropertyFiscalSummaries = async (propertyId: number): Promise<FiscalSummary[]> => {
   const db = await initDB();
-  return await db.getAllFromIndex('fiscalSummaries', 'propertyId', propertyId);
+  return db.getAllFromIndex('fiscalSummaries', 'propertyId', propertyId);
 };
 
-/**
- * Get fiscal summaries for all properties in a year
- */
 export const getYearFiscalSummaries = async (exerciseYear: number): Promise<FiscalSummary[]> => {
   const db = await initDB();
-  return await db.getAllFromIndex('fiscalSummaries', 'exerciseYear', exerciseYear);
+  return db.getAllFromIndex('fiscalSummaries', 'exerciseYear', exerciseYear);
 };
 
-/**
- * Export fiscal data for a property and year
- */
 export const exportFiscalData = async (
-  propertyId: number, 
+  propertyId: number,
   exerciseYear: number
 ): Promise<{
   summary: FiscalSummary;
@@ -257,44 +182,22 @@ export const exportFiscalData = async (
   csvData: string;
 }> => {
   const db = await initDB();
-  
   const summary = await getFiscalSummary(propertyId, exerciseYear);
-  
-  // Get all documents for this property/year
   const allDocuments = await db.getAll('documents');
-  const documents = allDocuments.filter(doc => 
-    doc.metadata.entityType === 'property' &&
-    doc.metadata.entityId === propertyId &&
-    doc.metadata.aeatClassification?.exerciseYear === exerciseYear &&
-    doc.metadata.status === 'Asignado'
-  );
+  const documents = allDocuments.filter((doc) => doc.metadata.entityType === 'property' && doc.metadata.entityId === propertyId);
 
-  // Generate CSV data
-  const csvHeaders = [
-    'Fecha',
-    'Proveedor', 
-    'Concepto',
-    'Importe',
-    'Casilla AEAT',
-    'Tipo Fiscal',
-    'Número Factura',
-    'Archivo'
+  const headers = ['Casilla', 'Importe'];
+  const rows = [
+    ['0105', summary.box0105],
+    ['0106', summary.box0106],
+    ['0109', summary.box0109],
+    ['0112', summary.box0112],
+    ['0113', summary.box0113],
+    ['0114', summary.box0114],
+    ['0115', summary.box0115],
+    ['0117', summary.box0117],
   ];
-
-  const csvRows = documents.map(doc => [
-    doc.metadata.financialData?.issueDate || '',
-    doc.metadata.proveedor || '',
-    doc.metadata.title || doc.filename,
-    doc.metadata.financialData?.amount?.toString() || '0',
-    doc.metadata.aeatClassification?.box || '',
-    doc.metadata.aeatClassification?.fiscalType || '',
-    doc.metadata.financialData?.invoiceNumber || '',
-    doc.filename
-  ]);
-
-  const csvData = [csvHeaders, ...csvRows]
-    .map(row => row.map(cell => `"${cell}"`).join(','))
-    .join('\n');
+  const csvData = [headers.join(','), ...rows.map(([box, amount]) => `${box},${amount}`)].join('\n');
 
   return { summary, documents, csvData };
 };
@@ -315,53 +218,41 @@ export const calculateCarryForwards = async (
 }>> => {
   const summaries = await getPropertyFiscalSummaries(propertyId);
   const currentYear = ejercicio ?? new Date().getFullYear();
-  
-  // Get summaries with deductible excess from last 4 years that haven't expired
+
   const excessSummaries = summaries
-    .filter(s => s.deductibleExcess && s.deductibleExcess > 0 && 
-                s.exerciseYear >= currentYear - 4 && 
-                s.exerciseYear + 4 >= currentYear) // Not expired yet
+    .filter((summary) => summary.deductibleExcess && summary.deductibleExcess > 0 && summary.exerciseYear >= currentYear - 4 && summary.exerciseYear + 4 >= currentYear)
     .sort((a, b) => a.exerciseYear - b.exerciseYear);
 
-  // Get income data to calculate how much can be applied
   const db = await initDB();
   const allIngresos = await db.getAll('ingresos');
-  
   const result = [];
-  
+
   for (const summary of excessSummaries) {
     const expirationYear = summary.exerciseYear + 4;
     const expiresThisYear = expirationYear === currentYear;
-    
-    // Calculate income from this property for years after the excess was generated
-    const yearsToApply = Array.from(
-      { length: 4 }, 
-      (_, i) => summary.exerciseYear + 1 + i
-    ).filter(year => year <= currentYear);
-    
+    const yearsToApply = Array.from({ length: 4 }, (_, index) => summary.exerciseYear + 1 + index)
+      .filter((year) => year <= currentYear);
+
     let totalApplied = 0;
     let appliedThisYear = 0;
-    
+
     for (const year of yearsToApply) {
       const yearIncome = allIngresos
-        .filter(ingreso => {
+        .filter((ingreso: any) => {
           const incomeDate = new Date(ingreso.fecha_emision);
-          return incomeDate.getFullYear() === year && 
-                 ingreso.destino === 'inmueble_id' && 
-                 ingreso.destino_id === propertyId &&
-                 ingreso.estado === 'cobrado';
+          return incomeDate.getFullYear() === year
+            && ingreso.destino === 'inmueble_id'
+            && ingreso.destino_id === propertyId
+            && ingreso.estado === 'cobrado';
         })
-        .reduce((sum, ingreso) => sum + ingreso.importe, 0);
-      
-      // Calculate expenses that compete with carryforwards (financing + repairs)
-      const yearSummary = summaries.find(s => s.exerciseYear === year);
+        .reduce((sum: number, ingreso: any) => sum + ingreso.importe, 0);
+
+      const yearSummary = summaries.find((item) => item.exerciseYear === year);
       const competingExpenses = yearSummary ? (yearSummary.box0105 + yearSummary.box0106) : 0;
-      
-      // Available income after competing expenses for carryforward application
       const availableForCarryforward = Math.max(0, yearIncome - competingExpenses);
       const remainingExcess = (summary.deductibleExcess || 0) - totalApplied;
       const canApply = Math.min(availableForCarryforward, remainingExcess);
-      
+
       if (canApply > 0) {
         totalApplied += canApply;
         if (year === currentYear) {
@@ -369,19 +260,17 @@ export const calculateCarryForwards = async (
         }
       }
     }
-    
-    const remainingAmount = Math.max(0, (summary.deductibleExcess || 0) - totalApplied);
-    
+
     result.push({
       exerciseYear: summary.exerciseYear,
       excessAmount: summary.deductibleExcess || 0,
-      remainingAmount,
+      remainingAmount: Math.max(0, (summary.deductibleExcess || 0) - totalApplied),
       expirationYear,
       appliedThisYear,
-      expiresThisYear
+      expiresThisYear,
     });
   }
-  
+
   return result;
 };
 
@@ -390,15 +279,15 @@ export const calculateCarryForwards = async (
  */
 export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Promise<number> => {
   const db = await initDB();
-  const properties = propertyId ? [propertyId] : 
-    (await db.getAll('properties')).filter(p => p.state === 'activo').map(p => p.id!);
-  
+  const properties = propertyId
+    ? [propertyId]
+    : (await db.getAll('properties')).filter((property) => property.state === 'activo').map((property) => property.id!);
+
   let totalApplied = 0;
-  
   for (const propId of properties) {
     const carryForwards = await calculateCarryForwards(propId);
-    totalApplied += carryForwards.reduce((sum, cf) => sum + (cf.appliedThisYear || 0), 0);
+    totalApplied += carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
   }
-  
+
   return totalApplied;
 };
