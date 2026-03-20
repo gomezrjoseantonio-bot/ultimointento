@@ -1,0 +1,147 @@
+.section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: var(--border-radius-lg);
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+  color: var(--hz-neutral-900);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0.5rem 0 0;
+  color: var(--hz-neutral-700);
+  font-size: 0.95rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: var(--border-radius-lg);
+}
+
+.iconRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: var(--blue);
+  background: var(--hz-neutral-100);
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--hz-neutral-900);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cardDescription {
+  margin: 0.35rem 0 0;
+  color: var(--hz-neutral-700);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.select {
+  min-width: 9rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--hz-neutral-900);
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: var(--border-radius-md, 0.75rem);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.625rem;
+  padding: 0.625rem 1rem;
+  color: var(--blue);
+  background: var(--hz-card-bg);
+  border: 1px solid var(--hz-neutral-300);
+  border-radius: var(--border-radius-md, 0.75rem);
+  font-weight: 600;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--hz-neutral-100);
+  border-color: var(--blue);
+}
+
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 0;
+  color: var(--error-600, var(--hz-danger-600, var(--red-600)));
+  font-size: 0.875rem;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 1rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .button,
+  .select {
+    width: 100%;
+  }
+}

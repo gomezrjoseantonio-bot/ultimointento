@@ -9,6 +9,14 @@ import type { ProyeccionAnual } from '../modules/horizon/proyeccion/mensual/type
 import type { Inmueble } from '../types/inmueble';
 import type { Prestamo, PlanPagos } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
+import type { ValoracionHistorica } from '../types/valoraciones';
+import {
+  getLatestValuation,
+  mapInmuebleToRow,
+  mapPrestamoToRow,
+  toNumber,
+  type ExtendedProperty,
+} from '../modules/horizon/herramientas/exporters/mappers';
 
 export interface InformesData {
   generadoEn: string;
@@ -94,29 +102,6 @@ export interface InformesData {
   };
 }
 
-type PropertyRecord = {
-  id?: string | number;
-  alias?: string;
-  address?: string;
-  municipality?: string;
-  state?: string;
-  currentValue?: number;
-  marketValue?: number;
-  estimatedValue?: number;
-  valuation?: number;
-  valor_actual?: number;
-  acquisitionCosts?: {
-    price?: number;
-    currentValue?: number;
-  };
-};
-
-type ValuationRecord = {
-  tipo_activo?: string;
-  activo_id?: string | number;
-  fecha_valoracion?: string;
-  valor?: number;
-};
 
 const DEFAULT_DATA: InformesData = {
   generadoEn: new Date().toISOString(),
@@ -168,77 +153,12 @@ const DEFAULT_DATA: InformesData = {
   },
 };
 
-const toNumber = (value: unknown): number => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 const safe = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
   try {
     return await promise;
   } catch {
     return fallback;
   }
-};
-
-const getLatestValuation = (propertyId: string | number, valuations: ValuationRecord[]): number => {
-  const candidates = valuations
-    .filter((item) => item.tipo_activo === 'inmueble' && String(item.activo_id) === String(propertyId))
-    .sort((a, b) => String(b.fecha_valoracion ?? '').localeCompare(String(a.fecha_valoracion ?? '')));
-
-  return toNumber(candidates[0]?.valor);
-};
-
-const getLoanTin = (prestamo: Prestamo): number => {
-  if (prestamo.tipo === 'FIJO') return toNumber(prestamo.tipoNominalAnualFijo);
-  if (prestamo.tipo === 'VARIABLE') {
-    return (toNumber(prestamo.valorIndiceActual) + toNumber(prestamo.diferencial)) * 100;
-  }
-
-  return toNumber(prestamo.tipoNominalAnualMixtoFijo || prestamo.tipoNominalAnualFijo);
-};
-
-const getOutstandingPrincipal = (prestamo: Prestamo, plan: PlanPagos | null): number => {
-  const unpaid = plan?.periodos.find((periodo) => !periodo.pagado);
-  if (unpaid) {
-    const previousIndex = Math.max(0, unpaid.periodo - 2);
-    const previous = previousIndex >= 0 ? plan?.periodos[previousIndex] : null;
-    return toNumber(previous?.principalFinal ?? unpaid.principalFinal ?? prestamo.principalVivo);
-  }
-
-  const lastPeriod = plan?.periodos[plan.periodos.length - 1];
-  return toNumber(lastPeriod?.principalFinal ?? prestamo.principalVivo);
-};
-
-const getLoanMonthlyInstallment = (prestamo: Prestamo, plan: PlanPagos | null): number => {
-  const currentPeriod = plan?.periodos.find((periodo) => !periodo.pagado);
-  return toNumber(currentPeriod?.cuota ?? plan?.periodos[0]?.cuota);
-};
-
-const getLoanEndDate = (plan: PlanPagos | null, prestamo: Prestamo): string => {
-  const lastPeriod = plan?.periodos[plan.periodos.length - 1];
-  return lastPeriod?.fechaCargo ?? prestamo.fechaCancelacion ?? '';
-};
-
-const getDireccionCompleta = (inmueble: Inmueble): string => {
-  const parts = [
-    inmueble.direccion.calle,
-    inmueble.direccion.numero,
-    inmueble.direccion.piso,
-    inmueble.direccion.puerta,
-  ].filter((part): part is string => Boolean(part));
-
-  return parts.join(' ').trim();
 };
 
 const getStringField = (source: PersonalData | null, key: string): string | undefined => {
@@ -346,12 +266,12 @@ class InformesDataService {
       safe((async () => {
         const db = await initDB();
         const [properties, valuations, contracts] = await Promise.all([
-          safe(db.getAll('properties'), [] as PropertyRecord[]),
-          safe(db.getAll('valoraciones_historicas'), [] as ValuationRecord[]),
+          safe(db.getAll('properties'), [] as ExtendedProperty[]),
+          safe(db.getAll('valoraciones_historicas'), [] as ValoracionHistorica[]),
           safe(db.getAll('contracts'), [] as Contract[]),
         ]);
         return { properties, valuations, contracts };
-      })(), { properties: [] as PropertyRecord[], valuations: [] as ValuationRecord[], contracts: [] as Contract[] }),
+      })(), { properties: [] as ExtendedProperty[], valuations: [] as ValoracionHistorica[], contracts: [] as Contract[] }),
     ]);
 
     const projection = proyecciones.find((item) => item.year === año) ?? null;
@@ -415,49 +335,21 @@ class InformesDataService {
     }
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
-      const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
-      const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
-      const precioCompra = toNumber(inmueble.compra.precio_compra);
-      const totalGastos = toNumber(inmueble.compra.total_gastos);
-      const totalImpuestos = toNumber(inmueble.compra.total_impuestos);
-      const costeTotalCalculado = precioCompra + totalGastos + totalImpuestos;
-      const costeTotalPersistido = toNumber(inmueble.compra.coste_total_compra);
-      const costeTotal = costeTotalPersistido > 0
-        ? costeTotalPersistido
-        : costeTotalCalculado > precioCompra
-          ? costeTotalCalculado
-          : precioCompra;
-      const valorActual = latestValuation || toNumber(
-        rawProperty?.currentValue
-          ?? rawProperty?.marketValue
-          ?? rawProperty?.estimatedValue
-          ?? rawProperty?.valuation
-          ?? rawProperty?.valor_actual
-          ?? rawProperty?.acquisitionCosts?.currentValue
-          ?? costeTotal,
-      );
+      const property = dbPayload.properties.find((item) => String(item.id) === String(inmueble.id)) ?? null;
+      const valuation = getLatestValuation(inmueble.id, dbPayload.valuations);
+      const contractsForProperty = dbPayload.contracts.filter((contract) => String(contract.inmuebleId) === String(inmueble.id));
+      const prestamosForProperty = prestamosMapeados.filter((prestamo) => {
+        const original = prestamos.find((item) => item.id === prestamo.id);
+        return prestamo.esHipoteca && original?.inmuebleId === inmueble.id;
+      });
 
-      const loanForProperty = hipotecas.filter((prestamo) => String(prestamo.inmuebleId) === String(inmueble.id));
-      const hipotecaMensual = loanForProperty.reduce((sum, prestamo) => sum + getLoanMonthlyInstallment(prestamo, loanPlans.get(prestamo.id) ?? null), 0);
-      const rentaMensual = inmueble.estado !== 'VENDIDO' ? (rentasPorInmueble.get(String(inmueble.id)) ?? 0) : 0;
-      const cfNeto = rentaMensual - hipotecaMensual;
-      const plusvalia = valorActual - costeTotal;
-      const yieldBruto = costeTotal > 0 ? ((rentaMensual * 12) / costeTotal) * 100 : 0;
-
-      return {
-        id: inmueble.id,
-        alias: inmueble.alias,
-        direccion: getDireccionCompleta(inmueble) || rawProperty?.address || '',
-        ciudad: inmueble.direccion.municipio || rawProperty?.municipality || '',
-        estado: inmueble.estado,
-        costeTotal,
-        valorActual,
-        plusvalia,
-        rentaMensual,
-        yieldBruto,
-        hipotecaMensual,
-        cfNeto,
-      };
+      return mapInmuebleToRow({
+        inmueble,
+        property,
+        valuation,
+        contracts: contractsForProperty,
+        prestamos: prestamosForProperty,
+      });
     });
 
     const inmueblesActivos = inmueblesMapeados.filter((item) => item.estado !== 'VENDIDO');
@@ -466,6 +358,7 @@ class InformesDataService {
     const rentaMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.rentaMensual, 0);
     const cfMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.cfNeto, 0);
     const plusvaliaTotal = inmueblesMapeados.reduce((sum, item) => sum + item.plusvalia, 0);
+    const deudaHipotecaria = inmueblesMapeados.reduce((sum, item) => sum + item.deudaHipotecaria, 0);
     const equity = valorTotal - deudaHipotecaria;
     const yieldBruta = costeTotal > 0 ? ((rentaMensualTotal * 12) / costeTotal) * 100 : 0;
     const ltv = valorTotal > 0 ? (deudaHipotecaria / valorTotal) * 100 : 0;
@@ -490,13 +383,13 @@ class InformesDataService {
     });
 
     const cuotaHipotecasMensual = prestamosMapeados
-      .filter((prestamo) => prestamo.tipo === 'Hipoteca')
+      .filter((prestamo) => prestamo.tipoInforme === 'Hipoteca')
       .reduce((sum, prestamo) => sum + prestamo.cuotaMensual, 0);
     const cuotaPrestamosMensual = prestamosMapeados
-      .filter((prestamo) => prestamo.tipo !== 'Hipoteca')
+      .filter((prestamo) => prestamo.tipoInforme !== 'Hipoteca')
       .reduce((sum, prestamo) => sum + prestamo.cuotaMensual, 0);
     const totalCuotasMensual = cuotaHipotecasMensual + cuotaPrestamosMensual;
-    const deudaTotal = prestamosMapeados.reduce((sum, prestamo) => sum + prestamo.capitalVivo, 0);
+    const deudaTotal = prestamosMapeados.reduce((sum, prestamo) => sum + prestamo.principalVivo, 0);
 
     const nombreCompleto = [personal?.nombre, personal?.apellidos].filter(Boolean).join(' ').trim();
     const ingresoLaboralAnual = projectionSummary.desglose.nominas + projectionSummary.desglose.autonomos;
@@ -529,7 +422,7 @@ class InformesDataService {
       resumenPatrimonio: {
         inversionesPensiones,
       },
-      prestamos: prestamosMapeados,
+      prestamos: prestamosInformes,
       resumenFinanciacion: {
         cuotaHipotecasMensual,
         cuotaPrestamosMensual,
