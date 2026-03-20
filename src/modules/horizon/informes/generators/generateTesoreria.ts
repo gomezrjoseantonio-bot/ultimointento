@@ -30,11 +30,48 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     .filter((m) => m.movementState !== 'Revisar' && (toDate(m.date) ?? new Date(0)) >= seisAtr)
     .sort((a, b) => (toDate(b.date)?.getTime() ?? 0) - (toDate(a.date)?.getTime() ?? 0));
 
-  const aliasCuenta = new Map<number, string>(
-    cuentasDB
-      .filter((c): c is Account & { id: number } => typeof c.id === 'number')
-      .map((c) => [c.id, c.alias ?? c.iban ?? String(c.id)]),
-  );
+  // Resolver nombre de cuenta con prioridad: alias > banco.name > IBAN últimos 4 > id
+  const resolverNombreCuenta = (c: Account): string => {
+    const alias = (c as Account & { alias?: string }).alias;
+    const banco = (c as Account & { banco?: { name?: string } }).banco?.name;
+    const iban = c.iban;
+    if (alias) return alias;
+    if (banco) return banco;
+    if (iban && iban.length >= 4) return `····${iban.slice(-4)}`;
+    return `Cuenta ${c.id ?? '?'}`;
+  };
+
+  // Mapa por ID de IndexedDB (string para evitar mismatch number vs string)
+  const mapaId = new Map<string, string>();
+  const mapaIban = new Map<string, string>();
+
+  for (const c of cuentasDB) {
+    const nombre = resolverNombreCuenta(c);
+    if (c.id != null) mapaId.set(String(c.id), nombre);
+    if (c.iban) mapaIban.set(c.iban.replace(/\s/g, '').toUpperCase(), nombre);
+  }
+
+  // Completar con cuentas de localStorage (fuente alternativa de nombres)
+  try {
+    const stored = localStorage.getItem('atlas_accounts');
+    if (stored) {
+      const lsAccounts = JSON.parse(stored) as Account[];
+      for (const c of lsAccounts) {
+        if (!c.iban) continue;
+        const key = c.iban.replace(/\s/g, '').toUpperCase();
+        if (!mapaIban.has(key)) mapaIban.set(key, resolverNombreCuenta(c));
+      }
+    }
+  } catch {
+    // silencioso
+  }
+
+  const getAlias = (accountId: number | string | undefined | null): string => {
+    if (accountId == null) return '—';
+    const rawAccountId = String(accountId);
+    const normalizedAccountId = rawAccountId.replace(/\s/g, '').toUpperCase();
+    return mapaId.get(rawAccountId) ?? mapaIban.get(normalizedAccountId) ?? '—';
+  };
 
   const ingresos = movimientos
     .filter((m) => m.amount > 0)
@@ -157,7 +194,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     const fecha = toDate(m.date);
     return [
       fecha ? fecha.toLocaleDateString('es-ES') : '—',
-      aliasCuenta.get(m.accountId) ?? '—',
+      getAlias(m.accountId),
       String(m.description ?? '—').slice(0, 40),
       String(m.counterparty ?? '—').slice(0, 30),
       fmtEur(m.amount),
