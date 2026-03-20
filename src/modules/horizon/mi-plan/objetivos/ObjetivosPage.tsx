@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { BarChart3, Home, Landmark, Target, Wallet, X, type LucideIcon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { dashboardService } from '../../../../services/dashboardService';
 import { getInformesData } from '../../../../services/informesDataService';
@@ -28,7 +29,7 @@ const clampProgress = (value: number): number => Math.max(0, Math.min(100, value
 
 interface ObjectiveCardProps {
   title: string;
-  icon: string;
+  Icon: LucideIcon;
   status: StatusTone;
   objective: string;
   current: string;
@@ -40,7 +41,7 @@ interface ObjectiveCardProps {
 
 const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
   title,
-  icon,
+  Icon,
   status,
   objective,
   current,
@@ -70,7 +71,9 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 
       <div className={styles.objCardBody}>
         <div className={styles.objCardHeader}>
-          <span className={styles.objCardIcon}>{icon}</span>
+          <span className={styles.objCardIcon} aria-hidden="true">
+            <Icon size={16} />
+          </span>
           <h3 className={styles.objCardTitle}>{title}</h3>
           <span className={styles.objCardDot} style={{ background: statusColor }} />
         </div>
@@ -128,7 +131,9 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
     <aside className={styles.drawer} onClick={(event) => event.stopPropagation()}>
       <div className={styles.drawerHeader}>
         <h2 className={styles.drawerTitle}>Editar objetivos</h2>
-        <button type="button" className={styles.drawerClose} onClick={onClose}>✕</button>
+        <button type="button" className={styles.drawerClose} onClick={onClose} aria-label="Cerrar panel de edición">
+          <X size={20} />
+        </button>
       </div>
 
       <div className={styles.drawerBody}>
@@ -441,7 +446,7 @@ const ObjetivosPage: React.FC = () => {
         <div className={styles.cardsGrid}>
           <ObjectiveCard
             title="Libertad financiera"
-            icon="🎯"
+            Icon={Target}
             status={cfStatus}
             objective={`${euroFormatter.format(obj.rentaPasivaObjetivo)}/mes`}
             current={`${euroFormatter.format(cfActual)}/mes`}
@@ -456,7 +461,7 @@ const ObjetivosPage: React.FC = () => {
 
           <ObjectiveCard
             title="Patrimonio neto"
-            icon="💰"
+            Icon={Wallet}
             status={
               patrimonioActual >= obj.patrimonioNetoObjetivo
                 ? 'ok'
@@ -476,7 +481,7 @@ const ObjetivosPage: React.FC = () => {
 
           <ObjectiveCard
             title="Liquidez"
-            icon="🏦"
+            Icon={Landmark}
             status={cajaStatus}
             objective={`Mínimo ${euroFormatter.format(obj.cajaMinima)}`}
             current={euroFormatter.format(cajaActual)}
@@ -490,7 +495,7 @@ const ObjetivosPage: React.FC = () => {
 
           <ObjectiveCard
             title="Esfuerzo de deuda (DTI)"
-            icon="📊"
+            Icon={BarChart3}
             status={dtiStatus}
             objective={`Máximo ${percentFormatter.format(obj.dtiMaximo)}%`}
             current={`${percentFormatter.format(dtiActual)}%`}
@@ -505,7 +510,7 @@ const ObjetivosPage: React.FC = () => {
 
           <ObjectiveCard
             title="Calidad de cartera"
-            icon="🏠"
+            Icon={Home}
             status="ok"
             objective={
               `Yield ≥ ${percentFormatter.format(obj.yieldMinimaCartera)}%  ·  Ahorro ≥ ${percentFormatter.format(obj.tasaAhorroMinima)}%`
