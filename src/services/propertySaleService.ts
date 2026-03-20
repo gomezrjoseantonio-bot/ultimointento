@@ -563,6 +563,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     throw new Error('Inmueble no encontrado');
   }
 
+  const propLabel = (property as { alias?: string }).alias
+    ? String((property as { alias?: string }).alias)
+    : `inmueble #${input.propertyId}`;
+
   if (property.state !== 'activo') {
     throw new Error('Solo se pueden vender inmuebles activos');
   }
@@ -615,10 +619,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
 
   const simulation = simulatePropertySale(input);
   const saleExpenseBreakdown = [
-    { amount: Number(input.agencyCommission || 0), description: `Comisión agencia venta inmueble #${input.propertyId}` },
-    { amount: Number(input.municipalTax || 0), description: `Plusvalía municipal venta inmueble #${input.propertyId}` },
-    { amount: Number(input.saleNotaryCosts || 0), description: `Notaría venta inmueble #${input.propertyId}` },
-    { amount: Number(input.otherCosts || 0), description: `Otros costes venta inmueble #${input.propertyId}` },
+    { amount: Number(input.agencyCommission || 0), description: `Comisión agencia venta ${propLabel}` },
+    { amount: Number(input.municipalTax || 0), description: `Plusvalía municipal venta ${propLabel}` },
+    { amount: Number(input.saleNotaryCosts || 0), description: `Notaría venta ${propLabel}` },
+    { amount: Number(input.otherCosts || 0), description: `Otros costes venta ${propLabel}` },
   ].filter((item) => item.amount > 0);
   const now = new Date().toISOString();
 
@@ -671,7 +675,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         accountId: settlementAccountId,
         amount: simulation.grossProceeds,
         date: input.saleDate,
-        description: `Cobro venta inmueble #${input.propertyId}`,
+        description: `Cobro venta ${propLabel}`,
         propertyId: input.propertyId,
         saleId,
       }),
@@ -691,7 +695,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
               accountId: settlementAccountId,
               amount: -loanSettlementTotal,
               date: input.saleDate,
-              description: `Cancelación deuda inmueble #${input.propertyId}`,
+              description: `Cancelación deuda ${propLabel}`,
               propertyId: input.propertyId,
               saleId,
             }),
@@ -822,7 +826,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
         type: 'income',
         amount: simulation.grossProceeds,
         predictedDate: input.saleDate,
-        description: `Cobro venta inmueble #${input.propertyId}`,
+        description: `Cobro venta ${propLabel}`,
         sourceType: 'manual',
         sourceId: saleId,
         accountId: settlementAccountId,
@@ -847,7 +851,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
             type: 'financing' as const,
             amount: simulation.totalLoanSettlement,
             predictedDate: input.saleDate,
-            description: `Cancelación deuda inmueble #${input.propertyId}`,
+            description: `Cancelación deuda ${propLabel}`,
             sourceType: 'manual' as const,
             sourceId: saleId,
             accountId: settlementAccountId,
@@ -1069,7 +1073,7 @@ export const finalizePropertySaleLoanCancellation = async (movementId: number): 
 
   if (!movement || movement.amount >= 0) return false;
   if (!String(movement.reference || '').startsWith('property_sale:')) return false;
-  if (!String(movement.description || '').includes('Cancelación deuda inmueble')) return false;
+  if (!String(movement.description || '').startsWith('Cancelación deuda ')) return false;
 
   const saleId = Number(String(movement.reference).replace('property_sale:', ''));
   if (!Number.isFinite(saleId)) return false;
@@ -1155,7 +1159,7 @@ export const finalizePropertySaleLoanCancellationFromTreasuryEvent = async (trea
     treasuryEvent.type === 'financing' &&
     treasuryEvent.sourceType === 'manual' &&
     typeof treasuryEvent.sourceId === 'number' &&
-    String(treasuryEvent.description || '').includes('Cancelación deuda inmueble');
+    String(treasuryEvent.description || '').startsWith('Cancelación deuda ');
 
   if (!isSaleLoanCancellationEvent) return false;
 
