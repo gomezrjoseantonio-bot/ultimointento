@@ -30,6 +30,7 @@ const formatMonthYear = (date: Date | null): string => {
 
 export async function generateLibertad(data: InformesData): Promise<void> {
   const objetivos = await getObjetivos();
+  const objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   let objetivoMensual = objetivos.rentaPasivaObjetivo;
 
@@ -206,42 +207,116 @@ export async function generateLibertad(data: InformesData): Promise<void> {
   y = 48;
 
   y = drawSectionTitle(doc, y, 'Escenarios comparativos');
+
+  const roundTo = (n: number, multiple: number): number => Math.ceil(n / multiple) * multiple;
+
+  const hito1Raw = objetivoMensual / 3;
+  const hito2Raw = (objetivoMensual * 2) / 3;
+
+  const redondeo = objetivoMensual >= 50_000 ? 5_000 : objetivoMensual >= 10_000 ? 1_000 : 500;
+
+  const hito1 = Math.max(roundTo(hito1Raw, redondeo), redondeo);
+  const hito2 = Math.max(roundTo(hito2Raw, redondeo), hito1 + redondeo);
+  const hito3 = objetivoMensual;
+
+  const objetivosTabla = [hito1, hito2, hito3];
+  const rentabilidades = [4, 6, 8];
+
   const escenarios: Escenario[] = [];
   for (const rent of [0.04, 0.06, 0.08]) {
-    for (const obj of [2000, 3000, 5000]) {
-      const sim = simularBolaNieve(obj, cfInmueblesMensual, ahorroMensualNomina, capitalLiquido, COSTE_ENTRADA_PISO, rent);
-      escenarios.push({ rentabilidad: rent * 100, objetivo: obj, meses: sim.meses, pisos: sim.pisosComprados });
+    for (const obj of objetivosTabla) {
+      const sim = simularBolaNieve(
+        obj,
+        cfInmueblesMensual,
+        ahorroMensualNomina,
+        capitalLiquido,
+        COSTE_ENTRADA_PISO,
+        rent,
+      );
+      escenarios.push({
+        rentabilidad: rent * 100,
+        objetivo: obj,
+        meses: sim.meses,
+        pisos: sim.pisosComprados,
+      });
     }
   }
 
-  const objetivosTabla = [2000, 3000, 5000];
-  const rentabilidades = [4, 6, 8];
   autoTable(doc, {
     startY: y,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: 20 },
     head: [['Objetivo \\ Rentabilidad neta', '4%', '6%', '8%']],
     body: objetivosTabla.map((objetivo) => [
-      `${new Intl.NumberFormat('es-ES').format(objetivo)} €/mes`,
+      `${new Intl.NumberFormat('es-ES').format(objetivo)} €/mes${objetivo === hito3 ? ' ★' : ''}`,
       ...rentabilidades.map((rentabilidad) => {
-        const escenario = escenarios.find((item) => item.objetivo === objetivo && item.rentabilidad === rentabilidad);
+        const escenario = escenarios.find(
+          (item) => item.objetivo === objetivo && item.rentabilidad === rentabilidad,
+        );
         if (!escenario) return '—';
+        if (escenario.meses === 0) return 'Ya alcanzado ✓';
         return `${(escenario.meses / 12).toFixed(1)} años (${escenario.pisos} pisos)`;
       }),
     ]),
     theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 8.3, cellPadding: 2.4, textColor: COLOR.gray1, lineColor: COLOR.graybd, lineWidth: 0.1 },
+    styles: {
+      font: 'helvetica',
+      fontSize: 8.3,
+      cellPadding: 2.4,
+      textColor: COLOR.gray1,
+      lineColor: COLOR.graybd,
+      lineWidth: 0.1,
+    },
     headStyles: { fillColor: COLOR.navy, textColor: COLOR.white },
     alternateRowStyles: { fillColor: COLOR.graylt },
     didParseCell: (hookData) => {
-      if (hookData.section === 'body' && hookData.row.index === 1 && hookData.column.index === 2) {
+      if (hookData.section === 'body' && hookData.row.index === objetivosTabla.length - 1) {
+        hookData.cell.styles.fontStyle = 'bold';
+        hookData.cell.styles.fillColor = [235, 242, 250];
+      }
+      if (
+        hookData.section === 'body' &&
+        hookData.row.index === objetivosTabla.length - 1 &&
+        hookData.column.index === 2
+      ) {
         hookData.cell.styles.fillColor = COLOR.graylt;
+        hookData.cell.styles.textColor = COLOR.navy;
+      }
+      if (
+        hookData.section === 'body' &&
+        typeof hookData.cell.raw === 'string' &&
+        hookData.cell.raw.includes('Ya alcanzado')
+      ) {
+        hookData.cell.styles.textColor = COLOR.green;
         hookData.cell.styles.fontStyle = 'bold';
       }
     },
   });
 
-  y = getLastAutoTableY(doc, y) + 10;
+  const tableFinalY = getLastAutoTableY(doc, y) + 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...COLOR.gray2);
+  doc.text(
+    '★ = tu objetivo configurado en Mi Plan. Escenario base: 6% rentabilidad neta, 80.000 € coste de entrada.',
+    PAGE_MARGIN,
+    tableFinalY,
+  );
+  y = tableFinalY + 8;
+
   y = drawSectionTitle(doc, y, 'Palancas de aceleración');
+
+  const brechaActual = Math.max(0, objetivoMensual - cfInmueblesMensual);
+  const yaAlcanzado = cfInmueblesMensual >= objetivoMensual;
+
+  const mesesParaProximaCompra = ahorroMensualNomina > 0
+    ? Math.ceil(COSTE_ENTRADA_PISO / ahorroMensualNomina)
+    : null;
+
+  const cfPorNuevaCompra = (COSTE_ENTRADA_PISO * RENTABILIDAD_NETA_ESTIMADA) / 12;
+
+  const comprasFaltantes = cfPorNuevaCompra > 0
+    ? Math.ceil(brechaActual / cfPorNuevaCompra)
+    : null;
 
   const simMasAhorro = simularBolaNieve(
     objetivoMensual,
@@ -269,30 +344,101 @@ export async function generateLibertad(data: InformesData): Promise<void> {
   );
   const mesesBase = simulacion.meses;
 
+  const textoAhorro = (() => {
+    const reduccion = Math.max(0, mesesBase - simMasAhorro.meses);
+    if (yaAlcanzado) {
+      return 'Tu objetivo ya está alcanzado. Cada 100 € adicionales de ahorro te permiten '
+        + 'acumular el capital de una nueva compra antes, ampliando tu margen de seguridad.';
+    }
+    if (ahorroMensualNomina <= 0) {
+      return 'Actualmente tu ahorro mensual disponible para reinvertir es nulo o negativo. '
+        + 'Reducir gastos o aumentar ingresos antes de la siguiente compra aceleraría significativamente el plazo.';
+    }
+    const mesesProxima = mesesParaProximaCompra ?? '?';
+    const parteCompras = comprasFaltantes !== null
+      ? ` Te faltan ~${comprasFaltantes} compras para cerrar la brecha actual de ${fmtEur(brechaActual)}/mes.`
+      : '';
+    return `Con tu ahorro actual de ${fmtEur(ahorroMensualNomina)}/mes, acumularías el capital para la próxima compra en ~${mesesProxima} meses. `
+      + `Cada 100 € más de ahorro mensual recorta el plazo total en ~${reduccion} meses.`
+      + parteCompras;
+  })();
+
+  const textoRentabilidad = (() => {
+    const reduccion = Math.max(0, mesesBase - simMasRentabilidad.meses);
+    if (yaAlcanzado) {
+      return 'Mejorar la rentabilidad neta de la cartera incrementa el CF pasivo mensual y '
+        + 'aleja el punto de quiebre si aparecen vacíos o subidas de costes.';
+    }
+    const cfMensualActualPorPiso = (COSTE_ENTRADA_PISO * RENTABILIDAD_NETA_ESTIMADA) / 12;
+    const cfMensualA8PorPiso = (COSTE_ENTRADA_PISO * 0.08) / 12;
+    return `Cada inmueble añade hoy ${fmtEur(cfMensualActualPorPiso)}/mes al CF (6% neto). `
+      + `Subiendo a 8% neto añadiría ${fmtEur(cfMensualA8PorPiso)}/mes por activo, `
+      + `recortando el plazo total en ~${reduccion} meses.`;
+  })();
+
+  const textoEntrada = (() => {
+    const reduccion = Math.max(0, mesesBase - simMenorEntrada.meses);
+    if (yaAlcanzado) {
+      return 'Reducir el coste de entrada en futuras compras mantiene el capital disponible '
+        + 'más tiempo y permite diversificar con más activos.';
+    }
+    const cfPorPiso60k = (60_000 * RENTABILIDAD_NETA_ESTIMADA) / 12;
+    const mesesAhorroConEntradaMenor = ahorroMensualNomina > 0
+      ? Math.ceil(60_000 / ahorroMensualNomina)
+      : null;
+    const parteAhorro = mesesAhorroConEntradaMenor !== null
+      ? ` Con coste de 60.000 €, acumularías capital en ~${mesesAhorroConEntradaMenor} meses.`
+      : '';
+    return `Bajar el coste medio de entrada de 80.000 € a 60.000 € reduce el plazo total en ~${reduccion} meses.`
+      + parteAhorro
+      + ` CF por activo: ${fmtEur(cfPorPiso60k)}/mes (igual yield sobre menor base).`;
+  })();
+
   const blocks: Array<{ color: [number, number, number]; title: string; text: string }> = [
     {
       color: COLOR.teal,
-      title: 'Aumentar el ahorro mensual destinado a inmuebles',
-      text: `Cada 100 € adicionales de ahorro mensual reduce el plazo estimado en ~${Math.max(mesesBase - simMasAhorro.meses, 0)} meses.`,
+      title: 'Aumentar el ahorro mensual destinado a compras',
+      text: textoAhorro,
     },
     {
       color: COLOR.green,
       title: 'Mejorar la rentabilidad neta de la cartera',
-      text: `Subir de 6% a 8% neto reduce el plazo estimado en ~${Math.max(mesesBase - simMasRentabilidad.meses, 0)} meses.`,
+      text: textoRentabilidad,
     },
     {
       color: COLOR.amber,
       title: 'Reducir el coste medio de entrada por activo',
-      text: `Bajar el coste de entrada de 80.000€ a 60.000€ reduce el plazo en ~${Math.max(mesesBase - simMenorEntrada.meses, 0)} meses.`,
+      text: textoEntrada,
     },
   ];
 
+  if (yaAlcanzado) {
+    blocks.push({
+      color: COLOR.navy,
+      title: '¿Qué sigue? Consolida y amplía el margen',
+      text: `Tu CF de ${fmtEur(cfInmueblesMensual)}/mes supera el objetivo de ${fmtEur(objetivoMensual)}/mes. `
+        + 'Puedes subir el objetivo en Mi Plan, aumentar la reserva de liquidez o reinvertir el excedente en nuevos activos.',
+    });
+  }
+
   blocks.forEach((block) => {
+    const maxWidth = pageWidth - PAGE_MARGIN * 2 - 10;
+    const charsPerLine = Math.floor(maxWidth / 2.2);
+    const estimatedLines = Math.ceil(block.text.length / charsPerLine);
+    const blockHeight = 9 + estimatedLines * 4.5;
+
+    if (y + blockHeight > doc.internal.pageSize.getHeight() - 30) {
+      drawFooter(doc);
+      doc.addPage();
+      drawHeader(doc, 'Proyección de Libertad Financiera', 'Escenarios y análisis de sensibilidad', 2, 2);
+      y = 48;
+    }
+
     doc.setDrawColor(...COLOR.graybd);
     doc.setFillColor(...COLOR.white);
-    doc.roundedRect(PAGE_MARGIN, y, pageWidth - PAGE_MARGIN * 2, 17, 2, 2, 'FD');
+    doc.roundedRect(PAGE_MARGIN, y, pageWidth - PAGE_MARGIN * 2, blockHeight, 2, 2, 'FD');
     doc.setFillColor(...block.color);
-    doc.rect(PAGE_MARGIN, y, 3, 17, 'F');
+    doc.rect(PAGE_MARGIN, y, 3, blockHeight, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(...COLOR.gray1);
@@ -300,8 +446,10 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.4);
     doc.setTextColor(...COLOR.gray2);
-    doc.text(block.text, PAGE_MARGIN + 6, y + 11.5, { maxWidth: pageWidth - PAGE_MARGIN * 2 - 10 });
-    y += 21;
+    doc.text(block.text, PAGE_MARGIN + 6, y + 11.5, {
+      maxWidth: pageWidth - PAGE_MARGIN * 2 - 10,
+    });
+    y += blockHeight + 4;
   });
 
   doc.setFont('helvetica', 'normal');
