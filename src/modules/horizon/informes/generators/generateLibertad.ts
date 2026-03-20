@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
-import { getObjetivos } from '../../../../services/objetivosService';
+import { initDB } from '../../../../services/db';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
@@ -31,6 +31,18 @@ export async function generateLibertad(data: InformesData): Promise<void> {
   const objetivos = await getObjetivos();
   const OBJETIVO_MENSUAL = objetivos.rentaPasivaObjetivo;
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+  let objetivoMensual = 5_000;
+
+  try {
+    const db = await initDB();
+    const objetivoGuardado = await db.get('objetivos_financieros', 1).catch(() => null);
+    if (objetivoGuardado && typeof (objetivoGuardado as { rentaPasivaObjetivo?: unknown }).rentaPasivaObjetivo === 'number') {
+      objetivoMensual = (objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo;
+    }
+  } catch {
+    // Usar el valor por defecto si el store aún no existe o no está disponible.
+  }
+
   const cfInmueblesMensual = data.resumenCartera.cfMensualTotal;
   const ahorroMensualTotal = (data.proyeccion.totalesAnuales.ingresosTotales -
     data.proyeccion.totalesAnuales.gastosTotales -
@@ -67,7 +79,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
 
   const ahorroMensualNomina = Math.max(ahorroMensualTotal - cfInmueblesMensual, 0);
   const simulacion = simularBolaNieve(
-    OBJETIVO_MENSUAL,
+    objetivoMensual,
     cfInmueblesMensual,
     ahorroMensualNomina,
     capitalLiquido,
@@ -83,7 +95,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     })()
     : null;
 
-  const progresoActual = OBJETIVO_MENSUAL > 0 ? Math.max(0, (cfInmueblesMensual / OBJETIVO_MENSUAL) * 100) : 0;
+  const progresoActual = objetivoMensual > 0 ? Math.max(0, (cfInmueblesMensual / objetivoMensual) * 100) : 0;
   const progresoCapped = Math.min(progresoActual, 100);
 
   drawHeader(doc, 'Proyección de Libertad Financiera', 'Situación actual y hoja de ruta', 1, 2);
@@ -103,7 +115,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
       color: COLOR.navy,
     },
     { label: 'Capital líquido', value: fmtEur(capitalLiquido), sub: 'Caja disponible', color: COLOR.teal },
-    { label: 'Objetivo mensual (ref.)', value: fmtEur(OBJETIVO_MENSUAL), sub: 'Renta pasiva objetivo', color: COLOR.teal },
+    { label: 'Objetivo mensual (ref.)', value: fmtEur(objetivoMensual), sub: 'Renta pasiva objetivo', color: COLOR.teal },
   ]);
 
   y = drawKpiRow(doc, y, [
@@ -112,7 +124,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     {
       label: 'Progreso actual',
       value: fmtPct(progresoActual, 1),
-      sub: `${fmtEur(cfInmueblesMensual)} / ${fmtEur(OBJETIVO_MENSUAL)}`,
+      sub: `${fmtEur(cfInmueblesMensual)} / ${fmtEur(objetivoMensual)}`,
       color: progresoActual > 80 ? COLOR.green : progresoActual > 40 ? COLOR.amber : COLOR.red,
     },
     {
@@ -132,7 +144,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
   doc.setFontSize(9);
   doc.setTextColor(...COLOR.gray1);
   doc.text(
-    `${fmtPct(progresoActual, 1)} de tu objetivo mensual (${fmtEur(cfInmueblesMensual)} / ${fmtEur(OBJETIVO_MENSUAL)})`,
+    `${fmtPct(progresoActual, 1)} de tu objetivo mensual (${fmtEur(cfInmueblesMensual)} / ${fmtEur(objetivoMensual)})`,
     barX,
     y,
   );
@@ -232,7 +244,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
   y = drawSectionTitle(doc, y, 'Palancas de aceleración');
 
   const simMasAhorro = simularBolaNieve(
-    OBJETIVO_MENSUAL,
+    objetivoMensual,
     cfInmueblesMensual,
     ahorroMensualNomina + 100,
     capitalLiquido,
@@ -240,7 +252,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     RENTABILIDAD_NETA_ESTIMADA,
   );
   const simMasRentabilidad = simularBolaNieve(
-    OBJETIVO_MENSUAL,
+    objetivoMensual,
     cfInmueblesMensual,
     ahorroMensualNomina,
     capitalLiquido,
@@ -248,7 +260,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     0.08,
   );
   const simMenorEntrada = simularBolaNieve(
-    OBJETIVO_MENSUAL,
+    objetivoMensual,
     cfInmueblesMensual,
     ahorroMensualNomina,
     capitalLiquido,
