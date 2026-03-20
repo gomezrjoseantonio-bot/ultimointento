@@ -312,21 +312,70 @@ class InformesDataService {
     }));
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
-      const property = dbPayload.properties.find((item) => String(item.id) === String(inmueble.id)) ?? null;
-      const valuation = getLatestValuation(inmueble.id, dbPayload.valuations);
-      const contractsForProperty = dbPayload.contracts.filter((contract) => String(contract.inmuebleId) === String(inmueble.id));
-      const prestamosForProperty = prestamosMapeados.filter((prestamo) => {
-        const original = prestamos.find((item) => item.id === prestamo.id);
-        return prestamo.esHipoteca && original?.inmuebleId === inmueble.id;
-      });
+      const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
+      const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
+      const precioCompra = toNumber(inmueble.compra?.precio_compra);
+      const totalGastos = toNumber(inmueble.compra?.total_gastos);
+      const totalImpuestos = toNumber(inmueble.compra?.total_impuestos);
 
-      return mapInmuebleToRow({
-        inmueble,
-        property,
-        valuation,
-        contracts: contractsForProperty,
-        prestamos: prestamosForProperty,
-      });
+      const costePersistido = toNumber(inmueble.compra?.coste_total_compra);
+      const costeSumado = precioCompra + totalGastos + totalImpuestos;
+
+      const costes = rawProperty?.acquisitionCosts;
+      const otherCosts = Array.isArray(costes?.other)
+        ? costes.other.reduce((sum, item) => sum + toNumber(item?.amount), 0)
+        : 0;
+      const costeLegacy = costes
+        ? toNumber(costes.price ?? 0)
+          + toNumber(costes.itp ?? 0)
+          + toNumber(costes.iva ?? 0)
+          + toNumber(costes.notary ?? 0)
+          + toNumber(costes.registry ?? 0)
+          + toNumber(costes.management ?? 0)
+          + toNumber(costes.psi ?? 0)
+          + toNumber(costes.realEstate ?? 0)
+          + otherCosts
+        : 0;
+
+      const costeTotal =
+        costePersistido > precioCompra
+          ? costePersistido
+          : costeSumado > precioCompra
+            ? costeSumado
+            : costeLegacy > precioCompra
+              ? costeLegacy
+              : precioCompra;
+      const valorActual = latestValuation || toNumber(
+        rawProperty?.currentValue
+          ?? rawProperty?.marketValue
+          ?? rawProperty?.estimatedValue
+          ?? rawProperty?.valuation
+          ?? rawProperty?.valor_actual
+          ?? rawProperty?.acquisitionCosts?.currentValue
+          ?? costeTotal,
+      );
+
+      const loanForProperty = hipotecas.filter((prestamo) => String(prestamo.inmuebleId) === String(inmueble.id));
+      const hipotecaMensual = loanForProperty.reduce((sum, prestamo) => sum + getLoanMonthlyInstallment(prestamo, loanPlans.get(prestamo.id) ?? null), 0);
+      const rentaMensual = inmueble.estado !== 'VENDIDO' ? (rentasPorInmueble.get(String(inmueble.id)) ?? 0) : 0;
+      const cfNeto = rentaMensual - hipotecaMensual;
+      const plusvalia = valorActual - costeTotal;
+      const yieldBruto = costeTotal > 0 ? ((rentaMensual * 12) / costeTotal) * 100 : 0;
+
+      return {
+        id: inmueble.id,
+        alias: inmueble.alias,
+        direccion: getDireccionCompleta(inmueble) || rawProperty?.address || '',
+        ciudad: inmueble.direccion.municipio || rawProperty?.municipality || '',
+        estado: inmueble.estado,
+        costeTotal,
+        valorActual,
+        plusvalia,
+        rentaMensual,
+        yieldBruto,
+        hipotecaMensual,
+        cfNeto,
+      };
     });
 
     const inmueblesActivos = inmueblesMapeados.filter((item) => item.estado !== 'VENDIDO');
