@@ -301,7 +301,13 @@ const buildEventosFiscalesFallback = (
   declaracionIRPF: NonNullable<Awaited<ReturnType<typeof calcularDeclaracionIRPF>>>,
 ): Array<InformesData['fiscal']['calendario'][number]> => {
   const calendario: Array<InformesData['fiscal']['calendario'][number]> = [];
-  const rendimientoAutonomo = toNumber(declaracionIRPF.baseGeneral?.rendimientosAutonomo?.rendimientoNeto);
+
+  const rendimientoAutonomo = Math.max(
+    toNumber(declaracionIRPF.baseGeneral?.rendimientosAutonomo?.rendimientoNeto),
+    toNumber((declaracionIRPF.baseGeneral as { autonomo?: { rendimientoNeto?: number | null } } | null | undefined)?.autonomo?.rendimientoNeto),
+    toNumber((declaracionIRPF as { rendimientosAutonomo?: { rendimientoNeto?: number | null } } | null | undefined)?.rendimientosAutonomo?.rendimientoNeto),
+    0,
+  );
   const resultado = toNumber(declaracionIRPF.resultado);
 
   if (rendimientoAutonomo > 0) {
@@ -339,6 +345,15 @@ const buildEventosFiscalesFallback = (
     );
   }
 
+  if (calendario.length === 0 && resultado > 0) {
+    calendario.push({
+      concepto: `IRPF ${año} — Pago declaración`,
+      fecha: `${año + 1}-06-30`,
+      importe: resultado,
+      estado: 'Pendiente',
+    });
+  }
+
   return calendario;
 };
 
@@ -347,34 +362,38 @@ const buildFiscalCalendar = (
   declaracionIRPF: NonNullable<Awaited<ReturnType<typeof calcularDeclaracionIRPF>>>,
   eventosFiscales: EventoFiscal[],
 ): Array<InformesData['fiscal']['calendario'][number]> => {
-  const calendarioServicio = eventosFiscales.map((item) => ({
+  const fallback = buildEventosFiscalesFallback(año, declaracionIRPF);
+
+  const desServicio = eventosFiscales.map((item) => ({
     concepto: item.descripcion,
     fecha: item.fechaLimite,
     importe: toNumber(item.importe),
     estado: item.pagado ? 'Pagado' : 'Pendiente',
   }));
 
-  const calendarioFallback = buildEventosFiscalesFallback(año, declaracionIRPF);
-  if (calendarioServicio.length === 0) return calendarioFallback;
+  if (desServicio.length === 0) return fallback;
 
-  const rendimientoAutonomo = toNumber(declaracionIRPF.baseGeneral?.rendimientosAutonomo?.rendimientoNeto);
-  const resultado = toNumber(declaracionIRPF.resultado);
-  const hasM130 = eventosFiscales.some((item) => item.modelo === 'M130');
-  const hasIrpfFracciones = eventosFiscales.some((item) => item.modelo === 'IRPF_FRACCIONES');
+  const tieneM130 = desServicio.some((item) => item.concepto.includes('Modelo 130') || item.concepto.includes('M130'));
+  const tieneFracciones = desServicio.some((item) => (
+    item.concepto.includes(`IRPF ${año}`)
+    && (item.concepto.includes('Primera fracción')
+      || item.concepto.includes('Segunda fracción')
+      || item.concepto.toLowerCase().includes('fraccion'))
+  ));
 
-  const calendarioBase = resultado > 0 && !hasIrpfFracciones
-    ? calendarioServicio.filter((item) => !item.concepto.startsWith(`IRPF ${año} — A pagar`))
-    : [...calendarioServicio];
+  const combinado = !tieneFracciones
+    ? desServicio.filter((item) => !item.concepto.startsWith(`IRPF ${año} — A pagar`))
+    : [...desServicio];
 
-  if (rendimientoAutonomo > 0 && !hasM130) {
-    calendarioBase.unshift(...calendarioFallback.filter((item) => item.concepto.startsWith('Modelo 130')));
+  if (!tieneM130) {
+    combinado.unshift(...fallback.filter((item) => item.concepto.includes('Modelo 130')));
   }
 
-  if (resultado > 0 && !hasIrpfFracciones) {
-    calendarioBase.push(...calendarioFallback.filter((item) => item.concepto.startsWith(`IRPF ${año} — `)));
+  if (!tieneFracciones) {
+    combinado.push(...fallback.filter((item) => item.concepto.includes(`IRPF ${año}`)));
   }
 
-  return calendarioBase;
+  return combinado.length > 0 ? combinado : fallback;
 };
 
 const buildProjectionSummary = (projection: ProyeccionAnual | null): InformesData['proyeccion'] => {

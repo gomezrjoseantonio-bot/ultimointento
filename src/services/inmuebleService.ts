@@ -64,9 +64,15 @@ class InmuebleService {
         impuestos: {}
       },
       fiscalidad: {
-        valor_catastral_total: 0,
-        valor_catastral_construccion: 0,
-        porcentaje_construccion: 0,
+        valor_catastral_total: property.fiscalData?.cadastralValue
+          ?? property.aeatAmortization?.cadastralValue
+          ?? 0,
+        valor_catastral_construccion: property.fiscalData?.constructionCadastralValue
+          ?? property.aeatAmortization?.constructionCadastralValue
+          ?? 0,
+        porcentaje_construccion: property.fiscalData?.constructionPercentage
+          ?? property.aeatAmortization?.constructionPercentage
+          ?? 0,
         tipo_adquisicion: 'LUCRATIVA_ONEROSA',
         metodo_amortizacion: 'REGLA_GENERAL_3',
         amortizacion_anual_base: 0,
