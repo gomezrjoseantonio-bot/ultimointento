@@ -11,7 +11,11 @@ import type { Prestamo, PlanPagos } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import type { ValoracionHistorica } from '../types/valoraciones';
 import {
+  getDireccionCompleta,
   getLatestValuation,
+  getLoanMonthlyInstallment,
+  getLoanTin,
+  getOutstandingPrincipal,
   mapInmuebleToRow,
   mapPrestamoToRow,
   toNumber,
@@ -181,6 +185,10 @@ const getInversionesPensionesValue = (posiciones: Array<{ tipo: string; valor_ac
   return posiciones.reduce((sum, posicion) => sum + toNumber(posicion.valor_actual), 0);
 };
 
+const getLoanEndDate = (plan: PlanPagos | null, prestamo: Prestamo): string => (
+  plan?.resumen.fechaFinalizacion ?? prestamo.fechaCancelacion ?? ''
+);
+
 const buildProjectionSummary = (projection: ProyeccionAnual | null): InformesData['proyeccion'] => {
   if (!projection) {
     return DEFAULT_DATA.proyeccion;
@@ -342,7 +350,7 @@ class InformesDataService {
 
       const costes = rawProperty?.acquisitionCosts;
       const otherCosts = Array.isArray(costes?.other)
-        ? costes.other.reduce((sum, item) => sum + toNumber(item?.amount), 0)
+        ? costes.other.reduce((sum: number, item: { concept: string; amount: number }) => sum + toNumber(item?.amount), 0)
         : 0;
       const costeLegacy = costes
         ? toNumber(costes.price ?? 0)
@@ -364,8 +372,9 @@ class InformesDataService {
             : costeLegacy > precioCompra
               ? costeLegacy
               : precioCompra;
-      const valorActual = latestValuation || toNumber(
-        rawProperty?.currentValue
+      const valorActual = toNumber(
+        latestValuation?.valor
+          ?? rawProperty?.currentValue
           ?? rawProperty?.marketValue
           ?? rawProperty?.estimatedValue
           ?? rawProperty?.valuation
@@ -425,6 +434,8 @@ class InformesDataService {
       return {
         nombre: prestamo.nombre,
         tipo: prestamo.ambito === 'INMUEBLE' ? 'Hipoteca' : 'Préstamo personal',
+        tipoInforme: prestamo.ambito === 'INMUEBLE' ? 'Hipoteca' : 'Préstamo personal',
+        principalVivo: getOutstandingPrincipal(prestamo, plan),
         capitalVivo: getOutstandingPrincipal(prestamo, plan),
         cuotaMensual: getLoanMonthlyInstallment(prestamo, plan),
         tin: getLoanTin(prestamo),
@@ -472,7 +483,7 @@ class InformesDataService {
       resumenPatrimonio: {
         inversionesPensiones,
       },
-      prestamos: prestamosInformes,
+      prestamos: prestamosMapeados,
       resumenFinanciacion: {
         cuotaHipotecasMensual,
         cuotaPrestamosMensual,
