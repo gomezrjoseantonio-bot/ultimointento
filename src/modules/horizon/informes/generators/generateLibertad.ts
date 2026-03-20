@@ -30,15 +30,14 @@ const formatMonthYear = (date: Date | null): string => {
 
 export async function generateLibertad(data: InformesData): Promise<void> {
   const objetivos = await getObjetivos();
-  const objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
+  let objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
-  let objetivoMensual = objetivos.rentaPasivaObjetivo;
 
   try {
     const db = await initDB();
     const objetivoGuardado = await db.get('objetivos_financieros', 1).catch(() => null);
     if (objetivoGuardado && typeof (objetivoGuardado as { rentaPasivaObjetivo?: unknown }).rentaPasivaObjetivo === 'number') {
-      objetivoMensual = (objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo;
+      objetivoMensual = Math.max((objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo, 3_000);
     }
   } catch {
     // Usar el valor por defecto si el store aún no existe o no está disponible.
