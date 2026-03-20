@@ -28,21 +28,18 @@ interface SummaryCardsProps {
   ingresos: number;
   gastos: number;
   flujoNeto: number;
-  patrimonioNeto: number;
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({
   ingresos,
   gastos,
   flujoNeto,
-  patrimonioNeto,
 }) => {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <SummaryCard label="Ingresos Totales" value={ingresos} />
       <SummaryCard label="Gastos Totales" value={gastos} />
       <SummaryCard label="Flujo Neto" value={flujoNeto} />
-      <SummaryCard label="Patrimonio Neto" value={patrimonioNeto} />
     </div>
   );
 };

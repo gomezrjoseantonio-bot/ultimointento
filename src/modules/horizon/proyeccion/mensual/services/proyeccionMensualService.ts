@@ -20,6 +20,8 @@ import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
 import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversiones';
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
+import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
+import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
@@ -29,22 +31,6 @@ import {
 
 const PROJECTION_YEARS = 20;
 const START_YEAR = new Date().getFullYear();
-
-/**
- * Calculate simplified IRPF based on Spanish 2024 tax brackets (marginal rate applied monthly)
- */
-function calculateMonthlyIRPF(monthlyIncome: number): number {
-  const annualIncome = monthlyIncome * 12;
-  let rate: number;
-
-  if (annualIncome <= 12450) rate = 0.19;
-  else if (annualIncome <= 20200) rate = 0.24;
-  else if (annualIncome <= 35200) rate = 0.30;
-  else if (annualIncome <= 60000) rate = 0.37;
-  else rate = 0.45;
-
-  return monthlyIncome * rate;
-}
 
 /** The projection always starts from the current calendar year (constant baseline). */
 export const PROJECTION_START_YEAR = START_YEAR;
@@ -273,6 +259,7 @@ interface BaseData {
   otrosIngresosItems: OtrosIngresos[];
   valorPlanesPension: number;
   cajaInicial: number;
+  irpfForecastByMonth: Map<string, number>;
 }
 
 /** Pre-built index for fast historical valuation lookup: key = "tipo_activo|activo_id" → sorted asc array */
@@ -340,6 +327,50 @@ function sumAssetValuesForMonth(
   );
 }
 
+async function loadIrpfForecastByMonth(): Promise<Map<string, number>> {
+  const irpfForecastByMonth = new Map<string, number>();
+
+  try {
+    const config = await getConfiguracionFiscal();
+    if (!config.incluir_prevision_irpf) {
+      return irpfForecastByMonth;
+    }
+
+    const ejercicios = Array.from(
+      { length: PROJECTION_YEARS },
+      (_, index) => START_YEAR + index - 1,
+    );
+
+    const eventosPorEjercicio = await Promise.all(
+      ejercicios.map(async (ejercicio) => {
+        try {
+          const declaracion = await calcularDeclaracionIRPF(ejercicio, { usarConciliacion: true });
+          return await generarEventosFiscales(ejercicio, declaracion);
+        } catch (error) {
+          console.warn(`[proyeccionMensualService] No se pudo calcular el IRPF ${ejercicio}:`, error);
+          return [];
+        }
+      }),
+    );
+
+    eventosPorEjercicio.flat().forEach(evento => {
+      if (evento.sourceType !== 'irpf_declaracion') {
+        return;
+      }
+
+      const monthKey = evento.fechaLimite.slice(0, 7);
+      irpfForecastByMonth.set(
+        monthKey,
+        (irpfForecastByMonth.get(monthKey) ?? 0) + evento.importe,
+      );
+    });
+  } catch (error) {
+    console.warn('[proyeccionMensualService] No se pudo cargar la previsión anual de IRPF:', error);
+  }
+
+  return irpfForecastByMonth;
+}
+
 /**
  * Build a single monthly projection row for a given absolute month index
  */
@@ -361,33 +392,25 @@ function buildMonthRow(
 
   // B. Autónomo income: exact per-month calculation using fuentesIngreso meses arrays
   let serviciosFreelance = 0;
-  let serviciosFreelanceNoIrpf = 0; // Portion without IRPF at source — used for IRPF base
   let gastosAutonomo = 0;
   const autonomoDrillDown: DrillDownItem[] = [];
   const gastosAutonomoDrillDown: DrillDownItem[] = [];
 
   for (const a of baseData.autonomosData) {
     let ingresosEsteMes = 0;
-    let ingresosNoIrpfEsteMes = 0;
-
     if (a.fuentesIngreso.length > 0) {
       for (const f of a.fuentesIngreso) {
         const appliesToMonth = !f.meses || f.meses.length === 0 || f.meses.includes(month1to12);
         if (appliesToMonth) {
           ingresosEsteMes += f.importeEstimado;
-          if (!f.aplIrpf) {
-            ingresosNoIrpfEsteMes += f.importeEstimado;
-          }
         }
       }
     } else {
-      // Old-model fallback: flat monthly average; assume no IRPF retention
+      // Old-model fallback: flat monthly average
       ingresosEsteMes = a.ingresosAnualesFallback / 12;
-      ingresosNoIrpfEsteMes = ingresosEsteMes;
     }
 
     serviciosFreelance += ingresosEsteMes;
-    serviciosFreelanceNoIrpf += ingresosNoIrpfEsteMes;
     if (ingresosEsteMes > 0) {
       autonomoDrillDown.push({
         concepto: a.conceptoTitular,
@@ -493,20 +516,13 @@ function buildMonthRow(
     calculateGastosPersonalesForMonth(baseData.gastosRecurrentes, month1to12) +
     calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12);
 
-  // IRPF devengado: only on income NOT withheld at source.
-  // Exclude nomina (withheld by employer). Include rentasAlquiler.
-  // For serviciosFreelance, only include income where aplIrpf is false.
-  const baseIrpf = serviciosFreelanceNoIrpf + rentasAlquiler + otrosIngresosMensual;
-  // IRPF devengado for informational purposes only.
-  // IRPF payment is forced to 0 until the dedicated tax module is implemented.
-  const irpfDevengado = calculateMonthlyIRPF(baseIrpf);
-  const irpfAPagar = 0; // TODO: remove when tax module is ready
+  const irpf = baseData.irpfForecastByMonth.get(monthStr) ?? 0;
 
   const totalGastos =
     gastosOperativos +
     gastosPersonales +
     gastosAutonomo +
-    irpfAPagar;
+    irpf;
 
   // ── FINANCIACIÓN ──────────────────────────────────────────────────────────
   let cuotasHipotecas = 0;
@@ -609,8 +625,7 @@ function buildMonthRow(
       opexDesglose,
       gastosPersonales,
       gastosAutonomo,
-      irpfDevengado,
-      irpfAPagar,
+      irpf,
       total: totalGastos,
       drillDown: {
         gastosOperativos: opexDesglose.map(item => ({
@@ -877,6 +892,8 @@ async function loadBaseData(): Promise<BaseData> {
     // No PersonalExpense data available
   }
 
+  const irpfForecastByMonth = await loadIrpfForecastByMonth();
+
   return {
     nominaNetaMensual,
     rentaMensualPorMes,
@@ -898,6 +915,7 @@ async function loadBaseData(): Promise<BaseData> {
     otrosIngresosItems,
     valorPlanesPension,
     cajaInicial,
+    irpfForecastByMonth,
   };
 }
 
@@ -973,7 +991,6 @@ export async function generateProyeccionMensual(): Promise<ProyeccionAnual[]> {
     );
     const patrimonioNetoFinal =
       months[months.length - 1].patrimonio.patrimonioNeto;
-
     proyecciones.push({
       year,
       months,

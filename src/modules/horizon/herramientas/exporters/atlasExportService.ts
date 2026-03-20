@@ -20,7 +20,7 @@ import {
 } from './mappers';
 
 type RowDefinition = {
-  label: string;
+  label: string | ((year: number) => string);
   getValue?: (month: MonthlyProjectionRow) => number;
   isTotal?: boolean;
   specialBg?: 'total' | 'highlight';
@@ -147,7 +147,7 @@ const buildProjectionRows = (projection: ProyeccionAnual): { data: Array<Record<
         { label: 'Gastos Alquileres', getValue: (month) => toNumber(month.gastos.gastosOperativos) },
         { label: 'Gastos personales', getValue: (month) => toNumber(month.gastos.gastosPersonales) },
         { label: 'Gastos autónomo', getValue: (month) => toNumber(month.gastos.gastosAutonomo) },
-        { label: 'IRPF devengado', getValue: (month) => toNumber(month.gastos.irpfDevengado) },
+        { label: (year) => `IRPF ${year - 1}`, getValue: (month) => toNumber(month.gastos.irpf) },
         { label: 'Total gastos', getValue: (month) => toNumber(month.gastos.total), isTotal: true, specialBg: 'total' },
       ],
     },
@@ -167,19 +167,6 @@ const buildProjectionRows = (projection: ProyeccionAnual): { data: Array<Record<
         { label: 'Caja final', getValue: (month) => toNumber(month.tesoreria.cajaFinal), isTotal: true, specialBg: 'highlight' },
       ],
     },
-    {
-      label: 'PATRIMONIO',
-      rows: [
-        { label: 'Caja', getValue: (month) => toNumber(month.patrimonio.caja) },
-        { label: 'Inmuebles', getValue: (month) => toNumber(month.patrimonio.inmuebles) },
-        { label: 'Planes de pensión', getValue: (month) => toNumber(month.patrimonio.planesPension) },
-        { label: 'Otras inversiones', getValue: (month) => toNumber(month.patrimonio.otrasInversiones) },
-        { label: 'Deuda inmuebles', getValue: (month) => toNumber(month.patrimonio.deudaInmuebles) },
-        { label: 'Deuda personal', getValue: (month) => toNumber(month.patrimonio.deudaPersonal) },
-        { label: 'Deuda total', getValue: (month) => toNumber(month.patrimonio.deudaTotal) },
-        { label: 'Patrimonio neto', getValue: (month) => toNumber(month.patrimonio.patrimonioNeto), isTotal: true, specialBg: 'highlight' },
-      ],
-    },
   ];
 
   const data: Array<Record<string, string | number>> = [];
@@ -191,7 +178,7 @@ const buildProjectionRows = (projection: ProyeccionAnual): { data: Array<Record<
 
     for (const row of section.rows) {
       data.push({
-        ATRIBUTO: row.label,
+        ATRIBUTO: typeof row.label === 'function' ? row.label(projection.year) : row.label,
         ...Object.fromEntries(MONTH_HEADERS.map((header, index) => {
           const month = projection.months[index];
           return [header, month ? (row.getValue?.(month) ?? '') : ''];
