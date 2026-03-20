@@ -144,7 +144,7 @@ const buildProjectionRows = (projection: ProyeccionAnual): { data: Array<Record<
     {
       label: 'GASTOS',
       rows: [
-        { label: 'Gastos Alquileres', getValue: (month) => toNumber(month.gastos.opex) },
+        { label: 'Gastos Alquileres', getValue: (month) => toNumber(month.gastos.gastosOperativos) },
         { label: 'Gastos personales', getValue: (month) => toNumber(month.gastos.gastosPersonales) },
         { label: 'Gastos autónomo', getValue: (month) => toNumber(month.gastos.gastosAutonomo) },
         { label: 'IRPF devengado', getValue: (month) => toNumber(month.gastos.irpfDevengado) },
