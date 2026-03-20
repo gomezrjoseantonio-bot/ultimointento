@@ -92,6 +92,8 @@ const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
 // Glossary page - Sprint 3: Accessible technical terms reference
 const GlossaryPage = React.lazy(() => import('./pages/GlossaryPage'));
 const HerramientasPage = React.lazy(() => import('./pages/HerramientasPage'));
+const MiPlanObjetivos = React.lazy(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
+const MiPlanLibertad = React.lazy(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
 
 function App() {
   // Initialize bank profiles and performance monitoring on app start
@@ -380,6 +382,20 @@ function App() {
               </React.Suspense>
             } />
             
+            <Route path="mi-plan">
+              <Route path="objetivos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanObjetivos />
+                </React.Suspense>
+              } />
+              <Route path="libertad" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanLibertad />
+                </React.Suspense>
+              } />
+              <Route index element={<Navigate to="/mi-plan/objetivos" replace />} />
+            </Route>
+
             <Route path="proyeccion">
               <Route index element={<Navigate to="/proyeccion/presupuesto" replace />} />
               <Route path="cartera" element={<Navigate to="/inmuebles/cartera" replace />} />
