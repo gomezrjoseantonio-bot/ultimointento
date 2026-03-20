@@ -6,7 +6,7 @@ interface SummaryAccount {
   balance: number;
 }
 
-interface SummaryMovement extends Pick<Movement, 'accountId' | 'amount' | 'date' | 'isOpeningBalance'> {}
+interface SummaryMovement extends Pick<Movement, 'id' | 'accountId' | 'amount' | 'date' | 'isOpeningBalance'> {}
 
 interface AccountTreasurySummaryInput {
   account: SummaryAccount;
@@ -56,8 +56,15 @@ export function calculateAccountTreasurySummary({
     event.accountId === account.id && toMonthKey(event.date) === selectedMonth
   ));
 
+  const reconciledMovementIds = new Set(
+    accountEvents
+      .map((event) => event.movementId)
+      .filter((movementId): movementId is number => Number.isFinite(movementId))
+  );
+
   const accountMovements = movements.filter((movement) => (
     String(movement.accountId) === account.id &&
+    !reconciledMovementIds.has(movement.id ?? Number.NaN) &&
     !movement.isOpeningBalance &&
     toMonthKey(movement.date) === selectedMonth
   ));
