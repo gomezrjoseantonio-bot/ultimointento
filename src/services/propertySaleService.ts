@@ -807,7 +807,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       type: 'expense',
       amount: estimatedIrpf,
       predictedDate: getSaleIrpfPredictionDate(input.saleDate),
-      description: `IRPF estimado por venta inmueble #${input.propertyId}`,
+      description: `IRPF estimado por venta ${propLabel}`,
       sourceType: 'irpf_prevision',
       sourceId: saleId,
       accountId: settlementAccountId,
