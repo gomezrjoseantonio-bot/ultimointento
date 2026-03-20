@@ -71,7 +71,7 @@ function getAcquisitionExpenses(property: Property): number {
   if (!costs) return 0;
 
   const others = Array.isArray(costs.other)
-    ? costs.other.reduce((sum, item) => sum + (Number(item?.amount) || 0), 0)
+    ? costs.other.reduce((sum: number, item) => sum + (Number(item?.amount) || 0), 0)
     : 0;
 
   return (Number(costs.itp) || 0)
