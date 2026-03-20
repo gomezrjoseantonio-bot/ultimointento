@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { BarChart3, Building2, Download, FileText } from 'lucide-react';
+import { BarChart3, Building2, Download, FileText, Receipt } from 'lucide-react';
 import styles from './InformesPage.module.css';
 import { informesDataService } from '../../../services/informesDataService';
 import { generateDashboard } from './generators/generateDashboard';
 import { generatePatrimonio } from './generators/generatePatrimonio';
 import { generateSolvencia } from './generators/generateSolvencia';
+import { generateFiscal } from './generators/generateFiscal';
+import { generateCartera } from './generators/generateCartera';
 
-type ReportKey = 'dashboard' | 'solvencia' | 'patrimonio';
+type ReportKey = 'dashboard' | 'solvencia' | 'patrimonio' | 'fiscal' | 'cartera';
 
 interface ReportDefinition {
   key: ReportKey;
@@ -47,6 +49,28 @@ const REPORTS: ReportDefinition[] = [
       'Resumen patrimonial con composición de activos y pasivos.',
       'Evolución mensual del patrimonio neto.',
       'Detalle inmobiliario y evolución de la deuda.',
+    ],
+    icon: Building2,
+  },
+  {
+    key: 'fiscal',
+    name: 'Cuadro Fiscal Anual',
+    description: 'Resumen IRPF, rendimientos por inmueble y calendario de pagos del ejercicio.',
+    sections: [
+      'Resumen completo de la declaración IRPF con resultado a pagar o devolver.',
+      'Detalle de rendimientos por inmueble con reducción 60% aplicada.',
+      'Calendario de pagos: Modelo 130 trimestral y fraccionamiento de la declaración.',
+    ],
+    icon: Receipt,
+  },
+  {
+    key: 'cartera',
+    name: 'Informe de Cartera Inmobiliaria',
+    description: 'Rentabilidad, datos fiscales y proyección a 10 años de los activos activos.',
+    sections: [
+      'KPIs de cartera: valor, equity, LTV, renta, yield y cash flow mensual.',
+      'Datos fiscales y catastrales por inmueble activo.',
+      'Proyección de valor, equity y deuda a 10 años con hipótesis conservadoras.',
     ],
     icon: Building2,
   },
@@ -93,6 +117,10 @@ const InformesPage: React.FC = () => {
         await generateDashboard(data);
       } else if (selectedReport === 'solvencia') {
         await generateSolvencia(data);
+      } else if (selectedReport === 'fiscal') {
+        await generateFiscal(data);
+      } else if (selectedReport === 'cartera') {
+        await generateCartera(data);
       } else {
         await generatePatrimonio(data);
       }

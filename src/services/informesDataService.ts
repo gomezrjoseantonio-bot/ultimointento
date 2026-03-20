@@ -4,6 +4,8 @@ import { prestamosService } from './prestamosService';
 import { personalDataService } from './personalDataService';
 import { inversionesService } from './inversionesService';
 import { initDB, type Contract } from './db';
+import { calcularDeclaracionIRPF } from './irpfCalculationService';
+import { generarEventosFiscales } from './fiscalPaymentsService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import type { ProyeccionAnual } from '../modules/horizon/proyeccion/mensual/types/proyeccionMensual';
 import type { Inmueble } from '../types/inmueble';
@@ -103,6 +105,52 @@ export interface InformesData {
     antiguedad?: string;
     ingresoLaboralAnual: number;
   };
+  // Datos fiscales (del módulo Impuestos)
+  fiscal: {
+    resumen: {
+      rendimientosTrabajo: number;
+      rentasCapitalInmobiliario: number;
+      rendimientosAutonomo: number;
+      rendimientosCapitalMobiliario: number;
+      baseImponibleGeneral: number;
+      baseImponibleAhorro: number;
+      baseLiquidableGeneral: number;
+      cuotaIntegra: number;
+      retencionTrabajo: number;
+      retencionCapital: number;
+      retencionAutonomo: number;
+      totalRetenciones: number;
+      resultado: number;
+    };
+    inmuebles: Array<{
+      alias: string;
+      ingresosIntegros: number;
+      gastosDeducibles: number;
+      amortizacion: number;
+      baseNeta: number;
+      reduccion60: number;
+      rendimientoNetoReducido: number;
+    }>;
+    calendario: Array<{
+      concepto: string;
+      fecha: string;
+      importe: number;
+      estado: string;
+    }>;
+  };
+
+  // Datos fiscales/catastrales de la cartera
+  cartera: {
+    detalleFiscal: Array<{
+      alias: string;
+      valorCatastral: number;
+      vcConstruccion: number;
+      pctConstruccion: number;
+      metodoAmortizacion: string;
+      pctAmortizacion: number;
+      regimenFiscal: string;
+    }>;
+  };
 }
 
 
@@ -154,6 +202,26 @@ const DEFAULT_DATA: InformesData = {
     nombreCompleto: '',
     ingresoLaboralAnual: 0,
   },
+  fiscal: {
+    resumen: {
+      rendimientosTrabajo: 0,
+      rentasCapitalInmobiliario: 0,
+      rendimientosAutonomo: 0,
+      rendimientosCapitalMobiliario: 0,
+      baseImponibleGeneral: 0,
+      baseImponibleAhorro: 0,
+      baseLiquidableGeneral: 0,
+      cuotaIntegra: 0,
+      retencionTrabajo: 0,
+      retencionCapital: 0,
+      retencionAutonomo: 0,
+      totalRetenciones: 0,
+      resultado: 0,
+    },
+    inmuebles: [],
+    calendario: [],
+  },
+  cartera: { detalleFiscal: [] },
 };
 
 const safe = async <T>(promise: Promise<T>, fallback: T): Promise<T> => {
@@ -247,6 +315,8 @@ class InformesDataService {
       inversiones,
       tesoreria,
       dbPayload,
+      declaracionIRPF,
+      eventosFiscales,
     ] = await Promise.all([
       safe(generateProyeccionMensual(), [] as ProyeccionAnual[]),
       safe(inmuebleService.getAll(), [] as Inmueble[]),
@@ -279,6 +349,8 @@ class InformesDataService {
         ]);
         return { properties, valuations, contracts };
       })(), { properties: [] as ExtendedProperty[], valuations: [] as ValoracionHistorica[], contracts: [] as Contract[] }),
+      safe(calcularDeclaracionIRPF(año), null as Awaited<ReturnType<typeof calcularDeclaracionIRPF>> | null),
+      safe(generarEventosFiscales(año, null as never), [] as Awaited<ReturnType<typeof generarEventosFiscales>>),
     ]);
 
     const projection = proyecciones.find((item) => item.year === año) ?? null;
@@ -493,6 +565,58 @@ class InformesDataService {
         empresa: getEmploymentLabel(personal),
         antiguedad: getStringField(personal, 'antiguedad') ?? getStringField(personal, 'fechaAntiguedadEmpresa'),
         ingresoLaboralAnual,
+      },
+      fiscal: declaracionIRPF ? {
+        resumen: {
+          rendimientosTrabajo: toNumber(declaracionIRPF.baseGeneral.rendimientosTrabajo?.rendimientoNeto),
+          rentasCapitalInmobiliario: toNumber(declaracionIRPF.baseGeneral.rendimientosInmuebles?.reduce((sum, item) => sum + item.rendimientoNetoAlquiler, 0)),
+          rendimientosAutonomo: toNumber(declaracionIRPF.baseGeneral.rendimientosAutonomo?.rendimientoNeto),
+          rendimientosCapitalMobiliario: toNumber(declaracionIRPF.baseAhorro?.capitalMobiliario?.total),
+          baseImponibleGeneral: toNumber(declaracionIRPF.liquidacion?.baseImponibleGeneral),
+          baseImponibleAhorro: toNumber(declaracionIRPF.liquidacion?.baseImponibleAhorro),
+          baseLiquidableGeneral: toNumber(declaracionIRPF.liquidacion?.baseImponibleGeneral) - toNumber(declaracionIRPF.reducciones?.total),
+          cuotaIntegra: toNumber(declaracionIRPF.liquidacion?.cuotaIntegra),
+          retencionTrabajo: toNumber(declaracionIRPF.retenciones?.trabajo),
+          retencionCapital: toNumber(declaracionIRPF.retenciones?.capitalMobiliario),
+          retencionAutonomo: toNumber(declaracionIRPF.retenciones?.autonomoM130),
+          totalRetenciones: toNumber(declaracionIRPF.retenciones?.total),
+          resultado: toNumber(declaracionIRPF.resultado),
+        },
+        inmuebles: declaracionIRPF.baseGeneral?.rendimientosInmuebles?.map((item) => ({
+          alias: item.alias ?? String(item.inmuebleId),
+          ingresosIntegros: toNumber(item.ingresosIntegros),
+          gastosDeducibles: toNumber(item.gastosDeducibles),
+          amortizacion: toNumber(item.amortizacion),
+          baseNeta: toNumber(item.rendimientoNeto),
+          reduccion60: toNumber(
+            item.reduccionHabitual
+              ?? (item.ingresosIntegros - item.gastosDeducibles - item.amortizacion > 0
+                ? item.rendimientoNeto - item.rendimientoNetoAlquiler
+                : 0),
+          ),
+          rendimientoNetoReducido: toNumber(item.rendimientoNetoAlquiler),
+        })) ?? [],
+        calendario: Array.isArray(eventosFiscales)
+          ? eventosFiscales.map((item) => ({
+            concepto: String(item.descripcion ?? ''),
+            fecha: String(item.fechaPago ?? item.fechaLimite ?? ''),
+            importe: toNumber(item.importe),
+            estado: item.pagado ? 'Pagado' : 'Pendiente',
+          }))
+          : [],
+      } : DEFAULT_DATA.fiscal,
+      cartera: {
+        detalleFiscal: inmuebles
+          .filter((inm) => inm.estado !== 'VENDIDO')
+          .map((inm) => ({
+            alias: inm.alias,
+            valorCatastral: toNumber(inm.fiscalidad?.valor_catastral_total),
+            vcConstruccion: toNumber(inm.fiscalidad?.valor_catastral_construccion),
+            pctConstruccion: toNumber(inm.fiscalidad?.porcentaje_construccion),
+            metodoAmortizacion: inm.fiscalidad?.metodo_amortizacion ?? 'REGLA_GENERAL_3',
+            pctAmortizacion: toNumber(inm.fiscalidad?.porcentaje_amortizacion_info ?? 3),
+            regimenFiscal: 'Arrendamiento general',
+          })),
       },
     };
   }
