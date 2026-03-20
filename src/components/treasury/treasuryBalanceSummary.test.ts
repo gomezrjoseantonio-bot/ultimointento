@@ -64,15 +64,15 @@ describe('calculateAccountTreasurySummary', () => {
       today: new Date('2026-03-18T12:00:00.000Z'),
     });
 
-    expect(summary.hoy).toBeCloseTo(609.76, 2);
-    expect(summary.totalPunteado).toBeCloseTo(599.51, 2);
-    expect(summary.finMes).toBeCloseTo(75.78, 2);
+    expect(summary.hoy).toBeCloseTo(584.26, 2);
+    expect(summary.totalPunteado).toBeCloseTo(584.26, 2);
+    expect(summary.finMes).toBeCloseTo(60.53, 2);
     expect(summary.pendienteTotal).toBeCloseTo(-523.73, 2);
     expect(summary.movimientosHastaHoy).toBeCloseTo(25.5, 2);
     expect(summary.movimientosTotal).toBeCloseTo(15.25, 2);
   });
 
-  it('mantiene el saldo real de marzo cuando los movimientos ya existen aunque los eventos sigan pendientes sin puntear', () => {
+  it('no deja que los movimientos sin conciliar inflen las tarjetas de balance frente al dashboard principal', () => {
     const summary = calculateAccountTreasurySummary({
       account: { id: '1', balance: 460 },
       events: [
@@ -95,8 +95,8 @@ describe('calculateAccountTreasurySummary', () => {
 
     expect(summary.movimientosHastaHoy).toBeCloseTo(-459.06, 2);
     expect(summary.pendienteHastaHoy).toBeCloseTo(0, 2);
-    expect(summary.hoy).toBeCloseTo(0.94, 2);
-    expect(summary.finMes).toBeCloseTo(0.94, 2);
+    expect(summary.hoy).toBeCloseTo(460, 2);
+    expect(summary.finMes).toBeCloseTo(460, 2);
   });
 
 
@@ -118,13 +118,13 @@ describe('calculateAccountTreasurySummary', () => {
     });
 
     expect(summary.hoy).toBeCloseTo(940.92, 2);
-    expect(summary.totalPunteado).toBeCloseTo(1140.92, 2);
-    expect(summary.finMes).toBeCloseTo(1140.92, 2);
+    expect(summary.totalPunteado).toBeCloseTo(1190.92, 2);
+    expect(summary.finMes).toBeCloseTo(1190.92, 2);
     expect(summary.movimientosHastaHoy).toBeCloseTo(0, 2);
     expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
   });
 
-  it('mantiene continuidad entre el cierre de un mes y la apertura del siguiente cuando solo hay movimientos bancarios', () => {
+  it('mantiene la foto de conciliación alineada con el dashboard cuando solo hay movimientos bancarios sin eventos de tesorería', () => {
     const marchSummary = calculateAccountTreasurySummary({
       account,
       events: [],
@@ -136,17 +136,82 @@ describe('calculateAccountTreasurySummary', () => {
       today: new Date('2026-03-31T12:00:00.000Z'),
     });
 
-    const aprilSummary = calculateAccountTreasurySummary({
-      account: { id: '1', balance: marchSummary.finMes },
-      events: [],
-      movements: [],
-      selectedMonth: '2026-04',
-      today: new Date('2026-04-01T12:00:00.000Z'),
+    expect(marchSummary.hoy).toBeCloseTo(940.92, 2);
+    expect(marchSummary.totalPunteado).toBeCloseTo(940.92, 2);
+    expect(marchSummary.finMes).toBeCloseTo(940.92, 2);
+    expect(marchSummary.movimientosTotal).toBeCloseTo(80, 2);
+  });
+
+  it('no duplica movimientos bancarios cuando un evento confirmado ya tiene el mismo importe y fecha aunque no siga punteado', () => {
+    const summary = calculateAccountTreasurySummary({
+      account,
+      events: [
+        makeEvent({
+          id: '1',
+          amount: 200,
+          date: '2026-03-12',
+          status: 'confirmado',
+          type: 'expense',
+        }),
+      ],
+      movements: [
+        makeMovement({
+          id: 9101,
+          accountId: 1,
+          amount: -200,
+          date: '2026-03-12',
+        }),
+        makeMovement({
+          id: 9102,
+          accountId: 1,
+          amount: -50,
+          date: '2026-03-13',
+        }),
+      ],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-31T12:00:00.000Z'),
     });
 
-    expect(marchSummary.finMes).toBeCloseTo(1020.92, 2);
-    expect(aprilSummary.hoy).toBeCloseTo(marchSummary.finMes, 2);
-    expect(aprilSummary.finMes).toBeCloseTo(marchSummary.finMes, 2);
+    expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
+    expect(summary.totalPunteado).toBeCloseTo(740.92, 2);
+    expect(summary.finMes).toBeCloseTo(740.92, 2);
+  });
+
+  it('no duplica movimientos bancarios ya conciliados con eventos de tesorería', () => {
+    const summary = calculateAccountTreasurySummary({
+      account,
+      events: [
+        makeEvent({
+          id: '1',
+          amount: 200,
+          date: '2026-03-12',
+          status: 'confirmado',
+          type: 'expense',
+          movementId: 9001,
+        }),
+      ],
+      movements: [
+        makeMovement({
+          id: 9001,
+          accountId: 1,
+          amount: -200,
+          date: '2026-03-12',
+          statusConciliacion: 'match_manual',
+        }),
+        makeMovement({
+          id: 9002,
+          accountId: 1,
+          amount: -50,
+          date: '2026-03-13',
+        }),
+      ],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-31T12:00:00.000Z'),
+    });
+
+    expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
+    expect(summary.totalPunteado).toBeCloseTo(740.92, 2);
+    expect(summary.finMes).toBeCloseTo(740.92, 2);
   });
 
   it('no duplica movimientos bancarios cuando un evento confirmado ya tiene el mismo importe y fecha aunque no siga punteado', () => {

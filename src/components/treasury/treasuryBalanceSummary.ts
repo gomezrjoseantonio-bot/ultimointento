@@ -131,10 +131,13 @@ export function calculateAccountTreasurySummary({
     .filter((movement) => !viewingCurrentMonth || toDateOnlyString(movement.date) <= todayOnly)
     .reduce((sum, movement) => sum + getMovementSignedAmount(movement), 0);
 
+  // Las tarjetas superiores de conciliación deben cuadrar con el dashboard principal:
+  // saldo de apertura + eventos de tesorería. Los movimientos se exponen abajo para conciliar,
+  // pero no deben inflar la foto agregada del banco.
   return {
-    hoy: account.balance + confirmadoHastaHoy + movimientosHastaHoy,
-    finMes: account.balance + confirmadoTotal + pendienteTotal + movimientosTotal,
-    totalPunteado: account.balance + confirmadoTotal + movimientosTotal,
+    hoy: account.balance + confirmadoHastaHoy,
+    finMes: account.balance + confirmadoTotal + pendienteTotal,
+    totalPunteado: account.balance + confirmadoTotal,
     confirmadoHastaHoy,
     confirmadoTotal,
     pendienteHastaHoy,
