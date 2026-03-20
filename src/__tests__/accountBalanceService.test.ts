@@ -129,6 +129,98 @@ describe('accountBalanceService', () => {
     expect(aprilOpening).toBe(1205);
   });
 
+  it('ignores predicted treasury events when calculating the real opening balance of the next month', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 460,
+        openingBalanceDate: '2024-03-01',
+      },
+      cutoffDate: '2024-04-01',
+      treasuryEvents: [
+        { accountId: 1, type: 'expense', amount: 22514.97, predictedDate: '2024-03-18', status: 'predicted' } as any,
+        { accountId: 1, type: 'income', amount: 22510, predictedDate: '2024-03-18', status: 'predicted' } as any,
+      ],
+      movements: [
+        { accountId: 1, amount: -22.99, date: '2024-03-01' } as any,
+        { accountId: 1, amount: -431.61, date: '2024-03-01' } as any,
+        { accountId: 1, amount: 0.51, date: '2024-03-18' } as any,
+        { accountId: 1, amount: -22514.97, date: '2024-03-18' } as any,
+        { accountId: 1, amount: 22510, date: '2024-03-18' } as any,
+      ],
+    });
+
+    expect(value).toBeCloseTo(0.94, 2);
+  });
+
+  it('does not double count confirmed events that are already reflected by same-day bank movements in month openings', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 100,
+        openingBalanceDate: '2024-03-01',
+      },
+      cutoffDate: '2024-04-01',
+      treasuryEvents: [
+        { accountId: 1, type: 'expense', amount: 200, predictedDate: '2024-03-18', status: 'confirmed' } as any,
+      ],
+      movements: [
+        { accountId: 1, amount: -200, date: '2024-03-18' } as any,
+        { accountId: 1, amount: 15, date: '2024-03-20' } as any,
+      ],
+    });
+
+    expect(value).toBeCloseTo(-85, 2);
+  });
+
+  it('does not double count reconciled movements when rolling an account opening into the next month', () => {
+    const value = calculateAccountBalanceAtDate({
+      account: {
+        id: 1,
+        iban: 'ES1',
+        status: 'ACTIVE',
+        activa: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        openingBalance: 100,
+        openingBalanceDate: '2024-03-01',
+      },
+      cutoffDate: '2024-04-01',
+      treasuryEvents: [
+        {
+          accountId: 1,
+          type: 'expense',
+          amount: 200,
+          predictedDate: '2024-03-18',
+          movementId: 9001,
+        } as any,
+        {
+          accountId: 1,
+          type: 'income',
+          amount: 120,
+          predictedDate: '2024-03-18',
+        } as any,
+      ],
+      movements: [
+        { id: 9001, accountId: 1, amount: -200, date: '2024-03-18' } as any,
+        { id: 9002, accountId: 1, amount: 15, date: '2024-03-20' } as any,
+      ],
+    });
+
+    expect(value).toBeCloseTo(35, 2);
+  });
+
+
   it('sums all active accounts as total initial cash', async () => {
     mockDB.getAll.mockImplementation(async (table: string) => {
       if (table === 'accounts') {
