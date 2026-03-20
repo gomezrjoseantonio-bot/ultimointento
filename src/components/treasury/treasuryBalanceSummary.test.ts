@@ -72,6 +72,28 @@ describe('calculateAccountTreasurySummary', () => {
     expect(summary.movimientosTotal).toBeCloseTo(15.25, 2);
   });
 
+  it('incluye en hoy los eventos pendientes ya vencidos para no ocultar saldos reales del mes actual', () => {
+    const summary = calculateAccountTreasurySummary({
+      account: { id: '1', balance: 1 },
+      events: [
+        makeEvent({ id: '1', amount: 22.99, date: '2026-03-01', status: 'previsto', type: 'expense' }),
+        makeEvent({ id: '2', amount: 431.61, date: '2026-03-01', status: 'previsto', type: 'expense' }),
+        makeEvent({ id: '3', amount: 460, date: '2026-03-01', status: 'previsto', type: 'income' }),
+        makeEvent({ id: '4', amount: 0.51, date: '2026-03-18', status: 'previsto', type: 'income' }),
+        makeEvent({ id: '5', amount: 22514.97, date: '2026-03-18', status: 'previsto', type: 'expense' }),
+        makeEvent({ id: '6', amount: 22510, date: '2026-03-18', status: 'previsto', type: 'income' }),
+      ],
+      movements: [],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-20T12:00:00.000Z'),
+    });
+
+    expect(summary.pendienteHastaHoy).toBeCloseTo(0.94, 2);
+    expect(summary.hoy).toBeCloseTo(1.94, 2);
+    expect(summary.finMes).toBeCloseTo(1.94, 2);
+  });
+
+
   it('no adelanta al hoy movimientos o eventos fechados en futuro, pero sí los refleja en total punteado y fin de mes', () => {
     const events: TreasuryEvent[] = [
       makeEvent({ id: '1', amount: 250, date: '2026-03-20', status: 'confirmado', type: 'income' }),
@@ -119,5 +141,42 @@ describe('calculateAccountTreasurySummary', () => {
     expect(marchSummary.finMes).toBeCloseTo(1020.92, 2);
     expect(aprilSummary.hoy).toBeCloseTo(marchSummary.finMes, 2);
     expect(aprilSummary.finMes).toBeCloseTo(marchSummary.finMes, 2);
+  });
+
+  it('no duplica movimientos bancarios ya conciliados con eventos de tesorería', () => {
+    const summary = calculateAccountTreasurySummary({
+      account,
+      events: [
+        makeEvent({
+          id: '1',
+          amount: 200,
+          date: '2026-03-12',
+          status: 'confirmado',
+          type: 'expense',
+          movementId: 9001,
+        }),
+      ],
+      movements: [
+        makeMovement({
+          id: 9001,
+          accountId: 1,
+          amount: -200,
+          date: '2026-03-12',
+          statusConciliacion: 'match_manual',
+        }),
+        makeMovement({
+          id: 9002,
+          accountId: 1,
+          amount: -50,
+          date: '2026-03-13',
+        }),
+      ],
+      selectedMonth: '2026-03',
+      today: new Date('2026-03-31T12:00:00.000Z'),
+    });
+
+    expect(summary.movimientosTotal).toBeCloseTo(-50, 2);
+    expect(summary.totalPunteado).toBeCloseTo(690.92, 2);
+    expect(summary.finMes).toBeCloseTo(690.92, 2);
   });
 });

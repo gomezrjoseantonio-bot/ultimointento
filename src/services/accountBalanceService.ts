@@ -21,13 +21,25 @@ export function calculateAccountBalanceAtDate(params: {
   const openingDateApplies = !accountOpeningDate || accountOpeningDate <= cutoffDate;
   const openingBalance = openingDateApplies ? (account.openingBalance ?? 0) : 0;
 
-  const eventsDelta = treasuryEvents
-    .filter(e => e.accountId === account.id && toDateOnly(e.predictedDate) && toDateOnly(e.predictedDate)! < cutoffDate)
+  const priorAccountEvents = treasuryEvents.filter(e => (
+    e.accountId === account.id &&
+    toDateOnly(e.predictedDate) &&
+    toDateOnly(e.predictedDate)! < cutoffDate
+  ));
+
+  const reconciledMovementIds = new Set(
+    priorAccountEvents
+      .map(event => event.movementId)
+      .filter((movementId): movementId is number => Number.isFinite(movementId))
+  );
+
+  const eventsDelta = priorAccountEvents
     .reduce((sum, e) => sum + getSignedEventAmount(e), 0);
 
   const movementsDelta = movements
     .filter(m => (
       m.accountId === account.id &&
+      !reconciledMovementIds.has(m.id ?? Number.NaN) &&
       !m.isOpeningBalance &&
       toDateOnly(m.date) &&
       toDateOnly(m.date)! < cutoffDate
