@@ -63,6 +63,7 @@ export interface InformesData {
     rentaMensual: number;
     yieldBruto: number;
     hipotecaMensual: number;
+    deudaHipotecaria: number;
     cfNeto: number;
   }>;
   resumenCartera: {
@@ -320,11 +321,6 @@ class InformesDataService {
         && prestamo.estado !== 'pendiente_cancelacion_venta'
         && (prestamo.inmuebleId ? inmuebleIdsActivos.has(String(prestamo.inmuebleId)) : true),
     );
-    const deudaHipotecaria = hipotecas.reduce(
-      (sum, prestamo) => sum + getOutstandingPrincipal(prestamo, loanPlans.get(prestamo.id) ?? null),
-      0,
-    );
-
     const rentasPorInmueble = new Map<string, number>();
     for (const contract of dbPayload.contracts) {
       if (contract?.estadoContrato !== 'activo') continue;
@@ -380,6 +376,10 @@ class InformesDataService {
 
       const loanForProperty = hipotecas.filter((prestamo) => String(prestamo.inmuebleId) === String(inmueble.id));
       const hipotecaMensual = loanForProperty.reduce((sum, prestamo) => sum + getLoanMonthlyInstallment(prestamo, loanPlans.get(prestamo.id) ?? null), 0);
+      const deudaHipotecaria = loanForProperty.reduce(
+        (sum, prestamo) => sum + getOutstandingPrincipal(prestamo, loanPlans.get(prestamo.id) ?? null),
+        0,
+      );
       const rentaMensual = inmueble.estado !== 'VENDIDO' ? (rentasPorInmueble.get(String(inmueble.id)) ?? 0) : 0;
       const cfNeto = rentaMensual - hipotecaMensual;
       const plusvalia = valorActual - costeTotal;
@@ -397,6 +397,7 @@ class InformesDataService {
         rentaMensual,
         yieldBruto,
         hipotecaMensual,
+        deudaHipotecaria,
         cfNeto,
       };
     });
