@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 32; // V3.2: objetivos_financieros singleton store for Mi Plan
+const DB_VERSION = 33; // V3.3: flujo fiscal unificado (operaciones/mejoras/mobiliario)
 
 export interface Property {
   id?: number;
@@ -175,6 +175,68 @@ export interface PropertyImprovement {
   // Metadata
   originExerciseYear?: number; // año fiscal origen para trazabilidad histórica
   sourceResultadoEjercicioId?: number; // FK resultadosEjercicio.id cuando aplica
+  createdAt: string;
+  updatedAt: string;
+}
+
+
+export interface OperacionFiscal {
+  id?: number;
+  ejercicio: number;
+  fecha: string;
+  concepto: string;
+  casillaAEAT: AEATBox;
+  categoriaFiscal: AEATFiscalType;
+  base?: number;
+  iva?: number;
+  total: number;
+  inmuebleId: number;
+  inmuebleAlias?: string;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  documentId?: number;
+  movementId?: number | string;
+  cuentaBancaria?: string;
+  origen: 'manual' | 'recurrente' | 'documento' | 'movimiento' | 'migracion';
+  origenId?: number | string;
+  estado: 'previsto' | 'confirmado' | 'conciliado' | 'documentado' | 'completo';
+  patas: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MejoraActivo {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  fecha?: string;
+  descripcion: string;
+  tipo: 'mejora' | 'ampliacion';
+  importe: number;
+  diasEnEjercicio?: number;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  documentId?: number;
+  movementId?: number | string;
+  cuentaBancaria?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MobiliarioActivo {
+  id?: number;
+  inmuebleId: number;
+  descripcion: string;
+  fechaAlta: string;
+  importe: number;
+  vidaUtil: number;
+  activo: boolean;
+  fechaBaja?: string;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  documentId?: number;
+  movementId?: number | string;
+  cuentaBancaria?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1528,6 +1590,8 @@ export interface OpexRule {
   estacionalidad?: OpexEstacionalidad; // Para suministros: 'plana' | 'invierno' | 'verano'
   casillaAEAT?: string; // Override manual de la casilla AEAT (ej: '0109', '0114'…)
   businessType?: ExpenseBusinessType;
+  proveedorNIF?: string;
+  proveedorNombre?: string;
   activo: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1563,6 +1627,9 @@ interface AtlasHorizonDB {
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
+  operacionesFiscales: OperacionFiscal; // Flujo fiscal unificado: operaciones deducibles por casilla
+  mejorasActivo: MejoraActivo; // Flujo fiscal unificado: mejoras que incrementan base de amortización
+  mobiliarioActivo: MobiliarioActivo; // Flujo fiscal unificado: mobiliario amortizable al 10%
   kpiConfigurations: any; // H6: KPI configurations
   accounts: Account; // H8: Treasury accounts
   movements: Movement; // H8: Bank movements
@@ -1721,6 +1788,30 @@ export const initDB = async () => {
           propertyImprovementsStore.createIndex('propertyId', 'propertyId', { unique: false });
           propertyImprovementsStore.createIndex('year', 'year', { unique: false });
           propertyImprovementsStore.createIndex('property-year', ['propertyId', 'year'], { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('operacionesFiscales')) {
+          const operacionesFiscalesStore = db.createObjectStore('operacionesFiscales', { keyPath: 'id', autoIncrement: true });
+          operacionesFiscalesStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          operacionesFiscalesStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          operacionesFiscalesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+          operacionesFiscalesStore.createIndex('casillaAEAT', 'casillaAEAT', { unique: false });
+          operacionesFiscalesStore.createIndex('estado', 'estado', { unique: false });
+          operacionesFiscalesStore.createIndex('movementId', 'movementId', { unique: false });
+          operacionesFiscalesStore.createIndex('documentId', 'documentId', { unique: false });
+          operacionesFiscalesStore.createIndex('origen-origenId', ['origen', 'origenId'], { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('mejorasActivo')) {
+          const mejorasActivoStore = db.createObjectStore('mejorasActivo', { keyPath: 'id', autoIncrement: true });
+          mejorasActivoStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          mejorasActivoStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          mejorasActivoStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('mobiliarioActivo')) {
+          const mobiliarioActivoStore = db.createObjectStore('mobiliarioActivo', { keyPath: 'id', autoIncrement: true });
+          mobiliarioActivoStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
         }
 
         // H6: KPI Configurations store
