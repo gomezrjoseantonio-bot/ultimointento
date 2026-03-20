@@ -306,10 +306,33 @@ class InformesDataService {
       ),
     );
 
-    const prestamosMapeados = prestamos.map((prestamo) => mapPrestamoToRow({
-      prestamo,
-      plan: loanPlans.get(prestamo.id) ?? null,
-    }));
+    const inmuebleIdsActivos = new Set(
+      inmuebles
+        .filter((inmueble) => inmueble.estado !== 'VENDIDO')
+        .map((inmueble) => String(inmueble.id)),
+    );
+
+    const hipotecas = prestamos.filter(
+      (prestamo) =>
+        (prestamo.ambito === 'INMUEBLE' || Boolean(prestamo.inmuebleId))
+        && prestamo.activo !== false
+        && prestamo.estado !== 'cancelado'
+        && prestamo.estado !== 'pendiente_cancelacion_venta'
+        && (prestamo.inmuebleId ? inmuebleIdsActivos.has(String(prestamo.inmuebleId)) : true),
+    );
+    const deudaHipotecaria = hipotecas.reduce(
+      (sum, prestamo) => sum + getOutstandingPrincipal(prestamo, loanPlans.get(prestamo.id) ?? null),
+      0,
+    );
+
+    const rentasPorInmueble = new Map<string, number>();
+    for (const contract of dbPayload.contracts) {
+      if (contract?.estadoContrato !== 'activo') continue;
+      rentasPorInmueble.set(
+        String(contract.inmuebleId),
+        (rentasPorInmueble.get(String(contract.inmuebleId)) ?? 0) + toNumber(contract.rentaMensual),
+      );
+    }
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
       const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
@@ -379,8 +402,8 @@ class InformesDataService {
     });
 
     const inmueblesActivos = inmueblesMapeados.filter((item) => item.estado !== 'VENDIDO');
-    const valorTotal = inmueblesMapeados.reduce((sum, item) => sum + item.valorActual, 0);
-    const costeTotal = inmueblesMapeados.reduce((sum, item) => sum + item.costeTotal, 0);
+    const valorTotal = inmueblesActivos.reduce((sum, item) => sum + item.valorActual, 0);
+    const costeTotal = inmueblesActivos.reduce((sum, item) => sum + item.costeTotal, 0);
     const rentaMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.rentaMensual, 0);
     const cfMensualTotal = inmueblesActivos.reduce((sum, item) => sum + item.cfNeto, 0);
     const plusvaliaTotal = inmueblesMapeados.reduce((sum, item) => sum + item.plusvalia, 0);
@@ -389,14 +412,24 @@ class InformesDataService {
     const yieldBruta = costeTotal > 0 ? ((rentaMensualTotal * 12) / costeTotal) * 100 : 0;
     const ltv = valorTotal > 0 ? (deudaHipotecaria / valorTotal) * 100 : 0;
 
-    const prestamosInformes = prestamosMapeados.map((prestamo) => ({
-      nombre: prestamo.nombre,
-      tipo: prestamo.tipoInforme,
-      capitalVivo: prestamo.principalVivo,
-      cuotaMensual: prestamo.cuotaMensual,
-      tin: prestamo.tin,
-      fechaFin: prestamo.fechaVencimiento,
-    }));
+    const prestamosActivos = prestamos.filter(
+      (prestamo) =>
+        prestamo.activo !== false
+        && prestamo.estado !== 'cancelado'
+        && prestamo.estado !== 'pendiente_cancelacion_venta',
+    );
+
+    const prestamosMapeados = prestamosActivos.map((prestamo) => {
+      const plan = loanPlans.get(prestamo.id) ?? null;
+      return {
+        nombre: prestamo.nombre,
+        tipo: prestamo.ambito === 'INMUEBLE' ? 'Hipoteca' : 'Préstamo personal',
+        capitalVivo: getOutstandingPrincipal(prestamo, plan),
+        cuotaMensual: getLoanMonthlyInstallment(prestamo, plan),
+        tin: getLoanTin(prestamo),
+        fechaFin: getLoanEndDate(plan, prestamo),
+      };
+    });
 
     const cuotaHipotecasMensual = prestamosMapeados
       .filter((prestamo) => prestamo.tipoInforme === 'Hipoteca')
@@ -422,20 +455,7 @@ class InformesDataService {
         },
         meses: projectionSummary.meses.length > 0 ? projectionSummary.meses : fallbackMonths,
       },
-      inmuebles: inmueblesMapeados.map((item) => ({
-        id: item.id,
-        alias: item.alias,
-        direccion: item.direccion,
-        ciudad: item.municipio,
-        estado: item.estado,
-        costeTotal: item.costeTotal,
-        valorActual: item.valorActual,
-        plusvalia: item.plusvalia,
-        rentaMensual: item.rentaMensual,
-        yieldBruto: item.yieldBruto,
-        hipotecaMensual: item.hipotecaMensual,
-        cfNeto: item.cfNeto,
-      })),
+      inmuebles: inmueblesActivos,
       resumenCartera: {
         costeTotal,
         valorTotal,

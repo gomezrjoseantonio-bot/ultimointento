@@ -299,11 +299,13 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
     { label: 'LTV', value: fmtPct(data.resumenCartera.ltv), sub: 'Deuda / valor', color: data.resumenCartera.ltv <= 50 ? COLOR.green : COLOR.amber },
   ]);
 
+  const inmueblesTabla = data.inmuebles.filter((item) => item.estado !== 'VENDIDO');
+
   autoTable(doc, {
     startY: y,
     margin: { left: 10, right: 10, bottom: 18 },
     head: [[ 'Activo', 'Ciudad', 'Coste', 'Valor', 'Plusvalía', 'Renta/mes', 'Yield', 'Hip./mes', 'CF neto', 'Estado' ]],
-    body: data.inmuebles.map((item) => [
+    body: inmueblesTabla.map((item) => [
       item.alias,
       item.ciudad,
       fmtEur(item.costeTotal),
@@ -334,12 +336,12 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
     alternateRowStyles: { fillColor: COLOR.graylt },
     didParseCell: (hookData) => {
       if (hookData.section === 'body' && hookData.column.index === 8) {
-        const value = data.inmuebles[hookData.row.index]?.cfNeto ?? 0;
+        const value = inmueblesTabla[hookData.row.index]?.cfNeto ?? 0;
         hookData.cell.styles.textColor = value >= 0 ? COLOR.green : COLOR.red;
         hookData.cell.styles.fontStyle = 'bold';
       }
       if (hookData.section === 'body' && hookData.column.index === 9) {
-        const estado = String(data.inmuebles[hookData.row.index]?.estado ?? '').toLowerCase();
+        const estado = String(inmueblesTabla[hookData.row.index]?.estado ?? '').toLowerCase();
         hookData.cell.styles.textColor = estado === 'activo' ? COLOR.green : COLOR.gray2;
         hookData.cell.styles.fontStyle = 'bold';
       }
