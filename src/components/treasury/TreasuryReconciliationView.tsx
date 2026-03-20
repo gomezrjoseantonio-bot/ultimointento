@@ -218,7 +218,7 @@ const TreasuryReconciliationView: React.FC = () => {
             account: a,
             cutoffDate: monthStart,
             treasuryEvents: dbEvents,
-            movements: [],
+            movements: dbMovements,
           }),
         }));
 
