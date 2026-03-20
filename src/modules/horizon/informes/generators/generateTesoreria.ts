@@ -2,7 +2,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
 import { initDB, type Account, type Movement } from '../../../../services/db';
-import { cuentasService } from '../../../../services/cuentasService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
@@ -23,7 +22,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   const db = await initDB();
   const movimientosRaw = await db.getAll('movements');
-  const cuentas = await cuentasService.list();
+  const cuentasDB = await db.getAll('accounts') as Account[];
 
   const seisAtr = new Date();
   seisAtr.setMonth(seisAtr.getMonth() - 6);
@@ -32,7 +31,7 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     .sort((a, b) => (toDate(b.date)?.getTime() ?? 0) - (toDate(a.date)?.getTime() ?? 0));
 
   const aliasCuenta = new Map<number, string>(
-    (cuentas as Account[])
+    cuentasDB
       .filter((c): c is Account & { id: number } => typeof c.id === 'number')
       .map((c) => [c.id, c.alias ?? c.iban ?? String(c.id)]),
   );
