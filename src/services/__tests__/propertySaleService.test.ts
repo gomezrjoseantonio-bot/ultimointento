@@ -215,8 +215,8 @@ describe('propertySaleService', () => {
 
     const movementsAfterSale = (await db.getAll('movements')).filter((m: any) => m.reference === `property_sale:${sale!.id}`);
     expect(movementsAfterSale).toHaveLength(4);
-    expect(movementsAfterSale.some((m: any) => m.description.includes('Comisión agencia venta inmueble'))).toBe(true);
-    expect(movementsAfterSale.some((m: any) => m.description.includes('Plusvalía municipal venta inmueble'))).toBe(true);
+    expect(movementsAfterSale.some((m: any) => m.description.includes('Comisión agencia venta Piso Completo'))).toBe(true);
+    expect(movementsAfterSale.some((m: any) => m.description.includes('Plusvalía municipal venta Piso Completo'))).toBe(true);
 
     const eventAfterSale = (await db.getAll('treasuryEvents')).find((e: any) => e.sourceId === sale!.id);
     expect(eventAfterSale).toBeTruthy();
@@ -419,7 +419,7 @@ describe('propertySaleService', () => {
 
     const sale = await getLatestConfirmedSaleForProperty(propertyId);
     const cancellationMovement = (await db.getAll('movements')).find((m: any) =>
-      m.reference === `property_sale:${sale!.id}` && m.description.includes('Cancelación deuda inmueble')
+      m.reference === `property_sale:${sale!.id}` && m.description.includes('Cancelación deuda Piso Punteo Cancelación')
     );
     expect(cancellationMovement).toBeTruthy();
 
@@ -469,7 +469,7 @@ describe('propertySaleService', () => {
     expect(sale?.id).toBeDefined();
 
     const cancellationEvent = (await db.getAll('treasuryEvents')).find((e: any) =>
-      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda inmueble')
+      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda Piso Diferencia Importe')
     );
     expect(cancellationEvent).toBeTruthy();
 
@@ -510,7 +510,7 @@ describe('propertySaleService', () => {
     expect(sale?.id).toBeDefined();
 
     const cancellationEvent = (await db.getAll('treasuryEvents')).find((e: any) =>
-      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda inmueble')
+      e.sourceId === sale!.id && e.type === 'financing' && e.description.includes('Cancelación deuda Piso Revert Marker')
     );
     expect(cancellationEvent).toBeTruthy();
 
@@ -655,7 +655,7 @@ describe('propertySaleService', () => {
       date: '2026-02-12',
       valueDate: '2026-02-12',
       amount: 200000,
-      description: `Cobro venta inmueble #${propertyId}`,
+      description: 'Cobro venta Piso Legacy Movs',
       counterparty: 'Venta inmueble',
       reference: `property_sale:${saleId}`,
       status: 'conciliado',
@@ -700,7 +700,7 @@ describe('propertySaleService', () => {
       type: 'income',
       amount: 200000,
       predictedDate: '2026-02-12',
-      description: `Cobro venta inmueble #${propertyId}`,
+      description: 'Cobro venta Piso Legacy Movs',
       sourceType: 'manual',
       sourceId: saleId,
       accountId,
