@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
 import { initDB } from '../../../../services/db';
+import { getObjetivos } from '../../../../services/objetivosService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
@@ -29,9 +30,8 @@ const formatMonthYear = (date: Date | null): string => {
 
 export async function generateLibertad(data: InformesData): Promise<void> {
   const objetivos = await getObjetivos();
-  const OBJETIVO_MENSUAL = objetivos.rentaPasivaObjetivo;
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
-  let objetivoMensual = 5_000;
+  let objetivoMensual = objetivos.rentaPasivaObjetivo;
 
   try {
     const db = await initDB();
