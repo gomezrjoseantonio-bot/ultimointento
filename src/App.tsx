@@ -21,88 +21,135 @@ const LoadingSpinner = () => (
   </div>
 );
 
+type PreloadableComponent<T extends React.ComponentType<any>> = React.LazyExoticComponent<T> & {
+  preload: () => Promise<{ default: T }>;
+};
+
+const lazyWithPreload = <T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+): PreloadableComponent<T> => {
+  const Component = React.lazy(factory) as PreloadableComponent<T>;
+  Component.preload = factory;
+  return Component;
+};
+
+const runWhenIdle = (task: () => void, timeout = 1500) => {
+  if (typeof window === 'undefined') return () => undefined;
+
+  const idleCallback = (window as Window & {
+    requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+    cancelIdleCallback?: (handle: number) => void;
+  }).requestIdleCallback;
+
+  if (idleCallback) {
+    const handle = idleCallback(() => task(), { timeout });
+    return () => {
+      const cancelIdle = (window as Window & { cancelIdleCallback?: (handle: number) => void }).cancelIdleCallback;
+      cancelIdle?.(handle);
+    };
+  }
+
+  const handle = window.setTimeout(task, Math.min(timeout, 800));
+  return () => window.clearTimeout(handle);
+};
+
 // Lazy-loaded components for route-based code splitting
 // Core dashboard with charts - lazy load to reduce main bundle
-const PanelPage = React.lazy(() => import('./pages/PanelPage'));
+const PanelPage = lazyWithPreload(() => import('./pages/PanelPage'));
 
 // Inbox page - lazy load to reduce main bundle
-const InboxPage = React.lazy(() => import('./pages/InboxPage'));
+const InboxPage = lazyWithPreload(() => import('./pages/InboxPage'));
 
 // Horizon (Investment) Module Components
-const Cartera = React.lazy(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
-const Contratos = React.lazy(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Analisis = React.lazy(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
-const Ingresos = React.lazy(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
-const Gastos = React.lazy(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
-const Capex = React.lazy(() => import('./modules/horizon/inmuebles/capex/CAPEX'));
+const Cartera = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
+const Contratos = lazyWithPreload(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
+const Analisis = lazyWithPreload(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
+const Ingresos = lazyWithPreload(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
+const Gastos = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
+const Capex = lazyWithPreload(() => import('./modules/horizon/inmuebles/capex/CAPEX'));
 
 // Inversiones Module
-const InversionesPage = React.lazy(() => import('./modules/horizon/inversiones/InversionesPage'));
-const AnalisisCartera = React.lazy(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
-const InmueblesAnalisis = React.lazy(() => import('./pages/inmuebles/InmueblesAnalisis'));
-const InversionesAnalisis = React.lazy(() => import('./pages/inversiones/InversionesAnalisis'));
+const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
+const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
+const InmueblesAnalisis = lazyWithPreload(() => import('./pages/inmuebles/InmueblesAnalisis'));
+const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/InversionesAnalisis'));
 
 // Financing Module - New standalone financing module
-const Financiacion = React.lazy(() => import('./modules/horizon/financiacion/Financiacion'));
-const Tesoreria = React.lazy(() => import('./modules/horizon/tesoreria/Tesoreria'));
-const FiscalDashboard = React.lazy(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
-const DeclaracionPage = React.lazy(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
-const PagosPage = React.lazy(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
+const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
+const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
+const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
+const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
+const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 
-const ProyeccionComparativa = React.lazy(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
-const ProyeccionEscenarios = React.lazy(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
-const ProyeccionValoraciones = React.lazy(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
-const ProyeccionMensual = React.lazy(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
-const InformesPage = React.lazy(() => import('./modules/horizon/informes/InformesPage'));
-const PresupuestosView = React.lazy(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
-const UsuariosRoles = React.lazy(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
-const EmailEntrante = React.lazy(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
-const Cuentas = React.lazy(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
-const PropertyForm = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
-const PropertyDetail = React.lazy(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
+const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
+const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
+const ProyeccionValoraciones = lazyWithPreload(() => import('./modules/horizon/proyeccion/valoraciones/Valoraciones'));
+const ProyeccionMensual = lazyWithPreload(() => import('./modules/horizon/proyeccion/mensual/ProyeccionMensual'));
+const InformesPage = lazyWithPreload(() => import('./modules/horizon/informes/InformesPage'));
+const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
+const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
+const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
+const Cuentas = lazyWithPreload(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
+const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
+const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
 // Personal section (within Horizon)
-const Personal = React.lazy(() => import('./modules/horizon/personal/Personal'));
+const Personal = lazyWithPreload(() => import('./modules/horizon/personal/Personal'));
 
 // Pulse (Management) Module Components
-const ContratosLista = React.lazy(() => import('./modules/pulse/contratos/lista/ContratosLista'));
-const ContratosNuevoPage = React.lazy(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
-const FirmasPendientes = React.lazy(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
-const CobrosPendientes = React.lazy(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
-const AutomatizacionesReglas = React.lazy(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
-const TareasPendientes = React.lazy(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
+const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
+const ContratosNuevoPage = lazyWithPreload(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
+const FirmasPendientes = lazyWithPreload(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
+const CobrosPendientes = lazyWithPreload(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
+const AutomatizacionesReglas = lazyWithPreload(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
+const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
 
 // Legacy Pulse (Personal) Module Components - Keep for migration
-const HorizonPreferenciasDatos = React.lazy(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
-const GastosCapex = React.lazy(() => import('./modules/horizon/inmuebles/gastos-capex/GastosCapex'));
+const HorizonPreferenciasDatos = lazyWithPreload(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
+const GastosCapex = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos-capex/GastosCapex'));
 
 // Development only imports
-const ProfileSeederPage = React.lazy(() => 
+const ProfileSeederPage = lazyWithPreload(() =>
   (import.meta as any).env?.DEV 
     ? import('./pages/ProfileSeederPage')
     : Promise.resolve({ default: () => null })
 );
 
 // Image Description page - New feature
-const ImageDescriptionPage = React.lazy(() => import('./pages/ImageDescriptionPage'));
+const ImageDescriptionPage = lazyWithPreload(() => import('./pages/ImageDescriptionPage'));
+
 
 // Design Bible page - ATLAS Design System reference
-const DesignBiblePage = React.lazy(() => import('./pages/DesignBiblePage'));
+const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
 
 // Glossary page - Sprint 3: Accessible technical terms reference
-const GlossaryPage = React.lazy(() => import('./pages/GlossaryPage'));
-const HerramientasPage = React.lazy(() => import('./pages/HerramientasPage'));
-const MiPlanObjetivos = React.lazy(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
-const MiPlanLibertad = React.lazy(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
+const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
+const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
+const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
+const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
 
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
-    // Initialize account migration first
-    initializeAccountMigration().catch(console.error);
-    
-    bankProfilesService.loadProfiles().catch(console.error);
-    
+    const cleanupTasks = [
+      runWhenIdle(() => {
+        initializeAccountMigration().catch(console.error);
+      }, 1200),
+      runWhenIdle(() => {
+        bankProfilesService.loadProfiles().catch(console.error);
+      }, 1800),
+      runWhenIdle(() => {
+        void Promise.allSettled([
+          PanelPage.preload(),
+          InmueblesAnalisis.preload(),
+          Tesoreria.preload(),
+          InboxPage.preload(),
+          Cartera.preload(),
+          InversionesPage.preload(),
+        ]);
+      }, 2200),
+    ];
+
     // Performance monitoring setup
     const performanceObserver = new PerformanceObserver((list) => {
       list.getEntries().forEach((entry) => {
@@ -140,12 +187,16 @@ function App() {
       }, 30000); // Check every 30 seconds
       
       return () => {
+        cleanupTasks.forEach((cleanup) => cleanup());
         clearInterval(interval);
         performanceObserver.disconnect();
       };
     }
     
-    return () => performanceObserver.disconnect();
+    return () => {
+      cleanupTasks.forEach((cleanup) => cleanup());
+      performanceObserver.disconnect();
+    };
   }, []);
 
   return (
