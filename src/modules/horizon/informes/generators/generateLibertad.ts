@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
+import { initDB } from '../../../../services/db';
 import { getObjetivos } from '../../../../services/objetivosService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
@@ -28,8 +29,19 @@ const formatMonthYear = (date: Date | null): string => {
 };
 
 export async function generateLibertad(data: InformesData): Promise<void> {
-  const { rentaPasivaObjetivo: objetivoMensual } = await getObjetivos();
+  const objetivos = await getObjetivos();
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+  let objetivoMensual = objetivos.rentaPasivaObjetivo;
+
+  try {
+    const db = await initDB();
+    const objetivoGuardado = await db.get('objetivos_financieros', 1).catch(() => null);
+    if (objetivoGuardado && typeof (objetivoGuardado as { rentaPasivaObjetivo?: unknown }).rentaPasivaObjetivo === 'number') {
+      objetivoMensual = (objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo;
+    }
+  } catch {
+    // Usar el valor por defecto si el store aún no existe o no está disponible.
+  }
 
   const cfInmueblesMensual = data.resumenCartera.cfMensualTotal;
   const ahorroMensualTotal = (data.proyeccion.totalesAnuales.ingresosTotales -
