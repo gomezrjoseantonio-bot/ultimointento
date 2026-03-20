@@ -24,10 +24,10 @@ import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount, Movement as DBMovement } from '../../services/db';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
-import { calculateAccountBalanceAtDate } from '../../services/accountBalanceService';
 import { prestamosService } from '../../services/prestamosService';
 import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
+import { calculateTreasuryMonthOpeningBalance } from './treasuryMonthOpeningBalance';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -39,6 +39,7 @@ export interface TreasuryEvent {
   date: string;
   type: 'income' | 'expense' | 'financing';
   status: 'previsto' | 'confirmado';
+  movementId?: number;
   sourceType?: string;
   parentId?: string;
   prestamoId?: string;
@@ -214,11 +215,17 @@ const TreasuryReconciliationView: React.FC = () => {
           dbId: a.id as number,
           name: a.alias || a.banco?.name || a.name || `Cuenta ${a.id}`,
           type: getAccountType(a),
-          balance: calculateAccountBalanceAtDate({
+          balance: calculateTreasuryMonthOpeningBalance({
             account: a,
-            cutoffDate: monthStart,
+            selectedMonth: currentMonth,
             treasuryEvents: dbEvents,
             movements: dbMovements,
+            resolveEventAccountId: (event) => resolveDisplayAccountId({
+              eventAccountId: toNumericId(event.accountId),
+              eventSourceId: toNumericId(event.sourceId),
+              sourceType: event.sourceType,
+              cardSettlementByAccountId,
+            }),
           }),
         }));
 
@@ -248,6 +255,7 @@ const TreasuryReconciliationView: React.FC = () => {
             date: e.predictedDate,
             type: e.type as 'income' | 'expense' | 'financing',
             status: dbStatusToLocal(e.status),
+            movementId: e.movementId,
             sourceType: e.sourceType,
             prestamoId: e.prestamoId,
             numeroCuota: e.numeroCuota,
