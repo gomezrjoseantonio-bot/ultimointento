@@ -28,6 +28,8 @@ const formatMonthYear = (date: Date | null): string => {
 };
 
 export async function generateLibertad(data: InformesData): Promise<void> {
+  const objetivos = await getObjetivos();
+  const OBJETIVO_MENSUAL = objetivos.rentaPasivaObjetivo;
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
   let objetivoMensual = 5_000;
 
@@ -212,13 +214,13 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     }
   }
 
-  const objetivos = [2000, 3000, 5000];
+  const objetivosTabla = [2000, 3000, 5000];
   const rentabilidades = [4, 6, 8];
   autoTable(doc, {
     startY: y,
     margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: 20 },
     head: [['Objetivo \\ Rentabilidad neta', '4%', '6%', '8%']],
-    body: objetivos.map((objetivo) => [
+    body: objetivosTabla.map((objetivo) => [
       `${new Intl.NumberFormat('es-ES').format(objetivo)} €/mes`,
       ...rentabilidades.map((rentabilidad) => {
         const escenario = escenarios.find((item) => item.objetivo === objetivo && item.rentabilidad === rentabilidad);
