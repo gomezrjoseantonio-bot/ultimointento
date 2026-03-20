@@ -23,7 +23,7 @@ const MONTH_ABBR = [
 ];
 
 interface ExportRowDef {
-  label: string;
+  label: string | ((year: number) => string);
   getValue: (m: MonthlyProjectionRow) => number;
   isTotal?: boolean;
   specialBg?: 'total' | 'highlight';
@@ -54,8 +54,7 @@ const EXPORT_SECTIONS: ExportSectionDef[] = [
       { label: 'Gastos Alquileres', getValue: m => m.gastos.gastosOperativos },
       { label: 'Gastos personales', getValue: m => m.gastos.gastosPersonales },
       { label: 'Gastos autónomo', getValue: m => m.gastos.gastosAutonomo },
-      { label: 'IRPF devengado', getValue: m => m.gastos.irpfDevengado },
-      { label: 'IRPF a pagar (trim.)', getValue: m => m.gastos.irpfAPagar },
+      { label: (year) => `IRPF ${year - 1}`, getValue: m => m.gastos.irpf },
       { label: 'Total gastos', getValue: m => m.gastos.total, isTotal: true, specialBg: 'total' },
     ],
   },
@@ -77,25 +76,6 @@ const EXPORT_SECTIONS: ExportSectionDef[] = [
       },
       { label: 'Caja inicial', getValue: m => m.tesoreria.cajaInicial },
       { label: 'Caja final', getValue: m => m.tesoreria.cajaFinal, isTotal: true, specialBg: 'highlight' },
-    ],
-  },
-  {
-    label: 'PATRIMONIO',
-    rows: [
-      { label: 'Caja', getValue: m => m.patrimonio.caja },
-      { label: 'Inmuebles', getValue: m => m.patrimonio.inmuebles },
-      { label: 'Planes de pensión', getValue: m => m.patrimonio.planesPension },
-      { label: 'Otras inversiones', getValue: m => m.patrimonio.otrasInversiones },
-      { label: 'Deuda inmuebles', getValue: m => -m.patrimonio.deudaInmuebles },
-      { label: 'Deuda personal', getValue: m => -m.patrimonio.deudaPersonal },
-      { label: 'Deuda total', getValue: m => -m.patrimonio.deudaTotal },
-      {
-        label: 'Patrimonio neto',
-        getValue: m => m.patrimonio.patrimonioNeto,
-        isTotal: true,
-        specialBg: 'highlight',
-        highlight: 'positive-negative',
-      },
     ],
   },
 ];
@@ -155,7 +135,10 @@ const ProyeccionMensual: React.FC = () => {
           return;
         }
 
-        sheetData.push([row.label, ...currentProjection.months.map(m => row.getValue(m))]);
+        const rowLabel = typeof row.label === 'function'
+          ? row.label(currentProjection.year)
+          : row.label;
+        sheetData.push([rowLabel, ...currentProjection.months.map(m => row.getValue(m))]);
         rowMeta.push({ kind: 'value', rowDef: row });
       });
     });
@@ -312,7 +295,6 @@ const ProyeccionMensual: React.FC = () => {
               ingresos={currentProjection.totalesAnuales.ingresosTotales}
               gastos={currentProjection.totalesAnuales.gastosTotales}
               flujoNeto={currentProjection.totalesAnuales.flujoNetoAnual}
-              patrimonioNeto={currentProjection.totalesAnuales.patrimonioNetoFinal}
             />
           )}
 
