@@ -3,6 +3,7 @@ import { CalendarClock, Download, Goal, Home, Loader2, Sparkles, Target, Trendin
 import { jsPDF } from 'jspdf';
 import PageHeader from '../components/common/PageHeader';
 import { dashboardService } from '../services/dashboardService';
+import ExportadorDatos from '../modules/horizon/herramientas/exporters/ExportadorDatos';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
   style: 'currency',
@@ -573,6 +574,7 @@ const HerramientasPage: React.FC = () => {
           </section>
         )}
       </div>
+      <ExportadorDatos />
     </div>
   );
 };
