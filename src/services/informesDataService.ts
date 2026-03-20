@@ -401,7 +401,16 @@ class InformesDataService {
     const inmueblesMapeados = inmuebles.map((inmueble) => {
       const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
       const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
-      const costeTotal = toNumber(inmueble.compra.coste_total_compra || inmueble.compra.precio_compra);
+      const precioCompra = toNumber(inmueble.compra.precio_compra);
+      const totalGastos = toNumber(inmueble.compra.total_gastos);
+      const totalImpuestos = toNumber(inmueble.compra.total_impuestos);
+      const costeTotalCalculado = precioCompra + totalGastos + totalImpuestos;
+      const costeTotalPersistido = toNumber(inmueble.compra.coste_total_compra);
+      const costeTotal = costeTotalPersistido > 0
+        ? costeTotalPersistido
+        : costeTotalCalculado > precioCompra
+          ? costeTotalCalculado
+          : precioCompra;
       const valorActual = latestValuation || toNumber(
         rawProperty?.currentValue
           ?? rawProperty?.marketValue

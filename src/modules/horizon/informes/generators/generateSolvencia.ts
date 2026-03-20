@@ -233,8 +233,24 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   });
 
   const afterIncomeTable = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? (y + 2);
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerHeight = 18;
+  const spaceNeeded = 85;
+  const spaceAvailable = pageHeight - afterIncomeTable - footerHeight;
+  const shouldStartMonthlyTableOnNewPage = spaceAvailable < spaceNeeded;
+
+  if (shouldStartMonthlyTableOnNewPage) {
+    drawFooter(doc);
+    doc.addPage();
+    drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 2, totalPages);
+  }
+
+  const monthlyStartY = shouldStartMonthlyTableOnNewPage
+    ? 48
+    : afterIncomeTable + 6;
+
   autoTable(doc, {
-    startY: afterIncomeTable + 6,
+    startY: monthlyStartY,
     margin: { left: 14, right: 14, bottom: 18 },
     head: [[ 'Mes', 'Ingresos', 'Gastos', 'Financiación', 'Flujo caja', 'Caja final' ]],
     body: data.proyeccion.meses.map((month) => [
@@ -246,6 +262,7 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
       fmtEur(month.cajaFinal),
     ]),
     theme: 'grid',
+    pageBreak: 'avoid',
     styles: { font: 'helvetica', fontSize: 7.5, cellPadding: 2, textColor: COLOR.gray1, lineColor: COLOR.graybd, lineWidth: 0.1 },
     headStyles: { fillColor: COLOR.navy, textColor: COLOR.white },
     alternateRowStyles: { fillColor: COLOR.graylt },
