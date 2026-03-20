@@ -37,7 +37,7 @@ export async function generateLibertad(data: InformesData): Promise<void> {
     const db = await initDB();
     const objetivoGuardado = await db.get('objetivos_financieros', 1).catch(() => null);
     if (objetivoGuardado && typeof (objetivoGuardado as { rentaPasivaObjetivo?: unknown }).rentaPasivaObjetivo === 'number') {
-      objetivoMensual = (objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo;
+      objetivoMensual = Math.max((objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo, 3_000);
     }
   } catch {
     // Usar el valor por defecto si el store aún no existe o no está disponible.
