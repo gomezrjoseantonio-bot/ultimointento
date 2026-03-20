@@ -168,7 +168,6 @@ const drawCover = (doc: jsPDF, data: InformesData, dti: number): void => {
 
 export async function generateSolvencia(data: InformesData): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
-  const totalPages = 3;
   const monthlyIncome = data.proyeccion.totalesAnuales.ingresosTotales / 12;
   const monthlyExpenses = data.proyeccion.totalesAnuales.gastosTotales / 12;
   const monthlyInstallments = data.resumenFinanciacion.totalCuotasMensual;
@@ -183,7 +182,7 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   drawCover(doc, data, dti);
 
   doc.addPage();
-  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 2, totalPages);
+  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 2, 3);
   let y = 48;
 
   if (data.personal.nombreCompleto || data.personal.empresa || data.personal.antiguedad) {
@@ -232,22 +231,31 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
     alternateRowStyles: { fillColor: COLOR.graylt },
   });
 
-  const afterIncomeTable = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? (y + 2);
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const footerHeight = 18;
-  const spaceNeeded = 85;
-  const spaceAvailable = pageHeight - afterIncomeTable - footerHeight;
-  const shouldStartMonthlyTableOnNewPage = spaceAvailable < spaceNeeded;
+  const afterIncomeTable =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y + 2;
 
-  if (shouldStartMonthlyTableOnNewPage) {
-    drawFooter(doc);
-    doc.addPage();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerReserve = 18;
+  const spaceNeeded = 88;
+  const spaceAvailable = pageHeight - afterIncomeTable - footerReserve;
+  const needsExtraPage = spaceAvailable < spaceNeeded;
+
+  const totalPages = needsExtraPage ? 4 : 3;
+
+  if (needsExtraPage) {
     drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 2, totalPages);
   }
 
-  const monthlyStartY = shouldStartMonthlyTableOnNewPage
-    ? 48
-    : afterIncomeTable + 6;
+  let monthlyStartY: number;
+
+  if (needsExtraPage) {
+    drawFooter(doc);
+    doc.addPage();
+    drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Perfil financiero - ${data.año}`, 3, totalPages);
+    monthlyStartY = 48;
+  } else {
+    monthlyStartY = afterIncomeTable + 6;
+  }
 
   autoTable(doc, {
     startY: monthlyStartY,
@@ -276,7 +284,8 @@ export async function generateSolvencia(data: InformesData): Promise<void> {
   drawFooter(doc);
 
   doc.addPage();
-  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Cartera y financiación - ${data.año}`, 3, totalPages);
+  const carteraPage = needsExtraPage ? 4 : 3;
+  drawHeader(doc, 'Informe de Solvencia y Capacidad Financiera', `Cartera y financiación - ${data.año}`, carteraPage, totalPages);
   y = 48;
   y = drawSectionTitle(doc, y, 'KPIs de cartera');
   y = drawKpiRow(doc, y, [

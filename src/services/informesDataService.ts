@@ -401,16 +401,37 @@ class InformesDataService {
     const inmueblesMapeados = inmuebles.map((inmueble) => {
       const rawProperty = dbPayload.properties.find((property) => String(property.id) === String(inmueble.id));
       const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
-      const precioCompra = toNumber(inmueble.compra.precio_compra);
-      const totalGastos = toNumber(inmueble.compra.total_gastos);
-      const totalImpuestos = toNumber(inmueble.compra.total_impuestos);
-      const costeTotalCalculado = precioCompra + totalGastos + totalImpuestos;
-      const costeTotalPersistido = toNumber(inmueble.compra.coste_total_compra);
-      const costeTotal = costeTotalPersistido > 0
-        ? costeTotalPersistido
-        : costeTotalCalculado > precioCompra
-          ? costeTotalCalculado
-          : precioCompra;
+      const precioCompra = toNumber(inmueble.compra?.precio_compra);
+      const totalGastos = toNumber(inmueble.compra?.total_gastos);
+      const totalImpuestos = toNumber(inmueble.compra?.total_impuestos);
+
+      const costePersistido = toNumber(inmueble.compra?.coste_total_compra);
+      const costeSumado = precioCompra + totalGastos + totalImpuestos;
+
+      const costes = rawProperty?.acquisitionCosts;
+      const otherCosts = Array.isArray(costes?.other)
+        ? costes.other.reduce((sum, item) => sum + toNumber(item?.amount), 0)
+        : 0;
+      const costeLegacy = costes
+        ? toNumber(costes.price ?? 0)
+          + toNumber(costes.itp ?? 0)
+          + toNumber(costes.iva ?? 0)
+          + toNumber(costes.notary ?? 0)
+          + toNumber(costes.registry ?? 0)
+          + toNumber(costes.management ?? 0)
+          + toNumber(costes.psi ?? 0)
+          + toNumber(costes.realEstate ?? 0)
+          + otherCosts
+        : 0;
+
+      const costeTotal =
+        costePersistido > precioCompra
+          ? costePersistido
+          : costeSumado > precioCompra
+            ? costeSumado
+            : costeLegacy > precioCompra
+              ? costeLegacy
+              : precioCompra;
       const valorActual = latestValuation || toNumber(
         rawProperty?.currentValue
           ?? rawProperty?.marketValue
