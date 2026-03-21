@@ -19,7 +19,6 @@ import {
   OpexRule,
   Account,
   initDB,
-  OpexCategory,
   ExpenseBusinessType,
   OperacionFiscal,
   MejoraActivo,
@@ -172,19 +171,6 @@ const detectExpenseBusinessType = (rule: OpexRule): ExpenseBusinessType => {
   if (/mejora|reforma|capex|obra/.test(concept)) return 'mejora';
   if (/repar|conserv|manten|aver[ií]a|pintura|fontaner|electric/.test(concept)) return 'reparacion';
   return 'recurrente';
-};
-
-const getCategoryByType = (type: ExpenseBusinessType): OpexCategory => {
-  switch (type) {
-    case 'reparacion':
-      return 'servicio';
-    case 'mejora':
-      return 'gestion';
-    case 'mobiliario':
-      return 'otro';
-    default:
-      return 'otro';
-  }
 };
 
 const emptyOneOffForm: OneOffExpenseFormData = {
