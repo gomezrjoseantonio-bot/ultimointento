@@ -6,8 +6,10 @@ import { personalDataService } from './personalDataService';
 import { calculateCarryForwards, calculateFiscalSummary } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
-import { getGananciasPatrimonialesInmueblesEjercicio, PropertyDisposalTaxResult } from './propertyDisposalTaxService';
+import { PropertyDisposalTaxResult } from './propertyDisposalTaxService';
 import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
+import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
+import type { CompensacionAhorroResult } from './compensacionAhorroService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -868,6 +870,12 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       retenciones: round2(retencionesCapitalMobiliarioGeneral),
       detalle: detalleBaseGeneral,
     },
+    gyp: {
+      plusvalias: 0,
+      minusvalias: 0,
+      minusvaliasPendientes: 0,
+      compensado: 0,
+    },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
     ventasInmuebles: [],
   };
@@ -928,9 +936,7 @@ export async function calcularDeclaracionIRPF(
   const [trabajo, autonomo, { inmuebles, imputaciones }, {
     rcm,
     capitalMobiliarioBaseGeneral,
-    gyp,
     aportacionPensiones,
-    ventasInmuebles,
   }, atribuidos] =
     await Promise.all([
       recopilarDatosTrabajo(ejercicio),
@@ -1021,7 +1027,7 @@ export async function calcularDeclaracionIRPF(
     ? {
         ...autonomo,
         ingresos: round2(autonomo.ingresos + rendimientoAutonomoAtribuido),
-        rendimientoNeto,
+        rendimientoNeto: round2(autonomo.rendimientoNeto + rendimientoAutonomoAtribuido),
       }
     : rendimientoAutonomoAtribuido > 0
       ? {
@@ -1069,6 +1075,24 @@ export async function calcularDeclaracionIRPF(
       })),
     ],
   };
+  const compensacionAhorro = await ejecutarCompensacionAhorro(
+    ejercicio,
+    Math.max(0, baseAhorroCapitalMobiliario.total),
+  );
+
+  const gyp: GananciasPerdidasPatrimoniales = {
+    plusvalias: round2(
+      compensacionAhorro.fuentes.inmuebles.plusvalias + compensacionAhorro.fuentes.inversiones.plusvalias,
+    ),
+    minusvalias: round2(
+      compensacionAhorro.fuentes.inmuebles.minusvalias + compensacionAhorro.fuentes.inversiones.minusvalias,
+    ),
+    minusvaliasPendientes: round2(
+      compensacionAhorro.perdidasPendientesDespues.reduce((sum, item) => sum + item.importePendiente, 0),
+    ),
+    compensado: round2(compensacionAhorro.saldoNetoTrasCompensar),
+  };
+
   const totalBaseAhorro = round2(baseAhorroCapitalMobiliario.total + gyp.compensado);
   const baseAhorro: BaseAhorro = {
     capitalMobiliario: baseAhorroCapitalMobiliario,

@@ -17,13 +17,13 @@ export async function crearEntidad(
 
 export async function getEntidades(): Promise<EntidadAtribucionRentas[]> {
   const db = await initDB();
-  const entidades = await db.getAll('entidadesAtribucion');
+  const entidades = await db.getAll('entidadesAtribucion') as EntidadAtribucionRentas[];
   return entidades.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 }
 
 export async function getEntidadByNIF(nif: string): Promise<EntidadAtribucionRentas | undefined> {
   const db = await initDB();
-  const entidades = await db.getAllFromIndex('entidadesAtribucion', 'nif', nif);
+  const entidades = await db.getAllFromIndex('entidadesAtribucion', 'nif', nif) as EntidadAtribucionRentas[];
   return entidades[0];
 }
 
@@ -32,7 +32,7 @@ export async function actualizarEjercicio(
   datos: EntidadEjercicio
 ): Promise<void> {
   const db = await initDB();
-  const entidad = await db.get('entidadesAtribucion', entidadId);
+  const entidad = await db.get('entidadesAtribucion', entidadId) as EntidadAtribucionRentas | undefined;
   if (!entidad) throw new Error('Entidad no encontrada');
 
   const ejercicios = entidad.ejercicios.filter((ej) => ej.ejercicio !== datos.ejercicio);
@@ -51,7 +51,7 @@ export async function guardarEntidad(
 ): Promise<EntidadAtribucionRentas> {
   if (input.id) {
     const db = await initDB();
-    const existente = await db.get('entidadesAtribucion', input.id);
+    const existente = await db.get('entidadesAtribucion', input.id) as EntidadAtribucionRentas | undefined;
     if (!existente) throw new Error('Entidad no encontrada');
     const actualizada = {
       ...existente,
