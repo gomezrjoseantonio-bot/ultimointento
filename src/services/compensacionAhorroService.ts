@@ -249,7 +249,7 @@ export async function ejecutarCompensacionAhorro(
   }
 
   if (nuevaPerdidaArrastrada > 0) {
-    const nuevaPerdida: Omit<PerdidaPatrimonialAhorro, 'id'> = {
+    const nuevaPerdida: PerdidaPatrimonialAhorro = {
       ejercicioOrigen: ejercicio,
       ejercicioCaducidad: ejercicio + 4,
       importeOriginal: nuevaPerdidaArrastrada,
