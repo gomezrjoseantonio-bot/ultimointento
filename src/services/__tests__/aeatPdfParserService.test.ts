@@ -2,9 +2,34 @@ import {
   crearImportacionManualVacia,
   extraerCasillasDesdeTextoModelo100,
   mapearCasillasAImportacion,
+  reconstruirLineasPDF,
 } from '../aeatPdfParserService';
 
 describe('aeatPdfParserService', () => {
+  it('reconstruye líneas del PDF usando coordenadas Y y preserva la casilla al final', () => {
+    const lineas = reconstruirLineasPDF([
+      { str: '0435', transform: [1, 0, 0, 1, 480, 720] },
+      { str: '148.505,78', transform: [1, 0, 0, 1, 420, 720] },
+      { str: 'general', transform: [1, 0, 0, 1, 250, 720] },
+      { str: 'Base', transform: [1, 0, 0, 1, 120, 720] },
+      { str: '0460', transform: [1, 0, 0, 1, 460, 680] },
+      { str: '357,63', transform: [1, 0, 0, 1, 410, 680] },
+      { str: 'ahorro', transform: [1, 0, 0, 1, 200, 680] },
+      { str: 'del', transform: [1, 0, 0, 1, 170, 680] },
+      { str: 'Base', transform: [1, 0, 0, 1, 120, 680] },
+    ]);
+
+    expect(lineas).toEqual([
+      'Base general 148.505,78 0435',
+      'Base del ahorro 357,63 0460',
+    ]);
+
+    expect(extraerCasillasDesdeTextoModelo100(lineas.join('\n'))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ numero: '0435', valor: 148505.78 }),
+      expect.objectContaining({ numero: '0460', valor: 357.63 }),
+    ]));
+  });
+
   it('extrae casillas del texto del Modelo 100 y conserva la última ocurrencia', () => {
     const texto = `
       Base imponible general 150.924,07 0435
