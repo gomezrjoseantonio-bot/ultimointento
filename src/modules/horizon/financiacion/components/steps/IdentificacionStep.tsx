@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, Home, Plus, User, X, CreditCard } from 'lucide-react';
 import { PrestamoFinanciacion } from '../../../../../types/financiacion';
 import { AfectacionInmueblePrestamo } from '../../../../../types/prestamos';
@@ -71,10 +71,7 @@ const IdentificacionStep: React.FC<IdentificacionStepProps> = ({ data, onChange,
   ] as const;
 
   const afectaciones = data.afectacionesInmueble || [];
-  const totalPorcentaje = useMemo(
-    () => afectaciones.reduce((sum, afectacion) => sum + (afectacion.porcentaje || 0), 0),
-    [afectaciones],
-  );
+  const totalPorcentaje = afectaciones.reduce((sum, afectacion) => sum + (afectacion.porcentaje || 0), 0);
 
   const handleAddAfectacion = () => {
     const current = data.afectacionesInmueble || [];
