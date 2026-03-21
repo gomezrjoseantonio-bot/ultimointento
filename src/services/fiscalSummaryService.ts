@@ -9,7 +9,6 @@ import {
   getResumenCasillasAEAT,
 } from './operacionFiscalService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
-import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
@@ -52,25 +51,6 @@ export const calculateFiscalSummary = async (
   };
 
   const property = await db.get('properties', propertyId);
-
-  // Add recurring OPEX expenses auto-classified by AEAT box
-  const gastosRecurrentes = await getGastosRecurrentesFiscales(propertyId, exerciseYear);
-  const boxToField: Record<string, keyof typeof summary> = {
-    '0105': 'box0105',
-    '0106': 'box0106',
-    '0109': 'box0109',
-    '0112': 'box0112',
-    '0113': 'box0113',
-    '0114': 'box0114',
-    '0115': 'box0115',
-    '0117': 'box0117',
-  };
-  for (const [box, amount] of Object.entries(gastosRecurrentes)) {
-    const field = boxToField[box];
-    if (field) {
-      (summary[field] as number) += amount;
-    }
-  }
 
   if (property) {
     // Use unified AEAT amortization calculation with fallback to fiscalData/acquisitionCosts
