@@ -725,14 +725,14 @@ class InformesDataService {
           ingresosIntegros: toNumber(item.ingresosIntegros),
           gastosDeducibles: toNumber(item.gastosDeducibles),
           amortizacion: toNumber(item.amortizacion),
-          baseNeta: toNumber(item.rendimientoNeto),
+          baseNeta: toNumber(item.rendimientoNetoAlquiler),
           reduccion60: toNumber(
             item.reduccionHabitual
               ?? (item.ingresosIntegros - item.gastosDeducibles - item.amortizacion > 0
                 ? item.rendimientoNeto - item.rendimientoNetoAlquiler
                 : 0),
           ),
-          rendimientoNetoReducido: toNumber(item.rendimientoNetoAlquiler),
+          rendimientoNetoReducido: toNumber(item.rendimientoNetoReducido ?? item.rendimientoNeto),
         })) ?? [],
         calendario: buildFiscalCalendar(año, declaracionIRPF, eventosFiscales),
       } : DEFAULT_DATA.fiscal,
