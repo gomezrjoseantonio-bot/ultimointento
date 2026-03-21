@@ -1,4 +1,5 @@
 import { openDB, IDBPDatabase } from 'idb';
+import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 import type { 
@@ -25,6 +26,35 @@ import type {
 
 const DB_NAME = 'AtlasHorizonDB';
 const DB_VERSION = 36; // V3.6: stores fundacionales de ejercicio fiscal y documentación
+
+function ensureIndex<
+  DBTypes extends DBSchema | unknown,
+  TxStores extends ArrayLike<StoreNames<DBTypes>>,
+  StoreName extends StoreNames<DBTypes>,
+>(
+  store: IDBPObjectStore<DBTypes, TxStores, StoreName, 'versionchange'>,
+  indexName: string,
+  keyPath: string | string[],
+  options: IDBIndexParameters = { unique: false },
+): void {
+  const typedIndexName = indexName as IndexNames<DBTypes, StoreName>;
+
+  if (store.indexNames.contains(typedIndexName)) {
+    return;
+  }
+
+  try {
+    store.createIndex(typedIndexName, keyPath, options);
+  } catch (error) {
+    if ((error as DOMException)?.name === 'ConstraintError' && options.unique) {
+      console.warn(`[DB] Índice único '${indexName}' degradado a no único por datos legacy duplicados.`);
+      store.createIndex(typedIndexName, keyPath, { ...options, unique: false });
+      return;
+    }
+
+    throw error;
+  }
+}
 
 export interface Property {
   id?: number;
@@ -2220,19 +2250,18 @@ export const initDB = async () => {
         // V3.6: Ejercicios Fiscales store
         if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
           const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'ejercicio' });
-          ejerciciosStore.createIndex('estado', 'estado', { unique: false });
-          ejerciciosStore.createIndex('año', 'ejercicio', { unique: true });
-          ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
-          ejerciciosStore.createIndex('origen', 'origen', { unique: false });
-          ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
+          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
+          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         } else {
           const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
-          if (!ejerciciosStore.indexNames.contains('estado')) {
-            ejerciciosStore.createIndex('estado', 'estado', { unique: false });
-          }
-          if (!ejerciciosStore.indexNames.contains('ejercicio')) {
-            ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
-          }
+          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
+          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         }
 
         // V3.6: Documentos fiscales store
