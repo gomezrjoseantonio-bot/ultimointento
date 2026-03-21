@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
-import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
+import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct, parseIsoDate } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
 
@@ -29,6 +29,7 @@ export async function generateFiscal(data: InformesData): Promise<void> {
   const resumen = data.fiscal.resumen;
   const inmuebles = data.fiscal.inmuebles;
   const calendario = data.fiscal.calendario;
+  const ventasInmuebles = data.fiscal.ventasInmuebles;
 
   const totalIngresosIntegros = sumBy(inmuebles, (item) => item.ingresosIntegros);
   const totalGastosYAmortizacion = sumBy(inmuebles, (item) => item.gastosDeducibles + item.amortizacion);
@@ -43,6 +44,9 @@ export async function generateFiscal(data: InformesData): Promise<void> {
     .reduce((sum, item) => sum + item.importe, 0);
   const totalDesembolsar = calendario.reduce((sum, item) => sum + item.importe, 0);
   const totalRetenido = resumen.totalRetenciones;
+  const totalVentasInmuebles = sumBy(ventasInmuebles, (item) => item.gananciaPatrimonial);
+  const totalPlusvaliasInmuebles = sumBy(ventasInmuebles.filter((item) => !item.esPerdida), (item) => item.gananciaPatrimonial);
+  const totalMinusvaliasInmuebles = sumBy(ventasInmuebles.filter((item) => item.esPerdida), (item) => Math.abs(item.gananciaPatrimonial));
 
   const coverageRatio = resumen.cuotaIntegra > 0 ? (resumen.totalRetenciones / resumen.cuotaIntegra) * 100 : 0;
   const boundedCoverageRatio = Math.max(0, Math.min(100, coverageRatio));
@@ -67,7 +71,9 @@ export async function generateFiscal(data: InformesData): Promise<void> {
     { concepto: 'RESULTADO — A ingresar / A devolver', importe: resumen.resultado, highlight: true, isResult: true },
   ];
 
-  drawHeader(doc, 'Cuadro Fiscal Anual', `Resumen IRPF - ${data.año}`, 1, 3);
+  const totalPages = ventasInmuebles.length > 0 ? 4 : 3;
+
+  drawHeader(doc, 'Cuadro Fiscal Anual', `Resumen IRPF - ${data.año}`, 1, totalPages);
   let y = 46;
 
   y = drawKpiRow(doc, y, [
@@ -117,7 +123,7 @@ export async function generateFiscal(data: InformesData): Promise<void> {
   drawFooter(doc);
 
   doc.addPage();
-  drawHeader(doc, 'Cuadro Fiscal Anual', `Rendimientos por inmueble - ${data.año}`, 2, 3);
+  drawHeader(doc, 'Cuadro Fiscal Anual', `Rendimientos por inmueble - ${data.año}`, 2, totalPages);
   y = 46;
 
   y = drawKpiRow(doc, y, [
@@ -193,8 +199,72 @@ export async function generateFiscal(data: InformesData): Promise<void> {
   );
   drawFooter(doc);
 
+  if (ventasInmuebles.length > 0) {
+    doc.addPage();
+    drawHeader(doc, 'Cuadro Fiscal Anual', `Ventas de inmuebles - ${data.año}`, 3, totalPages);
+    y = 46;
+
+    y = drawKpiRow(doc, y, [
+      { label: 'Plusvalías inmuebles', value: fmtEur(totalPlusvaliasInmuebles), sub: 'Ganancias del ejercicio', color: COLOR.green },
+      { label: 'Minusvalías inmuebles', value: fmtEur(totalMinusvaliasInmuebles), sub: 'Pérdidas del ejercicio', color: COLOR.red },
+      { label: 'Saldo neto', value: fmtEur(totalVentasInmuebles), sub: 'Base del ahorro', color: totalVentasInmuebles >= 0 ? COLOR.navy : COLOR.amber },
+      { label: 'Operaciones', value: String(ventasInmuebles.length), sub: 'Ventas analizadas', color: COLOR.teal },
+    ]);
+
+    y = drawSectionTitle(doc, y, 'Ganancias y pérdidas patrimoniales por inmueble');
+
+    const ventasRows = ventasInmuebles.map((item) => [
+      item.alias,
+      parseIsoDate(item.fechaVenta),
+      fmtEur(item.valorTransmision),
+      fmtEur(item.valorAdquisicion),
+      fmtEur(item.amortizacionAplicada),
+      fmtEur(item.gananciaPatrimonial),
+    ]);
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: PAGE_MARGIN, right: PAGE_MARGIN, bottom: 26 },
+      head: [['Inmueble', 'Fecha venta', 'Valor transmisión', 'Valor adquisición', 'Amortización', 'G/P']],
+      body: ventasRows,
+      foot: [[
+        'TOTAL',
+        '',
+        fmtEur(sumBy(ventasInmuebles, (item) => item.valorTransmision)),
+        fmtEur(sumBy(ventasInmuebles, (item) => item.valorAdquisicion)),
+        fmtEur(sumBy(ventasInmuebles, (item) => item.amortizacionAplicada)),
+        fmtEur(totalVentasInmuebles),
+      ]],
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 7.8, cellPadding: 2.1, textColor: COLOR.gray1, lineColor: COLOR.graybd, lineWidth: 0.1 },
+      headStyles: { fillColor: COLOR.navy, textColor: COLOR.white },
+      footStyles: { fillColor: COLOR.graylt, textColor: COLOR.gray1, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: COLOR.graylt },
+      didParseCell: (hookData) => {
+        if (hookData.section === 'body' && hookData.column.index === 5) {
+          const value = ventasInmuebles[hookData.row.index]?.gananciaPatrimonial ?? 0;
+          hookData.cell.styles.textColor = value >= 0 ? COLOR.green : COLOR.red;
+        }
+        if (hookData.section === 'foot' && hookData.column.index === 5) {
+          hookData.cell.styles.textColor = totalVentasInmuebles >= 0 ? COLOR.green : COLOR.red;
+        }
+      },
+    });
+
+    const afterVentas = getLastAutoTableY(doc, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...COLOR.gray2);
+    doc.text(
+      'El valor de adquisición ya descuenta la amortización acumulada exigible por la AEAT hasta la fecha de venta.',
+      PAGE_MARGIN,
+      afterVentas + 8,
+    );
+    drawFooter(doc);
+  }
+
   doc.addPage();
-  drawHeader(doc, 'Cuadro Fiscal Anual', `Calendario de pagos - ${data.año}`, 3, 3);
+  drawHeader(doc, 'Cuadro Fiscal Anual', `Calendario de pagos - ${data.año}`, ventasInmuebles.length > 0 ? 4 : 3, totalPages);
   y = 46;
 
   y = drawKpiRow(doc, y, [

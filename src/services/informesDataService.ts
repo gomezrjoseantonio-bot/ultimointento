@@ -137,6 +137,16 @@ export interface InformesData {
       importe: number;
       estado: string;
     }>;
+    ventasInmuebles: Array<{
+      alias: string;
+      fechaVenta: string;
+      valorTransmision: number;
+      valorAdquisicion: number;
+      amortizacionAplicada: number;
+      gananciaPatrimonial: number;
+      esPerdida: boolean;
+      gastosVenta: number;
+    }>;
   };
 
   // Datos fiscales/catastrales de la cartera
@@ -237,6 +247,7 @@ const DEFAULT_DATA: InformesData = {
     },
     inmuebles: [],
     calendario: [],
+    ventasInmuebles: [],
   },
   cartera: { detalleFiscal: [] },
   tesoreria: {
@@ -735,6 +746,16 @@ class InformesDataService {
           rendimientoNetoReducido: toNumber(item.rendimientoNetoAlquiler),
         })) ?? [],
         calendario: buildFiscalCalendar(año, declaracionIRPF, eventosFiscales),
+        ventasInmuebles: declaracionIRPF.ventasInmuebles?.map((venta) => ({
+          alias: venta.alias,
+          fechaVenta: venta.fechaVenta,
+          valorTransmision: toNumber(venta.valorTransmision),
+          valorAdquisicion: toNumber(venta.valorAdquisicion),
+          amortizacionAplicada: toNumber(venta.amortizacionAplicada),
+          gananciaPatrimonial: toNumber(venta.gananciaPatrimonial),
+          esPerdida: Boolean(venta.esPerdida),
+          gastosVenta: toNumber(venta.gastosVenta),
+        })) ?? [],
       } : DEFAULT_DATA.fiscal,
       cartera: {
         detalleFiscal: inmuebles
