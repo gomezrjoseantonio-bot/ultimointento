@@ -3,17 +3,20 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../../store';
 import { n } from '../../../store/taxSlice';
 
-const SimuladorBlock: React.FC = () => {
+interface Props {
+  readOnly?: boolean;
+}
+
+const SimuladorBlock: React.FC<Props> = ({ readOnly = false }) => {
   const tax = useSelector((s: RootState) => s.tax);
   const [extraPP, setExtraPP] = useState(0);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Estimación tramo marginal ~37% (simplificado para bases > 60.000€)
   const tipoMarginal = tax.baseLiquidableGeneral > 60000 ? 0.37
     : tax.baseLiquidableGeneral > 35200 ? 0.30
-    : 0.24;
+      : 0.24;
 
   const maxPP = Math.min(8000, tax.baseLiquidableGeneral * 0.10);
   const ppEfectivo = Math.min(extraPP, Math.max(0, maxPP));
@@ -31,9 +34,14 @@ const SimuladorBlock: React.FC = () => {
         <h4 className="block-section-title">Aportación extra al plan de pensiones</h4>
         <div className="field-row">
           <label className="field-label">Importe adicional (€/año)</label>
-          <input className="field-input" type="number" step="100"
-            value={extraPP === 0 ? '' : extraPP} placeholder="0"
-            onChange={e => setExtraPP(Number(e.target.value) || 0)}
+          <input
+            className="field-input"
+            type="number"
+            step="100"
+            value={extraPP === 0 ? '' : extraPP}
+            placeholder="0"
+            onChange={readOnly ? undefined : (e) => setExtraPP(Number(e.target.value) || 0)}
+            readOnly={readOnly}
           />
           <span className="field-unit">€</span>
         </div>

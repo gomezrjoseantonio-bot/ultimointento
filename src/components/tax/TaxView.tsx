@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
 import WorkIncomeBlock from './blocks/WorkIncomeBlock';
 import RealEstateBlock from './blocks/RealEstateBlock';
@@ -8,34 +9,200 @@ import SavingsGPBlock from './blocks/SavingsGPBlock';
 import ResultBlock from './blocks/ResultBlock';
 import SimuladorBlock from './blocks/SimuladorBlock';
 import DataTraceabilityBlock from './blocks/DataTraceabilityBlock';
-import { hydrateFromCalculation, setEjercicio } from '../../store/taxSlice';
+import { hydrateFromCalculation, setEjercicio, type TaxState } from '../../store/taxSlice';
 import { calcularDeclaracionIRPF } from '../../services/irpfCalculationService';
 import { mapDeclaracionToTaxState } from './taxHydrationMapper';
-import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
-import type { EjercicioFiscal } from '../../types/fiscal';
 import {
   buildFiscalExerciseContext,
   getDeclarationBootstrapCopy,
   summarizeFiscalLifecycle,
 } from '../../modules/horizon/fiscalidad/modeloFundacional';
+import EjercicioSelector from '../fiscal/EjercicioSelector';
+import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
+import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
+import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import './tax-view.css';
+
+
+function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omit<TaxState, 'ejercicio'> {
+  return {
+    workIncome: {
+      dinerarias: declaracion.trabajo.retribucionesDinerarias ?? 0,
+      especieValoracion: declaracion.trabajo.retribucionEspecie ?? 0,
+      especieIngresoACuenta: declaracion.trabajo.ingresosACuenta ?? 0,
+      contribucionEmpresarialPP: declaracion.trabajo.contribucionesPPEmpresa ?? 0,
+      cotizacionSS: declaracion.trabajo.cotizacionSS ?? 0,
+      otrosGastosDeducibles: declaracion.trabajo.otrosGastosDeducibles ?? 0,
+      retencion: declaracion.trabajo.retencionesTrabajoTotal ?? 0,
+    },
+    capitalMobiliario: {
+      interesesCuentasDepositos: declaracion.capitalMobiliario.interesesCuentas ?? 0,
+      otrosRendimientos: declaracion.capitalMobiliario.otrosRendimientos ?? 0,
+      retencion: declaracion.capitalMobiliario.retencionesCapital ?? 0,
+    },
+    inmuebles: declaracion.inmuebles.map((inmueble, index) => ({
+      id: `${declaracion.personal?.nif ?? 'aeat'}-inmueble-${index}`,
+      refCatastral: inmueble.referenciaCatastral ?? '',
+      direccion: inmueble.direccion ?? '',
+      pctPropiedad: inmueble.porcentajePropiedad ?? 100,
+      tipo: (inmueble.uso === 'disposicion' ? 'disposicion' : inmueble.uso === 'mixto' ? 'mixto' : 'arrendado') as 'disposicion' | 'mixto' | 'arrendado',
+      fechaAdquisicion: inmueble.fechaAdquisicion ?? '',
+      importeAdquisicion: inmueble.importeAdquisicion ?? 0,
+      gastosTributos: inmueble.gastosAdquisicion ?? 0,
+      mejoras: inmueble.mejoras ?? 0,
+      valorCatastral: inmueble.valorCatastral ?? 0,
+      valorCatastralConstruccion: inmueble.valorCatastralConstruccion ?? 0,
+      diasArrendados: inmueble.diasArrendado ?? 0,
+      diasDisposicion: inmueble.diasDisposicion ?? 0,
+      valorCatastralRevisado: false,
+      ingresosIntegros: inmueble.ingresosIntegros ?? 0,
+      interesesFinanciacion: inmueble.interesesFinanciacion ?? 0,
+      gastosReparacion: inmueble.gastosReparacion ?? 0,
+      gastosComunidad: inmueble.gastosComunidad ?? 0,
+      serviciosPersonales: inmueble.gastosServicios ?? 0,
+      suministros: inmueble.gastosSuministros ?? 0,
+      seguro: inmueble.gastosSeguros ?? 0,
+      tributosRecargos: inmueble.gastosTributos ?? 0,
+      amortizacionMuebles: inmueble.amortizacionMuebles ?? 0,
+      arrastres: [],
+      tieneReduccion: inmueble.derechoReduccion ?? false,
+      pctReduccion: inmueble.rendimientoNeto > inmueble.rendimientoNetoReducido && inmueble.rendimientoNeto !== 0
+        ? Math.round((1 - (inmueble.rendimientoNetoReducido / inmueble.rendimientoNeto)) * 100)
+        : 0,
+      pctConstruccion: inmueble.porcentajeConstruccion ?? 0,
+      baseAmortizacion: inmueble.baseAmortizacion ?? 0,
+      amortizacionInmueble: inmueble.amortizacionInmueble ?? 0,
+      limiteInteresesReparacion: (inmueble.interesesFinanciacion ?? 0) + (inmueble.gastosReparacion ?? 0),
+      excesoReparacion: inmueble.arrastresGenerados ?? 0,
+      rentaImputada: inmueble.rentaImputada ?? 0,
+      rendimientoNeto: inmueble.rendimientoNeto ?? 0,
+      rendimientoNetoReducido: inmueble.rendimientoNetoReducido ?? 0,
+    })),
+    actividades: declaracion.actividades.map((actividad, index) => ({
+      id: `aeat-actividad-${index}`,
+      codigoActividad: actividad.tipoActividad ?? '',
+      epigafreIAE: actividad.epigrafeIAE ?? '',
+      ingresosExplotacion: actividad.ingresos ?? 0,
+      seguridadSocialTitular: 0,
+      serviciosProfesionales: 0,
+      otrosGastos: actividad.gastos ?? 0,
+      retencion: actividad.retencionesActividad ?? 0,
+      provisionSimplificada: actividad.provisionDificilJustificacion ?? 0,
+      rendimientoNeto: actividad.rendimientoNeto ?? 0,
+    })),
+    ganancias: [{
+      id: 'aeat-ganancias',
+      tipo: 'otra_ba' as const,
+      base: declaracion.gananciasPerdidas.saldoNetoGeneral !== 0 ? 'general' as const : 'ahorro' as const,
+      descripcion: 'Saldo neto agregado AEAT',
+      valorTransmision: declaracion.gananciasPerdidas.gananciasTransmision + declaracion.gananciasPerdidas.gananciasNoTransmision,
+      valorAdquisicion: declaracion.gananciasPerdidas.perdidasTransmision + declaracion.gananciasPerdidas.perdidasNoTransmision,
+      resultado: declaracion.gananciasPerdidas.saldoNetoGeneral !== 0
+        ? declaracion.gananciasPerdidas.saldoNetoGeneral
+        : declaracion.gananciasPerdidas.saldoNetoAhorro,
+    }].filter((ganancia) => ganancia.valorTransmision !== 0 || ganancia.valorAdquisicion !== 0 || ganancia.resultado !== 0),
+    saldosNegativosBIA: declaracion.gananciasPerdidas.perdidasPendientes.map((perdida) => ({
+      ejercicio: perdida.ejercicioOrigen,
+      pendienteInicio: perdida.importeOriginal,
+      aplicado: perdida.importeAplicado,
+      pendienteFuturo: perdida.importePendiente,
+    })),
+    previsionSocial: {
+      aportacionTrabajador: declaracion.planPensiones.aportacionesTrabajador ?? 0,
+      contribucionEmpresarial: declaracion.planPensiones.contribucionesEmpresariales ?? 0,
+      importeAplicado: declaracion.planPensiones.reduccionAplicada ?? 0,
+    },
+    baseImponibleGeneral: declaracion.basesYCuotas.baseImponibleGeneral ?? 0,
+    baseImponibleAhorro: declaracion.basesYCuotas.baseImponibleAhorro ?? 0,
+    baseLiquidableGeneral: declaracion.basesYCuotas.baseLiquidableGeneral ?? 0,
+    baseLiquidableAhorro: declaracion.basesYCuotas.baseLiquidableAhorro ?? 0,
+    cuotaIntegra: declaracion.basesYCuotas.cuotaIntegra ?? 0,
+    cuotaLiquida: declaracion.basesYCuotas.cuotaLiquida ?? 0,
+    totalRetenciones: declaracion.basesYCuotas.retencionesTotal ?? 0,
+    cuotaDiferencial: declaracion.basesYCuotas.cuotaDiferencial ?? declaracion.basesYCuotas.resultadoDeclaracion ?? 0,
+  };
+}
 
 const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador', 'Trazabilidad'] as const;
 type Tab = typeof TABS[number];
 
+function EstadoBanner({
+  estado,
+  tieneAeat,
+  ejercicio,
+  coberturaLineas,
+}: {
+  estado: EstadoEjercicio;
+  tieneAeat: boolean;
+  ejercicio: number;
+  coberturaLineas: number;
+}) {
+  const configs = {
+    en_curso: {
+      texto: `Estimación en tiempo real del ejercicio ${ejercicio}. Los datos se actualizan con cada cambio.`,
+      color: '#0F6E56',
+      bg: '#E1F5EE',
+      icon: '◉',
+    },
+    cerrado: {
+      texto: tieneAeat
+        ? `Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.`
+        : `Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.`,
+      color: '#854F0B',
+      bg: '#FAEEDA',
+      icon: '◎',
+    },
+    declarado: {
+      texto: tieneAeat
+        ? `Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.`
+        : `Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.`,
+      color: '#185FA5',
+      bg: '#E6F1FB',
+      icon: '✓',
+    },
+  } as const;
+
+  const config = configs[estado];
+
+  return (
+    <div
+      className="tv-state-banner"
+      style={{
+        background: config.bg,
+        color: config.color,
+      }}
+    >
+      <span style={{ fontSize: '16px' }}>{config.icon}</span>
+      <span>{config.texto}</span>
+      {coberturaLineas > 0 && (
+        <span className="tv-state-banner__meta">
+          Cobertura documental: {coberturaLineas} conceptos monitorizados.
+        </span>
+      )}
+    </div>
+  );
+}
+
 const TaxView: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const tax = useSelector((state: RootState) => state.tax);
   const [tab, setTab] = useState<Tab>('Trabajo');
   const [loadingDeclaracion, setLoadingDeclaracion] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [fiscalExercise, setFiscalExercise] = useState<EjercicioFiscal | undefined>(undefined);
+  const {
+    ejercicio: fiscalExercise,
+    estado,
+    declarado,
+    cobertura,
+    esEditable,
+    tieneAeat,
+  } = useEjercicioFiscal(tax.ejercicio);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 6 }, (_, i) => currentYear - i);
   const isCurrentYear = tax.ejercicio === currentYear;
   const lifecycle = summarizeFiscalLifecycle(
     buildFiscalExerciseContext(tax.ejercicio, currentYear, fiscalExercise),
@@ -45,6 +212,7 @@ const TaxView: React.FC = () => {
     lifecycle.truthPriority === 'aeat',
   );
 
+  const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,9 +222,17 @@ const TaxView: React.FC = () => {
       setLoadingError(null);
 
       try {
-        const declaracion = await calcularDeclaracionIRPF(tax.ejercicio, { usarConciliacion: true });
+        const tresVerdades = await ejercicioFiscalService.getTresVerdades(tax.ejercicio);
+        let hydrationPayload;
+
+        if (tresVerdades.estado === 'declarado' && tresVerdades.declarado) {
+          hydrationPayload = mapFiscalDeclaracionToTaxState(tresVerdades.declarado);
+        } else {
+          const declaracionCalculada = await calcularDeclaracionIRPF(tax.ejercicio, { usarConciliacion: true });
+          hydrationPayload = await mapDeclaracionToTaxState(declaracionCalculada);
+        }
+
         if (cancelled) return;
-        const hydrationPayload = await mapDeclaracionToTaxState(declaracion);
         dispatch(hydrateFromCalculation(hydrationPayload));
       } catch {
         if (cancelled) return;
@@ -66,59 +242,45 @@ const TaxView: React.FC = () => {
       }
     };
 
-    cargarDeclaracion();
+    void cargarDeclaracion();
 
     return () => {
       cancelled = true;
     };
-  }, [dispatch, tax.ejercicio]);
+  }, [dispatch, tax.ejercicio, declarado]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const cargarEjercicioFiscal = async () => {
-      try {
-        const storedExercise = await ejercicioFiscalService.getEjercicio(tax.ejercicio);
-        if (!cancelled) {
-          setFiscalExercise(storedExercise);
-        }
-      } catch {
-        if (!cancelled) {
-          setFiscalExercise(undefined);
-        }
-      }
-    };
-
-    cargarEjercicioFiscal();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [tax.ejercicio]);
+  const readOnlyMessage = useMemo(() => {
+    if (estado !== 'declarado') return null;
+    return tieneAeat
+      ? 'Vista solo lectura basada en la declaración oficial importada desde AEAT.'
+      : 'Vista solo lectura del ejercicio declarado. Sube el PDF de Hacienda para completar la verdad oficial.';
+  }, [estado, tieneAeat]);
 
   return (
     <div className="tv-root">
-      {/* HEADER */}
       <div className="tv-header">
         <div>
           <h2 className="tv-title">Declaración IRPF {tax.ejercicio}</h2>
           <p className="tv-subtitle">Modelo 100 — Estimación en tiempo real</p>
         </div>
         <div className="tv-header-right">
-          <label className="tv-year-label">Ejercicio</label>
-          <select
-            className="tv-year-select"
-            value={tax.ejercicio}
-            onChange={e => dispatch(setEjercicio(Number(e.target.value)))}
-          >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>
-                {y}{y === currentYear ? ' (en curso · previsión)' : ''}
-              </option>
-            ))}
-          </select>
+          {estado === 'declarado' && tieneAeat && <span className="tv-source-pill">Fuente AEAT</span>}
+          <div className="tv-year-picker">
+            <label className="tv-year-label">Ejercicio</label>
+            <EjercicioSelector
+              value={tax.ejercicio}
+              onChange={(ejercicio) => dispatch(setEjercicio(ejercicio))}
+            />
+          </div>
         </div>
       </div>
+
+      <EstadoBanner
+        estado={estado}
+        tieneAeat={tieneAeat}
+        ejercicio={tax.ejercicio}
+        coberturaLineas={cobertura?.lineas.length ?? 0}
+      />
 
       {isCurrentYear && (
         <div className="tv-forecast-note">
@@ -126,6 +288,7 @@ const TaxView: React.FC = () => {
         </div>
       )}
 
+      {readOnlyMessage && <div className="tv-sync-note">{readOnlyMessage}</div>}
       {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
       {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
 
@@ -194,7 +357,14 @@ const TaxView: React.FC = () => {
         </div>
       </section>
 
-      {/* RESULTADO RÁPIDO */}
+      {shouldShowUploadButton && (
+        <div className="tv-actions-row">
+          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historico')}>
+            ↑ Subir declaración AEAT
+          </button>
+        </div>
+      )}
+
       <div className={`tv-result-banner ${tax.cuotaDiferencial > 0 ? 'banner-pagar' : 'banner-devolver'}`}>
         <span className="tv-result-label">
           {tax.cuotaDiferencial > 0 ? 'A ingresar' : 'A devolver'}
@@ -209,35 +379,32 @@ const TaxView: React.FC = () => {
         </span>
       </div>
 
-      {/* TABS */}
       <nav className="tv-tabs">
-        {TABS.map(t => (
+        {TABS.map((tabName) => (
           <button
-            key={t}
-            className={`tv-tab ${tab === t ? 'tv-tab--active' : ''}`}
-            onClick={() => setTab(t)}
+            key={tabName}
+            className={`tv-tab ${tab === tabName ? 'tv-tab--active' : ''}`}
+            onClick={() => setTab(tabName)}
           >
-            {t}
+            {tabName}
           </button>
         ))}
       </nav>
 
-      {/* CONTENIDO */}
-      <div className="tv-content">
-        {tab === 'Resumen'     && <ResumenInline tax={tax} fmt={fmt} />}
-        {tab === 'Trabajo'     && <WorkIncomeBlock />}
-        {tab === 'Inmuebles'   && <RealEstateBlock />}
-        {tab === 'Actividad'   && <BusinessBlock />}
-        {tab === 'Ahorro y G/P' && <SavingsGPBlock />}
-        {tab === 'Resultado'   && <ResultBlock />}
-        {tab === 'Simulador'   && <SimuladorBlock />}
+      <div className={`tv-content ${!esEditable ? 'tv-content--readonly' : ''}`}>
+        {tab === 'Resumen' && <ResumenInline tax={tax} fmt={fmt} />}
+        {tab === 'Trabajo' && <WorkIncomeBlock readOnly={!esEditable} />}
+        {tab === 'Inmuebles' && <RealEstateBlock readOnly={!esEditable} />}
+        {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
+        {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
+        {tab === 'Resultado' && <ResultBlock />}
+        {tab === 'Simulador' && <SimuladorBlock readOnly={!esEditable} />}
         {tab === 'Trazabilidad' && <DataTraceabilityBlock />}
       </div>
     </div>
   );
 };
 
-// Resumen inline (sin fichero separado — es simple)
 const ResumenInline: React.FC<{ tax: any; fmt: (v: number) => string }> = ({ tax, fmt }) => (
   <div className="tv-resumen">
     <div className="tv-resumen-grid">
