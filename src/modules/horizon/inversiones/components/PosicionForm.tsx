@@ -122,6 +122,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     meses_cobro_rendimiento: (posAny?.rendimiento?.meses_cobro as number[]) || [],
     dia_cobro_rendimiento: posAny?.rendimiento?.dia_cobro || 1,
     retencion_rendimiento: posAny?.rendimiento?.retencion_porcentaje ?? 19,
+    integracion_fiscal_rendimiento: posAny?.rendimiento?.integracion_fiscal ?? 'ahorro',
     reinvertir: posAny?.rendimiento?.reinvertir ?? false,
     cuenta_destino_id: posAny?.rendimiento?.cuenta_destino_id || '',
     fecha_inicio_rendimiento: posAny?.rendimiento?.fecha_inicio_rendimiento?.split('T')[0] || new Date().toISOString().split('T')[0],
@@ -136,6 +137,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     dividendo_por_accion: posAny?.dividendos?.dividendo_por_accion || 0,
     retencion_dividendos: posAny?.dividendos?.retencion_porcentaje ?? 19,
     retencion_origen_dividendos: posAny?.dividendos?.retencion_origen_porcentaje ?? 0,
+    integracion_fiscal_dividendos: posAny?.dividendos?.integracion_fiscal ?? 'ahorro',
     cuenta_destino_dividendos_id: posAny?.dividendos?.cuenta_destino_dividendos_id || '',
   });
 
@@ -286,6 +288,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         meses_cobro: mesesCobro,
         dia_cobro: formData.dia_cobro_rendimiento,
         retencion_porcentaje: formData.retencion_rendimiento,
+        integracion_fiscal: formData.integracion_fiscal_rendimiento,
         reinvertir: formData.reinvertir,
         cuenta_destino_id: formData.reinvertir ? undefined : Number(formData.cuenta_destino_id) || undefined,
         fecha_inicio_rendimiento: new Date(formData.fecha_inicio_rendimiento).toISOString(),
@@ -309,6 +312,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         cuenta_destino_dividendos_id: formData.paga_dividendos ? Number(formData.cuenta_destino_dividendos_id) || undefined : undefined,
         retencion_porcentaje: formData.retencion_dividendos,
         retencion_origen_porcentaje: formData.retencion_origen_dividendos,
+        integracion_fiscal: formData.integracion_fiscal_dividendos,
         dividendos_recibidos: posAny?.dividendos?.dividendos_recibidos || [],
       };
     }
@@ -625,6 +629,30 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
                   />
                 </FormField>
               </div>
+              <FormField label="Integración IRPF del rendimiento">
+                <select
+                  value={formData.integracion_fiscal_rendimiento}
+                  onChange={(e) => setFormData({ ...formData, integracion_fiscal_rendimiento: e.target.value as 'ahorro' | 'general' })}
+                  style={selectStyle}
+                >
+                  <option value="ahorro">Base del ahorro (intereses, dividendos ordinarios)</option>
+                  <option value="general">Base general (otros rendimientos BIG, casillas 0046-0051)</option>
+                </select>
+              </FormField>
+              {formData.integracion_fiscal_rendimiento === 'general' && (
+                <div style={{
+                  padding: '0.875rem',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  background: 'rgba(245, 158, 11, 0.12)',
+                  color: 'var(--atlas-navy-1)',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.875rem',
+                }}>
+                  Usa esta opción para rendimientos como “otro rendimiento BIG” de entidades tipo Unihouser.
+                  ATLAS los integrará en la base general y mantendrá sus retenciones en el total fiscal.
+                </div>
+              )}
               <FormField label="Fecha inicio rendimiento" required error={errors.fecha_inicio_rendimiento}>
                 <input
                   type="date"
@@ -814,6 +842,16 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
                       style={inputStyle()}
                       placeholder="0 (EEUU: 15, BE: 30…)"
                     />
+                  </FormField>
+                  <FormField label="Integración IRPF del dividendo/rendimiento">
+                    <select
+                      value={formData.integracion_fiscal_dividendos}
+                      onChange={(e) => setFormData({ ...formData, integracion_fiscal_dividendos: e.target.value as 'ahorro' | 'general' })}
+                      style={selectStyle}
+                    >
+                      <option value="ahorro">Base del ahorro (dividendos e intereses ordinarios)</option>
+                      <option value="general">Base general (otros rendimientos BIG, casillas 0046-0051)</option>
+                    </select>
                   </FormField>
                 </>
               )}
