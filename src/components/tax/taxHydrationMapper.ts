@@ -354,18 +354,36 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
   const inmuebles: Inmueble[] = Array.from(inmueblesById.values());
 
   const actividades: ActividadEconomica[] = autonomo
-    ? [{
-        id: `autonomo-${declaracion.ejercicio}`,
-        codigoActividad: 'AUTO',
-        epigafreIAE: '',
-        ingresosExplotacion: round2(autonomo.ingresos),
-        seguridadSocialTitular: round2(autonomo.cuotaSS),
-        serviciosProfesionales: 0,
-        otrosGastos: round2(autonomo.gastos),
-        retencion: round2(declaracion.retenciones.autonomoM130),
-        provisionSimplificada: 0,
-        rendimientoNeto: round2(autonomo.rendimientoNeto),
-      }]
+    ? ((autonomo.actividades?.length
+      ? autonomo.actividades.map((actividad, index) => ({
+          id: `autonomo-${declaracion.ejercicio}-${index}`,
+          codigoActividad: actividad.tipo || 'AUTO',
+          epigafreIAE: actividad.epigrafe || '',
+          ingresosExplotacion: round2(actividad.ingresos),
+          seguridadSocialTitular: round2(actividad.cuotaSS),
+          serviciosProfesionales: 0,
+          otrosGastos: round2(actividad.gastos),
+          retencion: index === 0 ? round2(declaracion.retenciones.autonomoM130) : 0,
+          provisionSimplificada: index === 0 ? round2(autonomo.gastoDificilJustificacion ?? 0) : 0,
+          rendimientoNeto: round2(
+            actividad.ingresos
+            - actividad.gastos
+            - actividad.cuotaSS
+            - (index === 0 ? (autonomo.gastoDificilJustificacion ?? 0) : 0)
+          ),
+        }))
+      : [{
+          id: `autonomo-${declaracion.ejercicio}`,
+          codigoActividad: 'AUTO',
+          epigafreIAE: '',
+          ingresosExplotacion: round2(autonomo.ingresos),
+          seguridadSocialTitular: round2(autonomo.cuotaSS),
+          serviciosProfesionales: 0,
+          otrosGastos: round2(autonomo.gastos),
+          retencion: round2(declaracion.retenciones.autonomoM130),
+          provisionSimplificada: round2(autonomo.gastoDificilJustificacion ?? 0),
+          rendimientoNeto: round2(autonomo.rendimientoNeto),
+        }]))
     : [];
 
   const ahorroResultado = round2(gyp.plusvalias - gyp.minusvalias);

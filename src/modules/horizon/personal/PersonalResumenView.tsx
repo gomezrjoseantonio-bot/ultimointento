@@ -428,10 +428,10 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
       try {
         const personalData = await personalDataService.getPersonalData();
         const personalDataId = personalData?.id ?? 1;
-        const autonomo = await autonomoService.getActivoAutonomo(personalDataId);
-        if (autonomo) {
-          setAutonomoAnual(autonomoService.calculateEstimatedAnnual(autonomo));
-          setAutonomoMensual(autonomoService.getMonthlyDistribution(autonomo));
+        const autonomos = await autonomoService.getAutonomosActivos(personalDataId);
+        if (autonomos.length > 0) {
+          setAutonomoAnual(autonomoService.calculateEstimatedAnnualForAutonomos(autonomos));
+          setAutonomoMensual(autonomoService.getMonthlyDistributionForAutonomos(autonomos));
         }
       } catch (err) {
         console.error('[PersonalResumenView] Failed to load autonomo data:', err);

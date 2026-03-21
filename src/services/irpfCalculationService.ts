@@ -65,12 +65,24 @@ export interface RendimientosTrabajo {
   ppTotalReduccion: number;       // Total reducción PP (limitada a 10.000€)
 }
 
+export interface ActividadEconomicaResumen {
+  nombre: string;
+  epigrafe?: string;
+  tipo?: string;
+  modalidad?: string;
+  ingresos: number;
+  gastos: number;
+  cuotaSS: number;
+}
+
 export interface RendimientosAutonomo {
   ingresos: number;
   gastos: number;
   cuotaSS: number;
+  gastoDificilJustificacion?: number;
   rendimientoNeto: number;
   pagosFraccionadosM130: number;
+  actividades?: ActividadEconomicaResumen[];
 }
 
 export interface RendimientoInmueble {
@@ -357,27 +369,60 @@ async function recopilarDatosAutonomo(ejercicio: number): Promise<RendimientosAu
   try {
     const db = await initDB();
     const allAutonomos = await db.getAll('autonomos');
-    const activo = allAutonomos.find((a: any) => a.activo);
-    if (!activo) return null;
+    const activos = allAutonomos.filter((a: any) => a.activo);
+    if (activos.length === 0) return null;
 
-    // Ingresos anuales desde fuentesIngreso
-    const ingresos = (activo.fuentesIngreso ?? []).reduce((sum: number, f: any) => {
-      const meses = Array.isArray(f.meses) ? f.meses.length : 12;
-      return sum + (f.importeEstimado ?? 0) * meses;
-    }, 0);
+    const actividadConCuota = activos.find((a: any) => a.cuotaAutonomosCompartida)
+      ?? activos.find((a: any) => (a.cuotaAutonomos ?? 0) > 0)
+      ?? activos[0];
 
-    // Gastos anuales desde gastosRecurrentesActividad
-    const gastos = (activo.gastosRecurrentesActividad ?? []).reduce((sum: number, g: any) => {
-      const meses = Array.isArray(g.meses) && g.meses.length > 0 ? g.meses.length : 12;
-      return sum + (g.importe ?? 0) * meses;
-    }, 0);
+    let totalIngresos = 0;
+    let totalGastos = 0;
+    const actividades: ActividadEconomicaResumen[] = [];
 
-    const cuotaSS = round2((activo.cuotaAutonomos ?? 0) * 12);
-    const rendimientoNeto = round2(ingresos - gastos - cuotaSS);
-    // M130: 20% del rendimiento neto acumulado por trimestre (simplificado)
+    for (const autonomo of activos) {
+      const ingresos = round2((autonomo.fuentesIngreso ?? []).reduce((sum: number, f: any) => {
+        const meses = Array.isArray(f.meses) && f.meses.length > 0 ? f.meses.length : 12;
+        return sum + (f.importeEstimado ?? 0) * meses;
+      }, 0));
+
+      const gastos = round2((autonomo.gastosRecurrentesActividad ?? []).reduce((sum: number, g: any) => {
+        const meses = Array.isArray(g.meses) && g.meses.length > 0 ? g.meses.length : 12;
+        return sum + (g.importe ?? 0) * meses;
+      }, 0));
+
+      totalIngresos += ingresos;
+      totalGastos += gastos;
+
+      actividades.push({
+        nombre: autonomo.descripcionActividad || autonomo.nombre,
+        epigrafe: autonomo.epigrafeIAE,
+        tipo: autonomo.tipoActividad,
+        modalidad: autonomo.modalidad,
+        ingresos,
+        gastos,
+        cuotaSS: actividadConCuota?.id === autonomo.id ? round2((actividadConCuota?.cuotaAutonomos ?? 0) * 12) : 0,
+      });
+    }
+
+    const cuotaSS = round2((actividadConCuota?.cuotaAutonomos ?? 0) * 12);
+    const rendimientoPrevio = round2(totalIngresos - totalGastos - cuotaSS);
+    const aplicaSimplificada = activos.some((a: any) => (a.modalidad ?? 'simplificada') === 'simplificada');
+    const gastoDificilJustificacion = aplicaSimplificada && rendimientoPrevio > 0
+      ? round2(Math.min(rendimientoPrevio * 0.05, 2000))
+      : 0;
+    const rendimientoNeto = round2(rendimientoPrevio - gastoDificilJustificacion);
     const pagosFraccionadosM130 = round2(Math.max(0, rendimientoNeto) * CONSTANTES_IRPF.tipoPagoFraccionado);
 
-    return { ingresos: round2(ingresos), gastos: round2(gastos), cuotaSS, rendimientoNeto, pagosFraccionadosM130 };
+    return {
+      ingresos: round2(totalIngresos),
+      gastos: round2(totalGastos),
+      cuotaSS,
+      gastoDificilJustificacion,
+      rendimientoNeto,
+      pagosFraccionadosM130,
+      actividades,
+    };
   } catch {
     return null;
   }

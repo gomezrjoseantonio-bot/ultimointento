@@ -86,6 +86,44 @@ describe('Autónomo net income - calculateEstimatedAnnual', () => {
     expect(result.rendimientoNeto).toBe(-2400);
   });
 
+
+  it('aggregates multiple active activities and counts the shared cuota only once', () => {
+    const actividadPrincipal: Autonomo = {
+      ...BASE_AUTONOMO,
+      id: 1,
+      nombre: 'Consultoría',
+      descripcionActividad: 'Consultoría',
+      cuotaAutonomos: 300,
+      cuotaAutonomosCompartida: true,
+      fuentesIngreso: [
+        { id: '1', nombre: 'Clientes recurrentes', importeEstimado: 2000, meses: [1,2,3,4,5,6,7,8,9,10,11,12] },
+      ],
+      gastosRecurrentesActividad: [
+        { id: '1', descripcion: 'Software', importe: 100, categoria: 'software' },
+      ],
+    };
+
+    const actividadSecundaria: Autonomo = {
+      ...BASE_AUTONOMO,
+      id: 2,
+      nombre: 'Formación',
+      descripcionActividad: 'Formación',
+      cuotaAutonomos: 0,
+      cuotaAutonomosCompartida: false,
+      fuentesIngreso: [
+        { id: '2', nombre: 'Cursos', importeEstimado: 500, meses: [1,2,3,4,5,6,7,8,9,10,11,12] },
+      ],
+      gastosRecurrentesActividad: [
+        { id: '2', descripcion: 'Material', importe: 50, categoria: 'material' },
+      ],
+    };
+
+    const result = autonomoService.calculateEstimatedAnnualForAutonomos([actividadPrincipal, actividadSecundaria]);
+
+    expect(result.facturacionBruta).toBe(30000);
+    expect(result.totalGastos).toBe(5400);
+    expect(result.rendimientoNeto).toBe(24600);
+  });
   it('handles seasonal income sources (only some months)', () => {
     const autonomo: Autonomo = {
       ...BASE_AUTONOMO,
@@ -153,6 +191,41 @@ describe('Autónomo net income - getMonthlyDistribution', () => {
     expect(distribution[0].neto).toBe(-250);
   });
 
+
+  it('aggregates monthly distributions from multiple active activities and applies the cuota once', () => {
+    const actividadPrincipal: Autonomo = {
+      ...BASE_AUTONOMO,
+      id: 1,
+      nombre: 'Consultoría',
+      cuotaAutonomos: 300,
+      cuotaAutonomosCompartida: true,
+      fuentesIngreso: [
+        { id: '1', nombre: 'Servicios', importeEstimado: 2000, meses: [1,2,3,4,5,6,7,8,9,10,11,12] },
+      ],
+      gastosRecurrentesActividad: [
+        { id: '1', descripcion: 'Software', importe: 100, categoria: 'software' },
+      ],
+    };
+
+    const actividadSecundaria: Autonomo = {
+      ...BASE_AUTONOMO,
+      id: 2,
+      nombre: 'Formación',
+      cuotaAutonomos: 0,
+      cuotaAutonomosCompartida: false,
+      fuentesIngreso: [
+        { id: '2', nombre: 'Cursos', importeEstimado: 500, meses: [6, 7, 8] },
+      ],
+      gastosRecurrentesActividad: [
+        { id: '2', descripcion: 'Material', importe: 50, categoria: 'material', meses: [6, 7, 8] },
+      ],
+    };
+
+    const distribution = autonomoService.getMonthlyDistributionForAutonomos([actividadPrincipal, actividadSecundaria]);
+
+    expect(distribution[0]).toEqual({ mes: 1, ingresos: 2000, gastos: 400, neto: 1600 });
+    expect(distribution[5]).toEqual({ mes: 6, ingresos: 2500, gastos: 450, neto: 2050 });
+  });
   it('net annual sum matches rendimientoNeto from calculateEstimatedAnnual', () => {
     const autonomo: Autonomo = {
       ...BASE_AUTONOMO,

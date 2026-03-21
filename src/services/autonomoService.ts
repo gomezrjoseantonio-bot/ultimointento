@@ -48,6 +48,23 @@ class AutonomoService {
     }
   }
 
+  async getAutonomosActivos(personalDataId: number): Promise<Autonomo[]> {
+    try {
+      const autonomos = await this.getAutonomos(personalDataId);
+      return autonomos.filter(a => a.activo);
+    } catch (error) {
+      console.error('Error getting active autonomos:', error);
+      return [];
+    }
+  }
+
+  private getAutonomoConCuotaCompartida(autonomos: Autonomo[]): Autonomo | null {
+    return autonomos.find(a => a.activo && a.cuotaAutonomosCompartida)
+      ?? autonomos.find(a => a.activo && (a.cuotaAutonomos ?? 0) > 0)
+      ?? autonomos.find(a => a.activo)
+      ?? null;
+  }
+
   /**
    * Save or update an autonomo
    */
@@ -59,20 +76,19 @@ class AutonomoService {
       
       const now = new Date().toISOString();
       
-      // Desactivar otros autónomos EN LA MISMA TRANSACCIÓN
-      if (autonomo.activo) {
+      if (autonomo.cuotaAutonomosCompartida) {
         const index = store.index('personalDataId');
         const existingAutonomos = await index.getAll(autonomo.personalDataId);
-        
+
         for (const existing of existingAutonomos) {
-          if (existing.activo) {
-            existing.activo = false;
+          if (existing.cuotaAutonomosCompartida) {
+            existing.cuotaAutonomosCompartida = false;
             existing.fechaActualizacion = now;
             await store.put(existing);
           }
         }
       }
-      
+
       const newAutonomo: Autonomo = {
         ...autonomo,
         fechaCreacion: now,
@@ -107,14 +123,13 @@ class AutonomoService {
 
       const now = new Date().toISOString();
 
-      // Desactivar otros autónomos EN LA MISMA TRANSACCIÓN
-      if (updates.activo) {
+      if (updates.cuotaAutonomosCompartida) {
         const index = store.index('personalDataId');
         const allAutonomos = await index.getAll(existing.personalDataId);
-        
+
         for (const autonomo of allAutonomos) {
-          if (autonomo.id !== id && autonomo.activo) {
-            autonomo.activo = false;
+          if (autonomo.id !== id && autonomo.cuotaAutonomosCompartida) {
+            autonomo.cuotaAutonomosCompartida = false;
             autonomo.fechaActualizacion = now;
             await store.put(autonomo);
           }
@@ -501,7 +516,15 @@ class AutonomoService {
    * Used for dashboard summary cards.
    */
   calculateEstimatedAnnual(autonomo: Autonomo): { facturacionBruta: number; totalGastos: number; rendimientoNeto: number } {
-    const facturacionBruta = (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
+    return this.calculateEstimatedAnnualForAutonomos([autonomo]);
+  }
+
+  calculateEstimatedAnnualForAutonomos(autonomos: Autonomo[]): { facturacionBruta: number; totalGastos: number; rendimientoNeto: number } {
+    const activos = autonomos.filter(autonomo => autonomo.activo);
+    const sourceAutonomos = activos.length > 0 ? activos : autonomos;
+    const autonomoCuota = this.getAutonomoConCuotaCompartida(sourceAutonomos);
+
+    const facturacionBruta = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
       // Use meses array if present; fallback to frecuencia for legacy data
       const occurrences = fuente.meses?.length
         ? fuente.meses.length
@@ -510,13 +533,13 @@ class AutonomoService {
             return frecuenciaMultiplier[fuente.frecuencia || 'mensual'] ?? 12;
           })();
       return total + fuente.importeEstimado * occurrences;
-    }, 0);
+    }, 0), 0);
 
-    const gastosRecurrentes = (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
+    const gastosRecurrentes = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
       const occurrences = gasto.meses?.length ? gasto.meses.length : 12;
       return total + gasto.importe * occurrences;
-    }, 0);
-    const totalGastos = autonomo.cuotaAutonomos * 12 + gastosRecurrentes;
+    }, 0), 0);
+    const totalGastos = (autonomoCuota?.cuotaAutonomos ?? 0) * 12 + gastosRecurrentes;
 
     return {
       facturacionBruta,
@@ -530,21 +553,29 @@ class AutonomoService {
    * Used by the Previsiones / Tesorería modules to project cash flows.
    */
   getMonthlyDistribution(autonomo: Autonomo): { mes: number; ingresos: number; gastos: number; neto: number }[] {
+    return this.getMonthlyDistributionForAutonomos([autonomo]);
+  }
+
+  getMonthlyDistributionForAutonomos(autonomos: Autonomo[]): { mes: number; ingresos: number; gastos: number; neto: number }[] {
     const todosMeses = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const activos = autonomos.filter(autonomo => autonomo.activo);
+    const sourceAutonomos = activos.length > 0 ? activos : autonomos;
+    const autonomoCuota = this.getAutonomoConCuotaCompartida(sourceAutonomos);
+
     return Array.from({ length: 12 }, (_, i) => {
       const mes = i + 1;
 
-      const ingresos = (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
+      const ingresos = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.fuentesIngreso || []).reduce((total, fuente) => {
         const activeMeses = fuente.meses?.length ? fuente.meses : todosMeses;
         return activeMeses.includes(mes) ? total + fuente.importeEstimado : total;
-      }, 0);
+      }, 0), 0);
 
-      const gastosConcepto = (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
+      const gastosConcepto = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
         const activeMeses = gasto.meses?.length ? gasto.meses : todosMeses;
         return activeMeses.includes(mes) ? total + gasto.importe : total;
-      }, 0);
+      }, 0), 0);
 
-      const gastos = gastosConcepto + autonomo.cuotaAutonomos;
+      const gastos = gastosConcepto + (autonomoCuota?.cuotaAutonomos ?? 0);
 
       return { mes, ingresos, gastos, neto: ingresos - gastos };
     });

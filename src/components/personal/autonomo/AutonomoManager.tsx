@@ -89,7 +89,7 @@ const AutonomoManager: React.FC = () => {
         });
       }
     } catch (error) {
-      toast.error('Error al cargar los datos de autónomo');
+      toast.error('Error al cargar las actividades económicas');
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ const AutonomoManager: React.FC = () => {
     if (!confirmed) return;
     try {
       await autonomoService.deleteAutonomo(id);
-      toast.success('Configuración de autónomo eliminada');
+      toast.success('Actividad eliminada');
       loadData();
     } catch { toast.error('Error al eliminar la configuración'); }
   };
@@ -210,13 +210,13 @@ const AutonomoManager: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium" style={{ color: 'var(--gray-900)' }}>Gestión de Autónomos</h3>
-          <p className="text-sm" style={{ color: 'var(--gray-500)' }}>Proyecta ingresos y gastos de tu actividad autónoma con temporalidad mensual</p>
+          <h3 className="text-lg font-medium" style={{ color: 'var(--gray-900)' }}>Actividades económicas (IAE)</h3>
+          <p className="text-sm" style={{ color: 'var(--gray-500)' }}>Registra varias actividades activas, con su epígrafe IAE y una única cuota SS compartida</p>
         </div>
         <button onClick={handleCreateAutonomo}
                 className="inline-flex items-center px-4 py-2 text-sm font-medium rounded"
                 style={btnPrimary}>
-          <Plus className="w-4 h-4 mr-2" /> Nueva Configuración
+          <Plus className="w-4 h-4 mr-2" /> Añadir actividad
         </button>
       </div>
 
@@ -224,11 +224,11 @@ const AutonomoManager: React.FC = () => {
       {autonomos.length === 0 && (
         <div className="bg-white border p-12 text-center rounded" style={{ borderColor: 'var(--gray-200)' }}>
           <Euro className="mx-auto h-12 w-12" style={{ color: 'var(--gray-300)' }} />
-          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay configuraciones de autónomo</h3>
-          <p className="mt-1 text-sm" style={{ color: 'var(--gray-500)' }}>Crea tu primera configuración para empezar.</p>
+          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--gray-900)' }}>No hay actividades económicas registradas</h3>
+          <p className="mt-1 text-sm" style={{ color: 'var(--gray-500)' }}>Añade tu primera actividad para empezar a proyectar ingresos y gastos.</p>
           <div className="mt-6">
             <button onClick={handleCreateAutonomo} className="inline-flex items-center px-4 py-2 text-sm font-medium rounded" style={btnPrimary}>
-              <Plus className="w-4 h-4 mr-2" /> Crear Primera Configuración
+              <Plus className="w-4 h-4 mr-2" /> Crear primera actividad
             </button>
           </div>
         </div>
@@ -239,20 +239,25 @@ const AutonomoManager: React.FC = () => {
         <div className="bg-white border px-6 py-4 flex items-center justify-between rounded shadow-sm" style={{ borderColor: 'var(--gray-200)' }}>
           <div className="flex items-center space-x-3">
             {autonomos.length === 1
-              ? <span className="font-medium" style={{ color: 'var(--gray-900)' }}>{selectedAutonomo?.titular || selectedAutonomo?.nombre}</span>
+              ? <span className="font-medium" style={{ color: 'var(--gray-900)' }}>{selectedAutonomo?.descripcionActividad || selectedAutonomo?.nombre}</span>
               : (
                 <div className="relative inline-flex items-center">
-                  <select value={selectedAutonomoId ?? ''} onChange={(e) => setSelectedAutonomoId(parseInt(e.target.value))}
+                  <select value={selectedAutonomoId ?? ''} onChange={(e) => setSelectedAutonomoId(parseInt(e.target.value, 10))}
                           className="appearance-none pl-3 pr-8 py-2 border text-sm font-medium bg-white focus:outline-none"
                           style={{ borderColor: 'var(--gray-200)', color: 'var(--gray-900)' }}>
-                    {autonomos.map(a => <option key={a.id} value={a.id}>{a.titular || a.nombre}</option>)}
+                    {autonomos.map(a => <option key={a.id} value={a.id}>{`${a.descripcionActividad || a.nombre}${a.epigrafeIAE ? ` · IAE ${a.epigrafeIAE}` : ''}`}</option>)}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-2 w-4 h-4" style={{ color: 'var(--gray-400)' }} />
                 </div>
               )}
-            {selectedAutonomo && (
+            {selectedAutonomo?.tipoActividad && (
               <span className="text-xs px-2 py-1 rounded" style={{ background: 'var(--gray-100)', color: 'var(--gray-500)' }}>
-                SS {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes
+                {selectedAutonomo.tipoActividad} · IAE {selectedAutonomo.epigrafeIAE || 'sin epígrafe'}
+              </span>
+            )}
+            {selectedAutonomo?.cuotaAutonomosCompartida && (
+              <span className="text-xs px-2 py-1 rounded" style={{ background: 'var(--blue-50, #eff6ff)', color: 'var(--blue-800)' }}>
+                Cuota SS compartida: {formatCurrency(selectedAutonomo.cuotaAutonomos)}/mes
               </span>
             )}
           </div>
