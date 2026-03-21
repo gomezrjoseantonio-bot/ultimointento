@@ -1,4 +1,5 @@
 import { openDB, IDBPDatabase } from 'idb';
+import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 import type { 
@@ -26,22 +27,28 @@ import type {
 const DB_NAME = 'AtlasHorizonDB';
 const DB_VERSION = 36; // V3.6: stores fundacionales de ejercicio fiscal y documentación
 
-function ensureIndex(
-  store: IDBObjectStore,
+function ensureIndex<
+  DBTypes extends DBSchema | unknown,
+  TxStores extends ArrayLike<StoreNames<DBTypes>>,
+  StoreName extends StoreNames<DBTypes>,
+>(
+  store: IDBPObjectStore<DBTypes, TxStores, StoreName, 'versionchange'>,
   indexName: string,
   keyPath: string | string[],
   options: IDBIndexParameters = { unique: false },
 ): void {
-  if (store.indexNames.contains(indexName)) {
+  const typedIndexName = indexName as IndexNames<DBTypes, StoreName>;
+
+  if (store.indexNames.contains(typedIndexName)) {
     return;
   }
 
   try {
-    store.createIndex(indexName, keyPath, options);
+    store.createIndex(typedIndexName, keyPath, options);
   } catch (error) {
     if ((error as DOMException)?.name === 'ConstraintError' && options.unique) {
       console.warn(`[DB] Índice único '${indexName}' degradado a no único por datos legacy duplicados.`);
-      store.createIndex(indexName, keyPath, { ...options, unique: false });
+      store.createIndex(typedIndexName, keyPath, { ...options, unique: false });
       return;
     }
 
