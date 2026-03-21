@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Landmark, ReceiptText, Rows3 } from 'lucide-react';
+import { Building2, History, Landmark, ReceiptText, Rows3 } from 'lucide-react';
 
 interface Tab {
   label: string;
@@ -29,6 +29,8 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Resumen', path: '/fiscalidad/resumen', icon: Rows3 },
     { label: 'Declaración', path: '/fiscalidad/declaracion', icon: ReceiptText },
     { label: 'Pagos', path: '/fiscalidad/pagos', icon: Landmark },
+    { label: 'Histórico', path: '/fiscalidad/historico', icon: History },
+    { label: 'Entidades', path: '/fiscalidad/entidades', icon: Building2 },
   ],
   proyeccion: [
     { label: 'Proyección Automática', path: '/proyeccion/presupuesto' },
