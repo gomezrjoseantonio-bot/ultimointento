@@ -1,34 +1,31 @@
-import { initDB, type EjercicioFiscal as DbEjercicioFiscal, type EstadoEjercicio as DbEstadoEjercicio } from './db';
-import { calcularDeclaracionIRPF, type DeclaracionIRPF } from './irpfCalculationService';
+import { initDB, type EjercicioFiscal as DbEjercicioFiscal } from './db';
 import {
   createEmptyArrastresEjercicio,
+  type ArrastreManual,
   type ArrastresEjercicio,
+  type ConceptoFiscalVinculable,
+  type DeclaracionIRPF,
   type DocumentoFiscal,
   type EjercicioFiscal,
   type EstadoEjercicio,
-  type InformeCobertura,
-  type InformeCoberturaLinea,
+  type InformeCoberturaDocumental,
+  type LineaCoberturaDocumental,
   type OrigenDeclaracion,
 } from '../types/fiscal';
 
-const STORE_NAME = 'ejerciciosFiscales';
+const EJERCICIOS_STORE = 'ejerciciosFiscales';
+const DOCUMENTOS_STORE = 'documentosFiscales';
+const ARRASTRES_MANUAL_STORE = 'arrastresManual';
 const FISCAL_MIN_YEAR = 2010;
 
 type LegacyOrigen = 'calculado' | 'importado' | 'mixto';
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+function nowIso(): string {
+  return new Date().toISOString();
 }
 
-function cloneArrastres(arrastres?: ArrastresEjercicio): ArrastresEjercicio {
-  return {
-    porInmueble: [...(arrastres?.porInmueble ?? [])],
-    porAnio: [...(arrastres?.porAnio ?? [])],
-  };
-}
-
-function cloneDocumentos(documentos?: DocumentoFiscal[]): DocumentoFiscal[] {
-  return [...(documentos ?? [])];
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
 }
 
 function validateEjercicio(ejercicio: number): void {
@@ -38,264 +35,381 @@ function validateEjercicio(ejercicio: number): void {
   }
 }
 
-function normalizeEstado(estado?: DbEstadoEjercicio): EstadoEjercicio {
-  if (estado === 'vivo' || estado == null) {
-    return 'en_curso';
-  }
-  return estado;
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value));
 }
 
-function legacyEstado(estado: EstadoEjercicio): DbEstadoEjercicio {
-  return estado === 'en_curso' ? 'vivo' : estado;
+function normalizeArrastres(arrastres?: ArrastresEjercicio): ArrastresEjercicio {
+  const gastos0105_0106 = arrastres?.gastos0105_0106 ?? arrastres?.porInmueble ?? [];
+  const perdidasPatrimonialesAhorro = arrastres?.perdidasPatrimonialesAhorro ?? arrastres?.porAnio ?? [];
+  const amortizacionesAcumuladas = arrastres?.amortizacionesAcumuladas ?? [];
+
+  return {
+    gastos0105_0106: clone(gastos0105_0106),
+    perdidasPatrimonialesAhorro: clone(perdidasPatrimonialesAhorro),
+    amortizacionesAcumuladas: clone(amortizacionesAcumuladas),
+    porInmueble: clone(gastos0105_0106),
+    porAnio: clone(perdidasPatrimonialesAhorro),
+  };
 }
 
-function normalizeOrigen(dbEjercicio?: DbEjercicioFiscal): LegacyOrigen {
-  if (dbEjercicio?.origen) {
-    return dbEjercicio.origen;
+function buildLegacyOrigen(ejercicio: EjercicioFiscal): LegacyOrigen {
+  if (ejercicio.declaracionAeat) {
+    return ejercicio.calculoAtlas ? 'mixto' : 'importado';
   }
-  if (dbEjercicio?.declaracionAeat) {
-    return dbEjercicio.calculoAtlas ? 'mixto' : 'importado';
-  }
+
   return 'calculado';
 }
 
-function normalizeDeclaracionOrigen(
-  origen?: OrigenDeclaracion,
-  dbEjercicio?: DbEjercicioFiscal,
-): OrigenDeclaracion {
-  if (origen) {
-    return origen;
-  }
-  if (dbEjercicio?.declaracionAeat) {
-    return dbEjercicio.origen === 'importado' ? 'pdf_importado' : 'manual';
-  }
-  return 'no_presentada';
-}
-
-function deriveResumen(declaracion?: DeclaracionIRPF): DbEjercicioFiscal['resumen'] | undefined {
+function resumenDesdeDeclaracion(declaracion?: DeclaracionIRPF): DbEjercicioFiscal['resumen'] | undefined {
   if (!declaracion) {
     return undefined;
   }
 
   return {
-    baseImponibleGeneral: round2(declaracion.liquidacion?.baseImponibleGeneral ?? 0),
-    baseImponibleAhorro: round2(declaracion.liquidacion?.baseImponibleAhorro ?? 0),
-    cuotaIntegra: round2(declaracion.liquidacion?.cuotaIntegra ?? 0),
-    deducciones: round2(declaracion.liquidacion?.deduccionesDobleImposicion ?? 0),
-    retencionesYPagos: round2(declaracion.retenciones?.total ?? 0),
-    resultado: round2(declaracion.resultado ?? 0),
+    baseImponibleGeneral: round2(declaracion.basesYCuotas.baseImponibleGeneral ?? 0),
+    baseImponibleAhorro: round2(declaracion.basesYCuotas.baseImponibleAhorro ?? 0),
+    cuotaIntegra: round2(declaracion.basesYCuotas.cuotaIntegra ?? 0),
+    deducciones: round2((declaracion.basesYCuotas.cuotaIntegra ?? 0) - (declaracion.basesYCuotas.cuotaLiquida ?? 0)),
+    retencionesYPagos: round2(declaracion.basesYCuotas.retencionesTotal ?? 0),
+    resultado: round2(declaracion.basesYCuotas.resultadoDeclaracion ?? 0),
   };
 }
 
-function toDomain(dbEjercicio?: DbEjercicioFiscal): EjercicioFiscal | undefined {
-  if (!dbEjercicio) {
-    return undefined;
-  }
-
-  return {
-    id: dbEjercicio.id,
-    ejercicio: dbEjercicio.ejercicio ?? dbEjercicio.año,
-    estado: normalizeEstado(dbEjercicio.estado),
-    calculoAtlas: dbEjercicio.calculoAtlas,
-    calculoAtlasFecha: dbEjercicio.calculoAtlasFecha,
-    declaracionAeat: dbEjercicio.declaracionAeat,
-    declaracionAeatFecha: dbEjercicio.declaracionAeatFecha,
-    declaracionAeatPdfRef: dbEjercicio.declaracionAeatPdfRef,
-    declaracionAeatOrigen: normalizeDeclaracionOrigen(dbEjercicio.declaracionAeatOrigen, dbEjercicio),
-    arrastresRecibidos: cloneArrastres(dbEjercicio.arrastresRecibidos),
-    arrastresGenerados: cloneArrastres(dbEjercicio.arrastresGenerados),
-    documentos: cloneDocumentos(dbEjercicio.documentos),
-    createdAt: dbEjercicio.createdAt,
-    updatedAt: dbEjercicio.updatedAt,
-    cerradoAt: dbEjercicio.cerradoAt ?? dbEjercicio.fechaCierre,
-    declaradoAt: dbEjercicio.declaradoAt ?? dbEjercicio.fechaDeclaracion,
-  };
-}
-
-function toDbRecord(ejercicio: EjercicioFiscal, existing?: DbEjercicioFiscal): DbEjercicioFiscal {
-  const origen = ejercicio.declaracionAeat
-    ? (ejercicio.calculoAtlas ? 'mixto' : 'importado')
-    : 'calculado';
-
-  return {
-    ...existing,
-    id: ejercicio.id ?? existing?.id,
-    año: ejercicio.ejercicio,
-    ejercicio: ejercicio.ejercicio,
-    estado: ejercicio.estado,
-    origen,
-    fechaCierre: ejercicio.cerradoAt,
-    fechaDeclaracion: ejercicio.declaradoAt,
-    snapshotId: existing?.snapshotId,
-    resultadoEjercicioId: existing?.resultadoEjercicioId,
-    calculoAtlas: ejercicio.calculoAtlas,
-    calculoAtlasFecha: ejercicio.calculoAtlasFecha,
-    declaracionAeat: ejercicio.declaracionAeat,
-    declaracionAeatFecha: ejercicio.declaracionAeatFecha,
-    declaracionAeatPdfRef: ejercicio.declaracionAeatPdfRef,
-    declaracionAeatOrigen: ejercicio.declaracionAeatOrigen,
-    arrastresRecibidos: cloneArrastres(ejercicio.arrastresRecibidos),
-    arrastresGenerados: cloneArrastres(ejercicio.arrastresGenerados),
-    documentos: cloneDocumentos(ejercicio.documentos),
-    cerradoAt: ejercicio.cerradoAt,
-    declaradoAt: ejercicio.declaradoAt,
-    resumen: deriveResumen(ejercicio.declaracionAeat ?? ejercicio.calculoAtlas),
-    createdAt: ejercicio.createdAt,
-    updatedAt: ejercicio.updatedAt,
-  };
-}
-
-async function findByEjercicio(ejercicio: number): Promise<DbEjercicioFiscal | undefined> {
-  const db = await initDB();
-
-  try {
-    const byEjercicio = await db.getAllFromIndex(STORE_NAME, 'ejercicio', ejercicio);
-    if (byEjercicio[0]) {
-      return byEjercicio[0] as DbEjercicioFiscal;
-    }
-  } catch {
-    // compat with older DBs before index creation
-  }
-
-  const legacy = await db.getAllFromIndex(STORE_NAME, 'año', ejercicio);
-  return legacy[0] as DbEjercicioFiscal | undefined;
-}
-
-function assertEstadoActual(ejercicio: EjercicioFiscal, esperado: EstadoEjercicio, accion: string): void {
-  if (ejercicio.estado !== esperado) {
-    throw new Error(
-      `No se puede ${accion} el ejercicio ${ejercicio.ejercicio} porque está en estado "${ejercicio.estado}" (se requiere "${esperado}").`,
-    );
-  }
-}
-
-function createNewEjercicio(ejercicio: number): EjercicioFiscal {
-  const now = new Date().toISOString();
+function createEmptyEjercicio(ejercicio: number, estado: EstadoEjercicio = 'en_curso'): EjercicioFiscal {
+  const now = nowIso();
   return {
     ejercicio,
-    estado: 'en_curso',
+    estado,
     declaracionAeatOrigen: 'no_presentada',
     arrastresRecibidos: createEmptyArrastresEjercicio(),
     arrastresGenerados: createEmptyArrastresEjercicio(),
-    documentos: [],
     createdAt: now,
     updatedAt: now,
   };
 }
 
-function buildLegacyView(domain: EjercicioFiscal, existing?: DbEjercicioFiscal): DbEjercicioFiscal {
+function toDomain(record?: DbEjercicioFiscal): EjercicioFiscal | undefined {
+  if (!record) {
+    return undefined;
+  }
+
   return {
-    ...(existing ?? {}),
-    id: domain.id ?? existing?.id,
-    año: domain.ejercicio,
-    ejercicio: domain.ejercicio,
-    estado: legacyEstado(domain.estado),
-    origen: normalizeOrigen(existing),
-    fechaCierre: domain.cerradoAt,
-    fechaDeclaracion: domain.declaradoAt,
-    snapshotId: existing?.snapshotId,
-    resultadoEjercicioId: existing?.resultadoEjercicioId,
-    resumen: deriveResumen(domain.declaracionAeat ?? domain.calculoAtlas),
-    createdAt: domain.createdAt,
-    updatedAt: domain.updatedAt,
-    calculoAtlas: domain.calculoAtlas,
-    calculoAtlasFecha: domain.calculoAtlasFecha,
-    declaracionAeat: domain.declaracionAeat,
-    declaracionAeatFecha: domain.declaracionAeatFecha,
-    declaracionAeatPdfRef: domain.declaracionAeatPdfRef,
-    declaracionAeatOrigen: domain.declaracionAeatOrigen,
-    arrastresRecibidos: cloneArrastres(domain.arrastresRecibidos),
-    arrastresGenerados: cloneArrastres(domain.arrastresGenerados),
-    documentos: cloneDocumentos(domain.documentos),
-    cerradoAt: domain.cerradoAt,
-    declaradoAt: domain.declaradoAt,
+    ejercicio: record.ejercicio ?? record.año ?? 0,
+    estado: (record.estado === 'vivo' ? 'en_curso' : record.estado) as EstadoEjercicio,
+    calculoAtlas: record.calculoAtlas ? clone(record.calculoAtlas) : undefined,
+    calculoAtlasFecha: record.calculoAtlasFecha,
+    declaracionAeat: record.declaracionAeat ? clone(record.declaracionAeat) : undefined,
+    declaracionAeatFecha: record.declaracionAeatFecha,
+    declaracionAeatPdfRef: record.declaracionAeatPdfRef,
+    declaracionAeatOrigen: record.declaracionAeatOrigen ?? 'no_presentada',
+    arrastresRecibidos: normalizeArrastres(record.arrastresRecibidos),
+    arrastresGenerados: normalizeArrastres(record.arrastresGenerados),
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    cerradoAt: record.cerradoAt ?? record.fechaCierre,
+    declaradoAt: record.declaradoAt ?? record.fechaDeclaracion,
   };
+}
+
+function toDbRecord(ejercicio: EjercicioFiscal, existing?: DbEjercicioFiscal): DbEjercicioFiscal {
+  return {
+    ...existing,
+    año: ejercicio.ejercicio,
+    ejercicio: ejercicio.ejercicio,
+    estado: ejercicio.estado,
+    origen: buildLegacyOrigen(ejercicio),
+    calculoAtlas: ejercicio.calculoAtlas ? clone(ejercicio.calculoAtlas) : undefined,
+    calculoAtlasFecha: ejercicio.calculoAtlasFecha,
+    declaracionAeat: ejercicio.declaracionAeat ? clone(ejercicio.declaracionAeat) : undefined,
+    declaracionAeatFecha: ejercicio.declaracionAeatFecha,
+    declaracionAeatPdfRef: ejercicio.declaracionAeatPdfRef,
+    declaracionAeatOrigen: ejercicio.declaracionAeatOrigen,
+    arrastresRecibidos: normalizeArrastres(ejercicio.arrastresRecibidos),
+    arrastresGenerados: normalizeArrastres(ejercicio.arrastresGenerados),
+    declaracionInmuebles: ejercicio.declaracionAeat?.inmuebles ?? ejercicio.calculoAtlas?.inmuebles,
+    fechaCierre: ejercicio.cerradoAt,
+    fechaDeclaracion: ejercicio.declaradoAt,
+    cerradoAt: ejercicio.cerradoAt,
+    declaradoAt: ejercicio.declaradoAt,
+    resumen: resumenDesdeDeclaracion(ejercicio.declaracionAeat ?? ejercicio.calculoAtlas),
+    createdAt: ejercicio.createdAt,
+    updatedAt: ejercicio.updatedAt,
+  };
+}
+
+async function getDbEjercicio(ejercicio: number): Promise<DbEjercicioFiscal | undefined> {
+  const db = await initDB();
+  const byKey = await db.get(EJERCICIOS_STORE, ejercicio);
+  if (byKey) {
+    return byKey as DbEjercicioFiscal;
+  }
+
+  try {
+    const byIndex = await db.getFromIndex(EJERCICIOS_STORE, 'ejercicio', ejercicio);
+    return byIndex as DbEjercicioFiscal | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function extraerArrastresDeDeclaracion(declaracion: DeclaracionIRPF, ejercicioOrigen: number): ArrastresEjercicio {
+  return {
+    gastos0105_0106: declaracion.inmuebles
+      .filter((inmueble) => inmueble.arrastresGenerados > 0)
+      .map((inmueble) => ({
+        inmuebleId: inmueble.refCatastralPrincipal,
+        referenciaCatastral: inmueble.referenciaCatastral,
+        ejercicioOrigen,
+        importeOriginal: round2(inmueble.arrastresGenerados),
+        importeAplicado: 0,
+        importePendiente: round2(inmueble.arrastresGenerados),
+        caducaEjercicio: ejercicioOrigen + 4,
+      })),
+    perdidasPatrimonialesAhorro: (declaracion.gananciasPerdidas.perdidasPendientes ?? [])
+      .filter((perdida) => perdida.importePendiente > 0)
+      .map((perdida) => ({
+        ejercicioOrigen: perdida.ejercicioOrigen,
+        importeOriginal: round2(perdida.importeOriginal),
+        importeAplicado: round2(perdida.importeAplicado),
+        importePendiente: round2(perdida.importePendiente),
+        caducaEjercicio: perdida.caducaEjercicio,
+        origen: perdida.origen,
+      })),
+    amortizacionesAcumuladas: declaracion.inmuebles
+      .filter((inmueble) => inmueble.amortizacionInmueble > 0)
+      .map((inmueble) => ({
+        inmuebleId: inmueble.refCatastralPrincipal,
+        referenciaCatastral: inmueble.referenciaCatastral,
+        amortizacionDeducida: round2(inmueble.amortizacionInmueble),
+        amortizacionEstandar: round2(inmueble.baseAmortizacion ?? inmueble.amortizacionInmueble),
+        amortizacionAplicada: round2(inmueble.amortizacionInmueble),
+        ejercicioDesde: ejercicioOrigen,
+        ejercicioHasta: ejercicioOrigen,
+      })),
+  };
+}
+
+function isArrastreManualActivo(arrastre: ArrastreManual, ejercicioDestino: number): boolean {
+  if (arrastre.reemplazadoPorImportacion) {
+    return false;
+  }
+
+  return ejercicioDestino <= arrastre.ejercicioOrigen + 4;
+}
+
+async function getArrastresManualesTotales(ejercicioDestino: number): Promise<ArrastresEjercicio> {
+  const db = await initDB();
+  const all = (await db.getAll(ARRASTRES_MANUAL_STORE)) as ArrastreManual[];
+  const activos = all.filter((arrastre) => arrastre.ejercicioOrigen < ejercicioDestino && isArrastreManualActivo(arrastre, ejercicioDestino));
+
+  return {
+    gastos0105_0106: activos
+      .filter((arrastre) => arrastre.tipo === 'gastos_0105_0106')
+      .map((arrastre) => ({
+        inmuebleId: arrastre.inmuebleId,
+        referenciaCatastral: arrastre.referenciaCatastral ?? 'manual',
+        ejercicioOrigen: arrastre.ejercicioOrigen,
+        importeOriginal: round2(arrastre.importe),
+        importeAplicado: 0,
+        importePendiente: round2(arrastre.importe),
+        caducaEjercicio: arrastre.ejercicioOrigen + 4,
+      })),
+    perdidasPatrimonialesAhorro: activos
+      .filter((arrastre) => arrastre.tipo === 'perdidas_ahorro' || arrastre.tipo === 'perdidas_general')
+      .map((arrastre) => ({
+        ejercicioOrigen: arrastre.ejercicioOrigen,
+        importeOriginal: round2(arrastre.importe),
+        importeAplicado: 0,
+        importePendiente: round2(arrastre.importe),
+        caducaEjercicio: arrastre.ejercicioOrigen + 4,
+        origen: arrastre.tipo,
+        detalle: arrastre.detalle,
+      })),
+    amortizacionesAcumuladas: [],
+  };
+}
+
+function mergeLine(
+  current: LineaCoberturaDocumental | undefined,
+  doc: DocumentoFiscal,
+): LineaCoberturaDocumental {
+  const documentos = [...(current?.documentos ?? []), doc];
+  const importeDocumentado = round2((current?.importeDocumentado ?? 0) + Number(doc.importe ?? 0));
+  const importeDeclarado = current?.importeDeclarado ?? 0;
+  const diferencia = round2(Math.max(0, importeDeclarado - importeDocumentado));
+
+  return {
+    concepto: doc.concepto,
+    descripcion: current?.descripcion ?? doc.descripcion ?? doc.concepto,
+    inmuebleRef: current?.inmuebleRef ?? doc.inmuebleRef,
+    importeDeclarado,
+    importeDocumentado,
+    diferencia,
+    estado: diferencia <= 0 ? 'cubierto' : 'parcial',
+    documentos,
+  };
+}
+
+function collectDeclaredConcepts(declaracion?: DeclaracionIRPF): Array<Omit<LineaCoberturaDocumental, 'documentos' | 'estado' | 'importeDocumentado' | 'diferencia'>> {
+  if (!declaracion) {
+    return [];
+  }
+
+  const lineas: Array<Omit<LineaCoberturaDocumental, 'documentos' | 'estado' | 'importeDocumentado' | 'diferencia'>> = [];
+
+  for (const inmueble of declaracion.inmuebles) {
+    const inmuebleRef = inmueble.referenciaCatastral;
+    const pushIfPositive = (concepto: ConceptoFiscalVinculable, descripcion: string, importe: number) => {
+      if (importe > 0) {
+        lineas.push({ concepto, descripcion, inmuebleRef, importeDeclarado: round2(importe) });
+      }
+    };
+
+    pushIfPositive('ingresos_alquiler', 'Ingresos de alquiler', inmueble.ingresosIntegros);
+    pushIfPositive('gastos_intereses', 'Intereses de financiación', inmueble.interesesFinanciacion);
+    pushIfPositive('gastos_reparacion', 'Gastos de reparación', inmueble.gastosReparacion);
+    pushIfPositive('gastos_comunidad', 'Gastos de comunidad', inmueble.gastosComunidad);
+    pushIfPositive('gastos_servicios', 'Gastos de servicios', inmueble.gastosServicios);
+    pushIfPositive('gastos_suministros', 'Gastos de suministros', inmueble.gastosSuministros);
+    pushIfPositive('gastos_seguros', 'Gastos de seguros', inmueble.gastosSeguros);
+    pushIfPositive('gastos_tributos', 'Gastos de tributos', inmueble.gastosTributos);
+    pushIfPositive('amortizacion_muebles', 'Amortización de muebles', inmueble.amortizacionMuebles);
+    pushIfPositive('amortizacion_inmueble', 'Amortización del inmueble', inmueble.amortizacionInmueble);
+    pushIfPositive('mejoras', 'Mejoras del inmueble', inmueble.mejoras ?? 0);
+    pushIfPositive('gastos_adquisicion', 'Gastos de adquisición', inmueble.gastosAdquisicion ?? 0);
+  }
+
+  if (declaracion.trabajo.retribucionesDinerarias > 0) {
+    lineas.push({
+      concepto: 'retribuciones_trabajo',
+      descripcion: 'Retribuciones del trabajo',
+      importeDeclarado: round2(declaracion.trabajo.retribucionesDinerarias),
+    });
+  }
+
+  const ingresosActividad = round2(declaracion.actividades.reduce((sum, item) => sum + item.ingresos, 0));
+  if (ingresosActividad > 0) {
+    lineas.push({ concepto: 'ingresos_actividad', descripcion: 'Ingresos de actividad', importeDeclarado: ingresosActividad });
+  }
+
+  const gastosActividad = round2(declaracion.actividades.reduce((sum, item) => sum + item.gastos, 0));
+  if (gastosActividad > 0) {
+    lineas.push({ concepto: 'gastos_actividad', descripcion: 'Gastos de actividad', importeDeclarado: gastosActividad });
+  }
+
+  if (declaracion.capitalMobiliario.interesesCuentas > 0) {
+    lineas.push({
+      concepto: 'intereses_cuentas',
+      descripcion: 'Intereses de cuentas',
+      importeDeclarado: round2(declaracion.capitalMobiliario.interesesCuentas),
+    });
+  }
+
+  if (declaracion.planPensiones.reduccionAplicada > 0) {
+    lineas.push({
+      concepto: 'aportaciones_pp',
+      descripcion: 'Aportaciones a planes de pensiones',
+      importeDeclarado: round2(declaracion.planPensiones.reduccionAplicada),
+    });
+  }
+
+  return lineas;
 }
 
 class EjercicioFiscalService {
   async getEjercicio(ejercicio: number): Promise<EjercicioFiscal | undefined> {
     validateEjercicio(ejercicio);
-    return toDomain(await findByEjercicio(ejercicio));
+    return toDomain(await getDbEjercicio(ejercicio));
   }
 
-  async getAll(): Promise<EjercicioFiscal[]> {
+  async getAllEjercicios(): Promise<EjercicioFiscal[]> {
     const db = await initDB();
-    const ejercicios = (await db.getAll(STORE_NAME)) as DbEjercicioFiscal[];
-    return ejercicios
+    const all = (await db.getAll(EJERCICIOS_STORE)) as DbEjercicioFiscal[];
+    return all
       .map((item) => toDomain(item))
       .filter((item): item is EjercicioFiscal => Boolean(item))
       .sort((a, b) => b.ejercicio - a.ejercicio);
   }
 
-  async save(ejercicio: EjercicioFiscal): Promise<void> {
+  async saveEjercicio(ejercicio: EjercicioFiscal): Promise<void> {
     validateEjercicio(ejercicio.ejercicio);
     const db = await initDB();
-    const existing = await findByEjercicio(ejercicio.ejercicio);
-    const record = toDbRecord(ejercicio, existing);
-    if (existing?.id != null && record.id == null) {
-      record.id = existing.id;
-    }
-    await db.put(STORE_NAME, record);
+    const existing = await getDbEjercicio(ejercicio.ejercicio);
+    await db.put(EJERCICIOS_STORE, toDbRecord(ejercicio, existing));
   }
 
-  async ensureEjercicio(ejercicio: number): Promise<EjercicioFiscal> {
+  async getOrCreateEjercicio(ejercicio: number, estadoDefault: EstadoEjercicio = 'en_curso'): Promise<EjercicioFiscal> {
     validateEjercicio(ejercicio);
     const existing = await this.getEjercicio(ejercicio);
     if (existing) {
       return existing;
     }
 
-    const created = createNewEjercicio(ejercicio);
-    await this.save(created);
-    return (await this.getEjercicio(ejercicio)) as EjercicioFiscal;
+    const created = createEmptyEjercicio(ejercicio, estadoDefault);
+    created.arrastresRecibidos = normalizeArrastres(await this.getArrastresParaEjercicio(ejercicio));
+    await this.saveEjercicio(created);
+    return created;
   }
 
-  async getEstado(ejercicio: number): Promise<EstadoEjercicio> {
-    const existing = await this.ensureEjercicio(ejercicio);
-    return existing.estado;
-  }
+  async cerrarEjercicio(ejercicio: number): Promise<EjercicioFiscal> {
+    const current = await this.getOrCreateEjercicio(ejercicio);
+    if (current.estado !== 'en_curso') {
+      return current;
+    }
 
-  async cerrarEjercicio(ejercicio: number): Promise<void> {
-    const current = await this.ensureEjercicio(ejercicio);
-    assertEstadoActual(current, 'en_curso', 'cerrar');
-
-    const now = new Date().toISOString();
-    const calculoAtlas = current.calculoAtlas ?? await calcularDeclaracionIRPF(ejercicio);
-    await this.save({
+    const updated: EjercicioFiscal = {
       ...current,
       estado: 'cerrado',
-      calculoAtlas,
-      calculoAtlasFecha: current.calculoAtlasFecha ?? now,
-      cerradoAt: now,
-      updatedAt: now,
-    });
+      cerradoAt: current.cerradoAt ?? nowIso(),
+      updatedAt: nowIso(),
+    };
+    await this.saveEjercicio(updated);
+    return updated;
   }
 
   async declararEjercicio(
     ejercicio: number,
-    datos: DeclaracionIRPF,
+    datosAeat: DeclaracionIRPF,
     origen: OrigenDeclaracion,
-  ): Promise<void> {
-    const current = await this.ensureEjercicio(ejercicio);
-    if (current.estado === 'declarado') {
-      throw new Error(`El ejercicio ${ejercicio} ya está declarado.`);
-    }
-    if (current.estado !== 'cerrado') {
-      throw new Error(`No se puede declarar el ejercicio ${ejercicio} porque está en estado "${current.estado}". Primero debe cerrarse.`);
-    }
-
-    const now = new Date().toISOString();
-    await this.save({
+    fechaPresentacion?: string,
+    pdfRef?: string,
+  ): Promise<EjercicioFiscal> {
+    const current = await this.getOrCreateEjercicio(ejercicio);
+    const fecha = fechaPresentacion ?? nowIso();
+    const updated: EjercicioFiscal = {
       ...current,
       estado: 'declarado',
-      declaracionAeat: datos,
-      declaracionAeatFecha: now,
+      declaracionAeat: clone(datosAeat),
+      declaracionAeatFecha: fecha,
+      declaracionAeatPdfRef: pdfRef,
       declaracionAeatOrigen: origen,
-      calculoAtlas: current.calculoAtlas ?? datos,
-      calculoAtlasFecha: current.calculoAtlasFecha ?? now,
-      declaradoAt: now,
-      updatedAt: now,
-    });
+      arrastresGenerados: extraerArrastresDeDeclaracion(datosAeat, ejercicio),
+      cerradoAt: current.cerradoAt ?? fecha,
+      declaradoAt: fecha,
+      updatedAt: nowIso(),
+    };
+
+    await this.saveEjercicio(updated);
+    await this.marcarArrastresReemplazados(ejercicio);
+    return updated;
+  }
+
+  async guardarCalculoAtlas(ejercicio: number, calculo: DeclaracionIRPF): Promise<EjercicioFiscal> {
+    const current = await this.getOrCreateEjercicio(ejercicio);
+    if (current.estado === 'declarado' && current.declaracionAeat) {
+      return current;
+    }
+
+    const updated: EjercicioFiscal = {
+      ...current,
+      calculoAtlas: clone(calculo),
+      calculoAtlasFecha: nowIso(),
+      arrastresGenerados: extraerArrastresDeDeclaracion(calculo, ejercicio),
+      updatedAt: nowIso(),
+    };
+    await this.saveEjercicio(updated);
+    return updated;
   }
 
   async getVerdadVigente(ejercicio: number): Promise<DeclaracionIRPF | undefined> {
@@ -303,213 +417,346 @@ class EjercicioFiscalService {
     if (!current) {
       return undefined;
     }
-    if (current.declaracionAeat) {
-      return current.declaracionAeat;
-    }
-    return current.calculoAtlas;
+
+    return current.estado === 'declarado' && current.declaracionAeat
+      ? clone(current.declaracionAeat)
+      : current.calculoAtlas
+        ? clone(current.calculoAtlas)
+        : undefined;
+  }
+
+  async getTresVerdades(ejercicio: number): Promise<{ calculado?: DeclaracionIRPF; declarado?: DeclaracionIRPF; estado: EstadoEjercicio }> {
+    const current = await this.getOrCreateEjercicio(ejercicio);
+    return {
+      calculado: current.calculoAtlas ? clone(current.calculoAtlas) : undefined,
+      declarado: current.declaracionAeat ? clone(current.declaracionAeat) : undefined,
+      estado: current.estado,
+    };
   }
 
   async getArrastresParaEjercicio(ejercicio: number): Promise<ArrastresEjercicio> {
     validateEjercicio(ejercicio);
     const anterior = await this.getEjercicio(ejercicio - 1);
-    if (!anterior) {
-      return createEmptyArrastresEjercicio();
+    if (anterior) {
+      if (
+        anterior.arrastresGenerados.gastos0105_0106.length
+        || anterior.arrastresGenerados.perdidasPatrimonialesAhorro.length
+        || anterior.arrastresGenerados.amortizacionesAcumuladas.length
+      ) {
+        return normalizeArrastres(anterior.arrastresGenerados);
+      }
+
+      if (anterior.declaracionAeat) {
+        return extraerArrastresDeDeclaracion(anterior.declaracionAeat, ejercicio - 1);
+      }
+
+      if (anterior.calculoAtlas) {
+        return extraerArrastresDeDeclaracion(anterior.calculoAtlas, ejercicio - 1);
+      }
     }
 
-    if (anterior.arrastresGenerados.porAnio.length || anterior.arrastresGenerados.porInmueble.length) {
-      return cloneArrastres(anterior.arrastresGenerados);
-    }
-
-    if (anterior.arrastresRecibidos.porAnio.length || anterior.arrastresRecibidos.porInmueble.length) {
-      return cloneArrastres(anterior.arrastresRecibidos);
-    }
-
-    return createEmptyArrastresEjercicio();
+    return normalizeArrastres(await getArrastresManualesTotales(ejercicio));
   }
 
-  async addDocumento(ejercicio: number, doc: DocumentoFiscal): Promise<void> {
-    const current = await this.ensureEjercicio(ejercicio);
-    const now = new Date().toISOString();
-    const documento: DocumentoFiscal = {
-      ...doc,
-      id: doc.id ?? `${ejercicio}-${Date.now()}`,
-      ejercicio,
-      fechaSubida: doc.fechaSubida ?? now,
-      estado: doc.estado ?? 'documentado',
+  async addArrastreManual(arrastre: ArrastreManual): Promise<ArrastreManual> {
+    const db = await initDB();
+    const stored: ArrastreManual = {
+      ...arrastre,
+      reemplazadoPorImportacion: arrastre.reemplazadoPorImportacion ?? false,
+      createdAt: arrastre.createdAt ?? nowIso(),
     };
-
-    await this.save({
-      ...current,
-      documentos: [...current.documentos.filter((item) => item.id !== documento.id), documento],
-      updatedAt: now,
-    });
+    const id = await db.add(ARRASTRES_MANUAL_STORE, stored);
+    return { ...stored, id: Number(id) };
   }
 
-  async getDocumentos(ejercicio: number): Promise<DocumentoFiscal[]> {
-    const current = await this.ensureEjercicio(ejercicio);
-    return cloneDocumentos(current.documentos);
+  async getArrastresManual(): Promise<ArrastreManual[]> {
+    const db = await initDB();
+    const all = (await db.getAll(ARRASTRES_MANUAL_STORE)) as ArrastreManual[];
+    return all.sort((a, b) => b.ejercicioOrigen - a.ejercicioOrigen).map((item) => clone(item));
   }
 
-  async getCoberturaDocumental(ejercicio: number): Promise<InformeCobertura> {
-    const documentos = await this.getDocumentos(ejercicio);
-    const byConcept = new Map<string, DocumentoFiscal[]>();
+  async marcarArrastresReemplazados(ejercicioOrigen: number): Promise<void> {
+    const db = await initDB();
+    const tx = db.transaction(ARRASTRES_MANUAL_STORE, 'readwrite');
+    const store = tx.objectStore(ARRASTRES_MANUAL_STORE);
+    const all = (await store.getAll()) as ArrastreManual[];
+
+    await Promise.all(
+      all
+        .filter((item) => item.ejercicioOrigen === ejercicioOrigen && !item.reemplazadoPorImportacion)
+        .map((item) => store.put({ ...item, reemplazadoPorImportacion: true })),
+    );
+
+    await tx.done;
+  }
+
+  async addDocumentoFiscal(doc: DocumentoFiscal): Promise<DocumentoFiscal> {
+    const db = await initDB();
+    const stored: DocumentoFiscal = {
+      ...doc,
+      fechaSubida: doc.fechaSubida ?? nowIso(),
+    };
+    const id = await db.add(DOCUMENTOS_STORE, stored);
+    return { ...stored, id: Number(id) };
+  }
+
+  async getDocumentosFiscales(ejercicio: number): Promise<DocumentoFiscal[]> {
+    const db = await initDB();
+    const docs = (await db.getAllFromIndex(DOCUMENTOS_STORE, 'ejercicio', ejercicio)) as DocumentoFiscal[];
+    return docs.sort((a, b) => a.fechaDocumento.localeCompare(b.fechaDocumento)).map((doc) => clone(doc));
+  }
+
+  async getDocumentosPorInmueble(ejercicio: number, inmuebleId: string): Promise<DocumentoFiscal[]> {
+    const db = await initDB();
+    const docs = (await db.getAllFromIndex(DOCUMENTOS_STORE, 'ejercicio-inmuebleId', [ejercicio, inmuebleId])) as DocumentoFiscal[];
+    return docs.map((doc) => clone(doc));
+  }
+
+  async deleteDocumentoFiscal(id: number): Promise<void> {
+    const db = await initDB();
+    await db.delete(DOCUMENTOS_STORE, id);
+  }
+
+  async getCoberturaDocumental(ejercicio: number): Promise<InformeCoberturaDocumental> {
+    const [verdadVigente, documentos] = await Promise.all([
+      this.getVerdadVigente(ejercicio),
+      this.getDocumentosFiscales(ejercicio),
+    ]);
+
+    const lineasMap = new Map<string, LineaCoberturaDocumental>();
+
+    for (const declarada of collectDeclaredConcepts(verdadVigente)) {
+      const key = `${declarada.concepto}::${declarada.inmuebleRef ?? 'global'}`;
+      lineasMap.set(key, {
+        ...declarada,
+        importeDocumentado: 0,
+        diferencia: round2(declarada.importeDeclarado),
+        estado: 'sin_documentar',
+        documentos: [],
+      });
+    }
 
     for (const documento of documentos) {
-      const key = documento.conceptoFiscal || 'sin_concepto';
-      const current = byConcept.get(key) ?? [];
-      current.push(documento);
-      byConcept.set(key, current);
+      const key = `${documento.concepto}::${documento.inmuebleRef ?? 'global'}`;
+      const current = lineasMap.get(key);
+      const merged = mergeLine(current, documento);
+      if (!current) {
+        merged.descripcion = documento.descripcion ?? documento.concepto;
+        merged.inmuebleRef = documento.inmuebleRef;
+        merged.importeDeclarado = 0;
+        merged.diferencia = 0;
+        merged.estado = 'cubierto';
+      } else if (merged.importeDocumentado <= 0) {
+        merged.estado = 'sin_documentar';
+      } else if (merged.diferencia > 0) {
+        merged.estado = 'parcial';
+      } else {
+        merged.estado = 'cubierto';
+      }
+      lineasMap.set(key, merged);
     }
 
-    const lineas: InformeCoberturaLinea[] = Array.from(byConcept.entries()).map(([conceptoFiscal, docs]) => {
-      const importeDeclarado = round2(docs.reduce((sum, doc) => sum + Number(doc.importeDeclarado ?? doc.importe ?? 0), 0));
-      const importeDocumentado = round2(docs.reduce((sum, doc) => sum + Number(doc.importe ?? 0), 0));
-      const importePendiente = round2(Math.max(0, importeDeclarado - importeDocumentado));
-      const estado: InformeCoberturaLinea['estado'] = importePendiente <= 0
-        ? 'completo'
-        : importeDocumentado > 0
-          ? 'parcial'
-          : 'sin_documentar';
-
-      return {
-        conceptoFiscal,
-        importeDeclarado,
-        importeDocumentado,
-        importePendiente,
-        documentos: docs,
-        estado,
-      };
-    });
-
-    const totalImporteDeclarado = round2(lineas.reduce((sum, linea) => sum + linea.importeDeclarado, 0));
-    const totalImporteDocumentado = round2(lineas.reduce((sum, linea) => sum + linea.importeDocumentado, 0));
-    const totalImportePendiente = round2(lineas.reduce((sum, linea) => sum + linea.importePendiente, 0));
-    const porcentajeCobertura = totalImporteDeclarado > 0
-      ? round2((totalImporteDocumentado / totalImporteDeclarado) * 100)
-      : (documentos.length > 0 ? 100 : 0);
-
-    const riesgo = totalImportePendiente > 10000
-      ? 'alto'
-      : totalImportePendiente > 1000
-        ? 'medio'
-        : 'bajo';
+    const lineas = Array.from(lineasMap.values()).sort((a, b) => a.concepto.localeCompare(b.concepto));
+    const totalDeclarado = round2(lineas.reduce((sum, item) => sum + item.importeDeclarado, 0));
+    const totalDocumentado = round2(lineas.reduce((sum, item) => sum + item.importeDocumentado, 0));
+    const riesgoTotal = round2(lineas.reduce((sum, item) => sum + item.diferencia, 0));
+    const nivelRiesgo: InformeCoberturaDocumental['nivelRiesgo'] = riesgoTotal > 5000 ? 'alto' : riesgoTotal > 1000 ? 'medio' : 'bajo';
 
     return {
       ejercicio,
-      totalDocumentos: documentos.length,
-      totalConceptos: lineas.length,
-      totalImporteDeclarado,
-      totalImporteDocumentado,
-      totalImportePendiente,
-      porcentajeCobertura,
-      riesgo,
       lineas,
+      totalDeclarado,
+      totalDocumentado,
+      riesgoTotal,
+      nivelRiesgo,
     };
+  }
+
+  async inicializarEjercicioActual(): Promise<EjercicioFiscal> {
+    const currentYear = new Date().getFullYear();
+    return this.getOrCreateEjercicio(currentYear, 'en_curso');
+  }
+
+  async verificarCierresAutomaticos(): Promise<EjercicioFiscal[]> {
+    const currentYear = new Date().getFullYear();
+    const ejercicios = await this.getAllEjercicios();
+    const actualizados: EjercicioFiscal[] = [];
+
+    for (const ejercicio of ejercicios) {
+      if (ejercicio.ejercicio < currentYear && ejercicio.estado === 'en_curso') {
+        const actualizado = {
+          ...ejercicio,
+          estado: 'cerrado' as const,
+          cerradoAt: ejercicio.cerradoAt ?? nowIso(),
+          updatedAt: nowIso(),
+        };
+        await this.saveEjercicio(actualizado);
+        actualizados.push(actualizado);
+      }
+    }
+
+    return actualizados;
   }
 }
 
 export const ejercicioFiscalService = new EjercicioFiscalService();
 
-export async function getEjercicio(año: number): Promise<DbEjercicioFiscal | undefined> {
-  validateEjercicio(año);
-  const domain = await ejercicioFiscalService.getEjercicio(año);
-  const existing = await findByEjercicio(año);
-  return domain ? buildLegacyView(domain, existing) : undefined;
+function toLegacyView(ejercicio: EjercicioFiscal): DbEjercicioFiscal {
+  return toDbRecord(ejercicio);
 }
 
-export async function getOrCreateEjercicio(año: number): Promise<DbEjercicioFiscal> {
-  const domain = await ejercicioFiscalService.ensureEjercicio(año);
-  const existing = await findByEjercicio(año);
-  return buildLegacyView(domain, existing);
+export async function getEjercicio(ejercicio: number): Promise<DbEjercicioFiscal | undefined> {
+  const found = await ejercicioFiscalService.getEjercicio(ejercicio);
+  return found ? toLegacyView(found) : undefined;
 }
 
-export async function getAllEjercicios(): Promise<DbEjercicioFiscal[]> {
-  const all = await ejercicioFiscalService.getAll();
-  return Promise.all(
-    all.map(async (ejercicio) => buildLegacyView(ejercicio, await findByEjercicio(ejercicio.ejercicio))),
-  );
-}
-
-export async function updateResumen(año: number): Promise<DbEjercicioFiscal> {
-  const current = await ejercicioFiscalService.ensureEjercicio(año);
-  if (current.estado !== 'en_curso') {
-    throw new Error(`No se puede actualizar el resumen de el ejercicio ${año} porque está en estado "${current.estado}" (se requiere "en_curso").`);
+export async function saveLegacyEjercicioRecord(record: DbEjercicioFiscal): Promise<DbEjercicioFiscal> {
+  const ejercicio = record.ejercicio ?? record.año;
+  if (typeof ejercicio !== 'number') {
+    throw new Error('El registro legacy debe incluir ejercicio o año.');
   }
 
-  const declaracion = await calcularDeclaracionIRPF(año);
-  const now = new Date().toISOString();
-  await ejercicioFiscalService.save({
-    ...current,
-    calculoAtlas: declaracion,
-    calculoAtlasFecha: now,
-    updatedAt: now,
+  const db = await initDB();
+  await db.put(EJERCICIOS_STORE, {
+    ...record,
+    ejercicio,
+    año: record.año ?? ejercicio,
+    arrastresRecibidos: normalizeArrastres(record.arrastresRecibidos),
+    arrastresGenerados: normalizeArrastres(record.arrastresGenerados),
   });
 
-  return (await getEjercicio(año)) as DbEjercicioFiscal;
+  return (await getEjercicio(ejercicio)) as DbEjercicioFiscal;
 }
 
-export async function cerrarEjercicio(año: number): Promise<DbEjercicioFiscal> {
-  await ejercicioFiscalService.cerrarEjercicio(año);
-  return (await getEjercicio(año)) as DbEjercicioFiscal;
+export async function getAllEjercicios(): Promise<EjercicioFiscal[]> {
+  return ejercicioFiscalService.getAllEjercicios();
 }
 
-export async function reabrirEjercicio(año: number): Promise<DbEjercicioFiscal> {
-  const current = await ejercicioFiscalService.ensureEjercicio(año);
-  if (current.estado !== 'cerrado') {
-    throw new Error(`No se puede reabrir el ejercicio ${año} porque está en estado "${current.estado}" (se requiere "cerrado").`);
-  }
-
-  const now = new Date().toISOString();
-  await ejercicioFiscalService.save({
-    ...current,
-    estado: 'en_curso',
-    cerradoAt: undefined,
-    updatedAt: now,
-  });
-
-  return (await getEjercicio(año)) as DbEjercicioFiscal;
+export async function saveEjercicio(ejercicio: EjercicioFiscal): Promise<void> {
+  await ejercicioFiscalService.saveEjercicio(ejercicio);
 }
 
-export async function declararEjercicio(año: number): Promise<DbEjercicioFiscal> {
-  const current = await ejercicioFiscalService.ensureEjercicio(año);
-  const datos = current.calculoAtlas ?? await calcularDeclaracionIRPF(año);
-  await ejercicioFiscalService.declararEjercicio(año, datos, 'manual');
-  return (await getEjercicio(año)) as DbEjercicioFiscal;
+export async function getOrCreateEjercicio(ejercicio: number, estadoDefault: EstadoEjercicio = 'en_curso'): Promise<DbEjercicioFiscal> {
+  return toLegacyView(await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, estadoDefault));
 }
 
-export async function updateNotas(año: number, notas: string): Promise<DbEjercicioFiscal> {
-  const existing = await findByEjercicio(año);
-  if (!existing) {
-    throw new Error(`No existe un ejercicio fiscal para el año ${año}. No se pueden actualizar notas de un ejercicio inexistente.`);
-  }
-
-  const now = new Date().toISOString();
-  await (await initDB()).put(STORE_NAME, {
-    ...existing,
-    notas,
-    updatedAt: now,
-  });
-
-  return (await getEjercicio(año)) as DbEjercicioFiscal;
+export async function cerrarEjercicio(ejercicio: number): Promise<DbEjercicioFiscal> {
+  return toLegacyView(await ejercicioFiscalService.cerrarEjercicio(ejercicio));
 }
 
-export async function deleteEjercicio(año: number): Promise<void> {
-  const existing = await findByEjercicio(año);
-  if (!existing) {
-    return;
-  }
-
-  if (normalizeEstado(existing.estado) !== 'en_curso') {
-    throw new Error(`No se puede borrar el ejercicio ${año} porque está en estado "${normalizeEstado(existing.estado)}".`);
-  }
-
-  if (existing.snapshotId) {
-    throw new Error(`No se puede borrar el ejercicio ${año} porque tiene snapshotId asociado (${existing.snapshotId}).`);
-  }
-
-  if (existing.id == null) {
-    throw new Error(`No se puede borrar el ejercicio ${año} porque no tiene id.`);
-  }
-
-  await (await initDB()).delete(STORE_NAME, existing.id);
+export async function declararEjercicio(
+  ejercicio: number,
+  datosAeat?: DeclaracionIRPF,
+  origen: OrigenDeclaracion = 'manual',
+  fechaPresentacion?: string,
+  pdfRef?: string,
+): Promise<DbEjercicioFiscal> {
+  const datos = datosAeat ?? (await ejercicioFiscalService.getVerdadVigente(ejercicio)) ?? createEmptyDeclaracion();
+  return toLegacyView(await ejercicioFiscalService.declararEjercicio(ejercicio, datos, origen, fechaPresentacion, pdfRef));
 }
+
+export async function guardarCalculoAtlas(ejercicio: number, calculo: DeclaracionIRPF): Promise<EjercicioFiscal> {
+  return ejercicioFiscalService.guardarCalculoAtlas(ejercicio, calculo);
+}
+
+export async function addArrastreManual(arrastre: ArrastreManual): Promise<ArrastreManual> {
+  return ejercicioFiscalService.addArrastreManual(arrastre);
+}
+
+export async function getArrastresManual(): Promise<ArrastreManual[]> {
+  return ejercicioFiscalService.getArrastresManual();
+}
+
+export async function marcarArrastresReemplazados(ejercicioOrigen: number): Promise<void> {
+  await ejercicioFiscalService.marcarArrastresReemplazados(ejercicioOrigen);
+}
+
+export async function addDocumentoFiscal(doc: DocumentoFiscal): Promise<DocumentoFiscal> {
+  return ejercicioFiscalService.addDocumentoFiscal(doc);
+}
+
+export async function getDocumentosFiscales(ejercicio: number): Promise<DocumentoFiscal[]> {
+  return ejercicioFiscalService.getDocumentosFiscales(ejercicio);
+}
+
+export async function getDocumentosPorInmueble(ejercicio: number, inmuebleId: string): Promise<DocumentoFiscal[]> {
+  return ejercicioFiscalService.getDocumentosPorInmueble(ejercicio, inmuebleId);
+}
+
+export async function deleteDocumentoFiscal(id: number): Promise<void> {
+  await ejercicioFiscalService.deleteDocumentoFiscal(id);
+}
+
+export async function getCoberturaDocumental(ejercicio: number): Promise<InformeCoberturaDocumental> {
+  return ejercicioFiscalService.getCoberturaDocumental(ejercicio);
+}
+
+export async function inicializarEjercicioActual(): Promise<EjercicioFiscal> {
+  return ejercicioFiscalService.inicializarEjercicioActual();
+}
+
+export async function verificarCierresAutomaticos(): Promise<EjercicioFiscal[]> {
+  return ejercicioFiscalService.verificarCierresAutomaticos();
+}
+
+function createEmptyDeclaracion(): DeclaracionIRPF {
+  return {
+    trabajo: {
+      retribucionesDinerarias: 0,
+      retribucionEspecie: 0,
+      ingresosACuenta: 0,
+      contribucionesPPEmpresa: 0,
+      totalIngresosIntegros: 0,
+      cotizacionSS: 0,
+      rendimientoNetoPrevio: 0,
+      otrosGastosDeducibles: 0,
+      rendimientoNeto: 0,
+      rendimientoNetoReducido: 0,
+      retencionesTrabajoTotal: 0,
+    },
+    inmuebles: [],
+    actividades: [],
+    capitalMobiliario: {
+      interesesCuentas: 0,
+      otrosRendimientos: 0,
+      totalIngresosIntegros: 0,
+      rendimientoNeto: 0,
+      rendimientoNetoReducido: 0,
+      retencionesCapital: 0,
+    },
+    gananciasPerdidas: {
+      gananciasNoTransmision: 0,
+      perdidasNoTransmision: 0,
+      saldoNetoGeneral: 0,
+      gananciasTransmision: 0,
+      perdidasTransmision: 0,
+      saldoNetoAhorro: 0,
+      compensacionPerdidasAnteriores: 0,
+      perdidasPendientes: [],
+    },
+    planPensiones: {
+      aportacionesTrabajador: 0,
+      contribucionesEmpresariales: 0,
+      totalConDerecho: 0,
+      reduccionAplicada: 0,
+    },
+    basesYCuotas: {
+      baseImponibleGeneral: 0,
+      baseImponibleAhorro: 0,
+      baseLiquidableGeneral: 0,
+      baseLiquidableAhorro: 0,
+      cuotaIntegraEstatal: 0,
+      cuotaIntegraAutonomica: 0,
+      cuotaIntegra: 0,
+      cuotaLiquidaEstatal: 0,
+      cuotaLiquidaAutonomica: 0,
+      cuotaLiquida: 0,
+      cuotaResultante: 0,
+      retencionesTotal: 0,
+      cuotaDiferencial: 0,
+      resultadoDeclaracion: 0,
+    },
+  };
+}
+
+export { createEmptyDeclaracion, extraerArrastresDeDeclaracion, getArrastresManualesTotales };

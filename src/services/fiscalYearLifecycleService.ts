@@ -88,6 +88,8 @@ export async function cerrarEjercicioValidado(
   const db = await initDB();
   const updated: EjercicioFiscal = {
     ...cerrado,
+    ejercicio: (cerrado as EjercicioFiscal).ejercicio ?? (cerrado as EjercicioFiscal).año ?? ejercicio,
+    año: (cerrado as EjercicioFiscal).año ?? (cerrado as EjercicioFiscal).ejercicio ?? ejercicio,
     snapshotId: snapshot.id,
     origen: cerrado.origen === 'importado' ? 'mixto' : cerrado.origen,
     updatedAt: new Date().toISOString(),
@@ -106,6 +108,8 @@ export async function importarDeclaracionEjercicio(
 
   const updated: EjercicioFiscal = {
     ...base,
+    ejercicio: (base as EjercicioFiscal).ejercicio ?? (base as EjercicioFiscal).año ?? ejercicio,
+    año: (base as EjercicioFiscal).año ?? (base as EjercicioFiscal).ejercicio ?? ejercicio,
     estado: 'declarado',
     fechaCierre: base.fechaCierre ?? new Date().toISOString(),
     fechaDeclaracion: new Date().toISOString(),
