@@ -166,16 +166,27 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
   let creadas = 0;
 
   for (const rule of rules.filter((item) => item.activo)) {
+    if (rule.id == null) continue;
+
     const casillaAEAT = (rule.casillaAEAT as AEATBox | undefined) || OPEX_CATEGORY_TO_AEAT_BOX[rule.categoria as keyof typeof OPEX_CATEGORY_TO_AEAT_BOX];
     if (!casillaAEAT) continue;
 
-    const existentes = await db.getAllFromIndex('operacionesFiscales', 'origen-origenId', ['recurrente', rule.id]);
     for (const mes of calcularMesesAplicables(rule, ejercicio)) {
+      const existentes = await db.getAllFromIndex('operacionesFiscales', 'origen-origenId', ['recurrente', rule.id]);
       const yaExiste = existentes.some((op) => op.ejercicio === ejercicio && new Date(op.fecha).getMonth() + 1 === mes);
       if (yaExiste) continue;
 
       const total = getRecurringAmountForMonth(rule, mes);
       if (total <= 0) continue;
+
+      const existentesPorMes = await getOperacionesPorInmuebleYEjercicio(inmuebleId, ejercicio);
+      const duplicadoPorMes = existentesPorMes.some((op) =>
+        op.origen === 'recurrente'
+        && op.casillaAEAT === casillaAEAT
+        && op.concepto?.includes(MESES[mes - 1])
+        && Math.abs(op.total - total) < 0.01
+      );
+      if (duplicadoPorMes) continue;
 
       const now = new Date().toISOString();
       await db.add('operacionesFiscales', {
@@ -204,6 +215,64 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
   return creadas;
 }
 
+/**
+ * Elimina operaciones fiscales duplicadas generadas por el bug de multiplicación.
+ * Agrupa por (origenId + mes + ejercicio) y mantiene solo la primera de cada grupo.
+ * Ejecutar una vez para limpiar datos; el fix de dedup evita que se repita.
+ */
+export async function limpiarDuplicadosRecurrentes(
+  inmuebleId: number,
+  ejercicio: number
+): Promise<number> {
+  const db = await initDB();
+  const operaciones = await getOperacionesPorInmuebleYEjercicio(inmuebleId, ejercicio);
+  const recurrentes = operaciones.filter((op) => op.origen === 'recurrente');
+
+  const seen = new Map<string, number>();
+  const toDelete: number[] = [];
+
+  for (const op of recurrentes) {
+    if (op.id == null) continue;
+
+    const mes = new Date(op.fecha).getMonth() + 1;
+    const key = `${op.origenId ?? 'null'}-${op.casillaAEAT}-${mes}`;
+    if (!seen.has(key)) {
+      seen.set(key, op.id);
+    } else {
+      toDelete.push(op.id);
+    }
+  }
+
+  for (const id of toDelete) {
+    await db.delete('operacionesFiscales', id);
+  }
+
+  return toDelete.length;
+}
+
+/**
+ * Limpia duplicados de TODOS los inmuebles para un ejercicio.
+ * Llamar una vez desde consola o desde un botón de admin.
+ */
+export async function limpiarTodosDuplicadosEjercicio(ejercicio: number): Promise<number> {
+  const db = await initDB();
+  const properties = await db.getAll('properties');
+  let totalEliminados = 0;
+
+  for (const prop of properties) {
+    if (!prop.id) continue;
+
+    const eliminados = await limpiarDuplicadosRecurrentes(prop.id, ejercicio);
+    if (eliminados > 0) {
+      console.log(`Inmueble ${prop.alias || prop.id}: ${eliminados} duplicados eliminados`);
+    }
+    totalEliminados += eliminados;
+  }
+
+  console.log(`Total duplicados eliminados para ${ejercicio}: ${totalEliminados}`);
+  return totalEliminados;
+}
+
 export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejercicio: number): Promise<number> {
   const db = await initDB();
   const prestamos = await prestamosService.getPrestamosByProperty(String(inmuebleId));
@@ -215,27 +284,37 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
   for (const prestamo of prestamos) {
     if (!prestamo.activo) continue;
 
+    const porcentaje = prestamosService.getPorcentajeAfectacion(prestamo, String(inmuebleId));
+    if (porcentaje <= 0) continue;
+    const factor = porcentaje / 100;
+
     let plan = await prestamosService.getPaymentPlan(prestamo.id);
     if (!plan) {
       plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
     }
-    const existentes = await db.getAllFromIndex('operacionesFiscales', 'origen-origenId', ['recurrente', prestamo.id]);
+    const todasOperaciones = await getOperacionesPorInmuebleYEjercicio(inmuebleId, ejercicio);
+    const existentes = todasOperaciones.filter(
+      (op) => op.origen === 'recurrente' && op.origenId === prestamo.id && op.casillaAEAT === '0105'
+    );
 
     for (const periodo of plan.periodos) {
       const fechaCargo = new Date(periodo.fechaCargo);
       if (fechaCargo.getFullYear() !== ejercicio || periodo.interes <= 0) continue;
       const mes = fechaCargo.getMonth() + 1;
-      const yaExiste = existentes.some((op) => op.ejercicio === ejercicio && op.casillaAEAT === '0105' && new Date(op.fecha).getMonth() + 1 === mes);
+      const yaExiste = existentes.some((op) => new Date(op.fecha).getMonth() + 1 === mes);
       if (yaExiste) continue;
+
+      const interesProporcion = Math.round(periodo.interes * factor * 100) / 100;
+      if (interesProporcion <= 0) continue;
 
       const now = new Date().toISOString();
       await db.add('operacionesFiscales', {
         ejercicio,
         fecha: periodo.fechaCargo,
-        concepto: `Intereses ${prestamo.nombre} — ${MESES[mes - 1]}`,
+        concepto: `Intereses ${prestamo.nombre} — ${MESES[mes - 1]}${factor < 1 ? ` (${porcentaje}%)` : ''}`,
         casillaAEAT: '0105',
         categoriaFiscal: 'financiacion',
-        total: Math.round(periodo.interes * 100) / 100,
+        total: interesProporcion,
         inmuebleId,
         inmuebleAlias: alias,
         proveedorNIF: 'PENDIENTE',
