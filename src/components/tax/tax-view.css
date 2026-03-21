@@ -245,3 +245,20 @@
   color: var(--n-600);
   line-height: 1.45;
 }
+
+
+.tv-year-picker { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.tv-source-pill { padding: 5px 10px; border-radius: 999px; background: #e6f1fb; color: #185fa5; font-size: 0.75rem; font-weight: 600; }
+.tv-state-banner { display: flex; align-items: center; gap: 10px; margin: 12px 24px 0; padding: 10px 16px; border-radius: 8px; font-size: 0.83rem; }
+.tv-state-banner__meta { margin-left: auto; font-size: 0.75rem; opacity: 0.85; }
+.tv-actions-row { display: flex; justify-content: flex-end; padding: 12px 24px 0; }
+.tv-upload-button { padding: 8px 16px; border-radius: 8px; border: 1px solid #185FA5; background: #E6F1FB; color: #185FA5; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.tv-content--readonly .field-input, .tv-content--readonly select { background: var(--n-50); color: var(--n-700); }
+.field-input[readonly], .field-input:disabled, .btn-add:disabled, .btn-icon-danger:disabled, .tv-upload-button:disabled { opacity: 0.7; cursor: default; }
+.btn-add:disabled, .btn-icon-danger:disabled { pointer-events: none; }
+@media (max-width: 900px) {
+  .tv-header { flex-direction: column; gap: 12px; }
+  .tv-header-right { width: 100%; justify-content: space-between; }
+  .tv-state-banner { flex-wrap: wrap; }
+  .tv-state-banner__meta { width: 100%; margin-left: 0; }
+}

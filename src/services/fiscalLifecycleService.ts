@@ -331,7 +331,7 @@ export async function cerrarEjercicioConWorkflow(input: {
       arrastres,
       'cierre',
       'cerrado',
-      ejercicio.origen,
+      ejercicio.origen ?? 'calculado',
       input.validarContraDatosReales,
       input.notasRevision,
     ),
@@ -513,7 +513,7 @@ export async function obtenerHistoricoFiscalReal(): Promise<Array<{ ejercicio: n
 
   const filtered = ejercicios
     .filter((e) => e.estado === 'cerrado' || e.estado === 'declarado' || e.origen === 'importado' || e.origen === 'mixto')
-    .sort((a, b) => b.año - a.año);
+    .sort((a, b) => (b.ejercicio ?? b.año ?? 0) - (a.ejercicio ?? a.año ?? 0));
 
   const rows = await Promise.all(
     filtered.map(async (ejercicio) => {
@@ -522,9 +522,9 @@ export async function obtenerHistoricoFiscalReal(): Promise<Array<{ ejercicio: n
         : undefined;
 
       return {
-        ejercicio: ejercicio.año,
+        ejercicio: ejercicio.ejercicio ?? ejercicio.año ?? 0,
         estado: ejercicio.estado,
-        origen: ejercicio.origen,
+        origen: ejercicio.origen ?? 'calculado',
         fechaCierre: ejercicio.fechaCierre,
         fechaDeclaracion: ejercicio.fechaDeclaracion,
         resultado: resultado?.resumen ?? {
