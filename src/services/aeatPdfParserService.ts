@@ -1,3 +1,5 @@
+import { callScanChat } from './scanChatService';
+
 export interface ArrastreImportadoInput {
   tipo: 'gastos_0105_0106' | 'perdidas_patrimoniales_ahorro';
   ejercicioOrigen: number;
@@ -88,9 +90,33 @@ export function extraerCasillasDesdeTextoModelo100(text: string): CasillaExtraid
   return Array.from(mapa.values());
 }
 
-export async function extraerCasillasDeModeloPDF(pdfFile: File): Promise<CasillaExtraida[]> {
+export async function extraerCasillasDeModeloPDF(
+  pdfFile: File,
+  onProgress?: (msg: string) => void,
+): Promise<CasillaExtraida[]> {
+  onProgress?.('Extrayendo texto del PDF...');
   const text = await extractTextFromPDF(pdfFile);
-  return extraerCasillasDesdeTextoModelo100(text);
+  const casillasTexto = extraerCasillasDesdeTextoModelo100(text);
+
+  if (casillasTexto.length >= 5) {
+    onProgress?.(`${casillasTexto.length} casillas extraídas por texto`);
+    return casillasTexto;
+  }
+
+  onProgress?.('PDF sin texto seleccionable. Escaneando con IA...');
+  try {
+    const casillasOCR = await extractCasillasViaOCR(pdfFile, onProgress);
+    if (casillasOCR.length > 0) {
+      onProgress?.(`${casillasOCR.length} casillas extraídas por OCR`);
+      return casillasOCR;
+    }
+  } catch (error) {
+    console.error('Error en OCR del Modelo 100:', error);
+    onProgress?.('Error en el escaneo OCR. Usa el formulario manual.');
+  }
+
+  onProgress?.('No se pudieron extraer casillas automáticamente');
+  return casillasTexto;
 }
 
 export function mapearCasillasAImportacion(casillas: CasillaExtraida[], ejercicio: number): ImportacionManualData {
@@ -188,4 +214,37 @@ async function extractTextFromPDF(file: File): Promise<string> {
   }
 
   return pages.join('\n');
+}
+
+async function extractCasillasViaOCR(
+  pdfFile: File,
+  onProgress?: (msg: string) => void,
+): Promise<CasillaExtraida[]> {
+  onProgress?.('Enviando PDF a Claude para extracción...');
+
+  const result = await callScanChat(pdfFile, 'application/pdf', 'scan_irpf');
+  if (!result.extraido) {
+    throw new Error(result.error || 'Respuesta vacía del OCR');
+  }
+
+  onProgress?.('Procesando casillas extraídas...');
+
+  const data = typeof result.extraido === 'string'
+    ? JSON.parse(result.extraido)
+    : result.extraido;
+
+  const casillas: CasillaExtraida[] = [];
+
+  for (const [numero, valor] of Object.entries(data as Record<string, unknown>)) {
+    if (/^\d{4}$/.test(numero) && typeof valor === 'number' && !Number.isNaN(valor)) {
+      casillas.push({
+        numero,
+        valor,
+        confianza: 'media',
+        lineaOriginal: `[OCR] casilla ${numero}: ${valor}`,
+      });
+    }
+  }
+
+  return casillas;
 }

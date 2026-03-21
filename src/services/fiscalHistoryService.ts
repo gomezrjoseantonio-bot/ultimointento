@@ -1,4 +1,4 @@
-import { EstadoEjercicio } from './db';
+import { initDB, EstadoEjercicio } from './db';
 import { getEjercicio } from './ejercicioFiscalService';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
 import { obtenerSnapshotDeclaracion } from './snapshotDeclaracionService';
@@ -12,6 +12,7 @@ export interface AnioHistoricoFiscal {
   resultado: number;
   tipoEfectivo: number;
   fuente: FuenteHistorico;
+  tienePDF?: boolean;
   estado?: EstadoEjercicio;
   origen?: 'calculado' | 'importado' | 'mixto';
   snapshotId?: number;
@@ -25,6 +26,13 @@ function fuenteFromEstado(estado: EstadoEjercicio): FuenteHistorico {
 
 export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistoricoFiscal[]> {
   const currentYear = new Date().getFullYear();
+  const db = await initDB();
+  const allDocuments = await db.getAll('documents');
+  const ejerciciosConPDF = new Set(
+    (allDocuments as Array<{ type?: string; metadata?: { ejercicio?: number } }>)
+      .filter((documento) => documento.type === 'declaracion_irpf' && typeof documento.metadata?.ejercicio === 'number')
+      .map((documento) => documento.metadata!.ejercicio as number),
+  );
 
   const rows = await Promise.all(
     years.map(async (year): Promise<AnioHistoricoFiscal> => {
@@ -39,6 +47,7 @@ export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistor
           resultado: decl.resultado ?? 0,
           tipoEfectivo: decl.tipoEfectivo ?? 0,
           fuente: 'vivo',
+          tienePDF: ejerciciosConPDF.has(year),
           estado: 'vivo',
           origen: ejercicio?.origen ?? 'calculado',
           snapshotId: undefined,
@@ -53,6 +62,7 @@ export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistor
           resultado: 0,
           tipoEfectivo: 0,
           fuente: 'sin_datos',
+          tienePDF: ejerciciosConPDF.has(year),
         };
       }
 
@@ -70,6 +80,7 @@ export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistor
         resultado,
         tipoEfectivo,
         fuente: fuenteFromEstado(ejercicio.estado),
+        tienePDF: ejerciciosConPDF.has(year),
         estado: ejercicio.estado,
         origen: ejercicio.origen,
         snapshotId: ejercicio.snapshotId,
@@ -78,4 +89,51 @@ export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistor
   );
 
   return rows.sort((a, b) => b.ejercicio - a.ejercicio);
+}
+
+/**
+ * Elimina una declaración importada y su PDF archivado.
+ */
+export async function eliminarDeclaracionImportada(ejercicio: number): Promise<void> {
+  const db = await initDB();
+  const ejercicioFiscal = await getEjercicio(ejercicio);
+
+  if (!ejercicioFiscal || (ejercicioFiscal.origen !== 'importado' && ejercicioFiscal.origen !== 'mixto')) {
+    throw new Error('Solo se pueden eliminar declaraciones importadas');
+  }
+
+  if (ejercicioFiscal.snapshotId) {
+    await db.delete('snapshotsDeclaracion', ejercicioFiscal.snapshotId);
+  }
+
+  if (ejercicioFiscal.resultadoEjercicioId) {
+    const resultado = await db.get('resultadosEjercicio', ejercicioFiscal.resultadoEjercicioId) as {
+      arrastres?: { generados?: Array<{ arrastreId?: number }> };
+    } | undefined;
+
+    await Promise.all(
+      (resultado?.arrastres?.generados ?? [])
+        .filter((arrastre) => typeof arrastre.arrastreId === 'number')
+        .map((arrastre) => db.delete('arrastresIRPF', arrastre.arrastreId as number)),
+    );
+
+    await db.delete('resultadosEjercicio', ejercicioFiscal.resultadoEjercicioId);
+  }
+
+  const allDocuments = await db.getAll('documents');
+  const documentosIRPF = (allDocuments as Array<{ id?: number; type?: string; metadata?: { ejercicio?: number; origen?: string } }>)
+    .filter((documento) =>
+      documento.type === 'declaracion_irpf'
+      && documento.metadata?.ejercicio === ejercicio,
+    );
+
+  await Promise.all(
+    documentosIRPF
+      .filter((documento) => documento.id)
+      .map((documento) => db.delete('documents', documento.id as number)),
+  );
+
+  if (ejercicioFiscal.id) {
+    await db.delete('ejerciciosFiscales', ejercicioFiscal.id);
+  }
 }

@@ -359,6 +359,11 @@ export interface Document {
         to: string;
       };
     };
+    ejercicio?: number;
+    origen?: string;
+    fechaImportacion?: string;
+    casillasExtraidas?: number;
+    metodoExtraccion?: 'texto' | 'ocr';
   };
   uploadDate: string;
 }

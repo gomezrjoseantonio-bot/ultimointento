@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CircleDollarSign, HandCoins } from 'lucide-react';
+import { AlertTriangle, CircleDollarSign, Download, FileText, HandCoins, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import PageLayout from '../../../../components/common/PageLayout';
 import {
   Bar,
@@ -11,7 +12,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AnioHistoricoFiscal, cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
+import { downloadBlob, getDocumentBlob, initDB } from '../../../../services/db';
+import { AnioHistoricoFiscal, cargarHistoricoFiscal, eliminarDeclaracionImportada } from '../../../../services/fiscalHistoryService';
 import ImportarDeclaracionWizard from './ImportarDeclaracionWizard';
 
 const fmt = (n: number) =>
@@ -39,6 +41,47 @@ const HistoricoPage: React.FC = () => {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const handleDownloadPDF = useCallback(async (ejercicio: number) => {
+    try {
+      const db = await initDB();
+      const docs = await db.getAll('documents');
+      const doc = (docs as Array<{ id?: number; type?: string; filename?: string; metadata?: { ejercicio?: number } }>)
+        .find((documento) => documento.type === 'declaracion_irpf' && documento.metadata?.ejercicio === ejercicio);
+
+      if (!doc?.id) {
+        toast.error('PDF no encontrado');
+        return;
+      }
+
+      const blob = await getDocumentBlob(doc.id);
+      if (!blob) {
+        toast.error('PDF no encontrado');
+        return;
+      }
+
+      downloadBlob(blob, doc.filename || `Declaracion_IRPF_${ejercicio}.pdf`);
+    } catch (error) {
+      console.error('Error descargando PDF:', error);
+      toast.error('Error al descargar la declaración');
+    }
+  }, []);
+
+  const handleDeleteImport = useCallback(async (ejercicio: number) => {
+    const confirmado = window.confirm(
+      `¿Eliminar la declaración importada de ${ejercicio}?\n\nSe borrarán los datos fiscales y el PDF archivado. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmado) return;
+
+    try {
+      await eliminarDeclaracionImportada(ejercicio);
+      toast.success(`Importación de ${ejercicio} eliminada`);
+      await loadData();
+    } catch (error) {
+      console.error('Error eliminando importación:', error);
+      toast.error('Error al eliminar la importación');
+    }
+  }, [loadData]);
+
   return (
     <PageLayout
       title="Histórico IRPF"
@@ -59,20 +102,26 @@ const HistoricoPage: React.FC = () => {
         <div className="space-y-6">
           {/* Tabla histórico */}
           <div className="bg-[var(--hz-card-bg)] border border-[color:var(--hz-neutral-300)] rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-5 text-xs font-semibold text-[var(--hz-neutral-700)] uppercase tracking-wide bg-[var(--hz-neutral-100)] px-4 py-3 border-b border-[color:var(--hz-neutral-300)]">
+            <div className="grid grid-cols-6 text-xs font-semibold text-[var(--hz-neutral-700)] uppercase tracking-wide bg-[var(--hz-neutral-100)] px-4 py-3 border-b border-[color:var(--hz-neutral-300)]">
               <span>Ejercicio</span>
               <span>Cuota líquida</span>
               <span>Retenciones</span>
               <span>Resultado</span>
               <span>Tipo efectivo</span>
+              <span>Acciones</span>
             </div>
             {historico.map(row => (
-              <div key={row.ejercicio} className="grid grid-cols-5 text-sm px-4 py-3 border-b border-[color:var(--hz-neutral-100)] last:border-0 items-center">
+              <div key={row.ejercicio} className="grid grid-cols-6 text-sm px-4 py-3 border-b border-[color:var(--hz-neutral-100)] last:border-0 items-center">
                 <span className="font-semibold text-[var(--hz-neutral-900)] flex items-center gap-2">
                   {row.ejercicio}
                   {row.fuente !== 'sin_datos' && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-[var(--hz-neutral-200)] text-[var(--hz-neutral-700)]">
                       {row.fuente}
+                    </span>
+                  )}
+                  {row.tienePDF && (
+                    <span title="PDF archivado">
+                      <FileText className="w-3.5 h-3.5 text-blue-500" />
                     </span>
                   )}
                 </span>
@@ -91,6 +140,28 @@ const HistoricoPage: React.FC = () => {
                   {row.resultado > 0 ? `A pagar: ${fmt(row.resultado)}` : row.resultado < 0 ? `A devolver: ${fmt(Math.abs(row.resultado))}` : '—'}
                 </span>
                 <span className="text-[var(--hz-neutral-700)]">{row.tipoEfectivo.toFixed(1)}%</span>
+                <span>
+                  {row.fuente === 'declarado' && row.origen === 'importado' && (
+                    <div className="flex items-center gap-2">
+                      {row.tienePDF && (
+                        <button
+                          onClick={() => handleDownloadPDF(row.ejercicio)}
+                          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                          title="Descargar declaración"
+                        >
+                          <Download className="w-4 h-4 text-gray-500" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDeleteImport(row.ejercicio)}
+                        className="p-1.5 rounded hover:bg-red-50 transition-colors"
+                        title="Eliminar importación"
+                      >
+                        <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                      </button>
+                    </div>
+                  )}
+                </span>
               </div>
             ))}
           </div>
