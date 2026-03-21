@@ -4,6 +4,15 @@ import { Prestamo, PlanPagos } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { initDB } from './db';
 
+export const getAllocationFactor = (prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'>, inmuebleId: string): number => {
+  if (prestamo.afectacionesInmueble?.length) {
+    const afectacion = prestamo.afectacionesInmueble.find((a) => a.inmuebleId === inmuebleId);
+    return afectacion ? afectacion.porcentaje / 100 : 0;
+  }
+
+  return prestamo.inmuebleId === inmuebleId ? 1 : 0;
+};
+
 export class PrestamosService {
   private planesGenerados: Map<string, PlanPagos> = new Map();
   private prestamosCache: Prestamo[] | null = null;
@@ -62,12 +71,7 @@ export class PrestamosService {
   }
 
   getPorcentajeAfectacion(prestamo: Prestamo, inmuebleId: string): number {
-    if (prestamo.afectacionesInmueble?.length) {
-      const afectacion = prestamo.afectacionesInmueble.find((a) => a.inmuebleId === inmuebleId);
-      return afectacion?.porcentaje ?? 0;
-    }
-
-    return prestamo.inmuebleId === inmuebleId ? 100 : 0;
+    return getAllocationFactor(prestamo, inmuebleId) * 100;
   }
 
   /**

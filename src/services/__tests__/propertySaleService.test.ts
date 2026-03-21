@@ -111,6 +111,83 @@ describe('propertySaleService', () => {
     expect(loanAfter?.principalVivo).toBe(0);
   });
 
+
+  it('sugiere solo la deuda proporcional para préstamos multi-inmueble en preparePropertySale', async () => {
+    const db = await initDB();
+    const soldPropertyId = Number(await db.add('properties', createProperty({ alias: 'Tenderina 64 4D' })));
+    const otherPropertyId = Number(await db.add('properties', createProperty({ alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64 4I' })));
+
+    await db.add('prestamos', {
+      id: 'loan-shared-prepare-1',
+      inmuebleId: undefined,
+      afectacionesInmueble: [
+        { inmuebleId: String(otherPropertyId), porcentaje: 50, tipoRelacion: 'MIXTA' },
+        { inmuebleId: String(soldPropertyId), porcentaje: 50, tipoRelacion: 'MIXTA' },
+      ],
+      activo: true,
+      principalVivo: 76627.79,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+    } as any);
+
+    const result = await preparePropertySale(soldPropertyId, '2026-02-10');
+
+    expect(result.automationPreview.linkedLoansCount).toBe(1);
+    expect(result.automationPreview.suggestedOutstandingDebt).toBeCloseTo(38313.9, 1);
+  });
+
+  it('mantiene activo un préstamo compartido y redistribuye afectaciones al vender uno de sus inmuebles', async () => {
+    const db = await initDB();
+    const soldPropertyId = Number(await db.add('properties', createProperty({ alias: 'Tenderina 64 4D' })));
+    const otherPropertyId = Number(await db.add('properties', createProperty({ alias: 'Tenderina 64 4I', address: 'Calle Tenderina 64 4I' })));
+    const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES5500491500051234567892' })));
+
+    await db.add('prestamos', {
+      id: 'loan-shared-sale-1',
+      inmuebleId: undefined,
+      afectacionesInmueble: [
+        { inmuebleId: String(otherPropertyId), porcentaje: 50, tipoRelacion: 'MIXTA' },
+        { inmuebleId: String(soldPropertyId), porcentaje: 50, tipoRelacion: 'MIXTA' },
+      ],
+      activo: true,
+      principalVivo: 76627.79,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+      tipo: 'FIJO',
+      tipoNominalAnualFijo: 0.75,
+      fechaFirma: '2023-08-25',
+      fechaPrimerCargo: '2023-09-25',
+      plazoMesesTotal: 240,
+      diaCargoMes: 25,
+      esquemaPrimerRecibo: 'NORMAL',
+      sistema: 'FRANCES',
+      carencia: 'NINGUNA',
+      cuentaCargoId: 'acc-1',
+      cuotasPagadas: 30,
+      origenCreacion: 'MANUAL',
+      createdAt: '2023-08-25T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    } as any);
+
+    await confirmPropertySale({
+      propertyId: soldPropertyId,
+      saleDate: '2026-02-10',
+      salePrice: 180000,
+      settlementAccountId: accountId,
+      source: 'cartera',
+      loanPayoffAmount: 38313.9,
+    });
+
+    const updatedLoan = await db.get('prestamos', 'loan-shared-sale-1');
+    expect(updatedLoan?.activo).toBe(true);
+    expect(updatedLoan?.estado).toBe('vivo');
+    expect(updatedLoan?.principalVivo).toBeCloseTo(76627.79, 2);
+    expect(updatedLoan?.afectacionesInmueble).toEqual([
+      { inmuebleId: String(otherPropertyId), porcentaje: 100, tipoRelacion: 'MIXTA' },
+    ]);
+    expect(updatedLoan?.inmuebleId).toBe(String(otherPropertyId));
+  });
+
   it('usa el alias del inmueble en la previsión de IRPF tras confirmar la venta', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Alias PDF' })));
