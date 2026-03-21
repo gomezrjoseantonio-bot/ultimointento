@@ -48,6 +48,7 @@ import type { ValoracionHistorica } from '../../types/valoraciones';
 import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
 import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../services/propertySaleService';
 import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
+import { getAllocationFactor } from '../../services/prestamosService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
