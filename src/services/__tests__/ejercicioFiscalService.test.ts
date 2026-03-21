@@ -124,6 +124,24 @@ describe('ejercicioFiscalService', () => {
     expect(result).toBeUndefined();
   });
 
+  test('save ignora ids inválidos y deja que IndexedDB asigne la clave', async () => {
+    await ejercicioFiscalService.save({
+      id: Number.NaN as unknown as number,
+      ejercicio: EJERCICIO,
+      estado: 'en_curso',
+      declaracionAeatOrigen: 'no_presentada',
+      arrastresRecibidos: { porInmueble: [], porAnio: [] },
+      arrastresGenerados: { porInmueble: [], porAnio: [] },
+      documentos: [],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-01T00:00:00.000Z',
+    });
+
+    const persisted = await getEjercicio(EJERCICIO);
+    expect(persisted?.id).toEqual(expect.any(Number));
+    expect(persisted?.año).toBe(EJERCICIO);
+  });
+
   test('save/getEstado/getVerdadVigente siguen el modelo fundacional', async () => {
     const ejercicio: EjercicioFiscal = {
       ejercicio: EJERCICIO,

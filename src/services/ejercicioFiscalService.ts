@@ -212,6 +212,25 @@ function buildLegacyView(domain: EjercicioFiscal, existing?: DbEjercicioFiscal):
   };
 }
 
+
+function hasValidEjercicioId(id: unknown): id is number {
+  return typeof id === 'number' && Number.isInteger(id) && id > 0;
+}
+
+function stripInvalidEjercicioId<T extends { id?: unknown }>(record: T): T {
+  if (record.id == null || hasValidEjercicioId(record.id)) {
+    return record;
+  }
+
+  const { id: _ignored, ...rest } = record as T & { id?: unknown };
+  return rest as T;
+}
+
+async function putEjercicioRecord(record: DbEjercicioFiscal): Promise<void> {
+  const db = await initDB();
+  await db.put(STORE_NAME, stripInvalidEjercicioId(record));
+}
+
 class EjercicioFiscalService {
   async getEjercicio(ejercicio: number): Promise<EjercicioFiscal | undefined> {
     validateEjercicio(ejercicio);
@@ -229,13 +248,12 @@ class EjercicioFiscalService {
 
   async save(ejercicio: EjercicioFiscal): Promise<void> {
     validateEjercicio(ejercicio.ejercicio);
-    const db = await initDB();
     const existing = await findByEjercicio(ejercicio.ejercicio);
     const record = toDbRecord(ejercicio, existing);
-    if (existing?.id != null && record.id == null) {
+    if (existing && hasValidEjercicioId(existing.id) && !hasValidEjercicioId(record.id)) {
       record.id = existing.id;
     }
-    await db.put(STORE_NAME, record);
+    await putEjercicioRecord(record);
   }
 
   async ensureEjercicio(ejercicio: number): Promise<EjercicioFiscal> {
@@ -512,4 +530,8 @@ export async function deleteEjercicio(año: number): Promise<void> {
   }
 
   await (await initDB()).delete(STORE_NAME, existing.id);
+}
+
+export async function saveLegacyEjercicioRecord(record: DbEjercicioFiscal): Promise<void> {
+  await putEjercicioRecord(record);
 }

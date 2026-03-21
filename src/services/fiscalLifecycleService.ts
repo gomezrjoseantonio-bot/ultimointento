@@ -11,7 +11,7 @@ import {
 } from './db';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
 import { crearSnapshotDeclaracion, crearSnapshotDeclaracionManual } from './snapshotDeclaracionService';
-import { getOrCreateEjercicio } from './ejercicioFiscalService';
+import { getOrCreateEjercicio, saveLegacyEjercicioRecord } from './ejercicioFiscalService';
 import { crearArrastreFiscal } from './arrastresFiscalesService';
 import type { DatosActivosExtraidos, InmuebleParsedFromPDF } from './declaracionFromCasillasService';
 
@@ -356,8 +356,7 @@ export async function cerrarEjercicioConWorkflow(input: {
     updatedAt: now,
   };
 
-  const db = await initDB();
-  await db.put(EJERCICIOS_STORE, updatedEjercicio);
+  await saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado, snapshot };
 }
@@ -503,8 +502,7 @@ export async function importarDeclaracionManual(input: {
     updatedAt: now,
   };
 
-  const db = await initDB();
-  await db.put(EJERCICIOS_STORE, updatedEjercicio);
+  await saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado };
 }
