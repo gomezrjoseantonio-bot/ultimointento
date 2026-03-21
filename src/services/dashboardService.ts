@@ -312,7 +312,6 @@ class DashboardService {
    */
   async getPropertyCount(): Promise<number> {
     try {
-      const db = await initDB();
       const properties = await getCachedStoreRecords<any>('properties');
       
       // Filter active properties only
@@ -742,7 +741,6 @@ class DashboardService {
     };
   }> {
     try {
-      const db = await initDB();
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
@@ -1352,8 +1350,6 @@ class DashboardService {
     proyeccion30d: number;
   }> {
     try {
-      const db = await initDB();
-      
       // Get current balance from all active accounts
       const accounts = await getCachedStoreRecords<any>('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
@@ -1442,7 +1438,6 @@ class DashboardService {
       const now = new Date();
       await rollForwardAccountBalancesToMonth(now.getFullYear(), now.getMonth() + 1);
 
-      const db = await initDB();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
@@ -1558,8 +1553,6 @@ class DashboardService {
     };
   }> {
     try {
-      const db = await initDB();
-      
       // Get current liquidity
       const accounts = await getCachedStoreRecords<any>('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
@@ -1718,7 +1711,6 @@ class DashboardService {
     link: string;
   }>> {
     try {
-      const db = await initDB();
       const alerts: Array<{
         id: string;
         tipo: 'cobro' | 'contrato' | 'pago' | 'documento' | 'hipoteca' | 'ipc';
