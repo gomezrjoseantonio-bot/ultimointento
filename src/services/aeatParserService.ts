@@ -199,7 +199,7 @@ async function renderizarPDFaImagenes(
       throw new Error(`No se pudo crear el contexto de canvas para la página ${i}`);
     }
 
-    await page.render({ canvasContext: context, viewport }).promise;
+    await page.render({ canvas, canvasContext: context, viewport }).promise;
     const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
     if (base64) {
       imagenes.push(base64);
@@ -373,7 +373,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
   };
   const b: BooleanGetter = (casilla) => {
     const value = raw[casilla];
-    return value === 'X' || value === true || value === 'x';
+    return value === 'X' || value === 'x';
   };
 
   const meta: ExtraccionCompleta['meta'] = {

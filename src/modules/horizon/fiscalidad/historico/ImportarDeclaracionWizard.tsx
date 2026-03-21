@@ -14,6 +14,7 @@ import type {
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
 import type { DatosActivosExtraidos } from '../../../../services/declaracionFromCasillasService';
+import type { DeclaracionIRPF as DeclaracionCalculadaIRPF } from '../../../../services/irpfCalculationService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 
 type MetodoEntrada = 'formulario' | 'pdf';
@@ -443,6 +444,171 @@ function construirCasillasAeat(raw: Record<string, number | string>): Record<str
   ) as Record<string, number>;
 }
 
+function construirDeclaracionCalculada(resultado: ExtraccionCompleta): DeclaracionCalculadaIRPF {
+  const { declaracion, meta } = resultado;
+
+  const rendimientosTrabajo = declaracion.trabajo.totalIngresosIntegros > 0
+    || declaracion.trabajo.retribucionesDinerarias > 0
+    || declaracion.trabajo.retencionesTrabajoTotal > 0
+      ? {
+          salarioBrutoAnual: declaracion.trabajo.retribucionesDinerarias,
+          especieAnual: declaracion.trabajo.retribucionEspecie,
+          cotizacionSS: declaracion.trabajo.cotizacionSS,
+          irpfRetenido: declaracion.trabajo.retencionesTrabajoTotal,
+          rendimientoNeto: declaracion.trabajo.rendimientoNetoReducido || declaracion.trabajo.rendimientoNeto,
+          ppEmpleado: declaracion.planPensiones.aportacionesTrabajador,
+          ppEmpresa: declaracion.planPensiones.contribucionesEmpresariales,
+          ppTotalReduccion: declaracion.planPensiones.totalConDerecho
+            || declaracion.planPensiones.aportacionesTrabajador + declaracion.planPensiones.contribucionesEmpresariales,
+        }
+      : null;
+
+  const rendimientosAutonomo = declaracion.actividades.length > 0
+    ? {
+        ingresos: declaracion.actividades.reduce((sum, actividad) => sum + actividad.ingresos, 0),
+        gastos: declaracion.actividades.reduce((sum, actividad) => sum + actividad.gastos, 0),
+        cuotaSS: 0,
+        gastoDificilJustificacion: declaracion.actividades.reduce((sum, actividad) => sum + (actividad.provisionDificilJustificacion || 0), 0),
+        rendimientoNeto: declaracion.actividades.reduce((sum, actividad) => sum + actividad.rendimientoNetoReducido, 0),
+        pagosFraccionadosM130: 0,
+        actividades: declaracion.actividades.map((actividad) => ({
+          nombre: actividad.epigrafeIAE || actividad.tipoActividad,
+          epigrafe: actividad.epigrafeIAE,
+          tipo: actividad.tipoActividad,
+          modalidad: actividad.modalidad,
+          ingresos: actividad.ingresos,
+          gastos: actividad.gastos,
+          cuotaSS: 0,
+        })),
+      }
+    : null;
+
+  const rendimientosInmuebles = resultado.inmueblesDetalle.map((inmueble) => {
+    const gastosDeducibles =
+      inmueble.datos.gastosComunidad +
+      inmueble.datos.gastosServicios +
+      inmueble.datos.gastosSuministros +
+      inmueble.datos.gastosSeguros +
+      inmueble.datos.gastosTributos +
+      inmueble.datos.interesesFinanciacion +
+      inmueble.datos.gastosReparacion +
+      inmueble.datos.gastos0105_0106Aplicados;
+    const amortizacion =
+      inmueble.datos.amortizacionInmueble +
+      inmueble.datos.amortizacionMuebles +
+      (inmueble.datos.accesorio?.amortizacion || 0);
+    const rendimientoNetoAlquiler = inmueble.datos.rendimientoNeto || Math.max(0, inmueble.datos.ingresosIntegros - gastosDeducibles - amortizacion);
+    const reduccionHabitual = inmueble.datos.reduccion;
+    const rendimientoNetoReducido = inmueble.datos.rendimientoNetoReducido || (rendimientoNetoAlquiler - reduccionHabitual);
+
+    return {
+      inmuebleId: inmueble.datos.orden,
+      alias: inmueble.datos.direccion || `Inmueble ${inmueble.datos.orden}`,
+      diasAlquilado: inmueble.datos.diasArrendado || 0,
+      diasVacio: inmueble.datos.diasDisposicion || 0,
+      diasEnObras: 0,
+      diasTotal: 365,
+      ingresosIntegros: inmueble.datos.ingresosIntegros || 0,
+      gastosDeducibles,
+      amortizacion,
+      reduccionHabitual,
+      rendimientoNetoAlquiler,
+      rendimientoNetoReducido,
+      porcentajeReduccionHabitual: rendimientoNetoAlquiler > 0 && reduccionHabitual > 0
+        ? Math.round((reduccionHabitual / rendimientoNetoAlquiler) * 10000) / 100
+        : 0,
+      esHabitual: reduccionHabitual > 0,
+      imputacionRenta: inmueble.datos.rentaImputada || 0,
+      rendimientoNeto: rendimientoNetoReducido + (inmueble.datos.rentaImputada || 0),
+      gastosFinanciacionYReparacion: inmueble.datos.interesesFinanciacion + inmueble.datos.gastosReparacion,
+      limiteAplicado: inmueble.datos.gastos0105_0106Aplicados || undefined,
+      excesoArrastrable: inmueble.datos.arrastresGenerados || undefined,
+      arrastresAplicados: inmueble.datos.arrastresAplicados || undefined,
+      accesoriosIncluidos: inmueble.datos.accesorio
+        ? [{
+            id: inmueble.datos.orden,
+            alias: `${inmueble.datos.direccion || `Inmueble ${inmueble.datos.orden}`} · accesorio`,
+            amortizacion: inmueble.datos.accesorio.amortizacion || 0,
+            gastos: 0,
+          }]
+        : undefined,
+    };
+  });
+
+  const baseAhorroCapitalTotal = declaracion.capitalMobiliario.rendimientoNetoReducido || declaracion.capitalMobiliario.rendimientoNeto;
+  const plusvalias = declaracion.gananciasPerdidas.gananciasTransmision || declaracion.gananciasPerdidas.gananciasNoTransmision;
+  const minusvalias = declaracion.gananciasPerdidas.perdidasTransmision + declaracion.gananciasPerdidas.perdidasNoTransmision;
+
+  return {
+    ejercicio: meta.ejercicio,
+    baseGeneral: {
+      rendimientosTrabajo,
+      rendimientosAutonomo,
+      rendimientosInmuebles,
+      imputacionRentas: rendimientosInmuebles
+        .filter((inmueble) => inmueble.imputacionRenta > 0)
+        .map((inmueble) => ({
+          inmuebleId: inmueble.inmuebleId,
+          alias: inmueble.alias,
+          valorCatastral: 0,
+          porcentajeImputacion: 0,
+          diasVacio: inmueble.diasVacio,
+          imputacion: inmueble.imputacionRenta,
+        })),
+      total: declaracion.basesYCuotas.baseImponibleGeneral,
+    },
+    baseAhorro: {
+      capitalMobiliario: {
+        intereses: declaracion.capitalMobiliario.interesesCuentas,
+        dividendos: Math.max(0, declaracion.capitalMobiliario.otrosRendimientos),
+        retenciones: declaracion.capitalMobiliario.retencionesCapital,
+        total: baseAhorroCapitalTotal,
+      },
+      gananciasYPerdidas: {
+        plusvalias,
+        minusvalias,
+        minusvaliasPendientes: declaracion.gananciasPerdidas.perdidasPendientes.reduce((sum, perdida) => sum + perdida.importePendiente, 0),
+        compensado: declaracion.gananciasPerdidas.saldoNetoAhorro,
+      },
+      total: declaracion.basesYCuotas.baseImponibleAhorro,
+    },
+    reducciones: {
+      ppEmpleado: declaracion.planPensiones.aportacionesTrabajador,
+      ppEmpresa: declaracion.planPensiones.contribucionesEmpresariales,
+      ppIndividual: 0,
+      planPensiones: declaracion.planPensiones.totalConDerecho,
+      total: declaracion.planPensiones.totalConDerecho || declaracion.planPensiones.reduccionAplicada,
+    },
+    minimoPersonal: {
+      contribuyente: 0,
+      descendientes: 0,
+      ascendientes: 0,
+      discapacidad: 0,
+      total: 0,
+    },
+    liquidacion: {
+      baseImponibleGeneral: declaracion.basesYCuotas.baseImponibleGeneral,
+      baseImponibleAhorro: declaracion.basesYCuotas.baseImponibleAhorro,
+      cuotaBaseGeneral: declaracion.basesYCuotas.cuotaIntegraEstatal,
+      cuotaBaseAhorro: declaracion.basesYCuotas.cuotaIntegraAutonomica,
+      cuotaMinimosBaseGeneral: 0,
+      cuotaIntegra: declaracion.basesYCuotas.cuotaIntegra,
+      deduccionesDobleImposicion: 0,
+      cuotaLiquida: declaracion.basesYCuotas.cuotaLiquida,
+    },
+    retenciones: {
+      trabajo: declaracion.trabajo.retencionesTrabajoTotal,
+      autonomoM130: 0,
+      capitalMobiliario: declaracion.capitalMobiliario.retencionesCapital,
+      total: declaracion.basesYCuotas.retencionesTotal,
+    },
+    resultado: declaracion.basesYCuotas.resultadoDeclaracion,
+    tipoEfectivo: (declaracion.basesYCuotas.baseImponibleGeneral + declaracion.basesYCuotas.baseImponibleAhorro) > 0
+      ? Number(((declaracion.basesYCuotas.cuotaLiquida / Math.max(1, declaracion.basesYCuotas.baseImponibleGeneral + declaracion.basesYCuotas.baseImponibleAhorro)) * 100).toFixed(2))
+      : 0,
+  };
+}
+
 function construirDatosActivos(resultado: ExtraccionCompleta): DatosActivosExtraidos {
   return {
     arrastresGastos: resultado.inmueblesDetalle
@@ -596,25 +762,28 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
               ...(typeof data.rendimientosAutonomo === 'number' ? { '0226': data.rendimientosAutonomo } : {}),
             };
 
+      const declaracionCompleta = resultadoExtraccion?.exito
+        ? construirDeclaracionCalculada(resultadoExtraccion)
+        : undefined;
+
       await importarDeclaracionManual({
         ejercicio: data.ejercicio,
         casillasAEAT: casillasMap,
         resultado: {
-          baseImponibleGeneral: resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleGeneral ?? data.baseImponibleGeneral,
-          baseImponibleAhorro: resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleAhorro ?? data.baseImponibleAhorro,
-          cuotaIntegra: resultadoExtraccion?.declaracion.basesYCuotas.cuotaIntegra ?? resumen.cuotaIntegra,
-          cuotaLiquida: resultadoExtraccion?.declaracion.basesYCuotas.cuotaLiquida ?? resumen.cuotaLiquida,
+          baseImponibleGeneral: declaracionCompleta?.liquidacion.baseImponibleGeneral ?? data.baseImponibleGeneral,
+          baseImponibleAhorro: declaracionCompleta?.liquidacion.baseImponibleAhorro ?? data.baseImponibleAhorro,
+          cuotaIntegra: declaracionCompleta?.liquidacion.cuotaIntegra ?? resumen.cuotaIntegra,
+          cuotaLiquida: declaracionCompleta?.liquidacion.cuotaLiquida ?? resumen.cuotaLiquida,
           deducciones: 0,
-          retencionesYPagosCuenta: resultadoExtraccion?.declaracion.basesYCuotas.retencionesTotal ?? data.totalRetenciones,
-          resultado: resultadoExtraccion?.declaracion.basesYCuotas.resultadoDeclaracion ?? data.resultado,
-          tipoEfectivo: (resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleGeneral || resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleAhorro)
-            ? Number((((resultadoExtraccion?.declaracion.basesYCuotas.cuotaLiquida || 0) /
-                Math.max(1, (resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleGeneral || 0) + (resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleAhorro || 0))) * 100).toFixed(2))
+          retencionesYPagosCuenta: declaracionCompleta?.retenciones.total ?? data.totalRetenciones,
+          resultado: declaracionCompleta?.resultado ?? data.resultado,
+          tipoEfectivo: declaracionCompleta
+            ? declaracionCompleta.tipoEfectivo
             : (resumen.cuotaLiquida > 0
                 ? Number((((resumen.cuotaLiquida / Math.max(1, data.baseImponibleGeneral + data.baseImponibleAhorro)) * 100)).toFixed(2))
                 : 0),
         },
-        declaracionCompleta: resultadoExtraccion?.exito ? resultadoExtraccion.declaracion : undefined,
+        declaracionCompleta,
         datosActivos: resultadoExtraccion?.exito ? construirDatosActivos(resultadoExtraccion) : undefined,
         arrastresPendientes: resultadoExtraccion?.exito
           ? [
@@ -657,7 +826,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
             origen: 'importacion_wizard',
             fechaImportacion: new Date().toISOString(),
             casillasExtraidas: resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
-            metodoExtraccion: metodo === 'pdf' ? 'claude_vision' : 'manual',
+            metodoExtraccion: metodo === 'pdf' ? 'ocr' : 'texto',
             status: 'Archivado',
           },
         });
