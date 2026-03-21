@@ -41,7 +41,7 @@ interface SaleExecutionJournal {
   movementIds: number[];
   treasuryEventIds: number[];
   autoTerminatedContracts: Array<{ id: number; previous: Contract }>;
-  updatedLoans: Array<{ id: string; previous: Record<string, unknown> }>;
+  updatedLoans: Array<{ id: string; previous: Prestamo }>;
   deactivatedOpexRules: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedIngresos: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedGastos: Array<{ id: number; previous: Record<string, unknown> }>;
