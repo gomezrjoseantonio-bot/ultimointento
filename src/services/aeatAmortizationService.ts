@@ -1,5 +1,11 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
+import {
+  actualizarMejora,
+  crearMejora,
+  eliminarMejora,
+  getMejorasHastaEjercicio,
+} from './mejoraActivoService';
 
 export interface UnifiedPropertyFiscalData {
   acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
