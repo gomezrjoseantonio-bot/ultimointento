@@ -52,15 +52,31 @@ export const calculateFiscalSummary = async (
 
   const property = await db.get('properties', propertyId);
 
-  if (property && property.aeatAmortization) {
+  // Add recurring OPEX expenses auto-classified by AEAT box
+  const gastosRecurrentes = await getGastosRecurrentesFiscales(propertyId, exerciseYear);
+  const boxToField: Record<string, keyof typeof summary> = {
+    '0105': 'box0105',
+    '0106': 'box0106',
+    '0109': 'box0109',
+    '0112': 'box0112',
+    '0113': 'box0113',
+    '0114': 'box0114',
+    '0115': 'box0115',
+    '0117': 'box0117',
+  };
+  for (const [box, amount] of Object.entries(gastosRecurrentes)) {
+    const field = boxToField[box];
+    if (field) {
+      (summary[field] as number) += amount;
+    }
+  }
+
+  if (property) {
+    // Use unified AEAT amortization calculation with fallback to fiscalData/acquisitionCosts
     const updatedSummary = await updateFiscalSummaryWithAEAT(propertyId, exerciseYear);
     summary.constructionValue = updatedSummary.constructionValue;
     summary.annualDepreciation = updatedSummary.annualDepreciation;
     summary.aeatAmortization = updatedSummary.aeatAmortization;
-  } else if (property) {
-    const baseConstructionValue = property.fiscalData?.constructionCadastralValue || (property.acquisitionCosts.price * 0.7);
-    summary.constructionValue = baseConstructionValue + capexTotal;
-    summary.annualDepreciation = summary.constructionValue * 0.03;
   }
 
   const financingAndRepairs = summary.box0105 + summary.box0106;

@@ -2,6 +2,7 @@ import { DeclaracionIRPF } from '../../services/irpfCalculationService';
 import { TaxState, Inmueble, ActividadEconomica, GananciaPatrimonial, SaldoNegativoBIA } from '../../store/taxSlice';
 import { initDB, Property } from '../../services/db';
 import { calculateFiscalSummary } from '../../services/fiscalSummaryService';
+import { calculateAEATAmortization, getConstructionPercentageFromValues, getUnifiedFiscalData } from '../../services/aeatAmortizationService';
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -37,29 +38,27 @@ type PropertyVisibilityIndex = {
   aliasById: Map<number, string>;
 };
 
+type PropertyAmortizationSnapshot = {
+  pctConstruccion: number;
+  baseAmortizacion: number;
+  amortizacionInmueble: number;
+};
+
 function getPropertyFiscalHintsById(properties: Property[]): Map<number, PropertyFiscalHints> {
   const hints = new Map<number, PropertyFiscalHints>();
 
   properties.forEach((property) => {
     if (!property.id) return;
 
-    const aeat = property.aeatAmortization;
-    const fiscalData = property.fiscalData;
+    const unified = getUnifiedFiscalData(property);
 
     hints.set(property.id, {
       refCatastral: property.cadastralReference ?? '',
-      fechaAdquisicion: aeat?.firstAcquisitionDate ?? property.purchaseDate ?? '',
-      importeAdquisicion: aeat?.onerosoAcquisition?.acquisitionAmount
-        ?? property.acquisitionCosts?.price
-        ?? 0,
-      gastosTributos: aeat?.onerosoAcquisition?.acquisitionExpenses
-        ?? getAcquisitionExpenses(property),
-      valorCatastral: aeat?.cadastralValue
-        ?? fiscalData?.cadastralValue
-        ?? 0,
-      valorCatastralConstruccion: aeat?.constructionCadastralValue
-        ?? fiscalData?.constructionCadastralValue
-        ?? 0,
+      fechaAdquisicion: unified.acquisitionDate,
+      importeAdquisicion: unified.acquisitionAmount,
+      gastosTributos: unified.acquisitionExpenses || getAcquisitionExpenses(property),
+      valorCatastral: unified.cadastralValue,
+      valorCatastralConstruccion: unified.constructionCadastralValue,
     });
   });
 
@@ -144,6 +143,16 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
   const imputaciones = declaracion.baseGeneral.imputacionRentas;
 
   const summaryByPropertyId = new Map<number, Awaited<ReturnType<typeof calculateFiscalSummary>>>();
+  const amortizationByPropertyId = new Map<number, PropertyAmortizationSnapshot>();
+  const rentalDaysByPropertyId = new Map<number, number>();
+
+  rendimientos.forEach((rendimiento) => {
+    rentalDaysByPropertyId.set(
+      rendimiento.inmuebleId,
+      Math.max(rentalDaysByPropertyId.get(rendimiento.inmuebleId) ?? 0, rendimiento.diasAlquilado ?? 0),
+    );
+  });
+
   const propertyIdsToEnrich = new Set<number>([
     ...rendimientos.map((r) => r.inmuebleId),
     ...imputaciones.map((i) => i.inmuebleId),
@@ -152,9 +161,38 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
 
   await Promise.all(Array.from(propertyIdsToEnrich).map(async (propertyId) => {
     try {
-      const summary = await calculateFiscalSummary(propertyId, declaracion.ejercicio);
+      const [summary, aeatCalc] = await Promise.all([
+        calculateFiscalSummary(propertyId, declaracion.ejercicio),
+        calculateAEATAmortization(
+          propertyId,
+          declaracion.ejercicio,
+          rentalDaysByPropertyId.get(propertyId) ?? 0,
+        ),
+      ]);
+
       summaryByPropertyId.set(propertyId, summary);
+      amortizationByPropertyId.set(propertyId, {
+        pctConstruccion: round2(aeatCalc.breakdown.cadastralConstructionValue > 0
+          ? getConstructionPercentageFromValues(
+              propertyHints.get(propertyId)?.valorCatastral ?? 0,
+              aeatCalc.breakdown.cadastralConstructionValue,
+            )
+          : 0),
+        baseAmortizacion: round2(aeatCalc.baseAmount),
+        amortizacionInmueble: round2(aeatCalc.totalAmortization),
+      });
     } catch {
+      const hints = propertyHints.get(propertyId);
+      if (hints) {
+        amortizationByPropertyId.set(propertyId, {
+          pctConstruccion: round2(getConstructionPercentageFromValues(
+            hints.valorCatastral,
+            hints.valorCatastralConstruccion,
+          )),
+          baseAmortizacion: 0,
+          amortizacionInmueble: 0,
+        });
+      }
       // ignore enrichment errors and keep minimal hydration payload
     }
   }));
@@ -163,6 +201,7 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
 
   rendimientos.forEach((i) => {
     const summary = summaryByPropertyId.get(i.inmuebleId);
+    const amortization = amortizationByPropertyId.get(i.inmuebleId);
     const ratio = calculateRentalRatio(i.diasAlquilado, i.diasTotal);
 
     inmueblesById.set(String(i.inmuebleId), {
@@ -197,9 +236,12 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
         : [],
       tieneReduccion: i.esHabitual,
       pctReduccion: i.esHabitual ? 60 : 0,
-      pctConstruccion: 0,
-      baseAmortizacion: 0,
-      amortizacionInmueble: round2(i.amortizacion),
+      pctConstruccion: amortization?.pctConstruccion ?? round2(getConstructionPercentageFromValues(
+        propertyHints.get(i.inmuebleId)?.valorCatastral ?? 0,
+        propertyHints.get(i.inmuebleId)?.valorCatastralConstruccion ?? 0,
+      )),
+      baseAmortizacion: amortization?.baseAmortizacion ?? 0,
+      amortizacionInmueble: amortization?.amortizacionInmueble ?? round2(i.amortizacion),
       limiteInteresesReparacion: round2(i.limiteAplicado ?? 0),
       excesoReparacion: round2(i.excesoArrastrable ?? 0),
       rentaImputada: round2(i.imputacionRenta),
@@ -242,9 +284,13 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
       arrastres: [],
       tieneReduccion: false,
       pctReduccion: 0,
-      pctConstruccion: 0,
-      baseAmortizacion: 0,
-      amortizacionInmueble: 0,
+      pctConstruccion: amortizationByPropertyId.get(i.inmuebleId)?.pctConstruccion
+        ?? round2(getConstructionPercentageFromValues(
+          propertyHints.get(i.inmuebleId)?.valorCatastral ?? 0,
+          propertyHints.get(i.inmuebleId)?.valorCatastralConstruccion ?? 0,
+        )),
+      baseAmortizacion: amortizationByPropertyId.get(i.inmuebleId)?.baseAmortizacion ?? 0,
+      amortizacionInmueble: amortizationByPropertyId.get(i.inmuebleId)?.amortizacionInmueble ?? 0,
       limiteInteresesReparacion: 0,
       excesoReparacion: 0,
       rentaImputada: round2(i.imputacion),
@@ -288,9 +334,13 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
         arrastres: [],
         tieneReduccion: false,
         pctReduccion: 0,
-        pctConstruccion: 0,
-        baseAmortizacion: 0,
-        amortizacionInmueble: 0,
+        pctConstruccion: amortizationByPropertyId.get(propertyId)?.pctConstruccion
+          ?? round2(getConstructionPercentageFromValues(
+            propertyHints.get(propertyId)?.valorCatastral ?? 0,
+            propertyHints.get(propertyId)?.valorCatastralConstruccion ?? 0,
+          )),
+        baseAmortizacion: amortizationByPropertyId.get(propertyId)?.baseAmortizacion ?? 0,
+        amortizacionInmueble: amortizationByPropertyId.get(propertyId)?.amortizacionInmueble ?? 0,
         limiteInteresesReparacion: 0,
         excesoReparacion: 0,
         rentaImputada: 0,
