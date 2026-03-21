@@ -25,11 +25,11 @@ import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, initDB } from '../../../../services/db';
 import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
-import { getAllContracts } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import { confirmAction, confirmDelete } from '../../../../services/confirmationService';
 import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../../../services/propertySaleService';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
+import { getCachedStoreRecords, invalidateCachedStores } from '../../../../services/indexedDbCacheService';
 
 const calculateTotalCost = (property: Property): number => {
   const costs = property.acquisitionCosts;
@@ -172,11 +172,13 @@ const Cartera: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const db = await initDB();
-      const allProperties = await db.getAll('properties');
+      const [allProperties, allValuations, allContracts] = await Promise.all([
+        getCachedStoreRecords<Property>('properties'),
+        getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
+        getCachedStoreRecords<Contract>('contracts'),
+      ]);
       setProperties(allProperties);
-      const allValuations = await db.getAll('valoraciones_historicas');
-      setValuations(allValuations as ValoracionHistorica[]);
+      setValuations(allValuations);
 
       const latestSalesEntries = await Promise.all(
         allProperties
@@ -188,12 +190,7 @@ const Cartera: React.FC = () => {
       );
       setLatestSaleByPropertyId(Object.fromEntries(latestSalesEntries));
 
-      try {
-        const allContracts = await getAllContracts();
-        setContracts(allContracts);
-      } catch {
-        setContracts([]);
-      }
+      setContracts(allContracts);
     } catch (error) {
       console.error('Error loading properties:', error);
       toast.error('Error al cargar las propiedades');
@@ -232,6 +229,7 @@ const Cartera: React.FC = () => {
     try {
       const db = await initDB();
       await db.delete('properties', property.id!);
+      invalidateCachedStores(['properties']);
       toast.success('Inmueble eliminado correctamente');
       void loadData();
     } catch (error) {

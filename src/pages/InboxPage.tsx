@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import { deleteDocumentAndBlob, getDocumentBlob, initDB, saveDocumentWithBlob } from '../services/db';
 import { processDocumentOCR } from '../services/documentAIService';
+import { getCachedStoreRecords, invalidateCachedStores } from '../services/indexedDbCacheService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
 import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
-import PdfPreview from '../components/inbox/PdfPreview';
+
+const PdfPreview = React.lazy(() => import('../components/inbox/PdfPreview'));
 
 const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
@@ -50,8 +52,7 @@ const InboxPage: React.FC = () => {
   useEffect(() => {
     const loadDocuments = async () => {
       try {
-        const db = await initDB();
-        const docs = await db.getAll('documents');
+        const docs = await getCachedStoreRecords('documents');
         setDocuments(docs);
         if (docs.length > 0) setSelectedDocument(docs[0]);
       } catch (_error) {
@@ -104,6 +105,7 @@ const InboxPage: React.FC = () => {
   const persistDocuments = async (updatedDocs: any[]) => {
     setDocuments(updatedDocs);
     localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocs));
+    invalidateCachedStores(['documents']);
     try {
       const db = await initDB();
       const tx = db.transaction('documents', 'readwrite');
@@ -173,6 +175,7 @@ const InboxPage: React.FC = () => {
   const handleDelete = async () => {
     if (!selectedDocument) return;
     await deleteDocumentAndBlob(selectedDocument.id);
+    invalidateCachedStores(['documents']);
     const updatedDocs = documents.filter((doc) => doc.id !== selectedDocument.id);
     setDocuments(updatedDocs);
     localStorage.setItem('atlas-inbox-documents', JSON.stringify(updatedDocs));
@@ -344,7 +347,13 @@ const InboxPage: React.FC = () => {
                 <div className="h-full border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                   {selectedDocument && isPdfDocument(selectedDocument) ? (
                     // ── PDF.js canvas — sin iframes, sin restricciones CSP ──
-                    <PdfPreview blob={previewBlob} filename={selectedDocument.filename} />
+                    <React.Suspense fallback={
+                      <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
+                        Cargando visor PDF…
+                      </div>
+                    }>
+                      <PdfPreview blob={previewBlob} filename={selectedDocument.filename} />
+                    </React.Suspense>
                   ) : selectedDocument ? (
                     <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
                       Vista previa disponible solo para documentos PDF

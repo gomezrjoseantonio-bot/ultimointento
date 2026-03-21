@@ -47,6 +47,7 @@ import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
 import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../services/propertySaleService';
+import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -1078,12 +1079,12 @@ export default function InmueblesAnalisis() {
       try {
         const db = await initDB();
         const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys] = await Promise.all([
-          db.getAll('properties') as Promise<Property[]>,
-          db.getAll('prestamos') as Promise<Prestamo[]>,
-          db.getAll('contracts') as Promise<Contract[]>,
-          db.getAll('expenses') as Promise<Expense[]>,
-          db.getAll('opexRules') as Promise<OpexRule[]>,
-          db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
+          getCachedStoreRecords<Property>('properties'),
+          getCachedStoreRecords<Prestamo>('prestamos'),
+          getCachedStoreRecords<Contract>('contracts'),
+          getCachedStoreRecords<Expense>('expenses'),
+          getCachedStoreRecords<OpexRule>('opexRules'),
+          getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
         ]);
 
@@ -1136,9 +1137,7 @@ export default function InmueblesAnalisis() {
           )
         );
         setProperties(snapshots);
-        if (!selectedPropertyId && snapshots.length) {
-          setSelectedPropertyId(snapshots[0].id);
-        }
+        setSelectedPropertyId((current) => current || snapshots[0]?.id || '');
       } catch {
         if (mounted) setProperties([]);
       }
@@ -1148,7 +1147,7 @@ export default function InmueblesAnalisis() {
     return () => {
       mounted = false;
     };
-  }, [selectedPropertyId, refreshFlag, reloadCounter]);
+  }, [refreshFlag, reloadCounter]);
 
   const handleTabChange = (tabId: Tab) => {
     setActiveTab(tabId);
@@ -1188,6 +1187,7 @@ export default function InmueblesAnalisis() {
     if (!confirmed) return;
     try {
       await cancelPropertySale(saleId);
+      invalidateCachedStores(['properties', 'valoraciones_historicas', 'treasuryEvents']);
       setReloadCounter((current) => current + 1);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
@@ -1257,6 +1257,7 @@ export default function InmueblesAnalisis() {
         source="analisis"
         onClose={() => setSaleModalProperty(null)}
         onConfirmed={() => {
+          invalidateCachedStores(['properties', 'valoraciones_historicas', 'treasuryEvents']);
           setReloadCounter((current) => current + 1);
         }}
       />

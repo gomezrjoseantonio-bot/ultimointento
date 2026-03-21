@@ -4,6 +4,7 @@ import { personalDataService } from './personalDataService';
 import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
 import { prestamosService } from './prestamosService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
+import { getCachedStoreRecords } from './indexedDbCacheService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -312,7 +313,7 @@ class DashboardService {
   async getPropertyCount(): Promise<number> {
     try {
       const db = await initDB();
-      const properties = await db.getAll('properties');
+      const properties = await getCachedStoreRecords<any>('properties');
       
       // Filter active properties only
       const activeProperties = properties.filter((p: any) => p.state === 'activo');
@@ -563,9 +564,9 @@ class DashboardService {
       };
 
       // Inmuebles: use latest valuation when available, fallback to acquisition price.
-      const properties = await db.getAll('properties');
+      const properties = await getCachedStoreRecords<any>('properties');
       const activeProperties = properties.filter((prop: any) => prop.state === 'activo');
-      const valoraciones = await db.getAll('valoraciones_historicas').catch(() => []);
+      const valoraciones = await getCachedStoreRecords<any>('valoraciones_historicas').catch(() => []);
 
       const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
         const propertyValuations = (valoraciones as any[])
@@ -591,12 +592,12 @@ class DashboardService {
       const saldoCuentas = toNumber(tesoreriaPanel.totales.hoy);
 
       // Inversiones: latest current valuation.
-      const inversiones = await db.getAll('inversiones');
+      const inversiones = await getCachedStoreRecords<any>('inversiones');
       const inversionesActivas = inversiones.filter((inv: any) => inv.activo !== false);
       const valorInversiones = inversionesActivas.reduce((sum: number, inv: any) => sum + toNumber(inv.valor_actual), 0);
 
       // Deuda: include active loans from prestamos store.
-      const prestamos = await db.getAll('prestamos').catch(() => []);
+      const prestamos = await getCachedStoreRecords<any>('prestamos').catch(() => []);
       const deudaVivaPorPrestamo = await Promise.all((prestamos as any[])
         .filter((prestamo) => prestamo?.activo !== false && prestamo?.estado !== 'cancelado')
         .map(async (prestamo) => {
@@ -950,12 +951,12 @@ class DashboardService {
         }
       };
 
-      const ingresos = await db.getAll('ingresos');
-      const gastos = await db.getAll('gastos');
-      const expenses = await db.getAll('expenses');
-      const rentPayments = await db.getAll('rentPayments');
-      const contracts = await db.getAll('contracts');
-      const inversiones = await db.getAll('inversiones');
+      const ingresos = await getCachedStoreRecords<any>('ingresos');
+      const gastos = await getCachedStoreRecords<any>('gastos');
+      const expenses = await getCachedStoreRecords<any>('expenses');
+      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
+      const contracts = await getCachedStoreRecords<any>('contracts');
+      const inversiones = await getCachedStoreRecords<any>('inversiones');
 
       // TRABAJO (salario/otros ingresos personales - gastos personales + autónomo)
       const ingresosPersonalMes = ingresos
@@ -973,9 +974,9 @@ class DashboardService {
         .reduce((sum: number, gasto: any) => sum + getImporte(gasto), 0);
 
       const personalDataId = 1;
-      const personalExpenses = await db.getAll('personalExpenses').catch(() => []);
-      const gastosRecurrentes = await db.getAll('gastosRecurrentes').catch(() => []);
-      const gastosPuntuales = await db.getAll('gastosPuntuales').catch(() => []);
+      const personalExpenses = await getCachedStoreRecords<any>('personalExpenses').catch(() => []);
+      const gastosRecurrentes = await getCachedStoreRecords<any>('gastosRecurrentes').catch(() => []);
+      const gastosPuntuales = await getCachedStoreRecords<any>('gastosPuntuales').catch(() => []);
 
       const gastosPersonalesModeloMes = (personalExpenses as any[])
         .filter((expense: any) => toNumber(expense?.personalDataId) === personalDataId)
@@ -1029,7 +1030,7 @@ class DashboardService {
         ...gastos.filter((gasto: any) => inMonthThroughToday(gasto, currentMonth, currentYear) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
       ].reduce((sum: number, expense: any) => sum + getImporte(expense), 0);
 
-      const prestamos = await db.getAll('prestamos').catch(() => []);
+      const prestamos = await getCachedStoreRecords<any>('prestamos').catch(() => []);
       const hipotecasActivas = (prestamos as any[])
         .filter((prestamo) => prestamo?.activo !== false && prestamo?.ambito === 'INMUEBLE')
         .map((prestamo) => ({
@@ -1044,7 +1045,7 @@ class DashboardService {
       const cashflowInmuebles = rentasMes - gastosInmueblesMes - cuotasHipotecaMes;
       const cashflowInmueblesHoy = rentasHoy - gastosInmueblesHoy - cuotasHipotecaHoy;
 
-      const properties = await db.getAll('properties');
+      const properties = await getCachedStoreRecords<any>('properties');
       const activeProperties = properties.filter((p: any) => {
         const status = String(p?.state ?? p?.status ?? p?.estado ?? '').toLowerCase();
         return status === '' || status === 'activo' || status === 'active';
@@ -1354,7 +1355,7 @@ class DashboardService {
       const db = await initDB();
       
       // Get current balance from all active accounts
-      const accounts = await db.getAll('accounts');
+      const accounts = await getCachedStoreRecords<any>('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
       const disponibleHoy = activeAccounts.reduce((sum: number, acc: any) => {
         return sum + parseNumericValue(acc.balance);
@@ -1362,11 +1363,11 @@ class DashboardService {
       
       const now = new Date();
       const next30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
+      const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
       
       // Calculate committed expenses in next 30 days
       // Include recurring expenses, mortgage payments, etc.
-      const expenses = await db.getAll('expenses');
+      const expenses = await getCachedStoreRecords<any>('expenses');
       const gastosExpenses = expenses
         .filter((expense: any) => isDateWithinRange(expense.fecha, now, next30Days))
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
@@ -1380,8 +1381,8 @@ class DashboardService {
       
       // Calculate expected income in next 30 days
       // Include rent payments, salaries, etc.
-      const rentPayments = await db.getAll('rentPayments');
-      const ingresos = await db.getAll('ingresos');
+      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
+      const ingresos = await getCachedStoreRecords<any>('ingresos');
       
       const rentasEsperadas = rentPayments
         .filter((payment: any) => isDateWithinRange(payment.fecha, now, next30Days))
@@ -1449,8 +1450,8 @@ class DashboardService {
         return parseNumericValue(value);
       };
 
-      const accounts = await db.getAll('accounts');
-      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
+      const accounts = await getCachedStoreRecords<any>('accounts');
+      const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
 
       const cardSettlementByAccountId = new Map<number, { chargeAccountId: number }>();
       for (const account of accounts as any[]) {
@@ -1560,7 +1561,7 @@ class DashboardService {
       const db = await initDB();
       
       // Get current liquidity
-      const accounts = await db.getAll('accounts');
+      const accounts = await getCachedStoreRecords<any>('accounts');
       const activeAccounts = accounts.filter((acc: any) => acc.isActive !== false && !acc.deleted_at);
       const liquidezHoy = activeAccounts.reduce((sum: number, acc: any) => {
         return sum + parseNumericValue(acc.balance);
@@ -1568,9 +1569,9 @@ class DashboardService {
       
       // Calculate average monthly expenses from last 3 months
       const now = new Date();
-      const gastos = await db.getAll('gastos');
-      const expenses = await db.getAll('expenses');
-      const treasuryEvents = await db.getAll('treasuryEvents').catch(() => []);
+      const gastos = await getCachedStoreRecords<any>('gastos');
+      const expenses = await getCachedStoreRecords<any>('expenses');
+      const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
       
       const last3MonthsExpenses: number[] = [];
       for (let i = 0; i < 3; i++) {
@@ -1646,8 +1647,8 @@ class DashboardService {
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
       // Expected income in next 30 days
-      const ingresos = await db.getAll('ingresos');
-      const rentPayments = await db.getAll('rentPayments');
+      const ingresos = await getCachedStoreRecords<any>('ingresos');
+      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
       
       const ingresosEsperados = ingresos
         .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
@@ -1732,7 +1733,7 @@ class DashboardService {
       const now = new Date();
       
       // Check for unpaid rent (cobro type)
-      const rentPayments = await db.getAll('rentPayments');
+      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
       const unpaidRents = rentPayments.filter((payment: any) => {
         const fechaVencimiento = new Date(payment.fecha ?? payment.paymentDate ?? `${payment.period}-01`);
         const status = String(payment.estado ?? payment.status ?? '').toLowerCase();
@@ -1755,7 +1756,7 @@ class DashboardService {
       });
       
       // Check for unclassified documents (documento type)
-      const documents = await db.getAll('documents');
+      const documents = await getCachedStoreRecords<any>('documents');
       const unclassifiedDocs = documents.filter((doc: any) => 
         !doc.classified && doc.status === 'processed'
       );
@@ -1773,7 +1774,7 @@ class DashboardService {
       }
       
       // Check for upcoming contract renewals (contrato type)
-      const contracts = await db.getAll('contracts');
+      const contracts = await getCachedStoreRecords<any>('contracts');
       const upcomingRenewals = contracts.filter((contract: any) => {
         if (!contract.endDate || contract.estado !== 'activo') return false;
         const endDate = new Date(contract.endDate);
@@ -1796,7 +1797,7 @@ class DashboardService {
       });
       
       // Check for upcoming payments (pago type)
-      const expenses = await db.getAll('expenses');
+      const expenses = await getCachedStoreRecords<any>('expenses');
       const upcomingExpenses = expenses.filter((expense: any) => {
         if (!expense.fecha) return false;
         const fecha = new Date(expense.fecha);
@@ -1819,7 +1820,7 @@ class DashboardService {
         });
       });
 
-      const properties = await db.getAll('properties');
+      const properties = await getCachedStoreRecords<any>('properties');
       const activeProperties = properties.filter((property: any) => {
         const status = String(property?.state ?? property?.status ?? property?.estado ?? '').toLowerCase();
         return status === '' || status === 'activo' || status === 'active';

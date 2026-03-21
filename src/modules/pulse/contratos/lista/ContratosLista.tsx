@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Contract } from '../../../../services/db';
 import {
-  getAllContracts,
   calculateRentPeriodsFromContract,
   getContractStatus
 } from '../../../../services/contractService';
 import { formatEuro } from '../../../../utils/formatUtils';
 import ContractsListaEnhanced from '../../../horizon/inmuebles/contratos/components/ContractsListaEnhanced';
 import { Users, TrendingUp, Signature, Calendar, Building2 } from 'lucide-react';
+import { getCachedStoreRecords } from '../../../../services/indexedDbCacheService';
 
 const ContratosLista: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -19,7 +19,7 @@ const ContratosLista: React.FC = () => {
   const loadOverview = async () => {
     try {
       setLoadingOverview(true);
-      const data = await getAllContracts();
+      const data = await getCachedStoreRecords<Contract>('contracts');
       setContracts(data);
     } finally {
       setLoadingOverview(false);
