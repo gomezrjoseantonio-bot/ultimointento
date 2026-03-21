@@ -4,7 +4,11 @@ import { Plus, Trash2 } from 'lucide-react';
 import { RootState } from '../../../store';
 import { addActividad, updateActividad, removeActividad, n } from '../../../store/taxSlice';
 
-const BusinessBlock: React.FC = () => {
+interface Props {
+  readOnly?: boolean;
+}
+
+const BusinessBlock: React.FC<Props> = ({ readOnly = false }) => {
   const dispatch = useDispatch();
   const actividades = useSelector((s: RootState) => s.tax.actividades);
 
@@ -15,7 +19,7 @@ const BusinessBlock: React.FC = () => {
     <div className="block-root">
       <div className="block-header-row">
         <h3 className="block-title">Actividades económicas (estimación directa simplificada)</h3>
-        <button className="btn-add" onClick={() => dispatch(addActividad())}>
+        <button className="btn-add" onClick={() => !readOnly && dispatch(addActividad())} disabled={readOnly}>
           <Plus size={14}/> Añadir actividad
         </button>
       </div>
@@ -24,20 +28,24 @@ const BusinessBlock: React.FC = () => {
         <div className="block-empty">No hay actividades registradas.</div>
       )}
 
-      {actividades.map(a => (
-        <div key={a.id} className="block-section business-card">
+      {actividades.map((actividad) => (
+        <div key={actividad.id} className="block-section business-card">
           <div className="business-card-header">
-            <input className="field-input field-input--text inline-title"
-              value={a.codigoActividad}
+            <input
+              className="field-input field-input--text inline-title"
+              value={actividad.codigoActividad}
               placeholder="Código actividad (ej. A05)"
-              onChange={e => dispatch(updateActividad({ id: a.id, data: { codigoActividad: e.target.value }}))}
+              onChange={readOnly ? undefined : (e) => dispatch(updateActividad({ id: actividad.id, data: { codigoActividad: e.target.value } }))}
+              readOnly={readOnly}
             />
-            <input className="field-input field-input--text inline-iae"
-              value={a.epigafreIAE}
+            <input
+              className="field-input field-input--text inline-iae"
+              value={actividad.epigafreIAE}
               placeholder="Epígrafe IAE (ej. 724)"
-              onChange={e => dispatch(updateActividad({ id: a.id, data: { epigafreIAE: e.target.value }}))}
+              onChange={readOnly ? undefined : (e) => dispatch(updateActividad({ id: actividad.id, data: { epigafreIAE: e.target.value } }))}
+              readOnly={readOnly}
             />
-            <button className="btn-icon-danger" onClick={() => dispatch(removeActividad(a.id))}>
+            <button className="btn-icon-danger" onClick={() => !readOnly && dispatch(removeActividad(actividad.id))} disabled={readOnly}>
               <Trash2 size={14}/>
             </button>
           </div>
@@ -51,13 +59,17 @@ const BusinessBlock: React.FC = () => {
           ].map(({ label, field }) => (
             <div key={field} className="field-row">
               <label className="field-label">{label}</label>
-              <input className="field-input" type="number" step="0.01"
-                value={(a as any)[field] === 0 ? '' : (a as any)[field]}
+              <input
+                className="field-input"
+                type="number"
+                step="0.01"
+                value={(actividad as any)[field] === 0 ? '' : (actividad as any)[field]}
                 placeholder="0,00"
-                onChange={e => dispatch(updateActividad({
-                  id: a.id,
-                  data: { [field]: parseFloat(e.target.value.replace(',', '.')) || 0 }
+                onChange={readOnly ? undefined : (e) => dispatch(updateActividad({
+                  id: actividad.id,
+                  data: { [field]: parseFloat(e.target.value.replace(',', '.')) || 0 },
                 }))}
+                readOnly={readOnly}
               />
               <span className="field-unit">€</span>
             </div>
@@ -66,11 +78,11 @@ const BusinessBlock: React.FC = () => {
           <div className="block-results">
             <div className="calc-row">
               <span className="calc-label">Provisión deducible 5% (dif. justificación)</span>
-              <span className="calc-value">{fmt(n(a.provisionSimplificada))} €</span>
+              <span className="calc-value">{fmt(n(actividad.provisionSimplificada))} €</span>
             </div>
             <div className="calc-row calc-row--bold">
               <span className="calc-label">Rendimiento neto</span>
-              <span className="calc-value">{fmt(n(a.rendimientoNeto))} €</span>
+              <span className="calc-value">{fmt(n(actividad.rendimientoNeto))} €</span>
             </div>
           </div>
         </div>
