@@ -11,7 +11,7 @@ import {
 } from './db';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
 import { crearSnapshotDeclaracion, crearSnapshotDeclaracionManual } from './snapshotDeclaracionService';
-import { getOrCreateEjercicio, saveLegacyEjercicioRecord } from './ejercicioFiscalService';
+import * as ejercicioFiscalService from './ejercicioFiscalService';
 import { crearArrastreFiscal } from './arrastresFiscalesService';
 import type { DatosActivosExtraidos, InmuebleParsedFromPDF } from './declaracionFromCasillasService';
 
@@ -311,7 +311,7 @@ export async function cerrarEjercicioConWorkflow(input: {
   validarContraDatosReales: boolean;
   notasRevision?: string;
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio; snapshot: SnapshotDeclaracion }> {
-  const ejercicio = await getOrCreateEjercicio(input.año);
+  const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.año);
   if (ejercicio.estado !== 'vivo') {
     throw new Error(`El ejercicio ${input.año} no está vivo y no se puede cerrar.`);
   }
@@ -356,7 +356,7 @@ export async function cerrarEjercicioConWorkflow(input: {
     updatedAt: now,
   };
 
-  await saveLegacyEjercicioRecord(updatedEjercicio);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado, snapshot };
 }
@@ -386,7 +386,7 @@ export async function importarDeclaracionManual(input: {
   datosActivos?: DatosActivosExtraidos;
   inmueblesParsed?: InmuebleParsedFromPDF[];
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio }> {
-  const ejercicio = await getOrCreateEjercicio(input.ejercicio);
+  const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.ejercicio);
   const now = new Date().toISOString();
 
   const manualArrastres = input.arrastresPendientes ?? [];
@@ -502,7 +502,7 @@ export async function importarDeclaracionManual(input: {
     updatedAt: now,
   };
 
-  await saveLegacyEjercicioRecord(updatedEjercicio);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado };
 }
