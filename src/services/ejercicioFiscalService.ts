@@ -250,7 +250,7 @@ class EjercicioFiscalService {
     validateEjercicio(ejercicio.ejercicio);
     const existing = await findByEjercicio(ejercicio.ejercicio);
     const record = toDbRecord(ejercicio, existing);
-    if (hasValidEjercicioId(existing?.id) && !hasValidEjercicioId(record.id)) {
+    if (existing && hasValidEjercicioId(existing.id) && !hasValidEjercicioId(record.id)) {
       record.id = existing.id;
     }
     await putEjercicioRecord(record);
