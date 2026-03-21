@@ -240,9 +240,9 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
         : ((i.reduccionHabitual ?? 0) > 0 && (i.rendimientoNetoAlquiler ?? 0) > 0
           ? ((i.reduccionHabitual ?? 0) / (i.rendimientoNetoAlquiler ?? 1)) * 100
           : (i.esHabitual ? 60 : 0))),
-      pctConstruccion: 0,
-      baseAmortizacion: 0,
-      amortizacionInmueble: round2(i.amortizacion),
+      pctConstruccion: amortization?.pctConstruccion ?? 0,
+      baseAmortizacion: amortization?.baseAmortizacion ?? 0,
+      amortizacionInmueble: amortization?.amortizacionInmueble ?? round2(i.amortizacion),
       limiteInteresesReparacion: round2(i.limiteAplicado ?? 0),
       excesoReparacion: round2(i.excesoArrastrable ?? 0),
       rentaImputada: round2(i.imputacionRenta),
