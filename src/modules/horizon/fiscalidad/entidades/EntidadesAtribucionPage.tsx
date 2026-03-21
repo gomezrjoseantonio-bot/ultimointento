@@ -220,7 +220,7 @@ const EntidadesAtribucionPage: React.FC = () => {
                 <div>
                   <h3 style={{ margin: 0, color: 'var(--atlas-navy-1)' }}>{entidad.nombre}</h3>
                   <p style={{ margin: '0.35rem 0 0', color: 'var(--hz-neutral-700)' }}>
-                    {entidad.nif} · {entidad.tipoEntidad} · {entidad.porcentajeParticipacion}% · {entidad.tipoRenta.replaceAll('_', ' ')}
+                    {entidad.nif} · {entidad.tipoEntidad} · {entidad.porcentajeParticipacion}% · {entidad.tipoRenta.replace(/_/g, ' ')}
                   </p>
                 </div>
                 <button

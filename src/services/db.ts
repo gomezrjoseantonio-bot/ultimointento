@@ -1151,6 +1151,24 @@ export type TipoArrastre =
   | 'deduccion_maternidad'
   | 'otros';
 
+export interface PerdidaPatrimonialAhorro {
+  id?: number;
+  ejercicioOrigen: number;
+  ejercicioCaducidad: number;
+  importeOriginal: number;
+  importeAplicado: number;
+  importePendiente: number;
+  tipoOrigen: 'crypto' | 'inmueble' | 'importado' | 'manual' | 'mixto';
+  estado: 'pendiente' | 'aplicado_parcial' | 'aplicado_total' | 'caducado';
+  aplicaciones: Array<{
+    ejercicioDestino: number;
+    importe: number;
+    fecha: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ArrastreIRPF {
   id?: number;
   ejercicioOrigen: number;         // Año en que se generó

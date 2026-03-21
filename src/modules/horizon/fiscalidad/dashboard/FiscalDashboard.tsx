@@ -8,6 +8,7 @@ import { generarEventosFiscales } from '../../../../services/fiscalPaymentsServi
 import FiscalKpiCard from '../../../../components/fiscal/ui/FiscalKpiCard';
 import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
+import type { CompensacionDetalle, PerdidaResumen } from '../../../../services/compensacionAhorroService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -193,7 +194,7 @@ const FiscalDashboard: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {declaracion.compensacionAhorro.compensacionAplicada.map((item) => (
+                        {declaracion.compensacionAhorro.compensacionAplicada.map((item: CompensacionDetalle) => (
                           <tr key={item.ejercicioOrigen} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
                             <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)' }}>{item.ejercicioOrigen}</td>
                             <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--s-pos)' }}>{fmt(-item.importeAplicado)}</td>
@@ -240,7 +241,7 @@ const FiscalDashboard: React.FC = () => {
                 {declaracion.compensacionAhorro.perdidasPendientesDespues.length > 0 && (
                   <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-500)' }}>
                     Pérdidas pendientes futuras: {declaracion.compensacionAhorro.perdidasPendientesDespues
-                      .map((item) => `${item.ejercicioOrigen}: ${fmt(item.importePendiente)} (caduca ${item.ejercicioCaducidad})`)
+                      .map((item: PerdidaResumen) => `${item.ejercicioOrigen}: ${fmt(item.importePendiente)} (caduca ${item.ejercicioCaducidad})`)
                       .join(' · ')}
                   </div>
                 )}
