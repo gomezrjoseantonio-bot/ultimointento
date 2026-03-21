@@ -250,12 +250,14 @@ export const calculateAEATAmortization = async (
   const propertyAmortization = dailyAmortization * daysRented;
 
   // Calculate improvements amortization for current year
-  const currentYearImprovements = allImprovements.filter(imp => imp.year === exerciseYear);
+  const currentYearImprovements = (await getMejorasHastaEjercicio(propertyId, exerciseYear))
+    .filter((improvement) => improvement.ejercicio === exerciseYear);
   let improvementsAmortization = 0;
-  
+
   for (const improvement of currentYearImprovements) {
-    const improvementDays = improvement.daysInYear || daysAvailable;
-    const improvementDailyAmortization = (improvement.amount * percentageApplied) / daysAvailable;
+    const improvementDays = improvement.diasEnEjercicio
+      || (improvement.fecha ? Math.max(1, Math.ceil((new Date(exerciseYear, 11, 31).getTime() - new Date(improvement.fecha).getTime()) / (1000 * 60 * 60 * 24)) + 1) : daysAvailable);
+    const improvementDailyAmortization = (improvement.importe * percentageApplied) / daysAvailable;
     improvementsAmortization += improvementDailyAmortization * improvementDays;
   }
 
@@ -432,32 +434,55 @@ export const updateFiscalSummaryWithAEAT = async (
 export const addPropertyImprovement = async (
   improvement: Omit<PropertyImprovement, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<PropertyImprovement> => {
-  const db = await initDB();
-  
-  const newImprovement: Omit<PropertyImprovement, 'id'> = {
-    ...improvement,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  const mejora = await crearMejora({
+    inmuebleId: improvement.propertyId,
+    ejercicio: improvement.year,
+    fecha: improvement.date,
+    descripcion: improvement.description,
+    tipo: 'mejora',
+    importe: improvement.amount,
+    diasEnEjercicio: improvement.daysInYear,
+    proveedorNIF: improvement.counterpartyNIF || 'PENDIENTE',
+  });
 
-  const id = await db.add('propertyImprovements', newImprovement) as number;
-  return { ...newImprovement, id };
+  return {
+    id: mejora.id,
+    propertyId: mejora.inmuebleId,
+    year: mejora.ejercicio,
+    amount: mejora.importe,
+    date: mejora.fecha,
+    daysInYear: mejora.diasEnEjercicio,
+    counterpartyNIF: mejora.proveedorNIF,
+    description: mejora.descripcion,
+    createdAt: mejora.createdAt,
+    updatedAt: mejora.updatedAt,
+  };
 };
 
 /**
  * Get all improvements for a property
  */
 export const getPropertyImprovements = async (propertyId: number): Promise<PropertyImprovement[]> => {
-  const db = await initDB();
-  return await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId);
+  const mejoras = await getMejorasHastaEjercicio(propertyId, Number.MAX_SAFE_INTEGER);
+  return mejoras.map((mejora) => ({
+    id: mejora.id,
+    propertyId: mejora.inmuebleId,
+    year: mejora.ejercicio,
+    amount: mejora.importe,
+    date: mejora.fecha,
+    daysInYear: mejora.diasEnEjercicio,
+    counterpartyNIF: mejora.proveedorNIF,
+    description: mejora.descripcion,
+    createdAt: mejora.createdAt,
+    updatedAt: mejora.updatedAt,
+  }));
 };
 
 /**
  * Delete a property improvement
  */
 export const deletePropertyImprovement = async (improvementId: number): Promise<void> => {
-  const db = await initDB();
-  await db.delete('propertyImprovements', improvementId);
+  await eliminarMejora(improvementId);
 };
 
 export const updateImprovement = async (
@@ -465,7 +490,6 @@ export const updateImprovement = async (
   improvementId: string,
   data: ImprovementUpdatePayload
 ): Promise<void> => {
-  const db = await initDB();
   const parsedPropertyId = Number(propertyId);
   const parsedImprovementId = Number(improvementId);
 
@@ -473,23 +497,20 @@ export const updateImprovement = async (
     throw new Error('Identificadores de mejora inválidos');
   }
 
-  const existing = await db.get('propertyImprovements', parsedImprovementId);
-  if (!existing || existing.propertyId !== parsedPropertyId) {
+  const mejoras = await getMejorasHastaEjercicio(parsedPropertyId, Number.MAX_SAFE_INTEGER);
+  const existing = mejoras.find((mejora) => mejora.id === parsedImprovementId && mejora.inmuebleId === parsedPropertyId);
+  if (!existing) {
     throw new Error('Mejora no encontrada para el inmueble indicado');
   }
 
-  const updatedImprovement: PropertyImprovement = {
-    ...existing,
-    year: data.year,
-    amount: data.amount,
-    date: data.date,
-    daysInYear: data.daysInYear,
-    counterpartyNIF: data.counterpartyNIF,
-    description: data.description,
-    updatedAt: new Date().toISOString(),
-  };
-
-  await db.put('propertyImprovements', updatedImprovement);
+  await actualizarMejora(parsedImprovementId, {
+    ejercicio: data.year,
+    importe: data.amount,
+    fecha: data.date,
+    diasEnEjercicio: data.daysInYear,
+    proveedorNIF: data.counterpartyNIF || existing.proveedorNIF,
+    descripcion: data.description,
+  });
 };
 
 // Helper function

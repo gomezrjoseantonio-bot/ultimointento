@@ -58,7 +58,12 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
   onProcessOCR,
   processingOCR,
 }) => {
-  const hasOCR = !!document?.metadata?.ocr;
+  const ocr = document?.metadata?.ocr;
+  const ocrStatus = ocr?.status;
+  const hasCompletedOCR = ocrStatus === 'completed';
+  const hasErroredOCR = ocrStatus === 'error';
+  const hasOCR = !!ocr;
+  const hasAnyExtractedValue = hasCompletedOCR && rowsHaveValues(document);
 
   const tipoRaw = pickSnakeField(document, 'tipo_gasto');
   const tipoLabel = tipoRaw !== '—' ? (TIPO_GASTO_LABELS[tipoRaw] ?? tipoRaw) : '—';
@@ -77,6 +82,20 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
     { label: 'Notas',          value: pickSnakeField(document, 'notas') },
   ];
 
+  function rowsHaveValues(doc: any): boolean {
+    const values = [
+      pickSnakeField(doc, 'proveedor'),
+      pickSnakeField(doc, 'numero_factura'),
+      pickSnakeField(doc, 'fecha'),
+      pickSnakeField(doc, 'base_imponible'),
+      pickSnakeField(doc, 'iva'),
+      pickSnakeField(doc, 'importe_total'),
+      pickField(doc, ['supplier_name', 'invoice_id', 'invoice_date', 'net_amount', 'subtotal', 'tax_amount', 'total_amount', 'currency']),
+    ];
+
+    return values.some((value) => value !== '—');
+  }
+
   return (
     <div className="h-full flex flex-col">
 
@@ -85,7 +104,8 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
         <p style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)', fontSize: 'var(--t-lg)', fontWeight: 600, lineHeight: 1.3 }}>
           Datos extraídos
         </p>
-        {hasOCR && !processingOCR && <span className="atlas-chip-positive">OCR completado</span>}
+        {hasCompletedOCR && !processingOCR && <span className="atlas-chip-positive">OCR completado</span>}
+        {hasErroredOCR && !processingOCR && <span className="atlas-chip-negative">OCR con error</span>}
       </div>
 
       {/* ── skeleton mientras procesa ── */}
@@ -123,8 +143,52 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
         </div>
       )}
 
+      {!processingOCR && hasErroredOCR && (
+        <div className="h-full flex flex-col items-center justify-center px-6 gap-4 text-center">
+          <ScanLine size={32} style={{ color: 'var(--s-neg)' }} />
+          <p className="text-sm" style={{ color: 'var(--n-500)', fontFamily: 'var(--font-base)' }}>
+            El OCR no pudo procesar este documento.
+          </p>
+          {ocr?.error && (
+            <p className="text-xs" style={{ color: 'var(--n-400)', fontFamily: 'var(--font-base)' }}>
+              {ocr.error}
+            </p>
+          )}
+          <button
+            type="button"
+            className="atlas-btn-primary w-full"
+            onClick={onProcessOCR}
+            disabled={!document}
+          >
+            <ScanLine size={16} />
+            Reintentar OCR
+          </button>
+        </div>
+      )}
+
+      {!processingOCR && hasCompletedOCR && !hasAnyExtractedValue && (
+        <div className="h-full flex flex-col items-center justify-center px-6 gap-4 text-center">
+          <ScanLine size={32} style={{ color: 'var(--n-300)' }} />
+          <p className="text-sm" style={{ color: 'var(--n-500)', fontFamily: 'var(--font-base)' }}>
+            El OCR terminó, pero no devolvió campos utilizables.
+          </p>
+          <p className="text-xs" style={{ color: 'var(--n-400)', fontFamily: 'var(--font-base)' }}>
+            Revisa el PDF y vuelve a procesarlo. Si el proveedor de OCR respondió texto no estructurado, ahora intentaremos recuperarlo mejor.
+          </p>
+          <button
+            type="button"
+            className="atlas-btn-primary w-full"
+            onClick={onProcessOCR}
+            disabled={!document}
+          >
+            <ScanLine size={16} />
+            Reprocesar OCR
+          </button>
+        </div>
+      )}
+
       {/* ── datos extraídos ── */}
-      {!processingOCR && hasOCR && (
+      {!processingOCR && hasCompletedOCR && hasAnyExtractedValue && (
         <div className="h-full p-5 flex flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--s-pos)' }}>
             <CheckCircle2 size={16} />
