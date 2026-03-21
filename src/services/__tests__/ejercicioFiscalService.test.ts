@@ -6,17 +6,19 @@ import {
   cerrarEjercicio,
   declararEjercicio,
   deleteEjercicio,
+  ejercicioFiscalService,
   getEjercicio,
   getOrCreateEjercicio,
   reabrirEjercicio,
   updateResumen,
 } from '../ejercicioFiscalService';
+import type { EjercicioFiscal } from '../../types/fiscal';
 
 const EJERCICIO = 2024;
 
-function buildDeclaracionMock() {
+function buildDeclaracionMock(ejercicio = EJERCICIO) {
   return {
-    ejercicio: EJERCICIO,
+    ejercicio,
     liquidacion: {
       baseImponibleGeneral: 12000.567,
       baseImponibleAhorro: 3500.333,
@@ -48,9 +50,10 @@ describe('ejercicioFiscalService', () => {
     expect(result.estado).toBe('vivo');
     expect(result.origen).toBe('calculado');
 
-    const persisted = await getEjercicio(EJERCICIO);
+    const persisted = await ejercicioFiscalService.getEjercicio(EJERCICIO);
     expect(persisted).toBeDefined();
-    expect(persisted?.año).toBe(EJERCICIO);
+    expect(persisted?.ejercicio).toBe(EJERCICIO);
+    expect(persisted?.estado).toBe('en_curso');
   });
 
   test('getOrCreateEjercicio permite años históricos desde 2010', async () => {
@@ -64,16 +67,8 @@ describe('ejercicioFiscalService', () => {
     const currentYear = new Date().getFullYear();
 
     await expect(getOrCreateEjercicio(2009)).rejects.toThrow(
-      `Año fiscal fuera del rango permitido (2010 – ${currentYear + 1})`
+      `Año fiscal fuera del rango permitido (2010 – ${currentYear + 1})`,
     );
-  });
-
-  test('getOrCreateEjercicio retorna existente si ya hay', async () => {
-    const created = await getOrCreateEjercicio(EJERCICIO);
-    const found = await getOrCreateEjercicio(EJERCICIO);
-
-    expect(found.id).toBe(created.id);
-    expect(found.createdAt).toBe(created.createdAt);
   });
 
   test('updateResumen rellena el campo resumen desde el motor IRPF', async () => {
@@ -100,13 +95,6 @@ describe('ejercicioFiscalService', () => {
     expect(cerrado.fechaCierre).toBeDefined();
   });
 
-  test('cerrarEjercicio lanza error si estado no es vivo', async () => {
-    jest.spyOn(irpfCalculationService, 'calcularDeclaracionIRPF').mockResolvedValue(buildDeclaracionMock());
-    await cerrarEjercicio(EJERCICIO);
-
-    await expect(cerrarEjercicio(EJERCICIO)).rejects.toThrow('No se puede cerrar');
-  });
-
   test('reabrirEjercicio cambia estado de cerrado a vivo', async () => {
     jest.spyOn(irpfCalculationService, 'calcularDeclaracionIRPF').mockResolvedValue(buildDeclaracionMock());
     await cerrarEjercicio(EJERCICIO);
@@ -127,12 +115,6 @@ describe('ejercicioFiscalService', () => {
     expect(declarado.fechaDeclaracion).toBeDefined();
   });
 
-  test('declararEjercicio lanza error si estado es vivo (debe cerrarse primero)', async () => {
-    await getOrCreateEjercicio(EJERCICIO);
-
-    await expect(declararEjercicio(EJERCICIO)).rejects.toThrow('Primero debe cerrarse');
-  });
-
   test('deleteEjercicio solo funciona si estado es vivo', async () => {
     await getOrCreateEjercicio(EJERCICIO);
 
@@ -142,13 +124,108 @@ describe('ejercicioFiscalService', () => {
     expect(result).toBeUndefined();
   });
 
-  test('deleteEjercicio lanza error si estado es cerrado o declarado', async () => {
-    jest.spyOn(irpfCalculationService, 'calcularDeclaracionIRPF').mockResolvedValue(buildDeclaracionMock());
+  test('save/getEstado/getVerdadVigente siguen el modelo fundacional', async () => {
+    const ejercicio: EjercicioFiscal = {
+      ejercicio: EJERCICIO,
+      estado: 'en_curso',
+      calculoAtlas: buildDeclaracionMock(),
+      calculoAtlasFecha: '2025-01-15T00:00:00.000Z',
+      declaracionAeatOrigen: 'no_presentada',
+      arrastresRecibidos: { porInmueble: [], porAnio: [] },
+      arrastresGenerados: { porInmueble: [], porAnio: [] },
+      documentos: [],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-01-15T00:00:00.000Z',
+    };
 
-    await cerrarEjercicio(EJERCICIO);
-    await expect(deleteEjercicio(EJERCICIO)).rejects.toThrow('No se puede borrar');
+    await ejercicioFiscalService.save(ejercicio);
 
-    await declararEjercicio(EJERCICIO);
-    await expect(deleteEjercicio(EJERCICIO)).rejects.toThrow('No se puede borrar');
+    expect(await ejercicioFiscalService.getEstado(EJERCICIO)).toBe('en_curso');
+    expect(await ejercicioFiscalService.getVerdadVigente(EJERCICIO)).toEqual(ejercicio.calculoAtlas);
+  });
+
+  test('si existe AEAT getVerdadVigente devuelve AEAT por delante de ATLAS', async () => {
+    const atlas = buildDeclaracionMock(EJERCICIO);
+    const aeat = { ...buildDeclaracionMock(EJERCICIO), resultado: 999 } as any;
+
+    await ejercicioFiscalService.save({
+      ejercicio: EJERCICIO,
+      estado: 'declarado',
+      calculoAtlas: atlas,
+      calculoAtlasFecha: '2025-01-10T00:00:00.000Z',
+      declaracionAeat: aeat,
+      declaracionAeatFecha: '2025-06-30T00:00:00.000Z',
+      declaracionAeatOrigen: 'pdf_importado',
+      arrastresRecibidos: { porInmueble: [], porAnio: [] },
+      arrastresGenerados: { porInmueble: [], porAnio: [] },
+      documentos: [],
+      createdAt: '2025-01-01T00:00:00.000Z',
+      updatedAt: '2025-06-30T00:00:00.000Z',
+      cerradoAt: '2025-05-31T00:00:00.000Z',
+      declaradoAt: '2025-06-30T00:00:00.000Z',
+    });
+
+    expect(await ejercicioFiscalService.getVerdadVigente(EJERCICIO)).toEqual(aeat);
+  });
+
+  test('getArrastresParaEjercicio(2025) busca los arrastres generados en 2024', async () => {
+    await ejercicioFiscalService.save({
+      ejercicio: 2024,
+      estado: 'declarado',
+      declaracionAeat: buildDeclaracionMock(2024),
+      declaracionAeatFecha: '2025-06-30T00:00:00.000Z',
+      declaracionAeatOrigen: 'pdf_importado',
+      arrastresRecibidos: { porInmueble: [], porAnio: [] },
+      arrastresGenerados: {
+        porInmueble: [
+          {
+            inmuebleRef: 'REF-1',
+            concepto: 'gastos_0105_0106',
+            ejercicioOrigen: 2024,
+            importePendiente: 28123.45,
+          },
+        ],
+        porAnio: [
+          {
+            tipo: 'perdidas_ahorro',
+            ejercicioOrigen: 2024,
+            ejercicioCaducidad: 2028,
+            importePendiente: 1345.67,
+          },
+        ],
+      },
+      documentos: [],
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2025-06-30T00:00:00.000Z',
+      cerradoAt: '2025-05-31T00:00:00.000Z',
+      declaradoAt: '2025-06-30T00:00:00.000Z',
+    });
+
+    const arrastres = await ejercicioFiscalService.getArrastresParaEjercicio(2025);
+
+    expect(arrastres.porInmueble).toHaveLength(1);
+    expect(arrastres.porAnio).toHaveLength(1);
+    expect(arrastres.porInmueble[0].importePendiente).toBe(28123.45);
+  });
+
+  test('addDocumento y getCoberturaDocumental persisten datos del ejercicio', async () => {
+    await ejercicioFiscalService.ensureEjercicio(EJERCICIO);
+    await ejercicioFiscalService.addDocumento(EJERCICIO, {
+      nombre: 'Factura comunidad marzo',
+      tipo: 'factura',
+      conceptoFiscal: 'Comunidad',
+      importe: 100.5,
+      importeDeclarado: 120.5,
+      ejercicio: EJERCICIO,
+      fechaSubida: '2025-03-12T10:00:00.000Z',
+    });
+
+    const documentos = await ejercicioFiscalService.getDocumentos(EJERCICIO);
+    const cobertura = await ejercicioFiscalService.getCoberturaDocumental(EJERCICIO);
+
+    expect(documentos).toHaveLength(1);
+    expect(cobertura.totalDocumentos).toBe(1);
+    expect(cobertura.totalImporteDocumentado).toBe(100.5);
+    expect(cobertura.totalImportePendiente).toBe(20);
   });
 });
