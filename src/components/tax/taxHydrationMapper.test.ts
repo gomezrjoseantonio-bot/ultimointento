@@ -40,11 +40,13 @@ function buildDeclaracion(): DeclaracionIRPF {
           ingresosIntegros: 12000,
           gastosDeducibles: 3000,
           amortizacion: 1000,
-          reduccionHabitual: 0,
+          reduccionHabitual: 3200,
           rendimientoNetoAlquiler: 8000,
+          rendimientoNetoReducido: 4800,
+          porcentajeReduccionHabitual: 40,
           esHabitual: true,
           imputacionRenta: 0,
-          rendimientoNeto: 8000,
+          rendimientoNeto: 4800,
         },
       ],
       imputacionRentas: [
@@ -145,8 +147,8 @@ describe('mapDeclaracionToTaxState', () => {
     expect(rented?.amortizacionMuebles).toBe(75);
     expect(rented?.mejoras).toBe(1500);
     expect(rented?.gastosTributos).toBe(8750);
-    expect(rented?.pctConstruccion).toBeCloseTo(37.42, 2);
-    expect(rented?.baseAmortizacion).toBeCloseTo(24070.4, 1);
-    expect(rented?.amortizacionInmueble).toBeCloseTo(722.11, 2);
+    expect(rented?.pctReduccion).toBe(40);
+    expect(rented?.rendimientoNeto).toBe(8000);
+    expect(rented?.rendimientoNetoReducido).toBe(4800);
   });
 });

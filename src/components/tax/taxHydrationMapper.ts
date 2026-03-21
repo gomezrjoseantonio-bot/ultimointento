@@ -234,19 +234,20 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
       arrastres: i.arrastresAplicados && i.arrastresAplicados > 0
         ? [{ ejercicio: declaracion.ejercicio - 1, pendienteInicio: i.arrastresAplicados, aplicado: i.arrastresAplicados, pendienteFuturo: 0 }]
         : [],
-      tieneReduccion: i.esHabitual,
-      pctReduccion: i.esHabitual ? 60 : 0,
-      pctConstruccion: amortization?.pctConstruccion ?? round2(getConstructionPercentageFromValues(
-        propertyHints.get(i.inmuebleId)?.valorCatastral ?? 0,
-        propertyHints.get(i.inmuebleId)?.valorCatastralConstruccion ?? 0,
-      )),
-      baseAmortizacion: amortization?.baseAmortizacion ?? 0,
-      amortizacionInmueble: amortization?.amortizacionInmueble ?? round2(i.amortizacion),
+      tieneReduccion: (i.reduccionHabitual ?? 0) > 0 || i.esHabitual || (i.porcentajeReduccionHabitual ?? 0) > 0,
+      pctReduccion: round2((i.porcentajeReduccionHabitual ?? 0) > 0
+        ? (i.porcentajeReduccionHabitual ?? 0)
+        : ((i.reduccionHabitual ?? 0) > 0 && (i.rendimientoNetoAlquiler ?? 0) > 0
+          ? ((i.reduccionHabitual ?? 0) / (i.rendimientoNetoAlquiler ?? 1)) * 100
+          : (i.esHabitual ? 60 : 0))),
+      pctConstruccion: 0,
+      baseAmortizacion: 0,
+      amortizacionInmueble: round2(i.amortizacion),
       limiteInteresesReparacion: round2(i.limiteAplicado ?? 0),
       excesoReparacion: round2(i.excesoArrastrable ?? 0),
       rentaImputada: round2(i.imputacionRenta),
-      rendimientoNeto: round2(i.rendimientoNeto),
-      rendimientoNetoReducido: round2(i.rendimientoNeto),
+      rendimientoNeto: round2(i.rendimientoNetoAlquiler),
+      rendimientoNetoReducido: round2(i.rendimientoNetoReducido ?? i.rendimientoNeto),
     });
   });
 

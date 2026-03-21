@@ -250,6 +250,12 @@ const InmuebleDetail: React.FC<{
       {/* Resultados */}
       <div className="block-results">
         <Calc label="Rendimiento neto" value={n(i.rendimientoNeto)} bold />
+        {n(i.tieneReduccion ? i.rendimientoNeto - i.rendimientoNetoReducido : 0) > 0 && (
+          <Calc
+            label={`Reducción ${n(i.pctReduccion)}%`}
+            value={-Math.abs(n(i.rendimientoNeto) - n(i.rendimientoNetoReducido))}
+          />
+        )}
         <Calc label="Rendimiento neto reducido" value={n(i.rendimientoNetoReducido)} bold />
       </div>
     </div>

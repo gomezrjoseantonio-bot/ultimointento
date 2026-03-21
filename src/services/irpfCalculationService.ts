@@ -82,12 +82,14 @@ export interface RendimientoInmueble {
   ingresosIntegros: number;
   gastosDeducibles: number;
   amortizacion: number;
-  reduccionHabitual: number; // 60% si modalidad habitual
-  rendimientoNetoAlquiler: number;
+  reduccionHabitual: number; // Reducción por arrendamiento de vivienda aplicada sobre el rendimiento neto positivo
+  rendimientoNetoAlquiler: number; // Rendimiento neto del alquiler ANTES de reducción
+  rendimientoNetoReducido: number; // Rendimiento neto del alquiler DESPUÉS de reducción
+  porcentajeReduccionHabitual: number;
   esHabitual: boolean;
   // Imputación por días vacíos (integrada cuando hay ocupación parcial)
   imputacionRenta: number;
-  // Total: rendimientoNetoAlquiler + imputacionRenta
+  // Total: rendimientoNetoReducido + imputacionRenta
   rendimientoNeto: number;
   // AEAT art. 23 LIRPF limit tracking for 0105+0106
   gastosFinanciacionYReparacion?: number; // Original 0105+0106 (prorated)
@@ -205,6 +207,34 @@ export function calcularCuotaPorTramos(
 
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+export function calcularReduccionArrendamientoVivienda(
+  rendimientoNetoAlquiler: number,
+  porcentajeReduccion: number,
+): {
+  reduccionHabitual: number;
+  rendimientoNetoReducido: number;
+  porcentajeNormalizado: number;
+} {
+  const porcentajeNormalizado = porcentajeReduccion > 1
+    ? porcentajeReduccion / 100
+    : porcentajeReduccion;
+
+  if (rendimientoNetoAlquiler <= 0 || porcentajeNormalizado <= 0) {
+    return {
+      reduccionHabitual: 0,
+      rendimientoNetoReducido: round2(rendimientoNetoAlquiler),
+      porcentajeNormalizado: round2(porcentajeNormalizado * 100) / 100,
+    };
+  }
+
+  const reduccionHabitual = round2(rendimientoNetoAlquiler * porcentajeNormalizado);
+  return {
+    reduccionHabitual,
+    rendimientoNetoReducido: round2(rendimientoNetoAlquiler - reduccionHabitual),
+    porcentajeNormalizado: round2(porcentajeNormalizado * 100) / 100,
+  };
 }
 
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {
@@ -449,6 +479,8 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       // Property is rented (fully or partially)
       let ingresosIntegros = 0;
       let esHabitual = false;
+      let tieneReduccion = false;
+      let porcentajeReduccionHabitual = 0;
 
       for (const contract of propContracts) {
         const renta = contract.rentaMensual ?? 0;
@@ -458,8 +490,55 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         const mesFin = fin.getFullYear() > ejercicio ? 12 : fin.getMonth() + 1;
         const meses = Math.max(0, mesFin - mesInicio + 1);
         ingresosIntegros += renta * meses;
-        if (contract.modalidad === 'habitual') esHabitual = true;
+
+        const contractReductionActive = Boolean(
+          (contract as any).reduccion?.activa
+          ?? (contract as any).reduction?.active
+          ?? (contract as any).tieneReduccion
+          ?? false
+        );
+        const contractReductionPercent = Number(
+          (contract as any).reduccion?.porcentaje
+          ?? (contract as any).reduction?.percentage
+          ?? (contract as any).porcentajeReduccion
+          ?? (contract as any).pctReduccion
+          ?? 0
+        );
+
+        if (contract.modalidad === 'habitual') {
+          esHabitual = true;
+          tieneReduccion = true;
+          if (contractReductionPercent > 0) porcentajeReduccionHabitual = contractReductionPercent;
+        } else if (contractReductionActive) {
+          tieneReduccion = true;
+          if (contractReductionPercent > 0) porcentajeReduccionHabitual = contractReductionPercent;
+        }
       }
+
+      if (!tieneReduccion) {
+        const propertyReductionActive = Boolean(
+          (prop as any).fiscalData?.tiene_reduccion
+          ?? (prop as any).fiscalData?.tieneReduccion
+          ?? (prop as any).fiscalData?.reduccionArrendamientoActiva
+          ?? false
+        );
+        const propertyReductionPercent = Number(
+          (prop as any).fiscalData?.porcentaje_reduccion
+          ?? (prop as any).fiscalData?.porcentajeReduccion
+          ?? (prop as any).fiscalData?.pctReduccion
+          ?? 0
+        );
+
+        if (propertyReductionActive || propertyReductionPercent > 0) {
+          tieneReduccion = true;
+          porcentajeReduccionHabitual = propertyReductionPercent;
+        }
+      }
+
+      if (tieneReduccion && porcentajeReduccionHabitual <= 0) {
+        porcentajeReduccionHabitual = esHabitual ? CONSTANTES_IRPF.reduccionViviendaHabitual : 0;
+      }
+
 
       // Get fiscal summary and prorate expenses by rental days ratio
       let gastosDeducibles = 0;
@@ -528,9 +607,14 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         accesoriosIncluidos.push({ id: acc.id!, alias: acc.alias, amortizacion: accAmortizacion, gastos: accGastos });
       }
 
-      const rendimientoBruto = round2(ingresosIntegros - gastosDeducibles - amortizacion);
-      const reduccionHabitual = esHabitual ? round2(rendimientoBruto * CONSTANTES_IRPF.reduccionViviendaHabitual) : 0;
-      const rendimientoNetoAlquiler = round2(rendimientoBruto - reduccionHabitual);
+      const rendimientoNetoAlquiler = round2(ingresosIntegros - gastosDeducibles - amortizacion);
+      const { reduccionHabitual, rendimientoNetoReducido, porcentajeNormalizado } = tieneReduccion
+        ? calcularReduccionArrendamientoVivienda(rendimientoNetoAlquiler, porcentajeReduccionHabitual)
+        : {
+            reduccionHabitual: 0,
+            rendimientoNetoReducido: rendimientoNetoAlquiler,
+            porcentajeNormalizado: 0,
+          };
 
       // Imputación for vacant days (integrated into this property's rendimiento)
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;
@@ -566,9 +650,11 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         amortizacion,
         reduccionHabitual,
         rendimientoNetoAlquiler,
+        rendimientoNetoReducido,
+        porcentajeReduccionHabitual: porcentajeNormalizado,
         esHabitual,
         imputacionRenta,
-        rendimientoNeto: round2(rendimientoNetoAlquiler + imputacionRenta),
+        rendimientoNeto: round2(rendimientoNetoReducido + imputacionRenta),
         gastosFinanciacionYReparacion,
         limiteAplicado,
         excesoArrastrable,
