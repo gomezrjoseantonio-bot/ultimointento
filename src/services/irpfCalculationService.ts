@@ -703,6 +703,7 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
   rcm: RendimientosCapitalMobiliario;
   gyp: GananciasPerdidasPatrimoniales;
   aportacionPensiones: number;
+  ventasInmuebles: PropertyDisposalTaxResult[];
 }> {
   const db = await initDB();
   const posiciones = await db.getAll('inversiones');
