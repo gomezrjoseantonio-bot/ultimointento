@@ -161,6 +161,7 @@ describe('snapshotDeclaracionService', () => {
     expect(snapshot.origen).toBe('importacion_manual');
     expect(snapshot.casillasAEAT?.['0435']).toBe(18000);
     expect(snapshot.datos.arrastresGenerados.length).toBe(1);
+    expect(snapshot.datos.declaracionCompleta).toBeUndefined();
 
     const db = await initDB();
     const arrastres = await db.getAllFromIndex('arrastresIRPF', 'ejercicioOrigen', EJERCICIO - 1);

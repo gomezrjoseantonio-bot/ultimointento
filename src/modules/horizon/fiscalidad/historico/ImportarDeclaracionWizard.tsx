@@ -8,9 +8,17 @@ import {
   ImportacionManualData,
   crearImportacionManualVacia,
   extraerCasillasDeModeloPDF,
+  extraerTextoDeModeloPDF,
   mapearCasillasAImportacion,
 } from '../../../../services/aeatPdfParserService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
+import {
+  DatosActivosExtraidos,
+  InmuebleParsedFromPDF,
+  extraerDatosActivos,
+  parsearInmueblesDesdeTexto,
+  reconstruirDeclaracionDesdeCasillas,
+} from '../../../../services/declaracionFromCasillasService';
 
 type MetodoEntrada = 'formulario' | 'pdf';
 
@@ -190,6 +198,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [data, setData] = useState<ImportacionManualData>(() => crearImportacionManualVacia(currentYear - 1));
   const [casillasExtraidas, setCasillasExtraidas] = useState<CasillaExtraida[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [inmueblesParsed, setInmueblesParsed] = useState<InmuebleParsedFromPDF[]>([]);
   const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -214,8 +223,13 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     setUploadedFile(file);
     setParsing(true);
     try {
-      const extraidas = await extraerCasillasDeModeloPDF(file, setProgressMsg);
+      const [extraidas, extractedText] = await Promise.all([
+        extraerCasillasDeModeloPDF(file, setProgressMsg),
+        extraerTextoDeModeloPDF(file).catch(() => ''),
+      ]);
+      const parsedInmuebles = extractedText ? parsearInmueblesDesdeTexto(extractedText) : [];
       setCasillasExtraidas(extraidas);
+      setInmueblesParsed(parsedInmuebles);
       setData((prev) => ({
         ...prev,
         ...mapearCasillasAImportacion(extraidas, ejercicio),
@@ -239,50 +253,62 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const handleConfirmarImportacion = async () => {
     setSaving(true);
     try {
+      const casillasMap = casillasExtraidas.length > 0
+        ? Object.fromEntries(casillasExtraidas.map((casilla) => [casilla.numero, casilla.valor]))
+        : {
+            '0435': data.baseImponibleGeneral,
+            '0460': data.baseImponibleAhorro,
+            '0505': data.baseLiquidableGeneral,
+            '0510': data.baseLiquidableAhorro,
+            '0545': data.cuotaIntegraEstatal,
+            '0546': data.cuotaIntegraAutonomica,
+            '0570': data.cuotaLiquidaEstatal,
+            '0571': data.cuotaLiquidaAutonomica,
+            '0595': data.cuotaResultante,
+            '0596': data.retencionTrabajo,
+            '0597': data.retencionCapitalMobiliario,
+            '0599': data.retencionActividadesEcon,
+            '0604': data.pagosFraccionados,
+            '0609': data.totalRetenciones,
+            '0670': data.resultado,
+            ...(typeof data.regularizacion === 'number' ? { '0676': data.regularizacion } : {}),
+            ...(typeof data.rendimientosTrabajo === 'number' ? { '0025': data.rendimientosTrabajo } : {}),
+            ...(typeof data.rendimientosInmuebles === 'number' ? { '0156': data.rendimientosInmuebles } : {}),
+            ...(typeof data.rendimientosAutonomo === 'number' ? { '0226': data.rendimientosAutonomo } : {}),
+          };
+
+      const declaracionCompleta = casillasExtraidas.length > 0
+        ? reconstruirDeclaracionDesdeCasillas(data.ejercicio, casillasExtraidas, inmueblesParsed)
+        : undefined;
+      const datosActivos: DatosActivosExtraidos | undefined = casillasExtraidas.length > 0
+        ? extraerDatosActivos(data.ejercicio, inmueblesParsed, casillasExtraidas)
+        : undefined;
+
       await importarDeclaracionManual({
         ejercicio: data.ejercicio,
-        casillasAEAT: {
-          '0435': data.baseImponibleGeneral,
-          '0460': data.baseImponibleAhorro,
-          '0505': data.baseLiquidableGeneral,
-          '0510': data.baseLiquidableAhorro,
-          '0545': data.cuotaIntegraEstatal,
-          '0546': data.cuotaIntegraAutonomica,
-          '0570': data.cuotaLiquidaEstatal,
-          '0571': data.cuotaLiquidaAutonomica,
-          '0595': data.cuotaResultante,
-          '0596': data.retencionTrabajo,
-          '0597': data.retencionCapitalMobiliario,
-          '0599': data.retencionActividadesEcon,
-          '0604': data.pagosFraccionados,
-          '0609': data.totalRetenciones,
-          '0670': data.resultado,
-          ...(typeof data.regularizacion === 'number' ? { '0676': data.regularizacion } : {}),
-          ...(typeof data.rendimientosTrabajo === 'number' ? { '0025': data.rendimientosTrabajo } : {}),
-          ...(typeof data.rendimientosInmuebles === 'number' ? { '0156': data.rendimientosInmuebles } : {}),
-          ...(typeof data.rendimientosAutonomo === 'number' ? { '0226': data.rendimientosAutonomo } : {}),
-        },
+        casillasAEAT: casillasMap,
         resultado: {
-          baseImponibleGeneral: data.baseImponibleGeneral,
-          baseImponibleAhorro: data.baseImponibleAhorro,
-          cuotaIntegra: resumen.cuotaIntegra,
-          cuotaLiquida: resumen.cuotaLiquida,
-          deducciones: 0,
-          retencionesYPagosCuenta: data.totalRetenciones,
-          resultado: data.resultado,
-          tipoEfectivo: resumen.cuotaLiquida > 0
-            ? Number((((resumen.cuotaLiquida / Math.max(1, data.baseImponibleGeneral + data.baseImponibleAhorro)) * 100)).toFixed(2))
-            : 0,
+          baseImponibleGeneral: declaracionCompleta?.liquidacion.baseImponibleGeneral ?? data.baseImponibleGeneral,
+          baseImponibleAhorro: declaracionCompleta?.liquidacion.baseImponibleAhorro ?? data.baseImponibleAhorro,
+          cuotaIntegra: declaracionCompleta?.liquidacion.cuotaIntegra ?? resumen.cuotaIntegra,
+          cuotaLiquida: declaracionCompleta?.liquidacion.cuotaLiquida ?? resumen.cuotaLiquida,
+          deducciones: declaracionCompleta?.liquidacion.deduccionesDobleImposicion ?? 0,
+          retencionesYPagosCuenta: declaracionCompleta?.retenciones.total ?? data.totalRetenciones,
+          resultado: declaracionCompleta?.resultado ?? data.resultado,
+          tipoEfectivo: declaracionCompleta?.tipoEfectivo ?? (
+            resumen.cuotaLiquida > 0
+              ? Number((((resumen.cuotaLiquida / Math.max(1, data.baseImponibleGeneral + data.baseImponibleAhorro)) * 100)).toFixed(2))
+              : 0
+          ),
         },
+        declaracionCompleta,
+        datosActivos,
+        inmueblesParsed,
         arrastresPendientes: (data.arrastres ?? []).map((arrastre) => ({
-          tipo: arrastre.tipo === 'perdidas_patrimoniales_ahorro'
-            ? 'perdidas_patrimoniales_ahorro'
-            : 'otros',
+          tipo: arrastre.tipo,
           importePendiente: arrastre.importe,
           ejercicioOrigen: arrastre.ejercicioOrigen,
-          ejercicioCaducidad: arrastre.tipo === 'perdidas_patrimoniales_ahorro'
-            ? arrastre.ejercicioOrigen + 4
-            : undefined,
+          ejercicioCaducidad: arrastre.ejercicioOrigen + 4,
         })),
         notasRevision: metodo === 'pdf'
           ? 'Importación desde PDF Modelo 100'

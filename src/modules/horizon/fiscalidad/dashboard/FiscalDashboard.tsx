@@ -9,6 +9,7 @@ import FiscalKpiCard from '../../../../components/fiscal/ui/FiscalKpiCard';
 import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
 import type { CompensacionDetalle, PerdidaResumen } from '../../../../services/compensacionAhorroService';
+import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -21,10 +22,26 @@ const cardStyle: React.CSSProperties = {
   padding: 'var(--s5)',
 };
 
+const badgeStyleByFuente: Record<FuenteDeclaracion, React.CSSProperties> = {
+  declarado: { background: '#dcfce7', color: '#15803d' },
+  importado: { background: '#dbeafe', color: '#1d4ed8' },
+  vivo: { background: '#fef3c7', color: '#b45309' },
+};
+
+const badgeLabelByFuente: Record<FuenteDeclaracion, string> = {
+  declarado: 'Declarado (importado)',
+  importado: 'Importado parcial',
+  vivo: 'Estimación en tiempo real',
+};
+
 const FiscalDashboard: React.FC = () => {
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
+  const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
+  const [showComparativa, setShowComparativa] = useState(false);
+  const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
+  const [loadingComparativa, setLoadingComparativa] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2];
@@ -32,8 +49,11 @@ const FiscalDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const decl = await calcularDeclaracionIRPF(ejercicio);
+      const { declaracion: decl, fuente: resolvedFuente } = await obtenerDeclaracionParaEjercicio(ejercicio);
       setDeclaracion(decl);
+      setFuente(resolvedFuente);
+      setShowComparativa(false);
+      setEstimacionComparativa(null);
       await generarEventosFiscales(ejercicio, decl);
     } catch (e) {
       console.error('Error loading fiscal dashboard:', e);
@@ -46,11 +66,39 @@ const FiscalDashboard: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!showComparativa || fuente !== 'declarado') {
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingComparativa(true);
+
+    calcularDeclaracionIRPF(ejercicio)
+      .then((estimacion) => {
+        if (!cancelled) {
+          setEstimacionComparativa(estimacion);
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading live estimate comparison:', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingComparativa(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showComparativa, fuente, ejercicio]);
+
   const totalIngresosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.ingresosIntegros, 0) ?? 0;
   const totalGastosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.gastosDeducibles + i.amortizacion, 0) ?? 0;
   const totalArrastres = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + (i.arrastresAplicados ?? 0), 0) ?? 0;
 
-  const coverageReal = declaracion ? (declaracion.retenciones.total > 0 ? 0.75 : 0) : 0;
+  const coverageReal = declaracion ? (fuente === 'declarado' ? 1 : declaracion.retenciones.total > 0 ? 0.75 : 0) : 0;
   const coverageRet = declaracion ? Math.min(1, declaracion.retenciones.total / Math.max(1, declaracion.liquidacion.cuotaIntegra || 1)) : 0;
   const coverageGastos = declaracion ? Math.min(1, totalGastosInmuebles / Math.max(1, totalIngresosInmuebles || 1)) : 0;
 
@@ -64,6 +112,10 @@ const FiscalDashboard: React.FC = () => {
     };
   }, [totalIngresosInmuebles, totalGastosInmuebles]);
 
+  const comparativaResultado = declaracion && estimacionComparativa
+    ? round2(estimacionComparativa.resultado - declaracion.resultado)
+    : null;
+
   return (
     <PageLayout title="Resumen fiscal" subtitle="Histórico + situación del año en curso">
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
@@ -72,6 +124,21 @@ const FiscalDashboard: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
               <LayoutDashboard size={20} color="var(--blue)" />
               <h1 style={{ fontSize: 'var(--t-xl)', fontWeight: 600, color: 'var(--n-900)' }}>Dashboard fiscal</h1>
+              {!loading && declaracion && (
+                <span
+                  style={{
+                    ...badgeStyleByFuente[fuente],
+                    padding: '4px 10px',
+                    borderRadius: '999px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {badgeLabelByFuente[fuente]}
+                </span>
+              )}
             </div>
             <p style={{ fontSize: 'var(--t-base)', color: 'var(--n-500)' }}>Visión consolidada por ejercicio</p>
           </div>
@@ -94,11 +161,61 @@ const FiscalDashboard: React.FC = () => {
 
         {!loading && declaracion && (
           <>
+            {fuente === 'declarado' && (
+              <section style={{ ...cardStyle, display: 'grid', gap: 'var(--s3)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s3)', flexWrap: 'wrap' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 600 }}>Declaración importada como snapshot declarado</h3>
+                    <p style={{ margin: '6px 0 0', color: 'var(--n-600)', fontSize: 'var(--t-sm)' }}>
+                      Este ejercicio usa los datos reales presentados ante AEAT en lugar de recalcularse en vivo.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowComparativa((current) => !current)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 'var(--r-md)',
+                      border: '1px solid var(--n-300)',
+                      background: 'white',
+                      color: 'var(--blue)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {showComparativa ? 'Ocultar comparativa ATLAS' : 'Comparar con estimación ATLAS'}
+                  </button>
+                </div>
+
+                {showComparativa && (
+                  <div style={{ padding: 'var(--s3)', background: 'var(--n-100)', borderRadius: 'var(--r-md)' }}>
+                    {loadingComparativa && <p style={{ margin: 0, color: 'var(--n-600)' }}>Calculando estimación ATLAS…</p>}
+                    {!loadingComparativa && estimacionComparativa && comparativaResultado !== null && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s3)' }}>
+                        <div>
+                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>Declarado</div>
+                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: 'var(--n-900)' }}>{fmt(declaracion.resultado)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>ATLAS estimado</div>
+                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: 'var(--n-900)' }}>{fmt(estimacionComparativa.resultado)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>Desviación</div>
+                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: comparativaResultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)' }}>
+                            {fmt(comparativaResultado)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
+
             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--s3)' }}>
               <FiscalKpiCard label="Ingresos íntegros" value={fmt(totalIngresosInmuebles)} variant="default" />
               <FiscalKpiCard label="Gastos deducibles" value={fmt(totalGastosInmuebles)} variant="neutral" />
               <FiscalKpiCard label="Arrastres aplicados" value={fmt(totalArrastres)} variant="positive" />
-              <FiscalKpiCard label="Cuota estimada" value={fmt(declaracion.liquidacion.cuotaLiquida)} variant="negative" />
+              <FiscalKpiCard label={fuente === 'declarado' ? 'Cuota declarada' : 'Cuota estimada'} value={fmt(declaracion.liquidacion.cuotaLiquida)} variant="negative" />
             </section>
 
             <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
@@ -318,5 +435,9 @@ const FiscalDashboard: React.FC = () => {
     </PageLayout>
   );
 };
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100;
+}
 
 export default FiscalDashboard;

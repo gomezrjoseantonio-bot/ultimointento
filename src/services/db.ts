@@ -1228,6 +1228,7 @@ export interface SnapshotDeclaracion {
     liquidacion: any;              // Resultado de liquidación completo
     arrastresGenerados: number[];  // IDs de ArrastreIRPF generados
     arrastresAplicados: number[];  // IDs de ArrastreIRPF consumidos
+    declaracionCompleta?: any;     // Snapshot completo de DeclaracionIRPF importada/cerrada
   };
   // Casillas AEAT principales para consulta rápida
   casillasAEAT?: Record<string, number>; // e.g. { "0505": 12345.67, "0620": 890.12 }

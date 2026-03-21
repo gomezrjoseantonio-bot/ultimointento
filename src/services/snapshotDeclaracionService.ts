@@ -20,11 +20,12 @@ export interface ImportacionDeclaracionManualInput {
   casillasAEAT: Record<string, number>;
   datos?: Partial<SnapshotDeclaracion['datos']>;
   arrastresGenerados?: ArrastreImportadoInput[];
+  arrastresGeneradosIds?: number[];
   arrastresAplicadosIds?: number[];
 }
 
 const STORE_NAME = 'snapshotsDeclaracion';
-const ARRSTRES_STORE_NAME = 'arrastresIRPF';
+const ARRASTRES_STORE_NAME = 'arrastresIRPF';
 
 function sortObjectKeysDeep(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -53,7 +54,6 @@ async function encodeUtf8(text: string): Promise<Uint8Array> {
     return new TextEncoder().encode(text);
   }
 
-  // Fallback legacy sin TextEncoder (sin dependencias Node)
   const utf8 = unescape(encodeURIComponent(text));
   const bytes = new Uint8Array(utf8.length);
   for (let i = 0; i < utf8.length; i++) {
@@ -74,9 +74,7 @@ async function computeSha256(payload: unknown): Promise<string> {
     }
   }
 
-  // Fallback sin WebCrypto (entornos legacy/test): hash determinista no criptográfico.
-  // Se usa únicamente para mantener verificación de integridad local cuando SubtleCrypto no está disponible.
-  let hash = 0x811c9dc5; // FNV-1a 32-bit offset basis
+  let hash = 0x811c9dc5;
   for (let i = 0; i < encoded.length; i++) {
     hash ^= encoded[i];
     hash = Math.imul(hash, 0x01000193);
@@ -121,8 +119,8 @@ async function findExistingCierreAutomatico(ejercicio: number): Promise<Snapshot
 async function getArrastresForEjercicio(ejercicio: number): Promise<{ arrastresGenerados: number[]; arrastresAplicados: number[] }> {
   const db = await initDB();
 
-  const generados = (await db.getAllFromIndex(ARRSTRES_STORE_NAME, 'ejercicioOrigen', ejercicio)) as ArrastreIRPF[];
-  const allArrastres = (await db.getAll(ARRSTRES_STORE_NAME)) as ArrastreIRPF[];
+  const generados = (await db.getAllFromIndex(ARRASTRES_STORE_NAME, 'ejercicioOrigen', ejercicio)) as ArrastreIRPF[];
+  const allArrastres = (await db.getAll(ARRASTRES_STORE_NAME)) as ArrastreIRPF[];
 
   const arrastresGenerados = generados
     .map((arrastre) => arrastre.id)
@@ -142,8 +140,7 @@ async function getArrastresForEjercicio(ejercicio: number): Promise<{ arrastresG
 }
 
 async function persistArrastresImportados(
-  ejercicio: number,
-  arrastres: ArrastreImportadoInput[] = []
+  arrastres: ArrastreImportadoInput[] = [],
 ): Promise<number[]> {
   if (arrastres.length === 0) return [];
 
@@ -152,7 +149,7 @@ async function persistArrastresImportados(
   const createdIds: number[] = [];
 
   for (const arrastre of arrastres) {
-    const id = await db.add(ARRSTRES_STORE_NAME, {
+    const id = await db.add(ARRASTRES_STORE_NAME, {
       ejercicioOrigen: arrastre.ejercicioOrigen,
       tipo: arrastre.tipo,
       importeOriginal: arrastre.importeOriginal ?? arrastre.importePendiente,
@@ -175,7 +172,7 @@ async function persistArrastresImportados(
 
 export async function crearSnapshotDeclaracion(
   ejercicio: number,
-  opts: CrearSnapshotOpts = {}
+  opts: CrearSnapshotOpts = {},
 ): Promise<SnapshotDeclaracion> {
   const origen = opts.origen ?? 'cierre_automatico';
 
@@ -197,10 +194,12 @@ export async function crearSnapshotDeclaracion(
     liquidacion: declaracion.liquidacion,
     arrastresGenerados,
     arrastresAplicados,
+    declaracionCompleta: declaracion,
   };
 
   const fechaSnapshot = new Date().toISOString();
-  const hash = await computeSha256({ ejercicio, fechaSnapshot, datos, origen });
+  const casillasAEAT = opts.incluirCasillasAEAT ? buildCasillasAEAT(datos) : undefined;
+  const hash = await computeSha256({ ejercicio, fechaSnapshot, datos, origen, casillasAEAT });
   const createdAt = new Date().toISOString();
 
   const snapshot: SnapshotDeclaracion = {
@@ -210,7 +209,7 @@ export async function crearSnapshotDeclaracion(
     origen,
     hash,
     createdAt,
-    casillasAEAT: opts.incluirCasillasAEAT ? buildCasillasAEAT(datos) : undefined,
+    casillasAEAT,
   };
 
   const db = await initDB();
@@ -224,9 +223,10 @@ export async function crearSnapshotDeclaracion(
 
 export async function crearSnapshotDeclaracionManual(
   ejercicio: number,
-  input: ImportacionDeclaracionManualInput
+  input: ImportacionDeclaracionManualInput,
 ): Promise<SnapshotDeclaracion> {
-  const generatedIds = await persistArrastresImportados(ejercicio, input.arrastresGenerados);
+  const generatedIds = input.arrastresGeneradosIds
+    ?? await persistArrastresImportados(input.arrastresGenerados);
   const arrastresAplicados = input.arrastresAplicadosIds ?? [];
 
   const datos: SnapshotDeclaracion['datos'] = {
@@ -241,6 +241,7 @@ export async function crearSnapshotDeclaracionManual(
     },
     arrastresGenerados: generatedIds,
     arrastresAplicados,
+    declaracionCompleta: input.datos?.declaracionCompleta,
   };
 
   const fechaSnapshot = new Date().toISOString();
@@ -282,7 +283,7 @@ export async function listarSnapshotsDeclaracion(): Promise<SnapshotDeclaracion[
 }
 
 export async function verificarIntegridadSnapshot(
-  idSnapshot: number
+  idSnapshot: number,
 ): Promise<{ ok: boolean; hashActual: string; hashGuardado?: string }> {
   const db = await initDB();
   const snapshot = (await db.get(STORE_NAME, idSnapshot)) as SnapshotDeclaracion | undefined;
@@ -296,6 +297,7 @@ export async function verificarIntegridadSnapshot(
     fechaSnapshot: snapshot.fechaSnapshot,
     datos: snapshot.datos,
     origen: snapshot.origen,
+    casillasAEAT: snapshot.casillasAEAT,
   });
 
   return {
