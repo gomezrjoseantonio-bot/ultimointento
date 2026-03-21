@@ -1,9 +1,9 @@
 import { Contract, Property, TreasuryEvent, initDB, PropertySale } from './db';
-import { PlanPagos } from '../types/prestamos';
+import { PlanPagos, Prestamo } from '../types/prestamos';
 import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { prestamosCalculationService } from './prestamosCalculationService';
-import { prestamosService } from './prestamosService';
+import { getAllocationFactor, prestamosService } from './prestamosService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -94,6 +94,68 @@ const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
     if (!normalizedLinkedId) return false;
     return normalizedLinkedId === propertyAliasToken || normalizedLinkedId === propertyGlobalAliasToken;
   });
+};
+
+
+const resolveLoanAllocationFactorForProperty = (loan: Prestamo, property: Property): number => {
+  const propertyId = String(property.id ?? '').trim();
+  const directFactor = propertyId ? getAllocationFactor(loan, propertyId) : 0;
+
+  if (directFactor > 0 || loan.afectacionesInmueble?.length) {
+    return directFactor;
+  }
+
+  return isLoanLinkedToProperty(loan, property) ? 1 : 0;
+};
+
+const roundToTwoDecimals = (value: number): number => Math.round(value * 100) / 100;
+
+const rebalanceLoanAllocationsAfterPropertySale = (loan: Prestamo, propertyId: string): Prestamo | null => {
+  if (!loan.afectacionesInmueble?.length) {
+    return null;
+  }
+
+  const remainingAllocations = loan.afectacionesInmueble
+    .filter((allocation) => allocation.inmuebleId !== propertyId)
+    .map((allocation) => ({ ...allocation }));
+
+  if (remainingAllocations.length === 0) {
+    return null;
+  }
+
+  const totalRemainingPercentage = remainingAllocations.reduce((sum, allocation) => sum + Number(allocation.porcentaje || 0), 0);
+  if (totalRemainingPercentage <= 0) {
+    return null;
+  }
+
+  let accumulated = 0;
+  const normalizedAllocations = remainingAllocations.map((allocation, index) => {
+    if (index === remainingAllocations.length - 1) {
+      return {
+        ...allocation,
+        porcentaje: roundToTwoDecimals(100 - accumulated),
+      };
+    }
+
+    const normalizedPercentage = roundToTwoDecimals((Number(allocation.porcentaje || 0) * 100) / totalRemainingPercentage);
+    accumulated += normalizedPercentage;
+    return {
+      ...allocation,
+      porcentaje: normalizedPercentage,
+    };
+  });
+
+  const singleRemainingAllocation = normalizedAllocations.length === 1 ? normalizedAllocations[0] : null;
+
+  return {
+    ...loan,
+    afectacionesInmueble: normalizedAllocations,
+    inmuebleId: singleRemainingAllocation?.inmuebleId,
+    activo: true,
+    estado: 'vivo',
+    cancelacionPendienteVenta: false,
+    fechaSolicitudCancelacionVenta: undefined,
+  } as Prestamo;
 };
 
 const resolveFallbackOutstandingPrincipal = (loan: any): number => {
@@ -501,12 +563,17 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const suggestedOutstandingDebtByLoan = await Promise.all(
     linkedLoans
       .filter((loan: any) => loan.activo !== false)
-      .map(async (loan: any) => {
+      .map(async (loan: Prestamo) => {
+        const allocationFactor = resolveLoanAllocationFactorForProperty(loan, property);
+        if (allocationFactor <= 0) {
+          return 0;
+        }
+
         if (!loan?.id) {
-          return resolveFallbackOutstandingPrincipal(loan);
+          return resolveFallbackOutstandingPrincipal(loan) * allocationFactor;
         }
         const paymentPlan = await db.get('keyval', `planpagos_${loan.id}`) as PlanPagos | undefined;
-        return resolveProjectedLoanPayoffAmount(loan, paymentPlan, referenceDate);
+        return resolveProjectedLoanPayoffAmount(loan, paymentPlan, referenceDate) * allocationFactor;
       })
   );
   const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
@@ -715,9 +782,28 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   const allLoans = await loanStore.getAll();
   const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
 
-  for (const loan of linkedLoans) {
+  for (const loan of linkedLoans as Prestamo[]) {
     if (!loan?.id) continue;
+
+    const allocationFactor = resolveLoanAllocationFactorForProperty(loan, property);
+    if (allocationFactor <= 0) continue;
+
     executionJournal.updatedLoans.push({ id: loan.id, previous: loan });
+
+    const isSharedLoan = Boolean(loan.afectacionesInmueble?.length) && allocationFactor < 1;
+
+    if (isSharedLoan) {
+      const rebalancedLoan = rebalanceLoanAllocationsAfterPropertySale(loan, String(input.propertyId));
+      if (!rebalancedLoan) {
+        continue;
+      }
+
+      await loanStore.put({
+        ...rebalancedLoan,
+        updatedAt: new Date().toISOString(),
+      });
+      continue;
+    }
 
     const paymentPlanKey = `planpagos_${loan.id}`;
     const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
