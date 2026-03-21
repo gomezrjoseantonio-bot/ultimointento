@@ -39,6 +39,20 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
+function normalizeArrastres(arrastres?: ArrastresEjercicio): ArrastresEjercicio {
+  const gastos0105_0106 = arrastres?.gastos0105_0106 ?? arrastres?.porInmueble ?? [];
+  const perdidasPatrimonialesAhorro = arrastres?.perdidasPatrimonialesAhorro ?? arrastres?.porAnio ?? [];
+  const amortizacionesAcumuladas = arrastres?.amortizacionesAcumuladas ?? [];
+
+  return {
+    gastos0105_0106: clone(gastos0105_0106),
+    perdidasPatrimonialesAhorro: clone(perdidasPatrimonialesAhorro),
+    amortizacionesAcumuladas: clone(amortizacionesAcumuladas),
+    porInmueble: clone(gastos0105_0106),
+    porAnio: clone(perdidasPatrimonialesAhorro),
+  };
+}
+
 function buildLegacyOrigen(ejercicio: EjercicioFiscal): LegacyOrigen {
   if (ejercicio.declaracionAeat) {
     return ejercicio.calculoAtlas ? 'mixto' : 'importado';
@@ -89,8 +103,8 @@ function toDomain(record?: DbEjercicioFiscal): EjercicioFiscal | undefined {
     declaracionAeatFecha: record.declaracionAeatFecha,
     declaracionAeatPdfRef: record.declaracionAeatPdfRef,
     declaracionAeatOrigen: record.declaracionAeatOrigen ?? 'no_presentada',
-    arrastresRecibidos: clone(record.arrastresRecibidos ?? createEmptyArrastresEjercicio()),
-    arrastresGenerados: clone(record.arrastresGenerados ?? createEmptyArrastresEjercicio()),
+    arrastresRecibidos: normalizeArrastres(record.arrastresRecibidos),
+    arrastresGenerados: normalizeArrastres(record.arrastresGenerados),
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
     cerradoAt: record.cerradoAt ?? record.fechaCierre,
@@ -111,8 +125,8 @@ function toDbRecord(ejercicio: EjercicioFiscal, existing?: DbEjercicioFiscal): D
     declaracionAeatFecha: ejercicio.declaracionAeatFecha,
     declaracionAeatPdfRef: ejercicio.declaracionAeatPdfRef,
     declaracionAeatOrigen: ejercicio.declaracionAeatOrigen,
-    arrastresRecibidos: clone(ejercicio.arrastresRecibidos),
-    arrastresGenerados: clone(ejercicio.arrastresGenerados),
+    arrastresRecibidos: normalizeArrastres(ejercicio.arrastresRecibidos),
+    arrastresGenerados: normalizeArrastres(ejercicio.arrastresGenerados),
     declaracionInmuebles: ejercicio.declaracionAeat?.inmuebles ?? ejercicio.calculoAtlas?.inmuebles,
     fechaCierre: ejercicio.cerradoAt,
     fechaDeclaracion: ejercicio.declaradoAt,
@@ -333,7 +347,7 @@ class EjercicioFiscalService {
     }
 
     const created = createEmptyEjercicio(ejercicio, estadoDefault);
-    created.arrastresRecibidos = await this.getArrastresParaEjercicio(ejercicio);
+    created.arrastresRecibidos = normalizeArrastres(await this.getArrastresParaEjercicio(ejercicio));
     await this.saveEjercicio(created);
     return created;
   }
@@ -429,7 +443,7 @@ class EjercicioFiscalService {
         || anterior.arrastresGenerados.perdidasPatrimonialesAhorro.length
         || anterior.arrastresGenerados.amortizacionesAcumuladas.length
       ) {
-        return clone(anterior.arrastresGenerados);
+        return normalizeArrastres(anterior.arrastresGenerados);
       }
 
       if (anterior.declaracionAeat) {
@@ -441,7 +455,7 @@ class EjercicioFiscalService {
       }
     }
 
-    return getArrastresManualesTotales(ejercicio);
+    return normalizeArrastres(await getArrastresManualesTotales(ejercicio));
   }
 
   async addArrastreManual(arrastre: ArrastreManual): Promise<ArrastreManual> {

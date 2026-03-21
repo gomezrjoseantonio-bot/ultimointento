@@ -213,6 +213,9 @@ export interface ArrastresEjercicio {
   gastos0105_0106: ArrastreGastoInmueble[];
   perdidasPatrimonialesAhorro: ArrastrePerdidasAhorro[];
   amortizacionesAcumuladas: ArrastreAmortizacion[];
+  // Compatibilidad legacy para módulos que aún leen el modelo anterior.
+  porInmueble?: ArrastreGastoInmueble[];
+  porAnio?: ArrastrePerdidasAhorro[];
 }
 
 export interface ArrastreGastoInmueble {
@@ -306,5 +309,7 @@ export function createEmptyArrastresEjercicio(): ArrastresEjercicio {
     gastos0105_0106: [],
     perdidasPatrimonialesAhorro: [],
     amortizacionesAcumuladas: [],
+    porInmueble: [],
+    porAnio: [],
   };
 }
