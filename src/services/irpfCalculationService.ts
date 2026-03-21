@@ -3,9 +3,8 @@
 
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
-import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryService';
+import { calculateFiscalSummary } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
-import { calcularGananciasPerdidasEjercicio, getMinusvaliasPendientes } from './inversionesFiscalService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
 import { getGananciasPatrimonialesInmueblesEjercicio, PropertyDisposalTaxResult } from './propertyDisposalTaxService';
 import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
@@ -184,6 +183,7 @@ export interface Retenciones {
 export interface DeclaracionIRPF {
   ejercicio: number;
   ventasInmuebles?: PropertyDisposalTaxResult[];
+  compensacionAhorro?: CompensacionAhorroResult;
   baseGeneral: BaseGeneral;
   baseAhorro: BaseAhorro;
   reducciones: {
@@ -725,6 +725,7 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
   };
   gyp: GananciasPerdidasPatrimoniales;
   aportacionPensiones: number;
+  ventasInmuebles: PropertyDisposalTaxResult[];
 }> {
   const db = await initDB();
   const posiciones = await db.getAll('inversiones');
@@ -786,7 +787,6 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       detalleAhorro.push(detalle);
     };
 
-    // Rendimientos periódicos (cuentas remuneradas, depósitos, P2P)
     const pagosGenerados = Array.isArray(pAny?.rendimiento?.pagos_generados)
       ? pAny.rendimiento.pagos_generados
       : [];
@@ -808,7 +808,6 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       });
     }
 
-    // Dividendos recibidos (acciones/ETF/REIT)
     if (Array.isArray(pAny?.dividendos?.dividendos_recibidos)) {
       for (const div of pAny.dividendos.dividendos_recibidos) {
         if (!esDelEjercicio(div?.fecha_pago)) continue;
@@ -828,7 +827,6 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
         });
       }
     } else {
-      // Legacy fallback: some positions store yearly dividend amount directly
       const divLegacy = Number(pAny?.dividendos);
       if (Number.isFinite(divLegacy) && divLegacy > 0) {
         registrarDetalleCapitalMobiliario({
@@ -851,43 +849,11 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
     }
   }
 
-  const { plusvalias: plusvaliasInversiones, minusvalias: minusvaliasInversiones } = await calcularGananciasPerdidasEjercicio(ejercicio);
-  const ventasInmuebles = await getGananciasPatrimonialesInmueblesEjercicio(ejercicio);
-  const plusvaliasInmuebles = round2(
-    ventasInmuebles
-      .filter((venta) => venta.gananciaPatrimonial > 0)
-      .reduce((sum, venta) => sum + venta.gananciaPatrimonial, 0)
-  );
-  const minusvaliasInmuebles = round2(
-    ventasInmuebles
-      .filter((venta) => venta.gananciaPatrimonial < 0)
-      .reduce((sum, venta) => sum + Math.abs(venta.gananciaPatrimonial), 0)
-  );
-  const plusvalias = round2(plusvaliasInversiones + plusvaliasInmuebles);
-  const minusvalias = round2(minusvaliasInversiones + minusvaliasInmuebles);
-  const minusvaliasPendientes = await getMinusvaliasPendientes(ejercicio);
-
-  const minusvaliasEjercicioAplicadas = Math.min(plusvalias, minusvalias);
-  let plusvaliasRestantes = round2(plusvalias - minusvaliasEjercicioAplicadas);
-
-  let minusvaliasPendientesAplicadas = 0;
-  for (const pendiente of minusvaliasPendientes) {
-    if (plusvaliasRestantes <= 0) break;
-    const aplicado = Math.min(plusvaliasRestantes, pendiente.importe);
-    minusvaliasPendientesAplicadas = round2(minusvaliasPendientesAplicadas + aplicado);
-    plusvaliasRestantes = round2(plusvaliasRestantes - aplicado);
-  }
-
-  const minusvaliasPendientesTotal = round2(
-    minusvaliasPendientes.reduce((sum, item) => sum + item.importe, 0) - minusvaliasPendientesAplicadas,
-  );
-
   const retenciones = round2(
     retencionesCapitalMobiliarioAhorro > 0
       ? retencionesCapitalMobiliarioAhorro
       : (interesesAhorro + dividendosAhorro) * CONSTANTES_IRPF.retencionCapitalMobiliario
   );
-  const compensado = round2(Math.max(0, plusvalias - minusvalias - minusvaliasPendientesAplicadas));
 
   return {
     rcm: {
@@ -902,14 +868,7 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       retenciones: round2(retencionesCapitalMobiliarioGeneral),
       detalle: detalleBaseGeneral,
     },
-    gyp: {
-      plusvalias: round2(plusvalias),
-      minusvalias: round2(minusvalias),
-      minusvaliasPendientes: Math.max(0, minusvaliasPendientesTotal),
-      compensado,
-    },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
-    ventasInmuebles,
   };
 }
 
@@ -1137,7 +1096,7 @@ export async function calcularDeclaracionIRPF(
 
   // PASO 6: Liquidación
   const baseImponibleGeneral = round2(Math.max(0, totalBaseGeneral - reducciones.total));
-  const baseImponibleAhorro = round2(Math.max(0, totalBaseAhorro));
+  const baseImponibleAhorro = round2(Math.max(0, baseAhorro.total));
 
   const cuotaBaseGeneral = calcularCuotaPorTramos(baseImponibleGeneral, TRAMOS_BASE_GENERAL);
   const cuotaBaseAhorro = calcularCuotaPorTramos(baseImponibleAhorro, TRAMOS_BASE_AHORRO);
@@ -1192,7 +1151,8 @@ export async function calcularDeclaracionIRPF(
     retenciones,
     resultado,
     tipoEfectivo,
-    ...(ventasInmuebles.length > 0 ? { ventasInmuebles } : {}),
+    ...(compensacionAhorro.fuentes.inmuebles.detalle.length > 0 ? { ventasInmuebles: compensacionAhorro.fuentes.inmuebles.detalle } : {}),
+    compensacionAhorro,
     ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),
   };
 }

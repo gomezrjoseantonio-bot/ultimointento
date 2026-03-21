@@ -1703,6 +1703,7 @@ interface AtlasHorizonDB {
   ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
+  perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
   entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
 }
@@ -2197,6 +2198,13 @@ export const initDB = async () => {
           arrastresStore.createIndex('ejercicioCaducidad', 'ejercicioCaducidad', { unique: false });
           arrastresStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
           arrastresStore.createIndex('ejercicioOrigen-tipo', ['ejercicioOrigen', 'tipo'], { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('perdidasPatrimonialesAhorro')) {
+          const perdidasStore = db.createObjectStore('perdidasPatrimonialesAhorro', { keyPath: 'id', autoIncrement: true });
+          perdidasStore.createIndex('ejercicioOrigen', 'ejercicioOrigen', { unique: false });
+          perdidasStore.createIndex('estado', 'estado', { unique: false });
+          perdidasStore.createIndex('ejercicioCaducidad', 'ejercicioCaducidad', { unique: false });
         }
 
         // V2.7: Snapshots de Declaración store (frozen IRPF declaration data)

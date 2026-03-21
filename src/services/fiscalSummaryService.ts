@@ -9,6 +9,7 @@ import {
   getResumenCasillasAEAT,
 } from './operacionFiscalService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
+import { getGastosRecurrentesFiscales } from './recurringExpensesFiscalService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
