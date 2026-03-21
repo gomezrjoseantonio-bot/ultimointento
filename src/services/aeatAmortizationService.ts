@@ -28,15 +28,17 @@ export const getAcquisitionExpensesFallback = (property: Property): number => {
   const costs = property.acquisitionCosts;
   if (!costs) return 0;
 
-  return [
-    costs.itp,
-    costs.iva,
-    costs.notary,
-    costs.registry,
-    costs.management,
-    costs.psi,
-    costs.realEstate,
-  ].reduce((sum, value) => sum + toNumber(value), 0);
+  const acquisitionExpenseValues: number[] = [
+    costs.itp ?? 0,
+    costs.iva ?? 0,
+    costs.notary ?? 0,
+    costs.registry ?? 0,
+    costs.management ?? 0,
+    costs.psi ?? 0,
+    costs.realEstate ?? 0,
+  ];
+
+  return acquisitionExpenseValues.reduce((sum, value) => sum + value, 0);
 };
 
 export const getConstructionPercentageFromValues = (
