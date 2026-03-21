@@ -26,6 +26,29 @@ import type {
 const DB_NAME = 'AtlasHorizonDB';
 const DB_VERSION = 36; // V3.6: stores fundacionales de ejercicio fiscal y documentación
 
+function ensureIndex(
+  store: IDBObjectStore,
+  indexName: string,
+  keyPath: string | string[],
+  options: IDBIndexParameters = { unique: false },
+): void {
+  if (store.indexNames.contains(indexName)) {
+    return;
+  }
+
+  try {
+    store.createIndex(indexName, keyPath, options);
+  } catch (error) {
+    if ((error as DOMException)?.name === 'ConstraintError' && options.unique) {
+      console.warn(`[DB] Índice único '${indexName}' degradado a no único por datos legacy duplicados.`);
+      store.createIndex(indexName, keyPath, { ...options, unique: false });
+      return;
+    }
+
+    throw error;
+  }
+}
+
 export interface Property {
   id?: number;
   alias: string;
@@ -2220,19 +2243,18 @@ export const initDB = async () => {
         // V3.6: Ejercicios Fiscales store
         if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
           const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'ejercicio' });
-          ejerciciosStore.createIndex('estado', 'estado', { unique: false });
-          ejerciciosStore.createIndex('año', 'ejercicio', { unique: true });
-          ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
-          ejerciciosStore.createIndex('origen', 'origen', { unique: false });
-          ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
+          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
+          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         } else {
           const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
-          if (!ejerciciosStore.indexNames.contains('estado')) {
-            ejerciciosStore.createIndex('estado', 'estado', { unique: false });
-          }
-          if (!ejerciciosStore.indexNames.contains('ejercicio')) {
-            ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
-          }
+          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
+          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         }
 
         // V3.6: Documentos fiscales store
