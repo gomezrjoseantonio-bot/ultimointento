@@ -15,7 +15,8 @@ import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
 import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
-import PdfPreview from '../components/inbox/PdfPreview';
+
+const PdfPreview = React.lazy(() => import('../components/inbox/PdfPreview'));
 
 const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
@@ -346,7 +347,13 @@ const InboxPage: React.FC = () => {
                 <div className="h-full border overflow-hidden" style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--white)' }}>
                   {selectedDocument && isPdfDocument(selectedDocument) ? (
                     // ── PDF.js canvas — sin iframes, sin restricciones CSP ──
-                    <PdfPreview blob={previewBlob} filename={selectedDocument.filename} />
+                    <React.Suspense fallback={
+                      <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
+                        Cargando visor PDF…
+                      </div>
+                    }>
+                      <PdfPreview blob={previewBlob} filename={selectedDocument.filename} />
+                    </React.Suspense>
                   ) : selectedDocument ? (
                     <div className="h-full flex items-center justify-center text-sm" style={{ color: 'var(--n-500)' }}>
                       Vista previa disponible solo para documentos PDF

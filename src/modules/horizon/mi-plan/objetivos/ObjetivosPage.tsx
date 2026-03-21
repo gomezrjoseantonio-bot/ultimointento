@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { BarChart3, Home, Landmark, Target, Wallet, X, type LucideIcon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { dashboardService } from '../../../../services/dashboardService';
 import { getInformesData } from '../../../../services/informesDataService';
 import {
   getObjetivos,
@@ -275,6 +274,7 @@ const ObjetivosPage: React.FC = () => {
     const load = async () => {
       try {
         const currentYear = new Date().getFullYear();
+        const { dashboardService } = await import('../../../../services/dashboardService');
         const [objetivos, flujos, tesoreria, patrimonio, informes] = await Promise.all([
           getObjetivos(),
           dashboardService.getFlujosCaja(),

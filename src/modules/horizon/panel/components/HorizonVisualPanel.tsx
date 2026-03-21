@@ -21,7 +21,6 @@ import {
   Wallet,
   Zap
 } from 'lucide-react';
-import { dashboardService } from '../../../../services/dashboardService';
 import type { DashboardSnapshot } from '../../../../services/dashboardService';
 import ActualizacionValoresDrawer from '../../../../components/dashboard/ActualizacionValoresDrawer';
 import './horizonExecutiveDashboard.css';
@@ -65,13 +64,14 @@ const DEFAULT_DATA: DashboardSnapshot = {
 const HorizonVisualPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardSnapshot>(DEFAULT_DATA);
-  const [flujos, setFlujos] = useState<Awaited<ReturnType<typeof dashboardService.getFlujosCaja>> | null>(null);
+  const [flujos, setFlujos] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 6;
 
   const loadDashboardData = async () => {
     setLoading(true);
+    const { dashboardService } = await import('../../../../services/dashboardService');
     const [patrimonio, liquidez, salud, tesoreria, alertas, flujosCaja] = await Promise.all([
       dashboardService.getPatrimonioNeto(),
       dashboardService.getLiquidez(),

@@ -139,16 +139,6 @@ function App() {
       runWhenIdle(() => {
         bankProfilesService.loadProfiles().catch(console.error);
       }, 1800),
-      runWhenIdle(() => {
-        void Promise.allSettled([
-          preloadRouteResources('/panel'),
-          preloadRouteResources('/inmuebles'),
-          preloadRouteResources('/tesoreria'),
-          preloadRouteResources('/inbox'),
-          preloadRouteResources('/inmuebles/cartera'),
-          preloadRouteResources('/inversiones'),
-        ]);
-      }, 2200),
     ];
 
     // Performance monitoring setup

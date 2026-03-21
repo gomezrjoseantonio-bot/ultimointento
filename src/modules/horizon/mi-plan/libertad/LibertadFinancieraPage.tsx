@@ -3,7 +3,6 @@ import { CalendarClock, Download, Goal, Home, Loader2, Sparkles, Target, Trendin
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
 import PageLayout from '../../../../components/common/PageLayout';
-import { dashboardService } from '../../../../services/dashboardService';
 import { getObjetivos, saveObjetivos } from '../../../../services/objetivosService';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
@@ -165,6 +164,7 @@ const LibertadFinancieraPage: React.FC = () => {
 
     const load = async () => {
       try {
+        const { dashboardService } = await import('../../../../services/dashboardService');
         const [flujos, tesoreria, obj] = await Promise.all([
           dashboardService.getFlujosCaja(),
           dashboardService.getTesoreriaPanel(),
