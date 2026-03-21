@@ -38,6 +38,8 @@ describe('fiscalLifecycleService', () => {
     await db.clear('resultadosEjercicio');
     await db.clear('arrastresIRPF');
     await db.clear('snapshotsDeclaracion');
+    await db.clear('perdidasPatrimonialesAhorro');
+    await db.clear('properties');
   });
 
   test('cierre de ejercicio genera snapshot y resultado inmutable', async () => {
@@ -74,6 +76,11 @@ describe('fiscalLifecycleService', () => {
 
     expect(imported.ejercicio.estado).toBe('declarado');
     expect(imported.ejercicio.origen).toBe('importado');
+    expect(imported.ejercicio.snapshotId).toBeDefined();
+
+    const db = await initDB();
+    const snapshot = await db.get('snapshotsDeclaracion', imported.ejercicio.snapshotId as number);
+    expect(snapshot).toBeTruthy();
 
     const historico = await obtenerHistoricoFiscalReal();
     expect(historico).toHaveLength(1);

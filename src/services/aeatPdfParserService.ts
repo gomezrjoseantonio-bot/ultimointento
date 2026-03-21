@@ -95,7 +95,7 @@ export async function extraerCasillasDeModeloPDF(
   onProgress?: (msg: string) => void,
 ): Promise<CasillaExtraida[]> {
   onProgress?.('Extrayendo texto del PDF...');
-  const text = await extractTextFromPDF(pdfFile);
+  const text = await extraerTextoDeModeloPDF(pdfFile);
   const casillasTexto = extraerCasillasDesdeTextoModelo100(text);
 
   if (casillasTexto.length >= 5) {
@@ -194,7 +194,7 @@ export function reconstruirLineasPDF(items: PDFTextItem[]): string[] {
   return lines;
 }
 
-async function extractTextFromPDF(file: File): Promise<string> {
+export async function extraerTextoDeModeloPDF(file: File): Promise<string> {
   const { pdfjs } = await import('react-pdf');
   pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
   const arrayBuffer = await file.arrayBuffer();
