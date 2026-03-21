@@ -3,12 +3,13 @@ import { TrendingUp, Building2, Wallet, PiggyBank, Euro, BarChart3, Landmark, Ar
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import PageLayout from '../../../../components/common/PageLayout';
 import EmptyState from '../../../../components/common/EmptyState';
-import { Property, initDB } from '../../../../services/db';
+import { Property } from '../../../../services/db';
 import type { Contract, Ingreso } from '../../../../services/db';
 import type { Prestamo } from '../../../../types/prestamos';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
 import { getAnnualOpexForProperty } from '../../../../services/propertyExpenses';
 import { buildPropertyAnalysisInputs } from '../../../../utils/propertyAnalysisUtils';
+import { getCachedStoreRecords } from '../../../../services/indexedDbCacheService';
 
 interface DashboardKpi {
   totalCost: number;
@@ -71,21 +72,20 @@ const Analisis: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const db = await initDB();
       const [allProperties, contractsData, ingresosData, prestamosData, valoracionesData] = await Promise.all([
-        db.getAll('properties'),
-        db.getAll('contracts'),
-        db.getAll('ingresos'),
-        db.getAll('prestamos'),
-        db.getAll('valoraciones_historicas'),
+        getCachedStoreRecords<Property>('properties'),
+        getCachedStoreRecords<Contract>('contracts'),
+        getCachedStoreRecords<Ingreso>('ingresos'),
+        getCachedStoreRecords<Prestamo>('prestamos'),
+        getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
       ]);
 
-      const activeProperties = (allProperties as Property[]).filter((p) => p.state === 'activo');
+      const activeProperties = allProperties.filter((p) => p.state === 'activo');
       setProperties(activeProperties);
-      setContracts(contractsData as Contract[]);
-      setIngresos(ingresosData as Ingreso[]);
-      setPrestamos(prestamosData as Prestamo[]);
-      setValoraciones(valoracionesData as ValoracionHistorica[]);
+      setContracts(contractsData);
+      setIngresos(ingresosData);
+      setPrestamos(prestamosData);
+      setValoraciones(valoracionesData);
 
       const opexEntries = await Promise.all(
         activeProperties.map(async (property) => {

@@ -6,12 +6,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
+import { preloadRouteResources } from './services/navigationPerformanceService';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
-
-// Core pages - keep minimal imports for critical path  
-import AccountPage from './pages/account/AccountPage';
 
 // Loading component for better UX - ATLAS compliant
 const LoadingSpinner = () => (
@@ -129,6 +127,7 @@ const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
 const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
 const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
 const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
+const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'));
 
 function App() {
   // Initialize bank profiles and performance monitoring on app start
@@ -142,12 +141,12 @@ function App() {
       }, 1800),
       runWhenIdle(() => {
         void Promise.allSettled([
-          PanelPage.preload(),
-          InmueblesAnalisis.preload(),
-          Tesoreria.preload(),
-          InboxPage.preload(),
-          Cartera.preload(),
-          InversionesPage.preload(),
+          preloadRouteResources('/panel'),
+          preloadRouteResources('/inmuebles'),
+          preloadRouteResources('/tesoreria'),
+          preloadRouteResources('/inbox'),
+          preloadRouteResources('/inmuebles/cartera'),
+          preloadRouteResources('/inversiones'),
         ]);
       }, 2200),
     ];
@@ -658,11 +657,31 @@ function App() {
             {/* H6: Account (Cuenta) Routes */}
             <Route path="cuenta">
               <Route index element={<Navigate to="/cuenta/perfil" replace />} />
-              <Route path="perfil" element={<AccountPage />} />
-              <Route path="seguridad" element={<AccountPage />} />
-              <Route path="plan" element={<AccountPage />} />
-              <Route path="privacidad" element={<AccountPage />} />
-              <Route path="configuracion" element={<AccountPage />} />
+              <Route path="perfil" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
+              <Route path="seguridad" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
+              <Route path="plan" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
+              <Route path="privacidad" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
+              <Route path="configuracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
               {/* ATLAS: New Cuentas section under Cuenta ▸ Configuración ▸ Cuentas Bancarias */}
               <Route path="cuentas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>

@@ -28,6 +28,7 @@ import { prestamosService } from '../../services/prestamosService';
 import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
 import { calculateTreasuryMonthOpeningBalance } from './treasuryMonthOpeningBalance';
+import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -173,13 +174,12 @@ const TreasuryReconciliationView: React.FC = () => {
     try {
       const [year, month] = currentMonth.split('-').map(Number);
 
-      const db = await initDB();
       const [dbAccounts, dbEvents, dbMovements, contracts, properties] = await Promise.all([
-        db.getAll('accounts'),
-        db.getAll('treasuryEvents'),
-        db.getAll('movements'),
-        db.getAll('contracts'),
-        db.getAll('properties'),
+        getCachedStoreRecords<DBAccount>('accounts'),
+        getCachedStoreRecords<any>('treasuryEvents'),
+        getCachedStoreRecords<DBMovement>('movements'),
+        getCachedStoreRecords<any>('contracts'),
+        getCachedStoreRecords<any>('properties'),
       ]);
 
       const propertyAliasMap = new Map<number, string>();
@@ -342,6 +342,7 @@ const TreasuryReconciliationView: React.FC = () => {
             actualDate: newStatus === 'confirmado' ? new Date().toISOString().substring(0, 10) : undefined,
             updatedAt: new Date().toISOString(),
           });
+          invalidateCachedStores(['treasuryEvents']);
 
           if (newStatus === 'confirmado') {
             await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
@@ -399,6 +400,7 @@ const TreasuryReconciliationView: React.FC = () => {
             actualAmount: newAmount, actualDate: new Date().toISOString().substring(0, 10),
             updatedAt: new Date().toISOString(),
           });
+          invalidateCachedStores(['treasuryEvents']);
 
           await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
         }
@@ -447,6 +449,7 @@ const TreasuryReconciliationView: React.FC = () => {
             accountId: dbEvent.accountId, status: 'predicted' as const,
             createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
           });
+          invalidateCachedStores(['treasuryEvents']);
           setEvents(prev => prev.map(e =>
             e.id === tempChildId ? { ...e, id: String(newChildDbId), dbId: newChildDbId as number } : e
           ));
@@ -489,6 +492,7 @@ const TreasuryReconciliationView: React.FC = () => {
           db.add('treasuryEvents', { type: 'expense' as const, amount, predictedDate: newMovementForm.date, description: sourceConcept, sourceType: 'manual' as const, accountId, status: 'confirmed' as const, actualDate: newMovementForm.date, actualAmount: amount, createdAt: now, updatedAt: now }),
           db.add('treasuryEvents', { type: 'income' as const, amount, predictedDate: newMovementForm.date, description: targetConcept, sourceType: 'manual' as const, accountId: targetAccountId, status: 'confirmed' as const, actualDate: newMovementForm.date, actualAmount: amount, createdAt: now, updatedAt: now }),
         ]);
+        invalidateCachedStores(['treasuryEvents']);
         const [year, month] = currentMonth.split('-').map(Number);
         const evDate = new Date(newMovementForm.date);
         if (evDate.getFullYear() === year && evDate.getMonth() + 1 === month) {
@@ -501,6 +505,7 @@ const TreasuryReconciliationView: React.FC = () => {
       } else {
         const eventType: 'income' | 'expense' = newMovementForm.type;
         const newId = await db.add('treasuryEvents', { type: eventType, amount, predictedDate: newMovementForm.date, description: baseConcept, sourceType: 'manual' as const, accountId, status: 'confirmed' as const, actualDate: newMovementForm.date, actualAmount: amount, createdAt: now, updatedAt: now });
+        invalidateCachedStores(['treasuryEvents']);
         const [year, month] = currentMonth.split('-').map(Number);
         const evDate = new Date(newMovementForm.date);
         if (evDate.getFullYear() === year && evDate.getMonth() + 1 === month) {
