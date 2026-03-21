@@ -133,7 +133,6 @@ export async function eliminarDeclaracionImportada(ejercicio: number): Promise<v
       .map((documento) => db.delete('documents', documento.id as number)),
   );
 
-  if (ejercicioFiscal.id) {
-    await db.delete('ejerciciosFiscales', ejercicioFiscal.id);
-  }
+  const ejercicioKey = ejercicioFiscal.ejercicio ?? ejercicioFiscal.año ?? ejercicio;
+  await db.delete('ejerciciosFiscales', ejercicioKey);
 }
