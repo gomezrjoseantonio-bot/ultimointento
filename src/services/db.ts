@@ -15,15 +15,16 @@ import type {
   PensionIngreso
 } from '../types/personal';
 import type {
+  ArrastreManual,
   ArrastresEjercicio,
   DeclaracionInmueble,
+  DeclaracionIRPF,
   DocumentoFiscal,
   OrigenDeclaracion,
 } from '../types/fiscal';
-import type { DeclaracionIRPF } from './irpfCalculationService';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 35; // V3.5: modelo fundacional de ejercicios fiscales
+const DB_VERSION = 36; // V3.6: stores fundacionales de ejercicio fiscal y documentación
 
 export interface Property {
   id?: number;
@@ -1079,17 +1080,15 @@ export type EstadoEjercicio = 'vivo' | 'en_curso' | 'cerrado' | 'declarado';
 export type OrigenEjercicio = 'calculado' | 'importado' | 'mixto';
 
 export interface EjercicioFiscal {
-  id?: number;
-  año: number;                    // compat legacy
-  ejercicio?: number;             // modelo fundacional
+  año?: number;                   // compat legacy
+  ejercicio: number;              // modelo fundacional
   estado: EstadoEjercicio;        // vivo/en_curso → cerrado → declarado
-  origen: OrigenEjercicio;        // de dónde vienen los datos
+  origen?: OrigenEjercicio;       // de dónde vienen los datos
   fechaCierre?: string;           // ISO date when closed
   fechaRevisionFinal?: string;    // ISO date when final review was completed
   fechaDeclaracion?: string;      // ISO date when declared
   snapshotId?: number;            // FK → snapshotsDeclaracion.id
   resultadoEjercicioId?: number;  // FK → resultadosEjercicio.id (snapshot canónico)
-  // Modelo fiscal fundacional
   calculoAtlas?: DeclaracionIRPF;
   calculoAtlasFecha?: string;
   declaracionAeat?: DeclaracionIRPF;
@@ -1098,11 +1097,9 @@ export interface EjercicioFiscal {
   declaracionAeatOrigen?: OrigenDeclaracion;
   arrastresRecibidos?: ArrastresEjercicio;
   arrastresGenerados?: ArrastresEjercicio;
-  documentos?: DocumentoFiscal[];
   declaracionInmuebles?: DeclaracionInmueble[];
   cerradoAt?: string;
   declaradoAt?: string;
-  // Resumen de alto nivel (se rellena al cerrar)
   resumen?: {
     baseImponibleGeneral: number;
     baseImponibleAhorro: number;
@@ -1115,6 +1112,9 @@ export interface EjercicioFiscal {
   createdAt: string;
   updatedAt: string;
 }
+
+export type DocumentoFiscalRecord = DocumentoFiscal;
+export type ArrastreManualRecord = ArrastreManual;
 
 
 // ─── V2.9: Resultado de Ejercicio (snapshot fiscal canónico) ─────────────────
@@ -1746,6 +1746,8 @@ interface AtlasHorizonDB {
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
   ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
+  documentosFiscales: DocumentoFiscalRecord; // V3.6: documentación fiscal vinculable
+  arrastresManual: ArrastreManualRecord; // V3.6: arrastres manuales previos a importación
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
   perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
@@ -2215,21 +2217,46 @@ export const initDB = async () => {
           db.createObjectStore('configuracion_fiscal', { keyPath: 'id' });
         }
 
-        // V2.7: Ejercicios Fiscales store
+        // V3.6: Ejercicios Fiscales store
         if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
-          const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'id', autoIncrement: true });
-          ejerciciosStore.createIndex('año', 'año', { unique: true });
-          ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
+          const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'ejercicio' });
           ejerciciosStore.createIndex('estado', 'estado', { unique: false });
+          ejerciciosStore.createIndex('año', 'ejercicio', { unique: true });
+          ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
           ejerciciosStore.createIndex('origen', 'origen', { unique: false });
           ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
-        } else if (oldVersion < 35) {
+        } else {
           const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
+          if (!ejerciciosStore.indexNames.contains('estado')) {
+            ejerciciosStore.createIndex('estado', 'estado', { unique: false });
+          }
           if (!ejerciciosStore.indexNames.contains('ejercicio')) {
             ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
           }
         }
 
+        // V3.6: Documentos fiscales store
+        if (!db.objectStoreNames.contains('documentosFiscales')) {
+          const documentosStore = db.createObjectStore('documentosFiscales', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          documentosStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          documentosStore.createIndex('concepto', 'concepto', { unique: false });
+          documentosStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          documentosStore.createIndex('ejercicio-concepto', ['ejercicio', 'concepto'], { unique: false });
+          documentosStore.createIndex('ejercicio-inmuebleId', ['ejercicio', 'inmuebleId'], { unique: false });
+        }
+
+        // V3.6: Arrastres manuales store
+        if (!db.objectStoreNames.contains('arrastresManual')) {
+          const arrastresManualStore = db.createObjectStore('arrastresManual', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          arrastresManualStore.createIndex('tipo', 'tipo', { unique: false });
+          arrastresManualStore.createIndex('ejercicioOrigen', 'ejercicioOrigen', { unique: false });
+        }
 
         // V2.9: Resultado de ejercicio store (immutable yearly snapshots)
         if (!db.objectStoreNames.contains('resultadosEjercicio')) {
@@ -2687,3 +2714,28 @@ export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 5));
   }
 };
+
+export type {
+  ArrastreAmortizacion,
+  ArrastreGastoInmueble,
+  ArrastreManual,
+  ArrastrePerdidasAhorro,
+  ArrastresEjercicio,
+  ConceptoFiscalVinculable,
+  DeclaracionActividad,
+  DeclaracionBasesYCuotas,
+  DeclaracionCapitalMobiliario,
+  DeclaracionGananciasPerdidas,
+  DeclaracionIRPF,
+  DeclaracionInmueble,
+  DeclaracionPlanPensiones,
+  DeclaracionTrabajo,
+  DocumentoFiscal,
+  EjercicioFiscal as FiscalEjercicioDomain,
+  EstadoEjercicio as FiscalEstadoEjercicio,
+  InformeCoberturaDocumental,
+  LineaCoberturaDocumental,
+  OrigenDeclaracion,
+  PerdidasPendientes,
+  TipoDocumentoFiscal,
+} from '../types/fiscal';
