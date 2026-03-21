@@ -7,6 +7,7 @@ import {
   type EjercicioFiscal,
   type EstadoEjercicio,
   type InformeCobertura,
+  type InformeCoberturaLinea,
   type OrigenDeclaracion,
 } from '../types/fiscal';
 
@@ -360,11 +361,11 @@ class EjercicioFiscalService {
       byConcept.set(key, current);
     }
 
-    const lineas = [...byConcept.entries()].map(([conceptoFiscal, docs]) => {
+    const lineas: InformeCoberturaLinea[] = Array.from(byConcept.entries()).map(([conceptoFiscal, docs]) => {
       const importeDeclarado = round2(docs.reduce((sum, doc) => sum + Number(doc.importeDeclarado ?? doc.importe ?? 0), 0));
       const importeDocumentado = round2(docs.reduce((sum, doc) => sum + Number(doc.importe ?? 0), 0));
       const importePendiente = round2(Math.max(0, importeDeclarado - importeDocumentado));
-      const estado = importePendiente <= 0
+      const estado: InformeCoberturaLinea['estado'] = importePendiente <= 0
         ? 'completo'
         : importeDocumentado > 0
           ? 'parcial'
