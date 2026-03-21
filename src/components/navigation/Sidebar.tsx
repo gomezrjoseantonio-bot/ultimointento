@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { X, ChevronUp, LogOut } from 'lucide-react';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { preloadRouteResources } from '../../services/navigationPerformanceService';
 
 interface SidebarProps {
   sidebarOpen: boolean;
@@ -20,6 +21,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     <NavLink
       key={item.name}
       to={item.href}
+      onMouseEnter={() => { void preloadRouteResources(item.href); }}
+      onFocus={() => { void preloadRouteResources(item.href); }}
       className={({ isActive }) =>
         `${isActive ? 'text-white' : 'text-white/75 hover:text-white'} sidebar-nav-item group flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 text-sm font-medium rounded-md transition-all duration-150`
       }

@@ -5,9 +5,10 @@ import { Property, Contract, initDB } from '../../../../services/db';
 import { ensurePropertyOccupancy, savePropertyOccupancy } from '../../../../services/propertyOccupancyService';
 import { formatEuro, formatDate, formatInteger, formatPercentage } from '../../../../utils/formatUtils';
 import { getITPRateForCCAA } from '../../../../utils/locationUtils';
-import { calculateRentPeriodsFromContract, getAllContracts, getContractStatus } from '../../../../services/contractService';
+import { calculateRentPeriodsFromContract, getContractStatus } from '../../../../services/contractService';
 import toast from 'react-hot-toast';
 import InmueblePresupuestoTab from '../../../../components/inmuebles/InmueblePresupuestoTab';
+import { getCachedStoreRecords } from '../../../../services/indexedDbCacheService';
 
 
 type DetailTab = 'resumen' | 'contratos' | 'presupuesto' | 'fiscal';
@@ -86,7 +87,7 @@ const PropertyDetail: React.FC = () => {
       if (prop) {
         setProperty(prop);
         try {
-          const allContracts = await getAllContracts();
+          const allContracts = await getCachedStoreRecords<Contract>('contracts');
           setContracts(allContracts.filter(c => c.inmuebleId === propertyId || c.propertyId === propertyId));
         } catch {
           setContracts([]);
