@@ -132,6 +132,121 @@ const FiscalDashboard: React.FC = () => {
               </article>
             </section>
 
+            {declaracion.compensacionAhorro && (
+              <article style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)', gap: 'var(--s3)', flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Ganancias y pérdidas patrimoniales — Base del ahorro</h3>
+                  <FiscalChip
+                    label={fmt(declaracion.compensacionAhorro.saldoNetoTrasCompensar)}
+                    variant={declaracion.compensacionAhorro.saldoNetoTrasCompensar > 0 ? 'pos' : 'neu'}
+                  />
+                </div>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Fuente', 'Ganancias', 'Pérdidas', 'Saldo'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      {
+                        label: 'Venta de inmuebles',
+                        plusvalias: declaracion.compensacionAhorro.fuentes.inmuebles.plusvalias,
+                        minusvalias: declaracion.compensacionAhorro.fuentes.inmuebles.minusvalias,
+                      },
+                      {
+                        label: 'Inversiones y crypto',
+                        plusvalias: declaracion.compensacionAhorro.fuentes.inversiones.plusvalias,
+                        minusvalias: declaracion.compensacionAhorro.fuentes.inversiones.minusvalias,
+                      },
+                    ].map((row) => {
+                      const saldo = row.plusvalias - row.minusvalias;
+                      return (
+                        <tr key={row.label} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
+                          <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)', fontWeight: 500 }}>{row.label}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: row.plusvalias > 0 ? 'var(--s-pos)' : 'var(--n-400)' }}>{row.plusvalias > 0 ? fmt(row.plusvalias) : '—'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: row.minusvalias > 0 ? 'var(--s-neg)' : 'var(--n-400)' }}>{row.minusvalias > 0 ? fmt(-row.minusvalias) : '—'}</td>
+                          <td style={{ fontFamily: 'var(--font-mono)', color: saldo >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{fmt(saldo)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td style={{ paddingTop: 'var(--s2)', fontWeight: 600, color: 'var(--n-900)' }}>Saldo neto del ejercicio</td>
+                      <td colSpan={2} />
+                      <td style={{ paddingTop: 'var(--s2)', fontFamily: 'var(--font-mono)', fontWeight: 600, color: declaracion.compensacionAhorro.saldoNetoEjercicio >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{fmt(declaracion.compensacionAhorro.saldoNetoEjercicio)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {declaracion.compensacionAhorro.compensacionAplicada.length > 0 && (
+                  <div style={{ marginTop: 'var(--s4)' }}>
+                    <h4 style={{ fontSize: 'var(--t-sm)', color: 'var(--n-900)', fontWeight: 600, marginBottom: 'var(--s2)' }}>Compensación con pérdidas pendientes</h4>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          {['Ejercicio origen', 'Importe aplicado', 'Pendiente restante', 'Caduca'].map(h => (
+                            <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {declaracion.compensacionAhorro.compensacionAplicada.map((item) => (
+                          <tr key={item.ejercicioOrigen} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
+                            <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)' }}>{item.ejercicioOrigen}</td>
+                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--s-pos)' }}>{fmt(-item.importeAplicado)}</td>
+                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-700)' }}>{fmt(item.importeRestanteTras)}</td>
+                            <td style={{ color: 'var(--n-700)' }}>{item.ejercicioOrigen + 4}</td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td style={{ paddingTop: 'var(--s2)', fontWeight: 600, color: 'var(--n-900)' }}>Total compensado</td>
+                          <td style={{ paddingTop: 'var(--s2)', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--s-pos)' }}>{fmt(-declaracion.compensacionAhorro.totalCompensado)}</td>
+                          <td colSpan={2} />
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 'var(--s4)', padding: 'var(--s3)', background: 'var(--n-100)', borderRadius: 'var(--r-md)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--n-900)' }}>G/P netas que tributan en base del ahorro</span>
+                    <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: declaracion.compensacionAhorro.saldoNetoTrasCompensar > 0 ? 'var(--s-pos)' : 'var(--n-500)' }}>
+                      {fmt(declaracion.compensacionAhorro.saldoNetoTrasCompensar)}
+                    </span>
+                  </div>
+                  {declaracion.compensacionAhorro.compensacionConCapitalMobiliario > 0 && (
+                    <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-600)' }}>
+                      Compensado contra capital mobiliario: {fmt(declaracion.compensacionAhorro.compensacionConCapitalMobiliario)}
+                      {' · '}Límite 25%: {fmt(declaracion.compensacionAhorro.limiteCapitalMobiliario)}
+                    </div>
+                  )}
+                  {declaracion.compensacionAhorro.totalCompensado > 0 && (
+                    <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-600)' }}>
+                      Ahorro fiscal estimado al 19%: {fmt(declaracion.compensacionAhorro.totalCompensado * 0.19)}
+                    </div>
+                  )}
+                </div>
+
+                {declaracion.compensacionAhorro.perdidasCaducadas.length > 0 && (
+                  <div style={{ marginTop: 'var(--s3)', padding: 'var(--s3)', background: 'var(--s-warn-bg)', borderRadius: 'var(--r-md)', color: 'var(--s-warn)', fontSize: 'var(--t-xs)' }}>
+                    ⚠️ {declaracion.compensacionAhorro.perdidasCaducadas.length} pérdida(s) han caducado en este ejercicio.
+                  </div>
+                )}
+
+                {declaracion.compensacionAhorro.perdidasPendientesDespues.length > 0 && (
+                  <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-500)' }}>
+                    Pérdidas pendientes futuras: {declaracion.compensacionAhorro.perdidasPendientesDespues
+                      .map((item) => `${item.ejercicioOrigen}: ${fmt(item.importePendiente)} (caduca ${item.ejercicioCaducidad})`)
+                      .join(' · ')}
+                  </div>
+                )}
+              </article>
+            )}
+
             {declaracion.ventasInmuebles && declaracion.ventasInmuebles.length > 0 && (
               <article style={cardStyle}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
