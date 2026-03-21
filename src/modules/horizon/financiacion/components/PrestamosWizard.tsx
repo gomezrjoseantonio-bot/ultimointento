@@ -25,6 +25,7 @@ type StepId = 'identificacion' | 'estructura' | 'configuracion' | 'bonificacione
 const mapToStoragePrestamo = (data: PrestamoFinanciacion): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> => ({
   ambito: data.ambito,
   inmuebleId: data.inmuebleId,
+  afectacionesInmueble: data.afectacionesInmueble,
   nombre: data.alias || 'Préstamo',
   cuentaCargoId: data.cuentaCargoId,
   fechaFirma: data.fechaFirma,
@@ -114,6 +115,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
             id: prestamo.id,
             ambito: prestamo.ambito,
             inmuebleId: prestamo.inmuebleId,
+            afectacionesInmueble: prestamo.afectacionesInmueble,
             alias: prestamo.nombre,
             cuentaCargoId: prestamo.cuentaCargoId,
             fechaFirma: prestamo.fechaFirma,
@@ -177,7 +179,23 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
 
     if (currentStep === 'identificacion') {
       if (!formData.ambito) newErrors.ambito = 'Selecciona el ámbito';
-      if (formData.ambito === 'INMUEBLE' && !formData.inmuebleId) newErrors.inmuebleId = 'Selecciona un inmueble';
+      if (formData.ambito === 'INMUEBLE') {
+        if (formData.afectacionesInmueble?.length) {
+          const total = formData.afectacionesInmueble.reduce((sum, afectacion) => sum + (afectacion.porcentaje || 0), 0);
+          const sinInmueble = formData.afectacionesInmueble.some((afectacion) => !afectacion.inmuebleId);
+          const duplicados = new Set(formData.afectacionesInmueble.map((afectacion) => afectacion.inmuebleId).filter(Boolean));
+
+          if (Math.abs(total - 100) > 0.01) {
+            newErrors.afectacionesInmueble = 'Los porcentajes de los inmuebles deben sumar 100%';
+          } else if (sinInmueble) {
+            newErrors.afectacionesInmueble = 'Todos los inmuebles vinculados deben estar seleccionados';
+          } else if (duplicados.size !== formData.afectacionesInmueble.filter((afectacion) => afectacion.inmuebleId).length) {
+            newErrors.afectacionesInmueble = 'No puedes repetir el mismo inmueble en varias filas';
+          }
+        } else if (!formData.inmuebleId) {
+          newErrors.inmuebleId = 'Selecciona un inmueble';
+        }
+      }
       if (!formData.cuentaCargoId) newErrors.cuentaCargoId = 'Selecciona una cuenta de cargo';
       if (!formData.fechaFirma) newErrors.fechaFirma = 'Introduce la fecha de firma';
       if (!formData.fechaPrimerCargo) newErrors.fechaPrimerCargo = 'Introduce la fecha del primer cargo';

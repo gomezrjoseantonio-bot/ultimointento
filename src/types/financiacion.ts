@@ -1,3 +1,5 @@
+import { AfectacionInmueblePrestamo } from './prestamos';
+
 // Updated Préstamos types for standalone Financing module
 // Following the requirements from the problem statement
 
@@ -7,6 +9,7 @@ export interface PrestamoFinanciacion {
   // Identification & Account Selection (Step 1)
   ambito: 'PERSONAL' | 'INMUEBLE';       // Scope selector
   inmuebleId?: string;                   // Only if scope is INMUEBLE
+  afectacionesInmueble?: AfectacionInmueblePrestamo[]; // Optional multi-property allocation
   cuentaCargoId: string;                 // Charge account - mandatory
   alias?: string;                        // Optional alias
   fechaFirma: string;                    // Signing date (ISO date)

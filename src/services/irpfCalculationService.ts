@@ -502,7 +502,17 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   const imputaciones: ImputacionRenta[] = [];
   const diasTotal = calcularDiasAnio(ejercicio);
 
-  const activeProperties = properties.filter((p: any) => p.state === 'activo');
+  const activeProperties = properties.filter((p: any) => {
+    if (p.state === 'activo') return true;
+
+    if (p.state === 'vendido' || p.state === 'sold' || p.state === 'inactive') {
+      const saleDate = p.saleDate || p.fechaVenta || p.saleData?.saleDate;
+      if (!saleDate) return false;
+      return new Date(saleDate).getFullYear() >= ejercicio;
+    }
+
+    return false;
+  });
 
   // Separate main properties from accessories using the exported helper
   const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
@@ -539,7 +549,22 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       diasAlquilado = calcularDiasAlquiladoDesdeContratos(propContracts, ejercicio, diasTotal);
     }
 
-    const diasVacio = Math.max(0, diasTotal - diasAlquilado - diasEnObras);
+    let diasVacio = Math.max(0, diasTotal - diasAlquilado - diasEnObras);
+
+    const propState = prop.state || (prop as any).estado;
+    if (propState === 'vendido' || propState === 'sold' || propState === 'inactive') {
+      const saleDate = prop.saleDate || prop.fechaVenta || (prop as any).saleData?.saleDate;
+      if (saleDate) {
+        const ventaDate = new Date(saleDate);
+        if (ventaDate.getFullYear() === ejercicio) {
+          const diasHastaVenta = Math.ceil(
+            (ventaDate.getTime() - new Date(ejercicio, 0, 1).getTime()) / MS_PER_DAY
+          ) + 1;
+          diasAlquilado = Math.min(diasAlquilado, diasHastaVenta);
+          diasVacio = Math.max(0, diasHastaVenta - diasAlquilado - diasEnObras);
+        }
+      }
+    }
 
     if (diasAlquilado > 0) {
       // Property is rented (fully or partially)

@@ -52,7 +52,22 @@ export class PrestamosService {
    */
   async getPrestamosByProperty(inmuebleId: string): Promise<Prestamo[]> {
     const prestamos = await this.ensureLoaded();
-    return prestamos.filter(p => p.inmuebleId === inmuebleId);
+    return prestamos.filter((p) => {
+      if (p.inmuebleId === inmuebleId) return true;
+      if (p.afectacionesInmueble?.length) {
+        return p.afectacionesInmueble.some((a) => a.inmuebleId === inmuebleId);
+      }
+      return false;
+    });
+  }
+
+  getPorcentajeAfectacion(prestamo: Prestamo, inmuebleId: string): number {
+    if (prestamo.afectacionesInmueble?.length) {
+      const afectacion = prestamo.afectacionesInmueble.find((a) => a.inmuebleId === inmuebleId);
+      return afectacion?.porcentaje ?? 0;
+    }
+
+    return prestamo.inmuebleId === inmuebleId ? 100 : 0;
   }
 
   /**
