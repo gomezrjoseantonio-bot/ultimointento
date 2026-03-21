@@ -70,19 +70,18 @@ class PersonalResumenService {
       }
 
       // Calculate income from autónomo
-      const autonomos = await autonomoService.getAutonomos(personalDataId);
-      const autonomoActivo = autonomos.find(a => a.activo);
+      const autonomosActivos = await autonomoService.getAutonomosActivos(personalDataId);
       let ingresoAutonomo = 0;
       
-      if (autonomoActivo) {
-        if ((autonomoActivo.fuentesIngreso ?? []).length > 0) {
-          // New model: use estimated annual figures (fuentesIngreso + gastosRecurrentesActividad + cuotaAutonomos)
-          const estimated = autonomoService.calculateEstimatedAnnual(autonomoActivo);
+      if (autonomosActivos.length > 0) {
+        if (autonomosActivos.some(a => (a.fuentesIngreso ?? []).length > 0)) {
+          // New model: aggregate active activities and count the shared cuota once
+          const estimated = autonomoService.calculateEstimatedAnnualForAutonomos(autonomosActivos);
           ingresoAutonomo = estimated.rendimientoNeto / 12;
         } else {
-          // Legacy model: use actual invoiced/expense records
-          const resultado = autonomoService.calculateAutonomoResults(autonomoActivo, anio, mes);
-          ingresoAutonomo = resultado.resultadoNetoMensual;
+          // Legacy model: use monthly projection derived from all active activities
+          const mensual = autonomoService.getMonthlyDistributionForAutonomos(autonomosActivos)[mes - 1];
+          ingresoAutonomo = mensual?.neto ?? 0;
         }
       }
 

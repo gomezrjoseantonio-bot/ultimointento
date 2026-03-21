@@ -1001,9 +1001,9 @@ class DashboardService {
       try {
         const personalData = await personalDataService.getPersonalData();
         const personalDataId = personalData?.id ?? 1;
-        const autonomo = await autonomoService.getActivoAutonomo(personalDataId);
-        if (autonomo) {
-          const annual = autonomoService.calculateEstimatedAnnual(autonomo);
+        const autonomos = await autonomoService.getAutonomosActivos(personalDataId);
+        if (autonomos.length > 0) {
+          const annual = autonomoService.calculateEstimatedAnnualForAutonomos(autonomos);
           autonomoNetoMensual = annual.rendimientoNeto / 12;
         }
       } catch {

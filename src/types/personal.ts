@@ -191,11 +191,19 @@ export interface GastoRecurrenteActividad {
   diaPago?: number; // Day of month when this concept is paid (1-31)
 }
 
+export type TipoActividadAutonomo = 'A03' | 'A05';
+export type ModalidadActividadAutonomo = 'simplificada' | 'normal';
+
 export interface Autonomo {
   id?: number;
   personalDataId: number;
   nombre: string;
   titular?: string; // Name of the owner of this activity (titular or cónyuge)
+  tipoActividad?: TipoActividadAutonomo;
+  epigrafeIAE?: string;
+  descripcionActividad?: string;
+  modalidad?: ModalidadActividadAutonomo;
+  cuotaAutonomosCompartida?: boolean; // Marks the activity that carries the shared RETA quota
   ingresosFacturados: IngresosAutonomo[];
   gastosDeducibles: GastoDeducible[];
   fuentesIngreso?: FuenteIngreso[]; // Income concepts with temporality
