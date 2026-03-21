@@ -1,12 +1,12 @@
 interface ScanChatPayload {
-  tipo: 'scan';
+  tipo: 'scan' | 'scan_irpf';
   imagen: string;
   mimeType: string;
 }
 
 export interface ScanChatResponse {
   ok: boolean;
-  tipo?: 'scan';
+  tipo?: 'scan' | 'scan_irpf';
   model?: string;
   extraido?: any;
   error?: string;
@@ -30,10 +30,14 @@ const toBase64 = async (fileOrBlob: Blob): Promise<string> => {
   return btoa(binary);
 };
 
-export const callScanChat = async (fileOrBlob: Blob, mimeType?: string): Promise<ScanChatResponse> => {
+export const callScanChat = async (
+  fileOrBlob: Blob,
+  mimeType?: string,
+  tipo: ScanChatPayload['tipo'] = 'scan',
+): Promise<ScanChatResponse> => {
   const base64Image = await toBase64(fileOrBlob);
   const payload: ScanChatPayload = {
-    tipo: 'scan',
+    tipo,
     imagen: base64Image,
     mimeType: mimeType || fileOrBlob.type || 'application/octet-stream'
   };
@@ -64,4 +68,3 @@ export const callScanChat = async (fileOrBlob: Blob, mimeType?: string): Promise
 
   return data;
 };
-

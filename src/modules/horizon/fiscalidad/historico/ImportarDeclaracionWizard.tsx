@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FileText, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CasillaInput from '../../../../components/fiscal/ui/CasillaInput';
+import { saveDocumentWithBlob } from '../../../../services/db';
 import {
   CasillaExtraida,
   ImportacionManualData,
@@ -188,6 +189,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [metodo, setMetodo] = useState<MetodoEntrada>('formulario');
   const [data, setData] = useState<ImportacionManualData>(() => crearImportacionManualVacia(currentYear - 1));
   const [casillasExtraidas, setCasillasExtraidas] = useState<CasillaExtraida[]>([]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [progressMsg, setProgressMsg] = useState<string | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -208,9 +211,10 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     const file = event.target.files?.[0];
     if (!file) return;
 
+    setUploadedFile(file);
     setParsing(true);
     try {
-      const extraidas = await extraerCasillasDeModeloPDF(file);
+      const extraidas = await extraerCasillasDeModeloPDF(file, setProgressMsg);
       setCasillasExtraidas(extraidas);
       setData((prev) => ({
         ...prev,
@@ -218,12 +222,17 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         ejercicio,
         arrastres: prev.arrastres ?? [],
       }));
-      toast.success(`${extraidas.length} casillas detectadas en el PDF`);
+      if (extraidas.length > 0) {
+        toast.success(`${extraidas.length} casillas extraídas automáticamente`);
+      } else {
+        toast.error('No se pudieron extraer casillas. Rellena el formulario manualmente.');
+      }
     } catch (error) {
       console.error('Error extrayendo casillas del PDF', error);
-      toast.error('No se pudo leer el PDF. Verifica que el Modelo 100 tenga texto seleccionable.');
+      toast.error('Error al procesar el PDF');
     } finally {
       setParsing(false);
+      setProgressMsg(null);
     }
   };
 
@@ -280,7 +289,28 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           : 'Importación manual desde wizard histórico IRPF',
       });
 
-      toast.success(`Declaración ${data.ejercicio} importada correctamente`);
+      if (uploadedFile) {
+        await saveDocumentWithBlob({
+          filename: `Declaracion_IRPF_${data.ejercicio}.pdf`,
+          type: 'declaracion_irpf',
+          content: uploadedFile,
+          size: uploadedFile.size,
+          lastModified: uploadedFile.lastModified,
+          uploadDate: new Date().toISOString(),
+          metadata: {
+            title: `Declaración IRPF ${data.ejercicio}`,
+            description: 'PDF archivado desde el wizard de importación de declaraciones.',
+            ejercicio: data.ejercicio,
+            origen: 'importacion_wizard',
+            fechaImportacion: new Date().toISOString(),
+            casillasExtraidas: casillasExtraidas.length,
+            metodoExtraccion: casillasExtraidas.some((casilla) => casilla.lineaOriginal.startsWith('[OCR]')) ? 'ocr' : 'texto',
+            status: 'Archivado',
+          },
+        });
+      }
+
+      toast.success(`Declaración ${data.ejercicio} importada y archivada`);
       await onImported();
       onClose();
     } catch (error) {
@@ -366,7 +396,12 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem', borderRadius: '12px', background: 'var(--hz-neutral-100)' }}>
                   <h3 style={{ margin: 0, color: 'var(--atlas-navy-1)' }}>Subir PDF del Modelo 100</h3>
                   <input type="file" accept=".pdf" onChange={handleFileUpload} />
-                  {parsing && <p style={{ margin: 0, color: 'var(--atlas-blue)' }}>Extrayendo casillas del PDF…</p>}
+                  {parsing && (
+                    <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
+                      <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-blue-700">{progressMsg || 'Procesando PDF...'}</span>
+                    </div>
+                  )}
                   {casillasExtraidas.length > 0 && (
                     <p style={{ margin: 0, color: 'var(--hz-neutral-700)' }}>
                       {casillasExtraidas.length} casillas detectadas. Revisa y ajusta los valores antes de guardar.

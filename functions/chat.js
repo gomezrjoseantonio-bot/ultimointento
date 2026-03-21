@@ -164,7 +164,103 @@ Si un campo no aparece en el documento usa null.`;
       return jsonResponse(200, { ok: true, tipo: 'scan', model: SCAN_MODEL, extraido });
     }
 
-    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat" o "scan"' });
+    // ── SCAN IRPF ────────────────────────────────────────────────────────────
+    if (tipo === 'scan_irpf') {
+      const base64Data = cleanBase64(body?.imagen);
+      if (!base64Data) return jsonResponse(400, { ok: false, error: 'Campo "imagen" obligatorio' });
+
+      const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
+        ? body.mimeType.trim()
+        : 'application/pdf';
+      const normalizedMimeType = mimeType.toLowerCase();
+      const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(normalizedMimeType);
+
+      const mediaBlock = isImage
+        ? { type: 'image', source: { type: 'base64', media_type: normalizedMimeType, data: base64Data } }
+        : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } };
+
+      const system = `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
+Analiza el documento y extrae los valores de las casillas AEAT con máxima precisión.
+
+CASILLAS A EXTRAER (devuelve TODAS las que encuentres):
+
+BASES IMPONIBLES:
+- 0435: Base imponible general
+- 0460: Base imponible del ahorro
+- 0500 o 0505: Base liquidable general
+- 0510: Base liquidable del ahorro
+
+CUOTAS:
+- 0545: Cuota íntegra estatal
+- 0546: Cuota íntegra autonómica
+- 0570: Cuota líquida estatal
+- 0571: Cuota líquida autonómica
+- 0587: Cuota líquida incrementada total
+- 0595: Cuota resultante autoliquidación
+
+RETENCIONES:
+- 0596: Retenciones del trabajo
+- 0597: Retenciones capital mobiliario
+- 0599: Retenciones actividades económicas
+- 0604: Pagos fraccionados
+- 0609: Total pagos a cuenta
+
+RESULTADO:
+- 0610: Cuota diferencial
+- 0670: Resultado de la declaración
+- 0676: Regularización (si existe)
+
+RENDIMIENTOS (opcionales pero valiosos):
+- 0022 o 0025: Rendimiento neto del trabajo
+- 0156: Rendimientos inmobiliarios netos reducidos
+- 0224 o 0226: Rendimiento neto actividades económicas
+
+INSTRUCCIONES:
+- Los importes negativos deben incluir el signo negativo
+- Usa el formato numérico con punto decimal (ej: 148505.78, no 148.505,78)
+- Si una casilla no aparece en el documento, NO la incluyas
+- Devuelve ÚNICAMENTE un objeto JSON con formato {"casilla": valor}
+- Sin texto adicional, sin markdown, sin explicaciones
+
+Ejemplo de respuesta:
+{"0435": 148505.78, "0460": 357.63, "0545": 27638.03, "0670": 1859.88}`;
+
+      const result = await callAnthropic({
+        model: SCAN_MODEL,
+        system,
+        maxTokens: 2000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Extrae todas las casillas AEAT con sus valores numéricos de esta declaración IRPF (Modelo 100).' },
+              mediaBlock,
+            ],
+          },
+        ],
+      });
+
+      if (!result.ok) return jsonResponse(result.status || 502, { ok: false, error: result.error, details: result.raw });
+
+      let extraido = result.text;
+      try {
+        extraido = JSON.parse(result.text);
+      } catch (_e) {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            extraido = JSON.parse(jsonMatch[0]);
+          } catch {
+            // mantener texto original
+          }
+        }
+      }
+
+      return jsonResponse(200, { ok: true, tipo: 'scan_irpf', model: SCAN_MODEL, extraido });
+    }
+
+    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan" o "scan_irpf"' });
   } catch (error) {
     console.error('netlify/functions/chat error:', error);
     return jsonResponse(500, { ok: false, error: 'No se pudo procesar la solicitud' });
