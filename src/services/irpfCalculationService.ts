@@ -747,47 +747,53 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
     return !Number.isNaN(d.getTime()) && d.getFullYear() === ejercicio;
   };
 
+  const clasificarCapitalMobiliario = (
+    input: {
+      integracionFiscal?: unknown;
+      integraEnBaseGeneral?: unknown;
+      casilla?: unknown;
+    },
+    contexto: { notas: string; nombreEntidad: string },
+  ): boolean => {
+    if (input.integracionFiscal === 'general') return true;
+    if (input.integracionFiscal === 'ahorro') return false;
+    if (input.integraEnBaseGeneral === true) return true;
+    if (input.integraEnBaseGeneral === false) return false;
+
+    const casilla = String(input.casilla ?? '').padStart(4, '0');
+    if (['0046', '0047', '0048', '0050', '0051'].includes(casilla)) return true;
+    if (contexto.notas.includes('otro rendimiento big')) return true;
+    if (contexto.notas.includes('base general')) return true;
+    if (contexto.nombreEntidad.includes('unihouser')) return true;
+    return false;
+  };
+
+  const registrarDetalleCapitalMobiliario = (
+    detalle: RendimientoCapitalMobiliarioDetalle,
+    tipoPosicion: string,
+  ) => {
+    if (detalle.integraEnBaseGeneral) {
+      totalCapitalMobiliarioGeneral = round2(totalCapitalMobiliarioGeneral + detalle.importe);
+      retencionesCapitalMobiliarioGeneral = round2(retencionesCapitalMobiliarioGeneral + detalle.retencion);
+      detalleBaseGeneral.push(detalle);
+      return;
+    }
+
+    if (tipoPosicion === 'accion' || tipoPosicion === 'etf' || tipoPosicion === 'reit') {
+      dividendosAhorro = round2(dividendosAhorro + detalle.importe);
+    } else {
+      interesesAhorro = round2(interesesAhorro + detalle.importe);
+    }
+    retencionesCapitalMobiliarioAhorro = round2(retencionesCapitalMobiliarioAhorro + detalle.retencion);
+    detalleAhorro.push(detalle);
+  };
+
   for (const p of posiciones) {
     if (!p.activo) continue;
 
     const pAny = p as any;
     const notas = String(pAny?.notas ?? '').toLowerCase();
     const nombreEntidad = `${String(pAny?.nombre ?? '')} ${String(pAny?.entidad ?? '')}`.toLowerCase();
-
-    const clasificarCapitalMobiliario = (input: {
-      integracionFiscal?: unknown;
-      integraEnBaseGeneral?: unknown;
-      casilla?: unknown;
-    }): boolean => {
-      if (input.integracionFiscal === 'general') return true;
-      if (input.integracionFiscal === 'ahorro') return false;
-      if (input.integraEnBaseGeneral === true) return true;
-      if (input.integraEnBaseGeneral === false) return false;
-
-      const casilla = String(input.casilla ?? '').padStart(4, '0');
-      if (['0046', '0047', '0048', '0050', '0051'].includes(casilla)) return true;
-      if (notas.includes('otro rendimiento big')) return true;
-      if (notas.includes('base general')) return true;
-      if (nombreEntidad.includes('unihouser')) return true;
-      return false;
-    };
-
-    const registrarDetalleCapitalMobiliario = (detalle: RendimientoCapitalMobiliarioDetalle) => {
-      if (detalle.integraEnBaseGeneral) {
-        totalCapitalMobiliarioGeneral = round2(totalCapitalMobiliarioGeneral + detalle.importe);
-        retencionesCapitalMobiliarioGeneral = round2(retencionesCapitalMobiliarioGeneral + detalle.retencion);
-        detalleBaseGeneral.push(detalle);
-        return;
-      }
-
-      if (p.tipo === 'accion' || p.tipo === 'etf' || p.tipo === 'reit') {
-        dividendosAhorro = round2(dividendosAhorro + detalle.importe);
-      } else {
-        interesesAhorro = round2(interesesAhorro + detalle.importe);
-      }
-      retencionesCapitalMobiliarioAhorro = round2(retencionesCapitalMobiliarioAhorro + detalle.retencion);
-      detalleAhorro.push(detalle);
-    };
 
     const pagosGenerados = Array.isArray(pAny?.rendimiento?.pagos_generados)
       ? pAny.rendimiento.pagos_generados
@@ -805,9 +811,9 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
           integracionFiscal: pago?.integracion_fiscal ?? pAny?.rendimiento?.integracion_fiscal,
           integraEnBaseGeneral: pago?.integra_en_base_general ?? pAny?.rendimiento?.integra_en_base_general,
           casilla: pago?.casilla_irpf ?? pAny?.rendimiento?.casilla_irpf,
-        }),
+        }, { notas, nombreEntidad }),
         casilla: pago?.casilla_irpf ?? pAny?.rendimiento?.casilla_irpf,
-      });
+      }, p.tipo);
     }
 
     if (Array.isArray(pAny?.dividendos?.dividendos_recibidos)) {
@@ -824,9 +830,9 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
             integracionFiscal: div?.integracion_fiscal ?? pAny?.dividendos?.integracion_fiscal,
             integraEnBaseGeneral: div?.integra_en_base_general ?? pAny?.dividendos?.integra_en_base_general,
             casilla: div?.casilla_irpf ?? pAny?.dividendos?.casilla_irpf,
-          }),
+          }, { notas, nombreEntidad }),
           casilla: div?.casilla_irpf ?? pAny?.dividendos?.casilla_irpf,
-        });
+        }, p.tipo);
       }
     } else {
       const divLegacy = Number(pAny?.dividendos);
@@ -840,9 +846,9 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
             integracionFiscal: pAny?.dividendos_integracion_fiscal,
             integraEnBaseGeneral: pAny?.dividendos_integra_en_base_general,
             casilla: pAny?.dividendos_casilla_irpf,
-          }),
+          }, { notas, nombreEntidad }),
           casilla: pAny?.dividendos_casilla_irpf,
-        });
+        }, p.tipo);
       }
     }
 
