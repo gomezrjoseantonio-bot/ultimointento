@@ -14,9 +14,16 @@ import type {
   PersonalExpense,
   PensionIngreso
 } from '../types/personal';
+import type {
+  ArrastresEjercicio,
+  DeclaracionInmueble,
+  DocumentoFiscal,
+  OrigenDeclaracion,
+} from '../types/fiscal';
+import type { DeclaracionIRPF } from './irpfCalculationService';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 34; // V3.4: importación AEAT histórica + entidades en atribución de rentas
+const DB_VERSION = 35; // V3.5: modelo fundacional de ejercicios fiscales
 
 export interface Property {
   id?: number;
@@ -1068,19 +1075,33 @@ export interface TreasuryRecommendation {
 
 // ─── V2.7: Ejercicios Fiscales ─────────────────────────────────────────────────
 
-export type EstadoEjercicio = 'vivo' | 'cerrado' | 'declarado';
+export type EstadoEjercicio = 'vivo' | 'en_curso' | 'cerrado' | 'declarado';
 export type OrigenEjercicio = 'calculado' | 'importado' | 'mixto';
 
 export interface EjercicioFiscal {
   id?: number;
-  año: number;                    // e.g. 2024, 2025
-  estado: EstadoEjercicio;        // vivo → cerrado → declarado
+  año: number;                    // compat legacy
+  ejercicio?: number;             // modelo fundacional
+  estado: EstadoEjercicio;        // vivo/en_curso → cerrado → declarado
   origen: OrigenEjercicio;        // de dónde vienen los datos
   fechaCierre?: string;           // ISO date when closed
   fechaRevisionFinal?: string;    // ISO date when final review was completed
   fechaDeclaracion?: string;      // ISO date when declared
   snapshotId?: number;            // FK → snapshotsDeclaracion.id
   resultadoEjercicioId?: number;  // FK → resultadosEjercicio.id (snapshot canónico)
+  // Modelo fiscal fundacional
+  calculoAtlas?: DeclaracionIRPF;
+  calculoAtlasFecha?: string;
+  declaracionAeat?: DeclaracionIRPF;
+  declaracionAeatFecha?: string;
+  declaracionAeatPdfRef?: string;
+  declaracionAeatOrigen?: OrigenDeclaracion;
+  arrastresRecibidos?: ArrastresEjercicio;
+  arrastresGenerados?: ArrastresEjercicio;
+  documentos?: DocumentoFiscal[];
+  declaracionInmuebles?: DeclaracionInmueble[];
+  cerradoAt?: string;
+  declaradoAt?: string;
   // Resumen de alto nivel (se rellena al cerrar)
   resumen?: {
     baseImponibleGeneral: number;
@@ -2198,9 +2219,15 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
           const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'id', autoIncrement: true });
           ejerciciosStore.createIndex('año', 'año', { unique: true });
+          ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
           ejerciciosStore.createIndex('estado', 'estado', { unique: false });
           ejerciciosStore.createIndex('origen', 'origen', { unique: false });
           ejerciciosStore.createIndex('snapshotId', 'snapshotId', { unique: false });
+        } else if (oldVersion < 35) {
+          const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
+          if (!ejerciciosStore.indexNames.contains('ejercicio')) {
+            ejerciciosStore.createIndex('ejercicio', 'ejercicio', { unique: true });
+          }
         }
 
 
