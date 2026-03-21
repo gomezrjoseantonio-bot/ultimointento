@@ -2,6 +2,39 @@
 import { OCRResult, OCRField } from './db';
 import { callScanChat } from './scanChatService';
 
+const tryParseExtractedJson = (value: unknown): Record<string, any> | undefined => {
+  if (!value) return undefined;
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, any>;
+  }
+  if (typeof value !== 'string') return undefined;
+
+  const candidates = [
+    value.trim(),
+    value.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim(),
+  ];
+
+  const firstBrace = value.indexOf('{');
+  const lastBrace = value.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    candidates.push(value.slice(firstBrace, lastBrace + 1).trim());
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, any>;
+      }
+    } catch {
+      // Ignore and keep trying safer fallbacks.
+    }
+  }
+
+  return undefined;
+};
+
 const ENTITY_TYPE_MAPPINGS: Record<string, string> = {
   'total_amount': 'total_amount',
   'net_amount': 'net_amount', 
@@ -111,9 +144,7 @@ const processDocumentAIEntity = (entity: any): OCRField | null => {
 export const callDocumentAIFunction = async (file: File): Promise<any> => {
   try {
     const responseData = await callScanChat(file, file.type || 'application/pdf');
-    const extracted = responseData.extraido && typeof responseData.extraido === 'object'
-      ? responseData.extraido
-      : {};
+    const extracted = tryParseExtractedJson(responseData.extraido) || {};
 
     const confidence = Number(extracted.confianza);
     const safeConfidence = Number.isFinite(confidence) ? confidence : 0.8;
@@ -158,9 +189,7 @@ export const processDocumentAIResponse = (apiResponse: any, filename: string): O
   }
 
   const firstResult = apiResponse.results.find((r: any) => r.status === 'success');
-  const extractedData = apiResponse.extractedData && typeof apiResponse.extractedData === 'object'
-    ? apiResponse.extractedData
-    : undefined;
+  const extractedData = tryParseExtractedJson(apiResponse.extractedData);
 
   if (!firstResult) {
     const firstError = apiResponse.results.find((r: any) => r.status === 'error');

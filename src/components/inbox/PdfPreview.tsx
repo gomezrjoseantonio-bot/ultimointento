@@ -3,10 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { pdfjs } from 'react-pdf';
 
 // ── Worker local de PDF.js para evitar bloqueos por CSP ──────────────────────
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface PdfPreviewProps {
