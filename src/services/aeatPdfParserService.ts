@@ -121,6 +121,53 @@ export function mapearCasillasAImportacion(casillas: CasillaExtraida[], ejercici
   };
 }
 
+export interface PDFTextItem {
+  str: string;
+  transform: number[];
+}
+
+export function reconstruirLineasPDF(items: PDFTextItem[]): string[] {
+  if (items.length === 0) {
+    return [];
+  }
+
+  const sorted = [...items].sort((a, b) => {
+    const yDiff = b.transform[5] - a.transform[5];
+    if (Math.abs(yDiff) > 3) {
+      return yDiff;
+    }
+
+    return a.transform[4] - b.transform[4];
+  });
+
+  const lines: string[] = [];
+  let currentLine: string[] = [];
+  let currentY = sorted[0]?.transform[5] ?? 0;
+
+  for (const item of sorted) {
+    const itemY = item.transform[5];
+
+    if (Math.abs(itemY - currentY) > 3) {
+      if (currentLine.length > 0) {
+        lines.push(currentLine.join(' ').replace(/\s+/g, ' ').trim());
+      }
+
+      currentLine = [];
+      currentY = itemY;
+    }
+
+    if (item.str.trim()) {
+      currentLine.push(item.str);
+    }
+  }
+
+  if (currentLine.length > 0) {
+    lines.push(currentLine.join(' ').replace(/\s+/g, ' ').trim());
+  }
+
+  return lines;
+}
+
 async function extractTextFromPDF(file: File): Promise<string> {
   const { pdfjs } = await import('react-pdf');
   pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
@@ -128,17 +175,17 @@ async function extractTextFromPDF(file: File): Promise<string> {
   const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
   const pdf = await loadingTask.promise;
 
-  let text = '';
+  const pages: string[] = [];
+
   for (let i = 1; i <= pdf.numPages; i += 1) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const pageText = content.items
-      .map((item: any) => item.str)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    text += `${pageText}\n`;
+    const lines = reconstruirLineasPDF(content.items as PDFTextItem[]);
+
+    if (lines.length > 0) {
+      pages.push(lines.join('\n'));
+    }
   }
 
-  return text;
+  return pages.join('\n');
 }
