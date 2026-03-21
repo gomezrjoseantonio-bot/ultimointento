@@ -3,7 +3,7 @@
 
 import { initDB } from './db';
 import { personalDataService } from './personalDataService';
-import { calculateFiscalSummary } from './fiscalSummaryService';
+import { calculateCarryForwards, calculateFiscalSummary } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
 import { getGananciasPatrimonialesInmueblesEjercicio, PropertyDisposalTaxResult } from './propertyDisposalTaxService';
@@ -869,6 +869,7 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       detalle: detalleBaseGeneral,
     },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
+    ventasInmuebles: [],
   };
 }
 
