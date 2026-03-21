@@ -11,7 +11,7 @@ import {
 } from './db';
 import { calcularDeclaracionIRPF } from './irpfCalculationService';
 import { crearSnapshotDeclaracion, crearSnapshotDeclaracionManual } from './snapshotDeclaracionService';
-import { getOrCreateEjercicio, saveLegacyEjercicioRecord } from './ejercicioFiscalService';
+import * as ejercicioFiscalService from './ejercicioFiscalService';
 import { crearArrastreFiscal } from './arrastresFiscalesService';
 import type { DatosActivosExtraidos, InmuebleParsedFromPDF } from './declaracionFromCasillasService';
 
@@ -34,6 +34,10 @@ function resolveArrastreTipo(tipo: 'gastos_0105_0106' | 'perdidas_patrimoniales_
     return 'exceso_gastos_0105_0106';
   }
   return tipo;
+}
+
+function resolveOrigenEjercicio(origen?: OrigenEjercicio): OrigenEjercicio {
+  return origen ?? 'calculado';
 }
 
 async function getArrastresMetadata(ejercicio: number): Promise<ResultadoEjercicio['arrastres']> {
@@ -311,12 +315,13 @@ export async function cerrarEjercicioConWorkflow(input: {
   validarContraDatosReales: boolean;
   notasRevision?: string;
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio; snapshot: SnapshotDeclaracion }> {
-  const ejercicio = await getOrCreateEjercicio(input.año);
+  const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.año);
   if (ejercicio.estado !== 'vivo') {
     throw new Error(`El ejercicio ${input.año} no está vivo y no se puede cerrar.`);
   }
 
   const declaracion = await calcularDeclaracionIRPF(input.año, { usarConciliacion: true });
+  const origenEjercicio = resolveOrigenEjercicio(ejercicio.origen);
   const arrastres = await getArrastresMetadata(input.año);
   const snapshot = await crearSnapshotDeclaracion(input.año, {
     origen: 'cierre_automatico',
@@ -331,7 +336,7 @@ export async function cerrarEjercicioConWorkflow(input: {
       arrastres,
       'cierre',
       'cerrado',
-      ejercicio.origen ?? 'calculado',
+      origenEjercicio,
       input.validarContraDatosReales,
       input.notasRevision,
     ),
@@ -353,10 +358,11 @@ export async function cerrarEjercicioConWorkflow(input: {
       retencionesYPagos: resultado.resumen.retencionesYPagosCuenta,
       resultado: resultado.resumen.resultado,
     },
+    origen: origenEjercicio,
     updatedAt: now,
   };
 
-  await saveLegacyEjercicioRecord(updatedEjercicio);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado, snapshot };
 }
@@ -386,7 +392,8 @@ export async function importarDeclaracionManual(input: {
   datosActivos?: DatosActivosExtraidos;
   inmueblesParsed?: InmuebleParsedFromPDF[];
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio }> {
-  const ejercicio = await getOrCreateEjercicio(input.ejercicio);
+  const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.ejercicio);
+  const origenEjercicio = resolveOrigenEjercicio(ejercicio.origen);
   const now = new Date().toISOString();
 
   const manualArrastres = input.arrastresPendientes ?? [];
@@ -426,9 +433,9 @@ export async function importarDeclaracionManual(input: {
           input.ejercicio,
           declaracion,
           arrastres,
-          ejercicio.origen === 'calculado' ? 'importacion_manual' : 'mixto',
+          origenEjercicio === 'calculado' ? 'importacion_manual' : 'mixto',
           'declarado',
-          ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+          origenEjercicio === 'calculado' ? 'importado' : 'mixto',
           true,
           input.notasRevision,
         ),
@@ -437,7 +444,7 @@ export async function importarDeclaracionManual(input: {
       })
     : await saveResultado({
         ejercicio: input.ejercicio,
-        origen: ejercicio.origen === 'calculado' ? 'importacion_manual' : 'mixto',
+        origen: origenEjercicio === 'calculado' ? 'importacion_manual' : 'mixto',
         estadoEjercicio: 'declarado',
         fechaGeneracion: now,
         fechaCierre: now,
@@ -462,7 +469,7 @@ export async function importarDeclaracionManual(input: {
         metadatos: {
           validadoContraDatosReales: true,
           notasRevision: input.notasRevision,
-          origenDatos: ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+          origenDatos: origenEjercicio === 'calculado' ? 'importado' : 'mixto',
           generadoPor: 'usuario',
         },
         createdAt: now,
@@ -485,7 +492,7 @@ export async function importarDeclaracionManual(input: {
   const updatedEjercicio: EjercicioFiscal = {
     ...ejercicio,
     estado: 'declarado',
-    origen: ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+    origen: origenEjercicio === 'calculado' ? 'importado' : 'mixto',
     fechaRevisionFinal: now,
     fechaCierre: ejercicio.fechaCierre ?? now,
     fechaDeclaracion: now,
@@ -502,7 +509,7 @@ export async function importarDeclaracionManual(input: {
     updatedAt: now,
   };
 
-  await saveLegacyEjercicioRecord(updatedEjercicio);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updatedEjercicio);
 
   return { ejercicio: updatedEjercicio, resultado };
 }
@@ -524,7 +531,7 @@ export async function obtenerHistoricoFiscalReal(): Promise<Array<{ ejercicio: n
       return {
         ejercicio: ejercicio.ejercicio ?? ejercicio.año ?? 0,
         estado: ejercicio.estado,
-        origen: ejercicio.origen ?? 'calculado',
+        origen: resolveOrigenEjercicio(ejercicio.origen),
         fechaCierre: ejercicio.fechaCierre,
         fechaDeclaracion: ejercicio.fechaDeclaracion,
         resultado: resultado?.resumen ?? {

@@ -1,6 +1,6 @@
 import { EjercicioFiscal } from './db';
 import { conciliarEjercicioFiscal } from './fiscalConciliationService';
-import { cerrarEjercicio, getOrCreateEjercicio, saveLegacyEjercicioRecord } from './ejercicioFiscalService';
+import * as ejercicioFiscalService from './ejercicioFiscalService';
 import {
   crearSnapshotDeclaracion,
   crearSnapshotDeclaracionManual,
@@ -78,7 +78,7 @@ export async function cerrarEjercicioValidado(
     );
   }
 
-  const cerrado = await cerrarEjercicio(ejercicio);
+  const cerrado = await ejercicioFiscalService.cerrarEjercicio(ejercicio);
   const snapshot = await crearSnapshotDeclaracion(ejercicio, {
     origen: 'cierre_automatico',
     incluirCasillasAEAT: true,
@@ -93,7 +93,7 @@ export async function cerrarEjercicioValidado(
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLegacyEjercicioRecord(updated);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updated);
   return updated;
 }
 
@@ -101,7 +101,7 @@ export async function importarDeclaracionEjercicio(
   ejercicio: number,
   input: ImportacionDeclaracionManualInput
 ): Promise<{ ejercicioFiscal: EjercicioFiscal; snapshotId?: number }> {
-  const base = await getOrCreateEjercicio(ejercicio);
+  const base = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio);
   const snapshot = await crearSnapshotDeclaracionManual(ejercicio, input);
 
   const updated: EjercicioFiscal = {
@@ -116,7 +116,7 @@ export async function importarDeclaracionEjercicio(
     updatedAt: new Date().toISOString(),
   };
 
-  await saveLegacyEjercicioRecord(updated);
+  await ejercicioFiscalService.saveLegacyEjercicioRecord(updated);
 
   return { ejercicioFiscal: updated, snapshotId: snapshot.id };
 }
