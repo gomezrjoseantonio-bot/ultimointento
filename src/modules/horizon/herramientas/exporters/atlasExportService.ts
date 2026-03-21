@@ -419,7 +419,7 @@ export async function exportarFiscal(año: number): Promise<void> {
     Amortización: toNumber(item.amortizacion),
     'Base neta': toNumber(item.ingresosIntegros - item.gastosDeducibles - item.amortizacion),
     'Reducción 60% (si aplica)': toNumber(item.reduccionHabitual),
-    'Rendimiento neto reducido': toNumber(item.rendimientoNetoAlquiler),
+    'Rendimiento neto reducido': toNumber(item.rendimientoNetoReducido ?? item.rendimientoNeto),
     Retenciones: 0,
     Saldo: toNumber(item.rendimientoNeto),
   }));

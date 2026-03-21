@@ -5,7 +5,8 @@ import {
   calculateAEATAmortization, 
   formatEsCurrency, 
   formatEsPercentage,
-  AEATAmortizationCalculation 
+  AEATAmortizationCalculation,
+  getUnifiedFiscalData,
 } from '../../services/aeatAmortizationService';
 import { initDB, Property } from '../../services/db';
 
@@ -40,9 +41,14 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
       }
       
       setProperty(prop);
-      
-      if (!prop.aeatAmortization || !prop.aeatAmortization.acquisitionType) {
-        setError('No hay datos de amortización AEAT configurados para esta propiedad');
+
+      const unifiedFiscalData = getUnifiedFiscalData(prop);
+      const hasFiscalInputs = unifiedFiscalData.acquisitionAmount > 0
+        || unifiedFiscalData.constructionCadastralValue > 0
+        || unifiedFiscalData.cadastralValue > 0;
+
+      if (!hasFiscalInputs) {
+        setError('No hay datos fiscales suficientes para calcular la amortización de esta propiedad');
         return;
       }
 
@@ -64,8 +70,8 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
   }, [loadData]);
 
   const recalculate = useCallback(async () => {
-    if (!property?.aeatAmortization) return;
-    
+    if (!property) return;
+
     try {
       setLoading(true);
       const calc = await calculateAEATAmortization(propertyId, exerciseYear, daysRented);
@@ -77,7 +83,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [property?.aeatAmortization, propertyId, exerciseYear, daysRented, onCalculationUpdate]);
+  }, [property, propertyId, exerciseYear, daysRented, onCalculationUpdate]);
 
   if (loading && !calculation) {
     return (
@@ -100,7 +106,7 @@ const AmortizationDetail: React.FC<AmortizationDetailProps> = ({
         <div className="bg-orange-50 border border-orange-200 p-4">
           <p className="text-orange-800">{error}</p>
           <p className="text-sm text-warning-600 mt-2">
-            Configure los datos de amortización AEAT en la ficha del inmueble para ver el cálculo detallado.
+            Complete la ficha fiscal o los datos AEAT del inmueble para ver el cálculo detallado.
           </p>
         </div>
       </div>

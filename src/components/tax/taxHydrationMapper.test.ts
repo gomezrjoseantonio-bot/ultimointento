@@ -9,9 +9,18 @@ jest.mock('../../services/fiscalSummaryService', () => ({
   calculateFiscalSummary: jest.fn(),
 }));
 
+jest.mock('../../services/aeatAmortizationService', () => ({
+  calculateAEATAmortization: jest.fn(),
+  getConstructionPercentageFromValues: jest.requireActual('../../services/aeatAmortizationService').getConstructionPercentageFromValues,
+  getUnifiedFiscalData: jest.requireActual('../../services/aeatAmortizationService').getUnifiedFiscalData,
+}));
+
 const { initDB } = jest.requireMock('../../services/db') as { initDB: jest.Mock };
 const { calculateFiscalSummary } = jest.requireMock('../../services/fiscalSummaryService') as {
   calculateFiscalSummary: jest.Mock;
+};
+const { calculateAEATAmortization } = jest.requireMock('../../services/aeatAmortizationService') as {
+  calculateAEATAmortization: jest.Mock;
 };
 
 function buildDeclaracion(): DeclaracionIRPF {
@@ -31,11 +40,13 @@ function buildDeclaracion(): DeclaracionIRPF {
           ingresosIntegros: 12000,
           gastosDeducibles: 3000,
           amortizacion: 1000,
-          reduccionHabitual: 0,
+          reduccionHabitual: 3200,
           rendimientoNetoAlquiler: 8000,
+          rendimientoNetoReducido: 4800,
+          porcentajeReduccionHabitual: 40,
           esHabitual: true,
           imputacionRenta: 0,
-          rendimientoNeto: 8000,
+          rendimientoNeto: 4800,
         },
       ],
       imputacionRentas: [
@@ -75,6 +86,14 @@ function buildDeclaracion(): DeclaracionIRPF {
 
 describe('mapDeclaracionToTaxState', () => {
   it('incluye inmuebles alquilados, con imputación y activos sin datos fiscales', async () => {
+    calculateAEATAmortization.mockImplementation(async (_propertyId: number, _exerciseYear: number, daysRented: number) => ({
+      baseAmount: 24070.4,
+      totalAmortization: daysRented === 365 ? 722.11 : 0,
+      breakdown: {
+        cadastralConstructionValue: 17833.86,
+      },
+    }));
+
     calculateFiscalSummary.mockResolvedValue({
       box0105: 100,
       box0106: 50,
@@ -95,12 +114,17 @@ describe('mapDeclaracionToTaxState', () => {
             id: 1,
             alias: 'Tenderina 64 4D',
             state: 'activo',
+            purchaseDate: '2020-01-01',
             acquisitionCosts: {
               price: 100000,
               itp: 7000,
               notary: 900,
               registry: 350,
               management: 500,
+            },
+            fiscalData: {
+              cadastralValue: 47656.37,
+              constructionCadastralValue: 17833.86,
             },
           },
           { id: 2, alias: 'Manresa', state: 'activo' },
@@ -123,5 +147,8 @@ describe('mapDeclaracionToTaxState', () => {
     expect(rented?.amortizacionMuebles).toBe(75);
     expect(rented?.mejoras).toBe(1500);
     expect(rented?.gastosTributos).toBe(8750);
+    expect(rented?.pctReduccion).toBe(40);
+    expect(rented?.rendimientoNeto).toBe(8000);
+    expect(rented?.rendimientoNetoReducido).toBe(4800);
   });
 });

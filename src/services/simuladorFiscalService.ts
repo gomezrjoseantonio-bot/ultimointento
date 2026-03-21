@@ -64,7 +64,6 @@ const TRAMOS_BASE_AHORRO = [
 ];
 
 const MAX_APORTACION_PP = 1500;
-const REDUCCION_HABITUAL = 0.60;
 
 /**
  * Recalculate the liquidación of a cloned declaración after modifying base values.
@@ -241,12 +240,18 @@ export async function ejecutarSimulacion(
         const meses = parametros.mesesRestantes ?? 12;
         const nuevosIngresos = round2((parametros.rentaNueva ?? 0) * meses);
         const delta = nuevosIngresos - ingresosPrevios;
-        const rendBruto = round2(inmueble.ingresosIntegros + delta - inmueble.gastosDeducibles - inmueble.amortizacion);
-        const reduccion = inmueble.esHabitual ? round2(rendBruto * REDUCCION_HABITUAL) : 0;
+        const rendNetoAlquiler = round2(inmueble.ingresosIntegros + delta - inmueble.gastosDeducibles - inmueble.amortizacion);
+        const porcentajeReduccion = inmueble.reduccionHabitual > 0 && inmueble.rendimientoNetoAlquiler > 0
+          ? inmueble.reduccionHabitual / inmueble.rendimientoNetoAlquiler
+          : (inmueble.porcentajeReduccionHabitual ?? 0);
+        const { reduccionHabitual, rendimientoNetoReducido, porcentajeNormalizado } =
+          calcularReduccionArrendamientoVivienda(rendNetoAlquiler, porcentajeReduccion);
         inmueble.ingresosIntegros = round2(inmueble.ingresosIntegros + delta);
-        inmueble.reduccionHabitual = reduccion;
-        inmueble.rendimientoNetoAlquiler = round2(rendBruto - reduccion);
-        inmueble.rendimientoNeto = round2(rendBruto - reduccion + inmueble.imputacionRenta);
+        inmueble.reduccionHabitual = porcentajeReduccion > 0 ? reduccionHabitual : 0;
+        inmueble.porcentajeReduccionHabitual = porcentajeNormalizado;
+        inmueble.rendimientoNetoAlquiler = rendNetoAlquiler;
+        inmueble.rendimientoNetoReducido = porcentajeReduccion > 0 ? rendimientoNetoReducido : rendNetoAlquiler;
+        inmueble.rendimientoNeto = round2(inmueble.rendimientoNetoReducido + inmueble.imputacionRenta);
         sim.baseGeneral.rendimientosInmuebles[idx] = inmueble;
         sim.baseGeneral.total = round2(
           (sim.baseGeneral.rendimientosTrabajo?.rendimientoNeto ?? 0) +
@@ -310,7 +315,9 @@ export async function ejecutarSimulacion(
         gastosDeducibles: 0,
         amortizacion: 0,
         reduccionHabitual: reduccion,
-        rendimientoNetoAlquiler: round2(rendBruto - reduccion),
+        rendimientoNetoAlquiler: round2(rendBruto),
+        rendimientoNetoReducido: round2(rendBruto - reduccion),
+        porcentajeReduccionHabitual: 0,
         esHabitual: false,
         imputacionRenta: 0,
         rendimientoNeto: round2(rendBruto - reduccion),
