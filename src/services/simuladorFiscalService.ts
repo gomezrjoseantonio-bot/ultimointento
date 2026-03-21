@@ -1,12 +1,8 @@
 // ATLAS HORIZON: Simulador fiscal
 // Nivel 3: Simulaciones what-if para optimización fiscal
 
-import {
-  calcularDeclaracionIRPF,
-  DeclaracionIRPF,
-  calcularCuotaPorTramos,
-  calcularReduccionArrendamientoVivienda,
-} from './irpfCalculationService';
+import { calcularDeclaracionIRPF, DeclaracionIRPF, calcularCuotaPorTramos } from './irpfCalculationService';
+import { calcularGananciaPatrimonialVentaSimulada } from './propertyDisposalTaxService';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -18,7 +14,8 @@ export type TipoSimulacion =
   | 'alquilar_inmueble'
   | 'nuevo_ingreso_autonomo'
   | 'cambio_nomina'
-  | 'compensar_minusvalias';
+  | 'compensar_minusvalias'
+  | 'venta_inmueble';
 
 export interface TipFiscal {
   tipo: 'ahorro' | 'alerta' | 'oportunidad';
@@ -189,6 +186,34 @@ export async function ejecutarSimulacion(
           Math.max(0, sim.baseAhorro.gananciasYPerdidas.plusvalias - sim.baseAhorro.gananciasYPerdidas.minusvalias)
         );
       }
+      sim.baseAhorro.total = round2(
+        sim.baseAhorro.capitalMobiliario.total + sim.baseAhorro.gananciasYPerdidas.compensado
+      );
+      break;
+    }
+
+    case 'venta_inmueble': {
+      const result = await calcularGananciaPatrimonialVentaSimulada(
+        Number(parametros.inmuebleId),
+        Number(parametros.precioVenta ?? 0),
+        Number(parametros.gastosVenta ?? 0),
+        parametros.fechaVenta
+      );
+
+      if (result.gananciaPatrimonial >= 0) {
+        sim.baseAhorro.gananciasYPerdidas.plusvalias = round2(
+          sim.baseAhorro.gananciasYPerdidas.plusvalias + result.gananciaPatrimonial
+        );
+      } else {
+        sim.baseAhorro.gananciasYPerdidas.minusvalias = round2(
+          sim.baseAhorro.gananciasYPerdidas.minusvalias + Math.abs(result.gananciaPatrimonial)
+        );
+      }
+
+      sim.ventasInmuebles = [...(sim.ventasInmuebles ?? []), result];
+      sim.baseAhorro.gananciasYPerdidas.compensado = round2(
+        Math.max(0, sim.baseAhorro.gananciasYPerdidas.plusvalias - sim.baseAhorro.gananciasYPerdidas.minusvalias)
+      );
       sim.baseAhorro.total = round2(
         sim.baseAhorro.capitalMobiliario.total + sim.baseAhorro.gananciasYPerdidas.compensado
       );

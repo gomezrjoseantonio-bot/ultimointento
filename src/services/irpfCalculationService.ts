@@ -7,6 +7,7 @@ import { calculateFiscalSummary, calculateCarryForwards } from './fiscalSummaryS
 import { nominaService } from './nominaService';
 import { calcularGananciasPerdidasEjercicio, getMinusvaliasPendientes } from './inversionesFiscalService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
+import { getGananciasPatrimonialesInmueblesEjercicio, PropertyDisposalTaxResult } from './propertyDisposalTaxService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -165,6 +166,7 @@ export interface Retenciones {
 
 export interface DeclaracionIRPF {
   ejercicio: number;
+  ventasInmuebles?: PropertyDisposalTaxResult[];
   baseGeneral: BaseGeneral;
   baseAhorro: BaseAhorro;
   reducciones: {
@@ -755,7 +757,20 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
     }
   }
 
-  const { plusvalias, minusvalias } = await calcularGananciasPerdidasEjercicio(ejercicio);
+  const { plusvalias: plusvaliasInversiones, minusvalias: minusvaliasInversiones } = await calcularGananciasPerdidasEjercicio(ejercicio);
+  const ventasInmuebles = await getGananciasPatrimonialesInmueblesEjercicio(ejercicio);
+  const plusvaliasInmuebles = round2(
+    ventasInmuebles
+      .filter((venta) => venta.gananciaPatrimonial > 0)
+      .reduce((sum, venta) => sum + venta.gananciaPatrimonial, 0)
+  );
+  const minusvaliasInmuebles = round2(
+    ventasInmuebles
+      .filter((venta) => venta.gananciaPatrimonial < 0)
+      .reduce((sum, venta) => sum + Math.abs(venta.gananciaPatrimonial), 0)
+  );
+  const plusvalias = round2(plusvaliasInversiones + plusvaliasInmuebles);
+  const minusvalias = round2(minusvaliasInversiones + minusvaliasInmuebles);
   const minusvaliasPendientes = await getMinusvaliasPendientes(ejercicio);
 
   const minusvaliasEjercicioAplicadas = Math.min(plusvalias, minusvalias);
@@ -794,6 +809,7 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       compensado,
     },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
+    ventasInmuebles,
   };
 }
 
@@ -849,7 +865,7 @@ export async function calcularDeclaracionIRPF(
   opciones?: { usarConciliacion?: boolean }
 ): Promise<DeclaracionIRPF> {
   // PASO 1: Recopilar datos
-  const [trabajo, autonomo, { inmuebles, imputaciones }, { rcm, gyp, aportacionPensiones }] =
+  const [trabajo, autonomo, { inmuebles, imputaciones }, { rcm, gyp, aportacionPensiones, ventasInmuebles }] =
     await Promise.all([
       recopilarDatosTrabajo(ejercicio),
       recopilarDatosAutonomo(ejercicio),
@@ -994,6 +1010,7 @@ export async function calcularDeclaracionIRPF(
     retenciones,
     resultado,
     tipoEfectivo,
+    ...(ventasInmuebles.length > 0 ? { ventasInmuebles } : {}),
     ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),
   };
 }

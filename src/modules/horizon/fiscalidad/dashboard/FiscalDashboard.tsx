@@ -132,6 +132,39 @@ const FiscalDashboard: React.FC = () => {
               </article>
             </section>
 
+            {declaracion.ventasInmuebles && declaracion.ventasInmuebles.length > 0 && (
+              <article style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
+                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Ganancias y pérdidas patrimoniales — Inmuebles</h3>
+                  <FiscalChip
+                    label={fmt(declaracion.ventasInmuebles.reduce((sum, item) => sum + item.gananciaPatrimonial, 0))}
+                    variant={declaracion.ventasInmuebles.reduce((sum, item) => sum + item.gananciaPatrimonial, 0) >= 0 ? 'pos' : 'neg'}
+                  />
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr>
+                      {['Inmueble', 'Fecha venta', 'V. transmisión', 'V. adquisición', 'Amortización', 'G/P patrimonial'].map(h => (
+                        <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {declaracion.ventasInmuebles.map((venta) => (
+                      <tr key={venta.inmuebleId} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
+                        <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)', fontWeight: 500 }}>{venta.alias}</td>
+                        <td style={{ color: 'var(--n-700)' }}>{new Date(`${venta.fechaVenta}T00:00:00`).toLocaleDateString('es-ES')}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)' }}>{fmt(venta.valorTransmision)}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)' }}>{fmt(venta.valorAdquisicion)}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-700)' }}>{fmt(venta.amortizacionAplicada)}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: venta.esPerdida ? 'var(--s-neg)' : 'var(--s-pos)' }}>{fmt(venta.gananciaPatrimonial)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </article>
+            )}
+
             <article style={cardStyle}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
