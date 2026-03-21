@@ -1,5 +1,91 @@
 // H9-FISCAL: AEAT Amortization Service
-import { initDB, PropertyImprovement, FiscalSummary } from './db';
+import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
+
+export interface UnifiedPropertyFiscalData {
+  acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
+  acquisitionAmount: number;
+  acquisitionExpenses: number;
+  cadastralValue: number;
+  constructionCadastralValue: number;
+  constructionPercentage: number;
+  acquisitionDate: string;
+}
+
+const toNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const pickPositiveNumber = (...values: unknown[]): number => {
+  for (const value of values) {
+    const parsed = toNumber(value);
+    if (parsed > 0) return parsed;
+  }
+  return 0;
+};
+
+export const getAcquisitionExpensesFallback = (property: Property): number => {
+  const costs = property.acquisitionCosts;
+  if (!costs) return 0;
+
+  return [
+    costs.itp,
+    costs.iva,
+    costs.notary,
+    costs.registry,
+    costs.management,
+    costs.psi,
+    costs.realEstate,
+  ].reduce((sum, value) => sum + toNumber(value), 0);
+};
+
+export const getConstructionPercentageFromValues = (
+  cadastralValue: number,
+  constructionCadastralValue: number,
+): number => {
+  if (cadastralValue <= 0 || constructionCadastralValue <= 0) return 0;
+  return (constructionCadastralValue / cadastralValue) * 100;
+};
+
+/**
+ * Lee los datos fiscales del inmueble unificando `aeatAmortization` y `fiscalData`.
+ * Prioridad: datos explícitos AEAT > ficha principal del inmueble.
+ */
+export const getUnifiedFiscalData = (property: Property): UnifiedPropertyFiscalData => {
+  const aeat = property.aeatAmortization;
+  const fiscalData = property.fiscalData;
+
+  const cadastralValue = pickPositiveNumber(
+    aeat?.cadastralValue,
+    fiscalData?.cadastralValue,
+  );
+
+  const constructionCadastralValue = pickPositiveNumber(
+    aeat?.constructionCadastralValue,
+    fiscalData?.constructionCadastralValue,
+  );
+
+  const constructionPercentage = pickPositiveNumber(
+    aeat?.constructionPercentage,
+    fiscalData?.constructionPercentage,
+  ) || getConstructionPercentageFromValues(cadastralValue, constructionCadastralValue);
+
+  return {
+    acquisitionType: aeat?.acquisitionType ?? 'onerosa',
+    acquisitionAmount: pickPositiveNumber(
+      aeat?.onerosoAcquisition?.acquisitionAmount,
+      property.acquisitionCosts?.price,
+    ),
+    acquisitionExpenses: pickPositiveNumber(
+      aeat?.onerosoAcquisition?.acquisitionExpenses,
+      getAcquisitionExpensesFallback(property),
+    ),
+    cadastralValue,
+    constructionCadastralValue,
+    constructionPercentage,
+    acquisitionDate: aeat?.firstAcquisitionDate ?? property.purchaseDate ?? '',
+  };
+};
 
 export interface ImprovementUpdatePayload {
   year: number;
@@ -54,6 +140,7 @@ export const calculateAEATAmortization = async (
     throw new Error(`Property ${propertyId} not found`);
   }
 
+  const unified = getUnifiedFiscalData(property);
   const daysAvailable = isLeapYear(exerciseYear) ? 366 : 365;
   
   // Default calculation - general rule
@@ -63,29 +150,57 @@ export const calculateAEATAmortization = async (
 
   // Calculate construction cost (oneroso acquisition)
   let constructionCost = 0;
-  if (property.aeatAmortization?.acquisitionType === 'onerosa' || 
-      property.aeatAmortization?.acquisitionType === 'mixta') {
-    const oneroso = property.aeatAmortization.onerosoAcquisition;
-    if (oneroso) {
-      const totalCost = oneroso.acquisitionAmount + oneroso.acquisitionExpenses;
-      constructionCost = totalCost * (property.aeatAmortization.constructionPercentage / 100);
+  if (unified.acquisitionType === 'onerosa' || unified.acquisitionType === 'mixta') {
+    const totalCost = unified.acquisitionAmount + unified.acquisitionExpenses;
+    if (unified.constructionPercentage > 0) {
+      constructionCost = totalCost * (unified.constructionPercentage / 100);
     }
   }
 
   // Get cadastral construction value
-  const cadastralConstructionValue = property.aeatAmortization?.constructionCadastralValue || 0;
+  const cadastralConstructionValue = unified.constructionCadastralValue;
 
-  // Add historical improvements
-  const allImprovements = await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId);
-  const historicalImprovements = allImprovements
-    .filter(imp => imp.year <= exerciseYear)
-    .reduce((total, imp) => total + imp.amount, 0);
+  // Add historical improvements with new-store fallback
+  let historicalImprovements = 0;
+  let allImprovements: PropertyImprovement[] = [];
+
+  try {
+    const mejorasNuevo = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', propertyId) as any[];
+    historicalImprovements = mejorasNuevo
+      .filter((mejora: any) => toNumber(mejora?.ejercicio) <= exerciseYear)
+      .reduce((total: number, mejora: any) => total + toNumber(mejora?.importe), 0);
+
+    allImprovements = mejorasNuevo
+      .map((mejora: any) => ({
+        propertyId,
+        year: toNumber(mejora?.ejercicio),
+        amount: toNumber(mejora?.importe),
+        date: mejora?.fecha,
+        daysInYear: toNumber(mejora?.diasEnEjercicio) || undefined,
+        counterpartyNIF: mejora?.counterpartyNIF,
+        description: mejora?.descripcion ?? 'Mejora',
+        createdAt: mejora?.createdAt ?? '',
+        updatedAt: mejora?.updatedAt ?? '',
+      }))
+      .filter((mejora) => mejora.year > 0 && mejora.amount > 0);
+  } catch {
+    try {
+      allImprovements = await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId);
+      historicalImprovements = allImprovements
+        .filter(imp => imp.year <= exerciseYear)
+        .reduce((total, imp) => total + imp.amount, 0);
+    } catch {
+      historicalImprovements = 0;
+      allImprovements = [];
+    }
+  }
 
   // Calculate base amount - Rule: max(construction cost, cadastral construction value)
   const baseConstructionCost = constructionCost + historicalImprovements;
-  const baseAmount = Math.max(baseConstructionCost, cadastralConstructionValue + historicalImprovements);
+  const cadastralBase = cadastralConstructionValue + historicalImprovements;
+  const baseAmount = Math.max(baseConstructionCost, cadastralBase);
   
-  const selectedBase = baseConstructionCost >= cadastralConstructionValue ? 'construction-cost' : 'cadastral-value';
+  const selectedBase = baseConstructionCost >= cadastralBase ? 'construction-cost' : 'cadastral-value';
 
   // Check for special cases
   if (property.aeatAmortization?.specialCase) {
@@ -143,7 +258,18 @@ export const calculateAEATAmortization = async (
   }
 
   // Furniture amortization (separate calculation at 10% annual)
-  const furnitureAmortization = 0; // TODO: Implement when furniture CAPEX is tracked
+  let furnitureAmortization = 0;
+  try {
+    const { calcularAmortizacionMobiliarioAnual } = await import('./mobiliarioActivoService');
+    furnitureAmortization = await calcularAmortizacionMobiliarioAnual(
+      propertyId,
+      exerciseYear,
+      daysRented,
+      daysAvailable,
+    );
+  } catch {
+    furnitureAmortization = 0;
+  }
 
   const totalAmortization = propertyAmortization + improvementsAmortization + furnitureAmortization;
 

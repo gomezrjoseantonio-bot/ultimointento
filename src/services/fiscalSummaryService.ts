@@ -101,26 +101,13 @@ export const calculateFiscalSummary = async (
     }
   }
 
-  if (property && property.aeatAmortization) {
-    // Use AEAT amortization calculation
+  if (property) {
+    // Use unified AEAT amortization calculation with fallback to fiscalData/acquisitionCosts
     const updatedSummary = await updateFiscalSummaryWithAEAT(propertyId, exerciseYear);
     // Merge with our calculated summary, preserving AEAT calculations
     summary.constructionValue = updatedSummary.constructionValue;
     summary.annualDepreciation = updatedSummary.annualDepreciation;
     summary.aeatAmortization = updatedSummary.aeatAmortization;
-  } else if (property) {
-    // Fallback to legacy calculation for properties without AEAT data
-    const baseConstructionValue = property.fiscalData?.constructionCadastralValue || 
-                                 (property.acquisitionCosts.price * 0.7); // 70% estimate if no cadastral value
-
-    // Add CAPEX from all previous years including current
-    const allSummaries = await db.getAllFromIndex('fiscalSummaries', 'propertyId', propertyId);
-    const historicalCapex = allSummaries
-      .filter(s => s.exerciseYear <= exerciseYear)
-      .reduce((total, s) => total + s.capexTotal, 0);
-
-    summary.constructionValue = baseConstructionValue + historicalCapex;
-    summary.annualDepreciation = summary.constructionValue * 0.03; // 3% annual depreciation
   }
 
   // Calculate deductible excess: (0105 + 0106) limited to rental income per AEAT art. 23 LIRPF
