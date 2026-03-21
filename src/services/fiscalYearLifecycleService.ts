@@ -1,13 +1,12 @@
-import { EjercicioFiscal, initDB } from './db';
+import { EjercicioFiscal } from './db';
 import { conciliarEjercicioFiscal } from './fiscalConciliationService';
-import { cerrarEjercicio, getOrCreateEjercicio } from './ejercicioFiscalService';
+import { cerrarEjercicio, getOrCreateEjercicio, saveLegacyEjercicioRecord } from './ejercicioFiscalService';
 import {
   crearSnapshotDeclaracion,
   crearSnapshotDeclaracionManual,
   ImportacionDeclaracionManualInput,
 } from './snapshotDeclaracionService';
 
-const EJERCICIOS_STORE = 'ejerciciosFiscales';
 
 export interface IncoherenciaCierre {
   tipo: 'cobertura_punteo' | 'desviacion';
@@ -85,7 +84,6 @@ export async function cerrarEjercicioValidado(
     incluirCasillasAEAT: true,
   });
 
-  const db = await initDB();
   const updated: EjercicioFiscal = {
     ...cerrado,
     snapshotId: snapshot.id,
@@ -93,7 +91,7 @@ export async function cerrarEjercicioValidado(
     updatedAt: new Date().toISOString(),
   };
 
-  await db.put(EJERCICIOS_STORE, updated);
+  await saveLegacyEjercicioRecord(updated);
   return updated;
 }
 
@@ -114,8 +112,7 @@ export async function importarDeclaracionEjercicio(
     updatedAt: new Date().toISOString(),
   };
 
-  const db = await initDB();
-  await db.put(EJERCICIOS_STORE, updated);
+  await saveLegacyEjercicioRecord(updated);
 
   return { ejercicioFiscal: updated, snapshotId: snapshot.id };
 }
