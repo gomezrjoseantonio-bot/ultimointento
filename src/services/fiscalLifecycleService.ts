@@ -36,6 +36,10 @@ function resolveArrastreTipo(tipo: 'gastos_0105_0106' | 'perdidas_patrimoniales_
   return tipo;
 }
 
+function resolveOrigenEjercicio(origen?: OrigenEjercicio): OrigenEjercicio {
+  return origen ?? 'calculado';
+}
+
 async function getArrastresMetadata(ejercicio: number): Promise<ResultadoEjercicio['arrastres']> {
   const db = await initDB();
   const all = (await db.getAll(ARRASTRES_STORE)) as ArrastreIRPF[];
@@ -317,6 +321,7 @@ export async function cerrarEjercicioConWorkflow(input: {
   }
 
   const declaracion = await calcularDeclaracionIRPF(input.año, { usarConciliacion: true });
+  const origenEjercicio = resolveOrigenEjercicio(ejercicio.origen);
   const arrastres = await getArrastresMetadata(input.año);
   const snapshot = await crearSnapshotDeclaracion(input.año, {
     origen: 'cierre_automatico',
@@ -331,7 +336,7 @@ export async function cerrarEjercicioConWorkflow(input: {
       arrastres,
       'cierre',
       'cerrado',
-      ejercicio.origen,
+      origenEjercicio,
       input.validarContraDatosReales,
       input.notasRevision,
     ),
@@ -353,6 +358,7 @@ export async function cerrarEjercicioConWorkflow(input: {
       retencionesYPagos: resultado.resumen.retencionesYPagosCuenta,
       resultado: resultado.resumen.resultado,
     },
+    origen: origenEjercicio,
     updatedAt: now,
   };
 
@@ -387,6 +393,7 @@ export async function importarDeclaracionManual(input: {
   inmueblesParsed?: InmuebleParsedFromPDF[];
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio }> {
   const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.ejercicio);
+  const origenEjercicio = resolveOrigenEjercicio(ejercicio.origen);
   const now = new Date().toISOString();
 
   const manualArrastres = input.arrastresPendientes ?? [];
@@ -426,9 +433,9 @@ export async function importarDeclaracionManual(input: {
           input.ejercicio,
           declaracion,
           arrastres,
-          ejercicio.origen === 'calculado' ? 'importacion_manual' : 'mixto',
+          origenEjercicio === 'calculado' ? 'importacion_manual' : 'mixto',
           'declarado',
-          ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+          origenEjercicio === 'calculado' ? 'importado' : 'mixto',
           true,
           input.notasRevision,
         ),
@@ -437,7 +444,7 @@ export async function importarDeclaracionManual(input: {
       })
     : await saveResultado({
         ejercicio: input.ejercicio,
-        origen: ejercicio.origen === 'calculado' ? 'importacion_manual' : 'mixto',
+        origen: origenEjercicio === 'calculado' ? 'importacion_manual' : 'mixto',
         estadoEjercicio: 'declarado',
         fechaGeneracion: now,
         fechaCierre: now,
@@ -462,7 +469,7 @@ export async function importarDeclaracionManual(input: {
         metadatos: {
           validadoContraDatosReales: true,
           notasRevision: input.notasRevision,
-          origenDatos: ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+          origenDatos: origenEjercicio === 'calculado' ? 'importado' : 'mixto',
           generadoPor: 'usuario',
         },
         createdAt: now,
@@ -485,7 +492,7 @@ export async function importarDeclaracionManual(input: {
   const updatedEjercicio: EjercicioFiscal = {
     ...ejercicio,
     estado: 'declarado',
-    origen: ejercicio.origen === 'calculado' ? 'importado' : 'mixto',
+    origen: origenEjercicio === 'calculado' ? 'importado' : 'mixto',
     fechaRevisionFinal: now,
     fechaCierre: ejercicio.fechaCierre ?? now,
     fechaDeclaracion: now,
@@ -524,7 +531,7 @@ export async function obtenerHistoricoFiscalReal(): Promise<Array<{ ejercicio: n
       return {
         ejercicio: ejercicio.año,
         estado: ejercicio.estado,
-        origen: ejercicio.origen,
+        origen: resolveOrigenEjercicio(ejercicio.origen),
         fechaCierre: ejercicio.fechaCierre,
         fechaDeclaracion: ejercicio.fechaDeclaracion,
         resultado: resultado?.resumen ?? {
