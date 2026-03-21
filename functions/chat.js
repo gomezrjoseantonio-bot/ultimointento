@@ -166,20 +166,34 @@ Si un campo no aparece en el documento usa null.`;
 
     // ── SCAN IRPF ────────────────────────────────────────────────────────────
     if (tipo === 'scan_irpf') {
-      const base64Data = cleanBase64(body?.imagen);
-      if (!base64Data) return jsonResponse(400, { ok: false, error: 'Campo "imagen" obligatorio' });
-
+      const promptOverride = typeof body?.prompt === 'string' ? body.prompt.trim() : '';
       const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
         ? body.mimeType.trim()
         : 'application/pdf';
       const normalizedMimeType = mimeType.toLowerCase();
       const isImage = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(normalizedMimeType);
 
-      const mediaBlock = isImage
-        ? { type: 'image', source: { type: 'base64', media_type: normalizedMimeType, data: base64Data } }
-        : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } };
+      const imagenes = Array.isArray(body?.imagenes)
+        ? body.imagenes.map(cleanBase64).filter(Boolean)
+        : [];
+      const base64Data = cleanBase64(body?.imagen);
 
-      const system = `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
+      const mediaBlocks = imagenes.length > 0
+        ? imagenes.map((img) => ({
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: img },
+          }))
+        : base64Data
+          ? [
+              isImage
+                ? { type: 'image', source: { type: 'base64', media_type: normalizedMimeType, data: base64Data } }
+                : { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } },
+            ]
+          : [];
+
+      if (!mediaBlocks.length) return jsonResponse(400, { ok: false, error: 'Campo "imagen" o "imagenes" obligatorio' });
+
+      const system = promptOverride || `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
 Analiza el documento y extrae los valores de las casillas AEAT con máxima precisión.
 
 CASILLAS A EXTRAER (devuelve TODAS las que encuentres):
@@ -228,14 +242,14 @@ Ejemplo de respuesta:
       const result = await callAnthropic({
         model: SCAN_MODEL,
         system,
-        maxTokens: 2000,
+        maxTokens: 8000,
         temperature: 0,
         messages: [
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Extrae todas las casillas AEAT con sus valores numéricos de esta declaración IRPF (Modelo 100).' },
-              mediaBlock,
+              { type: 'text', text: 'Extrae todas las casillas AEAT de esta declaración IRPF (Modelo 100) y devuelve solo JSON válido.' },
+              ...mediaBlocks,
             ],
           },
         ],

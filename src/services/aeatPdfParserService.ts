@@ -1,3 +1,4 @@
+/** @deprecated Usa src/services/aeatParserService.ts para nuevas integraciones basadas en Claude Vision. */
 import { callScanChat } from './scanChatService';
 
 export interface ArrastreImportadoInput {
