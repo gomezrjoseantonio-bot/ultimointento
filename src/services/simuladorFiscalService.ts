@@ -1,7 +1,12 @@
 // ATLAS HORIZON: Simulador fiscal
 // Nivel 3: Simulaciones what-if para optimización fiscal
 
-import { calcularDeclaracionIRPF, DeclaracionIRPF, calcularCuotaPorTramos } from './irpfCalculationService';
+import {
+  calcularDeclaracionIRPF,
+  DeclaracionIRPF,
+  calcularCuotaPorTramos,
+  calcularReduccionArrendamientoVivienda,
+} from './irpfCalculationService';
 import { calcularGananciaPatrimonialVentaSimulada } from './propertyDisposalTaxService';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
