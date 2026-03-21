@@ -80,6 +80,8 @@ const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Teso
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
 const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
+const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
+const EntidadesAtribucionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/entidades/EntidadesAtribucionPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
@@ -420,7 +422,16 @@ function App() {
                 </React.Suspense>
               } />
               <Route path="dashboard" element={<Navigate to="/fiscalidad/resumen" replace />} />
-              <Route path="historico" element={<Navigate to="/fiscalidad/resumen" replace />} />
+              <Route path="historico" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <HistoricoPage />
+                </React.Suspense>
+              } />
+              <Route path="entidades" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <EntidadesAtribucionPage />
+                </React.Suspense>
+              } />
               {/* Legacy routes — redirect to new equivalents */}
               <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
               <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />

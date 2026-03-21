@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 33; // V3.3: flujo fiscal unificado (operaciones/mejoras/mobiliario)
+const DB_VERSION = 34; // V3.4: importación AEAT histórica + entidades en atribución de rentas
 
 export interface Property {
   id?: number;
@@ -1169,6 +1169,27 @@ export interface ArrastreIRPF {
   updatedAt: string;
 }
 
+export interface EntidadEjercicio {
+  ejercicio: number;
+  rendimientosAtribuidos: number;
+  retencionesAtribuidas: number;
+  ingresosIntegros?: number;
+  gastosDeducibles?: number;
+  amortizacion?: number;
+}
+
+export interface EntidadAtribucionRentas {
+  id?: number;
+  nif: string;
+  nombre: string;
+  tipoEntidad: 'CB' | 'SC' | 'HY' | 'otra';
+  porcentajeParticipacion: number;
+  tipoRenta: 'capital_inmobiliario' | 'actividad_economica' | 'capital_mobiliario';
+  ejercicios: EntidadEjercicio[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ─── V2.7: Snapshots de Declaración ────────────────────────────────────────────
 
 export interface SnapshotDeclaracion {
@@ -1683,6 +1704,7 @@ interface AtlasHorizonDB {
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
+  entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -2183,6 +2205,12 @@ export const initDB = async () => {
           snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           snapshotsStore.createIndex('origen', 'origen', { unique: false });
           snapshotsStore.createIndex('fechaSnapshot', 'fechaSnapshot', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('entidadesAtribucion')) {
+          const entidadesStore = db.createObjectStore('entidadesAtribucion', { keyPath: 'id', autoIncrement: true });
+          entidadesStore.createIndex('nif', 'nif', { unique: false });
+          entidadesStore.createIndex('tipoRenta', 'tipoRenta', { unique: false });
         }
 
 

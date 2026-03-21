@@ -122,6 +122,7 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Declaración', href: '/fiscalidad/declaracion', icon: Receipt, module: 'horizon' },
       { name: 'Pagos', href: '/fiscalidad/pagos', icon: Calendar, module: 'horizon' },
       { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings2, module: 'horizon' },
+      { name: 'Entidades', href: '/fiscalidad/entidades', icon: Building2, module: 'horizon' },
     ]
   },
   {
