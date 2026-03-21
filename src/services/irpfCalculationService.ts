@@ -6,8 +6,8 @@ import { personalDataService } from './personalDataService';
 import { calculateFiscalSummary } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
-import { PropertyDisposalTaxResult } from './propertyDisposalTaxService';
-import { CompensacionAhorroResult, ejecutarCompensacionAhorro } from './compensacionAhorroService';
+import { getGananciasPatrimonialesInmueblesEjercicio, PropertyDisposalTaxResult } from './propertyDisposalTaxService';
+import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -115,7 +115,22 @@ export interface BaseGeneral {
   rendimientosAutonomo: RendimientosAutonomo | null;
   rendimientosInmuebles: RendimientoInmueble[];
   imputacionRentas: ImputacionRenta[];
+  capitalMobiliarioGeneral?: {
+    total: number;
+    retenciones: number;
+    detalle: RendimientoCapitalMobiliarioDetalle[];
+  };
   total: number;
+}
+
+export interface RendimientoCapitalMobiliarioDetalle {
+  concepto: string;
+  importe: number;
+  retencion: number;
+  pagador?: string;
+  nifPagador?: string;
+  integraEnBaseGeneral: boolean;
+  casilla?: string;
 }
 
 export interface RendimientosCapitalMobiliario {
@@ -123,6 +138,7 @@ export interface RendimientosCapitalMobiliario {
   dividendos: number;
   retenciones: number;
   total: number;
+  detalle?: RendimientoCapitalMobiliarioDetalle[];
 }
 
 export interface GananciasPerdidasPatrimoniales {
@@ -702,16 +718,26 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
 async function recopilarDatosInversiones(ejercicio: number): Promise<{
   rcm: RendimientosCapitalMobiliario;
+  capitalMobiliarioBaseGeneral: {
+    total: number;
+    retenciones: number;
+    detalle: RendimientoCapitalMobiliarioDetalle[];
+  };
+  gyp: GananciasPerdidasPatrimoniales;
   aportacionPensiones: number;
   ventasInmuebles: PropertyDisposalTaxResult[];
 }> {
   const db = await initDB();
   const posiciones = await db.getAll('inversiones');
 
-  let intereses = 0;
-  let dividendos = 0;
-  let retencionesCapitalMobiliario = 0;
+  let interesesAhorro = 0;
+  let dividendosAhorro = 0;
+  let retencionesCapitalMobiliarioAhorro = 0;
+  let totalCapitalMobiliarioGeneral = 0;
+  let retencionesCapitalMobiliarioGeneral = 0;
   let aportacionPensiones = 0;
+  const detalleAhorro: RendimientoCapitalMobiliarioDetalle[] = [];
+  const detalleBaseGeneral: RendimientoCapitalMobiliarioDetalle[] = [];
 
   const esDelEjercicio = (fecha?: string) => {
     if (!fecha) return false;
@@ -723,6 +749,43 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
     if (!p.activo) continue;
 
     const pAny = p as any;
+    const notas = String(pAny?.notas ?? '').toLowerCase();
+    const nombreEntidad = `${String(pAny?.nombre ?? '')} ${String(pAny?.entidad ?? '')}`.toLowerCase();
+
+    const clasificarCapitalMobiliario = (input: {
+      integracionFiscal?: unknown;
+      integraEnBaseGeneral?: unknown;
+      casilla?: unknown;
+    }): boolean => {
+      if (input.integracionFiscal === 'general') return true;
+      if (input.integracionFiscal === 'ahorro') return false;
+      if (input.integraEnBaseGeneral === true) return true;
+      if (input.integraEnBaseGeneral === false) return false;
+
+      const casilla = String(input.casilla ?? '').padStart(4, '0');
+      if (['0046', '0047', '0048', '0050', '0051'].includes(casilla)) return true;
+      if (notas.includes('otro rendimiento big')) return true;
+      if (notas.includes('base general')) return true;
+      if (nombreEntidad.includes('unihouser')) return true;
+      return false;
+    };
+
+    const registrarDetalleCapitalMobiliario = (detalle: RendimientoCapitalMobiliarioDetalle) => {
+      if (detalle.integraEnBaseGeneral) {
+        totalCapitalMobiliarioGeneral = round2(totalCapitalMobiliarioGeneral + detalle.importe);
+        retencionesCapitalMobiliarioGeneral = round2(retencionesCapitalMobiliarioGeneral + detalle.retencion);
+        detalleBaseGeneral.push(detalle);
+        return;
+      }
+
+      if (p.tipo === 'accion' || p.tipo === 'etf' || p.tipo === 'reit') {
+        dividendosAhorro = round2(dividendosAhorro + detalle.importe);
+      } else {
+        interesesAhorro = round2(interesesAhorro + detalle.importe);
+      }
+      retencionesCapitalMobiliarioAhorro = round2(retencionesCapitalMobiliarioAhorro + detalle.retencion);
+      detalleAhorro.push(detalle);
+    };
 
     const pagosGenerados = Array.isArray(pAny?.rendimiento?.pagos_generados)
       ? pAny.rendimiento.pagos_generados
@@ -731,8 +794,18 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
       if (!esDelEjercicio(pago?.fecha_pago)) continue;
       const bruto = Number(pago?.importe_bruto) || 0;
       const retencion = Number(pago?.retencion_fiscal) || 0;
-      intereses += bruto;
-      retencionesCapitalMobiliario += retencion;
+      registrarDetalleCapitalMobiliario({
+        concepto: `Rendimiento ${p.nombre}`,
+        importe: round2(bruto),
+        retencion: round2(retencion),
+        pagador: p.entidad,
+        integraEnBaseGeneral: clasificarCapitalMobiliario({
+          integracionFiscal: pago?.integracion_fiscal ?? pAny?.rendimiento?.integracion_fiscal,
+          integraEnBaseGeneral: pago?.integra_en_base_general ?? pAny?.rendimiento?.integra_en_base_general,
+          casilla: pago?.casilla_irpf ?? pAny?.rendimiento?.casilla_irpf,
+        }),
+        casilla: pago?.casilla_irpf ?? pAny?.rendimiento?.casilla_irpf,
+      });
     }
 
     if (Array.isArray(pAny?.dividendos?.dividendos_recibidos)) {
@@ -740,13 +813,34 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
         if (!esDelEjercicio(div?.fecha_pago)) continue;
         const bruto = Number(div?.importe_bruto) || 0;
         const retencion = Number(div?.retencion_fiscal) || 0;
-        dividendos += bruto;
-        retencionesCapitalMobiliario += retencion;
+        registrarDetalleCapitalMobiliario({
+          concepto: `Dividendo ${p.nombre}`,
+          importe: round2(bruto),
+          retencion: round2(retencion),
+          pagador: p.entidad,
+          integraEnBaseGeneral: clasificarCapitalMobiliario({
+            integracionFiscal: div?.integracion_fiscal ?? pAny?.dividendos?.integracion_fiscal,
+            integraEnBaseGeneral: div?.integra_en_base_general ?? pAny?.dividendos?.integra_en_base_general,
+            casilla: div?.casilla_irpf ?? pAny?.dividendos?.casilla_irpf,
+          }),
+          casilla: div?.casilla_irpf ?? pAny?.dividendos?.casilla_irpf,
+        });
       }
     } else {
       const divLegacy = Number(pAny?.dividendos);
       if (Number.isFinite(divLegacy) && divLegacy > 0) {
-        dividendos += divLegacy;
+        registrarDetalleCapitalMobiliario({
+          concepto: `Dividendo ${p.nombre}`,
+          importe: round2(divLegacy),
+          retencion: 0,
+          pagador: p.entidad,
+          integraEnBaseGeneral: clasificarCapitalMobiliario({
+            integracionFiscal: pAny?.dividendos_integracion_fiscal,
+            integraEnBaseGeneral: pAny?.dividendos_integra_en_base_general,
+            casilla: pAny?.dividendos_casilla_irpf,
+          }),
+          casilla: pAny?.dividendos_casilla_irpf,
+        });
       }
     }
 
@@ -756,17 +850,23 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
   }
 
   const retenciones = round2(
-    retencionesCapitalMobiliario > 0
-      ? retencionesCapitalMobiliario
-      : (intereses + dividendos) * CONSTANTES_IRPF.retencionCapitalMobiliario
+    retencionesCapitalMobiliarioAhorro > 0
+      ? retencionesCapitalMobiliarioAhorro
+      : (interesesAhorro + dividendosAhorro) * CONSTANTES_IRPF.retencionCapitalMobiliario
   );
 
   return {
     rcm: {
-      intereses: round2(intereses),
-      dividendos: round2(dividendos),
+      intereses: round2(interesesAhorro),
+      dividendos: round2(dividendosAhorro),
       retenciones,
-      total: round2(intereses + dividendos),
+      total: round2(interesesAhorro + dividendosAhorro),
+      detalle: detalleAhorro,
+    },
+    capitalMobiliarioBaseGeneral: {
+      total: round2(totalCapitalMobiliarioGeneral),
+      retenciones: round2(retencionesCapitalMobiliarioGeneral),
+      detalle: detalleBaseGeneral,
     },
     aportacionPensiones: round2(Math.min(aportacionPensiones, CONSTANTES_IRPF.maxAportacionPP)),
   };
@@ -824,12 +924,19 @@ export async function calcularDeclaracionIRPF(
   opciones?: { usarConciliacion?: boolean }
 ): Promise<DeclaracionIRPF> {
   // PASO 1: Recopilar datos
-  const [trabajo, autonomo, { inmuebles, imputaciones }, { rcm, aportacionPensiones }] =
+  const [trabajo, autonomo, { inmuebles, imputaciones }, {
+    rcm,
+    capitalMobiliarioBaseGeneral,
+    gyp,
+    aportacionPensiones,
+    ventasInmuebles,
+  }, atribuidos] =
     await Promise.all([
       recopilarDatosTrabajo(ejercicio),
       recopilarDatosAutonomo(ejercicio),
       recopilarDatosInmuebles(ejercicio),
       recopilarDatosInversiones(ejercicio),
+      getRendimientosAtribuidosEjercicio(ejercicio),
     ]);
 
   // PASO 1b (opcional): Conciliación fiscal
@@ -876,42 +983,96 @@ export async function calcularDeclaracionIRPF(
 
   // PASO 2: Base General
   const rendimientoTrabajo = trabajo?.rendimientoNeto ?? 0;
-  const rendimientoAutonomo = autonomo?.rendimientoNeto ?? 0;
-  const rendimientoInmuebles = inmuebles.reduce((s, i) => s + i.rendimientoNeto, 0);
+  const rendimientoAutonomoAtribuido = round2(atribuidos.actividadEconomica.total ?? 0);
+  const rendimientoAutonomo = round2((autonomo?.rendimientoNeto ?? 0) + rendimientoAutonomoAtribuido);
+  const rendimientoCapitalInmobiliarioAtribuido = round2(atribuidos.capitalInmobiliario.total ?? 0);
+  const rendimientoInmueblesDirectos = inmuebles.reduce((s, i) => s + i.rendimientoNeto, 0);
+  const rendimientoInmuebles = round2(rendimientoInmueblesDirectos + rendimientoCapitalInmobiliarioAtribuido);
   const totalImputaciones = imputaciones.reduce((s, i) => s + i.imputacion, 0);
-  const totalBaseGeneral = round2(rendimientoTrabajo + rendimientoAutonomo + rendimientoInmuebles + totalImputaciones);
+  const totalCapitalMobiliarioGeneral = round2(capitalMobiliarioBaseGeneral?.total ?? 0);
+
+  if (rendimientoCapitalInmobiliarioAtribuido > 0) {
+    inmuebles.push({
+      inmuebleId: -1,
+      alias: `Entidades en atribución (${atribuidos.capitalInmobiliario.detalle.length})`,
+      diasAlquilado: 365,
+      diasVacio: 0,
+      diasEnObras: 0,
+      diasTotal: 365,
+      ingresosIntegros: rendimientoCapitalInmobiliarioAtribuido,
+      gastosDeducibles: 0,
+      amortizacion: 0,
+      reduccionHabitual: 0,
+      rendimientoNetoAlquiler: rendimientoCapitalInmobiliarioAtribuido,
+      rendimientoNetoReducido: rendimientoCapitalInmobiliarioAtribuido,
+      porcentajeReduccionHabitual: 0,
+      esHabitual: false,
+      imputacionRenta: 0,
+      rendimientoNeto: rendimientoCapitalInmobiliarioAtribuido,
+      gastosFinanciacionYReparacion: 0,
+      limiteAplicado: 0,
+      excesoArrastrable: 0,
+      arrastresAplicados: 0,
+    });
+  }
+
+  const rendimientosAutonomo = autonomo
+    ? {
+        ...autonomo,
+        ingresos: round2(autonomo.ingresos + rendimientoAutonomoAtribuido),
+        rendimientoNeto,
+      }
+    : rendimientoAutonomoAtribuido > 0
+      ? {
+          ingresos: rendimientoAutonomoAtribuido,
+          gastos: 0,
+          cuotaSS: 0,
+          rendimientoNeto: rendimientoAutonomoAtribuido,
+          pagosFraccionadosM130: 0,
+        }
+      : autonomo;
+
+  const totalBaseGeneral = round2(
+    rendimientoTrabajo
+    + rendimientoAutonomo
+    + rendimientoInmuebles
+    + totalImputaciones
+    + totalCapitalMobiliarioGeneral
+  );
 
   const baseGeneral: BaseGeneral = {
     rendimientosTrabajo: trabajo,
-    rendimientosAutonomo: autonomo,
+    rendimientosAutonomo: rendimientosAutonomo,
     rendimientosInmuebles: inmuebles,
     imputacionRentas: imputaciones,
+    ...(totalCapitalMobiliarioGeneral > 0 ? { capitalMobiliarioGeneral: capitalMobiliarioBaseGeneral } : {}),
     total: totalBaseGeneral,
   };
 
   // PASO 3: Base del Ahorro
-  const compensacionAhorro = await ejecutarCompensacionAhorro(ejercicio, rcm.total);
-  const capitalMobiliarioAjustado = round2(
-    Math.max(0, rcm.total - compensacionAhorro.compensacionConCapitalMobiliario),
-  );
+  const capitalMobiliarioAtribuidoAhorro = round2(atribuidos.capitalMobiliario.total ?? 0);
+  const retencionesCapitalMobiliarioAtribuidoAhorro = round2(atribuidos.capitalMobiliario.retenciones ?? 0);
+  const baseAhorroCapitalMobiliario: RendimientosCapitalMobiliario = {
+    intereses: rcm.intereses,
+    dividendos: round2(rcm.dividendos + capitalMobiliarioAtribuidoAhorro),
+    retenciones: round2(rcm.retenciones + retencionesCapitalMobiliarioAtribuidoAhorro),
+    total: round2(rcm.total + capitalMobiliarioAtribuidoAhorro),
+    detalle: [
+      ...(rcm.detalle ?? []),
+      ...atribuidos.capitalMobiliario.detalle.map((detalle) => ({
+        concepto: `Entidad atribuida · ${detalle.entidad}`,
+        importe: detalle.importe,
+        retencion: detalle.retencion,
+        pagador: detalle.entidad,
+        integraEnBaseGeneral: false,
+      })),
+    ],
+  };
+  const totalBaseAhorro = round2(baseAhorroCapitalMobiliario.total + gyp.compensado);
   const baseAhorro: BaseAhorro = {
-    capitalMobiliario: {
-      ...rcm,
-      total: capitalMobiliarioAjustado,
-    },
-    gananciasYPerdidas: {
-      plusvalias: round2(
-        compensacionAhorro.fuentes.inmuebles.plusvalias + compensacionAhorro.fuentes.inversiones.plusvalias,
-      ),
-      minusvalias: round2(
-        compensacionAhorro.fuentes.inmuebles.minusvalias + compensacionAhorro.fuentes.inversiones.minusvalias,
-      ),
-      minusvaliasPendientes: round2(
-        compensacionAhorro.perdidasPendientesDespues.reduce((sum, item) => sum + item.importePendiente, 0),
-      ),
-      compensado: round2(Math.max(0, compensacionAhorro.saldoNetoTrasCompensar)),
-    },
-    total: round2(capitalMobiliarioAjustado + Math.max(0, compensacionAhorro.saldoNetoTrasCompensar)),
+    capitalMobiliario: baseAhorroCapitalMobiliario,
+    gananciasYPerdidas: gyp,
+    total: totalBaseAhorro,
   };
 
   // PASO 4: Reducciones
@@ -944,7 +1105,7 @@ export async function calcularDeclaracionIRPF(
     TRAMOS_BASE_GENERAL
   );
   const cuotaIntegra = round2((cuotaBaseGeneral - cuotaMinimosBaseGeneral) + cuotaBaseAhorro);
-  const deduccionesDobleImposicion = rcm.retenciones; // Retenciones origen capital mobiliario
+  const deduccionesDobleImposicion = baseAhorroCapitalMobiliario.retenciones; // Solo retenciones integradas en base del ahorro
   const cuotaLiquida = round2(Math.max(0, cuotaIntegra - deduccionesDobleImposicion));
 
   const liquidacion: Liquidacion = {
@@ -960,9 +1121,13 @@ export async function calcularDeclaracionIRPF(
 
   // PASO 7: Retenciones
   const retencionTrabajo = round2(trabajo?.irpfRetenido ?? 0);
-  const retencionM130 = round2(autonomo?.pagosFraccionadosM130 ?? 0);
-  const retencionCapMob = round2(rcm.retenciones);
-  const totalRetenciones = round2(retencionTrabajo + retencionM130 + retencionCapMob);
+  const retencionM130 = round2(rendimientosAutonomo?.pagosFraccionadosM130 ?? 0);
+  const retencionCapMob = round2(baseAhorroCapitalMobiliario.retenciones + (capitalMobiliarioBaseGeneral?.retenciones ?? 0));
+  const retencionesAtribuidasNoCapitalMob = round2(
+    (atribuidos.capitalInmobiliario.retenciones ?? 0)
+    + (atribuidos.actividadEconomica.retenciones ?? 0)
+  );
+  const totalRetenciones = round2(retencionTrabajo + retencionM130 + retencionCapMob + retencionesAtribuidasNoCapitalMob);
 
   const retenciones: Retenciones = {
     trabajo: retencionTrabajo,

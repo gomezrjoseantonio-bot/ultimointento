@@ -16,7 +16,7 @@ import type {
 } from '../types/personal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 34; // V3.4: pérdidas patrimoniales ahorro unificadas
+const DB_VERSION = 34; // V3.4: importación AEAT histórica + entidades en atribución de rentas
 
 export interface Property {
   id?: number;
@@ -1169,20 +1169,23 @@ export interface ArrastreIRPF {
   updatedAt: string;
 }
 
-export interface PerdidaPatrimonialAhorro {
+export interface EntidadEjercicio {
+  ejercicio: number;
+  rendimientosAtribuidos: number;
+  retencionesAtribuidas: number;
+  ingresosIntegros?: number;
+  gastosDeducibles?: number;
+  amortizacion?: number;
+}
+
+export interface EntidadAtribucionRentas {
   id?: number;
-  ejercicioOrigen: number;
-  ejercicioCaducidad: number;
-  importeOriginal: number;
-  importeAplicado: number;
-  importePendiente: number;
-  tipoOrigen: 'crypto' | 'inversiones' | 'inmueble' | 'mixto' | 'importado';
-  estado: 'pendiente' | 'aplicado_parcial' | 'aplicado_total' | 'caducado';
-  aplicaciones: {
-    ejercicioDestino: number;
-    importe: number;
-    fecha: string;
-  }[];
+  nif: string;
+  nombre: string;
+  tipoEntidad: 'CB' | 'SC' | 'HY' | 'otra';
+  porcentajeParticipacion: number;
+  tipoRenta: 'capital_inmobiliario' | 'actividad_economica' | 'capital_mobiliario';
+  ejercicios: EntidadEjercicio[];
   createdAt: string;
   updatedAt: string;
 }
@@ -1702,6 +1705,7 @@ interface AtlasHorizonDB {
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
   perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
+  entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -2209,6 +2213,12 @@ export const initDB = async () => {
           snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           snapshotsStore.createIndex('origen', 'origen', { unique: false });
           snapshotsStore.createIndex('fechaSnapshot', 'fechaSnapshot', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('entidadesAtribucion')) {
+          const entidadesStore = db.createObjectStore('entidadesAtribucion', { keyPath: 'id', autoIncrement: true });
+          entidadesStore.createIndex('nif', 'nif', { unique: false });
+          entidadesStore.createIndex('tipoRenta', 'tipoRenta', { unique: false });
         }
 
 

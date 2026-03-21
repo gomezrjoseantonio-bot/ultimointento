@@ -36,6 +36,7 @@ export interface RendimientoPeriodico {
   fecha_inicio_rendimiento: string;
   fecha_fin_rendimiento?: string;       // For term deposits
   retencion_porcentaje?: number;        // NUEVO: withholding tax %, default 19 (Spain)
+  integracion_fiscal?: 'ahorro' | 'general'; // Default ahorro; general for casillas 0046-0051 y otros BIG
   pagos_generados: PagoRendimiento[];
 }
 
@@ -45,6 +46,8 @@ export interface PagoRendimiento {
   importe_bruto: number;
   retencion_fiscal: number;             // 19% IRPF in Spain
   importe_neto: number;
+  integracion_fiscal?: 'ahorro' | 'general';
+  casilla_irpf?: string;
   cuenta_destino_id?: number;
   estado: 'pendiente' | 'pagado' | 'reinvertido';
   movimiento_id?: number;               // ID of created movement in treasury
@@ -71,6 +74,7 @@ export interface DividendoConfig {
   cuenta_destino_dividendos_id?: number;
   retencion_porcentaje?: number;        // NUEVO: Spanish withholding %, default 19 (required if paga_dividendos = true)
   retencion_origen_porcentaje?: number; // NUEVO: source-country withholding %, default 0 (required if paga_dividendos = true)
+  integracion_fiscal?: 'ahorro' | 'general'; // Default ahorro; general for casillas 0046-0051 y otros BIG
   dividendos_recibidos?: DividendoRecibido[];
 }
 
@@ -85,6 +89,8 @@ export interface DividendoRecibido {
   importe_bruto: number;
   retencion_fiscal: number;
   importe_neto: number;
+  integracion_fiscal?: 'ahorro' | 'general';
+  casilla_irpf?: string;
   cuenta_destino_id: number;
   movimiento_id?: number;
 }

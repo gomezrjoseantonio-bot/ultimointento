@@ -12,16 +12,18 @@ import {
   YAxis,
 } from 'recharts';
 import { AnioHistoricoFiscal, cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
+import ImportarDeclaracionWizard from './ImportarDeclaracionWizard';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
 
 const CURRENT_YEAR = new Date().getFullYear();
-const HISTORIC_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3];
+const HISTORIC_YEARS = Array.from({ length: 10 }, (_, index) => CURRENT_YEAR - index);
 
 const HistoricoPage: React.FC = () => {
   const [historico, setHistorico] = useState<AnioHistoricoFiscal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -41,6 +43,10 @@ const HistoricoPage: React.FC = () => {
     <PageLayout
       title="Histórico IRPF"
       subtitle="Evolución anual de cuotas, retenciones y resultado de la declaración"
+      primaryAction={{
+        label: '+ Importar declaración',
+        onClick: () => setShowImportWizard(true),
+      }}
     >
       {loading ? (
         <div className="flex items-center justify-center min-h-[300px]">
@@ -134,6 +140,12 @@ const HistoricoPage: React.FC = () => {
             </p>
           </div>
         </div>
+      )}
+      {showImportWizard && (
+        <ImportarDeclaracionWizard
+          onClose={() => setShowImportWizard(false)}
+          onImported={loadData}
+        />
       )}
     </PageLayout>
   );
