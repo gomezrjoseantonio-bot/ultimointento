@@ -254,6 +254,15 @@ const mapToSnapshot = (
     return Number(linkedId) === Number(normalizedPropertyId);
   };
 
+  const getLoanAllocationFactor = (loan: Prestamo): number => {
+    const directFactor = getAllocationFactor(loan, normalizedPropertyId);
+    if (directFactor > 0 || loan.afectacionesInmueble?.length) {
+      return directFactor;
+    }
+
+    return isLoanLinkedToProperty(loan) ? 1 : 0;
+  };
+
   const propertyLoans = loans.filter(isLoanLinkedToProperty);
   const coste = getAcquisitionCost(property);
   const valor = valorActual;
@@ -295,7 +304,10 @@ const mapToSnapshot = (
       ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
       : 0;
 
-  const deudaPendiente = propertyLoans.reduce((sum, loan) => sum + parseAmount(loan.principalVivo), 0);
+  const deudaPendiente = propertyLoans.reduce((sum, loan) => {
+    const allocationFactor = getLoanAllocationFactor(loan);
+    return sum + parseAmount(loan.principalVivo) * allocationFactor;
+  }, 0);
 
   const getLoanMonthlyInstallment = (loan: Prestamo): number => {
     const rawLoan = loan as any;

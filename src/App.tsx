@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
+import { preloadRouteResources } from './services/navigationPerformanceService';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
