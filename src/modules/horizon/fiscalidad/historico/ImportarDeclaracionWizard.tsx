@@ -539,7 +539,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
-  const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -561,7 +560,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
     setUploadedFile(file);
     setStep(2);
-    setParsing(true);
     setResultadoExtraccion(null);
     setReconciliacion(null);
     setReconciliacionPreview(null);
@@ -620,7 +618,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       console.error('Error extrayendo casillas del PDF', error);
       toast.error(error instanceof Error ? error.message : 'Error al procesar el PDF');
     } finally {
-      setParsing(false);
       setProgreso(null);
     }
   };
