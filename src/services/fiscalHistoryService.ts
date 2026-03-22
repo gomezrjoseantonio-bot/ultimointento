@@ -67,10 +67,19 @@ export async function cargarHistoricoFiscal(years: number[]): Promise<AnioHistor
       }
 
       const snapshot = ejercicio.snapshotId ? await obtenerSnapshotDeclaracion(year) : null;
-      const cuotaLiquida = snapshot?.datos.liquidacion?.cuotaLiquida ?? 0;
-      const retenciones = ejercicio.resumen?.retencionesYPagos ?? 0;
-      const resultado = ejercicio.resumen?.resultado ?? 0;
-      const baseGeneral = snapshot?.datos.baseGeneral?.total ?? ejercicio.resumen?.baseImponibleGeneral ?? 0;
+      const cuotaLiquida = snapshot?.datos.liquidacion?.cuotaLiquida
+        ?? ejercicio.declaracionAeat?.basesYCuotas?.cuotaLiquida
+        ?? 0;
+      const retenciones = ejercicio.resumen?.retencionesYPagos
+        ?? ejercicio.declaracionAeat?.basesYCuotas?.retencionesTotal
+        ?? 0;
+      const resultado = ejercicio.resumen?.resultado
+        ?? ejercicio.declaracionAeat?.basesYCuotas?.resultadoDeclaracion
+        ?? 0;
+      const baseGeneral = snapshot?.datos.baseGeneral?.total
+        ?? ejercicio.declaracionAeat?.basesYCuotas?.baseImponibleGeneral
+        ?? ejercicio.resumen?.baseImponibleGeneral
+        ?? 0;
       const tipoEfectivo = baseGeneral > 0 ? (cuotaLiquida / baseGeneral) * 100 : 0;
 
       return {
