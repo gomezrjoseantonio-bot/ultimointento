@@ -15,6 +15,9 @@ import type {
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
+import ConfirmacionEntidades from '../importar/ConfirmacionEntidades';
+import { analizarDeclaracion } from '../../../../services/declaracionOnboardingService';
+import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
 
 type MetodoEntrada = 'formulario' | 'pdf';
 type VerificationTab = 'personal' | 'trabajo' | 'inmuebles' | 'actividad' | 'capital' | 'bases' | 'arrastres' | 'raw';
@@ -449,8 +452,36 @@ function normalizarCasillasExtraidas(raw: Record<string, number | string>): Casi
     .sort((a, b) => a.numero.localeCompare(b.numero));
 }
 
+async function archivarPdfImportado(
+  uploadedFile: File | null,
+  ejercicioImportacion: number,
+  metodo: MetodoEntrada,
+  totalCasillas: number,
+): Promise<void> {
+  if (!uploadedFile) return;
+
+  await saveDocumentWithBlob({
+    filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
+    type: 'declaracion_irpf',
+    content: uploadedFile,
+    size: uploadedFile.size,
+    lastModified: uploadedFile.lastModified,
+    uploadDate: new Date().toISOString(),
+    metadata: {
+      title: `Declaración IRPF ${ejercicioImportacion}`,
+      description: 'PDF archivado desde el wizard de importación de declaraciones.',
+      ejercicio: ejercicioImportacion,
+      origen: 'importacion_wizard',
+      fechaImportacion: new Date().toISOString(),
+      casillasExtraidas: totalCasillas,
+      metodoExtraccion: metodo === 'pdf' ? 'ocr' : 'texto',
+      status: 'Archivado',
+    },
+  });
+}
+
 const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported }) => {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
   const [metodo, setMetodo] = useState<MetodoEntrada>('formulario');
   const [data, setData] = useState<ImportacionManualData>(() => crearImportacionManualVacia(currentYear - 1));
@@ -458,8 +489,10 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progreso, setProgreso] = useState<ProgresoParseo | null>(null);
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
+  const [resultadoAnalisis, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analizandoEntidades, setAnalizandoEntidades] = useState(false);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
@@ -493,6 +526,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }
 
       const normalizedCasillas = normalizarCasillasExtraidas(extraccion.casillasRaw);
+      setResultadoAnalisis(null);
       const ejercicioDetectado = extraccion.meta.ejercicio > 0 ? extraccion.meta.ejercicio : ejercicio;
       setCasillasExtraidas(normalizedCasillas);
       setEjercicio(ejercicioDetectado);
@@ -532,6 +566,45 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     } finally {
       setParsing(false);
       setProgreso(null);
+    }
+  };
+
+  const handleAnalizarEntidades = async () => {
+    if (!resultadoExtraccion?.exito) {
+      setStep(4);
+      return;
+    }
+
+    setAnalizandoEntidades(true);
+    try {
+      const analisis = await analizarDeclaracion(resultadoExtraccion);
+      setResultadoAnalisis(analisis);
+      setStep(4);
+    } catch (error) {
+      console.error('Error analizando entidades de la declaración', error);
+      toast.error(error instanceof Error ? error.message : 'No se pudieron analizar las entidades detectadas');
+    } finally {
+      setAnalizandoEntidades(false);
+    }
+  };
+
+  const handleCompleteEntityImport = async () => {
+    const ejercicioImportacion = resultadoExtraccion?.exito && resultadoExtraccion.meta.ejercicio > 0
+      ? resultadoExtraccion.meta.ejercicio
+      : data.ejercicio;
+
+    try {
+      await archivarPdfImportado(
+        uploadedFile,
+        ejercicioImportacion,
+        metodo,
+        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
+      );
+      await onImported();
+      onClose();
+    } catch (error) {
+      console.error('Error archivando el PDF importado', error);
+      toast.error(`La importación se completó, pero no se pudo archivar el PDF: ${error instanceof Error ? error.message : 'desconocido'}`);
     }
   };
 
@@ -602,26 +675,12 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         });
       }
 
-      if (uploadedFile) {
-        await saveDocumentWithBlob({
-          filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
-          type: 'declaracion_irpf',
-          content: uploadedFile,
-          size: uploadedFile.size,
-          lastModified: uploadedFile.lastModified,
-          uploadDate: new Date().toISOString(),
-          metadata: {
-            title: `Declaración IRPF ${ejercicioImportacion}`,
-            description: 'PDF archivado desde el wizard de importación de declaraciones.',
-            ejercicio: ejercicioImportacion,
-            origen: 'importacion_wizard',
-            fechaImportacion: new Date().toISOString(),
-            casillasExtraidas: resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
-            metodoExtraccion: metodo === 'pdf' ? 'ocr' : 'texto',
-            status: 'Archivado',
-          },
-        });
-      }
+      await archivarPdfImportado(
+        uploadedFile,
+        ejercicioImportacion,
+        metodo,
+        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
+      );
 
       toast.success(`Declaración ${ejercicioImportacion} importada y archivada`);
       await onImported();
@@ -661,7 +720,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
         <div style={{ padding: '1.5rem', display: 'grid', gap: '1.25rem' }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {[1, 2, 3].map((item) => (
+            {[1, 2, 3, 4].map((item) => (
               <div
                 key={item}
                 style={{
@@ -805,43 +864,62 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-            <button
-              type="button"
-              onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3)}
-              style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.8rem 1rem', background: 'white', cursor: 'pointer' }}
-            >
-              {step === 1 ? 'Cancelar' : 'Atrás'}
-            </button>
+          {step === 4 && resultadoExtraccion?.exito && resultadoAnalisis && (
+            <ConfirmacionEntidades
+              resultado={resultadoAnalisis}
+              onComplete={handleCompleteEntityImport}
+              onCancel={() => setStep(3)}
+            />
+          )}
 
-            {step < 3 ? (
+          {step < 4 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
               <button
                 type="button"
-                disabled={step === 2 && !canContinueStep2}
-                onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3)}
-                style={{
-                  border: 'none',
-                  borderRadius: '10px',
-                  padding: '0.8rem 1rem',
-                  background: 'var(--atlas-blue)',
-                  color: 'white',
-                  cursor: 'pointer',
-                  opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
-                }}
+                onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4)}
+                style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.8rem 1rem', background: 'white', cursor: 'pointer' }}
               >
-                Continuar
+                {step === 1 ? 'Cancelar' : 'Atrás'}
               </button>
-            ) : (
-              <button
-                type="button"
-                disabled={saving}
-                onClick={handleConfirmarImportacion}
-                style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--ok)', color: 'white', cursor: 'pointer' }}
-              >
-                {saving ? 'Importando…' : 'Importar declaración'}
-              </button>
-            )}
-          </div>
+
+              {step < 3 ? (
+                <button
+                  type="button"
+                  disabled={step === 2 && !canContinueStep2}
+                  onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4)}
+                  style={{
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '0.8rem 1rem',
+                    background: 'var(--atlas-blue)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
+                  }}
+                >
+                  Continuar
+                </button>
+              ) : resultadoExtraccion?.exito ? (
+                <button
+                  type="button"
+                  disabled={analizandoEntidades}
+                  onClick={handleAnalizarEntidades}
+                  style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer' }}
+                >
+                  {analizandoEntidades ? 'Analizando entidades…' : 'Continuar con onboarding'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={handleConfirmarImportacion}
+                  style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--ok)', color: 'white', cursor: 'pointer' }}
+                >
+                  {saving ? 'Importando…' : 'Importar declaración'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
