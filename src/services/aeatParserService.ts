@@ -90,6 +90,7 @@ type StringGetter = (casilla: string) => string;
 type BooleanGetter = (casilla: string) => boolean;
 
 const MIN_EJERCICIO = 2020;
+const MAX_EJERCICIO = 2100;
 
 const CASILLAS_INMUEBLE_REPETIBLES = [
   '0062', '0063', '0065', '0066', '0067', '0069', '0073', '0074', '0075',
@@ -125,6 +126,7 @@ const CCAA_CODES: Record<number, string> = {
 export async function parsearDeclaracionAEAT(
   file: File,
   onProgress?: OnProgress,
+  ejercicioFallback?: number,
 ): Promise<ExtraccionCompleta> {
   const errores: string[] = [];
   const warnings: string[] = [];
@@ -140,13 +142,17 @@ export async function parsearDeclaracionAEAT(
       return resultadoError('Claude no pudo extraer casillas del PDF');
     }
 
-    const ejercicioDetectado = detectarEjercicio(casillasRaw);
+    const ejercicioDetectado = detectarEjercicio(casillasRaw, file.name, ejercicioFallback);
     if (ejercicioDetectado < MIN_EJERCICIO) {
       return resultadoError('El histórico de ATLAS empieza en 2020');
     }
 
     onProgress?.({ fase: 'mapeando', mensaje: 'Organizando datos extraídos...' });
-    const { declaracion, inmuebles, arrastres, meta } = mapearCasillasADeclaracion(casillasRaw);
+    const { declaracion, inmuebles, arrastres, meta } = mapearCasillasADeclaracion(
+      casillasRaw,
+      file.name,
+      ejercicioFallback,
+    );
 
     if (meta.ejercicio < MIN_EJERCICIO) {
       return resultadoError('El histórico de ATLAS empieza en 2020');
@@ -459,7 +465,11 @@ function parsearRespuestaClaude(textoRespuesta: string): CasillasRaw {
   }
 }
 
-function mapearCasillasADeclaracion(raw: CasillasRaw): {
+function mapearCasillasADeclaracion(
+  raw: CasillasRaw,
+  fileName?: string,
+  ejercicioFallback?: number,
+): {
   declaracion: DeclaracionIRPF;
   inmuebles: InmuebleExtraidoCompleto[];
   arrastres: ExtraccionCompleta['arrastres'];
@@ -479,7 +489,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
   };
 
   const meta: ExtraccionCompleta['meta'] = {
-    ejercicio: detectarEjercicio(raw),
+    ejercicio: detectarEjercicio(raw, fileName, ejercicioFallback),
     modelo: '100',
     nif: s('0001_nif') || s('nif') || extraerNIF(raw),
     nombre: s('nombre') || s('0002') || s('02') || s('0001_nombre') || s('0001') || '',
@@ -503,6 +513,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
     retencionesTrabajoTotal: n('0596'),
   };
 
+  const ejercicioDetectado = meta.ejercicio;
   const inmuebles = extraerInmuebles(raw, n, s, b);
   const actividades = extraerActividades(raw, n, s);
 
@@ -523,7 +534,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
     perdidasTransmision: n('0423'),
     saldoNetoAhorro: n('0425') || n('0420'),
     compensacionPerdidasAnteriores: 0,
-    perdidasPendientes: extraerPerdidasPendientes(raw, n),
+    perdidasPendientes: extraerPerdidasPendientes(raw, n, ejercicioDetectado),
   };
 
   const planPensiones: DeclaracionPlanPensiones = {
@@ -550,7 +561,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
     resultadoDeclaracion: n('0670'),
   };
 
-  const arrastres = extraerArrastres(raw, n, s);
+  const arrastres = extraerArrastres(raw, n, s, ejercicioDetectado);
 
   const declaracion: DeclaracionIRPF = {
     personal: {
@@ -718,11 +729,11 @@ function extraerArrastres(
   raw: CasillasRaw,
   n: NumericGetter,
   s: StringGetter,
+  ejercicio: number,
 ): ExtraccionCompleta['arrastres'] {
   const gastos: ArrastreExtraido[] = [];
   const perdidas: PerdidaExtraida[] = [];
   const gastosDetalle: GastoInmuebleDetalle[] = [];
-  const ejercicio = detectarEjercicio(raw);
 
   for (let i = 1; i <= 10; i += 1) {
     const suffix = `_${i}`;
@@ -783,9 +794,12 @@ function extraerArrastres(
   return { gastos0105_0106: gastos, perdidasAhorro: perdidas, gastosInmuebleDetalle: gastosDetalle };
 }
 
-function extraerPerdidasPendientes(raw: CasillasRaw, n: NumericGetter): PerdidasPendientes[] {
+function extraerPerdidasPendientes(
+  _raw: CasillasRaw,
+  n: NumericGetter,
+  ejercicio: number,
+): PerdidasPendientes[] {
   const perdidas: PerdidasPendientes[] = [];
-  const ejercicio = detectarEjercicio(raw);
 
   if (n('1266') > 0) {
     perdidas.push({
@@ -840,65 +854,101 @@ function validarCoherencia(declaracion: DeclaracionIRPF): { warnings: string[] }
   return { warnings };
 }
 
-function detectarEjercicio(raw: CasillasRaw): number {
-  if (typeof raw.ejercicio === 'number' && raw.ejercicio >= MIN_EJERCICIO) {
-    return raw.ejercicio;
+function normalizarEjercicio(valor: unknown): number | null {
+  if (typeof valor !== 'number' && typeof valor !== 'string') {
+    return null;
   }
 
-  const ejercicioTexto = raw.ejercicio;
-  if (typeof ejercicioTexto === 'string') {
-    const anio = Number.parseInt(ejercicioTexto, 10);
-    if (Number.isInteger(anio) && anio >= MIN_EJERCICIO) {
+  const texto = typeof valor === 'number'
+    ? String(Math.trunc(valor))
+    : valor.trim();
+
+  if (!texto) return null;
+
+  const numero = Number.parseInt(texto, 10);
+  if (!Number.isInteger(numero)) {
+    return null;
+  }
+
+  if (numero >= MIN_EJERCICIO && numero <= MAX_EJERCICIO) {
+    return numero;
+  }
+
+  if (numero >= 20 && numero <= 99) {
+    return 2000 + numero;
+  }
+
+  return null;
+}
+
+function detectarEjercicioDesdeTexto(value: string): number | null {
+  const matchEtiquetado = value.match(/Ejercicio(?:\s+fiscal)?\s*:?\s*(20\d{2}|\d{2})/i);
+  if (matchEtiquetado) {
+    return normalizarEjercicio(matchEtiquetado[1]);
+  }
+
+  const years = value.match(/\b(?:20\d{2}|\d{2})\b/g) ?? [];
+  for (const candidate of years) {
+    const normalizado = normalizarEjercicio(candidate);
+    if (normalizado && normalizado >= MIN_EJERCICIO && normalizado <= MAX_EJERCICIO) {
+      return normalizado;
+    }
+  }
+
+  return null;
+}
+
+export function detectarEjercicio(
+  raw: CasillasRaw,
+  fileName?: string,
+  ejercicioFallback?: number,
+): number {
+  const candidatosDirectos = [raw.ejercicio, raw.anio, raw.year];
+  for (const candidato of candidatosDirectos) {
+    const anio = normalizarEjercicio(candidato);
+    if (anio && anio >= MIN_EJERCICIO) {
       return anio;
     }
   }
 
   const expediente = raw.expediente_referencia;
   if (typeof expediente === 'string') {
-    const match = expediente.match(/^(\d{4})/);
+    const match = expediente.match(/^(\d{4}|\d{2})/);
     if (match) {
-      const anio = Number.parseInt(match[1], 10);
-      if (anio >= MIN_EJERCICIO) {
-        return anio;
-      }
-    }
-  }
-
-  for (const value of Object.values(raw)) {
-    if (typeof value !== 'string') continue;
-
-    const ejercicioMatch = value.match(/Ejercicio\s+(\d{4})/i);
-    if (ejercicioMatch) {
-      const anio = Number.parseInt(ejercicioMatch[1], 10);
-      if (anio >= MIN_EJERCICIO) {
+      const anio = normalizarEjercicio(match[1]);
+      if (anio && anio >= MIN_EJERCICIO) {
         return anio;
       }
     }
   }
 
   const yearCandidates = new Set<number>();
-  const keyHints = ['ejercicio', 'year'];
+  const keyHints = ['ejercicio', 'year', 'anio', 'año'];
   for (const [key, value] of Object.entries(raw)) {
     if (typeof value !== 'string') continue;
 
     const keyLower = key.toLowerCase();
-    const matches = value.match(/(20\d{2})/g) ?? [];
-    matches.forEach((match) => {
-      const year = Number.parseInt(match, 10);
-      if (year >= MIN_EJERCICIO && year <= 2100) {
-        if (keyHints.some((hint) => keyLower.includes(hint)) || /ejercicio/i.test(value)) {
-          yearCandidates.add(year);
-        }
-      }
-    });
+    const detectado = detectarEjercicioDesdeTexto(value);
+    if (detectado && (keyHints.some((hint) => keyLower.includes(hint)) || /ejercicio|año|anio/i.test(value))) {
+      yearCandidates.add(detectado);
+    }
   }
 
-  const ordered = Array.from(yearCandidates).sort((a, b) => b - a);
-  if (ordered[0]) {
-    return ordered[0];
+  const ejercicioDesdeNombre = fileName ? detectarEjercicioDesdeTexto(fileName) : null;
+  if (ejercicioDesdeNombre) {
+    yearCandidates.add(ejercicioDesdeNombre);
   }
 
-  return 0;
+  const ejercicioManual = normalizarEjercicio(ejercicioFallback);
+  if (ejercicioManual && ejercicioManual >= MIN_EJERCICIO) {
+    yearCandidates.add(ejercicioManual);
+  }
+
+  const ordered = Array.from(yearCandidates)
+    .filter((year) => year >= MIN_EJERCICIO && year <= MAX_EJERCICIO)
+    .sort((a, b) => b - a);
+
+  return ordered[0] ?? 0;
 }
 
 function extraerNIF(raw: CasillasRaw): string {

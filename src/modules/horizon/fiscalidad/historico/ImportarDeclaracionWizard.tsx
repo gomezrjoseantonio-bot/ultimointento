@@ -517,7 +517,11 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     setCasillasExtraidas([]);
 
     try {
-      const extraccion = await parsearDeclaracionAEAT(file, (progress) => setProgreso(progress));
+      const extraccion = await parsearDeclaracionAEAT(
+        file,
+        (progress) => setProgreso(progress),
+        ejercicio,
+      );
       setResultadoExtraccion(extraccion);
 
       if (!extraccion.exito) {
