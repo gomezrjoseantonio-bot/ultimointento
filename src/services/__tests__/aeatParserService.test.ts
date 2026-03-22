@@ -59,6 +59,50 @@ describe('extracción textual determinista', () => {
     });
   });
 
+  test('detecta metadatos e inmuebles repetidos desde el texto estructurado del modelo 100', () => {
+    const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
+      [
+        'Impuesto sobre la Renta de las Personas Físicas',
+        'Ejercicio 2024',
+        'NIF 53069494F 0001',
+        'Apellidos y nombre GOMEZ RAMIREZ JOSE ANTONIO 0002',
+        'Estado civil (el 31-12-2024) (1) Soltero/a 0006',
+        'Fecha de nacimiento 28/09/1980 0010',
+        'Comunidad Autónoma de residencia habitual en 2024 MADRID 0070',
+        'Inmueble 1',
+        'Referencia catastral 7949807TP6074N0006YM 0066',
+        'Dirección del inmueble CL FUERTES ACEVEDO 0032 1 02 DR OVIEDO 0069',
+        'Arrendamiento. X 0075',
+        'NIF del arrendatario 1 Y5617860D 0091',
+        'Fecha del contrato. 01/05/2023 0093',
+        'Nº de días que el inmueble ha estado arrendado 366 0101',
+        'Ingresos íntegros computables del capital inmobiliario. 19.675,00 0102',
+        'Intereses y demás gastos de financiación en 2024. 1.580,34 0105',
+        'Amortización de bienes inmuebles 1.699,66 0131',
+        'Rendimiento neto reducido. 3.943,75 0154',
+      ].join('\n'),
+    ]);
+
+    expect(casillas).toMatchObject({
+      ejercicio: '2024',
+      nif: '53069494F',
+      nombre: 'GOMEZ RAMIREZ JOSE ANTONIO',
+      estado_civil: 'Soltero/a',
+      fecha_nacimiento: '28/09/1980',
+      comunidad_autonoma: 'Madrid',
+      '0066_1': '7949807TP6074N0006YM',
+      '0069_1': 'CL FUERTES ACEVEDO 0032 1 02 DR OVIEDO',
+      '0075_1': 'X',
+      '0091_1': 'Y5617860D',
+      '0093_1': '01/05/2023',
+      '0101_1': 366,
+      '0102_1': 19675,
+      '0105_1': 1580.34,
+      '0131_1': 1699.66,
+      '0154_1': 3943.75,
+    });
+  });
+
   test('detecta cuando hay datos mínimos para continuar aunque falle el refuerzo visual', () => {
     expect(__private__.tieneDatosMinimosParaImportar({
       ejercicio: 2024,

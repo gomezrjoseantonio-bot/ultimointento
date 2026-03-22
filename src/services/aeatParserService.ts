@@ -338,8 +338,8 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
   const patrones = [
-    /(^|\s)(-?[\d.]+,\d{2})\s+(\d{4})(?!\d)/g,
-    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2})(?!\d)/g,
+    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
   ];
 
   for (const pagina of paginasTexto) {
@@ -368,7 +368,124 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
     }
   }
 
+  return mergeCasillasRaw(
+    resultado,
+    extraerMetadatosDesdeTexto(paginasTexto),
+    extraerCasillasRepetiblesDesdeTexto(paginasTexto),
+  );
+}
+
+function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const texto = paginasTexto.join('\n').replace(/\u00a0/g, ' ');
+  const resultado: CasillasRaw = {};
+
+  const ejercicio = texto.match(/Ejercicio\s+(20\d{2}|\d{2})/i)?.[1];
+  if (ejercicio) resultado.ejercicio = ejercicio;
+
+  const nif = texto.match(/NIF\s+([A-Z0-9]{8,12})\s+0001\b/i)?.[1];
+  if (nif) resultado.nif = nif.trim().toUpperCase();
+
+  const nombre = texto.match(/Apellidos y nombre\s+(.+?)\s+0002\b/i)?.[1];
+  if (nombre) resultado.nombre = limpiarTextoExtraido(nombre);
+
+  const estadoCivil = texto.match(/Estado civil \(el 31-12-\d{4}\)\s+(.+?)\s+0006\b/i)?.[1];
+  if (estadoCivil) {
+    resultado.estado_civil = limpiarEstadoCivil(estadoCivil);
+  }
+
+  const fechaNacimiento = texto.match(/Fecha de nacimiento\s+(\d{2}\/\d{2}\/\d{4})\s+0010\b/i)?.[1];
+  if (fechaNacimiento) resultado.fecha_nacimiento = fechaNacimiento;
+
+  const comunidad = texto.match(/Comunidad Autónoma.*?\n.*?\s([A-ZÁÉÍÓÚÜÑ ]{3,})\s+0070\b/i)?.[1]
+    ?? texto.match(/Comunidad Autónoma.*?residencia habitual.*?\s([A-ZÁÉÍÓÚÜÑ ]{3,})\s+0070\b/i)?.[1];
+  if (comunidad) resultado.comunidad_autonoma = toTitleCase(limpiarTextoExtraido(comunidad));
+
+  const numeroJustificante = texto.match(/Número de justificante.*?\s(\d{10,})\s+0104\b/i)?.[1];
+  if (numeroJustificante) resultado.numero_justificante = numeroJustificante;
+
   return resultado;
+}
+
+function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const casillasRepetibles = new Set<string>(CASILLAS_INMUEBLE_REPETIBLES);
+
+  let indiceInmuebleActual: number | null = null;
+
+  const setSufijo = (casilla: string, valor: number | string) => {
+    if (!indiceInmuebleActual || !casillasRepetibles.has(casilla)) return;
+    resultado[`${casilla}_${indiceInmuebleActual}`] = valor;
+  };
+
+  for (const pagina of paginasTexto) {
+    const lineas = pagina
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    for (const linea of lineas) {
+      const encabezadoInmueble = linea.match(/^Inmueble\s+(\d+)\b/i);
+      if (encabezadoInmueble) {
+        indiceInmuebleActual = Number.parseInt(encabezadoInmueble[1], 10);
+        continue;
+      }
+
+      if (!indiceInmuebleActual) {
+        continue;
+      }
+
+      const booleanMatches = Array.from(linea.matchAll(/\bX\s+(0067|0073|0074|0075|0100|0118|0133)\b/g));
+      booleanMatches.forEach((match) => setSufijo(match[1], 'X'));
+
+      const numericMatches = Array.from(linea.matchAll(/(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g));
+      numericMatches.forEach((match) => {
+        const casilla = match[3];
+        if (!casillasRepetibles.has(casilla)) return;
+        const valor = Number.parseFloat(match[2].replace(/\./g, '').replace(',', '.'));
+        if (!Number.isNaN(valor)) {
+          setSufijo(casilla, valor);
+        }
+      });
+
+      const directTextExtractors: Array<[RegExp, string]> = [
+        [/Referencia catastral\.?\s+([A-Z0-9]{8,20})\s+0066\b/i, '0066'],
+        [/Direcci[oó]n del inmueble\s+(.+?)\s+0069\b/i, '0069'],
+        [/NIF del arrendatario 1\.?\s+([A-Z0-9]{8,12})\s+0091\b/i, '0091'],
+        [/NIF del arrendatario 2\.?\s+([A-Z0-9]{8,12})\s+0094\b/i, '0094'],
+        [/Fecha del contrato\.?\s+(\d{2}\/\d{2}\/\d{4})\s+0093\b/i, '0093'],
+        [/Fecha de adquisici[oó]n del inmueble.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0120\b/i, '0120'],
+        [/Fecha de adquisici[oó]n del inmueble accesorio.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0135\b/i, '0135'],
+        [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1212\b/i, '1212'],
+        [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1394\b/i, '1394'],
+        [/NIF de qui[eé]n realiza la reparaci[oó]n y conservaci[oó]n\s+([A-Z0-9]{8,12})\s+1395\b/i, '1395'],
+        [/NIF de qui[eé]n presta los servicios personales\s+([A-Z0-9]{8,12})\s+1416\b/i, '1416'],
+        [/Fecha de realizaci[oó]n de la mejora\s+(\d{2}\/\d{2}\/\d{4})\s+1421\b/i, '1421'],
+        [/NIF de qui[eé]n realiz[oó] la obra o servicio de mejora\s+([A-Z0-9]{8,12})\s+1422\b/i, '1422'],
+      ];
+
+      directTextExtractors.forEach(([pattern, casilla]) => {
+        const value = linea.match(pattern)?.[1];
+        if (!value) return;
+        setSufijo(casilla, limpiarTextoExtraido(value));
+      });
+    }
+  }
+
+  return resultado;
+}
+
+function limpiarTextoExtraido(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function limpiarEstadoCivil(value: string): string {
+  return limpiarTextoExtraido(value).replace(/^\(\d+\)\s*/, '');
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, (char) => char.toUpperCase());
 }
 
 function tieneDatosMinimosParaImportar(
