@@ -13,6 +13,10 @@ import type {
   ProgresoParseo,
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
+import {
+  analizarDeclaracion,
+} from '../../../../services/declaracionOnboardingService';
+import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
@@ -489,6 +493,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progreso, setProgreso] = useState<ProgresoParseo | null>(null);
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
+  const [resultadoAnalisis, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
