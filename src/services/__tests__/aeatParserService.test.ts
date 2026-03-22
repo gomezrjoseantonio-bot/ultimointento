@@ -182,6 +182,41 @@ describe('extracción textual determinista', () => {
       '0435': 150924.07,
     }, 'sin-ejercicio.pdf')).toBe(false);
   });
+
+  test('no sobreescribe valores válidos con falsos positivos del resumen final de IRPF 2021', () => {
+    const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
+      [
+        'Impuesto sobre la Renta de las Personas Físicas',
+        'Ejercicio 2021',
+        'Base liquidable general 116.302,95 0505',
+        'Base liquidable del ahorro 5.877,69 0510',
+        'Cuota íntegra estatal 21.650,04 0545',
+        'Cuota íntegra autonómica 20.662,80 0546',
+        'Cuota líquida estatal 21.650,04 0570',
+        'Cuota líquida autonómica 20.662,80 0571',
+      ].join('\n'),
+      [
+        'Documento de ingreso o devolución',
+        '0505 510',
+        '0510 505',
+        '0545 546',
+        '0546 545',
+        '0570 571',
+        '0571 570',
+        '2021 100',
+      ].join('\n'),
+    ]);
+
+    expect(casillas).toMatchObject({
+      ejercicio: '2021',
+      '0505': 116302.95,
+      '0510': 5877.69,
+      '0545': 21650.04,
+      '0546': 20662.8,
+      '0570': 21650.04,
+      '0571': 20662.8,
+    });
+  });
 });
 
 describe('dividirPdfEnBloques', () => {

@@ -418,7 +418,8 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
           const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
 
           if (!Number.isNaN(valor)) {
-            resultado[casilla] = valor;
+            const knownKeys = new Set([...Object.keys(resultado), casilla]);
+            resultado[casilla] = seleccionarMejorValorCasilla(casilla, resultado[casilla], valor, knownKeys);
           }
 
           match = patron.exec(linea);
@@ -551,7 +552,9 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
         if (!casillasRepetibles.has(casilla)) continue;
         const valor = Number.parseFloat(match[2].replace(/\./g, '').replace(',', '.'));
         if (!Number.isNaN(valor)) {
-          setSufijo(casilla, valor);
+          const sufijo = `${casilla}_${indiceInmuebleActual}`;
+          const knownKeys = new Set([...Object.keys(resultado), sufijo, casilla]);
+          resultado[sufijo] = seleccionarMejorValorCasilla(sufijo, resultado[sufijo], valor, knownKeys);
         }
       }
 
@@ -660,14 +663,90 @@ export function dividirTextoPorPaginas(
 
 function mergeCasillasRaw(...sources: CasillasRaw[]): CasillasRaw {
   const merged: CasillasRaw = {};
+  const knownKeys = new Set(
+    sources.flatMap((source) => Object.keys(source)),
+  );
 
   for (const source of sources) {
     for (const [key, value] of Object.entries(source)) {
-      merged[key] = value;
+      merged[key] = seleccionarMejorValorCasilla(key, merged[key], value, knownKeys);
     }
   }
 
   return merged;
+}
+
+function seleccionarMejorValorCasilla(
+  key: string,
+  actual: number | string | undefined,
+  candidato: number | string,
+  knownKeys: Set<string>,
+): number | string {
+  if (actual === undefined) {
+    return candidato;
+  }
+
+  if (actual === candidato) {
+    return actual;
+  }
+
+  if (typeof actual === 'number' && typeof candidato === 'number') {
+    const scoreActual = puntuarValorNumericoCasilla(key, actual, knownKeys);
+    const scoreCandidato = puntuarValorNumericoCasilla(key, candidato, knownKeys);
+
+    if (scoreCandidato > scoreActual) {
+      return candidato;
+    }
+
+    if (scoreActual > scoreCandidato) {
+      return actual;
+    }
+
+    return candidato;
+  }
+
+  if (typeof actual === 'string' && typeof candidato === 'string') {
+    const actualTieneMasInfo = actual.length >= candidato.length;
+    return actualTieneMasInfo ? actual : candidato;
+  }
+
+  return candidato;
+}
+
+function puntuarValorNumericoCasilla(
+  key: string,
+  value: number,
+  knownKeys: Set<string>,
+): number {
+  let score = 0;
+  const abs = Math.abs(value);
+
+  if (!Number.isFinite(value)) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  if (!Number.isInteger(value)) {
+    score += 3;
+  }
+
+  if (abs >= 1000) {
+    score += 2;
+  }
+
+  if (abs === 0) {
+    score += 1;
+  }
+
+  if (Number.isInteger(value) && abs >= 1 && abs <= 9999) {
+    const padded = String(abs).padStart(4, '0');
+    if (padded === key) {
+      score -= 6;
+    } else if (knownKeys.has(padded)) {
+      score -= 4;
+    }
+  }
+
+  return score;
 }
 
 async function extraerCasillasDesdeTextoPorBloques(
