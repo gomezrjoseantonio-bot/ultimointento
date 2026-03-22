@@ -15,9 +15,9 @@ import type {
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
-import ConfirmacionEntidades from '../importar/ConfirmacionEntidades';
-import { analizarDeclaracion } from '../../../../services/declaracionOnboardingService';
-import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
+import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
+import { generarReconciliacion, requiereReconciliacion } from '../../../../services/reconciliacionService';
+import ReconciliacionPanel from '../importar/ReconciliacionPanel';
 
 type MetodoEntrada = 'formulario' | 'pdf';
 type VerificationTab = 'personal' | 'trabajo' | 'inmuebles' | 'actividad' | 'capital' | 'bases' | 'arrastres' | 'raw';
@@ -489,7 +489,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progreso, setProgreso] = useState<ProgresoParseo | null>(null);
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
-  const [resultadoAnalisis, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
+  const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [analizandoEntidades, setAnalizandoEntidades] = useState(false);
@@ -514,6 +514,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     setUploadedFile(file);
     setParsing(true);
     setResultadoExtraccion(null);
+    setReconciliacion(null);
     setCasillasExtraidas([]);
 
     try {
@@ -703,9 +704,66 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     || data.totalRetenciones !== 0
     || data.resultado !== 0;
 
+  const totalSteps = reconciliacion ? 4 : 3;
+
   const progresoPorcentaje = progreso?.totalPaginas
     ? Math.min(100, Math.round(((progreso.pagina || 0) / progreso.totalPaginas) * 100))
     : undefined;
+
+  const navigationFooter = step < 4 ? (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+      <button
+        type="button"
+        onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4)}
+        style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.8rem 1rem', background: 'white', cursor: 'pointer' }}
+      >
+        {step === 1 ? 'Cancelar' : 'Atrás'}
+      </button>
+
+      {step < 3 ? (
+        <button
+          type="button"
+          disabled={step === 2 && !canContinueStep2}
+          onClick={async () => {
+            if (step === 2 && resultadoExtraccion?.exito) {
+              const reconciliacionGenerada = await generarReconciliacion(resultadoExtraccion.declaracion, resultadoExtraccion.meta.ejercicio);
+              setReconciliacion(requiereReconciliacion(reconciliacionGenerada) ? reconciliacionGenerada : null);
+            }
+            setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4);
+          }}
+          style={{
+            border: 'none',
+            borderRadius: '10px',
+            padding: '0.8rem 1rem',
+            background: 'var(--atlas-blue)',
+            color: 'white',
+            cursor: 'pointer',
+            opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
+          }}
+        >
+          Continuar
+        </button>
+      ) : reconciliacion ? (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => setStep(4)}
+          style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer' }}
+        >
+          Continuar a reconciliación
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={saving}
+          onClick={handleConfirmarImportacion}
+          style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--ok)', color: 'white', cursor: 'pointer' }}
+        >
+          {saving ? 'Importando…' : 'Importar declaración'}
+        </button>
+      )}
+    </div>
+  ) : null;
 
   return (
     <div style={overlayStyle} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -724,14 +782,14 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
         <div style={{ padding: '1.5rem', display: 'grid', gap: '1.25rem' }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {[1, 2, 3, 4].map((item) => (
+            {Array.from({ length: totalSteps }, (_, index) => index + 1).map((item) => (
               <div
                 key={item}
                 style={{
                   flex: 1,
                   padding: '0.75rem 1rem',
                   borderRadius: '10px',
-                  background: step >= item ? 'rgba(4, 44, 94, 0.10)' : 'var(--hz-neutral-100)',
+                  background: step >= item ? 'var(--n-100)' : 'var(--hz-neutral-100)',
                   color: step >= item ? 'var(--atlas-blue)' : 'var(--hz-neutral-600)',
                   fontWeight: 600,
                 }}
@@ -868,62 +926,23 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
             </div>
           )}
 
-          {step === 4 && resultadoExtraccion?.exito && resultadoAnalisis && (
-            <ConfirmacionEntidades
-              resultado={resultadoAnalisis}
-              onComplete={handleCompleteEntityImport}
-              onCancel={() => setStep(3)}
-            />
-          )}
-
-          {step < 4 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-              <button
-                type="button"
-                onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4)}
-                style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.8rem 1rem', background: 'white', cursor: 'pointer' }}
-              >
-                {step === 1 ? 'Cancelar' : 'Atrás'}
-              </button>
-
-              {step < 3 ? (
-                <button
-                  type="button"
-                  disabled={step === 2 && !canContinueStep2}
-                  onClick={() => setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4)}
-                  style={{
-                    border: 'none',
-                    borderRadius: '10px',
-                    padding: '0.8rem 1rem',
-                    background: 'var(--atlas-blue)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
-                  }}
-                >
-                  Continuar
-                </button>
-              ) : resultadoExtraccion?.exito ? (
-                <button
-                  type="button"
-                  disabled={analizandoEntidades}
-                  onClick={handleAnalizarEntidades}
-                  style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer' }}
-                >
-                  {analizandoEntidades ? 'Analizando entidades…' : 'Continuar con onboarding'}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={saving}
-                  onClick={handleConfirmarImportacion}
-                  style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--ok)', color: 'white', cursor: 'pointer' }}
-                >
-                  {saving ? 'Importando…' : 'Importar declaración'}
-                </button>
-              )}
+          {step === 4 && reconciliacion && (
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <div style={{ padding: '1rem', borderRadius: '12px', background: 'var(--hz-neutral-100)' }}>
+                <h3 style={{ marginTop: 0, color: 'var(--atlas-navy-1)' }}>Reconciliación avanzada</h3>
+                <p style={{ marginBottom: 0, color: 'var(--hz-neutral-700)' }}>
+                  Revisa campo a campo qué conservar de ATLAS y qué traer desde la AEAT antes de archivar la declaración.
+                </p>
+              </div>
+              <ReconciliacionPanel
+                reconciliacion={reconciliacion}
+                onCancel={() => setStep(3)}
+                onComplete={handleConfirmarImportacion}
+              />
             </div>
           )}
+
+          {navigationFooter}
         </div>
       </div>
     </div>
