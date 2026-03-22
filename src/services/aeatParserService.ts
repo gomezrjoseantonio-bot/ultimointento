@@ -136,9 +136,12 @@ export async function parsearDeclaracionAEAT(
     onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF para análisis...' });
     const { totalPaginas, textoExtraido, paginasTexto, bytesPdf } = await prepararPdfParaAnalisis(file);
 
-    let casillasRaw = textoTieneContenidoRelevante(textoExtraido)
-      ? await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress)
-      : {};
+    let casillasRaw = extraerCasillasDeterministasDesdeTexto(paginasTexto);
+
+    if (textoTieneContenidoRelevante(textoExtraido) && Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK) {
+      const casillasTextoIA = await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress);
+      casillasRaw = mergeCasillasRaw(casillasRaw, casillasTextoIA);
+    }
 
     const necesitaFallbackVision =
       Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK ||
@@ -147,16 +150,27 @@ export async function parsearDeclaracionAEAT(
     if (necesitaFallbackVision) {
       warnings.push(
         Object.keys(casillasRaw).length > 0
-          ? 'Extracción textual incompleta; se refuerza con análisis visual por bloques.'
-          : 'El PDF no expone texto suficiente; se analiza por bloques visuales.',
+          ? 'Extracción textual incompleta; se intentará reforzar con análisis visual por bloques.'
+          : 'El PDF no expone texto suficiente; se intentará analizar por bloques visuales.',
       );
-      casillasRaw = await extraerCasillasConClaudePorBloques(
-        file,
-        totalPaginas,
-        onProgress,
-        bytesPdf,
-        casillasRaw,
-      );
+
+      try {
+        casillasRaw = await extraerCasillasConClaudePorBloques(
+          file,
+          totalPaginas,
+          onProgress,
+          bytesPdf,
+          casillasRaw,
+        );
+      } catch (error) {
+        console.warn('[AEATParser] Refuerzo visual no disponible; se conserva la extracción textual parcial.', error);
+
+        if (!tieneDatosMinimosParaImportar(casillasRaw, file.name, ejercicioFallback)) {
+          throw error;
+        }
+
+        warnings.push('El refuerzo visual no respondió a tiempo, pero se mantiene una extracción textual parcial para que puedas revisarla y completarla si hace falta.');
+      }
     }
 
     if (Object.keys(casillasRaw).length === 0) {
@@ -242,6 +256,7 @@ interface BloquePaginasPdf {
 const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 12;
+const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {
@@ -318,6 +333,56 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 
   const casillasDetectadas = normalized.match(/\b\d{4}\b/g) ?? [];
   return casillasDetectadas.length >= 25;
+}
+
+function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const patrones = [
+    /(^|\s)(-?[\d.]+,\d{2})\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2})(?!\d)/g,
+  ];
+
+  for (const pagina of paginasTexto) {
+    const lineas = pagina
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    for (const linea of lineas) {
+      for (const patron of patrones) {
+        patron.lastIndex = 0;
+
+        let match: RegExpExecArray | null = patron.exec(linea);
+        while (match) {
+          const casilla = patron === patrones[0] ? match[3] : match[2];
+          const valorRaw = patron === patrones[0] ? match[2] : match[3];
+          const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
+
+          if (!Number.isNaN(valor)) {
+            resultado[casilla] = valor;
+          }
+
+          match = patron.exec(linea);
+        }
+      }
+    }
+  }
+
+  return resultado;
+}
+
+function tieneDatosMinimosParaImportar(
+  casillasRaw: CasillasRaw,
+  fileName?: string,
+  ejercicioFallback?: number,
+): boolean {
+  const ejercicio = detectarEjercicio(casillasRaw, fileName, ejercicioFallback);
+  if (ejercicio < MIN_EJERCICIO) return false;
+
+  const casillasClave = ['0435', '0460', '0505', '0500', '0595', '0609', '0610', '0670', '0025', '0224', '0154'];
+  const presentes = casillasClave.filter((casilla) => typeof casillasRaw[casilla] === 'number').length;
+
+  return presentes >= 2 || Object.keys(casillasRaw).length >= 8;
 }
 
 export function dividirTextoPorPaginas(
@@ -476,16 +541,100 @@ async function extraerCasillasConClaudePorBloques(
         : `Analizando bloque visual ${index + 1}/${bloques.length} (${bloque.desde}-${bloque.hasta})...`,
     });
 
+    const parsed = await extraerCasillasVisualesConFallback(
+      file,
+      bloque,
+      totalPaginas,
+      onProgress,
+    );
+    acumulado = mergeCasillasRaw(acumulado, parsed);
+  }
+
+  return acumulado;
+}
+
+async function extraerCasillasVisualesConFallback(
+  file: File,
+  bloque: BloquePaginasPdf,
+  totalPaginas: number,
+  onProgress?: OnProgress,
+  intento = 0,
+): Promise<CasillasRaw> {
+  try {
     const response = await callClaudeAPI(
       new File([bloque.blob], `${file.name}-pages-${bloque.desde}-${bloque.hasta}.pdf`, { type: 'application/pdf' }),
       construirPromptAEAT(),
     );
 
-    const parsed = parsearRespuestaClaude(response);
-    acumulado = mergeCasillasRaw(acumulado, parsed);
+    return parsearRespuestaClaude(response);
+  } catch (error) {
+    if (esTimeoutOCR(error) && intento < OCR_TIMEOUT_RETRIES_PER_BLOCK) {
+      await esperar(300 * (intento + 1));
+      return extraerCasillasVisualesConFallback(file, bloque, totalPaginas, onProgress, intento + 1);
+    }
+
+    const paginasEnBloque = bloque.hasta - bloque.desde + 1;
+    if (!esTimeoutOCR(error) || paginasEnBloque <= 1) {
+      throw error;
+    }
+
+    const paginasPorSubbloque = Math.max(1, Math.ceil(paginasEnBloque / 2));
+    const subBloques = await dividirPdfEnBloques(
+      await blobToUint8Array(bloque.blob),
+      paginasPorSubbloque,
+    );
+
+    console.warn(
+      `[AEATParser] Timeout OCR en páginas ${bloque.desde}-${bloque.hasta}. Reintentando en ${subBloques.length} subbloques de hasta ${paginasPorSubbloque} página(s).`,
+      error,
+    );
+
+    let acumulado: CasillasRaw = {};
+
+    for (let index = 0; index < subBloques.length; index += 1) {
+      const subBloque = subBloques[index];
+      const subBloqueGlobal: BloquePaginasPdf = {
+        desde: bloque.desde + subBloque.desde - 1,
+        hasta: bloque.desde + subBloque.hasta - 1,
+        blob: subBloque.blob,
+      };
+
+      onProgress?.({
+        fase: 'procesando',
+        pagina: subBloqueGlobal.hasta,
+        totalPaginas: totalPaginas || undefined,
+        mensaje: `Reintentando OCR en subbloque ${index + 1}/${subBloques.length} (${subBloqueGlobal.desde}-${subBloqueGlobal.hasta})...`,
+      });
+
+      const parsed = await extraerCasillasVisualesConFallback(
+        file,
+        subBloqueGlobal,
+        totalPaginas,
+        onProgress,
+      );
+      acumulado = mergeCasillasRaw(acumulado, parsed);
+    }
+
+    return acumulado;
+  }
+}
+
+function esTimeoutOCR(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /timeout|504|inactivity/i.test(message);
+}
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return new Uint8Array(await blob.arrayBuffer());
   }
 
-  return acumulado;
+  const response = new Response(blob);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 async function callClaudeAPI(file: File, prompt: string): Promise<string> {
@@ -1257,6 +1406,10 @@ export const __private__ = {
   detectarEstadoCivil,
   detectarCCAA,
   detectarFechaNacimiento,
+  esTimeoutOCR,
+  extraerCasillasDeterministasDesdeTexto,
+  tieneDatosMinimosParaImportar,
+  extraerCasillasVisualesConFallback,
 };
 
 function declaracionVacia(): DeclaracionIRPF {
