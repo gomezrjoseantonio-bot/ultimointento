@@ -258,7 +258,7 @@ interface BloquePaginasPdf {
 
 const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
-const MIN_CASILLAS_PARSING_OK = 12;
+const MIN_CASILLAS_PARSING_OK = 80;
 const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
@@ -396,10 +396,7 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 
 function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
-  const patrones = [
-    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
-    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
-  ];
+  const patrones = obtenerPatronesCasillasNumericas();
 
   for (const pagina of paginasTexto) {
     const lineas = pagina
@@ -418,7 +415,8 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
           const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
 
           if (!Number.isNaN(valor)) {
-            resultado[casilla] = valor;
+            const knownKeys = new Set([...Object.keys(resultado), casilla]);
+            resultado[casilla] = seleccionarMejorValorCasilla(casilla, resultado[casilla], valor, knownKeys);
           }
 
           match = patron.exec(linea);
@@ -429,9 +427,47 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
 
   return mergeCasillasRaw(
     resultado,
+    extraerCasillasDeterministasDesdeTextoPlano(paginasTexto),
     extraerMetadatosDesdeTexto(paginasTexto),
     extraerCasillasRepetiblesDesdeTexto(paginasTexto),
   );
+}
+
+function obtenerPatronesCasillasNumericas(): [RegExp, RegExp] {
+  return [
+    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
+  ];
+}
+
+function extraerCasillasDeterministasDesdeTextoPlano(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const patrones = obtenerPatronesCasillasNumericas();
+
+  for (const pagina of paginasTexto) {
+    const textoPlano = pagina.replace(/\s+/g, ' ').trim();
+    if (!textoPlano) continue;
+
+    for (const patron of patrones) {
+      patron.lastIndex = 0;
+
+      let match: RegExpExecArray | null = patron.exec(textoPlano);
+      while (match) {
+        const casilla = patron === patrones[0] ? match[3] : match[2];
+        const valorRaw = patron === patrones[0] ? match[2] : match[3];
+        const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
+
+        if (!Number.isNaN(valor)) {
+          const knownKeys = new Set([...Object.keys(resultado), casilla]);
+          resultado[casilla] = seleccionarMejorValorCasilla(casilla, resultado[casilla], valor, knownKeys);
+        }
+
+        match = patron.exec(textoPlano);
+      }
+    }
+  }
+
+  return resultado;
 }
 
 function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
@@ -551,7 +587,9 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
         if (!casillasRepetibles.has(casilla)) continue;
         const valor = Number.parseFloat(match[2].replace(/\./g, '').replace(',', '.'));
         if (!Number.isNaN(valor)) {
-          setSufijo(casilla, valor);
+          const sufijo = `${casilla}_${indiceInmuebleActual}`;
+          const knownKeys = new Set([...Object.keys(resultado), sufijo, casilla]);
+          resultado[sufijo] = seleccionarMejorValorCasilla(sufijo, resultado[sufijo], valor, knownKeys);
         }
       }
 
@@ -660,14 +698,90 @@ export function dividirTextoPorPaginas(
 
 function mergeCasillasRaw(...sources: CasillasRaw[]): CasillasRaw {
   const merged: CasillasRaw = {};
+  const knownKeys = new Set(
+    sources.flatMap((source) => Object.keys(source)),
+  );
 
   for (const source of sources) {
     for (const [key, value] of Object.entries(source)) {
-      merged[key] = value;
+      merged[key] = seleccionarMejorValorCasilla(key, merged[key], value, knownKeys);
     }
   }
 
   return merged;
+}
+
+function seleccionarMejorValorCasilla(
+  key: string,
+  actual: number | string | undefined,
+  candidato: number | string,
+  knownKeys: Set<string>,
+): number | string {
+  if (actual === undefined) {
+    return candidato;
+  }
+
+  if (actual === candidato) {
+    return actual;
+  }
+
+  if (typeof actual === 'number' && typeof candidato === 'number') {
+    const scoreActual = puntuarValorNumericoCasilla(key, actual, knownKeys);
+    const scoreCandidato = puntuarValorNumericoCasilla(key, candidato, knownKeys);
+
+    if (scoreCandidato > scoreActual) {
+      return candidato;
+    }
+
+    if (scoreActual > scoreCandidato) {
+      return actual;
+    }
+
+    return candidato;
+  }
+
+  if (typeof actual === 'string' && typeof candidato === 'string') {
+    const actualTieneMasInfo = actual.length >= candidato.length;
+    return actualTieneMasInfo ? actual : candidato;
+  }
+
+  return candidato;
+}
+
+function puntuarValorNumericoCasilla(
+  key: string,
+  value: number,
+  knownKeys: Set<string>,
+): number {
+  let score = 0;
+  const abs = Math.abs(value);
+
+  if (!Number.isFinite(value)) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  if (!Number.isInteger(value)) {
+    score += 3;
+  }
+
+  if (abs >= 1000) {
+    score += 2;
+  }
+
+  if (abs === 0) {
+    score += 1;
+  }
+
+  if (Number.isInteger(value) && abs >= 1 && abs <= 9999) {
+    const padded = String(abs).padStart(4, '0');
+    if (padded === key) {
+      score -= 6;
+    } else if (knownKeys.has(padded)) {
+      score -= 4;
+    }
+  }
+
+  return score;
 }
 
 async function extraerCasillasDesdeTextoPorBloques(
