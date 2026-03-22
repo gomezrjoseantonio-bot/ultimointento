@@ -2,8 +2,9 @@ interface ScanChatPayload {
   tipo: 'scan' | 'scan_irpf';
   imagen?: string;
   imagenes?: string[];
-  mimeType: string;
+  mimeType?: string;
   prompt?: string;
+  texto?: string;
 }
 
 interface CallScanChatOptions {
@@ -94,6 +95,41 @@ export const callScanChatImages = async (payload: {
       imagenes: payload.imagenes,
       mimeType: payload.mimeType || 'image/jpeg',
       ...(payload.prompt ? { prompt: payload.prompt } : {}),
+    }),
+  });
+
+  const responseText = await response.text();
+  let data: ScanChatResponse = { ok: false, error: 'Respuesta inválida del servicio de escaneo' };
+
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    if (!response.ok) {
+      throw new Error(`OCR error ${response.status}: ${responseText.slice(0, 180)}`);
+    }
+    throw new Error('El servicio de escaneo devolvió una respuesta no JSON');
+  }
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || `OCR error ${response.status}`);
+  }
+
+  return data;
+};
+
+
+export const callScanChatText = async (
+  tipo: ScanChatPayload['tipo'],
+  prompt: string,
+): Promise<ScanChatResponse> => {
+  const response = await fetch('/.netlify/functions/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      tipo,
+      texto: prompt,
     }),
   });
 

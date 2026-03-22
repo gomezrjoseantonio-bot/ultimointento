@@ -1,4 +1,4 @@
-import { callScanChat } from './scanChatService';
+import { callScanChat, callScanChatText } from './scanChatService';
 import type {
   DeclaracionActividad,
   DeclaracionBasesYCuotas,
@@ -130,18 +130,12 @@ export async function parsearDeclaracionAEAT(
   const warnings: string[] = [];
 
   try {
-    onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF completo para análisis...' });
-    const totalPaginas = await obtenerNumeroPaginasPDF(file);
+    onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF para análisis...' });
+    const { totalPaginas, textoExtraido } = await prepararPdfParaAnalisis(file);
 
-    onProgress?.({
-      fase: 'enviando',
-      mensaje: totalPaginas > 0
-        ? `Enviando PDF completo (${totalPaginas} páginas) a Claude...`
-        : 'Enviando PDF completo a Claude...',
-      totalPaginas: totalPaginas || undefined,
-    });
-
-    const casillasRaw = await extraerCasillasConClaude(file, totalPaginas, onProgress);
+    const casillasRaw = textoTieneContenidoRelevante(textoExtraido)
+      ? await extraerCasillasDesdeTexto(textoExtraido, totalPaginas, onProgress)
+      : await extraerCasillasConClaude(file, totalPaginas, onProgress);
     if (Object.keys(casillasRaw).length === 0) {
       return resultadoError('Claude no pudo extraer casillas del PDF');
     }
@@ -176,7 +170,11 @@ export async function parsearDeclaracionAEAT(
     };
   } catch (error) {
     console.error('[AEATParser] Error:', error);
-    return resultadoError(`Error procesando PDF: ${error instanceof Error ? error.message : 'desconocido'}`);
+    const rawMessage = error instanceof Error ? error.message : 'desconocido';
+    const friendlyMessage = /timeout|504|inactivity/i.test(rawMessage)
+      ? 'El análisis del PDF ha superado el tiempo límite. Prueba con una versión menos pesada o rellena las casillas manualmente.'
+      : `Error procesando PDF: ${rawMessage}`;
+    return resultadoError(friendlyMessage);
   }
 }
 
@@ -195,18 +193,93 @@ function resultadoError(mensaje: string): ExtraccionCompleta {
   };
 }
 
-async function obtenerNumeroPaginasPDF(file: File): Promise<number> {
+interface PdfPreparado {
+  totalPaginas: number;
+  textoExtraido: string;
+}
+
+async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {
     const { pdfjs } = await import('react-pdf');
     pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
 
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    return pdf.numPages;
+    const paginasTexto: string[] = [];
+
+    for (let index = 1; index <= pdf.numPages; index += 1) {
+      const page = await pdf.getPage(index);
+      const content = await page.getTextContent();
+      const textoPagina = content.items
+        .map((item) => ('str' in item ? String(item.str ?? '').trim() : ''))
+        .filter(Boolean)
+        .join(' ');
+
+      if (textoPagina) {
+        paginasTexto.push(textoPagina);
+      }
+    }
+
+    return {
+      totalPaginas: pdf.numPages,
+      textoExtraido: paginasTexto.join('\n\n'),
+    };
   } catch (error) {
-    console.warn('[AEATParser] No se pudo leer el número de páginas del PDF:', error);
-    return 0;
+    console.warn('[AEATParser] No se pudo preparar el PDF para análisis:', error);
+    return { totalPaginas: 0, textoExtraido: '' };
   }
+}
+
+function textoTieneContenidoRelevante(texto: string): boolean {
+  const normalized = texto.replace(/\s+/g, ' ').trim();
+  if (normalized.length < 400) return false;
+
+  const casillasDetectadas = normalized.match(/\b\d{4}\b/g) ?? [];
+  return casillasDetectadas.length >= 25;
+}
+
+
+async function extraerCasillasDesdeTexto(
+  textoExtraido: string,
+  totalPaginas: number,
+  onProgress?: OnProgress,
+): Promise<CasillasRaw> {
+  onProgress?.({
+    fase: 'enviando',
+    mensaje: totalPaginas > 0
+      ? `Analizando texto del PDF (${totalPaginas} páginas) sin OCR pesado...`
+      : 'Analizando texto del PDF sin OCR pesado...',
+    totalPaginas: totalPaginas || undefined,
+  });
+
+  onProgress?.({
+    fase: 'procesando',
+    pagina: totalPaginas || undefined,
+    totalPaginas: totalPaginas || undefined,
+    mensaje: 'Extrayendo casillas desde el texto del PDF...',
+  });
+
+  const prompt = construirPromptAEATTexto(textoExtraido);
+  const response = await callClaudeTextAPI(prompt);
+
+  onProgress?.({
+    fase: 'procesando',
+    pagina: totalPaginas || undefined,
+    totalPaginas: totalPaginas || undefined,
+    mensaje: 'Procesando casillas detectadas en el texto...',
+  });
+
+  return parsearRespuestaClaude(response);
+}
+
+async function callClaudeTextAPI(prompt: string): Promise<string> {
+  const response = await callScanChatText('scan_irpf', prompt);
+
+  if (typeof response.extraido === 'string') {
+    return response.extraido;
+  }
+
+  return JSON.stringify(response.extraido ?? {});
 }
 
 async function extraerCasillasConClaude(
@@ -244,6 +317,26 @@ async function callClaudeAPI(file: File, prompt: string): Promise<string> {
   }
 
   return JSON.stringify(response.extraido ?? {});
+}
+
+function construirPromptAEATTexto(textoExtraido: string): string {
+  return `Estás analizando el TEXTO ya extraído de una declaración completa de la Renta española (Modelo 100 — IRPF).
+
+TAREA: Extrae TODAS las casillas con su número y valor. Cada casilla tiene un número de 4 dígitos (como 0003, 0435, 0670, 1224) seguido de un valor numérico o de texto.
+
+FORMATO DE RESPUESTA: Devuelve SOLO un JSON válido, sin markdown, sin explicación, sin preámbulo. El JSON debe ser un objeto donde:
+- La clave es el número de casilla (string de 4 dígitos, ej: "0003")
+- El valor es el número (como number, sin puntos de miles — usa punto decimal) o texto (string)
+
+REGLAS:
+1. Extrae ABSOLUTAMENTE TODAS las casillas que veas, sin excepción.
+2. Si una casilla aparece varias veces, conserva el valor final consolidado de la declaración.
+3. Mantén el signo negativo cuando aplique.
+4. No inventes casillas ni valores; si no aparece, no la incluyas.
+5. Detecta también metadatos como NIF, nombre, ejercicio, justificante y CSV si aparecen en casillas o encabezados.
+
+TEXTO DEL PDF:
+${textoExtraido}`;
 }
 
 function construirPromptAEAT(): string {
