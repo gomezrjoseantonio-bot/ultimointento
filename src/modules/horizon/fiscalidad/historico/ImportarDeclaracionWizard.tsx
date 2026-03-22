@@ -452,6 +452,34 @@ function normalizarCasillasExtraidas(raw: Record<string, number | string>): Casi
     .sort((a, b) => a.numero.localeCompare(b.numero));
 }
 
+async function archivarPdfImportado(
+  uploadedFile: File | null,
+  ejercicioImportacion: number,
+  metodo: MetodoEntrada,
+  totalCasillas: number,
+): Promise<void> {
+  if (!uploadedFile) return;
+
+  await saveDocumentWithBlob({
+    filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
+    type: 'declaracion_irpf',
+    content: uploadedFile,
+    size: uploadedFile.size,
+    lastModified: uploadedFile.lastModified,
+    uploadDate: new Date().toISOString(),
+    metadata: {
+      title: `Declaración IRPF ${ejercicioImportacion}`,
+      description: 'PDF archivado desde el wizard de importación de declaraciones.',
+      ejercicio: ejercicioImportacion,
+      origen: 'importacion_wizard',
+      fechaImportacion: new Date().toISOString(),
+      casillasExtraidas: totalCasillas,
+      metodoExtraccion: metodo === 'pdf' ? 'ocr' : 'texto',
+      status: 'Archivado',
+    },
+  });
+}
+
 const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
@@ -464,6 +492,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analizandoEntidades, setAnalizandoEntidades] = useState(false);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
@@ -498,6 +527,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }
 
       const normalizedCasillas = normalizarCasillasExtraidas(extraccion.casillasRaw);
+      setResultadoAnalisis(null);
       const ejercicioDetectado = extraccion.meta.ejercicio > 0 ? extraccion.meta.ejercicio : ejercicio;
       setCasillasExtraidas(normalizedCasillas);
       setEjercicio(ejercicioDetectado);
@@ -537,6 +567,45 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     } finally {
       setParsing(false);
       setProgreso(null);
+    }
+  };
+
+  const handleAnalizarEntidades = async () => {
+    if (!resultadoExtraccion?.exito) {
+      setStep(4);
+      return;
+    }
+
+    setAnalizandoEntidades(true);
+    try {
+      const analisis = await analizarDeclaracion(resultadoExtraccion);
+      setResultadoAnalisis(analisis);
+      setStep(4);
+    } catch (error) {
+      console.error('Error analizando entidades de la declaración', error);
+      toast.error(error instanceof Error ? error.message : 'No se pudieron analizar las entidades detectadas');
+    } finally {
+      setAnalizandoEntidades(false);
+    }
+  };
+
+  const handleCompleteEntityImport = async () => {
+    const ejercicioImportacion = resultadoExtraccion?.exito && resultadoExtraccion.meta.ejercicio > 0
+      ? resultadoExtraccion.meta.ejercicio
+      : data.ejercicio;
+
+    try {
+      await archivarPdfImportado(
+        uploadedFile,
+        ejercicioImportacion,
+        metodo,
+        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
+      );
+      await onImported();
+      onClose();
+    } catch (error) {
+      console.error('Error archivando el PDF importado', error);
+      toast.error(`La importación se completó, pero no se pudo archivar el PDF: ${error instanceof Error ? error.message : 'desconocido'}`);
     }
   };
 
@@ -607,26 +676,12 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         });
       }
 
-      if (uploadedFile) {
-        await saveDocumentWithBlob({
-          filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
-          type: 'declaracion_irpf',
-          content: uploadedFile,
-          size: uploadedFile.size,
-          lastModified: uploadedFile.lastModified,
-          uploadDate: new Date().toISOString(),
-          metadata: {
-            title: `Declaración IRPF ${ejercicioImportacion}`,
-            description: 'PDF archivado desde el wizard de importación de declaraciones.',
-            ejercicio: ejercicioImportacion,
-            origen: 'importacion_wizard',
-            fechaImportacion: new Date().toISOString(),
-            casillasExtraidas: resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
-            metodoExtraccion: metodo === 'pdf' ? 'ocr' : 'texto',
-            status: 'Archivado',
-          },
-        });
-      }
+      await archivarPdfImportado(
+        uploadedFile,
+        ejercicioImportacion,
+        metodo,
+        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
+      );
 
       toast.success(`Declaración ${ejercicioImportacion} importada y archivada`);
       await onImported();
@@ -838,7 +893,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
               {step === 1 ? 'Cancelar' : 'Atrás'}
             </button>
 
-            {step < 3 ? (
+          {step < 4 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
               <button
                 type="button"
                 disabled={step === 2 && !canContinueStep2}
@@ -859,7 +915,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                   opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
                 }}
               >
-                Continuar
+                {step === 1 ? 'Cancelar' : 'Atrás'}
               </button>
             ) : reconciliacion ? (
               <button
