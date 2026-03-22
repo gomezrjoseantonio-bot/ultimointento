@@ -219,6 +219,28 @@ describe('helpers de metadatos AEAT', () => {
   });
 });
 
+describe('validación de cabecera PDF', () => {
+  test('localiza la cabecera PDF aunque existan bytes basura al inicio', async () => {
+    const bytes = new Uint8Array([
+      0x20, 0x20, 0x0a,
+      0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37,
+    ]);
+
+    expect(__private__.buscarCabeceraPdf(bytes)).toBe(3);
+
+    const file = new File([bytes], 'declaracion.pdf', { type: 'application/pdf' });
+    const normalized = await __private__.leerBytesPdfNormalizados(file);
+
+    expect(Array.from(normalized.slice(0, 5))).toEqual([0x25, 0x50, 0x44, 0x46, 0x2d]);
+  });
+
+  test('rechaza html o contenido no pdf con un error legible', async () => {
+    const file = new File(['<!doctype html><html><body>Error</body></html>'], 'declaracion.pdf', { type: 'application/pdf' });
+
+    await expect(__private__.leerBytesPdfNormalizados(file)).rejects.toThrow(/archivo_no_pdf/i);
+  });
+});
+
 describe('fallback OCR AEAT', () => {
   beforeEach(() => {
     mockedCallScanChat.mockReset();

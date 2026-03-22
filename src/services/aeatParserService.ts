@@ -212,8 +212,11 @@ export async function parsearDeclaracionAEAT(
   } catch (error) {
     console.error('[AEATParser] Error:', error);
     const rawMessage = error instanceof Error ? error.message : 'desconocido';
+    const mensajePdfInvalido = /no pdf header found|archivo_no_pdf|invalid pdf|missing pdf/i.test(rawMessage);
     const friendlyMessage = /timeout|504|inactivity/i.test(rawMessage)
       ? 'El análisis del PDF ha superado el tiempo límite incluso tras reintentar por bloques. Revisa la conexión o usa el formulario manual como contingencia.'
+      : mensajePdfInvalido
+        ? 'El archivo seleccionado no parece ser un PDF válido de la AEAT. Vuelve a descargarlo y asegúrate de subir el documento original en PDF.'
       : `Error procesando PDF: ${rawMessage}`;
     return resultadoError(friendlyMessage);
   }
@@ -263,9 +266,8 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
     const { pdfjs } = await import('react-pdf');
     pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const bytesPdf = new Uint8Array(arrayBuffer);
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const bytesPdf = await leerBytesPdfNormalizados(file);
+    const pdf = await pdfjs.getDocument({ data: bytesPdf }).promise;
     const paginasTexto: string[] = [];
 
     for (let index = 1; index <= pdf.numPages; index += 1) {
@@ -323,8 +325,65 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
     };
   } catch (error) {
     console.warn('[AEATParser] No se pudo preparar el PDF para análisis:', error);
-    return { totalPaginas: 0, textoExtraido: '', paginasTexto: [] };
+    throw error;
   }
+}
+
+async function leerBytesPdfNormalizados(file: File): Promise<Uint8Array> {
+  const arrayBuffer = await leerArrayBufferDesdeBlob(file);
+  const bytes = new Uint8Array(arrayBuffer);
+
+  if (bytes.length === 0) {
+    throw new Error('archivo_no_pdf: archivo vacío');
+  }
+
+  const headerIndex = buscarCabeceraPdf(bytes);
+  if (headerIndex === -1) {
+    const textoInicial = bytesAAscii(bytes.slice(0, Math.min(bytes.length, 256)))
+      .trim()
+      .toLowerCase();
+
+    if (textoInicial.startsWith('<!doctype html') || textoInicial.startsWith('<html')) {
+      throw new Error('archivo_no_pdf: se recibió HTML en lugar de PDF');
+    }
+
+    throw new Error('archivo_no_pdf: no se encontró una cabecera PDF válida');
+  }
+
+  return headerIndex === 0 ? bytes : bytes.slice(headerIndex);
+}
+
+async function leerArrayBufferDesdeBlob(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return blob.arrayBuffer();
+  }
+
+  const response = new Response(blob);
+  return response.arrayBuffer();
+}
+
+function bytesAAscii(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((value) => (value >= 32 && value <= 126 ? String.fromCharCode(value) : ' '))
+    .join('');
+}
+
+function buscarCabeceraPdf(bytes: Uint8Array): number {
+  const limite = Math.max(0, Math.min(bytes.length - 4, 2048));
+
+  for (let index = 0; index <= limite; index += 1) {
+    if (
+      bytes[index] === 0x25
+      && bytes[index + 1] === 0x50
+      && bytes[index + 2] === 0x44
+      && bytes[index + 3] === 0x46
+      && bytes[index + 4] === 0x2D
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
 }
 
 function textoTieneContenidoRelevante(texto: string): boolean {
@@ -1568,11 +1627,13 @@ function detectarCCAA(raw: CasillasRaw): string {
 }
 
 export const __private__ = {
+  buscarCabeceraPdf,
   detectarEstadoCivil,
   detectarCCAA,
   detectarFechaNacimiento,
   esTimeoutOCR,
   extraerCasillasDeterministasDesdeTexto,
+  leerBytesPdfNormalizados,
   tieneDatosMinimosParaImportar,
   extraerCasillasVisualesConFallback,
 };
