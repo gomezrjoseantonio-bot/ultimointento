@@ -2339,7 +2339,7 @@ export const initDB = async () => {
         }
       },
       blocked() {
-        console.warn('Database upgrade blocked by another connection');
+        console.warn('[DB] Upgrade blocked by another connection. Recarga las otras pestañas de ATLAS para completar la migración.');
       },
       blocking() {
         console.warn('This connection is blocking a database upgrade');
