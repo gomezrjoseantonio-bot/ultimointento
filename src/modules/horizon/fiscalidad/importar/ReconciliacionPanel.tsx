@@ -177,7 +177,7 @@ export default function ReconciliacionPanel({ reconciliacion, onComplete, onCanc
           disabled={ejecutando}
           style={secondaryButtonStyle}
         >
-          Atrás
+          Solo guardar declaración
         </button>
         <button
           type="button"
@@ -185,7 +185,7 @@ export default function ReconciliacionPanel({ reconciliacion, onComplete, onCanc
           disabled={ejecutando}
           style={primaryButtonStyle}
         >
-          {ejecutando ? 'Aplicando…' : 'Aplicar cambios seleccionados'}
+          {ejecutando ? 'Aplicando…' : 'Aplicar cambios e importar'}
         </button>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, FileText, Upload, X } from 'lucide-react';
+import { AlertTriangle, FileText, Home, RefreshCw, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CasillaInput from '../../../../components/fiscal/ui/CasillaInput';
 import { saveDocumentWithBlob } from '../../../../services/db';
@@ -21,7 +21,7 @@ import { generarReconciliacion, requiereReconciliacion } from '../../../../servi
 import ReconciliacionPanel from '../importar/ReconciliacionPanel';
 
 type MetodoEntrada = 'formulario' | 'pdf';
-type VerificationTab = 'personal' | 'trabajo' | 'inmuebles' | 'actividad' | 'capital' | 'bases' | 'arrastres' | 'raw';
+type ReviewTab = 'entidades' | 'reconciliacion' | 'raw';
 
 interface ImportarDeclaracionWizardProps {
   onClose: () => void;
@@ -44,8 +44,8 @@ const overlayStyle: React.CSSProperties = {
 
 const panelStyle: React.CSSProperties = {
   background: 'var(--surface-card, #fff)',
-  borderRadius: '16px',
-  width: 'min(1120px, 100%)',
+  borderRadius: '24px',
+  width: 'min(1280px, 100%)',
   maxHeight: 'calc(100vh - 2rem)',
   overflow: 'auto',
   border: '1px solid var(--hz-neutral-300)',
@@ -95,16 +95,58 @@ const summaryGridStyle: React.CSSProperties = {
   gap: '0.75rem',
 };
 
-const tabButtonStyle = (active: boolean): React.CSSProperties => ({
-  border: '1px solid',
-  borderColor: active ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)',
-  borderRadius: '999px',
-  background: active ? 'rgba(24, 95, 165, 0.10)' : 'white',
-  color: active ? 'var(--atlas-blue)' : 'var(--atlas-navy-1)',
-  padding: '0.5rem 0.9rem',
-  cursor: 'pointer',
-  fontWeight: 600,
+const shellCardStyle: React.CSSProperties = {
+  background: '#fff',
+  border: '1px solid #D7E1EC',
+  borderRadius: '24px',
+  padding: '2rem',
+  display: 'grid',
+  gap: '1.5rem',
+};
+
+const stepEyebrowStyle: React.CSSProperties = {
+  textAlign: 'center',
   fontSize: '0.85rem',
+  fontWeight: 700,
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase',
+  color: 'var(--hz-neutral-700)',
+};
+
+const sectionSubtitleStyle: React.CSSProperties = {
+  margin: '0.35rem 0 0',
+  color: 'var(--hz-neutral-700)',
+  fontSize: '0.95rem',
+};
+
+const progressRailStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: '0.4rem',
+};
+
+const uploadDropzoneStyle: React.CSSProperties = {
+  border: '2px dashed #91A4BC',
+  borderRadius: '20px',
+  minHeight: '260px',
+  display: 'grid',
+  placeItems: 'center',
+  textAlign: 'center',
+  padding: '2rem',
+  color: 'var(--atlas-navy-1)',
+  background: 'linear-gradient(180deg, rgba(246,249,252,0.9) 0%, rgba(255,255,255,1) 100%)',
+  cursor: 'pointer',
+};
+
+const tabButtonStyle = (active: boolean): React.CSSProperties => ({
+  border: 'none',
+  borderBottom: active ? '3px solid var(--atlas-blue)' : '3px solid transparent',
+  background: 'transparent',
+  color: active ? 'var(--atlas-blue)' : 'var(--hz-neutral-700)',
+  padding: '0.7rem 0.2rem',
+  cursor: 'pointer',
+  fontWeight: active ? 700 : 500,
+  fontSize: '1rem',
 });
 
 const WizardForm: React.FC<{
@@ -252,31 +294,38 @@ const KeyValueGrid: React.FC<{ rows: Array<{ label: string; value: React.ReactNo
   </div>
 );
 
-const VerificacionExtraccion: React.FC<{ resultado: ExtraccionCompleta }> = ({ resultado }) => {
-  const [tab, setTab] = useState<VerificationTab>('personal');
-  const { declaracion, casillasRaw, inmueblesDetalle, arrastres, meta } = resultado;
+const VerificacionExtraccion: React.FC<{
+  resultado: ExtraccionCompleta;
+  reconciliacion: ReconciliacionCompleta | null;
+  reconciliacionDisponible: boolean;
+  onAbrirReconciliacion: () => void;
+}> = ({ resultado, reconciliacion, reconciliacionDisponible, onAbrirReconciliacion }) => {
+  const [tab, setTab] = useState<ReviewTab>('entidades');
+  const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
 
-  const tabs: Array<{ key: VerificationTab; label: string }> = [
-    { key: 'personal', label: 'Personal' },
-    { key: 'trabajo', label: 'Trabajo' },
-    { key: 'inmuebles', label: `Inmuebles (${inmueblesDetalle.length})` },
-    { key: 'actividad', label: `Actividad (${declaracion.actividades.length})` },
-    { key: 'capital', label: 'Capital / G-P' },
-    { key: 'bases', label: 'Bases y cuotas' },
-    { key: 'arrastres', label: 'Arrastres' },
-    { key: 'raw', label: 'Raw (debug)' },
+  const arrastresCount = arrastres.gastos0105_0106.length + arrastres.perdidasAhorro.length;
+  const reconciliacionCount = reconciliacion
+    ? reconciliacion.estadisticas.diferencias + reconciliacion.estadisticas.sinDatosAtlas
+    : 0;
+  const inmueblesPrincipales = inmueblesDetalle.filter((item) => !item.datos.esAccesorio);
+  const inmueblesAccesorios = inmueblesDetalle.filter((item) => item.datos.esAccesorio);
+
+  const tabs: Array<{ key: ReviewTab; label: string }> = [
+    { key: 'entidades', label: `Entidades (${inmueblesDetalle.length + arrastresCount})` },
+    { key: 'reconciliacion', label: `Reconciliación (${reconciliacionCount})` },
+    { key: 'raw', label: 'Casillas raw' },
   ];
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
+    <div style={{ display: 'grid', gap: '1.25rem' }}>
       <div style={summaryGridStyle}>
-        <KpiCard label="Casillas extraídas" value={resultado.totalCasillas} />
-        <KpiCard label="Resultado" value={formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion)} />
+        <KpiCard label="Casillas" value={resultado.totalCasillas} />
         <KpiCard label="Inmuebles" value={inmueblesDetalle.length} />
-        <KpiCard label="Arrastres" value={arrastres.gastos0105_0106.length + arrastres.perdidasAhorro.length} />
+        <KpiCard label="Arrastres" value={arrastresCount} />
+        <KpiCard label="Resultado" value={<span style={{ color: '#C52828' }}>{formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion)}</span>} />
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--hz-neutral-300)' }}>
         {tabs.map((item) => (
           <button key={item.key} type="button" style={tabButtonStyle(tab === item.key)} onClick={() => setTab(item.key)}>
             {item.label}
@@ -284,162 +333,155 @@ const VerificacionExtraccion: React.FC<{ resultado: ExtraccionCompleta }> = ({ r
         ))}
       </div>
 
-      <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '14px', padding: '1rem', background: 'white' }}>
-        {tab === 'personal' && (
-          <KeyValueGrid rows={[
-            { label: 'Ejercicio', value: meta.ejercicio },
-            { label: 'Modelo', value: meta.modelo },
-            { label: 'NIF', value: meta.nif },
-            { label: 'Nombre', value: meta.nombre },
-            { label: 'Estado civil', value: declaracion.personal?.estadoCivil },
-            { label: 'Comunidad autónoma', value: declaracion.personal?.comunidadAutonoma },
-            { label: 'Fecha nacimiento', value: declaracion.personal?.fechaNacimiento },
-            { label: 'Presentación', value: meta.fechaPresentacion },
-            { label: 'Justificante', value: meta.numeroJustificante },
-            { label: 'CSV', value: meta.codigoVerificacion },
-          ]} />
-        )}
+      {tab === 'entidades' && (
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          <SectionListCard
+            title="Inmuebles"
+            Icon={Home}
+            badge={`${inmueblesPrincipales.length} principales · ${inmueblesAccesorios.length} accesorios`}
+            items={[
+              ...inmueblesPrincipales.map((inmueble) => ({
+                title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Inmueble ${inmueble.datos.orden}`,
+                subtitle: [inmueble.datos.referenciaCatastral, formatCurrency(inmueble.datos.ingresosIntegros), `${inmueble.datos.diasArrendado} días`].filter(Boolean).join(' · '),
+                statusLabel: inmueble.datos.ingresosIntegros > 0 ? 'Crear' : 'Revisar',
+                statusTone: inmueble.datos.ingresosIntegros > 0 ? 'info' : 'warning',
+              })),
+              ...inmueblesAccesorios.map((inmueble) => ({
+                title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Accesorio ${inmueble.datos.orden}`,
+                subtitle: `Accesorio → ${inmueble.datos.refCatastralPrincipal || 'principal por resolver'}`,
+                statusLabel: 'Accesorio',
+                statusTone: 'muted' as const,
+              })),
+            ]}
+            emptyText="No se detectaron inmuebles."
+          />
 
-        {tab === 'trabajo' && (
-          <KeyValueGrid rows={[
-            { label: 'Retribuciones dinerarias', value: formatCurrency(declaracion.trabajo.retribucionesDinerarias) },
-            { label: 'Retribución en especie', value: formatCurrency(declaracion.trabajo.retribucionEspecie) },
-            { label: 'Ingresos a cuenta', value: formatCurrency(declaracion.trabajo.ingresosACuenta) },
-            { label: 'Contribuciones PP empresa', value: formatCurrency(declaracion.trabajo.contribucionesPPEmpresa) },
-            { label: 'Total ingresos íntegros', value: formatCurrency(declaracion.trabajo.totalIngresosIntegros) },
-            { label: 'Cotización SS', value: formatCurrency(declaracion.trabajo.cotizacionSS) },
-            { label: 'Rendimiento neto', value: formatCurrency(declaracion.trabajo.rendimientoNeto) },
-            { label: 'Rendimiento neto reducido', value: formatCurrency(declaracion.trabajo.rendimientoNetoReducido) },
-            { label: 'Retenciones trabajo', value: formatCurrency(declaracion.trabajo.retencionesTrabajoTotal) },
-          ]} />
-        )}
+          <SectionListCard
+            title="Arrastres fiscales"
+            Icon={RefreshCw}
+            badge={arrastresCount > 0 ? `${formatCurrency(
+              arrastres.gastos0105_0106.reduce((acc, item) => acc + item.pendienteFuturo, 0)
+              + arrastres.perdidasAhorro.reduce((acc, item) => acc + item.pendienteFuturo, 0),
+            )} pendientes` : 'Sin pendientes'}
+            items={[
+              ...arrastres.gastos0105_0106.map((item) => ({
+                title: `Gastos 0105+0106 · ${item.referenciaCatastral || 'Sin referencia'}`,
+                subtitle: `${formatCurrency(item.generadoEsteEjercicio || item.pendienteFuturo)} generados · Caduca ${item.ejercicioOrigen + 4}`,
+                statusLabel: 'Pendiente',
+                statusTone: 'warning' as const,
+              })),
+              ...arrastres.perdidasAhorro.map((item) => ({
+                title: `Pérdidas ${item.tipo} ${item.ejercicioOrigen}`,
+                subtitle: `${formatCurrency(item.pendienteFuturo)} pendientes · Caduca ${item.ejercicioOrigen + 4}`,
+                statusLabel: 'Pendiente',
+                statusTone: 'warning' as const,
+              })),
+            ]}
+            emptyText="No se detectaron arrastres pendientes."
+          />
+        </div>
+      )}
 
-        {tab === 'inmuebles' && (
-          <div style={{ display: 'grid', gap: '0.9rem' }}>
-            {inmueblesDetalle.length === 0 ? <p style={{ margin: 0 }}>No se detectaron inmuebles.</p> : inmueblesDetalle.map((inmueble) => (
-              <div key={inmueble.datos.orden} style={{ border: '1px solid var(--hz-neutral-200)', borderRadius: '12px', padding: '1rem', background: 'var(--hz-neutral-100)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.75rem' }}>
-                  <strong style={{ color: 'var(--atlas-navy-1)' }}>Inmueble {inmueble.datos.orden}</strong>
-                  <span style={{ color: 'var(--hz-neutral-700)' }}>{inmueble.datos.uso}</span>
-                </div>
-                <KeyValueGrid rows={[
-                  { label: 'Referencia catastral', value: inmueble.datos.referenciaCatastral },
-                  { label: 'Dirección', value: inmueble.datos.direccion },
-                  { label: 'Propiedad', value: `${inmueble.datos.porcentajePropiedad}%` },
-                  { label: 'Días arrendado', value: inmueble.datos.diasArrendado },
-                  { label: 'Días a disposición', value: inmueble.datos.diasDisposicion },
-                  { label: 'Ingresos íntegros', value: formatCurrency(inmueble.datos.ingresosIntegros) },
-                  { label: 'Arrastres generados', value: formatCurrency(inmueble.datos.arrastresGenerados) },
-                  { label: 'Amortización inmueble', value: formatCurrency(inmueble.datos.amortizacionInmueble) },
-                  { label: 'Amortización muebles', value: formatCurrency(inmueble.datos.amortizacionMuebles) },
-                  { label: 'Rendimiento neto', value: formatCurrency(inmueble.datos.rendimientoNeto) },
-                  { label: 'Reducción', value: formatCurrency(inmueble.datos.reduccion) },
-                  { label: 'Rendimiento neto reducido', value: formatCurrency(inmueble.datos.rendimientoNetoReducido) },
-                  { label: 'Situación', value: inmueble.extras.situacion },
-                  { label: 'Urbana', value: inmueble.extras.urbana ? 'Sí' : 'No' },
-                ]} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'actividad' && (
-          <div style={{ display: 'grid', gap: '0.9rem' }}>
-            {declaracion.actividades.length === 0 ? <p style={{ margin: 0 }}>No se detectaron actividades económicas.</p> : declaracion.actividades.map((actividad, index) => (
-              <div key={`${actividad.epigrafeIAE}-${index}`} style={{ border: '1px solid var(--hz-neutral-200)', borderRadius: '12px', padding: '1rem', background: 'var(--hz-neutral-100)' }}>
-                <KeyValueGrid rows={[
-                  { label: 'Epígrafe IAE', value: actividad.epigrafeIAE },
-                  { label: 'Tipo actividad', value: actividad.tipoActividad },
-                  { label: 'Modalidad', value: actividad.modalidad },
-                  { label: 'Ingresos', value: formatCurrency(actividad.ingresos) },
-                  { label: 'Gastos', value: formatCurrency(actividad.gastos) },
-                  { label: 'Provisión DJ', value: formatCurrency(actividad.provisionDificilJustificacion) },
-                  { label: 'Rendimiento neto', value: formatCurrency(actividad.rendimientoNeto) },
-                  { label: 'Rendimiento neto reducido', value: formatCurrency(actividad.rendimientoNetoReducido) },
-                  { label: 'Retenciones', value: formatCurrency(actividad.retencionesActividad) },
-                ]} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === 'capital' && (
-          <KeyValueGrid rows={[
-            { label: 'Intereses cuentas', value: formatCurrency(declaracion.capitalMobiliario.interesesCuentas) },
-            { label: 'Otros rendimientos', value: formatCurrency(declaracion.capitalMobiliario.otrosRendimientos) },
-            { label: 'Total ingresos íntegros', value: formatCurrency(declaracion.capitalMobiliario.totalIngresosIntegros) },
-            { label: 'Rendimiento neto', value: formatCurrency(declaracion.capitalMobiliario.rendimientoNeto) },
-            { label: 'Retenciones capital', value: formatCurrency(declaracion.capitalMobiliario.retencionesCapital) },
-            { label: 'Ganancias no transmisión', value: formatCurrency(declaracion.gananciasPerdidas.gananciasNoTransmision) },
-            { label: 'Ganancias transmisión', value: formatCurrency(declaracion.gananciasPerdidas.gananciasTransmision) },
-            { label: 'Pérdidas transmisión', value: formatCurrency(declaracion.gananciasPerdidas.perdidasTransmision) },
-            { label: 'Saldo neto ahorro', value: formatCurrency(declaracion.gananciasPerdidas.saldoNetoAhorro) },
-          ]} />
-        )}
-
-        {tab === 'bases' && (
-          <KeyValueGrid rows={[
-            { label: 'Base imponible general', value: formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral) },
-            { label: 'Base imponible ahorro', value: formatCurrency(declaracion.basesYCuotas.baseImponibleAhorro) },
-            { label: 'Base liquidable general', value: formatCurrency(declaracion.basesYCuotas.baseLiquidableGeneral) },
-            { label: 'Base liquidable ahorro', value: formatCurrency(declaracion.basesYCuotas.baseLiquidableAhorro) },
-            { label: 'Cuota íntegra estatal', value: formatCurrency(declaracion.basesYCuotas.cuotaIntegraEstatal) },
-            { label: 'Cuota íntegra autonómica', value: formatCurrency(declaracion.basesYCuotas.cuotaIntegraAutonomica) },
-            { label: 'Cuota líquida estatal', value: formatCurrency(declaracion.basesYCuotas.cuotaLiquidaEstatal) },
-            { label: 'Cuota líquida autonómica', value: formatCurrency(declaracion.basesYCuotas.cuotaLiquidaAutonomica) },
-            { label: 'Cuota resultante', value: formatCurrency(declaracion.basesYCuotas.cuotaResultante) },
-            { label: 'Retenciones total', value: formatCurrency(declaracion.basesYCuotas.retencionesTotal) },
-            { label: 'Cuota diferencial', value: formatCurrency(declaracion.basesYCuotas.cuotaDiferencial) },
-            { label: 'Resultado declaración', value: formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion) },
-          ]} />
-        )}
-
-        {tab === 'arrastres' && (
-          <div style={{ display: 'grid', gap: '1rem' }}>
+      {tab === 'reconciliacion' && (
+        <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', background: 'white', overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
             <div>
-              <strong style={{ color: 'var(--atlas-navy-1)' }}>Gastos 0105/0106</strong>
-              <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.6rem' }}>
-                {arrastres.gastos0105_0106.length === 0 ? <p style={{ margin: 0 }}>Sin arrastres de gastos detectados.</p> : arrastres.gastos0105_0106.map((item) => (
-                  <div key={`${item.referenciaCatastral}-${item.ejercicioOrigen}`} style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--hz-neutral-100)' }}>
-                    Inmueble {item.referenciaCatastral}: inicio {formatCurrency(item.pendienteInicio)} · aplicado {formatCurrency(item.aplicadoEstaDeclaracion)} · pendiente {formatCurrency(item.pendienteFuturo)} · generado {formatCurrency(item.generadoEsteEjercicio)}
-                  </div>
-                ))}
+              <strong style={{ color: 'var(--atlas-navy-1)' }}>Reconciliación AEAT ↔ ATLAS</strong>
+              <div style={{ marginTop: '0.25rem', color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
+                {reconciliacionDisponible
+                  ? 'Hay diferencias o entidades nuevas detectadas. Revisa qué aplicar antes de importar.'
+                  : 'No se detectaron diferencias pendientes o aún no se ha generado la reconciliación avanzada.'}
               </div>
             </div>
-
-            <div>
-              <strong style={{ color: 'var(--atlas-navy-1)' }}>Pérdidas pendientes</strong>
-              <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.6rem' }}>
-                {arrastres.perdidasAhorro.length === 0 ? <p style={{ margin: 0 }}>Sin pérdidas pendientes detectadas.</p> : arrastres.perdidasAhorro.map((item) => (
-                  <div key={`${item.tipo}-${item.ejercicioOrigen}`} style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--hz-neutral-100)' }}>
-                    {item.tipo} {item.ejercicioOrigen}: inicio {formatCurrency(item.pendienteInicio)} · aplicado {formatCurrency(item.aplicado)} · pendiente futuro {formatCurrency(item.pendienteFuturo)}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <strong style={{ color: 'var(--atlas-navy-1)' }}>Detalle de gastos por inmueble</strong>
-              <div style={{ display: 'grid', gap: '0.6rem', marginTop: '0.6rem' }}>
-                {arrastres.gastosInmuebleDetalle.length === 0 ? <p style={{ margin: 0 }}>Sin detalle adicional de gastos.</p> : arrastres.gastosInmuebleDetalle.map((item) => (
-                  <div key={item.referenciaCatastral} style={{ padding: '0.75rem', borderRadius: '10px', background: 'var(--hz-neutral-100)' }}>
-                    {item.referenciaCatastral}: proveedor {item.nifProveedor || '—'} · gasto {formatCurrency(item.importeGasto)} · servicios personales {formatCurrency(item.importeServiciosPersonales)} · mejora {formatCurrency(item.importeMejora)}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {reconciliacionDisponible && (
+              <button
+                type="button"
+                onClick={onAbrirReconciliacion}
+                style={{ border: 'none', borderRadius: '12px', background: 'var(--atlas-blue)', color: 'white', padding: '0.8rem 1rem', cursor: 'pointer', fontWeight: 700 }}
+              >
+                Abrir conciliación
+              </button>
+            )}
           </div>
-        )}
+          <div style={{ padding: '1rem 1.25rem', display: 'grid', gap: '0.75rem' }}>
+            <KeyValueGrid rows={[
+              { label: 'Coincidencias', value: reconciliacion?.estadisticas.coincidencias ?? 0 },
+              { label: 'Diferencias', value: reconciliacion?.estadisticas.diferencias ?? 0 },
+              { label: 'Solo en AEAT', value: reconciliacion?.estadisticas.sinDatosAtlas ?? 0 },
+              { label: 'Pendientes', value: reconciliacion?.estadisticas.pendientesDeDecision ?? 0 },
+            ]} />
+          </div>
+        </div>
+      )}
 
-        {tab === 'raw' && (
-          <pre style={{ margin: 0, fontSize: '11px', maxHeight: '420px', overflow: 'auto', background: '#081225', color: '#D8F1FF', borderRadius: '12px', padding: '1rem' }}>
-            {JSON.stringify(casillasRaw, null, 2)}
-          </pre>
-        )}
-      </div>
+      {tab === 'raw' && (
+        <pre style={{ margin: 0, fontSize: '11px', maxHeight: '420px', overflow: 'auto', background: '#081225', color: '#D8F1FF', borderRadius: '12px', padding: '1rem' }}>
+          {JSON.stringify(casillasRaw, null, 2)}
+        </pre>
+      )}
     </div>
   );
 };
+
+function SectionListCard({
+  title,
+  Icon,
+  badge,
+  items,
+  emptyText,
+}: {
+  title: string;
+  Icon: typeof Home;
+  badge?: string;
+  items: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: 'info' | 'success' | 'warning' | 'muted' }>;
+  emptyText: string;
+}) {
+  return (
+    <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', overflow: 'hidden', background: 'white' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <div style={{ width: '38px', height: '38px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: 'var(--atlas-blue)', color: 'white' }}>
+            <Icon size={18} />
+          </div>
+          <strong style={{ fontSize: '1.05rem', color: 'var(--atlas-navy-1)' }}>{title}</strong>
+        </div>
+        {badge ? (
+          <span style={{ borderRadius: '999px', background: '#E9F2FF', color: 'var(--atlas-blue)', padding: '0.35rem 0.8rem', fontSize: '0.9rem', fontWeight: 600 }}>
+            {badge}
+          </span>
+        ) : null}
+      </div>
+      <div style={{ display: 'grid' }}>
+        {items.length === 0 ? (
+          <div style={{ padding: '1rem 1.25rem', color: 'var(--hz-neutral-700)' }}>{emptyText}</div>
+        ) : items.map((item, index) => (
+          <div key={`${item.title}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', padding: '1rem 1.25rem', borderTop: index === 0 ? 'none' : '1px solid var(--hz-neutral-200)' }}>
+            <div style={{ display: 'grid', gap: '0.25rem' }}>
+              <strong style={{ color: 'var(--atlas-navy-1)', fontSize: '1rem' }}>{item.title}</strong>
+              <span style={{ color: 'var(--hz-neutral-700)', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.92rem' }}>{item.subtitle}</span>
+            </div>
+            <EntityStatusBadge tone={item.statusTone}>{item.statusLabel}</EntityStatusBadge>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EntityStatusBadge({ tone, children }: { tone: 'info' | 'success' | 'warning' | 'muted'; children: React.ReactNode }) {
+  const palette = {
+    info: { background: '#E9F2FF', color: 'var(--atlas-blue)' },
+    success: { background: '#E9F8EE', color: '#157347' },
+    warning: { background: '#FFF1CF', color: '#A36B00' },
+    muted: { background: '#F0F2F5', color: 'var(--hz-neutral-600)' },
+  } satisfies Record<string, { background: string; color: string }>;
+
+  return (
+    <span style={{ ...palette[tone], borderRadius: '999px', padding: '0.45rem 0.9rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+      {children}
+    </span>
+  );
+}
 
 function normalizarCasillasExtraidas(raw: Record<string, number | string>): CasillaExtraida[] {
   return Object.entries(raw)
@@ -484,7 +526,7 @@ async function archivarPdfImportado(
 const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
-  const [metodo, setMetodo] = useState<MetodoEntrada>('formulario');
+  const [metodo, setMetodo] = useState<MetodoEntrada>('pdf');
   const [data, setData] = useState<ImportacionManualData>(() => crearImportacionManualVacia(currentYear - 1));
   const [casillasExtraidas, setCasillasExtraidas] = useState<CasillaExtraida[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -492,6 +534,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
   const [, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
+  const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
+  const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -513,9 +557,11 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     if (!file) return;
 
     setUploadedFile(file);
+    setStep(2);
     setParsing(true);
     setResultadoExtraccion(null);
     setReconciliacion(null);
+    setReconciliacionPreview(null);
     setCasillasExtraidas([]);
 
     try {
@@ -555,6 +601,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }));
 
       toast.success(`${extraccion.totalCasillas} casillas extraídas automáticamente`);
+      setStep(3);
       if (extraccion.warnings.length > 0) {
         toast((t) => (
           <div style={{ display: 'grid', gap: '0.35rem' }}>
@@ -666,62 +713,87 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     || data.totalRetenciones !== 0
     || data.resultado !== 0;
 
-  const totalSteps = reconciliacion ? 4 : 3;
-
   const progresoPorcentaje = progreso?.totalPaginas
     ? Math.min(100, Math.round(((progreso.pagina || 0) / progreso.totalPaginas) * 100))
     : undefined;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (step !== 3 || !resultadoExtraccion?.exito || metodo !== 'pdf' || reconciliacionPreview || generandoReconciliacion) return undefined;
+
+    setGenerandoReconciliacion(true);
+    generarReconciliacion(resultadoExtraccion.declaracion, resultadoExtraccion.meta.ejercicio)
+      .then((resultado) => {
+        if (cancelled) return;
+        setReconciliacionPreview(resultado);
+        setReconciliacion(requiereReconciliacion(resultado) ? resultado : null);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error('Error generando reconciliación', error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGenerandoReconciliacion(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, resultadoExtraccion, metodo, reconciliacionPreview, generandoReconciliacion]);
 
   const navigationFooter = step < 4 ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
       <button
         type="button"
         onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4)}
-        style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.8rem 1rem', background: 'white', cursor: 'pointer' }}
+        style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'white', cursor: 'pointer', minWidth: '140px' }}
       >
         {step === 1 ? 'Cancelar' : 'Atrás'}
       </button>
 
-      {step < 3 ? (
+      {step === 1 && metodo === 'pdf' ? (
+        <div style={{ color: 'var(--hz-neutral-700)', display: 'flex', alignItems: 'center', fontSize: '0.95rem' }}>
+          Selecciona un PDF para comenzar.
+        </div>
+      ) : step < 3 ? (
         <button
           type="button"
           disabled={step === 2 && !canContinueStep2}
           onClick={async () => {
-            if (step === 2 && resultadoExtraccion?.exito) {
-              const reconciliacionGenerada = await generarReconciliacion(resultadoExtraccion.declaracion, resultadoExtraccion.meta.ejercicio);
-              setReconciliacion(requiereReconciliacion(reconciliacionGenerada) ? reconciliacionGenerada : null);
-            }
             setStep((prev) => (prev + 1) as 1 | 2 | 3 | 4);
           }}
           style={{
             border: 'none',
-            borderRadius: '10px',
-            padding: '0.8rem 1rem',
+            borderRadius: '14px',
+            padding: '0.95rem 1.2rem',
             background: 'var(--atlas-blue)',
             color: 'white',
             cursor: 'pointer',
             opacity: step === 2 && !canContinueStep2 ? 0.5 : 1,
+            minWidth: '180px',
+            fontWeight: 700,
           }}
         >
-          Continuar
+          {step === 1 ? 'Continuar' : 'Confirmar extracción'}
         </button>
       ) : reconciliacion ? (
         <button
           type="button"
           disabled={saving}
           onClick={() => setStep(4)}
-          style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer' }}
+          style={{ border: 'none', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer', minWidth: '220px', fontWeight: 700 }}
         >
-          Continuar a reconciliación
+          Revisar reconciliación
         </button>
       ) : (
         <button
           type="button"
           disabled={saving}
           onClick={handleConfirmarImportacion}
-          style={{ border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', background: 'var(--ok)', color: 'white', cursor: 'pointer' }}
+          style={{ border: 'none', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer', minWidth: '220px', fontWeight: 700 }}
         >
-          {saving ? 'Importando…' : 'Importar declaración'}
+          {saving ? 'Importando…' : 'Importar y crear entidades'}
         </button>
       )}
     </div>
@@ -730,45 +802,73 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   return (
     <div style={overlayStyle} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div style={panelStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--hz-neutral-300)' }}>
-          <div>
-            <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)' }}>Importar declaración IRPF</h2>
-            <p style={{ margin: '0.35rem 0 0', color: 'var(--hz-neutral-700)' }}>
-              Alimenta el histórico fiscal con declaraciones presentadas o PDFs del Modelo 100 a partir de 2020.
-            </p>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem 1rem 0' }}>
           <button type="button" onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
             <X size={20} />
           </button>
         </div>
 
-        <div style={{ padding: '1.5rem', display: 'grid', gap: '1.25rem' }}>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {Array.from({ length: totalSteps }, (_, index) => index + 1).map((item) => (
-              <div
-                key={item}
-                style={{
-                  flex: 1,
-                  padding: '0.75rem 1rem',
-                  borderRadius: '10px',
-                  background: step >= item ? 'var(--n-100)' : 'var(--hz-neutral-100)',
-                  color: step >= item ? 'var(--atlas-blue)' : 'var(--hz-neutral-600)',
-                  fontWeight: 600,
-                }}
-              >
-                Paso {item}
-              </div>
-            ))}
+        <div style={{ padding: '0 2rem 2rem', display: 'grid', gap: '1.5rem', background: '#FAFBFD' }}>
+          <div style={stepEyebrowStyle}>
+            {step === 1 && 'PASO 1 — SUBIR PDF'}
+            {step === 2 && 'PASO 2 — PROCESANDO (AUTOMÁTICO)'}
+            {step === 3 && 'PASO 3 — CONFIRMAR E IMPORTAR'}
+            {step === 4 && 'PASO 4 — TAB: RECONCILIACIÓN'}
           </div>
 
           {step === 1 && (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div style={{ display: 'grid', gap: '0.4rem' }}>
+            <div style={shellCardStyle}>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>Importar declaración IRPF</h2>
+                <p style={sectionSubtitleStyle}>Sube el PDF del Modelo 100 para extraer automáticamente los datos fiscales.</p>
+              </div>
+
+              <div style={progressRailStyle}>
+                {[1, 2, 3].map((item) => (
+                  <div key={item} style={{ height: '5px', borderRadius: '999px', background: item === 1 ? '#27B7D6' : '#D8DFE8' }} />
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                <button type="button" onClick={() => setMetodo('pdf')} style={{ ...actionButtonStyle, borderColor: metodo === 'pdf' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)', borderRadius: '999px', padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Upload size={18} style={{ color: 'var(--atlas-blue)' }} />
+                  <strong>PDF AEAT</strong>
+                </button>
+                <button type="button" onClick={() => setMetodo('formulario')} style={{ ...actionButtonStyle, borderColor: metodo === 'formulario' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)', borderRadius: '999px', padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText size={18} style={{ color: 'var(--atlas-blue)' }} />
+                  <strong>Formulario manual</strong>
+                </button>
+              </div>
+
+              {metodo === 'pdf' ? (
+                <>
+                  <label htmlFor="aeat-pdf-input" style={uploadDropzoneStyle}>
+                    <input id="aeat-pdf-input" type="file" accept=".pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
+                    <div style={{ display: 'grid', gap: '0.9rem' }}>
+                      <Upload size={42} style={{ justifySelf: 'center', color: '#C5D2E2' }} />
+                      <strong style={{ fontSize: '1.15rem' }}>Arrastra el PDF aquí o haz clic para seleccionar</strong>
+                      <span style={{ color: 'var(--hz-neutral-700)' }}>Modelo 100 · Ejercicios 2020 a 2025</span>
+                    </div>
+                  </label>
+                  <p style={{ margin: 0, textAlign: 'center', color: 'var(--hz-neutral-700)' }}>
+                    ATLAS analiza el PDF con IA para extraer todas las casillas, inmuebles, arrastres y datos fiscales.
+                  </p>
+                </>
+              ) : (
+                <div style={{ padding: '1rem 1.2rem', borderRadius: '16px', border: '1px solid var(--hz-neutral-300)', background: 'var(--hz-neutral-100)' }}>
+                  <strong style={{ color: 'var(--atlas-navy-1)' }}>Modo manual</strong>
+                  <p style={{ ...sectionSubtitleStyle, marginTop: '0.4rem' }}>
+                    Continúa al siguiente paso para introducir bases, cuotas, retenciones y arrastres manualmente.
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gap: '0.4rem', maxWidth: '280px' }}>
                 <label style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>Ejercicio fiscal</label>
                 <select
                   value={ejercicio}
                   onChange={(event) => setEjercicio(Number(event.target.value))}
-                  style={{ padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--hz-neutral-300)' }}
+                  style={{ padding: '0.8rem', borderRadius: '14px', border: '1px solid var(--hz-neutral-300)' }}
                 >
                   {Array.from({ length: Math.max(1, currentYear - 2019) }, (_, index) => currentYear - index)
                     .filter((year) => year >= 2020)
@@ -778,48 +878,40 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 </select>
                 <span style={{ fontSize: '0.85rem', color: 'var(--hz-neutral-700)' }}>ATLAS solo importa histórico desde 2020.</span>
               </div>
-
-              <div>
-                <h3 style={{ marginBottom: '0.75rem', color: 'var(--atlas-navy-1)' }}>Método de entrada</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <button type="button" onClick={() => setMetodo('formulario')} style={{ ...actionButtonStyle, borderColor: metodo === 'formulario' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)' }}>
-                    <FileText size={24} style={{ color: 'var(--atlas-blue)' }} />
-                    <strong>Formulario manual</strong>
-                    <span style={{ color: 'var(--hz-neutral-700)' }}>Introduce las casillas clave directamente.</span>
-                  </button>
-                  <button type="button" onClick={() => setMetodo('pdf')} style={{ ...actionButtonStyle, borderColor: metodo === 'pdf' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)' }}>
-                    <Upload size={24} style={{ color: 'var(--atlas-blue)' }} />
-                    <strong>Subir PDF del Modelo 100</strong>
-                    <span style={{ color: 'var(--hz-neutral-700)' }}>Renderiza el PDF, analiza todas las páginas con Claude y te deja validar el resultado.</span>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
           {step === 2 && (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {metodo === 'pdf' && (
-                <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem', borderRadius: '12px', background: 'var(--hz-neutral-100)' }}>
-                  <h3 style={{ margin: 0, color: 'var(--atlas-navy-1)' }}>Subir PDF del Modelo 100</h3>
-                  <input type="file" accept=".pdf" onChange={handleFileUpload} />
+            <div style={shellCardStyle}>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>Importar declaración IRPF</h2>
+                <p style={sectionSubtitleStyle}>{metodo === 'pdf' ? 'Analizando el PDF con inteligencia artificial.' : 'Introduce manualmente los datos fiscales.'}</p>
+              </div>
 
-                  {parsing && progreso && (
-                    <div style={{ display: 'grid', gap: '0.65rem', padding: '1rem', borderRadius: '12px', background: 'white', border: '1px solid rgba(24, 95, 165, 0.18)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div className="h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        <div>
-                          <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>{progreso.mensaje}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--hz-neutral-700)', textTransform: 'capitalize' }}>{progreso.fase}</div>
-                        </div>
-                      </div>
-                      {typeof progresoPorcentaje === 'number' && (
-                        <div style={{ height: '6px', background: '#dfe6ee', borderRadius: '999px', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${progresoPorcentaje}%`, background: 'var(--atlas-blue)', borderRadius: '999px', transition: 'width 0.3s ease' }} />
-                        </div>
-                      )}
+              <div style={progressRailStyle}>
+                {[1, 2, 3].map((item) => (
+                  <div key={item} style={{ height: '5px', borderRadius: '999px', background: item <= 2 ? (item === 2 ? '#27B7D6' : 'var(--atlas-blue)') : '#D8DFE8' }} />
+                ))}
+              </div>
+
+              {metodo === 'pdf' ? (
+                <>
+                  <div style={{ minHeight: '260px', display: 'grid', alignItems: 'center', gap: '1.25rem', padding: '2rem 1rem' }}>
+                    <div style={{ textAlign: 'center', display: 'grid', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '1.3rem', color: 'var(--atlas-navy-1)' }}>{progreso?.mensaje || 'Extrayendo casillas del Modelo 100…'}</strong>
+                      <span style={{ color: 'var(--hz-neutral-700)' }}>
+                        {progreso?.pagina && progreso?.totalPaginas ? `Analizando página ${progreso.pagina} de ${progreso.totalPaginas}` : uploadedFile?.name || 'Preparando el archivo'}
+                      </span>
                     </div>
-                  )}
+                    <div style={{ width: '100%', maxWidth: '86%', justifySelf: 'center', display: 'grid', gap: '0.65rem' }}>
+                      <div style={{ height: '6px', background: '#D9E3ED', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${progresoPorcentaje ?? (resultadoExtraccion?.exito ? 100 : 12)}%`, background: '#27B7D6', borderRadius: '999px', transition: 'width 0.35s ease' }} />
+                      </div>
+                      <span style={{ textAlign: 'center', color: 'var(--hz-neutral-700)' }}>
+                        {resultadoExtraccion?.exito ? `${resultadoExtraccion.totalCasillas} casillas encontradas` : `${Object.keys(resultadoExtraccion?.casillasRaw ?? {}).length} casillas encontradas hasta ahora`}
+                      </span>
+                    </div>
+                  </div>
 
                   {resultadoExtraccion && !resultadoExtraccion.exito && (
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', borderRadius: '12px', background: '#FDECEC', color: '#8B1E1E' }}>
@@ -830,71 +922,64 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                       </div>
                     </div>
                   )}
-
-                  {resultadoExtraccion?.exito && (
-                    <div style={{ display: 'grid', gap: '0.75rem', padding: '1rem', borderRadius: '12px', background: 'white', border: '1px solid var(--hz-neutral-300)' }}>
-                      <div style={summaryGridStyle}>
-                        <KpiCard label="Casillas" value={resultadoExtraccion.totalCasillas} />
-                        <KpiCard label="Páginas" value={resultadoExtraccion.paginasProcesadas} />
-                        <KpiCard label="Ejercicio" value={resultadoExtraccion.meta.ejercicio} />
-                        <KpiCard label="Resultado" value={formatCurrency(resultadoExtraccion.declaracion.basesYCuotas.resultadoDeclaracion)} />
-                      </div>
-                      {resultadoExtraccion.warnings.length > 0 && (
-                        <div style={{ background: '#FAEEDA', padding: '12px', borderRadius: '8px', marginTop: '0.25rem' }}>
-                          <p style={{ fontWeight: 700, margin: 0, marginBottom: '0.4rem' }}>Avisos</p>
-                          {resultadoExtraccion.warnings.map((warning, index) => (
-                            <p key={`${warning}-${index}`} style={{ margin: '0.2rem 0', fontSize: '13px' }}>⚠ {warning}</p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                </>
+              ) : (
+                <WizardForm data={data} onChange={handleDataPatch} />
               )}
-
-              <WizardForm data={data} onChange={handleDataPatch} />
             </div>
           )}
 
           {step === 3 && (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div style={{ padding: '1rem', borderRadius: '12px', background: 'var(--hz-neutral-100)' }}>
-                <h3 style={{ marginTop: 0, color: 'var(--atlas-navy-1)' }}>Confirmación</h3>
-                <p style={{ marginBottom: '1rem', color: 'var(--hz-neutral-700)' }}>
-                  Comprueba el resumen antes de importar. La declaración quedará marcada como declarada e importada en el histórico.
-                </p>
-                <div style={summaryGridStyle}>
-                  <div><strong>Ejercicio</strong><div>{data.ejercicio}</div></div>
-                  <div><strong>Base general</strong><div>{formatCurrency(resultadoExtraccion?.declaracion.basesYCuotas.baseImponibleGeneral ?? data.baseImponibleGeneral)}</div></div>
-                  <div><strong>Retenciones</strong><div>{formatCurrency(resultadoExtraccion?.declaracion.basesYCuotas.retencionesTotal ?? data.totalRetenciones)}</div></div>
-                  <div><strong>Resultado</strong><div>{formatCurrency(resultadoExtraccion?.declaracion.basesYCuotas.resultadoDeclaracion ?? data.resultado)}</div></div>
-                </div>
+            <div style={shellCardStyle}>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>
+                  Importar declaración IRPF {resultadoExtraccion?.meta.ejercicio || data.ejercicio}
+                </h2>
+                <p style={sectionSubtitleStyle}>Revisa lo extraído y confirma qué crear en ATLAS.</p>
+              </div>
+
+              <div style={progressRailStyle}>
+                {[1, 2, 3].map((item) => (
+                  <div key={item} style={{ height: '5px', borderRadius: '999px', background: item === 3 ? '#27B7D6' : 'var(--atlas-blue)' }} />
+                ))}
               </div>
 
               {resultadoExtraccion?.exito ? (
-                <VerificacionExtraccion resultado={resultadoExtraccion} />
-              ) : casillasExtraidas.length > 0 ? (
+                <VerificacionExtraccion
+                  resultado={resultadoExtraccion}
+                  reconciliacion={reconciliacionPreview}
+                  reconciliacionDisponible={Boolean(reconciliacion)}
+                  onAbrirReconciliacion={() => setStep(4)}
+                />
+              ) : (
                 <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--hz-neutral-300)' }}>
-                  <strong style={{ color: 'var(--atlas-navy-1)' }}>Casillas detectadas</strong>
-                  <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {casillasExtraidas.slice(0, 24).map((casilla) => (
-                      <span key={casilla.numero} style={{ padding: '0.35rem 0.55rem', borderRadius: '999px', background: 'var(--hz-neutral-100)', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.75rem' }}>
-                        {casilla.numero}: {casilla.valor.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    ))}
+                  <strong style={{ color: 'var(--atlas-navy-1)' }}>Resumen manual</strong>
+                  <div style={{ marginTop: '1rem' }}>
+                    <KeyValueGrid rows={[
+                      { label: 'Ejercicio', value: data.ejercicio },
+                      { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
+                      { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
+                      { label: 'Resultado', value: formatCurrency(data.resultado) },
+                    ]} />
                   </div>
                 </div>
-              ) : null}
+              )}
+
+              {generandoReconciliacion && (
+                <div style={{ color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
+                  Generando la reconciliación con ATLAS…
+                </div>
+              )}
             </div>
           )}
 
           {step === 4 && reconciliacion && (
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              <div style={{ padding: '1rem', borderRadius: '12px', background: 'var(--hz-neutral-100)' }}>
-                <h3 style={{ marginTop: 0, color: 'var(--atlas-navy-1)' }}>Reconciliación avanzada</h3>
-                <p style={{ marginBottom: 0, color: 'var(--hz-neutral-700)' }}>
-                  Revisa campo a campo qué conservar de ATLAS y qué traer desde la AEAT antes de archivar la declaración.
-                </p>
+            <div style={shellCardStyle}>
+              <div style={{ display: 'grid', gap: '0.35rem' }}>
+                <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>
+                  Importar declaración IRPF {resultadoExtraccion?.meta.ejercicio || data.ejercicio}
+                </h2>
+                <p style={sectionSubtitleStyle}>Revisa las diferencias entre ATLAS y la declaración antes de importar.</p>
               </div>
               <ReconciliacionPanel
                 reconciliacion={reconciliacion}
