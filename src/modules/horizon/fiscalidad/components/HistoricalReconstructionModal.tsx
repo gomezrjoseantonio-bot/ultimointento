@@ -109,8 +109,8 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
     `todas las propiedades (${properties.length} inmuebles)`;
 
   return (
-    <div className="fixed inset-0 bg-gray-200 flex items-center justify-center z-50">
-      <div className="bg-white shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <Database className="w-6 h-6 text-primary-600" />
@@ -121,15 +121,16 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            aria-label="Cerrar reconstrucción histórica"
+            className="rounded-full p-2 text-gray-400 transition-colors hover:bg-slate-100 hover:text-gray-700 disabled:opacity-50"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="max-h-[calc(90vh-88px)] overflow-y-auto p-6 space-y-6">
           {/* Scope Info */}
-          <div className="btn-secondary-horizon atlas-atlas-atlas-atlas-atlas-btn-primary ">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-5">
             <div className="flex items-start space-x-3">
               <Database className="w-5 h-5 text-primary-600 mt-0.5" />
               <div>
@@ -150,7 +151,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
           {/* Historical Stats (if single property) */}
           {stats && (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-gray-50 p-4">
                 <div className="text-sm text-gray-600">Datos más antiguos</div>
                 <div className="space-y-1">
                   <div className="text-sm">
@@ -169,7 +170,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 p-4">
+              <div className="rounded-2xl border border-slate-200 bg-gray-50 p-4">
                 <div className="text-sm text-gray-600">Años históricos</div>
                 <div className="text-2xl font-bold text-gray-900">{stats.totalHistoricalYears}</div>
                 <div className="text-xs text-gray-500">ejercicios disponibles</div>
@@ -186,7 +187,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               </div>
               <div className="w-full bg-gray-200 h-3">
                 <div 
-                  className="atlas-atlas-atlas-atlas-atlas-btn-primary h-3 transition-all duration-300"
+                  className="h-3 rounded-full bg-sky-500 transition-all duration-300"
                   style={{ width: `${progress.percentage}%` }}
                 />
               </div>
@@ -198,7 +199,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
           {/* Processing Result */}
           {result && (
-            <div className={`rounded-lg p-4 ${
+            <div className={`rounded-2xl p-4 ${
               result.success ? 'bg-cyan-50 border border-cyan-200' : 'bg-blue-50 border border-blue-200'
             }`}>
               <div className="flex items-start space-x-3">
@@ -260,7 +261,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
 
           {/* Warning */}
           {!result && (
-            <div className="bg-gray-50 border border-gray-200 p-4">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="w-5 h-5 text-atlas-teal mt-0.5" />
                 <div className="text-sm">
@@ -279,7 +280,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
             <button
               onClick={onClose}
               disabled={isProcessing}
-              className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl border border-gray-300 px-4 py-2 text-gray-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {result ? 'Cerrar' : 'Cancelar'}
             </button>
@@ -288,7 +289,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
               <button
                 onClick={handleStartReconstruction}
                 disabled={isProcessing}
-                className="atlas-atlas-atlas-atlas-atlas-btn-primary flex-1 flex items-center justify-center space-x-2 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-xl bg-sky-600 px-4 py-2 text-white flex items-center justify-center space-x-2 transition-colors hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isProcessing ? (
                   <>
@@ -307,7 +308,7 @@ const HistoricalReconstructionModal: React.FC<HistoricalReconstructionModalProps
             {result && result.success && (
               <button
                 onClick={handleComplete}
-                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-cyan-700 text-white"
+                className="flex-1 flex items-center justify-center space-x-2 rounded-xl bg-cyan-700 px-4 py-2 text-white transition-colors hover:bg-cyan-800"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span>Finalizar</span>
