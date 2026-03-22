@@ -2745,6 +2745,10 @@ export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
 };
 
 export type {
+  PersonalData,
+} from '../types/personal';
+
+export type {
   ArrastreAmortizacion,
   ArrastreGastoInmueble,
   ArrastreManual,
