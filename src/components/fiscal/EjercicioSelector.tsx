@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
-import { CheckCircle, ChevronDown, Circle, Clock } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle, ChevronDown, Circle, Clock, type LucideIcon } from 'lucide-react';
 import { getAllEjercicios, getOrCreateEjercicio } from '../../services/ejercicioFiscalService';
 import type { EjercicioFiscal, EstadoEjercicio } from '../../types/fiscal';
 import './ejercicio-selector.css';
@@ -13,7 +13,7 @@ type EstadoConfig = {
   label: string;
   colorVar: string;
   bgVar: string;
-  Icon: ComponentType<{ size?: number }>;
+  Icon: LucideIcon;
 };
 
 const ESTADO_CONFIG: Record<EstadoEjercicio, EstadoConfig> = {

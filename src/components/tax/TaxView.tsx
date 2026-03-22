@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, type ComponentType } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
@@ -20,7 +20,7 @@ import {
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
-import { CheckCircle, Clock, Info, Upload } from 'lucide-react';
+import { CheckCircle, Clock, Info, Upload, type LucideIcon } from 'lucide-react';
 import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import './tax-view.css';
 
@@ -138,7 +138,7 @@ function EstadoBanner({
   ejercicio: number;
   coberturaLineas: number;
 }) {
-  const configs: Record<EstadoEjercicio, { texto: string; colorVar: string; bgVar: string; Icon: ComponentType<{ size?: number }> }> = {
+  const configs: Record<EstadoEjercicio, { texto: string; colorVar: string; bgVar: string; Icon: LucideIcon }> = {
     en_curso: {
       texto: `Estimación en tiempo real del ejercicio ${ejercicio}. Los datos se actualizan con cada cambio.`,
       colorVar: 'var(--s-pos)',
