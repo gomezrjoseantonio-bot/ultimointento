@@ -197,7 +197,7 @@ Si un campo no aparece en el documento usa null.`;
         return jsonResponse(400, { ok: false, error: 'Campo "imagen", "imagenes" o "texto" obligatorio' });
       }
 
-      const system = promptOverride || `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
+      const system = promptOverride || (texto ? texto : `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
 Analiza el documento y extrae los valores de las casillas AEAT con máxima precisión.
 
 CASILLAS A EXTRAER (devuelve TODAS las que encuentres):
@@ -241,20 +241,24 @@ INSTRUCCIONES:
 - Sin texto adicional, sin markdown, sin explicaciones
 
 Ejemplo de respuesta:
-{"0435": 148505.78, "0460": 357.63, "0545": 27638.03, "0670": 1859.88}`;
+{"0435": 148505.78, "0460": 357.63, "0545": 27638.03, "0670": 1859.88}`);
 
       const result = await callAnthropic({
         model: SCAN_MODEL,
         system,
-        maxTokens: 8000,
+        maxTokens: 16000,
         temperature: 0,
         messages: [
           {
             role: 'user',
-            content: [
-              { type: 'text', text: texto || 'Extrae todas las casillas AEAT de esta declaración IRPF (Modelo 100) y devuelve solo JSON válido.' },
-              ...mediaBlocks,
-            ],
+            content: mediaBlocks.length > 0
+              ? [
+                  { type: 'text', text: texto || 'Extrae todas las casillas AEAT de esta declaración IRPF (Modelo 100) y devuelve solo JSON válido.' },
+                  ...mediaBlocks,
+                ]
+              : (promptOverride
+                  ? 'Analiza el texto proporcionado en el system prompt y extrae todas las casillas AEAT devolviendo solo JSON válido.'
+                  : texto),
           },
         ],
       });
