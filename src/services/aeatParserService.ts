@@ -242,6 +242,7 @@ interface BloquePaginasPdf {
 const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 12;
+const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {
@@ -476,16 +477,100 @@ async function extraerCasillasConClaudePorBloques(
         : `Analizando bloque visual ${index + 1}/${bloques.length} (${bloque.desde}-${bloque.hasta})...`,
     });
 
+    const parsed = await extraerCasillasVisualesConFallback(
+      file,
+      bloque,
+      totalPaginas,
+      onProgress,
+    );
+    acumulado = mergeCasillasRaw(acumulado, parsed);
+  }
+
+  return acumulado;
+}
+
+async function extraerCasillasVisualesConFallback(
+  file: File,
+  bloque: BloquePaginasPdf,
+  totalPaginas: number,
+  onProgress?: OnProgress,
+  intento = 0,
+): Promise<CasillasRaw> {
+  try {
     const response = await callClaudeAPI(
       new File([bloque.blob], `${file.name}-pages-${bloque.desde}-${bloque.hasta}.pdf`, { type: 'application/pdf' }),
       construirPromptAEAT(),
     );
 
-    const parsed = parsearRespuestaClaude(response);
-    acumulado = mergeCasillasRaw(acumulado, parsed);
+    return parsearRespuestaClaude(response);
+  } catch (error) {
+    if (esTimeoutOCR(error) && intento < OCR_TIMEOUT_RETRIES_PER_BLOCK) {
+      await esperar(300 * (intento + 1));
+      return extraerCasillasVisualesConFallback(file, bloque, totalPaginas, onProgress, intento + 1);
+    }
+
+    const paginasEnBloque = bloque.hasta - bloque.desde + 1;
+    if (!esTimeoutOCR(error) || paginasEnBloque <= 1) {
+      throw error;
+    }
+
+    const paginasPorSubbloque = Math.max(1, Math.ceil(paginasEnBloque / 2));
+    const subBloques = await dividirPdfEnBloques(
+      await blobToUint8Array(bloque.blob),
+      paginasPorSubbloque,
+    );
+
+    console.warn(
+      `[AEATParser] Timeout OCR en páginas ${bloque.desde}-${bloque.hasta}. Reintentando en ${subBloques.length} subbloques de hasta ${paginasPorSubbloque} página(s).`,
+      error,
+    );
+
+    let acumulado: CasillasRaw = {};
+
+    for (let index = 0; index < subBloques.length; index += 1) {
+      const subBloque = subBloques[index];
+      const subBloqueGlobal: BloquePaginasPdf = {
+        desde: bloque.desde + subBloque.desde - 1,
+        hasta: bloque.desde + subBloque.hasta - 1,
+        blob: subBloque.blob,
+      };
+
+      onProgress?.({
+        fase: 'procesando',
+        pagina: subBloqueGlobal.hasta,
+        totalPaginas: totalPaginas || undefined,
+        mensaje: `Reintentando OCR en subbloque ${index + 1}/${subBloques.length} (${subBloqueGlobal.desde}-${subBloqueGlobal.hasta})...`,
+      });
+
+      const parsed = await extraerCasillasVisualesConFallback(
+        file,
+        subBloqueGlobal,
+        totalPaginas,
+        onProgress,
+      );
+      acumulado = mergeCasillasRaw(acumulado, parsed);
+    }
+
+    return acumulado;
+  }
+}
+
+function esTimeoutOCR(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /timeout|504|inactivity/i.test(message);
+}
+
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return new Uint8Array(await blob.arrayBuffer());
   }
 
-  return acumulado;
+  const response = new Response(blob);
+  return new Uint8Array(await response.arrayBuffer());
 }
 
 async function callClaudeAPI(file: File, prompt: string): Promise<string> {
@@ -1257,6 +1342,8 @@ export const __private__ = {
   detectarEstadoCivil,
   detectarCCAA,
   detectarFechaNacimiento,
+  esTimeoutOCR,
+  extraerCasillasVisualesConFallback,
 };
 
 function declaracionVacia(): DeclaracionIRPF {
