@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { X, ChevronUp, LogOut } from 'lucide-react';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
@@ -13,16 +13,36 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const preloadTimeoutRef = useRef<number | null>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const navigation = getNavigationForModule();
+
+  const cancelScheduledPreload = () => {
+    if (preloadTimeoutRef.current !== null) {
+      window.clearTimeout(preloadTimeoutRef.current);
+      preloadTimeoutRef.current = null;
+    }
+  };
+
+  const scheduleChunkPreload = (href: string) => {
+    cancelScheduledPreload();
+    preloadTimeoutRef.current = window.setTimeout(() => {
+      void preloadRouteResources(href);
+      preloadTimeoutRef.current = null;
+    }, 120);
+  };
+
+  useEffect(() => cancelScheduledPreload, []);
 
   const renderNavItem = (item: NavigationItem) => (
     <NavLink
       key={item.name}
       to={item.href}
-      onMouseEnter={() => { void preloadRouteResources(item.href); }}
-      onFocus={() => { void preloadRouteResources(item.href); }}
+      onMouseEnter={() => { scheduleChunkPreload(item.href); }}
+      onFocus={() => { scheduleChunkPreload(item.href); }}
+      onMouseLeave={cancelScheduledPreload}
+      onBlur={cancelScheduledPreload}
       className={({ isActive }) =>
         `${isActive ? 'text-white' : 'text-white/75 hover:text-white'} sidebar-nav-item group flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 text-sm font-medium rounded-md transition-all duration-150`
       }

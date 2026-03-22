@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
@@ -6,6 +6,7 @@ import CommandPalette from '../components/common/CommandPalette';
 import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { preloadRouteResources } from '../services/navigationPerformanceService';
 
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -20,6 +21,14 @@ const MainLayout: React.FC = () => {
   useKeyboardShortcuts({
     onShowShortcuts: () => setShowShortcuts(true),
   });
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      void preloadRouteResources(location.pathname, { includeStores: true });
+    }, 1500);
+
+    return () => window.clearTimeout(handle);
+  }, [location.pathname]);
   
   
   return (
