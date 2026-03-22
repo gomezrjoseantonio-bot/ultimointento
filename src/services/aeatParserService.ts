@@ -258,7 +258,7 @@ interface BloquePaginasPdf {
 
 const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
-const MIN_CASILLAS_PARSING_OK = 12;
+const MIN_CASILLAS_PARSING_OK = 80;
 const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
@@ -396,10 +396,7 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 
 function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
-  const patrones = [
-    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
-    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
-  ];
+  const patrones = obtenerPatronesCasillasNumericas();
 
   for (const pagina of paginasTexto) {
     const lineas = pagina
@@ -430,9 +427,47 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
 
   return mergeCasillasRaw(
     resultado,
+    extraerCasillasDeterministasDesdeTextoPlano(paginasTexto),
     extraerMetadatosDesdeTexto(paginasTexto),
     extraerCasillasRepetiblesDesdeTexto(paginasTexto),
   );
+}
+
+function obtenerPatronesCasillasNumericas(): [RegExp, RegExp] {
+  return [
+    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
+  ];
+}
+
+function extraerCasillasDeterministasDesdeTextoPlano(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const patrones = obtenerPatronesCasillasNumericas();
+
+  for (const pagina of paginasTexto) {
+    const textoPlano = pagina.replace(/\s+/g, ' ').trim();
+    if (!textoPlano) continue;
+
+    for (const patron of patrones) {
+      patron.lastIndex = 0;
+
+      let match: RegExpExecArray | null = patron.exec(textoPlano);
+      while (match) {
+        const casilla = patron === patrones[0] ? match[3] : match[2];
+        const valorRaw = patron === patrones[0] ? match[2] : match[3];
+        const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
+
+        if (!Number.isNaN(valor)) {
+          const knownKeys = new Set([...Object.keys(resultado), casilla]);
+          resultado[casilla] = seleccionarMejorValorCasilla(casilla, resultado[casilla], valor, knownKeys);
+        }
+
+        match = patron.exec(textoPlano);
+      }
+    }
+  }
+
+  return resultado;
 }
 
 function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {

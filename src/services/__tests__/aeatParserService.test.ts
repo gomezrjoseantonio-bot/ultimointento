@@ -183,6 +183,32 @@ describe('extracción textual determinista', () => {
     }, 'sin-ejercicio.pdf')).toBe(false);
   });
 
+  test('recompone casillas cuando valor y código quedan separados por saltos de línea en PDFs antiguos', () => {
+    const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
+      [
+        'Base liquidable general',
+        '116.302,95',
+        '0505',
+        'Base liquidable del ahorro',
+        '5.877,69',
+        '0510',
+        'Cuota íntegra estatal',
+        '21.650,04',
+        '0545',
+        'Cuota íntegra autonómica',
+        '20.662,80',
+        '0546',
+      ].join('\n'),
+    ]);
+
+    expect(casillas).toMatchObject({
+      '0505': 116302.95,
+      '0510': 5877.69,
+      '0545': 21650.04,
+      '0546': 20662.8,
+    });
+  });
+
   test('no sobreescribe valores válidos con falsos positivos del resumen final de IRPF 2021', () => {
     const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
       [
