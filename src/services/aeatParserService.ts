@@ -91,6 +91,37 @@ type BooleanGetter = (casilla: string) => boolean;
 
 const MIN_EJERCICIO = 2020;
 
+const CASILLAS_INMUEBLE_REPETIBLES = [
+  '0062', '0063', '0065', '0066', '0067', '0069', '0073', '0074', '0075',
+  '0085', '0089', '0090', '0091', '0093', '0094', '0100', '0101', '0102',
+  '0103', '0104', '0105', '0106', '0107', '0108', '0109', '0112', '0113',
+  '0114', '0115', '0117', '0118', '0120', '0123', '0124', '0125', '0126',
+  '0127', '0129', '0130', '0131', '0133', '0135', '0137', '0138', '0139',
+  '0140', '0141', '0142', '0145', '0146', '0149', '0150', '0154', '1212',
+  '1221', '1222', '1224', '1394', '1395', '1396', '1416', '1417', '1421',
+  '1422', '1423',
+] as const;
+
+const CCAA_CODES: Record<number, string> = {
+  1: 'Andalucía',
+  2: 'Aragón',
+  3: 'Asturias',
+  4: 'Baleares',
+  5: 'Canarias',
+  6: 'Cantabria',
+  7: 'Castilla-La Mancha',
+  8: 'Castilla y León',
+  9: 'Cataluña',
+  10: 'Extremadura',
+  11: 'Galicia',
+  12: 'Madrid',
+  13: 'Murcia',
+  14: 'La Rioja',
+  15: 'Comunidad Valenciana',
+  16: 'Ceuta',
+  17: 'Melilla',
+} as const;
+
 export async function parsearDeclaracionAEAT(
   file: File,
   onProgress?: OnProgress,
@@ -327,7 +358,7 @@ function parsearRespuestaClaude(textoRespuesta: string): CasillasRaw {
       resultado[casilla] = String(valor);
     }
 
-    return resultado;
+    return normalizarSufijosInmuebles(normalizarClavesCasillas(resultado));
   } catch (error) {
     console.error('[AEATParser] Error parseando JSON de Claude:', error);
     console.error('[AEATParser] Texto recibido:', limpio.slice(0, 500));
