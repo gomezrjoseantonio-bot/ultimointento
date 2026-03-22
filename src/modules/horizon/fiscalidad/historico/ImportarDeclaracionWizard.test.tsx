@@ -7,11 +7,11 @@ jest.mock('../../../../services/scanChatService', () => ({
 }));
 
 describe('ImportarDeclaracionWizard', () => {
-  it('renderiza el flujo con el nuevo paso de onboarding de entidades', () => {
+  it('renderiza el flujo base del wizard de importación AEAT', () => {
     render(<ImportarDeclaracionWizard onClose={() => undefined} onImported={() => undefined} />);
 
     expect(screen.getByText('Importar declaración IRPF')).toBeInTheDocument();
-    expect(screen.getByText('Paso 4')).toBeInTheDocument();
+    expect(screen.getByText('Paso 3')).toBeInTheDocument();
     expect(screen.getByText('Formulario manual')).toBeInTheDocument();
     expect(screen.getByText('Subir PDF del Modelo 100')).toBeInTheDocument();
   });

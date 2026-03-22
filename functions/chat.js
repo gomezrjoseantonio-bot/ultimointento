@@ -197,51 +197,47 @@ Si un campo no aparece en el documento usa null.`;
         return jsonResponse(400, { ok: false, error: 'Campo "imagen", "imagenes" o "texto" obligatorio' });
       }
 
-      const system = promptOverride || (texto ? texto : `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
-Analiza el documento y extrae los valores de las casillas AEAT con máxima precisión.
+      const system = promptOverride || (texto ? texto : `Estás analizando una declaración completa de la Renta española (Modelo 100 — IRPF) en PDF.
 
-CASILLAS A EXTRAER (devuelve TODAS las que encuentres):
+TAREA: Extrae TODAS las casillas con su número y valor. Cada casilla tiene un número de 4 dígitos (como 0003, 0435, 0670, 1224) seguido de un valor numérico o de texto.
 
-BASES IMPONIBLES:
-- 0435: Base imponible general
-- 0460: Base imponible del ahorro
-- 0500 o 0505: Base liquidable general
-- 0510: Base liquidable del ahorro
+FORMATO DE RESPUESTA: Devuelve SOLO un JSON válido, sin markdown, sin explicación, sin preámbulo. El JSON debe ser un objeto donde:
+- La clave es el número de casilla (string de 4 dígitos, ej: "0003")
+- El valor es el número (como number, sin puntos de miles — usa punto decimal) o texto (string)
 
-CUOTAS:
-- 0545: Cuota íntegra estatal
-- 0546: Cuota íntegra autonómica
-- 0570: Cuota líquida estatal
-- 0571: Cuota líquida autonómica
-- 0587: Cuota líquida incrementada total
-- 0595: Cuota resultante autoliquidación
-
-RETENCIONES:
-- 0596: Retenciones del trabajo
-- 0597: Retenciones capital mobiliario
-- 0599: Retenciones actividades económicas
-- 0604: Pagos fraccionados
-- 0609: Total pagos a cuenta
-
-RESULTADO:
-- 0610: Cuota diferencial
-- 0670: Resultado de la declaración
-- 0676: Regularización (si existe)
-
-RENDIMIENTOS (opcionales pero valiosos):
-- 0022 o 0025: Rendimiento neto del trabajo
-- 0156: Rendimientos inmobiliarios netos reducidos
-- 0224 o 0226: Rendimiento neto actividades económicas
-
-INSTRUCCIONES:
-- Los importes negativos deben incluir el signo negativo
-- Usa el formato numérico con punto decimal (ej: 148505.78, no 148.505,78)
-- Si una casilla no aparece en el documento, NO la incluyas
-- Devuelve ÚNICAMENTE un objeto JSON con formato {"casilla": valor}
-- Sin texto adicional, sin markdown, sin explicaciones
+REGLAS:
+1. Extrae ABSOLUTAMENTE TODAS las casillas que veas, sin excepción.
+2. Recorre todas las páginas del PDF antes de responder.
+3. Los importes en euros: quita los puntos de miles y usa punto como decimal (ej: "133.350,85" → 133350.85).
+4. Las fechas déjalas como string: "28/09/1980".
+5. Los NIF/NIE déjalos como string: "53069494F".
+6. Los porcentajes como número: "100,00" → 100.
+7. Si una casilla tiene "X" o una marca de selección, usa true.
+8. Si una casilla está vacía o con "—", no la incluyas.
+9. Las casillas de texto libre (direcciones, nombres, encabezados identificativos) como string.
+10. Para casillas repetidas (varios inmuebles, varios titulares o bloques repetidos), usa sufijo: "0102_1", "0102_2", etc.
+11. Para la sección "Información adicional" incluye también las casillas 1211-1423 si aparecen.
+12. Incluye metadatos identificativos si los ves: ejercicio, nif, nombre, estado_civil, comunidad_autonoma, fecha_nacimiento, fecha_presentacion, numero_justificante, csv.
+13. Las referencias catastrales son strings de ~20 caracteres y nunca deben convertirse a número.
 
 Ejemplo de respuesta:
-{"0435": 148505.78, "0460": 357.63, "0545": 27638.03, "0670": 1859.88}`);
+{
+  "0001": "GOMEZ RAMIREZ JOSE ANTONIO",
+  "0003": 133350.85,
+  "0006": true,
+  "0066_1": "7949807TP6074N0006YM",
+  "0069_1": "CL FUERTES ACEVEDO 0032 1 02 DR OVIEDO",
+  "0074_2": true,
+  "0090_2": "7949807TP6074N0006YM",
+  "0102_1": 19675,
+  "0435": 150924.07,
+  "0670": 2899.75,
+  "1212_1": "7949807TP6074N0006YM",
+  "1224_1": 28239.24,
+  "estado_civil": "Soltero/a",
+  "comunidad_autonoma": "Madrid",
+  "fecha_nacimiento": "28/09/1980"
+}`);
 
       const result = await callAnthropic({
         model: SCAN_MODEL,

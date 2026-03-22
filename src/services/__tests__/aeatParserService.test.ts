@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { detectarEjercicio, dividirPdfEnBloques, dividirTextoPorPaginas } from '../aeatParserService';
+import { __private__, detectarEjercicio, dividirPdfEnBloques, dividirTextoPorPaginas } from '../aeatParserService';
 
 describe('detectarEjercicio', () => {
   test('acepta ejercicios abreviados en el payload extraído', () => {
@@ -54,5 +54,20 @@ describe('dividirPdfEnBloques', () => {
       [7, 7],
     ]);
     expect(bloques.every((bloque) => bloque.blob.size > 0)).toBe(true);
+  });
+});
+
+describe('helpers de metadatos AEAT', () => {
+  test('detecta estado civil desde la marca X en la casilla 0006', () => {
+    expect(__private__.detectarEstadoCivil({ '0006': 'X' })).toBe('Soltero/a');
+  });
+
+  test('detecta la CCAA desde la casilla 0010 cuando contiene texto', () => {
+    expect(__private__.detectarCCAA({ '0010': 'MADRID' })).toBe('Madrid');
+  });
+
+  test('detecta la fecha de nacimiento solo desde metadata y no desde la casilla 0010 textual', () => {
+    expect(__private__.detectarFechaNacimiento({ fecha_nacimiento: '28/09/1980', '0010': 'MADRID' })).toBe('28/09/1980');
+    expect(__private__.detectarFechaNacimiento({ '0010': 'MADRID' })).toBe('');
   });
 });

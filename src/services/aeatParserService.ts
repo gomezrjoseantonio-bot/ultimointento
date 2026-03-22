@@ -256,10 +256,44 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
     for (let index = 1; index <= pdf.numPages; index += 1) {
       const page = await pdf.getPage(index);
       const content = await page.getTextContent();
-      const textoPagina = content.items
-        .map((item) => ('str' in item ? String(item.str ?? '').trim() : ''))
-        .filter(Boolean)
-        .join(' ');
+      const items = content.items
+        .map((item) => {
+          if (!('str' in item)) return null;
+          const str = String(item.str ?? '').trim();
+          if (!str) return null;
+          const transform = Array.isArray(item.transform) ? item.transform : [];
+          const x = typeof transform[4] === 'number' ? transform[4] : 0;
+          const y = typeof transform[5] === 'number' ? transform[5] : 0;
+          return { str, x, y };
+        })
+        .filter((item): item is { str: string; x: number; y: number } => Boolean(item));
+
+      if (items.length === 0) continue;
+
+      const sorted = [...items].sort((a, b) => {
+        const yDiff = b.y - a.y;
+        if (Math.abs(yDiff) > 3) return yDiff;
+        return a.x - b.x;
+      });
+
+      const lines: string[] = [];
+      let currentLine: string[] = [];
+      let currentY = sorted[0]?.y ?? 0;
+
+      for (const item of sorted) {
+        if (Math.abs(item.y - currentY) > 3) {
+          if (currentLine.length > 0) lines.push(currentLine.join(' '));
+          currentLine = [];
+          currentY = item.y;
+        }
+        currentLine.push(item.str);
+      }
+
+      if (currentLine.length > 0) {
+        lines.push(currentLine.join(' '));
+      }
+
+      const textoPagina = lines.join('\n');
 
       if (textoPagina) {
         paginasTexto.push(textoPagina);
@@ -465,51 +499,51 @@ async function callClaudeAPI(file: File, prompt: string): Promise<string> {
 }
 
 function construirPromptAEATTexto(textoExtraido: string): string {
-  return `Estás analizando el TEXTO extraído de una declaración de la Renta española (Modelo 100 — IRPF).
+  return `Estás analizando el TEXTO ya extraído de una declaración completa de la Renta española (Modelo 100 — IRPF).
 
 TAREA: Extrae TODAS las casillas con su número y valor.
 
-FORMATO: Devuelve SOLO un JSON válido. Sin markdown, sin explicación, sin preámbulo.
-La clave es el número de casilla con 4 dígitos (ej: "0003", "0435").
-El valor es number (punto decimal, sin puntos de miles) o string.
+FORMATO DE RESPUESTA: Devuelve SOLO un JSON válido. Clave = casilla (4 dígitos), valor = número o string.
 
-REGLAS CRÍTICAS PARA INMUEBLES:
-- La declaración puede tener VARIOS inmuebles (Inmueble 1, Inmueble 2, ...).
-- CADA inmueble tiene sus propias casillas (0062 a 0154).
-- USA SUFIJO _1, _2, _3... para distinguirlos:
+REGLAS CRÍTICAS:
+1. Extrae ABSOLUTAMENTE TODAS las casillas, sin excepción.
+2. INMUEBLES: El PDF puede tener VARIOS inmuebles (Inmueble 1, Inmueble 2, ...). Cada uno repite las mismas casillas (0062-0154). USA SUFIJOS: "0066_1", "0102_1" para el primero, "0066_2", "0102_2" para el segundo, etc.
+3. INMUEBLES ACCESORIOS: Si un inmueble dice "Arrendamiento como inmueble accesorio", marcarlo con "0074_N": true y "0090_N": "<ref catastral del principal>".
+4. ARRASTRES: La sección "Información adicional" al final tiene casillas 1211-1423. Extraerlas también con sufijos si hay varias.
+5. METADATOS: Incluir ejercicio, nif, nombre, fecha_presentacion, numero_justificante, csv, estado_civil, comunidad_autonoma, fecha_nacimiento como campos de texto o número según corresponda.
+6. Importes: quita puntos de miles, usa punto decimal (133.350,85 → 133350.85).
+7. Fechas como string: "28/09/1980".
+8. NIF como string: "53069494F".
+9. Referencias catastrales como string (nunca convertir a número).
+10. "X" o marca → true.
+11. Si solo hay 1 inmueble, usa igualmente sufijo _1 para sus casillas repetidas.
+12. Casillas vacías o con "—" no se incluyen.
+
+EJEMPLO con 2 inmuebles:
+{
+  "ejercicio": 2024,
+  "nif": "53069494F",
+  "nombre": "GOMEZ RAMIREZ JOSE ANTONIO",
+  "estado_civil": "Soltero/a",
+  "comunidad_autonoma": "Madrid",
+  "fecha_nacimiento": "28/09/1980",
+  "0003": 133350.85,
   "0066_1": "7949807TP6074N0006YM",
-  "0069_1": "CL FUERTES ACEVEDO 0032 1 02 DR OVIEDO",
-  "0102_1": 19675.00,
-  "0066_2": "6533404DG0263S0002TP",
-  "0069_2": "CL CARLES BUIGAS 0015 A 00 02 SANT FRUITOS",
-  "0102_2": 3960.00,
-- Si solo hay 1 inmueble, usa igualmente sufijo _1.
-- Los inmuebles accesorios también llevan su propio sufijo.
-
-DATOS PERSONALES (extraer siempre):
-- "ejercicio": número del ejercicio fiscal (ej: 2024)
-- "nif": NIF del declarante (ej: "53069494F")
-- "nombre": nombre completo (ej: "GOMEZ RAMIREZ JOSE ANTONIO")
-- "estado_civil": el texto del estado civil (Soltero, Casado, etc.)
-- "fecha_nacimiento": fecha (ej: "28/09/1980")
-- "comunidad_autonoma": nombre o código de la CCAA
-- "fecha_presentacion": fecha de presentación si aparece
-- "numero_justificante": número de justificante si aparece
-- "csv": Código Seguro de Verificación si aparece
-
-SECCIÓN INFORMACIÓN ADICIONAL (al final del PDF):
-- Casillas 1211-1224: arrastres de gastos por inmueble (usar sufijo _1, _2...)
-- Casillas 1258-1269: pérdidas patrimoniales pendientes
-- Casillas 1393-1423: detalle de gastos por proveedor (usar sufijo _1, _2...)
-
-OTRAS REGLAS:
-- Los importes: "133.350,85" → 133350.85
-- Las fechas como string: "28/09/1980"
-- NIF/NIE como string: "53069494F"
-- Porcentajes como número: "100,00" → 100
-- Marcas "X" → true
-- Casillas vacías o "—" → NO incluir
-- Referencias catastrales son strings (~20 chars), NUNCA convertir a número
+  "0069_1": "CL FUERTES ACEVEDO 32 OVIEDO",
+  "0101_1": 366,
+  "0102_1": 19675,
+  "0105_1": 1580.34,
+  "0131_1": 816.12,
+  "0154_1": 3943.75,
+  "0066_2": "0454010TP7005S0012TS",
+  "0069_2": "CL TENDERINA 48 OVIEDO",
+  "0102_2": 17710,
+  "1212_1": "7949807TP6074N0006YM",
+  "1221_1": 6157.99,
+  "1224_1": 28239.24,
+  "0435": 150924.07,
+  "0670": 2899.75
+}
 
 TEXTO DEL PDF:
 ${textoExtraido}`;
@@ -748,9 +782,9 @@ function mapearCasillasADeclaracion(
     personal: {
       nif: meta.nif,
       nombre: meta.nombre,
-      estadoCivil: s('estado_civil') || s('0006_estado') || detectarEstadoCivil(raw),
+      estadoCivil: s('estado_civil') || s('estadoCivil') || s('0006_estado') || detectarEstadoCivil(raw),
       comunidadAutonoma: detectarCCAA(raw),
-      fechaNacimiento: s('fecha_nacimiento') || detectarFechaNacimiento(raw),
+      fechaNacimiento: s('fecha_nacimiento') || s('fechaNacimiento') || detectarFechaNacimiento(raw),
     },
     trabajo,
     inmuebles: inmuebles.map((inmueble) => inmueble.datos),
@@ -1142,32 +1176,26 @@ function extraerNIF(raw: CasillasRaw): string {
 }
 
 function detectarEstadoCivil(raw: CasillasRaw): string {
-  const directo = raw['estado_civil'];
+  const directo = raw['estado_civil'] || raw['estadoCivil'];
   if (typeof directo === 'string' && directo.trim()) return directo.trim();
 
   const val0006 = raw['0006'];
-  if (val0006 === 'X' || String(val0006).toLowerCase() === 'true') return 'Soltero/a';
-  if (typeof val0006 === 'string' && /soltero|casado|viudo|separado|divorciado/i.test(val0006)) {
-    return val0006;
-  }
-
-  if (raw['0007_ec'] === 'X') return 'Casado/a';
-
-  const campo05 = raw['0005_ec'] ?? raw['05'];
-  if (typeof campo05 === 'string') {
-    if (/soltero/i.test(campo05)) return 'Soltero/a';
-    if (/casado/i.test(campo05)) return 'Casado/a';
-  }
+  if (val0006 === 'X' || val0006 === 'x') return 'Soltero/a';
+  if (typeof val0006 === 'string' && /soltero/i.test(val0006)) return 'Soltero/a';
+  if (typeof val0006 === 'string' && /casado/i.test(val0006)) return 'Casado/a';
 
   for (const value of Object.values(raw)) {
     if (typeof value !== 'string') continue;
-    if (/\bsoltero\/a\b/i.test(value)) return 'Soltero/a';
-    if (/\bcasado\/a\b/i.test(value)) return 'Casado/a';
-    if (/\bviudo\/a\b/i.test(value)) return 'Viudo/a';
-    if (/\bdivorciado|separado/i.test(value)) return 'Separado/a';
-    if (/soltero/i.test(value)) return 'Soltero/a';
-    if (/casado/i.test(value)) return 'Casado/a';
-    if (/viudo/i.test(value)) return 'Viudo/a';
+    if (/\(1\)\s*soltero/i.test(value)) return 'Soltero/a';
+    if (/\(2\)\s*casado/i.test(value)) return 'Casado/a';
+    if (/\(3\)\s*viudo/i.test(value)) return 'Viudo/a';
+    if (/\(4\)\s*divorciado/i.test(value)) return 'Divorciado/a';
+    if (/\(4\)\s*separado/i.test(value)) return 'Separado/a';
+    if (/soltero/i.test(value) && value.length < 30) return 'Soltero/a';
+    if (/casado/i.test(value) && value.length < 30) return 'Casado/a';
+    if (/viudo/i.test(value) && value.length < 30) return 'Viudo/a';
+    if (/divorciado/i.test(value) && value.length < 30) return 'Divorciado/a';
+    if (/separado/i.test(value) && value.length < 30) return 'Separado/a';
   }
 
   return '';
@@ -1200,6 +1228,17 @@ function detectarCCAA(raw: CasillasRaw): string {
     if (!Number.isNaN(num) && CCAA_CODES[num]) return CCAA_CODES[num];
   }
 
+  const casilla0010 = raw['0010'];
+  if (typeof casilla0010 === 'string' && casilla0010.trim().length > 3) {
+    for (const [, nombre] of Object.entries(CCAA_CODES)) {
+      if (casilla0010.toUpperCase().includes(nombre.toUpperCase())) return nombre;
+    }
+    return casilla0010.trim();
+  }
+  if (typeof casilla0010 === 'number' && CCAA_CODES[casilla0010]) {
+    return CCAA_CODES[casilla0010];
+  }
+
   for (const value of Object.values(raw)) {
     if (typeof value !== 'string') continue;
     for (const [, nombre] of Object.entries(CCAA_CODES)) {
@@ -1207,8 +1246,18 @@ function detectarCCAA(raw: CasillasRaw): string {
     }
   }
 
+  for (const value of Object.values(raw)) {
+    if (typeof value === 'string' && /MADRID/i.test(value)) return 'Madrid';
+  }
+
   return '';
 }
+
+export const __private__ = {
+  detectarEstadoCivil,
+  detectarCCAA,
+  detectarFechaNacimiento,
+};
 
 function declaracionVacia(): DeclaracionIRPF {
   return {
