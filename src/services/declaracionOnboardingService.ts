@@ -1,4 +1,4 @@
-import type { Contract, PersonalData, Property } from './db';
+import type { Contract, Property } from './db';
 import { initDB } from './db';
 import type {
   DeclaracionActividad,
@@ -7,6 +7,7 @@ import type {
 } from '../types/fiscal';
 import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
+import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
 import { saveContract } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
