@@ -276,4 +276,22 @@ describe('fallback OCR AEAT', () => {
     expect(resultado).toMatchObject({ '0003': 10, '0004': 20 });
     expect(mockedCallScanChat).toHaveBeenCalledTimes(4);
   });
+
+  test('si pdf-lib no puede dividir un pdf válido para el flujo, hace OCR sobre el fichero original completo', async () => {
+    mockedCallScanChat.mockResolvedValueOnce({
+      ok: true,
+      extraido: JSON.stringify({ '0435': 150924.07, '0670': 2899.75 }),
+    });
+
+    const fakePdf = new File(['not-really-a-pdf-but-should-trigger-fallback'], 'declaracion.pdf', { type: 'application/pdf' });
+
+    const resultado = await __private__.extraerCasillasConClaudePorBloques(
+      fakePdf,
+      11,
+    );
+
+    expect(resultado).toMatchObject({ '0435': 150924.07, '0670': 2899.75 });
+    expect(mockedCallScanChat).toHaveBeenCalledTimes(1);
+    expect(mockedCallScanChat.mock.calls[0]?.[0]).toBe(fakePdf);
+  });
 });

@@ -718,7 +718,7 @@ export async function dividirPdfEnBloques(
 ): Promise<BloquePaginasPdf[]> {
   const sourceBytes = fileOrBytes instanceof Uint8Array
     ? fileOrBytes
-    : new Uint8Array(await fileOrBytes.arrayBuffer());
+    : new Uint8Array(await leerArrayBufferDesdeBlob(fileOrBytes));
   const sourcePdf = await PDFDocument.load(sourceBytes);
   const totalPaginas = sourcePdf.getPageCount();
   const bloques: BloquePaginasPdf[] = [];
@@ -751,7 +751,27 @@ async function extraerCasillasConClaudePorBloques(
   bytesPdf?: Uint8Array,
   casillasIniciales: CasillasRaw = {},
 ): Promise<CasillasRaw> {
-  const bloques = await dividirPdfEnBloques(bytesPdf ?? file);
+  let bloques: BloquePaginasPdf[];
+
+  try {
+    bloques = await dividirPdfEnBloques(bytesPdf ?? file);
+  } catch (error) {
+    console.warn(
+      '[AEATParser] No se pudo dividir el PDF en bloques con pdf-lib. Se intentará OCR sobre el fichero original completo.',
+      error,
+    );
+
+    onProgress?.({
+      fase: 'procesando',
+      pagina: totalPaginas || undefined,
+      totalPaginas: totalPaginas || undefined,
+      mensaje: 'Analizando el PDF completo sin dividir en bloques...',
+    });
+
+    const response = await callClaudeAPI(file, construirPromptAEAT());
+    return mergeCasillasRaw(casillasIniciales, parsearRespuestaClaude(response));
+  }
+
   let acumulado = { ...casillasIniciales };
 
   for (let index = 0; index < bloques.length; index += 1) {
@@ -1632,6 +1652,7 @@ export const __private__ = {
   detectarCCAA,
   detectarFechaNacimiento,
   esTimeoutOCR,
+  extraerCasillasConClaudePorBloques,
   extraerCasillasDeterministasDesdeTexto,
   leerBytesPdfNormalizados,
   tieneDatosMinimosParaImportar,
