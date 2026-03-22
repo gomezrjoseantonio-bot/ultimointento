@@ -13,9 +13,6 @@ import type {
   ProgresoParseo,
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
-import {
-  analizarDeclaracion,
-} from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
@@ -493,11 +490,10 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progreso, setProgreso] = useState<ProgresoParseo | null>(null);
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
-  const [resultadoAnalisis, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
+  const [, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [parsing, setParsing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [analizandoEntidades, setAnalizandoEntidades] = useState(false);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
@@ -576,45 +572,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     } finally {
       setParsing(false);
       setProgreso(null);
-    }
-  };
-
-  const handleAnalizarEntidades = async () => {
-    if (!resultadoExtraccion?.exito) {
-      setStep(4);
-      return;
-    }
-
-    setAnalizandoEntidades(true);
-    try {
-      const analisis = await analizarDeclaracion(resultadoExtraccion);
-      setResultadoAnalisis(analisis);
-      setStep(4);
-    } catch (error) {
-      console.error('Error analizando entidades de la declaración', error);
-      toast.error(error instanceof Error ? error.message : 'No se pudieron analizar las entidades detectadas');
-    } finally {
-      setAnalizandoEntidades(false);
-    }
-  };
-
-  const handleCompleteEntityImport = async () => {
-    const ejercicioImportacion = resultadoExtraccion?.exito && resultadoExtraccion.meta.ejercicio > 0
-      ? resultadoExtraccion.meta.ejercicio
-      : data.ejercicio;
-
-    try {
-      await archivarPdfImportado(
-        uploadedFile,
-        ejercicioImportacion,
-        metodo,
-        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
-      );
-      await onImported();
-      onClose();
-    } catch (error) {
-      console.error('Error archivando el PDF importado', error);
-      toast.error(`La importación se completó, pero no se pudo archivar el PDF: ${error instanceof Error ? error.message : 'desconocido'}`);
     }
   };
 
