@@ -212,8 +212,11 @@ export async function parsearDeclaracionAEAT(
   } catch (error) {
     console.error('[AEATParser] Error:', error);
     const rawMessage = error instanceof Error ? error.message : 'desconocido';
+    const mensajePdfInvalido = /no pdf header found|archivo_no_pdf|invalid pdf|missing pdf/i.test(rawMessage);
     const friendlyMessage = /timeout|504|inactivity/i.test(rawMessage)
       ? 'El análisis del PDF ha superado el tiempo límite incluso tras reintentar por bloques. Revisa la conexión o usa el formulario manual como contingencia.'
+      : mensajePdfInvalido
+        ? 'El archivo seleccionado no parece ser un PDF válido de la AEAT. Vuelve a descargarlo y asegúrate de subir el documento original en PDF.'
       : `Error procesando PDF: ${rawMessage}`;
     return resultadoError(friendlyMessage);
   }
@@ -263,9 +266,8 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
     const { pdfjs } = await import('react-pdf');
     pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const bytesPdf = new Uint8Array(arrayBuffer);
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const bytesPdf = await leerBytesPdfNormalizados(file);
+    const pdf = await pdfjs.getDocument({ data: bytesPdf }).promise;
     const paginasTexto: string[] = [];
 
     for (let index = 1; index <= pdf.numPages; index += 1) {
@@ -323,8 +325,65 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
     };
   } catch (error) {
     console.warn('[AEATParser] No se pudo preparar el PDF para análisis:', error);
-    return { totalPaginas: 0, textoExtraido: '', paginasTexto: [] };
+    throw error;
   }
+}
+
+async function leerBytesPdfNormalizados(file: File): Promise<Uint8Array> {
+  const arrayBuffer = await leerArrayBufferDesdeBlob(file);
+  const bytes = new Uint8Array(arrayBuffer);
+
+  if (bytes.length === 0) {
+    throw new Error('archivo_no_pdf: archivo vacío');
+  }
+
+  const headerIndex = buscarCabeceraPdf(bytes);
+  if (headerIndex === -1) {
+    const textoInicial = bytesAAscii(bytes.slice(0, Math.min(bytes.length, 256)))
+      .trim()
+      .toLowerCase();
+
+    if (textoInicial.startsWith('<!doctype html') || textoInicial.startsWith('<html')) {
+      throw new Error('archivo_no_pdf: se recibió HTML en lugar de PDF');
+    }
+
+    throw new Error('archivo_no_pdf: no se encontró una cabecera PDF válida');
+  }
+
+  return headerIndex === 0 ? bytes : bytes.slice(headerIndex);
+}
+
+async function leerArrayBufferDesdeBlob(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return blob.arrayBuffer();
+  }
+
+  const response = new Response(blob);
+  return response.arrayBuffer();
+}
+
+function bytesAAscii(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((value) => (value >= 32 && value <= 126 ? String.fromCharCode(value) : ' '))
+    .join('');
+}
+
+function buscarCabeceraPdf(bytes: Uint8Array): number {
+  const limite = Math.max(0, Math.min(bytes.length - 4, 2048));
+
+  for (let index = 0; index <= limite; index += 1) {
+    if (
+      bytes[index] === 0x25
+      && bytes[index + 1] === 0x50
+      && bytes[index + 2] === 0x44
+      && bytes[index + 3] === 0x46
+      && bytes[index + 4] === 0x2D
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
 }
 
 function textoTieneContenidoRelevante(texto: string): boolean {
@@ -338,8 +397,8 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
   const patrones = [
-    /(^|\s)(-?[\d.]+,\d{2})\s+(\d{4})(?!\d)/g,
-    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2})(?!\d)/g,
+    /(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2}|-?\d+)(?!\d)/g,
   ];
 
   for (const pagina of paginasTexto) {
@@ -368,7 +427,172 @@ function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): Casilla
     }
   }
 
+  return mergeCasillasRaw(
+    resultado,
+    extraerMetadatosDesdeTexto(paginasTexto),
+    extraerCasillasRepetiblesDesdeTexto(paginasTexto),
+  );
+}
+
+function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const texto = paginasTexto.join('\n').replace(/\u00a0/g, ' ');
+  const resultado: CasillasRaw = {};
+
+  const ejercicio = texto.match(/Ejercicio\s+(20\d{2}|\d{2})/i)?.[1];
+  if (ejercicio) resultado.ejercicio = ejercicio;
+
+  const nif = texto.match(/NIF\s+([A-Z0-9]{8,12})\s+0001\b/i)?.[1]
+    ?? texto.match(/NIF declarante\s+([A-Z0-9]{8,12})/i)?.[1]
+    ?? texto.match(/NIF Presentador:\s*([A-Z0-9]{8,12})/i)?.[1];
+  if (nif) resultado.nif = nif.trim().toUpperCase();
+
+  const nombre = texto.match(/Apellidos y nombre\s+(.+?)\s+0002\b/i)?.[1]
+    ?? texto.match(/Apellidos y nombre(?:\s*\/\s*Raz[oó]n social)?:\s*(.+)/i)?.[1];
+  if (nombre) resultado.nombre = limpiarTextoExtraido(nombre);
+
+  const estadoCivil = texto.match(/Estado civil \(el 31-12-\d{4}\)\s+(.+?)\s+0006\b/i)?.[1];
+  if (estadoCivil) {
+    resultado.estado_civil = limpiarEstadoCivil(estadoCivil);
+  }
+
+  const fechaNacimiento = texto.match(/Fecha de nacimiento\s+(\d{2}\/\d{2}\/\d{4})\s+0010\b/i)?.[1];
+  if (fechaNacimiento) resultado.fecha_nacimiento = fechaNacimiento;
+
+  const comunidad = texto.match(/Comunidad Autónoma.*?\n.*?\s([A-ZÁÉÍÓÚÜÑ ]{3,})\s+0070\b/i)?.[1]
+    ?? texto.match(/Comunidad Autónoma.*?residencia habitual.*?\s([A-ZÁÉÍÓÚÜÑ ]{3,})\s+0070\b/i)?.[1];
+  if (comunidad) resultado.comunidad_autonoma = toTitleCase(limpiarTextoExtraido(comunidad));
+
+  const numeroJustificante = texto.match(/Número de justificante.*?\s(\d{10,})\s+0104\b/i)?.[1]
+    ?? texto.match(/Número de justificante:\s*(\d{10,})/i)?.[1]
+    ?? texto.match(/Número de justificante\s+(\d{10,})/i)?.[1];
+  if (numeroJustificante) resultado.numero_justificante = numeroJustificante;
+
+  const fechaPresentacion = texto.match(/Presentaci[oó]n realizada el:\s*(\d{2}[-/]\d{2}[-/]\d{4})\s*a las\s*(\d{2}:\d{2}:\d{2})/i);
+  if (fechaPresentacion) {
+    resultado.fecha_presentacion = `${fechaPresentacion[1].replace(/-/g, '/')} ${fechaPresentacion[2]}`;
+  }
+
+  const expedienteReferencia = texto.match(/Expediente\/Referencia .*?:\s*([A-Z0-9]+)/i)?.[1];
+  if (expedienteReferencia) resultado.expediente_referencia = expedienteReferencia;
+
+  const csv = texto.match(/C[oó]digo Seguro de Verificaci[oó]n:\s*([A-Z0-9]+)/i)?.[1];
+  if (csv) resultado.csv = csv;
+
+  const presentadorNombre = texto.match(/Apellidos y Nombre(?:\/ Raz[oó]n social)?:\s*(.+)/i)?.[1];
+  if (presentadorNombre && !resultado.nombre) {
+    resultado.nombre = limpiarTextoExtraido(presentadorNombre);
+  }
+
   return resultado;
+}
+
+function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const casillasRepetibles = new Set<string>(CASILLAS_INMUEBLE_REPETIBLES);
+  const refToPropertyIndex = new Map<string, number>();
+  const directTextExtractors: Array<[RegExp, string]> = [
+    [/Referencia catastral\.?\s+([A-Z0-9]{8,20})\s+0066\b/i, '0066'],
+    [/Direcci[oó]n del inmueble\s+(.+?)\s+0069\b/i, '0069'],
+    [/Ref\. catastral del inmueble principal al que est[aá] vinculado el accesorio\s+([A-Z0-9]{8,20})\s+0090\b/i, '0090'],
+    [/NIF del arrendatario 1\.?\s+([A-Z0-9]{8,12})\s+0091\b/i, '0091'],
+    [/NIF del arrendatario 2\.?\s+([A-Z0-9]{8,12})\s+0094\b/i, '0094'],
+    [/Fecha del contrato\.?\s+(\d{2}\/\d{2}\/\d{4})\s+0093\b/i, '0093'],
+    [/Fecha de adquisici[oó]n del inmueble.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0120\b/i, '0120'],
+    [/Fecha de adquisici[oó]n del inmueble accesorio.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0135\b/i, '0135'],
+    [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1212\b/i, '1212'],
+    [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1394\b/i, '1394'],
+    [/NIF de qui[eé]n realiza la reparaci[oó]n y conservaci[oó]n\s+([A-Z0-9]{8,12})\s+1395\b/i, '1395'],
+    [/NIF de qui[eé]n presta los servicios personales\s+([A-Z0-9]{8,12})\s+1416\b/i, '1416'],
+    [/Fecha de realizaci[oó]n de la mejora\s+(\d{2}\/\d{2}\/\d{4})\s+1421\b/i, '1421'],
+    [/NIF de qui[eé]n realiz[oó] la obra o servicio de mejora\s+([A-Z0-9]{8,12})\s+1422\b/i, '1422'],
+  ];
+
+  let indiceInmuebleActual: number | null = null;
+  let contadorBloquesSinNumero = 0;
+
+  const setSufijo = (casilla: string, valor: number | string) => {
+    if (!indiceInmuebleActual || !casillasRepetibles.has(casilla)) return;
+    resultado[`${casilla}_${indiceInmuebleActual}`] = valor;
+  };
+
+  const normalizarRef = (value: string) => value.replace(/\s+/g, '').trim().toUpperCase();
+
+  for (const pagina of paginasTexto) {
+    const lineas = pagina
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    for (const linea of lineas) {
+      const encabezadoInmueble = linea.match(/^Inmueble\s+(\d+)\b/i);
+      if (encabezadoInmueble) {
+        indiceInmuebleActual = Number.parseInt(encabezadoInmueble[1], 10);
+        continue;
+      }
+
+      if (/^Inmueble\b\.?$/i.test(linea)) {
+        contadorBloquesSinNumero += 1;
+        indiceInmuebleActual = contadorBloquesSinNumero;
+        continue;
+      }
+
+      if (!indiceInmuebleActual) {
+        continue;
+      }
+
+      const booleanMatches = Array.from(linea.matchAll(/\bX\s+(0067|0073|0074|0075|0100|0118|0133)\b/g));
+      for (const match of booleanMatches) {
+        setSufijo(match[1], 'X');
+      }
+
+      const numericMatches = Array.from(linea.matchAll(/(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g));
+      for (const match of numericMatches) {
+        const casilla = match[3];
+        if (!casillasRepetibles.has(casilla)) continue;
+        const valor = Number.parseFloat(match[2].replace(/\./g, '').replace(',', '.'));
+        if (!Number.isNaN(valor)) {
+          setSufijo(casilla, valor);
+        }
+      }
+
+      for (const [pattern, casilla] of directTextExtractors) {
+        const value = linea.match(pattern)?.[1];
+        if (!value) continue;
+        const limpio = limpiarTextoExtraido(value);
+
+        if (casilla === '0066') {
+          refToPropertyIndex.set(normalizarRef(limpio), indiceInmuebleActual!);
+        }
+
+        if (casilla === '1212' || casilla === '1394') {
+          const knownIndex = refToPropertyIndex.get(normalizarRef(limpio));
+          if (knownIndex) {
+            indiceInmuebleActual = knownIndex;
+          } else {
+            refToPropertyIndex.set(normalizarRef(limpio), indiceInmuebleActual!);
+          }
+        }
+
+        setSufijo(casilla, limpio);
+      }
+    }
+  }
+
+  return resultado;
+}
+
+function limpiarTextoExtraido(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function limpiarEstadoCivil(value: string): string {
+  return limpiarTextoExtraido(value).replace(/^\(\d+\)\s*/, '');
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\b\p{L}/gu, (char) => char.toUpperCase());
 }
 
 function tieneDatosMinimosParaImportar(
@@ -494,7 +718,7 @@ export async function dividirPdfEnBloques(
 ): Promise<BloquePaginasPdf[]> {
   const sourceBytes = fileOrBytes instanceof Uint8Array
     ? fileOrBytes
-    : new Uint8Array(await fileOrBytes.arrayBuffer());
+    : new Uint8Array(await leerArrayBufferDesdeBlob(fileOrBytes));
   const sourcePdf = await PDFDocument.load(sourceBytes);
   const totalPaginas = sourcePdf.getPageCount();
   const bloques: BloquePaginasPdf[] = [];
@@ -527,7 +751,27 @@ async function extraerCasillasConClaudePorBloques(
   bytesPdf?: Uint8Array,
   casillasIniciales: CasillasRaw = {},
 ): Promise<CasillasRaw> {
-  const bloques = await dividirPdfEnBloques(bytesPdf ?? file);
+  let bloques: BloquePaginasPdf[];
+
+  try {
+    bloques = await dividirPdfEnBloques(bytesPdf ?? file);
+  } catch (error) {
+    console.warn(
+      '[AEATParser] No se pudo dividir el PDF en bloques con pdf-lib. Se intentará OCR sobre el fichero original completo.',
+      error,
+    );
+
+    onProgress?.({
+      fase: 'procesando',
+      pagina: totalPaginas || undefined,
+      totalPaginas: totalPaginas || undefined,
+      mensaje: 'Analizando el PDF completo sin dividir en bloques...',
+    });
+
+    const response = await callClaudeAPI(file, construirPromptAEAT());
+    return mergeCasillasRaw(casillasIniciales, parsearRespuestaClaude(response));
+  }
+
   let acumulado = { ...casillasIniciales };
 
   for (let index = 0; index < bloques.length; index += 1) {
@@ -1403,11 +1647,14 @@ function detectarCCAA(raw: CasillasRaw): string {
 }
 
 export const __private__ = {
+  buscarCabeceraPdf,
   detectarEstadoCivil,
   detectarCCAA,
   detectarFechaNacimiento,
   esTimeoutOCR,
+  extraerCasillasConClaudePorBloques,
   extraerCasillasDeterministasDesdeTexto,
+  leerBytesPdfNormalizados,
   tieneDatosMinimosParaImportar,
   extraerCasillasVisualesConFallback,
 };
