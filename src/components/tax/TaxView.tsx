@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
@@ -20,6 +20,7 @@ import {
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
+import { CheckCircle, Clock, Info, Upload } from 'lucide-react';
 import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import './tax-view.css';
 
@@ -137,42 +138,43 @@ function EstadoBanner({
   ejercicio: number;
   coberturaLineas: number;
 }) {
-  const configs = {
+  const configs: Record<EstadoEjercicio, { texto: string; colorVar: string; bgVar: string; Icon: ComponentType<{ size?: number }> }> = {
     en_curso: {
       texto: `Estimación en tiempo real del ejercicio ${ejercicio}. Los datos se actualizan con cada cambio.`,
-      color: '#0F6E56',
-      bg: '#E1F5EE',
-      icon: '◉',
+      colorVar: 'var(--s-pos)',
+      bgVar: 'var(--s-pos-bg)',
+      Icon: Info,
     },
     cerrado: {
       texto: tieneAeat
         ? `Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.`
         : `Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.`,
-      color: '#854F0B',
-      bg: '#FAEEDA',
-      icon: '◎',
+      colorVar: 'var(--s-warn)',
+      bgVar: 'var(--s-warn-bg)',
+      Icon: Clock,
     },
     declarado: {
       texto: tieneAeat
         ? `Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.`
         : `Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.`,
-      color: '#185FA5',
-      bg: '#E6F1FB',
-      icon: '✓',
+      colorVar: 'var(--blue)',
+      bgVar: 'var(--n-100)',
+      Icon: CheckCircle,
     },
-  } as const;
+  };
 
   const config = configs[estado];
+  const BannerIcon = config.Icon;
 
   return (
     <div
       className="tv-state-banner"
       style={{
-        background: config.bg,
-        color: config.color,
+        background: config.bgVar,
+        color: config.colorVar,
       }}
     >
-      <span style={{ fontSize: '16px' }}>{config.icon}</span>
+      <BannerIcon size={16} />
       <span>{config.texto}</span>
       {coberturaLineas > 0 && (
         <span className="tv-state-banner__meta">
@@ -360,7 +362,8 @@ const TaxView: React.FC = () => {
       {shouldShowUploadButton && (
         <div className="tv-actions-row">
           <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historico')}>
-            ↑ Subir declaración AEAT
+            <Upload size={16} />
+            Subir declaración AEAT
           </button>
         </div>
       )}
