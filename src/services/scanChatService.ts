@@ -130,6 +130,7 @@ export const callScanChatText = async (
     body: JSON.stringify({
       tipo,
       texto: prompt,
+      prompt,
     }),
   });
 
