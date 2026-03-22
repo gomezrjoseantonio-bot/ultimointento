@@ -20,7 +20,11 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
 
 const CURRENT_YEAR = new Date().getFullYear();
-const HISTORIC_YEARS = Array.from({ length: 10 }, (_, index) => CURRENT_YEAR - index);
+const MIN_HISTORIC_YEAR = 2020;
+const HISTORIC_YEARS = Array.from(
+  { length: Math.max(0, CURRENT_YEAR - MIN_HISTORIC_YEAR + 1) },
+  (_, index) => CURRENT_YEAR - index,
+);
 
 const HistoricoPage: React.FC = () => {
   const [historico, setHistorico] = useState<AnioHistoricoFiscal[]>([]);
