@@ -13,8 +13,7 @@ import type {
   ProgresoParseo,
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
-import type { DatosActivosExtraidos } from '../../../../services/declaracionFromCasillasService';
-import type { DeclaracionIRPF as DeclaracionCalculadaIRPF } from '../../../../services/irpfCalculationService';
+import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 
 type MetodoEntrada = 'formulario' | 'pdf';
@@ -218,6 +217,18 @@ const WizardForm: React.FC<{
 
 const formatCurrency = (value: number | undefined): string =>
   (value ?? 0).toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+
+function sanitizarParaIndexedDB<T>(value: T): T {
+  if (value === null || value === undefined) return null as T;
+  if (typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map((item) => sanitizarParaIndexedDB(item)) as T;
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, sanitizarParaIndexedDB(entryValue)]),
+  ) as T;
+}
 
 const KpiCard: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div style={kpiCardStyle}>
@@ -438,216 +449,6 @@ function normalizarCasillasExtraidas(raw: Record<string, number | string>): Casi
     .sort((a, b) => a.numero.localeCompare(b.numero));
 }
 
-function construirCasillasAeat(raw: Record<string, number | string>): Record<string, number> {
-  return Object.fromEntries(
-    Object.entries(raw).filter(([, value]) => typeof value === 'number' && Number.isFinite(value)),
-  ) as Record<string, number>;
-}
-
-function construirDeclaracionCalculada(resultado: ExtraccionCompleta): DeclaracionCalculadaIRPF {
-  const { declaracion, meta } = resultado;
-
-  const rendimientosTrabajo = declaracion.trabajo.totalIngresosIntegros > 0
-    || declaracion.trabajo.retribucionesDinerarias > 0
-    || declaracion.trabajo.retencionesTrabajoTotal > 0
-      ? {
-          salarioBrutoAnual: declaracion.trabajo.retribucionesDinerarias,
-          especieAnual: declaracion.trabajo.retribucionEspecie,
-          cotizacionSS: declaracion.trabajo.cotizacionSS,
-          irpfRetenido: declaracion.trabajo.retencionesTrabajoTotal,
-          rendimientoNeto: declaracion.trabajo.rendimientoNetoReducido || declaracion.trabajo.rendimientoNeto,
-          ppEmpleado: declaracion.planPensiones.aportacionesTrabajador,
-          ppEmpresa: declaracion.planPensiones.contribucionesEmpresariales,
-          ppTotalReduccion: declaracion.planPensiones.totalConDerecho
-            || declaracion.planPensiones.aportacionesTrabajador + declaracion.planPensiones.contribucionesEmpresariales,
-        }
-      : null;
-
-  const rendimientosAutonomo = declaracion.actividades.length > 0
-    ? {
-        ingresos: declaracion.actividades.reduce((sum, actividad) => sum + actividad.ingresos, 0),
-        gastos: declaracion.actividades.reduce((sum, actividad) => sum + actividad.gastos, 0),
-        cuotaSS: 0,
-        gastoDificilJustificacion: declaracion.actividades.reduce((sum, actividad) => sum + (actividad.provisionDificilJustificacion || 0), 0),
-        rendimientoNeto: declaracion.actividades.reduce((sum, actividad) => sum + actividad.rendimientoNetoReducido, 0),
-        pagosFraccionadosM130: 0,
-        actividades: declaracion.actividades.map((actividad) => ({
-          nombre: actividad.epigrafeIAE || actividad.tipoActividad,
-          epigrafe: actividad.epigrafeIAE,
-          tipo: actividad.tipoActividad,
-          modalidad: actividad.modalidad,
-          ingresos: actividad.ingresos,
-          gastos: actividad.gastos,
-          cuotaSS: 0,
-        })),
-      }
-    : null;
-
-  const rendimientosInmuebles = resultado.inmueblesDetalle.map((inmueble) => {
-    const gastosDeducibles =
-      inmueble.datos.gastosComunidad +
-      inmueble.datos.gastosServicios +
-      inmueble.datos.gastosSuministros +
-      inmueble.datos.gastosSeguros +
-      inmueble.datos.gastosTributos +
-      inmueble.datos.interesesFinanciacion +
-      inmueble.datos.gastosReparacion +
-      inmueble.datos.gastos0105_0106Aplicados;
-    const amortizacion =
-      inmueble.datos.amortizacionInmueble +
-      inmueble.datos.amortizacionMuebles +
-      (inmueble.datos.accesorio?.amortizacion || 0);
-    const rendimientoNetoAlquiler = inmueble.datos.rendimientoNeto || Math.max(0, inmueble.datos.ingresosIntegros - gastosDeducibles - amortizacion);
-    const reduccionHabitual = inmueble.datos.reduccion;
-    const rendimientoNetoReducido = inmueble.datos.rendimientoNetoReducido || (rendimientoNetoAlquiler - reduccionHabitual);
-
-    return {
-      inmuebleId: inmueble.datos.orden,
-      alias: inmueble.datos.direccion || `Inmueble ${inmueble.datos.orden}`,
-      diasAlquilado: inmueble.datos.diasArrendado || 0,
-      diasVacio: inmueble.datos.diasDisposicion || 0,
-      diasEnObras: 0,
-      diasTotal: 365,
-      ingresosIntegros: inmueble.datos.ingresosIntegros || 0,
-      gastosDeducibles,
-      amortizacion,
-      reduccionHabitual,
-      rendimientoNetoAlquiler,
-      rendimientoNetoReducido,
-      porcentajeReduccionHabitual: rendimientoNetoAlquiler > 0 && reduccionHabitual > 0
-        ? Math.round((reduccionHabitual / rendimientoNetoAlquiler) * 10000) / 100
-        : 0,
-      esHabitual: reduccionHabitual > 0,
-      imputacionRenta: inmueble.datos.rentaImputada || 0,
-      rendimientoNeto: rendimientoNetoReducido + (inmueble.datos.rentaImputada || 0),
-      gastosFinanciacionYReparacion: inmueble.datos.interesesFinanciacion + inmueble.datos.gastosReparacion,
-      limiteAplicado: inmueble.datos.gastos0105_0106Aplicados || undefined,
-      excesoArrastrable: inmueble.datos.arrastresGenerados || undefined,
-      arrastresAplicados: inmueble.datos.arrastresAplicados || undefined,
-      accesoriosIncluidos: inmueble.datos.accesorio
-        ? [{
-            id: inmueble.datos.orden,
-            alias: `${inmueble.datos.direccion || `Inmueble ${inmueble.datos.orden}`} · accesorio`,
-            amortizacion: inmueble.datos.accesorio.amortizacion || 0,
-            gastos: 0,
-          }]
-        : undefined,
-    };
-  });
-
-  const baseAhorroCapitalTotal = declaracion.capitalMobiliario.rendimientoNetoReducido || declaracion.capitalMobiliario.rendimientoNeto;
-  const plusvalias = declaracion.gananciasPerdidas.gananciasTransmision || declaracion.gananciasPerdidas.gananciasNoTransmision;
-  const minusvalias = declaracion.gananciasPerdidas.perdidasTransmision + declaracion.gananciasPerdidas.perdidasNoTransmision;
-
-  return {
-    ejercicio: meta.ejercicio,
-    baseGeneral: {
-      rendimientosTrabajo,
-      rendimientosAutonomo,
-      rendimientosInmuebles,
-      imputacionRentas: rendimientosInmuebles
-        .filter((inmueble) => inmueble.imputacionRenta > 0)
-        .map((inmueble) => ({
-          inmuebleId: inmueble.inmuebleId,
-          alias: inmueble.alias,
-          valorCatastral: 0,
-          porcentajeImputacion: 0,
-          diasVacio: inmueble.diasVacio,
-          imputacion: inmueble.imputacionRenta,
-        })),
-      total: declaracion.basesYCuotas.baseImponibleGeneral,
-    },
-    baseAhorro: {
-      capitalMobiliario: {
-        intereses: declaracion.capitalMobiliario.interesesCuentas,
-        dividendos: Math.max(0, declaracion.capitalMobiliario.otrosRendimientos),
-        retenciones: declaracion.capitalMobiliario.retencionesCapital,
-        total: baseAhorroCapitalTotal,
-      },
-      gananciasYPerdidas: {
-        plusvalias,
-        minusvalias,
-        minusvaliasPendientes: declaracion.gananciasPerdidas.perdidasPendientes.reduce((sum, perdida) => sum + perdida.importePendiente, 0),
-        compensado: declaracion.gananciasPerdidas.saldoNetoAhorro,
-      },
-      total: declaracion.basesYCuotas.baseImponibleAhorro,
-    },
-    reducciones: {
-      ppEmpleado: declaracion.planPensiones.aportacionesTrabajador,
-      ppEmpresa: declaracion.planPensiones.contribucionesEmpresariales,
-      ppIndividual: 0,
-      planPensiones: declaracion.planPensiones.totalConDerecho,
-      total: declaracion.planPensiones.totalConDerecho || declaracion.planPensiones.reduccionAplicada,
-    },
-    minimoPersonal: {
-      contribuyente: 0,
-      descendientes: 0,
-      ascendientes: 0,
-      discapacidad: 0,
-      total: 0,
-    },
-    liquidacion: {
-      baseImponibleGeneral: declaracion.basesYCuotas.baseImponibleGeneral,
-      baseImponibleAhorro: declaracion.basesYCuotas.baseImponibleAhorro,
-      cuotaBaseGeneral: declaracion.basesYCuotas.cuotaIntegraEstatal,
-      cuotaBaseAhorro: declaracion.basesYCuotas.cuotaIntegraAutonomica,
-      cuotaMinimosBaseGeneral: 0,
-      cuotaIntegra: declaracion.basesYCuotas.cuotaIntegra,
-      deduccionesDobleImposicion: 0,
-      cuotaLiquida: declaracion.basesYCuotas.cuotaLiquida,
-    },
-    retenciones: {
-      trabajo: declaracion.trabajo.retencionesTrabajoTotal,
-      autonomoM130: 0,
-      capitalMobiliario: declaracion.capitalMobiliario.retencionesCapital,
-      total: declaracion.basesYCuotas.retencionesTotal,
-    },
-    resultado: declaracion.basesYCuotas.resultadoDeclaracion,
-    tipoEfectivo: (declaracion.basesYCuotas.baseImponibleGeneral + declaracion.basesYCuotas.baseImponibleAhorro) > 0
-      ? Number(((declaracion.basesYCuotas.cuotaLiquida / Math.max(1, declaracion.basesYCuotas.baseImponibleGeneral + declaracion.basesYCuotas.baseImponibleAhorro)) * 100).toFixed(2))
-      : 0,
-  };
-}
-
-function construirDatosActivos(resultado: ExtraccionCompleta): DatosActivosExtraidos {
-  return {
-    arrastresGastos: resultado.inmueblesDetalle
-      .filter((inmueble) => inmueble.datos.arrastresGenerados > 0 && inmueble.datos.referenciaCatastral)
-      .map((inmueble) => ({
-        inmuebleRefCatastral: inmueble.datos.referenciaCatastral,
-        importeArrastrable: inmueble.datos.arrastresGenerados,
-        ejercicioOrigen: resultado.meta.ejercicio,
-      })),
-    perdidasPendientes: resultado.arrastres.perdidasAhorro
-      .filter((item) => item.pendienteFuturo > 0)
-      .map((item) => ({
-        ejercicioOrigen: item.ejercicioOrigen,
-        importePendiente: item.pendienteFuturo,
-        tipo: 'ahorro' as const,
-      })),
-    amortizacionesPorInmueble: resultado.inmueblesDetalle
-      .filter((inmueble) => inmueble.datos.referenciaCatastral)
-      .map((inmueble) => ({
-        refCatastral: inmueble.datos.referenciaCatastral,
-        baseAmortizacion: inmueble.datos.baseAmortizacion || 0,
-        amortizacionEjercicio: inmueble.datos.amortizacionInmueble || 0,
-        amortizacionMuebles: inmueble.datos.amortizacionMuebles || 0,
-        amortizacionAccesorio: inmueble.datos.accesorio?.amortizacion || 0,
-      })),
-    inmueblesDatos: resultado.inmueblesDetalle
-      .filter((inmueble) => inmueble.datos.referenciaCatastral)
-      .map((inmueble) => ({
-        refCatastral: inmueble.datos.referenciaCatastral,
-        valorCatastral: inmueble.datos.valorCatastral || 0,
-        valorCatastralConstruccion: inmueble.datos.valorCatastralConstruccion || 0,
-        porcentajeConstruccion: inmueble.datos.porcentajeConstruccion || 0,
-        importeAdquisicion: inmueble.datos.importeAdquisicion || 0,
-        gastosAdquisicion: inmueble.datos.gastosAdquisicion || 0,
-        mejoras: inmueble.datos.mejoras || 0,
-      })),
-  };
-}
-
 const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
@@ -692,16 +493,17 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }
 
       const normalizedCasillas = normalizarCasillasExtraidas(extraccion.casillasRaw);
+      const ejercicioDetectado = extraccion.meta.ejercicio > 0 ? extraccion.meta.ejercicio : ejercicio;
       setCasillasExtraidas(normalizedCasillas);
-      setEjercicio(extraccion.meta.ejercicio || ejercicio);
+      setEjercicio(ejercicioDetectado);
       setData((prev) => ({
         ...prev,
-        ...mapearCasillasAImportacion(normalizedCasillas, extraccion.meta.ejercicio || ejercicio),
-        ejercicio: extraccion.meta.ejercicio || ejercicio,
+        ...mapearCasillasAImportacion(normalizedCasillas, ejercicioDetectado),
+        ejercicio: ejercicioDetectado,
         arrastres: [
           ...extraccion.arrastres.gastos0105_0106.map((item) => ({
             tipo: 'gastos_0105_0106' as const,
-            ejercicioOrigen: item.ejercicioOrigen || extraccion.meta.ejercicio,
+            ejercicioOrigen: item.ejercicioOrigen || ejercicioDetectado,
             importe: item.pendienteFuturo || item.generadoEsteEjercicio,
           })),
           ...extraccion.arrastres.perdidasAhorro.map((item) => ({
@@ -736,9 +538,22 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const handleConfirmarImportacion = async () => {
     setSaving(true);
     try {
-      const casillasMap = resultadoExtraccion?.exito
-        ? construirCasillasAeat(resultadoExtraccion.casillasRaw)
-        : casillasExtraidas.length > 0
+      const ejercicioImportacion = resultadoExtraccion?.exito && resultadoExtraccion.meta.ejercicio > 0
+        ? resultadoExtraccion.meta.ejercicio
+        : data.ejercicio;
+
+      if (resultadoExtraccion?.exito) {
+        const declaracionSanitizada = sanitizarParaIndexedDB(resultadoExtraccion.declaracion);
+
+        await declararEjercicio(
+          ejercicioImportacion,
+          declaracionSanitizada,
+          'pdf_importado',
+          resultadoExtraccion.meta.fechaPresentacion,
+          undefined,
+        );
+      } else {
+        const casillasMap = casillasExtraidas.length > 0
           ? Object.fromEntries(casillasExtraidas.map((casilla) => [casilla.numero, casilla.valor]))
           : {
               '0435': data.baseImponibleGeneral,
@@ -762,67 +577,43 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
               ...(typeof data.rendimientosAutonomo === 'number' ? { '0226': data.rendimientosAutonomo } : {}),
             };
 
-      const declaracionCompleta = resultadoExtraccion?.exito
-        ? construirDeclaracionCalculada(resultadoExtraccion)
-        : undefined;
-
-      await importarDeclaracionManual({
-        ejercicio: data.ejercicio,
-        casillasAEAT: casillasMap,
-        resultado: {
-          baseImponibleGeneral: declaracionCompleta?.liquidacion.baseImponibleGeneral ?? data.baseImponibleGeneral,
-          baseImponibleAhorro: declaracionCompleta?.liquidacion.baseImponibleAhorro ?? data.baseImponibleAhorro,
-          cuotaIntegra: declaracionCompleta?.liquidacion.cuotaIntegra ?? resumen.cuotaIntegra,
-          cuotaLiquida: declaracionCompleta?.liquidacion.cuotaLiquida ?? resumen.cuotaLiquida,
-          deducciones: 0,
-          retencionesYPagosCuenta: declaracionCompleta?.retenciones.total ?? data.totalRetenciones,
-          resultado: declaracionCompleta?.resultado ?? data.resultado,
-          tipoEfectivo: declaracionCompleta
-            ? declaracionCompleta.tipoEfectivo
-            : (resumen.cuotaLiquida > 0
-                ? Number((((resumen.cuotaLiquida / Math.max(1, data.baseImponibleGeneral + data.baseImponibleAhorro)) * 100)).toFixed(2))
-                : 0),
-        },
-        declaracionCompleta,
-        datosActivos: resultadoExtraccion?.exito ? construirDatosActivos(resultadoExtraccion) : undefined,
-        arrastresPendientes: resultadoExtraccion?.exito
-          ? [
-              ...resultadoExtraccion.arrastres.gastos0105_0106.map((item) => ({
-                tipo: 'gastos_0105_0106' as const,
-                importePendiente: item.pendienteFuturo || item.generadoEsteEjercicio,
-                ejercicioOrigen: item.ejercicioOrigen || data.ejercicio,
-                ejercicioCaducidad: (item.ejercicioOrigen || data.ejercicio) + 4,
-              })),
-              ...resultadoExtraccion.arrastres.perdidasAhorro.map((item) => ({
-                tipo: 'perdidas_patrimoniales_ahorro' as const,
-                importePendiente: item.pendienteFuturo,
-                ejercicioOrigen: item.ejercicioOrigen,
-                ejercicioCaducidad: item.ejercicioOrigen + 4,
-              })),
-            ]
-          : (data.arrastres ?? []).map((arrastre) => ({
-              tipo: arrastre.tipo,
-              importePendiente: arrastre.importe,
-              ejercicioOrigen: arrastre.ejercicioOrigen,
-              ejercicioCaducidad: arrastre.ejercicioOrigen + 4,
-            })),
-        notasRevision: metodo === 'pdf'
-          ? 'Importación desde PDF Modelo 100 usando Claude Vision'
-          : 'Importación manual desde wizard histórico IRPF',
-      });
+        await importarDeclaracionManual({
+          ejercicio: data.ejercicio,
+          casillasAEAT: casillasMap,
+          resultado: {
+            baseImponibleGeneral: data.baseImponibleGeneral,
+            baseImponibleAhorro: data.baseImponibleAhorro,
+            cuotaIntegra: resumen.cuotaIntegra,
+            cuotaLiquida: resumen.cuotaLiquida,
+            deducciones: 0,
+            retencionesYPagosCuenta: data.totalRetenciones,
+            resultado: data.resultado,
+            tipoEfectivo: resumen.cuotaLiquida > 0
+              ? Number((((resumen.cuotaLiquida / Math.max(1, data.baseImponibleGeneral + data.baseImponibleAhorro)) * 100)).toFixed(2))
+              : 0,
+          },
+          arrastresPendientes: (data.arrastres ?? []).map((arrastre) => ({
+            tipo: arrastre.tipo,
+            importePendiente: arrastre.importe,
+            ejercicioOrigen: arrastre.ejercicioOrigen,
+            ejercicioCaducidad: arrastre.ejercicioOrigen + 4,
+          })),
+          notasRevision: 'Importación manual desde wizard histórico IRPF',
+        });
+      }
 
       if (uploadedFile) {
         await saveDocumentWithBlob({
-          filename: `Declaracion_IRPF_${data.ejercicio}.pdf`,
+          filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
           type: 'declaracion_irpf',
           content: uploadedFile,
           size: uploadedFile.size,
           lastModified: uploadedFile.lastModified,
           uploadDate: new Date().toISOString(),
           metadata: {
-            title: `Declaración IRPF ${data.ejercicio}`,
+            title: `Declaración IRPF ${ejercicioImportacion}`,
             description: 'PDF archivado desde el wizard de importación de declaraciones.',
-            ejercicio: data.ejercicio,
+            ejercicio: ejercicioImportacion,
             origen: 'importacion_wizard',
             fechaImportacion: new Date().toISOString(),
             casillasExtraidas: resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
@@ -832,12 +623,12 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         });
       }
 
-      toast.success(`Declaración ${data.ejercicio} importada y archivada`);
+      toast.success(`Declaración ${ejercicioImportacion} importada y archivada`);
       await onImported();
       onClose();
     } catch (error) {
       console.error('Error importando declaración', error);
-      toast.error('Error al importar la declaración');
+      toast.error(`Error al importar: ${error instanceof Error ? error.message : 'desconocido'}`);
     } finally {
       setSaving(false);
     }

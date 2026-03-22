@@ -91,6 +91,37 @@ type BooleanGetter = (casilla: string) => boolean;
 
 const MIN_EJERCICIO = 2020;
 const PAGE_BATCH_SIZE = 4;
+const CCAA_CODES: Record<number, string> = {
+  1: 'ANDALUCÍA',
+  2: 'ARAGÓN',
+  3: 'ASTURIAS',
+  4: 'BALEARES',
+  5: 'CANARIAS',
+  6: 'CANTABRIA',
+  7: 'CASTILLA Y LEÓN',
+  8: 'CASTILLA-LA MANCHA',
+  9: 'CATALUÑA',
+  10: 'EXTREMADURA',
+  11: 'GALICIA',
+  12: 'MADRID',
+  13: 'MURCIA',
+  14: 'NAVARRA',
+  15: 'PAÍS VASCO',
+  16: 'LA RIOJA',
+  17: 'COMUNIDAD VALENCIANA',
+  18: 'CEUTA',
+  19: 'MELILLA',
+};
+
+const CASILLAS_INMUEBLE_REPETIBLES = [
+  '0062', '0063', '0065', '0066', '0067', '0069', '0073', '0074', '0075',
+  '0083', '0084', '0085', '0089', '0090', '0091', '0093', '0094', '0100',
+  '0101', '0102', '0103', '0104', '0105', '0106', '0107', '0108', '0109',
+  '0112', '0113', '0114', '0115', '0117', '0118', '0120', '0122', '0123',
+  '0124', '0125', '0126', '0127', '0129', '0130', '0131', '0132', '0133',
+  '0135', '0137', '0138', '0139', '0140', '0141', '0142', '0145', '0146',
+  '0149', '0150', '0154',
+];
 
 export async function parsearDeclaracionAEAT(
   file: File,
@@ -113,7 +144,8 @@ export async function parsearDeclaracionAEAT(
       totalPaginas: imagenes.length,
     });
 
-    const casillasRaw = await extraerCasillasConClaude(imagenes, onProgress);
+    const casillasExtraidas = await extraerCasillasConClaude(imagenes, onProgress);
+    const casillasRaw = normalizarSufijosInmuebles(normalizarClavesCasillas(casillasExtraidas));
     if (Object.keys(casillasRaw).length === 0) {
       return resultadoError('Claude no pudo extraer casillas del PDF');
     }
@@ -309,6 +341,34 @@ Ejemplo de respuesta:
 Estas son las páginas ${paginaInicio} a ${paginaInicio + totalPaginasLote - 1} de la declaración. Extrae todo.`;
 }
 
+function normalizarClavesCasillas(raw: CasillasRaw): CasillasRaw {
+  const normalizado: CasillasRaw = {};
+
+  for (const [clave, valor] of Object.entries(raw)) {
+    if (/^\d+$/.test(clave)) {
+      normalizado[clave.padStart(4, '0')] = valor;
+      continue;
+    }
+
+    normalizado[clave] = valor;
+  }
+
+  return normalizado;
+}
+
+function normalizarSufijosInmuebles(raw: CasillasRaw): CasillasRaw {
+  const resultado: CasillasRaw = { ...raw };
+
+  for (const casilla of CASILLAS_INMUEBLE_REPETIBLES) {
+    if (casilla in resultado && !(`${casilla}_1` in resultado)) {
+      resultado[`${casilla}_1`] = resultado[casilla];
+      delete resultado[casilla];
+    }
+  }
+
+  return resultado;
+}
+
 function parsearRespuestaClaude(textoRespuesta: string): CasillasRaw {
   let limpio = textoRespuesta.trim();
   if (limpio.startsWith('```json')) limpio = limpio.slice(7);
@@ -380,7 +440,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
     ejercicio: detectarEjercicio(raw),
     modelo: '100',
     nif: s('0001_nif') || s('nif') || extraerNIF(raw),
-    nombre: s('0001') || s('0002') || '',
+    nombre: s('nombre') || s('0002') || s('02') || s('0001_nombre') || s('0001') || '',
     fechaPresentacion: s('fecha_presentacion') || undefined,
     numeroJustificante: s('numero_justificante') || undefined,
     codigoVerificacion: s('csv') || undefined,
@@ -455,7 +515,7 @@ function mapearCasillasADeclaracion(raw: CasillasRaw): {
       nif: meta.nif,
       nombre: meta.nombre,
       estadoCivil: s('0006_estado') || detectarEstadoCivil(raw),
-      comunidadAutonoma: s('0070') || detectarCCAA(raw),
+      comunidadAutonoma: detectarCCAA(raw),
       fechaNacimiento: s('0010') || '',
     },
     trabajo,
@@ -739,8 +799,42 @@ function validarCoherencia(declaracion: DeclaracionIRPF): { warnings: string[] }
 }
 
 function detectarEjercicio(raw: CasillasRaw): number {
-  const yearCandidates = new Set<number>();
+  if (typeof raw.ejercicio === 'number' && raw.ejercicio >= MIN_EJERCICIO) {
+    return raw.ejercicio;
+  }
 
+  const ejercicioTexto = raw.ejercicio;
+  if (typeof ejercicioTexto === 'string') {
+    const anio = Number.parseInt(ejercicioTexto, 10);
+    if (Number.isInteger(anio) && anio >= MIN_EJERCICIO) {
+      return anio;
+    }
+  }
+
+  const expediente = raw.expediente_referencia;
+  if (typeof expediente === 'string') {
+    const match = expediente.match(/^(\d{4})/);
+    if (match) {
+      const anio = Number.parseInt(match[1], 10);
+      if (anio >= MIN_EJERCICIO) {
+        return anio;
+      }
+    }
+  }
+
+  for (const value of Object.values(raw)) {
+    if (typeof value !== 'string') continue;
+
+    const ejercicioMatch = value.match(/Ejercicio\s+(\d{4})/i);
+    if (ejercicioMatch) {
+      const anio = Number.parseInt(ejercicioMatch[1], 10);
+      if (anio >= MIN_EJERCICIO) {
+        return anio;
+      }
+    }
+  }
+
+  const yearCandidates = new Set<number>();
   const keyHints = ['ejercicio', 'year'];
   for (const [key, value] of Object.entries(raw)) {
     if (typeof value !== 'string') continue;
@@ -749,7 +843,7 @@ function detectarEjercicio(raw: CasillasRaw): number {
     const matches = value.match(/(20\d{2})/g) ?? [];
     matches.forEach((match) => {
       const year = Number.parseInt(match, 10);
-      if (year >= 2010 && year <= 2100) {
+      if (year >= MIN_EJERCICIO && year <= 2100) {
         if (keyHints.some((hint) => keyLower.includes(hint)) || /ejercicio/i.test(value)) {
           yearCandidates.add(year);
         }
@@ -762,7 +856,7 @@ function detectarEjercicio(raw: CasillasRaw): number {
     return ordered[0];
   }
 
-  return new Date().getUTCFullYear() - 1;
+  return 0;
 }
 
 function extraerNIF(raw: CasillasRaw): string {
@@ -775,25 +869,41 @@ function extraerNIF(raw: CasillasRaw): string {
 }
 
 function detectarEstadoCivil(raw: CasillasRaw): string {
+  if (raw['0006'] === 'X') return 'Soltero/a';
+  if (raw['0007_ec'] === 'X') return 'Casado/a';
+
+  const campo05 = raw['0005_ec'] ?? raw['05'];
+  if (typeof campo05 === 'string') {
+    if (/soltero/i.test(campo05)) return 'Soltero/a';
+    if (/casado/i.test(campo05)) return 'Casado/a';
+  }
+
   for (const value of Object.values(raw)) {
     if (typeof value !== 'string') continue;
     if (/soltero/i.test(value)) return 'Soltero/a';
     if (/casado/i.test(value)) return 'Casado/a';
     if (/viudo/i.test(value)) return 'Viudo/a';
-    if (/divorciado/i.test(value)) return 'Divorciado/a';
+    if (/divorciado|separado/i.test(value)) return 'Separado/a';
   }
+
   return '';
 }
 
 function detectarCCAA(raw: CasillasRaw): string {
+  const codigo = raw['0070'];
+  if (typeof codigo === 'number' && CCAA_CODES[codigo]) {
+    return CCAA_CODES[codigo];
+  }
+
   for (const value of Object.values(raw)) {
     if (typeof value !== 'string') continue;
     if (/MADRID/i.test(value)) return 'MADRID';
     if (/ASTURIAS/i.test(value)) return 'ASTURIAS';
     if (/CATALUÑA|CATALUNYA/i.test(value)) return 'CATALUÑA';
     if (/ANDALUC[IÍ]A/i.test(value)) return 'ANDALUCÍA';
-    if (/VALENCIANA/i.test(value)) return 'COMUNITAT VALENCIANA';
+    if (/VALENCIANA/i.test(value)) return 'COMUNIDAD VALENCIANA';
   }
+
   return '';
 }
 
