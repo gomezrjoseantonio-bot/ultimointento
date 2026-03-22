@@ -286,40 +286,6 @@ function textoTieneContenidoRelevante(texto: string): boolean {
   return casillasDetectadas.length >= 25;
 }
 
-
-async function extraerCasillasDesdeTexto(
-  textoExtraido: string,
-  totalPaginas: number,
-  onProgress?: OnProgress,
-): Promise<CasillasRaw> {
-  onProgress?.({
-    fase: 'enviando',
-    mensaje: totalPaginas > 0
-      ? `Analizando texto del PDF (${totalPaginas} páginas) sin OCR pesado...`
-      : 'Analizando texto del PDF sin OCR pesado...',
-    totalPaginas: totalPaginas || undefined,
-  });
-
-  onProgress?.({
-    fase: 'procesando',
-    pagina: totalPaginas || undefined,
-    totalPaginas: totalPaginas || undefined,
-    mensaje: 'Extrayendo casillas desde el texto del PDF...',
-  });
-
-  const prompt = construirPromptAEATTexto(textoExtraido);
-  const response = await callClaudeTextAPI(prompt);
-
-  onProgress?.({
-    fase: 'procesando',
-    pagina: totalPaginas || undefined,
-    totalPaginas: totalPaginas || undefined,
-    mensaje: 'Procesando casillas detectadas en el texto...',
-  });
-
-  return parsearRespuestaClaude(response);
-}
-
 export function dividirTextoPorPaginas(
   paginasTexto: string[],
   maxCharsPerChunk = MAX_TEXT_CHARS_PER_CHUNK,
@@ -421,33 +387,6 @@ async function callClaudeTextAPI(prompt: string): Promise<string> {
   }
 
   return JSON.stringify(response.extraido ?? {});
-}
-
-async function extraerCasillasConClaude(
-  file: File,
-  totalPaginas: number,
-  onProgress?: OnProgress,
-): Promise<CasillasRaw> {
-  onProgress?.({
-    fase: 'procesando',
-    pagina: totalPaginas || undefined,
-    totalPaginas: totalPaginas || undefined,
-    mensaje: totalPaginas > 0
-      ? `Analizando declaración completa (${totalPaginas} páginas) con IA...`
-      : 'Analizando declaración completa con IA...',
-  });
-
-  const prompt = construirPromptAEAT();
-  const response = await callClaudeAPI(file, prompt);
-
-  onProgress?.({
-    fase: 'procesando',
-    pagina: totalPaginas || undefined,
-    totalPaginas: totalPaginas || undefined,
-    mensaje: 'Procesando respuesta de Claude...',
-  });
-
-  return parsearRespuestaClaude(response);
 }
 
 export async function dividirPdfEnBloques(
