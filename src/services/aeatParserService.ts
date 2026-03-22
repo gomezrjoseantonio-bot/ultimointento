@@ -136,9 +136,12 @@ export async function parsearDeclaracionAEAT(
     onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF para análisis...' });
     const { totalPaginas, textoExtraido, paginasTexto, bytesPdf } = await prepararPdfParaAnalisis(file);
 
-    let casillasRaw = textoTieneContenidoRelevante(textoExtraido)
-      ? await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress)
-      : {};
+    let casillasRaw = extraerCasillasDeterministasDesdeTexto(paginasTexto);
+
+    if (textoTieneContenidoRelevante(textoExtraido) && Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK) {
+      const casillasTextoIA = await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress);
+      casillasRaw = mergeCasillasRaw(casillasRaw, casillasTextoIA);
+    }
 
     const necesitaFallbackVision =
       Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK ||
@@ -147,16 +150,27 @@ export async function parsearDeclaracionAEAT(
     if (necesitaFallbackVision) {
       warnings.push(
         Object.keys(casillasRaw).length > 0
-          ? 'Extracción textual incompleta; se refuerza con análisis visual por bloques.'
-          : 'El PDF no expone texto suficiente; se analiza por bloques visuales.',
+          ? 'Extracción textual incompleta; se intentará reforzar con análisis visual por bloques.'
+          : 'El PDF no expone texto suficiente; se intentará analizar por bloques visuales.',
       );
-      casillasRaw = await extraerCasillasConClaudePorBloques(
-        file,
-        totalPaginas,
-        onProgress,
-        bytesPdf,
-        casillasRaw,
-      );
+
+      try {
+        casillasRaw = await extraerCasillasConClaudePorBloques(
+          file,
+          totalPaginas,
+          onProgress,
+          bytesPdf,
+          casillasRaw,
+        );
+      } catch (error) {
+        console.warn('[AEATParser] Refuerzo visual no disponible; se conserva la extracción textual parcial.', error);
+
+        if (!tieneDatosMinimosParaImportar(casillasRaw, file.name, ejercicioFallback)) {
+          throw error;
+        }
+
+        warnings.push('El refuerzo visual no respondió a tiempo, pero se mantiene una extracción textual parcial para que puedas revisarla y completarla si hace falta.');
+      }
     }
 
     if (Object.keys(casillasRaw).length === 0) {
@@ -319,6 +333,56 @@ function textoTieneContenidoRelevante(texto: string): boolean {
 
   const casillasDetectadas = normalized.match(/\b\d{4}\b/g) ?? [];
   return casillasDetectadas.length >= 25;
+}
+
+function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
+  const resultado: CasillasRaw = {};
+  const patrones = [
+    /(^|\s)(-?[\d.]+,\d{2})\s+(\d{4})(?!\d)/g,
+    /(^|\s)(\d{4})\s+(-?[\d.]+,\d{2})(?!\d)/g,
+  ];
+
+  for (const pagina of paginasTexto) {
+    const lineas = pagina
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    for (const linea of lineas) {
+      for (const patron of patrones) {
+        patron.lastIndex = 0;
+
+        let match: RegExpExecArray | null = patron.exec(linea);
+        while (match) {
+          const casilla = patron === patrones[0] ? match[3] : match[2];
+          const valorRaw = patron === patrones[0] ? match[2] : match[3];
+          const valor = Number.parseFloat(valorRaw.replace(/\./g, '').replace(',', '.'));
+
+          if (!Number.isNaN(valor)) {
+            resultado[casilla] = valor;
+          }
+
+          match = patron.exec(linea);
+        }
+      }
+    }
+  }
+
+  return resultado;
+}
+
+function tieneDatosMinimosParaImportar(
+  casillasRaw: CasillasRaw,
+  fileName?: string,
+  ejercicioFallback?: number,
+): boolean {
+  const ejercicio = detectarEjercicio(casillasRaw, fileName, ejercicioFallback);
+  if (ejercicio < MIN_EJERCICIO) return false;
+
+  const casillasClave = ['0435', '0460', '0505', '0500', '0595', '0609', '0610', '0670', '0025', '0224', '0154'];
+  const presentes = casillasClave.filter((casilla) => typeof casillasRaw[casilla] === 'number').length;
+
+  return presentes >= 2 || Object.keys(casillasRaw).length >= 8;
 }
 
 export function dividirTextoPorPaginas(
@@ -1343,6 +1407,8 @@ export const __private__ = {
   detectarCCAA,
   detectarFechaNacimiento,
   esTimeoutOCR,
+  extraerCasillasDeterministasDesdeTexto,
+  tieneDatosMinimosParaImportar,
   extraerCasillasVisualesConFallback,
 };
 

@@ -45,6 +45,33 @@ describe('dividirTextoPorPaginas', () => {
   });
 });
 
+describe('extracción textual determinista', () => {
+  test('extrae casillas numéricas directamente del texto sin depender de IA', () => {
+    const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
+      'Base imponible general 150.924,07 0435\nCuota resultante 2.899,75 0670',
+      '0609 15.136,05 Retenciones',
+    ]);
+
+    expect(casillas).toMatchObject({
+      '0435': 150924.07,
+      '0609': 15136.05,
+      '0670': 2899.75,
+    });
+  });
+
+  test('detecta cuando hay datos mínimos para continuar aunque falle el refuerzo visual', () => {
+    expect(__private__.tieneDatosMinimosParaImportar({
+      ejercicio: 2024,
+      '0435': 150924.07,
+      '0609': 15136.05,
+    }, 'declaracion irpf 2024.pdf')).toBe(true);
+
+    expect(__private__.tieneDatosMinimosParaImportar({
+      '0435': 150924.07,
+    }, 'sin-ejercicio.pdf')).toBe(false);
+  });
+});
+
 describe('dividirPdfEnBloques', () => {
   test('divide PDFs extensos en subdocumentos pequeños para evitar timeouts', async () => {
     const pdf = await PDFDocument.create();
