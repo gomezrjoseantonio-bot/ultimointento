@@ -382,10 +382,13 @@ function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const ejercicio = texto.match(/Ejercicio\s+(20\d{2}|\d{2})/i)?.[1];
   if (ejercicio) resultado.ejercicio = ejercicio;
 
-  const nif = texto.match(/NIF\s+([A-Z0-9]{8,12})\s+0001\b/i)?.[1];
+  const nif = texto.match(/NIF\s+([A-Z0-9]{8,12})\s+0001\b/i)?.[1]
+    ?? texto.match(/NIF declarante\s+([A-Z0-9]{8,12})/i)?.[1]
+    ?? texto.match(/NIF Presentador:\s*([A-Z0-9]{8,12})/i)?.[1];
   if (nif) resultado.nif = nif.trim().toUpperCase();
 
-  const nombre = texto.match(/Apellidos y nombre\s+(.+?)\s+0002\b/i)?.[1];
+  const nombre = texto.match(/Apellidos y nombre\s+(.+?)\s+0002\b/i)?.[1]
+    ?? texto.match(/Apellidos y nombre(?:\s*\/\s*Raz[oó]n social)?:\s*(.+)/i)?.[1];
   if (nombre) resultado.nombre = limpiarTextoExtraido(nombre);
 
   const estadoCivil = texto.match(/Estado civil \(el 31-12-\d{4}\)\s+(.+?)\s+0006\b/i)?.[1];
@@ -400,8 +403,26 @@ function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
     ?? texto.match(/Comunidad Autónoma.*?residencia habitual.*?\s([A-ZÁÉÍÓÚÜÑ ]{3,})\s+0070\b/i)?.[1];
   if (comunidad) resultado.comunidad_autonoma = toTitleCase(limpiarTextoExtraido(comunidad));
 
-  const numeroJustificante = texto.match(/Número de justificante.*?\s(\d{10,})\s+0104\b/i)?.[1];
+  const numeroJustificante = texto.match(/Número de justificante.*?\s(\d{10,})\s+0104\b/i)?.[1]
+    ?? texto.match(/Número de justificante:\s*(\d{10,})/i)?.[1]
+    ?? texto.match(/Número de justificante\s+(\d{10,})/i)?.[1];
   if (numeroJustificante) resultado.numero_justificante = numeroJustificante;
+
+  const fechaPresentacion = texto.match(/Presentaci[oó]n realizada el:\s*(\d{2}[-/]\d{2}[-/]\d{4})\s*a las\s*(\d{2}:\d{2}:\d{2})/i);
+  if (fechaPresentacion) {
+    resultado.fecha_presentacion = `${fechaPresentacion[1].replace(/-/g, '/')} ${fechaPresentacion[2]}`;
+  }
+
+  const expedienteReferencia = texto.match(/Expediente\/Referencia .*?:\s*([A-Z0-9]+)/i)?.[1];
+  if (expedienteReferencia) resultado.expediente_referencia = expedienteReferencia;
+
+  const csv = texto.match(/C[oó]digo Seguro de Verificaci[oó]n:\s*([A-Z0-9]+)/i)?.[1];
+  if (csv) resultado.csv = csv;
+
+  const presentadorNombre = texto.match(/Apellidos y Nombre(?:\/ Raz[oó]n social)?:\s*(.+)/i)?.[1];
+  if (presentadorNombre && !resultado.nombre) {
+    resultado.nombre = limpiarTextoExtraido(presentadorNombre);
+  }
 
   return resultado;
 }
@@ -409,13 +430,17 @@ function extraerMetadatosDesdeTexto(paginasTexto: string[]): CasillasRaw {
 function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRaw {
   const resultado: CasillasRaw = {};
   const casillasRepetibles = new Set<string>(CASILLAS_INMUEBLE_REPETIBLES);
+  const refToPropertyIndex = new Map<string, number>();
 
   let indiceInmuebleActual: number | null = null;
+  let contadorBloquesSinNumero = 0;
 
   const setSufijo = (casilla: string, valor: number | string) => {
     if (!indiceInmuebleActual || !casillasRepetibles.has(casilla)) return;
     resultado[`${casilla}_${indiceInmuebleActual}`] = valor;
   };
+
+  const normalizarRef = (value: string) => value.replace(/\s+/g, '').trim().toUpperCase();
 
   for (const pagina of paginasTexto) {
     const lineas = pagina
@@ -427,6 +452,12 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
       const encabezadoInmueble = linea.match(/^Inmueble\s+(\d+)\b/i);
       if (encabezadoInmueble) {
         indiceInmuebleActual = Number.parseInt(encabezadoInmueble[1], 10);
+        continue;
+      }
+
+      if (/^Inmueble\b\.?$/i.test(linea)) {
+        contadorBloquesSinNumero += 1;
+        indiceInmuebleActual = contadorBloquesSinNumero;
         continue;
       }
 
@@ -450,6 +481,7 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
       const directTextExtractors: Array<[RegExp, string]> = [
         [/Referencia catastral\.?\s+([A-Z0-9]{8,20})\s+0066\b/i, '0066'],
         [/Direcci[oó]n del inmueble\s+(.+?)\s+0069\b/i, '0069'],
+        [/Ref\. catastral del inmueble principal al que est[aá] vinculado el accesorio\s+([A-Z0-9]{8,20})\s+0090\b/i, '0090'],
         [/NIF del arrendatario 1\.?\s+([A-Z0-9]{8,12})\s+0091\b/i, '0091'],
         [/NIF del arrendatario 2\.?\s+([A-Z0-9]{8,12})\s+0094\b/i, '0094'],
         [/Fecha del contrato\.?\s+(\d{2}\/\d{2}\/\d{4})\s+0093\b/i, '0093'],
@@ -466,7 +498,22 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
       directTextExtractors.forEach(([pattern, casilla]) => {
         const value = linea.match(pattern)?.[1];
         if (!value) return;
-        setSufijo(casilla, limpiarTextoExtraido(value));
+        const limpio = limpiarTextoExtraido(value);
+
+        if (casilla === '0066') {
+          refToPropertyIndex.set(normalizarRef(limpio), indiceInmuebleActual!);
+        }
+
+        if (casilla === '1212' || casilla === '1394') {
+          const knownIndex = refToPropertyIndex.get(normalizarRef(limpio));
+          if (knownIndex) {
+            indiceInmuebleActual = knownIndex;
+          } else {
+            refToPropertyIndex.set(normalizarRef(limpio), indiceInmuebleActual!);
+          }
+        }
+
+        setSufijo(casilla, limpio);
       });
     }
   }

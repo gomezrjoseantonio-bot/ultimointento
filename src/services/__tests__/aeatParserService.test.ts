@@ -103,6 +103,74 @@ describe('extracción textual determinista', () => {
     });
   });
 
+  test('lee páginas de presentación, accesorios y bloques "Inmueble" sin numerar en información adicional', () => {
+    const casillas = __private__.extraerCasillasDeterministasDesdeTexto([
+      [
+        'INFORMACIÓN DE LA PRESENTACIÓN DE LA DECLARACIÓN',
+        'Modelo 100 Ejercicio 2024',
+        'Presentación realizada el: 24-06-2025 a las 19:31:15',
+        'Expediente/Referencia (nº registro asignado): 202410069492285M',
+        'Código Seguro de Verificación: DDD666NAQ2F9MMKS',
+        'Número de justificante: 1005624311754',
+        'NIF Presentador: 53069494F',
+        'Apellidos y Nombre / Razón social: GOMEZ RAMIREZ JOSE ANTONIO',
+      ].join('\n'),
+      [
+        'Inmueble 7',
+        'Referencia catastral 0654104TP7005S0011AA 0066',
+        'Dirección del inmueble CL TENDERINA 0064 1 05 01 OVIEDO 0069',
+        'Arrendamiento como inmueble accesorio. X 0074',
+        'Ref. catastral del inmueble principal al que está vinculado el accesorio 0654104TP7005S0009SS 0090',
+      ].join('\n'),
+      [
+        'INTERESES DE CAPITALES INVERTIDOS EN INMUEBLES, PENDIENTES DE DEDUCIR EN LOS EJERCICIOS SIGUIENTES',
+        'Inmueble',
+        'Referencia Catastral 0654104TP7005S0009SS 1212',
+        'Ejercicio 2023. Pendiente de aplicación al principio del período 2.500,00 1221',
+        'Ejercicio 2023. Aplicado en esta declaración 2.500,00 1222',
+        'Gastos deducibles de 2024 a deducir en los 4 años siguientes. 28.239,24 1224',
+        'Información adicional de gastos de bienes inmuebles arrendados',
+        'Inmueble',
+        'Referencia Catastral 0654104TP7005S0012TS 1394',
+        'NIF de quién realiza la reparación y conservación B44540920 1395',
+        'Importe del gasto 32.186,00 1396',
+        'Fecha de realización de la mejora 09/01/2024 1421',
+        'NIF de quién realizó la obra o servicio de mejora 10521540Y 1422',
+        'Importe de la mejora 3.545,30 1423',
+      ].join('\n'),
+      [
+        'Impuesto sobre la Renta de las Personas Físicas',
+        'Ejercicio 2024 - Documento de ingreso o devolución',
+        'NIF declarante 53069494F',
+        'Apellidos y nombre GOMEZ RAMIREZ JOSE ANTONIO',
+        'Número de justificante 1005624311754',
+      ].join('\n'),
+    ]);
+
+    expect(casillas).toMatchObject({
+      ejercicio: '2024',
+      nif: '53069494F',
+      nombre: 'GOMEZ RAMIREZ JOSE ANTONIO',
+      fecha_presentacion: '24/06/2025 19:31:15',
+      expediente_referencia: '202410069492285M',
+      csv: 'DDD666NAQ2F9MMKS',
+      numero_justificante: '1005624311754',
+      '0066_7': '0654104TP7005S0011AA',
+      '0074_7': 'X',
+      '0090_7': '0654104TP7005S0009SS',
+      '1212_1': '0654104TP7005S0009SS',
+      '1221_1': 2500,
+      '1222_1': 2500,
+      '1224_1': 28239.24,
+      '1394_2': '0654104TP7005S0012TS',
+      '1395_2': 'B44540920',
+      '1396_2': 32186,
+      '1421_2': '09/01/2024',
+      '1422_2': '10521540Y',
+      '1423_2': 3545.3,
+    });
+  });
+
   test('detecta cuando hay datos mínimos para continuar aunque falle el refuerzo visual', () => {
     expect(__private__.tieneDatosMinimosParaImportar({
       ejercicio: 2024,
