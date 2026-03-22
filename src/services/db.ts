@@ -2251,15 +2251,19 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
           const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'ejercicio' });
           ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
-          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
-          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          // Compatibilidad: clientes legacy pueden traer varios registros con el mismo ejercicio.
+          // Estos índices se usan como alias de consulta y no deben abortar la migración por unicidad.
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: false });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: false });
           ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
           ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         } else {
           const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
           ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
-          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: true });
-          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: true });
+          // Compatibilidad: clientes legacy pueden traer varios registros con el mismo ejercicio.
+          // Estos índices se usan como alias de consulta y no deben abortar la migración por unicidad.
+          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: false });
+          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: false });
           ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
           ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
         }
