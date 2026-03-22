@@ -431,6 +431,22 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
   const resultado: CasillasRaw = {};
   const casillasRepetibles = new Set<string>(CASILLAS_INMUEBLE_REPETIBLES);
   const refToPropertyIndex = new Map<string, number>();
+  const directTextExtractors: Array<[RegExp, string]> = [
+    [/Referencia catastral\.?\s+([A-Z0-9]{8,20})\s+0066\b/i, '0066'],
+    [/Direcci[oó]n del inmueble\s+(.+?)\s+0069\b/i, '0069'],
+    [/Ref\. catastral del inmueble principal al que est[aá] vinculado el accesorio\s+([A-Z0-9]{8,20})\s+0090\b/i, '0090'],
+    [/NIF del arrendatario 1\.?\s+([A-Z0-9]{8,12})\s+0091\b/i, '0091'],
+    [/NIF del arrendatario 2\.?\s+([A-Z0-9]{8,12})\s+0094\b/i, '0094'],
+    [/Fecha del contrato\.?\s+(\d{2}\/\d{2}\/\d{4})\s+0093\b/i, '0093'],
+    [/Fecha de adquisici[oó]n del inmueble.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0120\b/i, '0120'],
+    [/Fecha de adquisici[oó]n del inmueble accesorio.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0135\b/i, '0135'],
+    [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1212\b/i, '1212'],
+    [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1394\b/i, '1394'],
+    [/NIF de qui[eé]n realiza la reparaci[oó]n y conservaci[oó]n\s+([A-Z0-9]{8,12})\s+1395\b/i, '1395'],
+    [/NIF de qui[eé]n presta los servicios personales\s+([A-Z0-9]{8,12})\s+1416\b/i, '1416'],
+    [/Fecha de realizaci[oó]n de la mejora\s+(\d{2}\/\d{2}\/\d{4})\s+1421\b/i, '1421'],
+    [/NIF de qui[eé]n realiz[oó] la obra o servicio de mejora\s+([A-Z0-9]{8,12})\s+1422\b/i, '1422'],
+  ];
 
   let indiceInmuebleActual: number | null = null;
   let contadorBloquesSinNumero = 0;
@@ -466,38 +482,23 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
       }
 
       const booleanMatches = Array.from(linea.matchAll(/\bX\s+(0067|0073|0074|0075|0100|0118|0133)\b/g));
-      booleanMatches.forEach((match) => setSufijo(match[1], 'X'));
+      for (const match of booleanMatches) {
+        setSufijo(match[1], 'X');
+      }
 
       const numericMatches = Array.from(linea.matchAll(/(^|\s)(-?[\d.]+,\d{2}|-?\d+)\s+(\d{4})(?!\d)/g));
-      numericMatches.forEach((match) => {
+      for (const match of numericMatches) {
         const casilla = match[3];
-        if (!casillasRepetibles.has(casilla)) return;
+        if (!casillasRepetibles.has(casilla)) continue;
         const valor = Number.parseFloat(match[2].replace(/\./g, '').replace(',', '.'));
         if (!Number.isNaN(valor)) {
           setSufijo(casilla, valor);
         }
-      });
+      }
 
-      const directTextExtractors: Array<[RegExp, string]> = [
-        [/Referencia catastral\.?\s+([A-Z0-9]{8,20})\s+0066\b/i, '0066'],
-        [/Direcci[oó]n del inmueble\s+(.+?)\s+0069\b/i, '0069'],
-        [/Ref\. catastral del inmueble principal al que est[aá] vinculado el accesorio\s+([A-Z0-9]{8,20})\s+0090\b/i, '0090'],
-        [/NIF del arrendatario 1\.?\s+([A-Z0-9]{8,12})\s+0091\b/i, '0091'],
-        [/NIF del arrendatario 2\.?\s+([A-Z0-9]{8,12})\s+0094\b/i, '0094'],
-        [/Fecha del contrato\.?\s+(\d{2}\/\d{2}\/\d{4})\s+0093\b/i, '0093'],
-        [/Fecha de adquisici[oó]n del inmueble.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0120\b/i, '0120'],
-        [/Fecha de adquisici[oó]n del inmueble accesorio.*?\s+(\d{2}\/\d{2}\/\d{4})\s+0135\b/i, '0135'],
-        [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1212\b/i, '1212'],
-        [/Referencia Catastral\s+([A-Z0-9]{8,20})\s+1394\b/i, '1394'],
-        [/NIF de qui[eé]n realiza la reparaci[oó]n y conservaci[oó]n\s+([A-Z0-9]{8,12})\s+1395\b/i, '1395'],
-        [/NIF de qui[eé]n presta los servicios personales\s+([A-Z0-9]{8,12})\s+1416\b/i, '1416'],
-        [/Fecha de realizaci[oó]n de la mejora\s+(\d{2}\/\d{2}\/\d{4})\s+1421\b/i, '1421'],
-        [/NIF de qui[eé]n realiz[oó] la obra o servicio de mejora\s+([A-Z0-9]{8,12})\s+1422\b/i, '1422'],
-      ];
-
-      directTextExtractors.forEach(([pattern, casilla]) => {
+      for (const [pattern, casilla] of directTextExtractors) {
         const value = linea.match(pattern)?.[1];
-        if (!value) return;
+        if (!value) continue;
         const limpio = limpiarTextoExtraido(value);
 
         if (casilla === '0066') {
@@ -514,7 +515,7 @@ function extraerCasillasRepetiblesDesdeTexto(paginasTexto: string[]): CasillasRa
         }
 
         setSufijo(casilla, limpio);
-      });
+      }
     }
   }
 
