@@ -178,6 +178,8 @@ Si un campo no aparece en el documento usa null.`;
         : [];
       const base64Data = cleanBase64(body?.imagen);
 
+      const texto = typeof body?.texto === 'string' ? body.texto.trim() : '';
+
       const mediaBlocks = imagenes.length > 0
         ? imagenes.map((img) => ({
             type: 'image',
@@ -191,7 +193,9 @@ Si un campo no aparece en el documento usa null.`;
             ]
           : [];
 
-      if (!mediaBlocks.length) return jsonResponse(400, { ok: false, error: 'Campo "imagen" o "imagenes" obligatorio' });
+      if (!mediaBlocks.length && !texto) {
+        return jsonResponse(400, { ok: false, error: 'Campo "imagen", "imagenes" o "texto" obligatorio' });
+      }
 
       const system = promptOverride || `Eres un experto en declaraciones de IRPF españolas (Modelo 100).
 Analiza el documento y extrae los valores de las casillas AEAT con máxima precisión.
@@ -248,7 +252,7 @@ Ejemplo de respuesta:
           {
             role: 'user',
             content: [
-              { type: 'text', text: 'Extrae todas las casillas AEAT de esta declaración IRPF (Modelo 100) y devuelve solo JSON válido.' },
+              { type: 'text', text: texto || 'Extrae todas las casillas AEAT de esta declaración IRPF (Modelo 100) y devuelve solo JSON válido.' },
               ...mediaBlocks,
             ],
           },
