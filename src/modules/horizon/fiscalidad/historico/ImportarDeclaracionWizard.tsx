@@ -22,6 +22,7 @@ import ReconciliacionPanel from '../importar/ReconciliacionPanel';
 
 type MetodoEntrada = 'formulario' | 'pdf';
 type ReviewTab = 'entidades' | 'reconciliacion' | 'raw';
+type SectionStatusTone = 'info' | 'success' | 'warning' | 'muted';
 
 interface ImportarDeclaracionWizardProps {
   onClose: () => void;
@@ -309,6 +310,34 @@ const VerificacionExtraccion: React.FC<{
     : 0;
   const inmueblesPrincipales = inmueblesDetalle.filter((item) => !item.datos.esAccesorio);
   const inmueblesAccesorios = inmueblesDetalle.filter((item) => item.datos.esAccesorio);
+  const inmuebleItems: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }> = [
+    ...inmueblesPrincipales.map((inmueble) => ({
+      title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Inmueble ${inmueble.datos.orden}`,
+      subtitle: [inmueble.datos.referenciaCatastral, formatCurrency(inmueble.datos.ingresosIntegros), `${inmueble.datos.diasArrendado} días`].filter(Boolean).join(' · '),
+      statusLabel: inmueble.datos.ingresosIntegros > 0 ? 'Crear' : 'Revisar',
+      statusTone: inmueble.datos.ingresosIntegros > 0 ? 'info' as const : 'warning' as const,
+    })),
+    ...inmueblesAccesorios.map((inmueble) => ({
+      title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Accesorio ${inmueble.datos.orden}`,
+      subtitle: `Accesorio → ${inmueble.datos.refCatastralPrincipal || 'principal por resolver'}`,
+      statusLabel: 'Accesorio',
+      statusTone: 'muted' as const,
+    })),
+  ];
+  const arrastreItems: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }> = [
+    ...arrastres.gastos0105_0106.map((item) => ({
+      title: `Gastos 0105+0106 · ${item.referenciaCatastral || 'Sin referencia'}`,
+      subtitle: `${formatCurrency(item.generadoEsteEjercicio || item.pendienteFuturo)} generados · Caduca ${item.ejercicioOrigen + 4}`,
+      statusLabel: 'Pendiente',
+      statusTone: 'warning' as const,
+    })),
+    ...arrastres.perdidasAhorro.map((item) => ({
+      title: `Pérdidas ${item.tipo} ${item.ejercicioOrigen}`,
+      subtitle: `${formatCurrency(item.pendienteFuturo)} pendientes · Caduca ${item.ejercicioOrigen + 4}`,
+      statusLabel: 'Pendiente',
+      statusTone: 'warning' as const,
+    })),
+  ];
 
   const tabs: Array<{ key: ReviewTab; label: string }> = [
     { key: 'entidades', label: `Entidades (${inmueblesDetalle.length + arrastresCount})` },
@@ -339,20 +368,7 @@ const VerificacionExtraccion: React.FC<{
             title="Inmuebles"
             Icon={Home}
             badge={`${inmueblesPrincipales.length} principales · ${inmueblesAccesorios.length} accesorios`}
-            items={[
-              ...inmueblesPrincipales.map((inmueble) => ({
-                title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Inmueble ${inmueble.datos.orden}`,
-                subtitle: [inmueble.datos.referenciaCatastral, formatCurrency(inmueble.datos.ingresosIntegros), `${inmueble.datos.diasArrendado} días`].filter(Boolean).join(' · '),
-                statusLabel: inmueble.datos.ingresosIntegros > 0 ? 'Crear' : 'Revisar',
-                statusTone: inmueble.datos.ingresosIntegros > 0 ? 'info' : 'warning',
-              })),
-              ...inmueblesAccesorios.map((inmueble) => ({
-                title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Accesorio ${inmueble.datos.orden}`,
-                subtitle: `Accesorio → ${inmueble.datos.refCatastralPrincipal || 'principal por resolver'}`,
-                statusLabel: 'Accesorio',
-                statusTone: 'muted' as const,
-              })),
-            ]}
+            items={inmuebleItems}
             emptyText="No se detectaron inmuebles."
           />
 
@@ -363,20 +379,7 @@ const VerificacionExtraccion: React.FC<{
               arrastres.gastos0105_0106.reduce((acc, item) => acc + item.pendienteFuturo, 0)
               + arrastres.perdidasAhorro.reduce((acc, item) => acc + item.pendienteFuturo, 0),
             )} pendientes` : 'Sin pendientes'}
-            items={[
-              ...arrastres.gastos0105_0106.map((item) => ({
-                title: `Gastos 0105+0106 · ${item.referenciaCatastral || 'Sin referencia'}`,
-                subtitle: `${formatCurrency(item.generadoEsteEjercicio || item.pendienteFuturo)} generados · Caduca ${item.ejercicioOrigen + 4}`,
-                statusLabel: 'Pendiente',
-                statusTone: 'warning' as const,
-              })),
-              ...arrastres.perdidasAhorro.map((item) => ({
-                title: `Pérdidas ${item.tipo} ${item.ejercicioOrigen}`,
-                subtitle: `${formatCurrency(item.pendienteFuturo)} pendientes · Caduca ${item.ejercicioOrigen + 4}`,
-                statusLabel: 'Pendiente',
-                statusTone: 'warning' as const,
-              })),
-            ]}
+            items={arrastreItems}
             emptyText="No se detectaron arrastres pendientes."
           />
         </div>
@@ -433,7 +436,7 @@ function SectionListCard({
   title: string;
   Icon: typeof Home;
   badge?: string;
-  items: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: 'info' | 'success' | 'warning' | 'muted' }>;
+  items: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }>;
   emptyText: string;
 }) {
   return (
@@ -468,7 +471,7 @@ function SectionListCard({
   );
 }
 
-function EntityStatusBadge({ tone, children }: { tone: 'info' | 'success' | 'warning' | 'muted'; children: React.ReactNode }) {
+function EntityStatusBadge({ tone, children }: { tone: SectionStatusTone; children: React.ReactNode }) {
   const palette = {
     info: { background: '#E9F2FF', color: 'var(--atlas-blue)' },
     success: { background: '#E9F8EE', color: '#157347' },
