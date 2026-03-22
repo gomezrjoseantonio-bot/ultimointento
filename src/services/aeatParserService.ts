@@ -133,8 +133,16 @@ export async function parsearDeclaracionAEAT(
   const warnings: string[] = [];
 
   try {
+    if (!isPdfFile(file)) {
+      return resultadoError('El archivo seleccionado no es un PDF válido de la AEAT.');
+    }
+
     onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF para análisis...' });
     const { totalPaginas, textoExtraido, paginasTexto, bytesPdf } = await prepararPdfParaAnalisis(file);
+
+    if (totalPaginas <= 0) {
+      return resultadoError('No se ha podido leer el PDF. Verifica que el archivo no esté corrupto o protegido.');
+    }
 
     let casillasRaw = textoTieneContenidoRelevante(textoExtraido)
       ? await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress)
@@ -150,13 +158,17 @@ export async function parsearDeclaracionAEAT(
           ? 'Extracción textual incompleta; se refuerza con análisis visual por bloques.'
           : 'El PDF no expone texto suficiente; se analiza por bloques visuales.',
       );
-      casillasRaw = await extraerCasillasConClaudePorBloques(
-        file,
-        totalPaginas,
-        onProgress,
-        bytesPdf,
-        casillasRaw,
-      );
+      try {
+        casillasRaw = await extraerCasillasConClaudePorBloques(
+          file,
+          totalPaginas,
+          onProgress,
+          bytesPdf,
+          casillasRaw,
+        );
+      } catch (error) {
+        warnings.push(`Fallback visual no completado: ${normalizarMensajeEscaneo(error)}`);
+      }
     }
 
     if (Object.keys(casillasRaw).length === 0) {
@@ -197,10 +209,7 @@ export async function parsearDeclaracionAEAT(
     };
   } catch (error) {
     console.error('[AEATParser] Error:', error);
-    const rawMessage = error instanceof Error ? error.message : 'desconocido';
-    const friendlyMessage = /timeout|504|inactivity/i.test(rawMessage)
-      ? 'El análisis del PDF ha superado el tiempo límite incluso tras reintentar por bloques. Revisa la conexión o usa el formulario manual como contingencia.'
-      : `Error procesando PDF: ${rawMessage}`;
+    const friendlyMessage = `Error procesando PDF: ${normalizarMensajeEscaneo(error)}`;
     return resultadoError(friendlyMessage);
   }
 }
@@ -243,6 +252,30 @@ const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 12;
 const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
+
+function isPdfFile(file: File): boolean {
+  const normalizedType = (file.type || '').toLowerCase();
+  const normalizedName = file.name.toLowerCase();
+  return normalizedType === 'application/pdf' || normalizedName.endsWith('.pdf');
+}
+
+function normalizarMensajeEscaneo(error: unknown): string {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+
+  if (/usage[_\s-]?exceeded|quota|rate limit/i.test(rawMessage)) {
+    return 'El servicio de análisis está saturado temporalmente. Reinténtalo en unos minutos o usa el formulario manual.';
+  }
+
+  if (/timeout|504|inactivity/i.test(rawMessage)) {
+    return 'El análisis del PDF superó el tiempo límite. Puedes reintentar o completar la importación con el formulario manual.';
+  }
+
+  if (/no pdf header found|invalid pdf structure|missing pdf/i.test(rawMessage)) {
+    return 'El archivo no parece un PDF válido. Descárgalo de nuevo desde AEAT y vuelve a intentarlo.';
+  }
+
+  return rawMessage;
+}
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {

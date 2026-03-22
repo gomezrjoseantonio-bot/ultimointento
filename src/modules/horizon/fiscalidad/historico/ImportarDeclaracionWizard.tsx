@@ -558,6 +558,13 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+      toast.error('Selecciona un PDF válido de la AEAT');
+      event.target.value = '';
+      return;
+    }
+
     setUploadedFile(file);
     setStep(2);
     setResultadoExtraccion(null);
@@ -919,6 +926,30 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                       <div>
                         <strong>No se pudo extraer la declaración</strong>
                         <div style={{ marginTop: '0.2rem' }}>{resultadoExtraccion.errores[0]}</div>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.9rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMetodo('formulario');
+                              setStep(2);
+                            }}
+                            style={{ border: '1px solid rgba(139, 30, 30, 0.2)', borderRadius: '10px', padding: '0.7rem 0.9rem', background: 'white', color: '#8B1E1E', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            Seguir en manual
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadedFile(null);
+                              setResultadoExtraccion(null);
+                              setCasillasExtraidas([]);
+                              setStep(1);
+                            }}
+                            style={{ border: 'none', borderRadius: '10px', padding: '0.7rem 0.9rem', background: '#8B1E1E', color: 'white', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            Subir otro PDF
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
