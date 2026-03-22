@@ -1,4 +1,4 @@
-import { callScanChatImages } from './scanChatService';
+import { callScanChat } from './scanChatService';
 import type {
   DeclaracionActividad,
   DeclaracionBasesYCuotas,
@@ -75,7 +75,7 @@ export interface GastoInmuebleDetalle {
 }
 
 export interface ProgresoParseo {
-  fase: 'renderizando' | 'enviando' | 'procesando' | 'mapeando' | 'validando';
+  fase: 'preparando' | 'enviando' | 'procesando' | 'mapeando' | 'validando';
   pagina?: number;
   totalPaginas?: number;
   mensaje: string;
@@ -90,7 +90,6 @@ type StringGetter = (casilla: string) => string;
 type BooleanGetter = (casilla: string) => boolean;
 
 const MIN_EJERCICIO = 2020;
-const PAGE_BATCH_SIZE = 4;
 
 export async function parsearDeclaracionAEAT(
   file: File,
@@ -100,20 +99,18 @@ export async function parsearDeclaracionAEAT(
   const warnings: string[] = [];
 
   try {
-    onProgress?.({ fase: 'renderizando', mensaje: 'Convirtiendo PDF a imágenes...' });
-    const imagenes = await renderizarPDFaImagenes(file, onProgress);
-
-    if (imagenes.length === 0) {
-      return resultadoError('No se pudieron renderizar páginas del PDF');
-    }
+    onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF completo para análisis...' });
+    const totalPaginas = await obtenerNumeroPaginasPDF(file);
 
     onProgress?.({
       fase: 'enviando',
-      mensaje: `Analizando ${imagenes.length} páginas con IA...`,
-      totalPaginas: imagenes.length,
+      mensaje: totalPaginas > 0
+        ? `Enviando PDF completo (${totalPaginas} páginas) a Claude...`
+        : 'Enviando PDF completo a Claude...',
+      totalPaginas: totalPaginas || undefined,
     });
 
-    const casillasRaw = await extraerCasillasConClaude(imagenes, onProgress);
+    const casillasRaw = await extraerCasillasConClaude(file, totalPaginas, onProgress);
     if (Object.keys(casillasRaw).length === 0) {
       return resultadoError('Claude no pudo extraer casillas del PDF');
     }
@@ -143,7 +140,7 @@ export async function parsearDeclaracionAEAT(
       casillasRaw,
       inmueblesDetalle: inmuebles,
       arrastres,
-      paginasProcesadas: imagenes.length,
+      paginasProcesadas: totalPaginas,
       totalCasillas: Object.keys(casillasRaw).length,
     };
   } catch (error) {
@@ -167,97 +164,49 @@ function resultadoError(mensaje: string): ExtraccionCompleta {
   };
 }
 
-async function renderizarPDFaImagenes(
-  file: File,
-  onProgress?: OnProgress,
-): Promise<string[]> {
-  const { pdfjs } = await import('react-pdf');
-  pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
+async function obtenerNumeroPaginasPDF(file: File): Promise<number> {
+  try {
+    const { pdfjs } = await import('react-pdf');
+    pdfjs.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
 
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-  const imagenes: string[] = [];
-  const dpi = 200;
-  const scale = dpi / 72;
-
-  for (let i = 1; i <= pdf.numPages; i += 1) {
-    onProgress?.({
-      fase: 'renderizando',
-      pagina: i,
-      totalPaginas: pdf.numPages,
-      mensaje: `Renderizando página ${i} de ${pdf.numPages}...`,
-    });
-
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-
-    const context = canvas.getContext('2d');
-    if (!context) {
-      throw new Error(`No se pudo crear el contexto de canvas para la página ${i}`);
-    }
-
-    await page.render({ canvas, canvasContext: context, viewport }).promise;
-    const base64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-    if (base64) {
-      imagenes.push(base64);
-    }
-
-    canvas.width = 0;
-    canvas.height = 0;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    return pdf.numPages;
+  } catch (error) {
+    console.warn('[AEATParser] No se pudo leer el número de páginas del PDF:', error);
+    return 0;
   }
-
-  return imagenes;
 }
 
 async function extraerCasillasConClaude(
-  imagenes: string[],
+  file: File,
+  totalPaginas: number,
   onProgress?: OnProgress,
 ): Promise<CasillasRaw> {
-  const lotes: string[][] = [];
-  for (let i = 0; i < imagenes.length; i += PAGE_BATCH_SIZE) {
-    lotes.push(imagenes.slice(i, i + PAGE_BATCH_SIZE));
-  }
+  onProgress?.({
+    fase: 'procesando',
+    pagina: totalPaginas || undefined,
+    totalPaginas: totalPaginas || undefined,
+    mensaje: totalPaginas > 0
+      ? `Analizando declaración completa (${totalPaginas} páginas) con IA...`
+      : 'Analizando declaración completa con IA...',
+  });
 
-  const todasLasCasillas: CasillasRaw = {};
+  const prompt = construirPromptAEAT();
+  const response = await callClaudeAPI(file, prompt);
 
-  for (let loteIndex = 0; loteIndex < lotes.length; loteIndex += 1) {
-    const lote = lotes[loteIndex];
-    const paginaInicio = loteIndex * PAGE_BATCH_SIZE + 1;
-    const paginaFin = paginaInicio + lote.length - 1;
+  onProgress?.({
+    fase: 'procesando',
+    pagina: totalPaginas || undefined,
+    totalPaginas: totalPaginas || undefined,
+    mensaje: 'Procesando respuesta de Claude...',
+  });
 
-    onProgress?.({
-      fase: 'procesando',
-      pagina: paginaFin,
-      totalPaginas: imagenes.length,
-      mensaje: `Extrayendo datos (páginas ${paginaInicio}-${paginaFin})...`,
-    });
-
-    const casillasLote = await llamarClaudeVision(lote, paginaInicio);
-    Object.assign(todasLasCasillas, casillasLote);
-  }
-
-  return todasLasCasillas;
-}
-
-async function llamarClaudeVision(
-  imagenesBase64: string[],
-  paginaInicio: number,
-): Promise<CasillasRaw> {
-  const prompt = construirPromptAEAT(paginaInicio, imagenesBase64.length);
-  const response = await callClaudeAPI(imagenesBase64, prompt);
   return parsearRespuestaClaude(response);
 }
 
-async function callClaudeAPI(imagenesBase64: string[], prompt: string): Promise<string> {
-  const response = await callScanChatImages({
-    tipo: 'scan_irpf',
-    imagenes: imagenesBase64,
-    mimeType: 'image/jpeg',
-    prompt,
-  });
+async function callClaudeAPI(file: File, prompt: string): Promise<string> {
+  const response = await callScanChat(file, 'application/pdf', 'scan_irpf', { prompt });
 
   if (typeof response.extraido === 'string') {
     return response.extraido;
@@ -266,8 +215,8 @@ async function callClaudeAPI(imagenesBase64: string[], prompt: string): Promise<
   return JSON.stringify(response.extraido ?? {});
 }
 
-function construirPromptAEAT(paginaInicio: number, totalPaginasLote: number): string {
-  return `Estás analizando páginas de una declaración de la Renta española (Modelo 100 — IRPF).
+function construirPromptAEAT(): string {
+  return `Estás analizando una declaración completa de la Renta española (Modelo 100 — IRPF) en PDF.
 
 TAREA: Extrae TODAS las casillas con su número y valor. Cada casilla tiene un número de 4 dígitos (como 0003, 0435, 0670, 1224) seguido de un valor numérico o de texto.
 
@@ -277,17 +226,18 @@ FORMATO DE RESPUESTA: Devuelve SOLO un JSON válido, sin markdown, sin explicaci
 
 REGLAS:
 1. Extrae ABSOLUTAMENTE TODAS las casillas que veas, sin excepción.
-2. Los importes en euros: quita los puntos de miles y usa punto como decimal (ej: "133.350,85" → 133350.85).
-3. Las fechas déjalas como string: "28/09/1980".
-4. Los NIF/NIE déjalos como string: "53069494F".
-5. Los porcentajes como número: "100,00" → 100.
-6. Si una casilla tiene "X" o una marca de selección, usa true.
-7. Si una casilla está vacía o con "—", no la incluyas.
-8. Las casillas de texto libre (direcciones, nombres, encabezados identificativos) como string.
-9. Para casillas repetidas (varios inmuebles), usa sufijo: "0102_1", "0102_2", etc.
-10. Para la sección "Información adicional" incluye también las casillas 1211-1423 si aparecen.
-11. Incluye metadatos identificativos si los ves: ejercicio, nif, nombre, fecha_presentacion, numero_justificante, csv.
-12. Las referencias catastrales son strings de ~20 caracteres y nunca deben convertirse a número.
+2. Recorre todas las páginas del PDF antes de responder.
+3. Los importes en euros: quita los puntos de miles y usa punto como decimal (ej: "133.350,85" → 133350.85).
+4. Las fechas déjalas como string: "28/09/1980".
+5. Los NIF/NIE déjalos como string: "53069494F".
+6. Los porcentajes como número: "100,00" → 100.
+7. Si una casilla tiene "X" o una marca de selección, usa true.
+8. Si una casilla está vacía o con "—", no la incluyas.
+9. Las casillas de texto libre (direcciones, nombres, encabezados identificativos) como string.
+10. Para casillas repetidas (varios inmuebles, varios titulares o bloques repetidos), usa sufijo: "0102_1", "0102_2", etc.
+11. Para la sección "Información adicional" incluye también las casillas 1211-1423 si aparecen.
+12. Incluye metadatos identificativos si los ves: ejercicio, nif, nombre, fecha_presentacion, numero_justificante, csv.
+13. Las referencias catastrales son strings de ~20 caracteres y nunca deben convertirse a número.
 
 Ejemplo de respuesta:
 {
@@ -306,7 +256,7 @@ Ejemplo de respuesta:
   "1222_1": 6157.99
 }
 
-Estas son las páginas ${paginaInicio} a ${paginaInicio + totalPaginasLote - 1} de la declaración. Extrae todo.`;
+Analiza el PDF completo y extrae todo.`;
 }
 
 function parsearRespuestaClaude(textoRespuesta: string): CasillasRaw {

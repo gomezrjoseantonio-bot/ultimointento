@@ -6,6 +6,10 @@ interface ScanChatPayload {
   prompt?: string;
 }
 
+interface CallScanChatOptions {
+  prompt?: string;
+}
+
 export interface ScanChatResponse {
   ok: boolean;
   tipo?: 'scan' | 'scan_irpf';
@@ -36,12 +40,14 @@ export const callScanChat = async (
   fileOrBlob: Blob,
   mimeType?: string,
   tipo: ScanChatPayload['tipo'] = 'scan',
+  options?: CallScanChatOptions,
 ): Promise<ScanChatResponse> => {
   const base64Image = await toBase64(fileOrBlob);
   const payload: ScanChatPayload = {
     tipo,
     imagen: base64Image,
-    mimeType: mimeType || fileOrBlob.type || 'application/octet-stream'
+    mimeType: mimeType || fileOrBlob.type || 'application/octet-stream',
+    ...(options?.prompt ? { prompt: options.prompt } : {}),
   };
 
   const response = await fetch('/.netlify/functions/chat', {

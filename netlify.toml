@@ -13,6 +13,10 @@
 [functions."*"]
   timeout = 26
 
+[functions."chat"]
+  # Requiere un plan compatible de Netlify; si no, prevalece el límite del runtime.
+  timeout = 60
+
 [[redirects]]
   from = "/robots.txt"
   to = "/robots.txt"
