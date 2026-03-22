@@ -54,15 +54,25 @@ const getStoresForRoute = (href: string): string[] => {
 
 const inFlightPreloads = new Map<string, Promise<void>>();
 
-export const preloadRouteResources = async (href: string): Promise<void> => {
+interface PreloadRouteOptions {
+  includeStores?: boolean;
+}
+
+export const preloadRouteResources = async (
+  href: string,
+  options?: PreloadRouteOptions,
+): Promise<void> => {
   if (!href || inFlightPreloads.has(href)) {
     return inFlightPreloads.get(href) ?? Promise.resolve();
   }
 
-  const preloadPromise = Promise.allSettled([
-    preloadRouteChunk(href),
-    warmCachedStores(getStoresForRoute(href)),
-  ]).then(() => undefined)
+  const tasks: Array<Promise<unknown>> = [preloadRouteChunk(href)];
+
+  if (options?.includeStores) {
+    tasks.push(warmCachedStores(getStoresForRoute(href)));
+  }
+
+  const preloadPromise = Promise.allSettled(tasks).then(() => undefined)
     .finally(() => {
       inFlightPreloads.delete(href);
     });

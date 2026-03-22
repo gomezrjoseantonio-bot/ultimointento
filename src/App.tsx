@@ -133,22 +133,25 @@ const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'))
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
-    void (async () => {
-      try {
-        await initDB();
-        const migration = await ejecutarMigracionFiscal();
-        if (migration.migrado) {
-          console.log(`[ATLAS] Migración fiscal: ${migration.ejerciciosMigrados.length} ejercicios migrados`);
-        }
-        if (migration.ejerciciosCerrados.length > 0) {
-          console.log(`[ATLAS] Ejercicios cerrados automáticamente: ${migration.ejerciciosCerrados.join(', ')}`);
-        }
-      } catch (error) {
-        console.error('[ATLAS] Error inicializando migración fiscal:', error);
-      }
-    })();
+    void initDB().catch((error) => {
+      console.error('[ATLAS] Error inicializando IndexedDB:', error);
+    });
 
     const cleanupTasks = [
+      runWhenIdle(() => {
+        ejecutarMigracionFiscal()
+          .then((migration) => {
+            if (migration.migrado) {
+              console.log(`[ATLAS] Migración fiscal: ${migration.ejerciciosMigrados.length} ejercicios migrados`);
+            }
+            if (migration.ejerciciosCerrados.length > 0) {
+              console.log(`[ATLAS] Ejercicios cerrados automáticamente: ${migration.ejerciciosCerrados.join(', ')}`);
+            }
+          })
+          .catch((error) => {
+            console.error('[ATLAS] Error inicializando migración fiscal:', error);
+          });
+      }, 2500),
       runWhenIdle(() => {
         initializeAccountMigration().catch(console.error);
       }, 1200),
