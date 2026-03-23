@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { LayoutDashboard } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
 import PageLayout from '../../../../components/common/PageLayout';
@@ -10,6 +11,8 @@ import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
 import type { CompensacionDetalle, PerdidaResumen } from '../../../../services/compensacionAhorroService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
+import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
+import ColdStartFiscal from '../estado/ColdStartFiscal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -35,11 +38,14 @@ const badgeLabelByFuente: Record<FuenteDeclaracion, string> = {
 };
 
 const FiscalDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
   const [showComparativa, setShowComparativa] = useState(false);
+  const [showColdStart, setShowColdStart] = useState(false);
   const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
   const [loadingComparativa, setLoadingComparativa] = useState(false);
 
@@ -65,6 +71,32 @@ const FiscalDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getAllEjercicios()
+      .then((ejercicios) => {
+        if (cancelled) return;
+        const tieneDatos = ejercicios.some((item) => {
+          const resumen = item.declaracionAeat?.basesYCuotas ?? item.calculoAtlas?.basesYCuotas;
+          return Boolean(
+            item.declaracionAeat
+            || item.declaracionAeatPdfRef
+            || (resumen && ((resumen.cuotaLiquida ?? 0) !== 0 || (resumen.retencionesTotal ?? 0) !== 0 || (resumen.resultadoDeclaracion ?? 0) !== 0))
+          );
+        });
+        const dismissColdStart = Boolean((location.state as { dismissColdStart?: boolean } | null)?.dismissColdStart);
+        setShowColdStart(!tieneDatos && !dismissColdStart);
+      })
+      .catch((error) => {
+        console.error('Error comprobando estado inicial fiscal:', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.state]);
 
   useEffect(() => {
     if (!showComparativa || fuente !== 'declarado') {
@@ -116,14 +148,29 @@ const FiscalDashboard: React.FC = () => {
     ? round2(estimacionComparativa.resultado - declaracion.resultado)
     : null;
 
+  if (showColdStart) {
+    return (
+      <PageLayout title="Estado fiscal" subtitle="Qué tienes cargado y cómo avanzar con tu próxima declaración">
+        <ColdStartFiscal
+          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
+          onImportarDatosFiscales={() => {
+            navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } });
+          }}
+          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
+          onExplorar={() => setShowColdStart(false)}
+        />
+      </PageLayout>
+    );
+  }
+
   return (
-    <PageLayout title="Resumen fiscal" subtitle="Histórico + situación del año en curso">
+    <PageLayout title="Estado fiscal" subtitle="Situación del ejercicio, cobertura y seguimiento de la declaración">
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
               <LayoutDashboard size={20} color="var(--blue)" />
-              <h1 style={{ fontSize: 'var(--t-xl)', fontWeight: 600, color: 'var(--n-900)' }}>Dashboard fiscal</h1>
+              <h1 style={{ fontSize: 'var(--t-xl)', fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
               {!loading && declaracion && (
                 <span
                   style={{

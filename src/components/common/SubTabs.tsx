@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Building2, History, Landmark, ReceiptText, Rows3 } from 'lucide-react';
 
 interface Tab {
   label: string;
@@ -24,13 +23,10 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Rendimientos', path: '/inversiones/rendimientos' },
     { label: 'Análisis', path: '/inversiones/analisis' },
   ],
-  // Tesorería has NO subtabs - single Radar view per ATLAS guide
   fiscalidad: [
-    { label: 'Resumen', path: '/fiscalidad/resumen', icon: Rows3 },
-    { label: 'Declaración', path: '/fiscalidad/declaracion', icon: ReceiptText },
-    { label: 'Pagos', path: '/fiscalidad/pagos', icon: Landmark },
-    { label: 'Histórico', path: '/fiscalidad/historico', icon: History },
-    { label: 'Entidades', path: '/fiscalidad/entidades', icon: Building2 },
+    { label: 'Estado', path: '/fiscalidad/estado' },
+    { label: 'Declaración', path: '/fiscalidad/declaracion' },
+    { label: 'Historial', path: '/fiscalidad/historial' },
   ],
   proyeccion: [
     { label: 'Proyección Automática', path: '/proyeccion/presupuesto' },
@@ -71,7 +67,6 @@ const PULSE_SUBTABS: SubTabsConfig = {
   ],
 };
 
-// Define which sections belong to which module
 const HORIZON_SECTIONS = ['inmuebles', 'inversiones', 'tesoreria', 'fiscalidad', 'proyeccion'];
 const PULSE_SECTIONS = ['ingresos', 'gastos', 'tesoreria-personal', 'proyeccion-personal'];
 
@@ -79,12 +74,10 @@ const SubTabs: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentModule, setCurrentModule } = useTheme();
-  
-  // Extract the section from the current path
+
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const section = pathSegments[0];
-  
-  // Auto-update module based on current section
+
   useEffect(() => {
     if (HORIZON_SECTIONS.includes(section) && currentModule !== 'horizon') {
       setCurrentModule('horizon');
@@ -92,27 +85,25 @@ const SubTabs: React.FC = () => {
       setCurrentModule('pulse');
     }
   }, [section, currentModule, setCurrentModule]);
-  
-  // Get the appropriate subtabs config based on current module and section
+
   const getSubTabs = (): Tab[] => {
     if (section === 'panel' || section === 'inbox') {
-      return []; // No subtabs for panel or inbox
+      return [];
     }
-    
+
     if (currentModule === 'horizon') {
       return HORIZON_SUBTABS[section] || [];
-    } else {
-      return PULSE_SUBTABS[section] || [];
     }
+
+    return PULSE_SUBTABS[section] || [];
   };
-  
+
   const tabs = getSubTabs();
-  
-  // If no tabs, don't render anything
+
   if (tabs.length === 0) {
     return null;
   }
-  
+
   return (
     <div className="border-b" style={{ borderColor: 'var(--n-200)', background: 'var(--white)' }}>
       <div className="px-6">
@@ -120,7 +111,7 @@ const SubTabs: React.FC = () => {
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             const TabIcon = tab.icon;
-            
+
             return (
               <button
                 key={tab.path}

@@ -246,13 +246,6 @@ interface PdfPreparado {
   paginasTexto: string[];
 }
 
-interface BloquePaginasTexto {
-  desde: number;
-  hasta: number;
-  texto: string;
-}
-
-const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 5;
 const OCR_TIMEOUT_MS = 90_000;
 
@@ -631,55 +624,6 @@ function tieneDatosMinimosParaImportar(
   const presentes = casillasClave.filter((casilla) => typeof casillasRaw[casilla] === 'number').length;
 
   return presentes >= 2 || Object.keys(casillasRaw).length >= 8;
-}
-
-export function dividirTextoPorPaginas(
-  paginasTexto: string[],
-  maxCharsPerChunk = MAX_TEXT_CHARS_PER_CHUNK,
-  maxPagesPerChunk = 6,
-): BloquePaginasTexto[] {
-  const bloques: BloquePaginasTexto[] = [];
-  let paginasActuales: string[] = [];
-  let charsActuales = 0;
-  let desdeActual = 1;
-
-  const pushBloque = (hasta: number) => {
-    if (paginasActuales.length === 0) return;
-    bloques.push({
-      desde: desdeActual,
-      hasta,
-      texto: paginasActuales.join('\n\n'),
-    });
-    paginasActuales = [];
-    charsActuales = 0;
-    desdeActual = hasta + 1;
-  };
-
-  paginasTexto.forEach((textoPagina, index) => {
-    const pagina = index + 1;
-    const textoLimpio = textoPagina.trim();
-    if (!textoLimpio) return;
-
-    const textoConCabecera = `[PÁGINA ${pagina}]\n${textoLimpio}`;
-    const excedeLimites =
-      paginasActuales.length >= maxPagesPerChunk ||
-      (charsActuales > 0 && charsActuales + textoConCabecera.length > maxCharsPerChunk);
-
-    if (excedeLimites) {
-      pushBloque(pagina - 1);
-    }
-
-    if (paginasActuales.length === 0) {
-      desdeActual = pagina;
-    }
-
-    paginasActuales.push(textoConCabecera);
-    charsActuales += textoConCabecera.length;
-  });
-
-  pushBloque(paginasTexto.length);
-
-  return bloques;
 }
 
 function mergeCasillasRaw(...sources: CasillasRaw[]): CasillasRaw {

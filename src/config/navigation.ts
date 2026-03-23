@@ -118,11 +118,9 @@ export const navigationConfig: NavigationItem[] = [
     module: 'horizon',
     section: 'horizon',
     subTabs: [
-      { name: 'Dashboard', href: '/fiscalidad/dashboard', icon: LayoutDashboard, module: 'horizon' },
+      { name: 'Estado', href: '/fiscalidad/estado', icon: LayoutDashboard, module: 'horizon' },
       { name: 'Declaración', href: '/fiscalidad/declaracion', icon: Receipt, module: 'horizon' },
-      { name: 'Pagos', href: '/fiscalidad/pagos', icon: Calendar, module: 'horizon' },
-      { name: 'Histórico', href: '/fiscalidad/historico', icon: Settings2, module: 'horizon' },
-      { name: 'Entidades', href: '/fiscalidad/entidades', icon: Building2, module: 'horizon' },
+      { name: 'Historial', href: '/fiscalidad/historial', icon: Settings2, module: 'horizon' },
     ]
   },
   {
