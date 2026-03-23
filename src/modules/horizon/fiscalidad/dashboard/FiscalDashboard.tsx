@@ -166,6 +166,21 @@ const FiscalDashboard: React.FC = () => {
     );
   }
 
+  if (showColdStart) {
+    return (
+      <PageLayout title="Estado fiscal" subtitle="Qué tienes cargado y cómo avanzar con tu próxima declaración">
+        <ColdStartFiscal
+          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
+          onImportarDatosFiscales={() => {
+            navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } });
+          }}
+          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
+          onExplorar={() => setShowColdStart(false)}
+        />
+      </PageLayout>
+    );
+  }
+
   return (
     <FiscalPageShell>
       <div style={{ display: 'grid', gap: 32 }}>
