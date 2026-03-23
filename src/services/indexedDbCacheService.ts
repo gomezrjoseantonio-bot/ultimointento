@@ -6,7 +6,7 @@ type CacheEntry<T> = {
   promise?: Promise<T[]>;
 };
 
-const DEFAULT_TTL_MS = 15_000;
+const DEFAULT_TTL_MS = 3 * 60 * 1000; // 3 minutes
 const cache = new Map<string, CacheEntry<any>>();
 
 const getCacheKey = (storeName: string) => storeName;
