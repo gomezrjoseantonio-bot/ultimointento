@@ -431,22 +431,22 @@ const VerificacionExtraccion: React.FC<{
               </div>
               <KeyValueGrid
                 rows={[
-                  declaracion.trabajo.rendimientoNeto > 0
-                    ? { label: 'Trabajo', value: formatCurrency(declaracion.trabajo.rendimientoNeto) }
-                    : null,
-                  declaracion.inmuebles.length > 0
-                    ? {
+                  ...(declaracion.trabajo.rendimientoNeto > 0
+                    ? [{ label: 'Trabajo', value: formatCurrency(declaracion.trabajo.rendimientoNeto) }]
+                    : []),
+                  ...(declaracion.inmuebles.length > 0
+                    ? [{
                         label: `Inmuebles (${declaracion.inmuebles.length})`,
                         value: formatCurrency(declaracion.inmuebles.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
-                      }
-                    : null,
-                  declaracion.actividades.length > 0
-                    ? {
+                      }]
+                    : []),
+                  ...(declaracion.actividades.length > 0
+                    ? [{
                         label: 'Actividades económicas',
                         value: formatCurrency(declaracion.actividades.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
-                      }
-                    : null,
-                ].filter((row): row is { label: string; value: React.ReactNode } => Boolean(row))}
+                      }]
+                    : []),
+                ]}
               />
             </div>
           )}
