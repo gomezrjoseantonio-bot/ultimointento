@@ -142,25 +142,19 @@ export async function reclassifyMovementsOnBudgetUpdate(periodo: { year: number;
   try {
     const db = await initDB();
     
-    // Get all sin_match movements for this year
-    const allMovements = await db.getAll('movements');
-    const sinMatchMovements = allMovements.filter(movement => {
-      if (movement.statusConciliacion !== 'sin_match') return false;
-      
-      const movementYear = new Date(movement.date).getFullYear();
-      return movementYear === periodo.year;
-    });
+    // Use date index range to filter movements by year, then filter sin_match in memory
+    const yearStart = `${periodo.year}-01-01`;
+    const yearEnd = `${periodo.year}-12-31`;
+    const yearMovements = await db.getAllFromIndex('movements', 'date', IDBKeyRange.bound(yearStart, yearEnd));
+    const sinMatchMovements = yearMovements.filter(m => m.statusConciliacion === 'sin_match');
 
     if (sinMatchMovements.length === 0) {
       console.log('🟡 No sin_match movements found for reclassification');
       return;
     }
 
-    // Get budget lines for this period
-    const presupuestoLineas = await db.getAll('presupuestoLineas');
-    const periodLineas = presupuestoLineas.filter(
-      linea => linea.presupuestoId === periodo.presupuestoId
-    );
+    // Use presupuestoId index to avoid full scan of presupuestoLineas
+    const periodLineas = await db.getAllFromIndex('presupuestoLineas', 'presupuestoId', periodo.presupuestoId);
 
     let reclassifiedCount = 0;
 
