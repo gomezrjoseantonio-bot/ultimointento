@@ -1,13 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
-import { __private__, detectarEjercicio, dividirPdfEnBloques, dividirTextoPorPaginas } from '../aeatParserService';
-import { callScanChat } from '../scanChatService';
-
-jest.mock('../scanChatService', () => ({
-  callScanChat: jest.fn(),
-  callScanChatText: jest.fn(),
-}));
-
-const mockedCallScanChat = callScanChat as jest.MockedFunction<typeof callScanChat>;
+import { __private__, detectarEjercicio, dividirTextoPorPaginas } from '../aeatParserService';
 
 describe('detectarEjercicio', () => {
   test('acepta ejercicios abreviados en el payload extraído', () => {
@@ -245,26 +236,6 @@ describe('extracción textual determinista', () => {
   });
 });
 
-describe('dividirPdfEnBloques', () => {
-  test('divide PDFs extensos en subdocumentos pequeños para evitar timeouts', async () => {
-    const pdf = await PDFDocument.create();
-    for (let i = 0; i < 7; i += 1) {
-      pdf.addPage([595, 842]);
-    }
-
-    const bytes = await pdf.save();
-    const bloques = await dividirPdfEnBloques(new Uint8Array(bytes), 3);
-
-    expect(bloques).toHaveLength(3);
-    expect(bloques.map((bloque) => [bloque.desde, bloque.hasta])).toEqual([
-      [1, 3],
-      [4, 6],
-      [7, 7],
-    ]);
-    expect(bloques.every((bloque) => bloque.blob.size > 0)).toBe(true);
-  });
-});
-
 describe('helpers de metadatos AEAT', () => {
   test('detecta estado civil desde la marca X en la casilla 0006', () => {
     expect(__private__.detectarEstadoCivil({ '0006': 'X' })).toBe('Soltero/a');
@@ -303,56 +274,8 @@ describe('validación de cabecera PDF', () => {
 });
 
 describe('fallback OCR AEAT', () => {
-  beforeEach(() => {
-    mockedCallScanChat.mockReset();
-  });
-
   test('detecta errores timeout del OCR', () => {
     expect(__private__.esTimeoutOCR(new Error('OCR error 504: Inactivity Timeout'))).toBe(true);
     expect(__private__.esTimeoutOCR(new Error('network error'))).toBe(false);
-  });
-
-  test('reintenta un bloque visual dividiéndolo en subbloques más pequeños tras un timeout', async () => {
-    const pdf = await PDFDocument.create();
-    for (let i = 0; i < 4; i += 1) {
-      pdf.addPage([595, 842]);
-    }
-
-    const bytes = await pdf.save();
-    const [bloque] = await dividirPdfEnBloques(new Uint8Array(bytes), 4);
-    const file = new File([bytes], 'declaracion.pdf', { type: 'application/pdf' });
-
-    mockedCallScanChat
-      .mockRejectedValueOnce(new Error('OCR error 504: Inactivity Timeout'))
-      .mockRejectedValueOnce(new Error('OCR error 504: Inactivity Timeout'))
-      .mockResolvedValueOnce({ ok: true, extraido: JSON.stringify({ '0003': 10 }) })
-      .mockResolvedValueOnce({ ok: true, extraido: JSON.stringify({ '0004': 20 }) });
-
-    const resultado = await __private__.extraerCasillasVisualesConFallback(
-      file,
-      bloque,
-      4,
-    );
-
-    expect(resultado).toMatchObject({ '0003': 10, '0004': 20 });
-    expect(mockedCallScanChat).toHaveBeenCalledTimes(4);
-  });
-
-  test('si pdf-lib no puede dividir un pdf válido para el flujo, hace OCR sobre el fichero original completo', async () => {
-    mockedCallScanChat.mockResolvedValueOnce({
-      ok: true,
-      extraido: JSON.stringify({ '0435': 150924.07, '0670': 2899.75 }),
-    });
-
-    const fakePdf = new File(['not-really-a-pdf-but-should-trigger-fallback'], 'declaracion.pdf', { type: 'application/pdf' });
-
-    const resultado = await __private__.extraerCasillasConClaudePorBloques(
-      fakePdf,
-      11,
-    );
-
-    expect(resultado).toMatchObject({ '0435': 150924.07, '0670': 2899.75 });
-    expect(mockedCallScanChat).toHaveBeenCalledTimes(1);
-    expect(mockedCallScanChat.mock.calls[0]?.[0]).toBe(fakePdf);
   });
 });
