@@ -68,6 +68,25 @@ describe('aeatPdfParserService', () => {
     });
   });
 
+  it('usa sufijos repetidos y fallback de resultado 0610 cuando faltan casillas principales', () => {
+    const data = mapearCasillasAImportacion([
+      { numero: '0435_1', valor: 112096.62, confianza: 'alta', lineaOriginal: 'x' },
+      { numero: '0460_1', valor: 277.08, confianza: 'alta', lineaOriginal: 'x' },
+      { numero: '0500', valor: 109106.22, confianza: 'alta', lineaOriginal: 'x' },
+      { numero: '0587', valor: 37424.4, confianza: 'alta', lineaOriginal: 'x' },
+      { numero: '0610', valor: -5877.64, confianza: 'alta', lineaOriginal: 'x' },
+    ], 2022);
+
+    expect(data).toMatchObject({
+      ejercicio: 2022,
+      baseImponibleGeneral: 112096.62,
+      baseImponibleAhorro: 277.08,
+      baseLiquidableGeneral: 109106.22,
+      cuotaResultante: 37424.4,
+      resultado: -5877.64,
+    });
+  });
+
   it('crea una estructura vacía utilizable para el wizard', () => {
     expect(crearImportacionManualVacia(2023)).toMatchObject({
       ejercicio: 2023,
