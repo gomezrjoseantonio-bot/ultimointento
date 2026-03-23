@@ -316,8 +316,8 @@ export async function cerrarEjercicioConWorkflow(input: {
   notasRevision?: string;
 }): Promise<{ ejercicio: EjercicioFiscal; resultado: ResultadoEjercicio; snapshot: SnapshotDeclaracion }> {
   const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(input.año);
-  if (ejercicio.estado !== 'vivo') {
-    throw new Error(`El ejercicio ${input.año} no está vivo y no se puede cerrar.`);
+  if (ejercicio.estado !== 'vivo' && ejercicio.estado !== 'en_curso') {
+    throw new Error(`El ejercicio ${input.año} no está en curso y no se puede cerrar.`);
   }
 
   const declaracion = await calcularDeclaracionIRPF(input.año, { usarConciliacion: true });
