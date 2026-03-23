@@ -1,29 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { RootState } from '../../store';
-import WorkIncomeBlock from './blocks/WorkIncomeBlock';
-import RealEstateBlock from './blocks/RealEstateBlock';
-import BusinessBlock from './blocks/BusinessBlock';
-import SavingsGPBlock from './blocks/SavingsGPBlock';
-import ResultBlock from './blocks/ResultBlock';
-import SimuladorBlock from './blocks/SimuladorBlock';
-import DataTraceabilityBlock from './blocks/DataTraceabilityBlock';
 import { hydrateFromCalculation, setEjercicio, type TaxState } from '../../store/taxSlice';
 import { calcularDeclaracionIRPF } from '../../services/irpfCalculationService';
 import { mapDeclaracionToTaxState } from './taxHydrationMapper';
-import {
-  buildFiscalExerciseContext,
-  getDeclarationBootstrapCopy,
-  summarizeFiscalLifecycle,
-} from '../../modules/horizon/fiscalidad/modeloFundacional';
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
 import { CheckCircle, Clock, Info, Upload, type LucideIcon } from 'lucide-react';
 import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import './tax-view.css';
-
 
 function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omit<TaxState, 'ejercicio'> {
   return {
@@ -124,9 +111,6 @@ function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omi
   };
 }
 
-const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador', 'Trazabilidad'] as const;
-type Tab = typeof TABS[number];
-
 function EstadoBanner({
   estado,
   tieneAeat,
@@ -147,16 +131,16 @@ function EstadoBanner({
     },
     cerrado: {
       texto: tieneAeat
-        ? `Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.`
-        : `Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.`,
+        ? 'Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.'
+        : 'Ejercicio cerrado y pendiente de presentar. Revisa los importes antes de declarar.',
       colorVar: 'var(--s-warn)',
       bgVar: 'var(--s-warn-bg)',
       Icon: Clock,
     },
     declarado: {
       texto: tieneAeat
-        ? `Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.`
-        : `Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.`,
+        ? 'Ejercicio declarado. Esta vista muestra la referencia oficial importada desde AEAT.'
+        : 'Ejercicio declarado con datos de ATLAS. Sube el PDF oficial para fijar la verdad presentada.',
       colorVar: 'var(--blue)',
       bgVar: 'var(--n-100)',
       Icon: CheckCircle,
@@ -167,19 +151,11 @@ function EstadoBanner({
   const BannerIcon = config.Icon;
 
   return (
-    <div
-      className="tv-state-banner"
-      style={{
-        background: config.bgVar,
-        color: config.colorVar,
-      }}
-    >
+    <div className="tv-state-banner" style={{ background: config.bgVar, color: config.colorVar }}>
       <BannerIcon size={16} />
       <span>{config.texto}</span>
       {coberturaLineas > 0 && (
-        <span className="tv-state-banner__meta">
-          Cobertura documental: {coberturaLineas} conceptos monitorizados.
-        </span>
+        <span className="tv-state-banner__meta">Cobertura documental: {coberturaLineas} conceptos monitorizados.</span>
       )}
     </div>
   );
@@ -188,33 +164,25 @@ function EstadoBanner({
 const TaxView: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const tax = useSelector((state: RootState) => state.tax);
-  const [tab, setTab] = useState<Tab>('Trabajo');
-  const [loadingDeclaracion, setLoadingDeclaracion] = useState(false);
-  const [loadingError, setLoadingError] = useState<string | null>(null);
-  const {
-    ejercicio: fiscalExercise,
-    estado,
-    declarado,
-    cobertura,
-    esEditable,
-    tieneAeat,
-  } = useEjercicioFiscal(tax.ejercicio);
+  const [loadingDeclaracion, setLoadingDeclaracion] = React.useState(false);
+  const [loadingError, setLoadingError] = React.useState<string | null>(null);
+  const { ejercicio: fiscalExercise, estado, declarado, cobertura, esEditable, tieneAeat } = useEjercicioFiscal(tax.ejercicio);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const currentYear = new Date().getFullYear();
   const isCurrentYear = tax.ejercicio === currentYear;
-  const lifecycle = summarizeFiscalLifecycle(
-    buildFiscalExerciseContext(tax.ejercicio, currentYear, fiscalExercise),
-  );
-  const bootstrapCopy = getDeclarationBootstrapCopy(
-    tax.inmuebles.length + tax.actividades.length,
-    lifecycle.truthPriority === 'aeat',
-  );
-
   const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
+
+  useEffect(() => {
+    const ejercicioFromUrl = Number(searchParams.get('ejercicio'));
+    if (Number.isInteger(ejercicioFromUrl) && ejercicioFromUrl > 2009 && ejercicioFromUrl !== tax.ejercicio) {
+      dispatch(setEjercicio(ejercicioFromUrl));
+    }
+  }, [dispatch, searchParams, tax.ejercicio]);
 
   useEffect(() => {
     let cancelled = false;
@@ -234,13 +202,17 @@ const TaxView: React.FC = () => {
           hydrationPayload = await mapDeclaracionToTaxState(declaracionCalculada);
         }
 
-        if (cancelled) return;
-        dispatch(hydrateFromCalculation(hydrationPayload));
+        if (!cancelled) {
+          dispatch(hydrateFromCalculation(hydrationPayload));
+        }
       } catch {
-        if (cancelled) return;
-        setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
+        if (!cancelled) {
+          setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
+        }
       } finally {
-        if (!cancelled) setLoadingDeclaracion(false);
+        if (!cancelled) {
+          setLoadingDeclaracion(false);
+        }
       }
     };
 
@@ -263,16 +235,13 @@ const TaxView: React.FC = () => {
       <div className="tv-header">
         <div>
           <h2 className="tv-title">Declaración IRPF {tax.ejercicio}</h2>
-          <p className="tv-subtitle">Modelo 100 — Estimación en tiempo real</p>
+          <p className="tv-subtitle">Modelo 100 — Resumen fiscal del ejercicio</p>
         </div>
         <div className="tv-header-right">
           {estado === 'declarado' && tieneAeat && <span className="tv-source-pill">Fuente AEAT</span>}
           <div className="tv-year-picker">
             <label className="tv-year-label">Ejercicio</label>
-            <EjercicioSelector
-              value={tax.ejercicio}
-              onChange={(ejercicio) => dispatch(setEjercicio(ejercicio))}
-            />
+            <EjercicioSelector value={tax.ejercicio} onChange={(ejercicio) => dispatch(setEjercicio(ejercicio))} />
           </div>
         </div>
       </div>
@@ -286,7 +255,7 @@ const TaxView: React.FC = () => {
 
       {isCurrentYear && (
         <div className="tv-forecast-note">
-          Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
+          Ejercicio en curso: la declaración se calcula en modo previsión y se ajustará con datos reales conciliados.
         </div>
       )}
 
@@ -294,74 +263,9 @@ const TaxView: React.FC = () => {
       {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
       {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
 
-      <section className="tv-foundation-card" aria-label="modelo fundacional fiscal">
-        <div className="tv-foundation-card__header">
-          <div>
-            <p className="tv-foundation-card__eyebrow">Modelo fundacional ATLAS</p>
-            <h3 className="tv-foundation-card__title">Ejercicio {tax.ejercicio}: {lifecycle.estadoLabel}</h3>
-          </div>
-          <div className="tv-foundation-pill-group">
-            {lifecycle.visibleColumns.map((column) => (
-              <span key={column} className="tv-foundation-pill">
-                {column}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <p className="tv-foundation-card__copy">{lifecycle.subtitle}</p>
-
-        <div className="tv-foundation-grid">
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Motor</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.recalculaMotor ? 'Recalcula' : 'Congelado'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.calculadoCongelado ? 'La foto ATLAS queda congelada tras importar AEAT.' : 'ATLAS usa la foto viva o cerrada del ejercicio.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Verdad principal</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.truthPriority === 'aeat' ? 'AEAT' : lifecycle.truthPriority === 'atlas' ? 'ATLAS' : 'Manual'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.truthPriority === 'aeat'
-                ? 'La declaración presentada manda sobre cualquier recálculo posterior.'
-                : lifecycle.truthPriority === 'atlas'
-                  ? 'La mejor referencia disponible sigue siendo el cálculo interno de ATLAS.'
-                  : 'Sin cálculo persistido: arranca vacío y admite captura mínima.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Arrastres N+1</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.carryForwardSource === 'casillas_aeat'
-                ? 'Casillas AEAT'
-                : lifecycle.carryForwardSource === 'calculo_atlas'
-                  ? 'Cálculo ATLAS'
-                  : 'Entrada manual'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.carryForwardSource === 'casillas_aeat'
-                ? 'Se heredan desde las casillas declaradas del ejercicio origen.'
-                : lifecycle.carryForwardSource === 'calculo_atlas'
-                  ? 'Se estiman con la foto calculada hasta que llegue la AEAT.'
-                  : 'Fallback para clientes sin histórico importado.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Bootstrap</span>
-            <strong className="tv-foundation-stat__value">Primera declaración</strong>
-            <span className="tv-foundation-stat__meta">{bootstrapCopy}</span>
-          </div>
-        </div>
-      </section>
-
       {shouldShowUploadButton && (
         <div className="tv-actions-row">
-          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historico')}>
+          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}>
             <Upload size={16} />
             Subir declaración AEAT
           </button>
@@ -369,52 +273,28 @@ const TaxView: React.FC = () => {
       )}
 
       <div className={`tv-result-banner ${tax.cuotaDiferencial > 0 ? 'banner-pagar' : 'banner-devolver'}`}>
-        <span className="tv-result-label">
-          {tax.cuotaDiferencial > 0 ? 'A ingresar' : 'A devolver'}
-        </span>
-        <span className="tv-result-amount">
-          {fmt(Math.abs(tax.cuotaDiferencial))} €
-        </span>
+        <span className="tv-result-label">{tax.cuotaDiferencial > 0 ? 'A ingresar' : 'A devolver'}</span>
+        <span className="tv-result-amount">{fmt(Math.abs(tax.cuotaDiferencial))} €</span>
         <span className="tv-result-meta">
-          Base liquidable general: {fmt(tax.baseLiquidableGeneral)} € ·
-          Tipo medio: {tax.baseLiquidableGeneral > 0
-            ? fmt(tax.cuotaLiquida / tax.baseLiquidableGeneral * 100) : '0,00'}%
+          Base liquidable general: {fmt(tax.baseLiquidableGeneral)} € · Tipo medio:{' '}
+          {tax.baseLiquidableGeneral > 0 ? fmt((tax.cuotaLiquida / tax.baseLiquidableGeneral) * 100) : '0,00'}%
         </span>
       </div>
 
-      <nav className="tv-tabs">
-        {TABS.map((tabName) => (
-          <button
-            key={tabName}
-            className={`tv-tab ${tab === tabName ? 'tv-tab--active' : ''}`}
-            onClick={() => setTab(tabName)}
-          >
-            {tabName}
-          </button>
-        ))}
-      </nav>
-
       <div className={`tv-content ${!esEditable ? 'tv-content--readonly' : ''}`}>
-        {tab === 'Resumen' && <ResumenInline tax={tax} fmt={fmt} />}
-        {tab === 'Trabajo' && <WorkIncomeBlock readOnly={!esEditable} />}
-        {tab === 'Inmuebles' && <RealEstateBlock readOnly={!esEditable} />}
-        {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
-        {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
-        {tab === 'Resultado' && <ResultBlock />}
-        {tab === 'Simulador' && <SimuladorBlock readOnly={!esEditable} />}
-        {tab === 'Trazabilidad' && <DataTraceabilityBlock />}
+        <ResumenInline tax={tax} fmt={fmt} />
       </div>
     </div>
   );
 };
 
-const ResumenInline: React.FC<{ tax: any; fmt: (v: number) => string }> = ({ tax, fmt }) => (
+const ResumenInline: React.FC<{ tax: TaxState; fmt: (v: number) => string }> = ({ tax, fmt }) => (
   <div className="tv-resumen">
     <div className="tv-resumen-grid">
       {[
         { label: 'Rendimientos del trabajo', value: tax.baseLiquidableGeneral > 0 ? tax.workIncome.dinerarias : 0, color: 'neutral' },
-        { label: 'Rendimientos de inmuebles', value: tax.inmuebles.reduce((a: number, i: any) => a + i.rendimientoNetoReducido, 0), color: 'neutral' },
-        { label: 'Actividades económicas', value: tax.actividades.reduce((a: number, act: any) => a + act.rendimientoNeto, 0), color: 'neutral' },
+        { label: 'Rendimientos de inmuebles', value: tax.inmuebles.reduce((a, i) => a + i.rendimientoNetoReducido, 0), color: 'neutral' },
+        { label: 'Actividades económicas', value: tax.actividades.reduce((a, act) => a + act.rendimientoNeto, 0), color: 'neutral' },
         { label: 'Capital mobiliario', value: tax.capitalMobiliario.interesesCuentasDepositos, color: 'neutral' },
         { label: 'Base imponible general', value: tax.baseImponibleGeneral, color: 'neutral', bold: true },
         { label: 'Reducción previsión social', value: -tax.previsionSocial.importeAplicado, color: 'pos' },
