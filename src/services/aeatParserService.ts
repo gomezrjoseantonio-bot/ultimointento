@@ -1,4 +1,3 @@
-import { PDFDocument } from 'pdf-lib';
 import { callScanChat } from './scanChatService';
 import type {
   DeclaracionActividad,
@@ -253,13 +252,6 @@ interface BloquePaginasTexto {
   texto: string;
 }
 
-interface BloquePaginasPdf {
-  desde: number;
-  hasta: number;
-  blob: Blob;
-}
-
-const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 5;
 const OCR_TIMEOUT_MS = 90_000;
@@ -644,7 +636,7 @@ function tieneDatosMinimosParaImportar(
 export function dividirTextoPorPaginas(
   paginasTexto: string[],
   maxCharsPerChunk = MAX_TEXT_CHARS_PER_CHUNK,
-  maxPagesPerChunk = MAX_PAGES_PER_CHUNK,
+  maxPagesPerChunk = 6,
 ): BloquePaginasTexto[] {
   const bloques: BloquePaginasTexto[] = [];
   let paginasActuales: string[] = [];
@@ -778,38 +770,6 @@ function puntuarValorNumericoCasilla(
   return score;
 }
 
-export async function dividirPdfEnBloques(
-  fileOrBytes: File | Uint8Array,
-  maxPagesPerChunk = MAX_PAGES_PER_CHUNK,
-): Promise<BloquePaginasPdf[]> {
-  const sourceBytes = fileOrBytes instanceof Uint8Array
-    ? fileOrBytes
-    : new Uint8Array(await leerArrayBufferDesdeBlob(fileOrBytes));
-  const sourcePdf = await PDFDocument.load(sourceBytes);
-  const totalPaginas = sourcePdf.getPageCount();
-  const bloques: BloquePaginasPdf[] = [];
-
-  for (let start = 0; start < totalPaginas; start += maxPagesPerChunk) {
-    const end = Math.min(start + maxPagesPerChunk, totalPaginas);
-    const chunk = await PDFDocument.create();
-    const copiedPages = await chunk.copyPages(
-      sourcePdf,
-      Array.from({ length: end - start }, (_, offset) => start + offset),
-    );
-
-    copiedPages.forEach((page) => chunk.addPage(page));
-    const bytes = await chunk.save();
-
-    bloques.push({
-      desde: start + 1,
-      hasta: end,
-      blob: new Blob([bytes], { type: 'application/pdf' }),
-    });
-  }
-
-  return bloques;
-}
-
 async function extraerCasillasConClaude(
   file: File,
   totalPaginas: number,
@@ -831,77 +791,6 @@ async function extraerCasillasConClaude(
   return parsearRespuestaClaude(response);
 }
 
-async function extraerCasillasConClaudePorBloques(
-  file: File,
-  totalPaginas: number,
-  onProgress?: OnProgress,
-  _bytesPdf?: Uint8Array,
-  casillasIniciales: CasillasRaw = {},
-): Promise<CasillasRaw> {
-  const casillasOcr = await extraerCasillasConClaude(file, totalPaginas, onProgress);
-  return mergeCasillasRaw(casillasIniciales, casillasOcr);
-}
-
-async function extraerCasillasVisualesConFallback(
-  file: File,
-  bloque: BloquePaginasPdf,
-  totalPaginas: number,
-  onProgress?: OnProgress,
-  intento = 0,
-): Promise<CasillasRaw> {
-  try {
-    const respuesta = await callClaudeAPI(
-      new File([bloque.blob], `${file.name}-pages-${bloque.desde}-${bloque.hasta}.pdf`, { type: 'application/pdf' }),
-      construirPromptAEAT(),
-    );
-    return parsearRespuestaClaude(respuesta);
-  } catch (error) {
-    if (esTimeoutOCR(error) && intento < 1) {
-      await esperar(250);
-      return extraerCasillasVisualesConFallback(file, bloque, totalPaginas, onProgress, intento + 1);
-    }
-
-    const paginasEnBloque = bloque.hasta - bloque.desde + 1;
-    if (!esTimeoutOCR(error) || paginasEnBloque <= 1) {
-      throw error;
-    }
-
-    const paginasPorSubbloque = Math.max(1, Math.ceil(paginasEnBloque / 2));
-    const subBloques = await dividirPdfEnBloques(
-      await blobToUint8Array(bloque.blob),
-      paginasPorSubbloque,
-    );
-
-    let acumulado: CasillasRaw = {};
-    for (let index = 0; index < subBloques.length; index += 1) {
-      const subBloque = subBloques[index];
-      const subBloqueGlobal: BloquePaginasPdf = {
-        desde: bloque.desde + subBloque.desde - 1,
-        hasta: bloque.desde + subBloque.hasta - 1,
-        blob: subBloque.blob,
-      };
-
-      onProgress?.({
-        fase: 'procesando',
-        pagina: subBloqueGlobal.hasta,
-        totalPaginas: totalPaginas || undefined,
-        mensaje: `Reintentando OCR en subbloque ${index + 1}/${subBloques.length} (${subBloqueGlobal.desde}-${subBloqueGlobal.hasta})...`,
-      });
-
-      const parcial = await extraerCasillasVisualesConFallback(
-        file,
-        subBloqueGlobal,
-        totalPaginas,
-        onProgress,
-        0,
-      );
-      acumulado = mergeCasillasRaw(acumulado, parcial);
-    }
-
-    return acumulado;
-  }
-}
-
 function esTimeoutOCR(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return /timeout|504|inactivity/i.test(message);
@@ -921,19 +810,6 @@ function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError: Er
         reject(error);
       });
   });
-}
-
-async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
-  if (typeof blob.arrayBuffer === 'function') {
-    return new Uint8Array(await blob.arrayBuffer());
-  }
-
-  const response = new Response(blob);
-  return new Uint8Array(await response.arrayBuffer());
-}
-
-function esperar(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function callClaudeAPI(file: File, prompt: string): Promise<string> {
@@ -1656,11 +1532,9 @@ export const __private__ = {
   detectarCCAA,
   detectarFechaNacimiento,
   esTimeoutOCR,
-  extraerCasillasConClaudePorBloques,
   extraerCasillasDeterministasDesdeTexto,
   leerBytesPdfNormalizados,
   tieneDatosMinimosParaImportar,
-  extraerCasillasVisualesConFallback,
 };
 
 function declaracionVacia(): DeclaracionIRPF {
