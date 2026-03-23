@@ -7,6 +7,7 @@ import ColdStartFiscal from '../estado/ColdStartFiscal';
 import FiscalPageShell from '../components/FiscalPageShell';
 import { mapDeclaracionToTaxState } from '../../../../components/tax/taxHydrationMapper';
 import type { TaxState } from '../../../../store/taxSlice';
+import PageLayout from '../../../../components/common/PageLayout';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
