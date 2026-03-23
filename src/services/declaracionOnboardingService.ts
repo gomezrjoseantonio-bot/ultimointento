@@ -302,6 +302,12 @@ export async function analizarDeclaracion(
   };
 }
 
+export async function analizarDeclaracionParaOnboarding(
+  extraccion: ExtraccionCompleta,
+): Promise<ResultadoAnalisis> {
+  return analizarDeclaracion(extraccion);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // ANÁLISIS DE INMUEBLES
 // ═══════════════════════════════════════════════════════════════

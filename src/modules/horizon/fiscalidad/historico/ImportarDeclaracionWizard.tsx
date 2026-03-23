@@ -14,7 +14,7 @@ import type {
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
 import {
-  analizarDeclaracion,
+  analizarDeclaracionParaOnboarding,
   ejecutarImportacion,
 } from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
@@ -719,7 +719,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }));
 
       try {
-        const analisis = await analizarDeclaracion(extraccion);
+        const analisis = await analizarDeclaracionParaOnboarding(extraccion);
         setResultadoAnalisis(analisis);
       } catch (analysisError) {
         console.warn('Error analizando entidades detectadas en la declaración:', analysisError);
@@ -1072,6 +1072,9 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                         type="button"
                         onClick={() => {
                           setMetodo('formulario');
+                          if (resultadoExtraccion.meta.ejercicio > 0) {
+                            setEjercicio(resultadoExtraccion.meta.ejercicio);
+                          }
                           setResultadoExtraccion(null);
                           setResultadoAnalisis(null);
                           setProgreso(null);
@@ -1092,9 +1095,18 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                           Continuar con formulario manual
                         </strong>
                         <span style={{ color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
-                          Introduce las casillas clave manualmente. Solo necesitas unas pocas cifras principales para completar la importación.
+                          Introduce las casillas clave manualmente. Solo necesitas ~20 valores para completar la importación.
                         </span>
                       </button>
+
+                      {resultadoExtraccion.warnings.length > 0 && (
+                        <div style={{ padding: '0.9rem 1rem', borderRadius: '12px', background: '#FFF7E1', color: '#946200', display: 'grid', gap: '0.35rem' }}>
+                          <strong>Avisos de extracción</strong>
+                          {resultadoExtraccion.warnings.map((warning) => (
+                            <div key={warning} style={{ fontSize: '0.92rem' }}>{warning}</div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

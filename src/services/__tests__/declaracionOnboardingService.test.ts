@@ -1,6 +1,10 @@
 import { initDB } from '../db';
 import type { ExtraccionCompleta } from '../aeatParserService';
-import { analizarDeclaracion, ejecutarImportacion } from '../declaracionOnboardingService';
+import {
+  analizarDeclaracion,
+  analizarDeclaracionParaOnboarding,
+  ejecutarImportacion,
+} from '../declaracionOnboardingService';
 
 const createExtraccion = (): ExtraccionCompleta => ({
   exito: true,
@@ -170,6 +174,13 @@ describe('declaracionOnboardingService', () => {
     expect(resultado.arrastres.gastos0105_0106).toHaveLength(1);
     expect(resultado.arrastres.perdidasAhorro).toHaveLength(1);
     expect(resultado.resumen.totalEntidadesNuevas).toBe(3);
+  });
+
+  it('expone un alias explícito para el flujo de onboarding histórico', async () => {
+    const resultado = await analizarDeclaracionParaOnboarding(createExtraccion());
+
+    expect(resultado.inmuebles.nuevos).toHaveLength(1);
+    expect(resultado.contratos[0].yaExisteEnAtlas).toBe(false);
   });
 
   it('crea entidades y guarda la declaración cuando el usuario confirma la importación', async () => {

@@ -126,6 +126,11 @@ export function mapearCasillasAImportacion(casillas: CasillaExtraida[], ejercici
 
   casillas.forEach((casilla) => {
     map.set(casilla.numero, casilla.valor);
+
+    const matchCasillaBase = casilla.numero.match(/^(\d{4})_\d+$/);
+    if (matchCasillaBase && !map.has(matchCasillaBase[1])) {
+      map.set(matchCasillaBase[1], casilla.valor);
+    }
   });
 
   const get = (...numeros: string[]): number => {
@@ -162,7 +167,7 @@ export function mapearCasillasAImportacion(casillas: CasillaExtraida[], ejercici
     retencionActividadesEcon: get('0599'),
     pagosFraccionados: get('0604'),
     totalRetenciones: get('0609'),
-    resultado: get('0670'),
+    resultado: get('0670', '0610'),
     regularizacion: map.has('0676') ? get('0676') : undefined,
     rendimientosTrabajo: map.has('0025') || map.has('0022') ? get('0025', '0022') : undefined,
     rendimientosInmuebles: map.has('0156') ? get('0156') : undefined,
