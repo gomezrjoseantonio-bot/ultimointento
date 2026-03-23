@@ -122,29 +122,51 @@ export async function extraerCasillasDeModeloPDF(
 
 export function mapearCasillasAImportacion(casillas: CasillaExtraida[], ejercicio: number): ImportacionManualData {
   const base = crearImportacionManualVacia(ejercicio);
-  const get = (numero: string): number => casillas.find((casilla) => casilla.numero === numero)?.valor ?? 0;
+  const map = new Map<string, number>();
+
+  casillas.forEach((casilla) => {
+    map.set(casilla.numero, casilla.valor);
+  });
+
+  const get = (...numeros: string[]): number => {
+    for (const numero of numeros) {
+      const value = map.get(numero);
+      if (typeof value === 'number' && value !== 0) {
+        return value;
+      }
+    }
+
+    for (const numero of numeros) {
+      const value = map.get(numero);
+      if (typeof value === 'number') {
+        return value;
+      }
+    }
+
+    return 0;
+  };
 
   return {
     ...base,
     baseImponibleGeneral: get('0435'),
     baseImponibleAhorro: get('0460'),
-    baseLiquidableGeneral: get('0505') || get('0500'),
+    baseLiquidableGeneral: get('0505', '0500'),
     baseLiquidableAhorro: get('0510'),
     cuotaIntegraEstatal: get('0545'),
     cuotaIntegraAutonomica: get('0546'),
     cuotaLiquidaEstatal: get('0570'),
     cuotaLiquidaAutonomica: get('0571'),
-    cuotaResultante: get('0595'),
+    cuotaResultante: get('0595', '0587'),
     retencionTrabajo: get('0596'),
     retencionCapitalMobiliario: get('0597'),
     retencionActividadesEcon: get('0599'),
     pagosFraccionados: get('0604'),
     totalRetenciones: get('0609'),
     resultado: get('0670'),
-    regularizacion: get('0676') || undefined,
-    rendimientosTrabajo: get('0025') || get('0022') || undefined,
-    rendimientosInmuebles: get('0156') || undefined,
-    rendimientosAutonomo: get('0226') || get('0224') || undefined,
+    regularizacion: map.has('0676') ? get('0676') : undefined,
+    rendimientosTrabajo: map.has('0025') || map.has('0022') ? get('0025', '0022') : undefined,
+    rendimientosInmuebles: map.has('0156') ? get('0156') : undefined,
+    rendimientosAutonomo: map.has('0226') || map.has('0224') ? get('0226', '0224') : undefined,
   };
 }
 
