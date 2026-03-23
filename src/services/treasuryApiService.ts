@@ -212,9 +212,8 @@ export class TreasuryAccountsAPI {
       throw new Error('La cuenta ya está desactivada');
     }
 
-    // Check if account has movements to warn user
-    const allMovements = await db.getAll('movements');
-    const accountMovements = allMovements.filter(m => m.accountId === id || m.account_id === id);
+    // Check if account has movements to warn user — use accountId index to avoid full table scan
+    const accountMovements = await db.getAllFromIndex('movements', 'accountId', id);
     
     const softDeletedAccount: Account = {
       ...existingAccount,
@@ -278,9 +277,8 @@ export class TreasuryAccountsAPI {
     };
 
     try {
-      // 1. Handle movements
-      const allMovements = await db.getAll('movements');
-      const accountMovements = allMovements.filter(m => m.accountId === id || m.account_id === id);
+      // 1. Handle movements — use accountId index to avoid full table scan
+      const accountMovements = await db.getAllFromIndex('movements', 'accountId', id);
       
       if (accountMovements.length > 0) {
         if (options?.reassignToAccountId) {
@@ -457,9 +455,8 @@ export class TreasuryAccountsAPI {
       throw new Error('Cuenta no encontrada');
     }
 
-    // Get movements
-    const allMovements = await db.getAll('movements');
-    const accountMovements = allMovements.filter(m => m.accountId === id);
+    // Get movements — use accountId index to avoid full table scan
+    const accountMovements = await db.getAllFromIndex('movements', 'accountId', id);
     
     if (accountMovements.length === 0) {
       // No movements, just hard delete
@@ -656,9 +653,8 @@ export class TreasuryImportAPI {
       createdAt: now
     };
 
-    // Get existing movements for duplicate detection
-    const existingMovements = await db.getAll('movements');
-    const accountMovements = existingMovements.filter(m => m.accountId === accountId);
+    // Get existing movements for duplicate detection — use accountId index to avoid full table scan
+    const accountMovements = await db.getAllFromIndex('movements', 'accountId', accountId);
 
     // Process each movement from the parsed result
     for (const parsedMovement of parseResult.movements) {
@@ -762,13 +758,9 @@ export class TreasuryImportAPI {
         const reconciliationResult = await performAutoReconciliation();
         results.reconciled = reconciliationResult.reconciled;
         
-        // Count pending reviews (movements that need manual review)
-        const allMovements = await db.getAll('movements');
-        const recentMovements = allMovements.filter(m => 
-          m.importBatch === importBatchId && 
-          m.state === 'pending'
-        );
-        results.pendingReview = recentMovements.length;
+        // Count pending reviews (movements that need manual review) — use importBatch index
+        const batchMovements = await db.getAllFromIndex('movements', 'importBatch', importBatchId);
+        results.pendingReview = batchMovements.filter(m => m.state === 'pending').length;
       } catch (error) {
         console.error('Auto-reconciliation failed:', error);
         // Don't fail the import if reconciliation fails

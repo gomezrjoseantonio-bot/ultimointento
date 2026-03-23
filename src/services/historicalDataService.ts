@@ -161,15 +161,12 @@ export const processHistoricalDataForProperty = async (
       details: 'Consultando contratos y documentos...'
     });
 
-    const [contracts, documents] = await Promise.all([
-      db.getAll('contracts'),
-      db.getAll('documents')
+    // Use indices to avoid full table scans
+    const [propertyContracts, allPropertyDocs] = await Promise.all([
+      db.getAllFromIndex('contracts', 'propertyId', propertyId),
+      db.getAllFromIndex('documents', 'entityId', propertyId)
     ]);
-
-    const propertyContracts = contracts.filter(c => c.propertyId === propertyId);
-    const propertyDocuments = documents.filter(d => 
-      d.metadata.entityType === 'property' && d.metadata.entityId === propertyId
-    );
+    const propertyDocuments = allPropertyDocs.filter(d => d.metadata.entityType === 'property');
 
     // Phase 2: Process contracts chronologically
     onProgress?.({
@@ -356,17 +353,14 @@ export const getHistoricalDataStats = async (propertyId: number): Promise<{
 }> => {
   const db = await initDB();
   
-  const [contracts, documents, fiscalSummaries] = await Promise.all([
-    db.getAll('contracts'),
-    db.getAll('documents'),
+  // Use indices to avoid full table scans
+  const [propertyContracts, allPropertyDocs, fiscalSummaries] = await Promise.all([
+    db.getAllFromIndex('contracts', 'propertyId', propertyId),
+    db.getAllFromIndex('documents', 'entityId', propertyId),
     db.getAll('fiscalSummaries')
   ]);
-
-  const propertyContracts = contracts.filter(c => c.propertyId === propertyId);
-  const propertyDocuments = documents.filter(d => 
-    d.metadata.entityType === 'property' && d.metadata.entityId === propertyId
-  );
-  const propertySummaries = fiscalSummaries.filter(s => s.propertyId === propertyId);
+  const propertyDocuments = allPropertyDocs.filter(d => d.metadata.entityType === 'property');
+  const propertySummaries = (fiscalSummaries as Array<Record<string, any>>).filter(s => s.propertyId === propertyId);
 
   // Find oldest dates
   const contractDates = propertyContracts.map(c => c.fechaInicio || c.startDate).filter(Boolean);
