@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { downloadBlob, getDocumentBlob, initDB } from '../../../../services/db';
 import { AnioHistoricoFiscal, cargarHistoricoFiscal, eliminarDeclaracionImportada } from '../../../../services/fiscalHistoryService';
+import type { EventoFiscal } from '../../../../services/fiscalPaymentsService';
+import type { EntidadAtribucionRentas } from '../../../../services/db';
 import FiscalPageShell from '../components/FiscalPageShell';
 
 const CURRENT_YEAR = new Date().getFullYear();
