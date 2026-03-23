@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
@@ -131,6 +131,13 @@ const TaxView: React.FC = () => {
     retenciones: true,
   });
   const { estado, declarado, tieneAeat } = useEjercicioFiscal(tax.ejercicio);
+
+  useEffect(() => {
+    const ejercicioFromUrl = Number(searchParams.get('ejercicio'));
+    if (Number.isInteger(ejercicioFromUrl) && ejercicioFromUrl > 2009 && ejercicioFromUrl !== tax.ejercicio) {
+      dispatch(setEjercicio(ejercicioFromUrl));
+    }
+  }, [dispatch, searchParams, tax.ejercicio]);
 
   useEffect(() => {
     const ejercicioFromUrl = Number(searchParams.get('ejercicio'));
