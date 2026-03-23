@@ -168,7 +168,7 @@ const TaxView: React.FC = () => {
   const tax = useSelector((state: RootState) => state.tax);
   const [loadingDeclaracion, setLoadingDeclaracion] = React.useState(false);
   const [loadingError, setLoadingError] = React.useState<string | null>(null);
-  const { ejercicio: fiscalExercise, estado, declarado, cobertura, esEditable, tieneAeat } = useEjercicioFiscal(tax.ejercicio);
+  const { estado, declarado, cobertura, esEditable, tieneAeat } = useEjercicioFiscal(tax.ejercicio);
 
   const fmt = (v: number) =>
     v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

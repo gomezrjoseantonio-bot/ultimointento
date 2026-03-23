@@ -246,7 +246,6 @@ interface PdfPreparado {
   paginasTexto: string[];
 }
 
-const MAX_TEXT_CHARS_PER_CHUNK = 18000;
 const MIN_CASILLAS_PARSING_OK = 5;
 const OCR_TIMEOUT_MS = 90_000;
 
