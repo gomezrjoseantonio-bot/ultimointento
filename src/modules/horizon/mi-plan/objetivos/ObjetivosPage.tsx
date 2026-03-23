@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { BarChart3, Home, Landmark, Target, Wallet, X, type LucideIcon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { getInformesData } from '../../../../services/informesDataService';
 import {
   getObjetivos,
   ObjetivosFinancieros,
@@ -273,22 +272,32 @@ const ObjetivosPage: React.FC = () => {
 
     const load = async () => {
       try {
-        const currentYear = new Date().getFullYear();
-        const { dashboardService } = await import('../../../../services/dashboardService');
-        const [objetivos, flujos, tesoreria, patrimonio, informes] = await Promise.all([
+        const [{ dashboardService }, { prestamosService }] = await Promise.all([
+          import('../../../../services/dashboardService'),
+          import('../../../../services/prestamosService'),
+        ]);
+        const [objetivos, flujos, tesoreria, patrimonio, prestamos] = await Promise.all([
           getObjetivos(),
           dashboardService.getFlujosCaja(),
           dashboardService.getTesoreriaPanel(),
           dashboardService.getPatrimonioNeto(),
-          getInformesData(currentYear),
+          prestamosService.getAllPrestamos(),
         ]);
 
         if (!mounted) {
           return;
         }
 
-        const monthlyIncome = informes.proyeccion.totalesAnuales.ingresosTotales / 12;
-        const monthlyInstallments = informes.resumenFinanciacion.totalCuotasMensual;
+        const prestamosActivos = prestamos.filter(
+          (p) => p.activo !== false && p.estado !== 'cancelado' && p.estado !== 'pendiente_cancelacion_venta',
+        );
+        const planes = await Promise.all(prestamosActivos.map((p) => prestamosService.getPaymentPlan(p.id)));
+        const monthlyInstallments = planes.reduce<number>((sum, plan) => {
+          if (!plan) return sum;
+          const period = plan.periodos.find((per) => !per.pagado);
+          return sum + (period?.cuota ?? plan.periodos[0]?.cuota ?? 0);
+        }, 0);
+        const monthlyIncome = flujos.trabajo.netoMensual;
 
         setObj(objetivos);
         setCfActual(flujos.inmuebles.cashflow);

@@ -947,62 +947,83 @@ async function loadDeudaState(): Promise<DeudaState> {
   return { loans };
 }
 
+const PROYECCION_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+let proyeccionCache: ProyeccionAnual[] | null = null;
+let proyeccionCacheExpiresAt = 0;
+let proyeccionPending: Promise<ProyeccionAnual[]> | null = null;
+
 /**
- * Generate 20-year monthly financial projection
+ * Generate 20-year monthly financial projection.
+ * Results are cached at module level for 3 minutes; concurrent callers share a single in-flight Promise.
  */
 export async function generateProyeccionMensual(): Promise<ProyeccionAnual[]> {
-  const [baseData, deudaState] = await Promise.all([
-    loadBaseData(),
-    loadDeudaState(),
-  ]);
-
-  const proyecciones: ProyeccionAnual[] = [];
-  let cajaAcumulada = baseData.cajaInicial;
-
-  for (let yearIndex = 0; yearIndex < PROJECTION_YEARS; yearIndex++) {
-    const year = START_YEAR + yearIndex;
-    const months: MonthlyProjectionRow[] = [];
-
-    for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-      const absoluteMonthIndex = yearIndex * 12 + monthIndex;
-      const row = buildMonthRow(
-        absoluteMonthIndex,
-        baseData,
-        deudaState,
-        cajaAcumulada,
-      );
-      months.push(row);
-      cajaAcumulada = row.tesoreria.cajaFinal;
-    }
-
-    // Annual totals
-    const ingresosTotales = months.reduce(
-      (s, m) => s + m.ingresos.total,
-      0,
-    );
-    const gastosTotales = months.reduce((s, m) => s + m.gastos.total, 0);
-    const financiacionTotal = months.reduce(
-      (s, m) => s + m.financiacion.total,
-      0,
-    );
-    const flujoNetoAnual = months.reduce(
-      (s, m) => s + m.tesoreria.flujoCajaMes,
-      0,
-    );
-    const patrimonioNetoFinal =
-      months[months.length - 1].patrimonio.patrimonioNeto;
-    proyecciones.push({
-      year,
-      months,
-      totalesAnuales: {
-        ingresosTotales,
-        gastosTotales,
-        financiacionTotal,
-        flujoNetoAnual,
-        patrimonioNetoFinal,
-      },
-    });
+  if (proyeccionCache && Date.now() < proyeccionCacheExpiresAt) {
+    return proyeccionCache;
   }
 
-  return proyecciones;
+  if (proyeccionPending) {
+    return proyeccionPending;
+  }
+
+  proyeccionPending = (async () => {
+    const [baseData, deudaState] = await Promise.all([
+      loadBaseData(),
+      loadDeudaState(),
+    ]);
+
+    const proyecciones: ProyeccionAnual[] = [];
+    let cajaAcumulada = baseData.cajaInicial;
+
+    for (let yearIndex = 0; yearIndex < PROJECTION_YEARS; yearIndex++) {
+      const year = START_YEAR + yearIndex;
+      const months: MonthlyProjectionRow[] = [];
+
+      for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+        const absoluteMonthIndex = yearIndex * 12 + monthIndex;
+        const row = buildMonthRow(
+          absoluteMonthIndex,
+          baseData,
+          deudaState,
+          cajaAcumulada,
+        );
+        months.push(row);
+        cajaAcumulada = row.tesoreria.cajaFinal;
+      }
+
+      // Annual totals
+      const ingresosTotales = months.reduce(
+        (s, m) => s + m.ingresos.total,
+        0,
+      );
+      const gastosTotales = months.reduce((s, m) => s + m.gastos.total, 0);
+      const financiacionTotal = months.reduce(
+        (s, m) => s + m.financiacion.total,
+        0,
+      );
+      const flujoNetoAnual = months.reduce(
+        (s, m) => s + m.tesoreria.flujoCajaMes,
+        0,
+      );
+      const patrimonioNetoFinal =
+        months[months.length - 1].patrimonio.patrimonioNeto;
+      proyecciones.push({
+        year,
+        months,
+        totalesAnuales: {
+          ingresosTotales,
+          gastosTotales,
+          financiacionTotal,
+          flujoNetoAnual,
+          patrimonioNetoFinal,
+        },
+      });
+    }
+
+    proyeccionCache = proyecciones;
+    proyeccionCacheExpiresAt = Date.now() + PROYECCION_CACHE_TTL_MS;
+    proyeccionPending = null;
+    return proyecciones;
+  })();
+
+  return proyeccionPending;
 }
