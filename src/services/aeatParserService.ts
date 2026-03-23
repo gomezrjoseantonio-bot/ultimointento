@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { callScanChat, callScanChatText } from './scanChatService';
+import { callScanChat } from './scanChatService';
 import type {
   DeclaracionActividad,
   DeclaracionBasesYCuotas,
@@ -134,14 +134,9 @@ export async function parsearDeclaracionAEAT(
 
   try {
     onProgress?.({ fase: 'preparando', mensaje: 'Preparando PDF para análisis...' });
-    const { totalPaginas, textoExtraido, paginasTexto, bytesPdf } = await prepararPdfParaAnalisis(file);
+    const { totalPaginas, paginasTexto } = await prepararPdfParaAnalisis(file);
 
     let casillasRaw = extraerCasillasDeterministasDesdeTexto(paginasTexto);
-
-    if (textoTieneContenidoRelevante(textoExtraido) && Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK) {
-      const casillasTextoIA = await extraerCasillasDesdeTextoPorBloques(paginasTexto, totalPaginas, onProgress);
-      casillasRaw = mergeCasillasRaw(casillasRaw, casillasTextoIA);
-    }
 
     const necesitaFallbackVision =
       Object.keys(casillasRaw).length < MIN_CASILLAS_PARSING_OK ||
@@ -150,31 +145,40 @@ export async function parsearDeclaracionAEAT(
     if (necesitaFallbackVision) {
       warnings.push(
         Object.keys(casillasRaw).length > 0
-          ? 'Extracción textual incompleta; se intentará reforzar con análisis visual por bloques.'
-          : 'El PDF no expone texto suficiente; se intentará analizar por bloques visuales.',
+          ? 'Extracción textual incompleta; se intentará reforzar con análisis OCR del PDF completo.'
+          : 'El PDF no expone texto suficiente; se intentará analizar el documento completo con IA.',
       );
 
       try {
-        casillasRaw = await extraerCasillasConClaudePorBloques(
+        const casillasOcr = await extraerCasillasConClaude(
           file,
           totalPaginas,
           onProgress,
-          bytesPdf,
-          casillasRaw,
         );
+        casillasRaw = mergeCasillasRaw(casillasRaw, casillasOcr);
       } catch (error) {
         console.warn('[AEATParser] Refuerzo visual no disponible; se conserva la extracción textual parcial.', error);
 
-        if (!tieneDatosMinimosParaImportar(casillasRaw, file.name, ejercicioFallback)) {
-          throw error;
+        if (esTimeoutOCR(error) && !tieneDatosMinimosParaImportar(casillasRaw, file.name, ejercicioFallback)) {
+          return resultadoError(
+            'La extracción automática no pudo completarse. Usa el formulario manual para introducir los datos.',
+            ['El PDF requiere más tiempo del disponible para análisis automático.'],
+          );
         }
 
-        warnings.push('El refuerzo visual no respondió a tiempo, pero se mantiene una extracción textual parcial para que puedas revisarla y completarla si hace falta.');
+        if (!tieneDatosMinimosParaImportar(casillasRaw, file.name, ejercicioFallback)) {
+          return resultadoError(
+            'La extracción automática no pudo completarse. Usa el formulario manual para introducir los datos.',
+            ['No se han podido leer suficientes casillas del PDF para importar con fiabilidad.'],
+          );
+        }
+
+        warnings.push('El refuerzo OCR no respondió a tiempo, pero se mantiene una extracción textual parcial para que puedas revisarla y completarla si hace falta.');
       }
     }
 
     if (Object.keys(casillasRaw).length === 0) {
-      return resultadoError('Claude no pudo extraer casillas del PDF');
+      return resultadoError('No se pudieron extraer casillas del PDF. Usa el formulario manual para continuar.');
     }
 
     const ejercicioDetectado = detectarEjercicio(casillasRaw, file.name, ejercicioFallback);
@@ -214,19 +218,19 @@ export async function parsearDeclaracionAEAT(
     const rawMessage = error instanceof Error ? error.message : 'desconocido';
     const mensajePdfInvalido = /no pdf header found|archivo_no_pdf|invalid pdf|missing pdf/i.test(rawMessage);
     const friendlyMessage = /timeout|504|inactivity/i.test(rawMessage)
-      ? 'El análisis del PDF ha superado el tiempo límite incluso tras reintentar por bloques. Revisa la conexión o usa el formulario manual como contingencia.'
+      ? 'La extracción automática no pudo completarse a tiempo. Usa el formulario manual para introducir los datos.'
       : mensajePdfInvalido
         ? 'El archivo seleccionado no parece ser un PDF válido de la AEAT. Vuelve a descargarlo y asegúrate de subir el documento original en PDF.'
-      : `Error procesando PDF: ${rawMessage}`;
+        : `Error procesando PDF: ${rawMessage}`;
     return resultadoError(friendlyMessage);
   }
 }
 
-function resultadoError(mensaje: string): ExtraccionCompleta {
+function resultadoError(mensaje: string, warnings: string[] = []): ExtraccionCompleta {
   return {
     exito: false,
     errores: [mensaje],
-    warnings: [],
+    warnings,
     meta: { ejercicio: 0, modelo: '100', nif: '', nombre: '', esRectificativa: false },
     declaracion: declaracionVacia(),
     casillasRaw: {},
@@ -241,7 +245,6 @@ interface PdfPreparado {
   totalPaginas: number;
   textoExtraido: string;
   paginasTexto: string[];
-  bytesPdf?: Uint8Array;
 }
 
 interface BloquePaginasTexto {
@@ -258,8 +261,8 @@ interface BloquePaginasPdf {
 
 const MAX_PAGES_PER_CHUNK = 6;
 const MAX_TEXT_CHARS_PER_CHUNK = 18000;
-const MIN_CASILLAS_PARSING_OK = 80;
-const OCR_TIMEOUT_RETRIES_PER_BLOCK = 1;
+const MIN_CASILLAS_PARSING_OK = 5;
+const OCR_TIMEOUT_MS = 90_000;
 
 async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
   try {
@@ -299,7 +302,7 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
 
       for (const item of sorted) {
         if (Math.abs(item.y - currentY) > 3) {
-          if (currentLine.length > 0) lines.push(currentLine.join(' '));
+          if (currentLine.length > 0) lines.push(currentLine.join(' ').replace(/\s+/g, ' ').trim());
           currentLine = [];
           currentY = item.y;
         }
@@ -307,7 +310,7 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
       }
 
       if (currentLine.length > 0) {
-        lines.push(currentLine.join(' '));
+        lines.push(currentLine.join(' ').replace(/\s+/g, ' ').trim());
       }
 
       const textoPagina = lines.join('\n');
@@ -321,7 +324,6 @@ async function prepararPdfParaAnalisis(file: File): Promise<PdfPreparado> {
       totalPaginas: pdf.numPages,
       textoExtraido: paginasTexto.join('\n\n'),
       paginasTexto,
-      bytesPdf,
     };
   } catch (error) {
     console.warn('[AEATParser] No se pudo preparar el PDF para análisis:', error);
@@ -384,14 +386,6 @@ function buscarCabeceraPdf(bytes: Uint8Array): number {
   }
 
   return -1;
-}
-
-function textoTieneContenidoRelevante(texto: string): boolean {
-  const normalized = texto.replace(/\s+/g, ' ').trim();
-  if (normalized.length < 400) return false;
-
-  const casillasDetectadas = normalized.match(/\b\d{4}\b/g) ?? [];
-  return casillasDetectadas.length >= 25;
 }
 
 function extraerCasillasDeterministasDesdeTexto(paginasTexto: string[]): CasillasRaw {
@@ -784,48 +778,6 @@ function puntuarValorNumericoCasilla(
   return score;
 }
 
-async function extraerCasillasDesdeTextoPorBloques(
-  paginasTexto: string[],
-  totalPaginas: number,
-  onProgress?: OnProgress,
-): Promise<CasillasRaw> {
-  const bloques = dividirTextoPorPaginas(paginasTexto);
-  if (bloques.length === 0) {
-    return {};
-  }
-
-  let acumulado: CasillasRaw = {};
-
-  for (let index = 0; index < bloques.length; index += 1) {
-    const bloque = bloques[index];
-    onProgress?.({
-      fase: 'enviando',
-      pagina: bloque.hasta,
-      totalPaginas: totalPaginas || undefined,
-      mensaje: bloques.length === 1
-        ? `Analizando texto del PDF (${bloque.desde}-${bloque.hasta})...`
-        : `Analizando bloque ${index + 1}/${bloques.length} (${bloque.desde}-${bloque.hasta})...`,
-    });
-
-    const prompt = construirPromptAEATTexto(bloque.texto);
-    const response = await callClaudeTextAPI(prompt);
-    const parsed = parsearRespuestaClaude(response);
-    acumulado = mergeCasillasRaw(acumulado, parsed);
-  }
-
-  return acumulado;
-}
-
-async function callClaudeTextAPI(prompt: string): Promise<string> {
-  const response = await callScanChatText('scan_irpf', prompt);
-
-  if (typeof response.extraido === 'string') {
-    return response.extraido;
-  }
-
-  return JSON.stringify(response.extraido ?? {});
-}
-
 export async function dividirPdfEnBloques(
   fileOrBytes: File | Uint8Array,
   maxPagesPerChunk = MAX_PAGES_PER_CHUNK,
@@ -858,57 +810,36 @@ export async function dividirPdfEnBloques(
   return bloques;
 }
 
+async function extraerCasillasConClaude(
+  file: File,
+  totalPaginas: number,
+  onProgress?: OnProgress,
+): Promise<CasillasRaw> {
+  onProgress?.({
+    fase: 'procesando',
+    pagina: totalPaginas || undefined,
+    totalPaginas: totalPaginas || undefined,
+    mensaje: 'PDF sin texto seleccionable. Escaneando con IA...',
+  });
+
+  const response = await promiseWithTimeout(
+    callClaudeAPI(file, construirPromptAEAT()),
+    OCR_TIMEOUT_MS,
+    new Error('OCR_TIMEOUT'),
+  );
+
+  return parsearRespuestaClaude(response);
+}
+
 async function extraerCasillasConClaudePorBloques(
   file: File,
   totalPaginas: number,
   onProgress?: OnProgress,
-  bytesPdf?: Uint8Array,
+  _bytesPdf?: Uint8Array,
   casillasIniciales: CasillasRaw = {},
 ): Promise<CasillasRaw> {
-  let bloques: BloquePaginasPdf[];
-
-  try {
-    bloques = await dividirPdfEnBloques(bytesPdf ?? file);
-  } catch (error) {
-    console.warn(
-      '[AEATParser] No se pudo dividir el PDF en bloques con pdf-lib. Se intentará OCR sobre el fichero original completo.',
-      error,
-    );
-
-    onProgress?.({
-      fase: 'procesando',
-      pagina: totalPaginas || undefined,
-      totalPaginas: totalPaginas || undefined,
-      mensaje: 'Analizando el PDF completo sin dividir en bloques...',
-    });
-
-    const response = await callClaudeAPI(file, construirPromptAEAT());
-    return mergeCasillasRaw(casillasIniciales, parsearRespuestaClaude(response));
-  }
-
-  let acumulado = { ...casillasIniciales };
-
-  for (let index = 0; index < bloques.length; index += 1) {
-    const bloque = bloques[index];
-    onProgress?.({
-      fase: 'procesando',
-      pagina: bloque.hasta,
-      totalPaginas: totalPaginas || undefined,
-      mensaje: bloques.length === 1
-        ? `Analizando visualmente páginas ${bloque.desde}-${bloque.hasta}...`
-        : `Analizando bloque visual ${index + 1}/${bloques.length} (${bloque.desde}-${bloque.hasta})...`,
-    });
-
-    const parsed = await extraerCasillasVisualesConFallback(
-      file,
-      bloque,
-      totalPaginas,
-      onProgress,
-    );
-    acumulado = mergeCasillasRaw(acumulado, parsed);
-  }
-
-  return acumulado;
+  const casillasOcr = await extraerCasillasConClaude(file, totalPaginas, onProgress);
+  return mergeCasillasRaw(casillasIniciales, casillasOcr);
 }
 
 async function extraerCasillasVisualesConFallback(
@@ -919,15 +850,14 @@ async function extraerCasillasVisualesConFallback(
   intento = 0,
 ): Promise<CasillasRaw> {
   try {
-    const response = await callClaudeAPI(
+    const respuesta = await callClaudeAPI(
       new File([bloque.blob], `${file.name}-pages-${bloque.desde}-${bloque.hasta}.pdf`, { type: 'application/pdf' }),
       construirPromptAEAT(),
     );
-
-    return parsearRespuestaClaude(response);
+    return parsearRespuestaClaude(respuesta);
   } catch (error) {
-    if (esTimeoutOCR(error) && intento < OCR_TIMEOUT_RETRIES_PER_BLOCK) {
-      await esperar(300 * (intento + 1));
+    if (esTimeoutOCR(error) && intento < 1) {
+      await esperar(250);
       return extraerCasillasVisualesConFallback(file, bloque, totalPaginas, onProgress, intento + 1);
     }
 
@@ -942,13 +872,7 @@ async function extraerCasillasVisualesConFallback(
       paginasPorSubbloque,
     );
 
-    console.warn(
-      `[AEATParser] Timeout OCR en páginas ${bloque.desde}-${bloque.hasta}. Reintentando en ${subBloques.length} subbloques de hasta ${paginasPorSubbloque} página(s).`,
-      error,
-    );
-
     let acumulado: CasillasRaw = {};
-
     for (let index = 0; index < subBloques.length; index += 1) {
       const subBloque = subBloques[index];
       const subBloqueGlobal: BloquePaginasPdf = {
@@ -964,13 +888,14 @@ async function extraerCasillasVisualesConFallback(
         mensaje: `Reintentando OCR en subbloque ${index + 1}/${subBloques.length} (${subBloqueGlobal.desde}-${subBloqueGlobal.hasta})...`,
       });
 
-      const parsed = await extraerCasillasVisualesConFallback(
+      const parcial = await extraerCasillasVisualesConFallback(
         file,
         subBloqueGlobal,
         totalPaginas,
         onProgress,
+        0,
       );
-      acumulado = mergeCasillasRaw(acumulado, parsed);
+      acumulado = mergeCasillasRaw(acumulado, parcial);
     }
 
     return acumulado;
@@ -982,8 +907,20 @@ function esTimeoutOCR(error: unknown): boolean {
   return /timeout|504|inactivity/i.test(message);
 }
 
-function esperar(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function promiseWithTimeout<T>(promise: Promise<T>, ms: number, timeoutError: Error): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => reject(timeoutError), ms);
+
+    promise
+      .then((value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
 }
 
 async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
@@ -995,6 +932,10 @@ async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
+function esperar(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function callClaudeAPI(file: File, prompt: string): Promise<string> {
   const response = await callScanChat(file, 'application/pdf', 'scan_irpf', { prompt });
 
@@ -1003,57 +944,6 @@ async function callClaudeAPI(file: File, prompt: string): Promise<string> {
   }
 
   return JSON.stringify(response.extraido ?? {});
-}
-
-function construirPromptAEATTexto(textoExtraido: string): string {
-  return `Estás analizando el TEXTO ya extraído de una declaración completa de la Renta española (Modelo 100 — IRPF).
-
-TAREA: Extrae TODAS las casillas con su número y valor.
-
-FORMATO DE RESPUESTA: Devuelve SOLO un JSON válido. Clave = casilla (4 dígitos), valor = número o string.
-
-REGLAS CRÍTICAS:
-1. Extrae ABSOLUTAMENTE TODAS las casillas, sin excepción.
-2. INMUEBLES: El PDF puede tener VARIOS inmuebles (Inmueble 1, Inmueble 2, ...). Cada uno repite las mismas casillas (0062-0154). USA SUFIJOS: "0066_1", "0102_1" para el primero, "0066_2", "0102_2" para el segundo, etc.
-3. INMUEBLES ACCESORIOS: Si un inmueble dice "Arrendamiento como inmueble accesorio", marcarlo con "0074_N": true y "0090_N": "<ref catastral del principal>".
-4. ARRASTRES: La sección "Información adicional" al final tiene casillas 1211-1423. Extraerlas también con sufijos si hay varias.
-5. METADATOS: Incluir ejercicio, nif, nombre, fecha_presentacion, numero_justificante, csv, estado_civil, comunidad_autonoma, fecha_nacimiento como campos de texto o número según corresponda.
-6. Importes: quita puntos de miles, usa punto decimal (133.350,85 → 133350.85).
-7. Fechas como string: "28/09/1980".
-8. NIF como string: "53069494F".
-9. Referencias catastrales como string (nunca convertir a número).
-10. "X" o marca → true.
-11. Si solo hay 1 inmueble, usa igualmente sufijo _1 para sus casillas repetidas.
-12. Casillas vacías o con "—" no se incluyen.
-
-EJEMPLO con 2 inmuebles:
-{
-  "ejercicio": 2024,
-  "nif": "53069494F",
-  "nombre": "GOMEZ RAMIREZ JOSE ANTONIO",
-  "estado_civil": "Soltero/a",
-  "comunidad_autonoma": "Madrid",
-  "fecha_nacimiento": "28/09/1980",
-  "0003": 133350.85,
-  "0066_1": "7949807TP6074N0006YM",
-  "0069_1": "CL FUERTES ACEVEDO 32 OVIEDO",
-  "0101_1": 366,
-  "0102_1": 19675,
-  "0105_1": 1580.34,
-  "0131_1": 816.12,
-  "0154_1": 3943.75,
-  "0066_2": "0454010TP7005S0012TS",
-  "0069_2": "CL TENDERINA 48 OVIEDO",
-  "0102_2": 17710,
-  "1212_1": "7949807TP6074N0006YM",
-  "1221_1": 6157.99,
-  "1224_1": 28239.24,
-  "0435": 150924.07,
-  "0670": 2899.75
-}
-
-TEXTO DEL PDF:
-${textoExtraido}`;
 }
 
 function construirPromptAEAT(): string {

@@ -13,6 +13,10 @@ import type {
   ProgresoParseo,
 } from '../../../../services/aeatParserService';
 import { parsearDeclaracionAEAT } from '../../../../services/aeatParserService';
+import {
+  analizarDeclaracion,
+  ejecutarImportacion,
+} from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
@@ -295,14 +299,62 @@ const KeyValueGrid: React.FC<{ rows: Array<{ label: string; value: React.ReactNo
   </div>
 );
 
+function obtenerNumeroCasilla(
+  casillasRaw: ExtraccionCompleta['casillasRaw'],
+  numero: string,
+): number {
+  const value = casillasRaw[numero];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function validarDeclaracionExtraida(
+  declaracion: ExtraccionCompleta['declaracion'],
+  casillasRaw: ExtraccionCompleta['casillasRaw'],
+): { valida: boolean; avisos: string[] } {
+  const avisos: string[] = [];
+  const baseGeneralRaw = obtenerNumeroCasilla(casillasRaw, '0435');
+  const resultadoRaw = obtenerNumeroCasilla(casillasRaw, '0670');
+  const retencionesRaw = obtenerNumeroCasilla(casillasRaw, '0609');
+
+  if (baseGeneralRaw > 0 && declaracion.basesYCuotas.baseImponibleGeneral === 0) {
+    avisos.push(`La casilla 0435 tiene valor ${formatCurrency(baseGeneralRaw)} pero la base imponible general aparece a cero.`);
+  }
+
+  if (resultadoRaw !== 0 && declaracion.basesYCuotas.resultadoDeclaracion === 0) {
+    avisos.push(`La casilla 0670 tiene valor ${formatCurrency(resultadoRaw)} pero el resultado de la declaración aparece a cero.`);
+  }
+
+  if (retencionesRaw > 0 && declaracion.basesYCuotas.retencionesTotal === 0) {
+    avisos.push(`Las retenciones de la casilla 0609 (${formatCurrency(retencionesRaw)}) no se han mapeado a la declaración final.`);
+  }
+
+  if (
+    declaracion.basesYCuotas.cuotaIntegra > 0
+    && declaracion.basesYCuotas.cuotaLiquida === 0
+  ) {
+    avisos.push(
+      `La cuota íntegra es ${formatCurrency(declaracion.basesYCuotas.cuotaIntegra)} pero la cuota líquida aparece a cero. Revisa las casillas 0570 y 0571.`,
+    );
+  }
+
+  return {
+    valida: avisos.length === 0,
+    avisos,
+  };
+}
+
 const VerificacionExtraccion: React.FC<{
   resultado: ExtraccionCompleta;
   reconciliacion: ReconciliacionCompleta | null;
   reconciliacionDisponible: boolean;
   onAbrirReconciliacion: () => void;
 }> = ({ resultado, reconciliacion, reconciliacionDisponible, onAbrirReconciliacion }) => {
-  const [tab, setTab] = useState<ReviewTab>('entidades');
+  const [tab, setTab] = useState<ReviewTab | null>(null);
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
+  const validacion = useMemo(
+    () => validarDeclaracionExtraida(declaracion, casillasRaw),
+    [casillasRaw, declaracion],
+  );
 
   const arrastresCount = arrastres.gastos0105_0106.length + arrastres.perdidasAhorro.length;
   const reconciliacionCount = reconciliacion
@@ -354,6 +406,65 @@ const VerificacionExtraccion: React.FC<{
         <KpiCard label="Resultado" value={<span style={{ color: '#C52828' }}>{formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion)}</span>} />
       </div>
 
+      <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', overflow: 'hidden', background: 'white' }}>
+        <div style={{ padding: '1rem 1.25rem', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
+          <strong style={{ color: 'var(--atlas-navy-1)' }}>
+            Datos fiscales extraídos — Ejercicio {resultado.meta.ejercicio}
+          </strong>
+        </div>
+        <div style={{ padding: '1rem 1.25rem', display: 'grid', gap: '1rem' }}>
+          <KeyValueGrid rows={[
+            { label: 'Base imponible general (0435)', value: formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral) },
+            { label: 'Base imponible ahorro (0460)', value: formatCurrency(declaracion.basesYCuotas.baseImponibleAhorro) },
+            { label: 'Cuota íntegra', value: formatCurrency(declaracion.basesYCuotas.cuotaIntegra) },
+            { label: 'Cuota líquida', value: formatCurrency(declaracion.basesYCuotas.cuotaLiquida) },
+            { label: 'Total retenciones (0609)', value: formatCurrency(declaracion.basesYCuotas.retencionesTotal) },
+            { label: 'Resultado declaración (0670)', value: formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion) },
+          ]} />
+
+          {(declaracion.trabajo.rendimientoNeto > 0
+            || declaracion.inmuebles.length > 0
+            || declaracion.actividades.length > 0) && (
+            <div style={{ marginTop: '0.25rem', paddingTop: '1rem', borderTop: '1px solid var(--hz-neutral-200)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--hz-neutral-700)', marginBottom: '0.5rem' }}>
+                RENDIMIENTOS
+              </div>
+              <KeyValueGrid
+                rows={[
+                  ...(declaracion.trabajo.rendimientoNeto > 0
+                    ? [{ label: 'Trabajo', value: formatCurrency(declaracion.trabajo.rendimientoNeto) }]
+                    : []),
+                  ...(declaracion.inmuebles.length > 0
+                    ? [{
+                        label: `Inmuebles (${declaracion.inmuebles.length})`,
+                        value: formatCurrency(declaracion.inmuebles.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
+                      }]
+                    : []),
+                  ...(declaracion.actividades.length > 0
+                    ? [{
+                        label: 'Actividades económicas',
+                        value: formatCurrency(declaracion.actividades.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
+                      }]
+                    : []),
+                ]}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {validacion.avisos.length > 0 && (
+        <div style={{ padding: '1rem', borderRadius: '12px', background: '#FFF1CF', color: '#A36B00', display: 'grid', gap: '0.5rem' }}>
+          <strong>Avisos de validación</strong>
+          {validacion.avisos.map((aviso) => (
+            <div key={aviso} style={{ fontSize: '0.92rem' }}>{aviso}</div>
+          ))}
+          <div style={{ marginTop: '0.25rem', fontSize: '0.85rem' }}>
+            Puedes importar igualmente o usar el formulario manual si prefieres corregir los datos antes.
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--hz-neutral-300)' }}>
         {tabs.map((item) => (
           <button key={item.key} type="button" style={tabButtonStyle(tab === item.key)} onClick={() => setTab(item.key)}>
@@ -361,6 +472,12 @@ const VerificacionExtraccion: React.FC<{
           </button>
         ))}
       </div>
+
+      {tab === null && (
+        <div style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--hz-neutral-100)', color: 'var(--hz-neutral-700)' }}>
+          Selecciona una pestaña si quieres revisar entidades detectadas, la reconciliación con ATLAS o las casillas raw. El resumen fiscal de arriba es lo principal para validar la importación.
+        </div>
+      )}
 
       {tab === 'entidades' && (
         <div style={{ display: 'grid', gap: '1rem' }}>
@@ -535,7 +652,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [progreso, setProgreso] = useState<ProgresoParseo | null>(null);
   const [resultadoExtraccion, setResultadoExtraccion] = useState<ExtraccionCompleta | null>(null);
-  const [, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
+  const [resultadoAnalisis, setResultadoAnalisis] = useState<ResultadoAnalisis | null>(null);
   const [reconciliacion, setReconciliacion] = useState<ReconciliacionCompleta | null>(null);
   const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
@@ -561,6 +678,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     setUploadedFile(file);
     setStep(2);
     setResultadoExtraccion(null);
+    setResultadoAnalisis(null);
     setReconciliacion(null);
     setReconciliacionPreview(null);
     setCasillasExtraidas([]);
@@ -579,7 +697,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       }
 
       const normalizedCasillas = normalizarCasillasExtraidas(extraccion.casillasRaw);
-      setResultadoAnalisis(null);
       const ejercicioDetectado = extraccion.meta.ejercicio > 0 ? extraccion.meta.ejercicio : ejercicio;
       setCasillasExtraidas(normalizedCasillas);
       setEjercicio(ejercicioDetectado);
@@ -600,6 +717,14 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           })),
         ],
       }));
+
+      try {
+        const analisis = await analizarDeclaracion(extraccion);
+        setResultadoAnalisis(analisis);
+      } catch (analysisError) {
+        console.warn('Error analizando entidades detectadas en la declaración:', analysisError);
+        setResultadoAnalisis(null);
+      }
 
       toast.success(`${extraccion.totalCasillas} casillas extraídas automáticamente`);
       setStep(3);
@@ -639,6 +764,26 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           resultadoExtraccion.meta.fechaPresentacion,
           undefined,
         );
+
+        if (resultadoAnalisis) {
+          try {
+            const resumenEjecucion = await ejecutarImportacion(resultadoAnalisis, {
+              crearInmueblesNuevos: true,
+              actualizarInmueblesExistentes: true,
+              crearPrestamos: true,
+              crearContratos: true,
+              importarArrastres: true,
+              guardarDeclaracion: false,
+            });
+
+            if (!resumenEjecucion.exito) {
+              toast.error('Declaración importada, pero hubo incidencias creando entidades en ATLAS.');
+            }
+          } catch (importError) {
+            console.error('Error creando entidades detectadas durante la importación', importError);
+            toast.error('Declaración importada, pero hubo un error creando inmuebles o contratos.');
+          }
+        }
       } else {
         const casillasMap = casillasExtraidas.length > 0
           ? Object.fromEntries(casillasExtraidas.map((casilla) => [casilla.numero, casilla.valor]))
@@ -914,12 +1059,42 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                   </div>
 
                   {resultadoExtraccion && !resultadoExtraccion.exito && (
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', borderRadius: '12px', background: '#FDECEC', color: '#8B1E1E' }}>
-                      <AlertTriangle size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
-                      <div>
-                        <strong>No se pudo extraer la declaración</strong>
-                        <div style={{ marginTop: '0.2rem' }}>{resultadoExtraccion.errores[0]}</div>
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', borderRadius: '12px', background: '#FDECEC', color: '#8B1E1E' }}>
+                        <AlertTriangle size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                        <div>
+                          <strong>No se pudo extraer la declaración</strong>
+                          <div style={{ marginTop: '0.2rem' }}>{resultadoExtraccion.errores[0]}</div>
+                        </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMetodo('formulario');
+                          setResultadoExtraccion(null);
+                          setResultadoAnalisis(null);
+                          setProgreso(null);
+                          setStep(2);
+                        }}
+                        style={{
+                          border: '1px solid var(--hz-neutral-300)',
+                          borderRadius: '14px',
+                          padding: '1rem',
+                          background: 'white',
+                          cursor: 'pointer',
+                          display: 'grid',
+                          gap: '0.35rem',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <strong style={{ color: 'var(--atlas-navy-1)' }}>
+                          Continuar con formulario manual
+                        </strong>
+                        <span style={{ color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
+                          Introduce las casillas clave manualmente. Solo necesitas unas pocas cifras principales para completar la importación.
+                        </span>
+                      </button>
                     </div>
                   )}
                 </>
