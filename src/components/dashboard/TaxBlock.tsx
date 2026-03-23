@@ -50,7 +50,7 @@ const TaxBlock: React.FC<DashboardBlockProps> = ({ config, onNavigate, className
 
   const handleNavigate = () => {
     if (onNavigate) {
-      onNavigate('/fiscalidad/dashboard', {
+      onNavigate('/fiscalidad/estado', {
         year: options.fiscalYear,
       });
     }
