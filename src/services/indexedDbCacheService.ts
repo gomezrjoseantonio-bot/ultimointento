@@ -6,7 +6,9 @@ type CacheEntry<T> = {
   promise?: Promise<T[]>;
 };
 
-const DEFAULT_TTL_MS = 15_000;
+// 3-minute default TTL — data in this app changes infrequently (imports, manual saves).
+// Individual callers can pass a shorter ttlMs if needed.
+const DEFAULT_TTL_MS = 3 * 60 * 1000;
 const cache = new Map<string, CacheEntry<any>>();
 
 const getCacheKey = (storeName: string) => storeName;

@@ -32,6 +32,16 @@ import {
 const PROJECTION_YEARS = 20;
 const START_YEAR = new Date().getFullYear();
 
+// Module-level result cache — persists between React page transitions
+const PROJECTION_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+let _projectionCache: { result: ProyeccionAnual[]; expiresAt: number } | null = null;
+let _projectionInflight: Promise<ProyeccionAnual[]> | null = null;
+
+/** Invalidate the projection cache when underlying data is mutated (imports, saves, etc.) */
+export function invalidateProjectionCache(): void {
+  _projectionCache = null;
+}
+
 /** The projection always starts from the current calendar year (constant baseline). */
 export const PROJECTION_START_YEAR = START_YEAR;
 
@@ -948,9 +958,33 @@ async function loadDeudaState(): Promise<DeudaState> {
 }
 
 /**
- * Generate 20-year monthly financial projection
+ * Generate 20-year monthly financial projection.
+ * Results are cached for PROJECTION_CACHE_TTL_MS to avoid repeating the
+ * heavy computation on every page navigation. Concurrent calls share
+ * the same in-flight promise (no duplicate work).
  */
 export async function generateProyeccionMensual(): Promise<ProyeccionAnual[]> {
+  // Return cached result if still fresh
+  if (_projectionCache && _projectionCache.expiresAt > Date.now()) {
+    return _projectionCache.result;
+  }
+
+  // Deduplicate concurrent calls: all callers share the same promise
+  if (_projectionInflight) return _projectionInflight;
+
+  _projectionInflight = _computeProyeccionMensual().then((result) => {
+    _projectionCache = { result, expiresAt: Date.now() + PROJECTION_CACHE_TTL_MS };
+    _projectionInflight = null;
+    return result;
+  }).catch((err) => {
+    _projectionInflight = null;
+    throw err;
+  });
+
+  return _projectionInflight;
+}
+
+async function _computeProyeccionMensual(): Promise<ProyeccionAnual[]> {
   const [baseData, deudaState] = await Promise.all([
     loadBaseData(),
     loadDeudaState(),

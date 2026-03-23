@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { BarChart3, Home, Landmark, Target, Wallet, X, type LucideIcon } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { getInformesData } from '../../../../services/informesDataService';
 import {
   getObjetivos,
   ObjetivosFinancieros,
@@ -273,22 +272,26 @@ const ObjetivosPage: React.FC = () => {
 
     const load = async () => {
       try {
-        const currentYear = new Date().getFullYear();
         const { dashboardService } = await import('../../../../services/dashboardService');
-        const [objetivos, flujos, tesoreria, patrimonio, informes] = await Promise.all([
+        const { prestamosService } = await import('../../../../services/prestamosService');
+        const [objetivos, flujos, tesoreria, patrimonio, allPrestamos] = await Promise.all([
           getObjetivos(),
           dashboardService.getFlujosCaja(),
           dashboardService.getTesoreriaPanel(),
           dashboardService.getPatrimonioNeto(),
-          getInformesData(currentYear),
+          prestamosService.getAllPrestamos(),
         ]);
 
         if (!mounted) {
           return;
         }
 
-        const monthlyIncome = informes.proyeccion.totalesAnuales.ingresosTotales / 12;
-        const monthlyInstallments = informes.resumenFinanciacion.totalCuotasMensual;
+        // Monthly income: sum of all income streams already computed by getFlujosCaja
+        const monthlyIncome = flujos.trabajo.netoMensual + flujos.inmuebles.cashflow + flujos.inversiones.rendimientoMes;
+        // Monthly loan installments: sum from active loan objects (prestamosService has its own in-memory cache)
+        const monthlyInstallments = allPrestamos
+          .filter((p: any) => p.activo !== false && p.estado !== 'cancelado')
+          .reduce((sum: number, p: any) => sum + (Number(p.cuotaMensual ?? p.cuota_mensual ?? 0) || 0), 0);
 
         setObj(objetivos);
         setCfActual(flujos.inmuebles.cashflow);
