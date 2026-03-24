@@ -64,7 +64,6 @@ function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: 
 }
 
 const FiscalDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
@@ -85,7 +84,7 @@ const FiscalDashboard: React.FC = () => {
   const [rentabilidades, setRentabilidades] = useState<RentabilidadInmueble[]>([]);
 
   const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
+  const years = useMemo(() => [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4], [currentYear]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -127,7 +126,7 @@ const FiscalDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [ejercicio]);
+  }, [ejercicio, years]);
 
   useEffect(() => {
     void loadData();
