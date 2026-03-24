@@ -78,6 +78,8 @@ const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacio
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
+const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
+const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
@@ -410,7 +412,7 @@ function App() {
             
             <Route path="fiscalidad">
               <Route index element={<Navigate to="/fiscalidad/estado" replace />} />
-              {/* New fiscal module tabs */}
+              {/* New 3-tab fiscal module: Estado, Declaración, Historial */}
               <Route path="estado" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FiscalDashboard />
@@ -421,18 +423,18 @@ function App() {
                   <DeclaracionPage />
                 </React.Suspense>
               } />
-              <Route path="simulador" element={<Navigate to="/fiscalidad/declaracion" replace />} />
-              <Route path="pagos" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="dashboard" element={<Navigate to="/fiscalidad/estado" replace />} />
               <Route path="historial" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <HistoricoPage />
+                  <HistorialPage />
                 </React.Suspense>
               } />
+              {/* Legacy routes — redirect to new equivalents */}
+              <Route path="resumen" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="simulador" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="pagos" element={<Navigate to="/fiscalidad/historial" replace />} />
               <Route path="historico" element={<Navigate to="/fiscalidad/historial" replace />} />
               <Route path="entidades" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="resumen" element={<Navigate to="/fiscalidad/estado" replace />} />
-              {/* Legacy routes — redirect to new equivalents */}
               <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
               <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />
             </Route>

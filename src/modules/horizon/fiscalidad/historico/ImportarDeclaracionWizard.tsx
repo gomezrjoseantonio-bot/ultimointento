@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, FileText, Home, RefreshCw, Upload, X } from 'lucide-react';
+import { AlertTriangle, FileText, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CasillaInput from '../../../../components/fiscal/ui/CasillaInput';
 import { saveDocumentWithBlob } from '../../../../services/db';
@@ -25,8 +25,6 @@ import { generarReconciliacion, requiereReconciliacion } from '../../../../servi
 import ReconciliacionPanel from '../importar/ReconciliacionPanel';
 
 type MetodoEntrada = 'formulario' | 'pdf';
-type ReviewTab = 'entidades' | 'reconciliacion' | 'raw';
-type SectionStatusTone = 'info' | 'success' | 'warning' | 'muted';
 
 interface ImportarDeclaracionWizardProps {
   onClose: () => void;
@@ -86,20 +84,6 @@ const actionButtonStyle: React.CSSProperties = {
   gap: '0.35rem',
 };
 
-const kpiCardStyle: React.CSSProperties = {
-  border: '1px solid var(--hz-neutral-300)',
-  borderRadius: '12px',
-  background: 'white',
-  padding: '0.9rem 1rem',
-  display: 'grid',
-  gap: '0.2rem',
-};
-
-const summaryGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-  gap: '0.75rem',
-};
 
 const shellCardStyle: React.CSSProperties = {
   background: '#fff',
@@ -144,16 +128,6 @@ const uploadDropzoneStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const tabButtonStyle = (active: boolean): React.CSSProperties => ({
-  border: 'none',
-  borderBottom: active ? '3px solid var(--atlas-blue)' : '3px solid transparent',
-  background: 'transparent',
-  color: active ? 'var(--atlas-blue)' : 'var(--hz-neutral-700)',
-  padding: '0.7rem 0.2rem',
-  cursor: 'pointer',
-  fontWeight: active ? 700 : 500,
-  fontSize: '1rem',
-});
 
 const WizardForm: React.FC<{
   data: ImportacionManualData;
@@ -282,13 +256,6 @@ function sanitizarParaIndexedDB<T>(value: T): T {
   ) as T;
 }
 
-const KpiCard: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div style={kpiCardStyle}>
-    <span style={{ fontSize: '0.78rem', color: 'var(--hz-neutral-700)', textTransform: 'uppercase', fontWeight: 700 }}>{label}</span>
-    <strong style={{ fontSize: '1.15rem', color: 'var(--atlas-navy-1)' }}>{value}</strong>
-  </div>
-);
-
 const KeyValueGrid: React.FC<{ rows: Array<{ label: string; value: React.ReactNode }> }> = ({ rows }) => (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
     {rows.map((row) => (
@@ -349,8 +316,8 @@ const VerificacionExtraccion: React.FC<{
   reconciliacion: ReconciliacionCompleta | null;
   reconciliacionDisponible: boolean;
   onAbrirReconciliacion: () => void;
-}> = ({ resultado, reconciliacion, reconciliacionDisponible, onAbrirReconciliacion }) => {
-  const [tab, setTab] = useState<ReviewTab | null>(null);
+}> = ({ resultado }) => {
+  const [showRawCasillas, setShowRawCasillas] = useState(false);
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
   const validacion = useMemo(
     () => validarDeclaracionExtraida(declaracion, casillasRaw),
@@ -358,102 +325,72 @@ const VerificacionExtraccion: React.FC<{
   );
 
   const arrastresCount = arrastres.gastos0105_0106.length + arrastres.perdidasAhorro.length;
-  const reconciliacionCount = reconciliacion
-    ? reconciliacion.estadisticas.diferencias + reconciliacion.estadisticas.sinDatosAtlas
-    : 0;
-  const inmueblesPrincipales = inmueblesDetalle.filter((item) => !item.datos.esAccesorio);
-  const inmueblesAccesorios = inmueblesDetalle.filter((item) => item.datos.esAccesorio);
-  const inmuebleItems: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }> = [
-    ...inmueblesPrincipales.map((inmueble) => ({
-      title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Inmueble ${inmueble.datos.orden}`,
-      subtitle: [inmueble.datos.referenciaCatastral, formatCurrency(inmueble.datos.ingresosIntegros), `${inmueble.datos.diasArrendado} días`].filter(Boolean).join(' · '),
-      statusLabel: inmueble.datos.ingresosIntegros > 0 ? 'Crear' : 'Revisar',
-      statusTone: inmueble.datos.ingresosIntegros > 0 ? 'info' as const : 'warning' as const,
-    })),
-    ...inmueblesAccesorios.map((inmueble) => ({
-      title: inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Accesorio ${inmueble.datos.orden}`,
-      subtitle: `Accesorio → ${inmueble.datos.refCatastralPrincipal || 'principal por resolver'}`,
-      statusLabel: 'Accesorio',
-      statusTone: 'muted' as const,
-    })),
-  ];
-  const arrastreItems: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }> = [
-    ...arrastres.gastos0105_0106.map((item) => ({
-      title: `Gastos 0105+0106 · ${item.referenciaCatastral || 'Sin referencia'}`,
-      subtitle: `${formatCurrency(item.generadoEsteEjercicio || item.pendienteFuturo)} generados · Caduca ${item.ejercicioOrigen + 4}`,
-      statusLabel: 'Pendiente',
-      statusTone: 'warning' as const,
-    })),
-    ...arrastres.perdidasAhorro.map((item) => ({
-      title: `Pérdidas ${item.tipo} ${item.ejercicioOrigen}`,
-      subtitle: `${formatCurrency(item.pendienteFuturo)} pendientes · Caduca ${item.ejercicioOrigen + 4}`,
-      statusLabel: 'Pendiente',
-      statusTone: 'warning' as const,
-    })),
-  ];
-
-  const tabs: Array<{ key: ReviewTab; label: string }> = [
-    { key: 'entidades', label: `Entidades (${inmueblesDetalle.length + arrastresCount})` },
-    { key: 'reconciliacion', label: `Reconciliación (${reconciliacionCount})` },
-    { key: 'raw', label: 'Casillas raw' },
-  ];
+  const resultadoDecl = declaracion.basesYCuotas.resultadoDeclaracion;
+  const esDevolver = resultadoDecl < 0;
 
   return (
     <div style={{ display: 'grid', gap: '1.25rem' }}>
-      <div style={summaryGridStyle}>
-        <KpiCard label="Casillas" value={resultado.totalCasillas} />
-        <KpiCard label="Inmuebles" value={inmueblesDetalle.length} />
-        <KpiCard label="Arrastres" value={arrastresCount} />
-        <KpiCard label="Resultado" value={<span style={{ color: '#C52828' }}>{formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion)}</span>} />
-      </div>
-
-      <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', overflow: 'hidden', background: 'white' }}>
-        <div style={{ padding: '1rem 1.25rem', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
-          <strong style={{ color: 'var(--atlas-navy-1)' }}>
-            Datos fiscales extraídos — Ejercicio {resultado.meta.ejercicio}
-          </strong>
+      {/* ═══ RESUMEN FISCAL PROMINENTE ═══ */}
+      <div style={{
+        border: '1px solid var(--hz-neutral-200, #DEE2E6)',
+        borderRadius: 'var(--r-lg, 16px)',
+        padding: '1.5rem',
+        background: 'white',
+      }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--hz-neutral-700)', marginBottom: '0.5rem' }}>
+          Ejercicio {resultado.meta.ejercicio}
         </div>
-        <div style={{ padding: '1rem 1.25rem', display: 'grid', gap: '1rem' }}>
-          <KeyValueGrid rows={[
-            { label: 'Base imponible general (0435)', value: formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral) },
-            { label: 'Base imponible ahorro (0460)', value: formatCurrency(declaracion.basesYCuotas.baseImponibleAhorro) },
-            { label: 'Cuota íntegra', value: formatCurrency(declaracion.basesYCuotas.cuotaIntegra) },
-            { label: 'Cuota líquida', value: formatCurrency(declaracion.basesYCuotas.cuotaLiquida) },
-            { label: 'Total retenciones (0609)', value: formatCurrency(declaracion.basesYCuotas.retencionesTotal) },
-            { label: 'Resultado declaración (0670)', value: formatCurrency(declaracion.basesYCuotas.resultadoDeclaracion) },
-          ]} />
 
-          {(declaracion.trabajo.rendimientoNeto > 0
-            || declaracion.inmuebles.length > 0
-            || declaracion.actividades.length > 0) && (
-            <div style={{ marginTop: '0.25rem', paddingTop: '1rem', borderTop: '1px solid var(--hz-neutral-200)' }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--hz-neutral-700)', marginBottom: '0.5rem' }}>
-                RENDIMIENTOS
-              </div>
-              <KeyValueGrid
-                rows={[
-                  ...(declaracion.trabajo.rendimientoNeto > 0
-                    ? [{ label: 'Trabajo', value: formatCurrency(declaracion.trabajo.rendimientoNeto) }]
-                    : []),
-                  ...(declaracion.inmuebles.length > 0
-                    ? [{
-                        label: `Inmuebles (${declaracion.inmuebles.length})`,
-                        value: formatCurrency(declaracion.inmuebles.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
-                      }]
-                    : []),
-                  ...(declaracion.actividades.length > 0
-                    ? [{
-                        label: 'Actividades económicas',
-                        value: formatCurrency(declaracion.actividades.reduce((sum, item) => sum + item.rendimientoNeto, 0)),
-                      }]
-                    : []),
-                ]}
-              />
+        {/* Big result number */}
+        <div style={{
+          fontSize: '2rem',
+          fontWeight: 700,
+          fontFamily: 'IBM Plex Mono, monospace',
+          color: esDevolver ? 'var(--s-pos, #1A7A3C)' : 'var(--s-neg, #B91C1C)',
+          marginBottom: '1rem',
+        }}>
+          {formatCurrency(resultadoDecl)}
+          <span style={{ fontSize: '0.9rem', fontWeight: 500, marginLeft: '0.5rem', color: 'var(--hz-neutral-700)' }}>
+            ({esDevolver ? 'a devolver' : 'a pagar'})
+          </span>
+        </div>
+
+        {/* Key metrics */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Cuota líquida</div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              {formatCurrency(declaracion.basesYCuotas.cuotaLiquida)}
             </div>
-          )}
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Retenciones</div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              {formatCurrency(declaracion.basesYCuotas.retencionesTotal)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Base general</div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              {formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral)}
+            </div>
+          </div>
+        </div>
+
+        {/* Detection summary */}
+        <div style={{
+          marginTop: '1rem',
+          paddingTop: '1rem',
+          borderTop: '1px solid var(--hz-neutral-200)',
+          fontSize: '0.9rem',
+          color: 'var(--hz-neutral-700)',
+        }}>
+          ATLAS ha detectado: <strong>{inmueblesDetalle.length} inmueble{inmueblesDetalle.length !== 1 ? 's' : ''}</strong>
+          {arrastresCount > 0 && <> · <strong>{arrastresCount} arrastre{arrastresCount !== 1 ? 's' : ''}</strong></>}
         </div>
       </div>
 
+      {/* ═══ AVISOS DE VALIDACIÓN ═══ */}
       {validacion.avisos.length > 0 && (
         <div style={{ padding: '1rem', borderRadius: '12px', background: '#FFF1CF', color: '#A36B00', display: 'grid', gap: '0.5rem' }}>
           <strong>Avisos de validación</strong>
@@ -466,143 +403,131 @@ const VerificacionExtraccion: React.FC<{
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '1.5rem', borderBottom: '1px solid var(--hz-neutral-300)' }}>
-        {tabs.map((item) => (
-          <button key={item.key} type="button" style={tabButtonStyle(tab === item.key)} onClick={() => setTab(item.key)}>
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === null && (
-        <div style={{ padding: '1rem 1.25rem', borderRadius: '12px', background: 'var(--hz-neutral-100)', color: 'var(--hz-neutral-700)' }}>
-          Selecciona una pestaña si quieres revisar entidades detectadas, la reconciliación con ATLAS o las casillas raw. El resumen fiscal de arriba es lo principal para validar la importación.
+      {/* ═══ INMUEBLES DETECTADOS ═══ */}
+      {inmueblesDetalle.length > 0 && (
+        <div style={{
+          border: '1px solid var(--hz-neutral-200)',
+          borderRadius: 'var(--r-lg, 16px)',
+          overflow: 'hidden',
+          background: 'white',
+        }}>
+          <div style={{
+            padding: '0.75rem 1rem',
+            background: 'var(--hz-neutral-100)',
+            borderBottom: '1px solid var(--hz-neutral-200)',
+            fontWeight: 600,
+            color: 'var(--atlas-navy-1)',
+            fontSize: '0.9rem',
+          }}>
+            Inmuebles detectados ({inmueblesDetalle.length})
+          </div>
+          {inmueblesDetalle.map((inmueble, index) => {
+            const isNew = true; // All are "new" during initial import until analyzed
+            return (
+              <div key={index} style={{
+                padding: '0.75rem 1rem',
+                borderBottom: index < inmueblesDetalle.length - 1 ? '1px solid var(--hz-neutral-100)' : 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--atlas-navy-1)', fontSize: '0.9rem' }}>
+                    {inmueble.datos.direccion || inmueble.datos.referenciaCatastral || `Inmueble ${inmueble.datos.orden}`}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--hz-neutral-700)', marginTop: '0.15rem', fontFamily: 'IBM Plex Mono, monospace' }}>
+                    {[
+                      inmueble.datos.referenciaCatastral,
+                      inmueble.datos.valorCatastral ? `VC: ${formatCurrency(inmueble.datos.valorCatastral)}` : null,
+                      inmueble.datos.porcentajeConstruccion ? `${inmueble.datos.porcentajeConstruccion}% constr.` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <span style={{
+                  padding: '0.25rem 0.6rem',
+                  borderRadius: '999px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  ...(isNew
+                    ? { background: 'var(--s-pos-bg, #E9F8EE)', color: 'var(--s-pos, #1A7A3C)' }
+                    : { background: 'var(--s-warn-bg, #FFF1CF)', color: 'var(--s-warn, #A36B00)' }),
+                }}>
+                  {inmueble.datos.esAccesorio ? 'Accesorio' : 'Nuevo'}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {tab === 'entidades' && (
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          <SectionListCard
-            title="Inmuebles"
-            Icon={Home}
-            badge={`${inmueblesPrincipales.length} principales · ${inmueblesAccesorios.length} accesorios`}
-            items={inmuebleItems}
-            emptyText="No se detectaron inmuebles."
-          />
-
-          <SectionListCard
-            title="Arrastres fiscales"
-            Icon={RefreshCw}
-            badge={arrastresCount > 0 ? `${formatCurrency(
-              arrastres.gastos0105_0106.reduce((acc, item) => acc + item.pendienteFuturo, 0)
-              + arrastres.perdidasAhorro.reduce((acc, item) => acc + item.pendienteFuturo, 0),
-            )} pendientes` : 'Sin pendientes'}
-            items={arrastreItems}
-            emptyText="No se detectaron arrastres pendientes."
-          />
-        </div>
-      )}
-
-      {tab === 'reconciliacion' && (
-        <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', background: 'white', overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
-            <div>
-              <strong style={{ color: 'var(--atlas-navy-1)' }}>Reconciliación AEAT ↔ ATLAS</strong>
-              <div style={{ marginTop: '0.25rem', color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
-                {reconciliacionDisponible
-                  ? 'Hay diferencias o entidades nuevas detectadas. Revisa qué aplicar antes de importar.'
-                  : 'No se detectaron diferencias pendientes o aún no se ha generado la reconciliación avanzada.'}
+      {/* ═══ ARRASTRES DETECTADOS ═══ */}
+      {arrastresCount > 0 && (
+        <div style={{
+          border: '1px solid var(--hz-neutral-200)',
+          borderRadius: 'var(--r-lg, 16px)',
+          overflow: 'hidden',
+          background: 'white',
+        }}>
+          <div style={{
+            padding: '0.75rem 1rem',
+            background: 'var(--hz-neutral-100)',
+            borderBottom: '1px solid var(--hz-neutral-200)',
+            fontWeight: 600,
+            color: 'var(--atlas-navy-1)',
+            fontSize: '0.9rem',
+          }}>
+            Arrastres fiscales ({arrastresCount})
+          </div>
+          {arrastres.gastos0105_0106.map((item, i) => (
+            <div key={`g-${i}`} style={{
+              padding: '0.75rem 1rem',
+              borderBottom: '1px solid var(--hz-neutral-100)',
+              fontSize: '0.85rem',
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+                Gastos 0105+0106 · {item.referenciaCatastral || 'Sin referencia'}
+              </div>
+              <div style={{ color: 'var(--hz-neutral-700)', fontFamily: 'IBM Plex Mono, monospace', marginTop: '0.15rem' }}>
+                {formatCurrency(item.generadoEsteEjercicio || item.pendienteFuturo)} pendientes · Caduca {item.ejercicioOrigen + 4}
               </div>
             </div>
-            {reconciliacionDisponible && (
-              <button
-                type="button"
-                onClick={onAbrirReconciliacion}
-                style={{ border: 'none', borderRadius: '12px', background: 'var(--atlas-blue)', color: 'white', padding: '0.8rem 1rem', cursor: 'pointer', fontWeight: 700 }}
-              >
-                Abrir conciliación
-              </button>
-            )}
-          </div>
-          <div style={{ padding: '1rem 1.25rem', display: 'grid', gap: '0.75rem' }}>
-            <KeyValueGrid rows={[
-              { label: 'Coincidencias', value: reconciliacion?.estadisticas.coincidencias ?? 0 },
-              { label: 'Diferencias', value: reconciliacion?.estadisticas.diferencias ?? 0 },
-              { label: 'Solo en AEAT', value: reconciliacion?.estadisticas.sinDatosAtlas ?? 0 },
-              { label: 'Pendientes', value: reconciliacion?.estadisticas.pendientesDeDecision ?? 0 },
-            ]} />
-          </div>
+          ))}
+          {arrastres.perdidasAhorro.map((item, i) => (
+            <div key={`p-${i}`} style={{
+              padding: '0.75rem 1rem',
+              borderBottom: '1px solid var(--hz-neutral-100)',
+              fontSize: '0.85rem',
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+                Pérdidas {item.tipo} {item.ejercicioOrigen}
+              </div>
+              <div style={{ color: 'var(--hz-neutral-700)', fontFamily: 'IBM Plex Mono, monospace', marginTop: '0.15rem' }}>
+                {formatCurrency(item.pendienteFuturo)} pendientes · Caduca {item.ejercicioOrigen + 4}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {tab === 'raw' && (
-        <pre style={{ margin: 0, fontSize: '11px', maxHeight: '420px', overflow: 'auto', background: '#081225', color: '#D8F1FF', borderRadius: '12px', padding: '1rem' }}>
+      {/* ═══ CASILLAS RAW (colapsado) ═══ */}
+      <details style={{ border: '1px solid var(--hz-neutral-200)', borderRadius: '12px', overflow: 'hidden' }}>
+        <summary style={{
+          padding: '0.75rem 1rem',
+          cursor: 'pointer',
+          fontWeight: 600,
+          color: 'var(--hz-neutral-700)',
+          fontSize: '0.85rem',
+          background: 'var(--hz-neutral-100)',
+        }}>
+          Ver casillas ({resultado.totalCasillas})
+        </summary>
+        <pre style={{ margin: 0, fontSize: '11px', maxHeight: '420px', overflow: 'auto', background: '#081225', color: '#D8F1FF', padding: '1rem' }}>
           {JSON.stringify(casillasRaw, null, 2)}
         </pre>
-      )}
+      </details>
     </div>
   );
 };
-
-function SectionListCard({
-  title,
-  Icon,
-  badge,
-  items,
-  emptyText,
-}: {
-  title: string;
-  Icon: typeof Home;
-  badge?: string;
-  items: Array<{ title: string; subtitle: string; statusLabel: string; statusTone: SectionStatusTone }>;
-  emptyText: string;
-}) {
-  return (
-    <div style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '18px', overflow: 'hidden', background: 'white' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 1.25rem', background: 'var(--hz-neutral-100)', borderBottom: '1px solid var(--hz-neutral-300)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div style={{ width: '38px', height: '38px', borderRadius: '12px', display: 'grid', placeItems: 'center', background: 'var(--atlas-blue)', color: 'white' }}>
-            <Icon size={18} />
-          </div>
-          <strong style={{ fontSize: '1.05rem', color: 'var(--atlas-navy-1)' }}>{title}</strong>
-        </div>
-        {badge ? (
-          <span style={{ borderRadius: '999px', background: '#E9F2FF', color: 'var(--atlas-blue)', padding: '0.35rem 0.8rem', fontSize: '0.9rem', fontWeight: 600 }}>
-            {badge}
-          </span>
-        ) : null}
-      </div>
-      <div style={{ display: 'grid' }}>
-        {items.length === 0 ? (
-          <div style={{ padding: '1rem 1.25rem', color: 'var(--hz-neutral-700)' }}>{emptyText}</div>
-        ) : items.map((item, index) => (
-          <div key={`${item.title}-${index}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', padding: '1rem 1.25rem', borderTop: index === 0 ? 'none' : '1px solid var(--hz-neutral-200)' }}>
-            <div style={{ display: 'grid', gap: '0.25rem' }}>
-              <strong style={{ color: 'var(--atlas-navy-1)', fontSize: '1rem' }}>{item.title}</strong>
-              <span style={{ color: 'var(--hz-neutral-700)', fontFamily: 'IBM Plex Mono, monospace', fontSize: '0.92rem' }}>{item.subtitle}</span>
-            </div>
-            <EntityStatusBadge tone={item.statusTone}>{item.statusLabel}</EntityStatusBadge>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EntityStatusBadge({ tone, children }: { tone: SectionStatusTone; children: React.ReactNode }) {
-  const palette = {
-    info: { background: '#E9F2FF', color: 'var(--atlas-blue)' },
-    success: { background: '#E9F8EE', color: '#157347' },
-    warning: { background: '#FFF1CF', color: '#A36B00' },
-    muted: { background: '#F0F2F5', color: 'var(--hz-neutral-600)' },
-  } satisfies Record<string, { background: string; color: string }>;
-
-  return (
-    <span style={{ ...palette[tone], borderRadius: '999px', padding: '0.45rem 0.9rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
-      {children}
-    </span>
-  );
-}
 
 function normalizarCasillasExtraidas(raw: Record<string, number | string>): CasillaExtraida[] {
   return Object.entries(raw)
@@ -894,7 +819,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     };
   }, [step, resultadoExtraccion, metodo, reconciliacionPreview, generandoReconciliacion]);
 
-  const navigationFooter = step < 4 ? (
+  const navigationFooter = (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
       <button
         type="button"
@@ -929,15 +854,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         >
           {step === 1 ? 'Continuar' : 'Confirmar extracción'}
         </button>
-      ) : reconciliacion ? (
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => setStep(4)}
-          style={{ border: 'none', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'var(--atlas-blue)', color: 'white', cursor: 'pointer', minWidth: '220px', fontWeight: 700 }}
-        >
-          Revisar reconciliación
-        </button>
       ) : (
         <button
           type="button"
@@ -949,7 +865,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         </button>
       )}
     </div>
-  ) : null;
+  );
 
   return (
     <div style={overlayStyle} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -964,8 +880,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           <div style={stepEyebrowStyle}>
             {step === 1 && 'PASO 1 — SUBIR PDF'}
             {step === 2 && 'PASO 2 — PROCESANDO (AUTOMÁTICO)'}
-            {step === 3 && 'PASO 3 — CONFIRMAR E IMPORTAR'}
-            {step === 4 && 'PASO 4 — TAB: RECONCILIACIÓN'}
+            {(step === 3 || step === 4) && 'PASO 3 — CONFIRMAR E IMPORTAR'}
           </div>
 
           {step === 1 && (
@@ -1164,22 +1079,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                   Generando la reconciliación con ATLAS…
                 </div>
               )}
-            </div>
-          )}
-
-          {step === 4 && reconciliacion && (
-            <div style={shellCardStyle}>
-              <div style={{ display: 'grid', gap: '0.35rem' }}>
-                <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>
-                  Importar declaración IRPF {resultadoExtraccion?.meta.ejercicio || data.ejercicio}
-                </h2>
-                <p style={sectionSubtitleStyle}>Revisa las diferencias entre ATLAS y la declaración antes de importar.</p>
-              </div>
-              <ReconciliacionPanel
-                reconciliacion={reconciliacion}
-                onCancel={() => setStep(3)}
-                onComplete={handleConfirmarImportacion}
-              />
             </div>
           )}
 

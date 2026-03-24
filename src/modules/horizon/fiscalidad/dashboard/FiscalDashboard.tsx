@@ -2,12 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
-import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
+import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
-import FiscalPageShell from '../components/FiscalPageShell';
-import { mapDeclaracionToTaxState } from '../../../../components/tax/taxHydrationMapper';
-import type { TaxState } from '../../../../store/taxSlice';
-import PageLayout from '../../../../components/common/PageLayout';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -50,7 +46,11 @@ const FiscalDashboard: React.FC = () => {
   const [taxState, setTaxState] = useState<(Omit<TaxState, 'ejercicio'> & { ejercicio: number }) | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
-  const [showColdStart, setShowColdStart] = useState(false);
+  const [showComparativa, setShowComparativa] = useState(false);
+  const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
+  const [loadingComparativa, setLoadingComparativa] = useState(false);
+  const [isColdStart, setIsColdStart] = useState(false);
+  const [coldStartDismissed, setColdStartDismissed] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
@@ -58,13 +58,22 @@ const FiscalDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const { declaracion: decl, fuente: resolvedFuente } = await obtenerDeclaracionParaEjercicio(ejercicio);
-      setDeclaracion(decl);
-      setFuente(resolvedFuente);
-      const hydrated = await mapDeclaracionToTaxState(await calcularDeclaracionIRPF(ejercicio, { usarConciliacion: true }));
-      setTaxState({ ejercicio, ...hydrated });
-    } catch (error) {
-      console.error('Error loading fiscal state:', error);
+      const [declResult, historico] = await Promise.all([
+        obtenerDeclaracionParaEjercicio(ejercicio),
+        cargarHistoricoFiscal(years),
+      ]);
+      setDeclaracion(declResult.declaracion);
+      setFuente(declResult.fuente);
+      setShowComparativa(false);
+      setEstimacionComparativa(null);
+      await generarEventosFiscales(ejercicio, declResult.declaracion);
+
+      const hasAnyData = historico.some(
+        (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
+      );
+      setIsColdStart(!hasAnyData);
+    } catch (e) {
+      console.error('Error loading fiscal dashboard:', e);
     } finally {
       setLoading(false);
     }
@@ -182,10 +191,18 @@ const FiscalDashboard: React.FC = () => {
     );
   }
 
+  if (!loading && isColdStart && !coldStartDismissed) {
+    return (
+      <PageLayout title="Estado fiscal" subtitle="Tu situación fiscal en ATLAS">
+        <ColdStartFiscal onDismiss={() => setColdStartDismissed(true)} />
+      </PageLayout>
+    );
+  }
+
   return (
-    <FiscalPageShell>
-      <div style={{ display: 'grid', gap: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <PageLayout title="Estado fiscal" subtitle="Histórico + situación del año en curso">
+      <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
             <p style={{ margin: '6px 0 0', color: 'var(--n-600)', fontSize: 14 }}>Estimación con los datos disponibles</p>
