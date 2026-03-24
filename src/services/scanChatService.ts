@@ -83,6 +83,7 @@ export const callScanChatImages = async (payload: {
   tipo: ScanChatPayload['tipo'];
   imagenes: string[];
   mimeType?: string;
+  mimeTypes?: string[];
   prompt?: string;
 }): Promise<ScanChatResponse> => {
   const response = await fetch('/.netlify/functions/chat', {
@@ -93,6 +94,7 @@ export const callScanChatImages = async (payload: {
     body: JSON.stringify({
       tipo: payload.tipo,
       imagenes: payload.imagenes,
+      ...(payload.mimeTypes ? { mimeTypes: payload.mimeTypes } : {}),
       mimeType: payload.mimeType || 'image/jpeg',
       ...(payload.prompt ? { prompt: payload.prompt } : {}),
     }),

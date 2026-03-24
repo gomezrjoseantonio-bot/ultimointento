@@ -178,7 +178,7 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
       const response = await callScanChatImages({
         tipo: 'scan_datos_fiscales',
         imagenes: base64Images,
-        mimeType: 'image/jpeg',
+        mimeTypes: files.map(f => f.type || 'image/png'),
       });
 
       if (!response.ok || !response.extraido) {
