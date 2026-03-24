@@ -61,14 +61,26 @@ export async function calcularAmortizacionMobiliarioAnual(
     if (fechaBaja && fechaBaja < inicioEjercicio) continue;
     if (!mueble.activo && !fechaBaja) continue;
 
-    const amortizacionAnual = mueble.importe / (mueble.vidaUtil || 10);
+    const vidaUtil = mueble.vidaUtil || 10;
+    const amortizacionAnual = mueble.importe / vidaUtil;
+
+    // Check if fully amortized: years since purchase >= vida útil
+    const anosDesdeAlta = (ejercicio - fechaAlta.getFullYear());
+    const amortizacionAcumuladaPrevia = anosDesdeAlta > 0
+      ? Math.min(mueble.importe, amortizacionAnual * anosDesdeAlta)
+      : 0;
+    if (amortizacionAcumuladaPrevia >= mueble.importe) continue; // Fully amortized
+
     const desde = fechaAlta > inicioEjercicio ? fechaAlta : inicioEjercicio;
     const hasta = fechaBaja && fechaBaja < finEjercicio ? fechaBaja : finEjercicio;
     const diasActivo = Math.max(0, Math.ceil((hasta.getTime() - desde.getTime()) / DAY_MS) + 1);
     if (diasActivo === 0) continue;
 
     const ratioArrendamiento = diasDisponibles > 0 ? diasArrendados / diasDisponibles : 1;
-    total += (amortizacionAnual / diasDisponibles) * diasActivo * ratioArrendamiento;
+    // Cap so accumulated amortization never exceeds cost
+    const amortEsteEjercicio = (amortizacionAnual / diasDisponibles) * diasActivo * ratioArrendamiento;
+    const maxRestante = mueble.importe - amortizacionAcumuladaPrevia;
+    total += Math.min(amortEsteEjercicio, maxRestante);
   }
 
   return Math.round(total * 100) / 100;

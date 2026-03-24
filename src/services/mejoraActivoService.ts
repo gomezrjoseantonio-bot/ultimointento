@@ -55,6 +55,19 @@ export async function getTotalMejorasHastaEjercicio(
   return mejoras.reduce((sum, mejora) => sum + mejora.importe, 0);
 }
 
+/**
+ * Get total reparaciones (tipo='reparacion') for a property in a specific year → casilla 0106
+ */
+export async function getTotalReparacionesEjercicio(
+  inmuebleId: number,
+  ejercicio: number
+): Promise<number> {
+  const mejoras = await getMejorasPorInmueble(inmuebleId);
+  return mejoras
+    .filter((m) => m.tipo === 'reparacion' && m.ejercicio === ejercicio)
+    .reduce((sum, mejora) => sum + mejora.importe, 0);
+}
+
 export async function eliminarMejora(id: number): Promise<void> {
   const db = await initDB();
   await db.delete('mejorasActivo', id);

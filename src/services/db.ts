@@ -249,7 +249,7 @@ export interface MejoraActivo {
   ejercicio: number;
   fecha?: string;
   descripcion: string;
-  tipo: 'mejora' | 'ampliacion';
+  tipo: 'mejora' | 'ampliacion' | 'reparacion';
   importe: number;
   diasEnEjercicio?: number;
   proveedorNIF: string;
@@ -487,6 +487,20 @@ export interface Contract {
     fechaFirma?: string;
   };
   
+  // Fiscal reduction per contract (Ley 12/2023 de Vivienda)
+  reduccion?: {
+    activa: boolean;
+    porcentaje: number; // 0, 50, 60, 70, 90
+    motivo?: 'transitorio_pre_2023' | 'general_post_2023' | 'rehabilitacion' | 'zona_tensionada_joven' | 'zona_tensionada_rebaja';
+  };
+
+  // Additional fields for reduction calculation (Ley 12/2023)
+  fechaFirmaContrato?: string; // Actual contract signing date (ISO date), distinct from firma.fechaFirma (digital signature)
+  zonaTensionada?: boolean;
+  rebajaRenta5pct?: boolean; // Rent reduced ≥5% vs previous contract
+  inquilinoJoven?: boolean; // Tenant aged 18-35
+  rehabilitacion?: boolean; // Rehabilitation works in last 2 years
+
   // NEW FIELDS: Rescission information
   rescision?: {
     fecha: string; // Rescission date
