@@ -1,8 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import PageLayout from '../../../../components/common/PageLayout';
+import FiscalPageShell from '../components/FiscalPageShell';
+import { type TaxState } from '../../../../store/taxSlice';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
+import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
+import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
 
 const fmtAmount = (n: number) =>
@@ -49,6 +54,7 @@ const FiscalDashboard: React.FC = () => {
   const [showComparativa, setShowComparativa] = useState(false);
   const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
   const [loadingComparativa, setLoadingComparativa] = useState(false);
+  const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
 
@@ -166,28 +172,8 @@ const FiscalDashboard: React.FC = () => {
   if (showColdStart) {
     return (
       <FiscalPageShell>
-        <ColdStartFiscal
-          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
-          onImportarDatosFiscales={() => navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } })}
-          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
-          onExplorar={() => setShowColdStart(false)}
-        />
+        <ColdStartFiscal onDismiss={() => setShowColdStart(false)} />
       </FiscalPageShell>
-    );
-  }
-
-  if (showColdStart) {
-    return (
-      <PageLayout title="Estado fiscal" subtitle="Qué tienes cargado y cómo avanzar con tu próxima declaración">
-        <ColdStartFiscal
-          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
-          onImportarDatosFiscales={() => {
-            navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } });
-          }}
-          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
-          onExplorar={() => setShowColdStart(false)}
-        />
-      </PageLayout>
     );
   }
 
@@ -215,7 +201,7 @@ const FiscalDashboard: React.FC = () => {
               {badge.label}
             </span>
           </div>
-        </div>
+        </header>
 
         {loading || !declaracion || !taxState ? (
           <div style={{ color: 'var(--n-500)' }}>Cargando estado fiscal…</div>
@@ -323,7 +309,7 @@ const FiscalDashboard: React.FC = () => {
           </>
         )}
       </div>
-    </FiscalPageShell>
+    </PageLayout>
   );
 };
 

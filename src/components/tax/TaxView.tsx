@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Upload } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronRight, Clock, Info, Upload, type LucideIcon } from 'lucide-react';
 import { RootState } from '../../store';
 import WorkIncomeBlock from './blocks/WorkIncomeBlock';
 import RealEstateBlock from './blocks/RealEstateBlock';
@@ -14,7 +14,7 @@ import { mapDeclaracionToTaxState } from './taxHydrationMapper';
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
-import type { DeclaracionIRPF as FiscalDeclaracionIRPF } from '../../types/fiscal';
+import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import FiscalPageShell from '../../modules/horizon/fiscalidad/components/FiscalPageShell';
 import './tax-view.css';
 
@@ -130,21 +130,35 @@ function EstadoBanner({
     },
     cerrado: {
       texto: tieneAeat
-        ? `Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.`
-        : `Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.`,
+        ? 'Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.'
+        : 'Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.',
       colorVar: 'var(--s-warn)',
       bgVar: 'var(--s-warn-bg)',
       Icon: Clock,
     },
     declarado: {
       texto: tieneAeat
-        ? `Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.`
-        : `Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.`,
+        ? 'Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.'
+        : 'Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.',
       colorVar: 'var(--blue)',
       bgVar: 'var(--n-100)',
       Icon: CheckCircle,
     },
   };
+
+  const config = configs[estado];
+  const BannerIcon = config.Icon;
+
+  return (
+    <div className="tv-state-banner" style={{ background: config.bgVar, color: config.colorVar }}>
+      <BannerIcon size={16} />
+      <span>{config.texto}</span>
+      {coberturaLineas > 0 && (
+        <span className="tv-state-banner__meta">Cobertura documental: {coberturaLineas} conceptos monitorizados.</span>
+      )}
+    </div>
+  );
+}
 
 interface SectionRow { label: string; value: number; accent?: 'positive' | 'negative' | 'neutral'; }
 interface SectionData { id: string; title: string; total: number; rows?: SectionRow[]; note?: string; defaultOpen?: boolean; }
@@ -161,6 +175,7 @@ const TaxView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tax = useSelector((state: RootState) => state.tax);
+  const [tab, setTab] = useState<Tab>('Trabajo');
   const [loadingDeclaracion, setLoadingDeclaracion] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -171,10 +186,20 @@ const TaxView: React.FC = () => {
     cuotaIntegra: false,
     retenciones: true,
   });
-  const { estado, declarado, tieneAeat } = useEjercicioFiscal(tax.ejercicio);
+  const {
+    estado,
+    declarado,
+    cobertura,
+    esEditable,
+    tieneAeat,
+  } = useEjercicioFiscal(tax.ejercicio);
+
+  const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtSignedMoney = (v: number) => `${v >= 0 ? '+' : '-'}${fmt(Math.abs(v))} €`;
 
   const currentYear = new Date().getFullYear();
   const isCurrentYear = tax.ejercicio === currentYear;
+  const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
 
   useEffect(() => {
     const ejercicioFromUrl = Number(searchParams.get('ejercicio'));
@@ -195,23 +220,24 @@ const TaxView: React.FC = () => {
           ? mapFiscalDeclaracionToTaxState(tresVerdades.declarado)
           : await mapDeclaracionToTaxState(await calcularDeclaracionIRPF(tax.ejercicio, { usarConciliacion: true }));
 
-        if (!cancelled) {
-          dispatch(hydrateFromCalculation(hydrationPayload));
-        }
+        if (!cancelled) dispatch(hydrateFromCalculation(hydrationPayload));
       } catch {
-        if (!cancelled) {
-          setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
-        }
+        if (!cancelled) setLoadingError('No se pudieron cargar los datos fiscales reales para este ejercicio.');
       } finally {
-        if (!cancelled) {
-          setLoadingDeclaracion(false);
-        }
+        if (!cancelled) setLoadingDeclaracion(false);
       }
     };
 
     void cargarDeclaracion();
     return () => { cancelled = true; };
   }, [dispatch, tax.ejercicio, declarado]);
+
+  const readOnlyMessage = useMemo(() => {
+    if (estado !== 'declarado') return null;
+    return tieneAeat
+      ? 'Vista solo lectura basada en la declaración oficial importada desde AEAT.'
+      : 'Vista solo lectura del ejercicio declarado. Sube el PDF de Hacienda para completar la verdad oficial.';
+  }, [estado, tieneAeat]);
 
   const sections = useMemo<SectionData[]>(() => {
     const trabajoBruto = tax.workIncome.dinerarias + tax.workIncome.especieValoracion + tax.workIncome.especieIngresoACuenta + tax.workIncome.contribucionEmpresarialPP;
@@ -269,25 +295,63 @@ const TaxView: React.FC = () => {
 
   const toggleSection = (id: string) => setOpenSections((current) => ({ ...current, [id]: !current[id] }));
 
-      {isCurrentYear && (
-        <div className="tv-forecast-note">
-          Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
+  return (
+    <FiscalPageShell>
+      <div className="tv-root">
+        <div className="tv-header">
+          <div>
+            <h2 className="tv-title">Declaración IRPF {tax.ejercicio}</h2>
+            <p className="tv-subtitle">Modelo 100 — Estimación en tiempo real</p>
+          </div>
+          <div className="tv-header-right">
+            {estado === 'declarado' && tieneAeat && <span className="tv-source-pill">Fuente AEAT</span>}
+            <div className="tv-year-picker">
+              <label className="tv-year-label">Ejercicio</label>
+              <EjercicioSelector value={tax.ejercicio} onChange={(ejercicio) => dispatch(setEjercicio(ejercicio))} />
+            </div>
+          </div>
         </div>
-      )}
 
-      {readOnlyMessage && <div className="tv-sync-note">{readOnlyMessage}</div>}
-      {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
-      {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
+        <EstadoBanner estado={estado} tieneAeat={tieneAeat} ejercicio={tax.ejercicio} coberturaLineas={cobertura?.lineas.length ?? 0} />
 
-      {shouldShowUploadButton && (
-        <div className="tv-actions-row">
-          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historial')}>
-            <Upload size={16} />
-            Subir declaración AEAT
-          </button>
-        </div>
-      )}
+        {isCurrentYear && (
+          <div className="tv-forecast-note">
+            Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
+          </div>
+        )}
 
+        {readOnlyMessage && <div className="tv-sync-note">{readOnlyMessage}</div>}
+        {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
+        {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
+
+        {shouldShowUploadButton && (
+          <div className="tv-actions-row">
+            <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historial')}>
+              <Upload size={16} />
+              Subir declaración AEAT
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+          {sections.map((section) => {
+            const collapsible = Boolean(section.rows && section.rows.length);
+            const isOpen = openSections[section.id] ?? section.defaultOpen ?? false;
+            return (
+              <div key={section.id} style={sectionCardStyle}>
+                <button
+                  type="button"
+                  onClick={() => collapsible && toggleSection(section.id)}
+                  style={{ width: '100%', border: 0, background: 'transparent', padding: '14px 18px', display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'center', cursor: collapsible ? 'pointer' : 'default' }}
+                >
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--n-900)' }}>{section.title}</div>
+                  </div>
+                  <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: section.total >= 0 ? 'var(--n-900)' : 'var(--s-neg)' }}>
+                    {fmtSignedMoney(section.total)}
+                  </div>
+                  {collapsible ? (isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />) : <span />}
+                </button>
                 {collapsible && isOpen && (
                   <div style={{ borderTop: '1px solid var(--n-200)', padding: '12px 18px 0' }}>
                     {section.rows?.map((row) => (
@@ -310,16 +374,50 @@ const TaxView: React.FC = () => {
 
         <div style={{ textAlign: 'center', color: 'var(--n-500)', fontFamily: 'IBM Plex Mono, monospace' }}>===</div>
 
-      <div className={`tv-content ${!esEditable ? 'tv-content--readonly' : ''}`}>
-        {tab === 'Resumen' && <ResumenInline tax={tax} fmt={fmt} />}
-        {tab === 'Trabajo' && <WorkIncomeBlock readOnly={!esEditable} />}
-        {tab === 'Inmuebles' && <RealEstateBlock readOnly={!esEditable} />}
-        {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
-        {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
-        {tab === 'Resultado' && <ResultBlock />}
+        <nav className="tv-tabs">
+          {TABS.map((tabName) => (
+            <button key={tabName} className={`tv-tab ${tab === tabName ? 'tv-tab--active' : ''}`} onClick={() => setTab(tabName)}>
+              {tabName}
+            </button>
+          ))}
+        </nav>
+
+        <div className={`tv-content ${!esEditable ? 'tv-content--readonly' : ''}`}>
+          {tab === 'Resumen' && <ResumenInline tax={tax} fmt={fmt} />}
+          {tab === 'Trabajo' && <WorkIncomeBlock readOnly={!esEditable} />}
+          {tab === 'Inmuebles' && <RealEstateBlock readOnly={!esEditable} />}
+          {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
+          {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
+          {tab === 'Resultado' && <ResultBlock />}
+        </div>
       </div>
     </FiscalPageShell>
   );
 };
+
+const ResumenInline: React.FC<{ tax: TaxState; fmt: (v: number) => string }> = ({ tax, fmt }) => (
+  <div className="tv-resumen">
+    <div className="tv-resumen-grid">
+      {[
+        { label: 'Rendimientos del trabajo', value: tax.workIncome.dinerarias, color: 'neutral' },
+        { label: 'Rendimientos de inmuebles', value: tax.inmuebles.reduce((a, i) => a + i.rendimientoNetoReducido, 0), color: 'neutral' },
+        { label: 'Actividades económicas', value: tax.actividades.reduce((a, act) => a + act.rendimientoNeto, 0), color: 'neutral' },
+        { label: 'Capital mobiliario', value: tax.capitalMobiliario.interesesCuentasDepositos, color: 'neutral' },
+        { label: 'Base imponible general', value: tax.baseImponibleGeneral, color: 'neutral', bold: true },
+        { label: 'Reducción previsión social', value: -tax.previsionSocial.importeAplicado, color: 'pos' },
+        { label: 'Base liquidable general', value: tax.baseLiquidableGeneral, color: 'neutral', bold: true },
+        { label: 'Base liquidable del ahorro', value: tax.baseLiquidableAhorro, color: 'neutral' },
+        { label: 'Cuota íntegra', value: tax.cuotaIntegra, color: 'neutral', bold: true },
+        { label: 'Total retenciones', value: -tax.totalRetenciones, color: 'pos' },
+        { label: 'Cuota diferencial', value: tax.cuotaDiferencial, color: tax.cuotaDiferencial > 0 ? 'neg' : 'pos', bold: true },
+      ].map(({ label, value, color, bold }) => (
+        <div key={label} className={`tv-resumen-row ${bold ? 'row-bold' : ''}`}>
+          <span className="tv-resumen-label">{label}</span>
+          <span className={`tv-resumen-value color-${color}`}>{fmt(value)} €</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 export default TaxView;
