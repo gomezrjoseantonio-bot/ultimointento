@@ -161,7 +161,7 @@ export async function detectarCambios(
   if (datosFiscales.arrastres?.gastosPendientes?.length) {
     try {
       const ejercicio = datosFiscales.ejercicio || new Date().getFullYear();
-      const ej = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, 'vivo');
+      const ej = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, 'en_curso');
       const gastosAtlas = ej.arrastresGenerados?.gastos0105_0106 || [];
 
       for (const gasto of datosFiscales.arrastres.gastosPendientes) {

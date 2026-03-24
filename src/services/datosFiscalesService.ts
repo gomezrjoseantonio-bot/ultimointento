@@ -374,7 +374,6 @@ export async function ejecutarImportacionDatosFiscales(
               ejercicio,
               rendimientosAtribuidos: entDF.rendimientos || 0,
               retencionesAtribuidas: entDF.retenciones || 0,
-              porcentajeParticipacion: entDF.participacion || existente.porcentajeParticipacion,
             });
           } else {
             await crearEntidad({
@@ -387,7 +386,6 @@ export async function ejecutarImportacionDatosFiscales(
                 ejercicio,
                 rendimientosAtribuidos: entDF.rendimientos || 0,
                 retencionesAtribuidas: entDF.retenciones || 0,
-                porcentajeParticipacion: entDF.participacion || 0,
               }],
             });
             resumen.entidadesCreadas += 1;
@@ -401,7 +399,7 @@ export async function ejecutarImportacionDatosFiscales(
     // ── Arrastres ────────────────────────────────────────────
     if (datos.arrastres) {
       try {
-        const ej = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, 'vivo');
+        const ej = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, 'en_curso');
         const next = {
           ...ej,
           arrastresGenerados: {
