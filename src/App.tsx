@@ -510,6 +510,11 @@ function App() {
             {/* Personal section (within Horizon) */}
             <Route path="personal">
               <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="resumen" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
               <Route path="estado" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
