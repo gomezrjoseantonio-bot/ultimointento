@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import { callScanChatImages } from '../../../../services/scanChatService';
 import type { DatosFiscalesExtraidos } from '../../../../services/datosFiscalesService';
-import { ejecutarImportacionDatosFiscales } from '../../../../services/datosFiscalesService';
+import { mergearResultadosDatosFiscales, ejecutarImportacionDatosFiscales } from '../../../../services/datosFiscalesService';
 import type { CambioDetectado } from '../../../../services/datosFiscalesComparisonService';
 import { detectarCambios, compararInmuebles } from '../../../../services/datosFiscalesComparisonService';
 import type { InmuebleComparacion } from '../../../../services/datosFiscalesComparisonService';
@@ -166,28 +166,41 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
     setProgress(0);
 
     try {
-      // Convert all files to base64
-      const base64Images: string[] = [];
+      // Process images ONE BY ONE to avoid Netlify Function timeout
+      const resultadosParciales: DatosFiscalesExtraidos[] = [];
+
       for (let i = 0; i < files.length; i++) {
         setProgress(i);
-        base64Images.push(await toBase64(files[i]));
+
+        const base64 = await toBase64(files[i]);
+
+        try {
+          const response = await callScanChatImages({
+            tipo: 'scan_datos_fiscales',
+            imagenes: [base64],
+            mimeTypes: [files[i].type || 'image/png'],
+          });
+
+          if (response.ok && response.extraido) {
+            const parcial: DatosFiscalesExtraidos = typeof response.extraido === 'string'
+              ? JSON.parse(response.extraido)
+              : response.extraido;
+            resultadosParciales.push(parcial);
+          }
+        } catch (err) {
+          console.warn(`Captura ${i + 1} falló:`, err);
+          // Continue with remaining images — don't fail everything for one image
+        }
       }
 
-      setProgress(files.length); // All converted
+      setProgress(files.length);
 
-      const response = await callScanChatImages({
-        tipo: 'scan_datos_fiscales',
-        imagenes: base64Images,
-        mimeTypes: files.map(f => f.type || 'image/png'),
-      });
-
-      if (!response.ok || !response.extraido) {
-        throw new Error(response.error || 'No se pudieron analizar las capturas');
+      if (resultadosParciales.length === 0) {
+        throw new Error('No se pudo analizar ninguna captura');
       }
 
-      const extracted: DatosFiscalesExtraidos = typeof response.extraido === 'string'
-        ? JSON.parse(response.extraido)
-        : response.extraido;
+      // Merge all partial results into one
+      const extracted = mergearResultadosDatosFiscales(resultadosParciales);
 
       // Set ejercicio from extraction if available
       if (extracted.ejercicio) setEjercicio(extracted.ejercicio);

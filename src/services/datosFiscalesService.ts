@@ -127,6 +127,137 @@ export interface ResumenImportacionDF {
   errores: string[];
 }
 
+// ── Merge partial results ────────────────────────────────────
+// When images are sent one by one, each response contains a subset
+// of the datos fiscales. This function merges them without duplicating
+// entries (inmuebles are deduped by ref. catastral, etc.).
+
+export function mergearResultadosDatosFiscales(
+  resultados: DatosFiscalesExtraidos[],
+): DatosFiscalesExtraidos {
+  if (resultados.length === 0) {
+    return { ejercicio: new Date().getFullYear() };
+  }
+  if (resultados.length === 1) {
+    return resultados[0];
+  }
+
+  const merged: DatosFiscalesExtraidos = {
+    ejercicio: resultados.find((r) => r.ejercicio)?.ejercicio || new Date().getFullYear(),
+  };
+
+  // Simple array concatenation for items without natural keys
+  const concatSimple = <T>(key: keyof DatosFiscalesExtraidos) => {
+    const all: T[] = [];
+    for (const r of resultados) {
+      const arr = r[key] as T[] | undefined;
+      if (arr?.length) all.push(...arr);
+    }
+    return all.length > 0 ? all : undefined;
+  };
+
+  // Concat + dedup by a key extractor
+  const concatDedup = <T>(
+    key: keyof DatosFiscalesExtraidos,
+    getKey: (item: T) => string,
+  ) => {
+    const all: T[] = [];
+    const seen = new Set<string>();
+    for (const r of resultados) {
+      const arr = r[key] as T[] | undefined;
+      if (!arr?.length) continue;
+      for (const item of arr) {
+        const k = getKey(item);
+        if (k && seen.has(k)) continue;
+        if (k) seen.add(k);
+        all.push(item);
+      }
+    }
+    return all.length > 0 ? all : undefined;
+  };
+
+  // Inmuebles: dedup by refCatastral
+  merged.inmuebles = concatDedup<InmuebleDF>(
+    'inmuebles',
+    (i) => (i.refCatastral || '').replace(/\s+/g, '').toUpperCase(),
+  );
+
+  // Trabajo: dedup by NIF+pagador
+  merged.trabajo = concatDedup<TrabajoDF>(
+    'trabajo',
+    (t) => `${(t.nif || '').toUpperCase()}|${(t.pagador || '').toUpperCase()}`,
+  );
+
+  // Actividades: dedup by NIF+epigrafe
+  merged.actividades = concatDedup<ActividadDF>(
+    'actividades',
+    (a) => `${(a.nif || '').toUpperCase()}|${a.epigrafe || ''}`,
+  );
+
+  // Cuentas bancarias: dedup by cuenta
+  merged.cuentasBancarias = concatDedup<CuentaBancariaDF>(
+    'cuentasBancarias',
+    (c) => (c.cuenta || '').replace(/\s+/g, '').toUpperCase(),
+  );
+
+  // Planes de pensiones: simple concat (no natural key)
+  merged.planesPensiones = concatSimple<PlanPensionDF>('planesPensiones');
+
+  // Préstamos: dedup by nifEntidad+tipo
+  merged.prestamos = concatDedup<PrestamoDF>(
+    'prestamos',
+    (p) => `${(p.nifEntidad || '').toUpperCase()}|${p.tipo || ''}`,
+  );
+
+  // Entidades: dedup by NIF
+  merged.entidades = concatDedup<EntidadDF>(
+    'entidades',
+    (e) => (e.nif || '').toUpperCase(),
+  );
+
+  // Pagos fraccionados: dedup by modelo+trimestre
+  merged.pagosFraccionados = concatDedup<PagoFraccionadoDF>(
+    'pagosFraccionados',
+    (p) => `${p.modelo || ''}|${p.trimestre || ''}`,
+  );
+
+  // Ventas inmuebles: dedup by refCatastral
+  merged.ventasInmuebles = concatDedup<VentaInmuebleDF>(
+    'ventasInmuebles',
+    (v) => (v.refCatastral || '').replace(/\s+/g, '').toUpperCase(),
+  );
+
+  // Arrastres: merge both sub-arrays
+  const allGastos: NonNullable<ArrastresDF['gastosPendientes']> = [];
+  const allPerdidas: NonNullable<ArrastresDF['perdidasPatrimoniales']> = [];
+  const seenGastos = new Set<string>();
+  const seenPerdidas = new Set<string>();
+
+  for (const r of resultados) {
+    if (!r.arrastres) continue;
+    for (const g of r.arrastres.gastosPendientes || []) {
+      const k = `${(g.inmueble || '').replace(/\s+/g, '').toUpperCase()}|${g.origenEjercicio || 0}`;
+      if (seenGastos.has(k)) continue;
+      seenGastos.add(k);
+      allGastos.push(g);
+    }
+    for (const p of r.arrastres.perdidasPatrimoniales || []) {
+      const k = `${p.origenEjercicio || 0}|${p.importe || 0}|${p.tipo || ''}`;
+      if (seenPerdidas.has(k)) continue;
+      seenPerdidas.add(k);
+      allPerdidas.push(p);
+    }
+  }
+
+  if (allGastos.length > 0 || allPerdidas.length > 0) {
+    merged.arrastres = {};
+    if (allGastos.length > 0) merged.arrastres.gastosPendientes = allGastos;
+    if (allPerdidas.length > 0) merged.arrastres.perdidasPatrimoniales = allPerdidas;
+  }
+
+  return merged;
+}
+
 // ── Helpers ──────────────────────────────────────────────────
 
 function normalizeRef(value?: string | null): string {
