@@ -4,6 +4,7 @@ import {
   Edit3,
   Eye,
   FileText,
+  Image,
   MoreVertical,
   Plus,
   Trash2,
@@ -25,6 +26,7 @@ import {
 import type { ConfiguracionFiscal } from '../../../../services/db';
 import { getEntidades } from '../../../../services/entidadAtribucionService';
 import ImportarDeclaracionWizard from '../historico/ImportarDeclaracionWizard';
+import ImportarDatosFiscalesWizard from './ImportarDatosFiscalesWizard';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -88,6 +90,7 @@ const HistorialPage: React.FC = () => {
   const [entidades, setEntidades] = useState<EntidadAtribucionRentas[]>([]);
   const [loading, setLoading] = useState(true);
   const [showImportWizard, setShowImportWizard] = useState(false);
+  const [showDatosFiscalesWizard, setShowDatosFiscalesWizard] = useState(false);
   const [savingPago, setSavingPago] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [kebabOpen, setKebabOpen] = useState<number | null>(null);
@@ -184,6 +187,10 @@ const HistorialPage: React.FC = () => {
         label: '+ Importar declaración',
         onClick: () => setShowImportWizard(true),
       }}
+      secondaryActions={[{
+        label: 'Datos fiscales AEAT',
+        onClick: () => setShowDatosFiscalesWizard(true),
+      }]}
     >
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
@@ -443,6 +450,13 @@ const HistorialPage: React.FC = () => {
       {showImportWizard && (
         <ImportarDeclaracionWizard
           onClose={() => setShowImportWizard(false)}
+          onImported={loadData}
+        />
+      )}
+
+      {showDatosFiscalesWizard && (
+        <ImportarDatosFiscalesWizard
+          onClose={() => setShowDatosFiscalesWizard(false)}
           onImported={loadData}
         />
       )}
