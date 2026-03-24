@@ -78,6 +78,7 @@ const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacio
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
+const PreDeclaracionView = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/PreDeclaracionView'));
 const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
 const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
@@ -421,6 +422,11 @@ function App() {
               <Route path="declaracion" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <DeclaracionPage />
+                </React.Suspense>
+              } />
+              <Route path="pre-declaracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PreDeclaracionView />
                 </React.Suspense>
               } />
               <Route path="historial" element={
