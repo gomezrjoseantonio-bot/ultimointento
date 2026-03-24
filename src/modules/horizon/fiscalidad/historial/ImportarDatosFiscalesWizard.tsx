@@ -101,9 +101,11 @@ const badgeLabels: Record<CambioDetectado['tipo'], string> = {
 interface Props {
   onClose: () => void;
   onImported: () => void;
+  embedded?: boolean;
+  onBack?: () => void;
 }
 
-const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) => {
+const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported, embedded = false, onBack }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(CURRENT_YEAR);
   const [files, setFiles] = useState<File[]>([]);
@@ -654,6 +656,148 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
   );
 
   // ── Main render ────────────────────────────────────────────
+
+  // Override cancel handler for step 1 when embedded
+  const handleCancel = () => {
+    if (step === 1 && embedded && onBack) onBack();
+    else onClose();
+  };
+
+  const renderStep1Embedded = () => (
+    <>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', fontSize: 'var(--t-sm, 0.875rem)', fontWeight: 500, color: 'var(--n-700)', marginBottom: '0.5rem' }}>
+          Ejercicio fiscal
+        </label>
+        <select
+          value={ejercicio}
+          onChange={(e) => setEjercicio(Number(e.target.value))}
+          style={{
+            border: '1px solid var(--n-300)', borderRadius: 'var(--r-md, 10px)',
+            padding: '0.5rem 0.75rem', fontSize: '0.9rem', color: 'var(--n-700)',
+            background: 'white', outline: 'none',
+          }}
+        >
+          {EJERCICIOS.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Dropzone */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+        style={{
+          border: `1.5px dashed ${dragOver ? 'var(--blue)' : 'var(--n-300)'}`,
+          borderRadius: 'var(--r-lg, 16px)',
+          background: dragOver ? 'var(--n-50)' : 'transparent',
+          padding: '3rem 2rem', textAlign: 'center', cursor: 'pointer',
+          transition: 'border-color 0.2s, background 0.2s',
+        }}
+      >
+        <Image size={48} color="var(--n-300)" style={{ marginBottom: '1rem' }} />
+        <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-500)', margin: 0 }}>
+          Arrastra las capturas aquí o haz clic para seleccionar
+        </p>
+        <p style={{ fontSize: 'var(--t-xs, 0.75rem)', color: 'var(--n-400)', marginTop: '0.5rem' }}>
+          PNG o JPG · Máximo {MAX_IMAGES} imágenes
+        </p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => { if (e.target.files) addFiles(e.target.files); }}
+        />
+      </div>
+
+      {/* Preview grid */}
+      {files.length > 0 && (
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+          gap: '0.75rem', marginTop: '1.5rem',
+        }}>
+          {files.map((file, i) => (
+            <div key={i} style={{ position: 'relative' }}>
+              <img
+                src={previews[i]}
+                alt={`Captura ${i + 1}`}
+                style={{
+                  width: '100%', height: '80px', objectFit: 'cover',
+                  borderRadius: 'var(--r-md, 10px)',
+                  border: '1px solid var(--n-200)',
+                }}
+              />
+              <span style={{
+                position: 'absolute', bottom: '4px', left: '6px',
+                background: 'var(--n-700)', color: 'white',
+                fontSize: '0.65rem', padding: '1px 5px',
+                borderRadius: 'var(--r-sm, 6px)', fontWeight: 600,
+              }}>
+                {i + 1}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
+                style={{
+                  position: 'absolute', top: '-6px', right: '-6px',
+                  width: '22px', height: '22px', borderRadius: '50%',
+                  background: 'var(--n-700)', color: 'white',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 0,
+                }}
+                aria-label={`Eliminar captura ${i + 1}`}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <p style={{ color: 'var(--s-neg)', fontSize: 'var(--t-sm, 0.875rem)', marginTop: '1rem' }}>
+          {error}
+        </p>
+      )}
+
+      {/* Footer */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '2rem' }}>
+        <button type="button" onClick={handleCancel} style={btnGhost}>Cancelar</button>
+        <button
+          type="button"
+          disabled={files.length === 0}
+          onClick={handleAnalizar}
+          style={{
+            ...btnPrimary,
+            opacity: files.length === 0 ? 0.5 : 1,
+            cursor: files.length === 0 ? 'not-allowed' : 'pointer',
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Image size={16} />
+            Analizar capturas
+          </span>
+        </button>
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div style={{ display: 'grid', gap: '0' }}>
+        {step === 1 && renderStep1Embedded()}
+        {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
+        {step === 4 && renderStep4()}
+      </div>
+    );
+  }
 
   return (
     <div style={overlayStyle} onClick={onClose}>

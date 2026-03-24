@@ -29,6 +29,8 @@ interface ImportarDeclaracionWizardProps {
   onClose: () => void;
   onImported: () => void | Promise<void>;
   defaultMethod?: MetodoEntrada;
+  embedded?: boolean;
+  onBack?: () => void;
 }
 
 const currentYear = new Date().getFullYear();
@@ -569,7 +571,7 @@ async function archivarPdfImportado(
   return `document:${documentId}`;
 }
 
-const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported, defaultMethod = 'pdf' }) => {
+const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported, defaultMethod = 'pdf', embedded = false, onBack }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
   const [metodo, setMetodo] = useState<MetodoEntrada>(defaultMethod);
@@ -817,12 +819,24 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     };
   }, [step, resultadoExtraccion, metodo, reconciliacionPreview, generandoReconciliacion]);
 
+  const handleBack = () => {
+    if (step === 1) {
+      if (embedded && onBack) onBack();
+      else onClose();
+    } else {
+      setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4);
+    }
+  };
+
   const navigationFooter = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
       <button
         type="button"
-        onClick={() => step === 1 ? onClose() : setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4)}
-        style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'white', cursor: 'pointer', minWidth: '140px' }}
+        onClick={handleBack}
+        style={embedded
+          ? { background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }
+          : { border: '1px solid var(--hz-neutral-300)', borderRadius: '14px', padding: '0.95rem 1.2rem', background: 'white', cursor: 'pointer', minWidth: '140px' }
+        }
       >
         {step === 1 ? 'Cancelar' : 'Atrás'}
       </button>
@@ -865,6 +879,182 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     </div>
   );
 
+  const embeddedDropzoneStyle: React.CSSProperties = {
+    border: '1.5px dashed var(--n-300)',
+    borderRadius: 'var(--r-lg, 16px)',
+    background: 'transparent',
+    padding: '2rem',
+    textAlign: 'center',
+    cursor: 'pointer',
+    transition: 'border-color 0.2s, background 0.2s',
+  };
+
+  const embeddedBtnPrimary: React.CSSProperties = {
+    background: 'var(--blue)', color: 'var(--white, #fff)',
+    border: 'none', borderRadius: 'var(--r-md, 10px)',
+    padding: '0.6rem 1.2rem', fontWeight: 600, fontSize: '0.9rem',
+    cursor: 'pointer',
+  };
+
+  const ejercicioSelectEmbedded = (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <label style={{ display: 'block', fontSize: 'var(--t-sm, 0.875rem)', fontWeight: 500, color: 'var(--n-700)', marginBottom: '0.5rem' }}>
+        Ejercicio fiscal
+      </label>
+      <select
+        value={ejercicio}
+        onChange={(event) => setEjercicio(Number(event.target.value))}
+        style={{
+          border: '1px solid var(--n-300)', borderRadius: 'var(--r-md, 10px)',
+          padding: '0.5rem 0.75rem', fontSize: '0.9rem', color: 'var(--n-700)',
+          background: 'white', outline: 'none',
+        }}
+      >
+        {Array.from({ length: Math.max(1, currentYear - 2019) }, (_, index) => currentYear - index)
+          .filter((year) => year >= 2020)
+          .map((year) => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+      </select>
+    </div>
+  );
+
+  // ── Embedded render (used inside unified wizard) ──────────
+  if (embedded) {
+    return (
+      <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {step === 1 && (
+          <>
+            {ejercicioSelectEmbedded}
+
+            {metodo === 'pdf' ? (
+              <label htmlFor="aeat-pdf-input-embedded" style={embeddedDropzoneStyle}>
+                <input id="aeat-pdf-input-embedded" type="file" accept=".pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <Upload size={42} style={{ justifySelf: 'center', color: 'var(--n-300)' }} />
+                  <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-500)', margin: 0 }}>
+                    Arrastra el PDF aquí o haz clic para seleccionar
+                  </p>
+                  <p style={{ fontSize: 'var(--t-xs, 0.75rem)', color: 'var(--n-400)', margin: 0 }}>
+                    Modelo 100 · Ejercicios 2020 a 2025
+                  </p>
+                </div>
+              </label>
+            ) : (
+              <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)', background: 'var(--n-50)' }}>
+                <p style={{ margin: 0, fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-500)' }}>
+                  Continúa para introducir bases, cuotas, retenciones y arrastres manualmente.
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button type="button" onClick={() => { if (onBack) onBack(); else onClose(); }} style={{ background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }}>
+                Cancelar
+              </button>
+              {metodo === 'formulario' && (
+                <button type="button" onClick={() => setStep(2)} style={embeddedBtnPrimary}>
+                  Continuar
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            {metodo === 'pdf' ? (
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent', margin: '0 auto 1.5rem' }} />
+                <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-700)', margin: '0 0 1rem' }}>
+                  {progreso?.mensaje || 'Extrayendo casillas del Modelo 100…'}
+                </p>
+                {progresoPorcentaje !== undefined && (
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 6px)', height: '8px', overflow: 'hidden', maxWidth: '300px', margin: '0 auto' }}>
+                    <div style={{ background: 'var(--blue)', height: '100%', borderRadius: 'var(--r-sm, 6px)', width: `${progresoPorcentaje}%`, transition: 'width 0.3s' }} />
+                  </div>
+                )}
+
+                {resultadoExtraccion && !resultadoExtraccion.exito && (
+                  <div style={{ display: 'grid', gap: '1rem', marginTop: '1.5rem', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '1rem', borderRadius: 'var(--r-md, 10px)', background: 'var(--s-neg-bg)', color: 'var(--s-neg)' }}>
+                      <AlertTriangle size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
+                      <div>
+                        <strong>No se pudo extraer la declaración</strong>
+                        <div style={{ marginTop: '0.2rem', fontSize: 'var(--t-sm, 0.875rem)' }}>{resultadoExtraccion.errores[0]}</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setMetodo('formulario'); setResultadoExtraccion(null); setResultadoAnalisis(null); setProgreso(null); setStep(2); }}
+                      style={{ border: '1px solid var(--n-200)', borderRadius: 'var(--r-md, 10px)', padding: '0.75rem 1rem', background: 'white', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <strong style={{ color: 'var(--n-900)', fontSize: 'var(--t-sm, 0.875rem)' }}>Continuar con formulario manual</strong>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <WizardForm data={data} onChange={handleDataPatch} />
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" onClick={() => setStep(1)} style={{ background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }}>
+                Atrás
+              </button>
+              {metodo === 'formulario' && (
+                <button type="button" disabled={!canContinueStep2} onClick={() => setStep(3)} style={{ ...embeddedBtnPrimary, opacity: !canContinueStep2 ? 0.5 : 1 }}>
+                  Confirmar extracción
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            {resultadoExtraccion?.exito ? (
+              <VerificacionExtraccion
+                resultado={resultadoExtraccion}
+                reconciliacion={reconciliacionPreview}
+                reconciliacionDisponible={Boolean(reconciliacion)}
+                onAbrirReconciliacion={() => setStep(4)}
+              />
+            ) : (
+              <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>
+                <strong style={{ color: 'var(--n-900)', fontSize: 'var(--t-sm, 0.875rem)' }}>Resumen manual</strong>
+                <div style={{ marginTop: '1rem' }}>
+                  <KeyValueGrid rows={[
+                    { label: 'Ejercicio', value: data.ejercicio },
+                    { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
+                    { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
+                    { label: 'Resultado', value: formatCurrency(data.resultado) },
+                  ]} />
+                </div>
+              </div>
+            )}
+
+            {generandoReconciliacion && (
+              <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-sm, 0.875rem)' }}>
+                Generando la reconciliación con ATLAS…
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button type="button" onClick={() => setStep(2)} style={{ background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }}>
+                Atrás
+              </button>
+              <button type="button" disabled={saving} onClick={handleConfirmarImportacion} style={embeddedBtnPrimary}>
+                {saving ? 'Importando…' : 'Importar y crear entidades'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Standalone render (original full-screen wizard) ───────
   return (
     <div style={overlayStyle} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <div style={panelStyle}>
