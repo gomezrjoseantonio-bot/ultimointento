@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Download,
   Edit3,
@@ -165,8 +165,6 @@ const HistorialPage: React.FC = () => {
       setSavingPago(false);
     }
   };
-
-  const pendientes = useMemo(() => eventos.filter(e => !e.pagado), [eventos]);
 
   const sectionHeaderStyle: React.CSSProperties = {
     fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase',

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import FiscalPageShell from '../components/FiscalPageShell';
 import { type TaxState } from '../../../../store/taxSlice';
-import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
+import { DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
@@ -44,22 +44,18 @@ function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: 
 }
 
 const FiscalDashboard: React.FC = () => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
-  const [taxState, setTaxState] = useState<(Omit<TaxState, 'ejercicio'> & { ejercicio: number }) | null>(null);
+  const [taxState] = useState<(Omit<TaxState, 'ejercicio'> & { ejercicio: number }) | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
-  const [showComparativa, setShowComparativa] = useState(false);
-  const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
-  const [loadingComparativa, setLoadingComparativa] = useState(false);
   const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
+  const years = useMemo(() => [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4], [currentYear]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -70,8 +66,6 @@ const FiscalDashboard: React.FC = () => {
       ]);
       setDeclaracion(declResult.declaracion);
       setFuente(declResult.fuente);
-      setShowComparativa(false);
-      setEstimacionComparativa(null);
       await generarEventosFiscales(ejercicio, declResult.declaracion);
 
       const hasAnyData = historico.some(
@@ -83,7 +77,7 @@ const FiscalDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [ejercicio]);
+  }, [ejercicio, years]);
 
   useEffect(() => {
     void loadData();

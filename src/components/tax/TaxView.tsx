@@ -352,7 +352,7 @@ const TaxView: React.FC = () => {
                   </div>
                   {collapsible ? (isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />) : <span />}
                 </button>
-                {collapsible && isOpen && (
+                {collapsible && isOpen ? (
                   <div style={{ borderTop: '1px solid var(--n-200)', padding: '12px 18px 0' }}>
                     {section.rows?.map((row) => (
                       <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '8px 12px', color: 'var(--n-700)', fontSize: 14 }}>
@@ -360,13 +360,13 @@ const TaxView: React.FC = () => {
                         <span style={{ fontFamily: 'IBM Plex Mono, monospace', color: row.accent === 'positive' ? 'var(--s-pos)' : row.accent === 'negative' ? 'var(--s-neg)' : 'var(--n-900)' }}>{fmtSignedMoney(row.value)}</span>
                       </div>
                     ))}
-                    {section.note && (
+                    {section.note ? (
                       <div style={{ margin: '8px 12px 14px', background: 'var(--n-50)', borderRadius: 10, padding: '10px 14px', color: 'var(--n-500)' }}>
                         {section.note}
                       </div>
-                    )}
+                    ) : null}
                   </div>
-                )}
+                ) : null}
               </div>
             );
           })}

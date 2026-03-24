@@ -79,8 +79,6 @@ const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Teso
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
 const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
-const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
-const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
