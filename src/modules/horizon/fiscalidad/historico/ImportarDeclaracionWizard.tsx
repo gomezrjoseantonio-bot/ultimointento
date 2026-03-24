@@ -22,7 +22,6 @@ import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
 import { generarReconciliacion, requiereReconciliacion } from '../../../../services/reconciliacionService';
-import ReconciliacionPanel from '../importar/ReconciliacionPanel';
 
 type MetodoEntrada = 'formulario' | 'pdf';
 
@@ -317,7 +316,6 @@ const VerificacionExtraccion: React.FC<{
   reconciliacionDisponible: boolean;
   onAbrirReconciliacion: () => void;
 }> = ({ resultado }) => {
-  const [showRawCasillas, setShowRawCasillas] = useState(false);
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
   const validacion = useMemo(
     () => validarDeclaracionExtraida(declaracion, casillasRaw),
