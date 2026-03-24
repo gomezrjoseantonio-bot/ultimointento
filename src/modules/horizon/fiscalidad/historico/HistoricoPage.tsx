@@ -39,51 +39,9 @@ const actionButtonStyle: React.CSSProperties = {
   color: 'var(--n-700)',
 };
 
-type MetodoEntrada = 'formulario' | 'pdf';
-
-const monoStyle: React.CSSProperties = {
-  fontFamily: 'IBM Plex Mono, monospace',
-};
-
-function estadoVisual(row: AnioHistoricoFiscal): { label: string; background: string; color: string } {
-  if (row.ejercicio === CURRENT_YEAR || row.estado === 'vivo') {
-    return { label: 'En curso', background: 'var(--s-pos-bg)', color: 'var(--s-pos)' };
-  }
-  if (row.estado === 'cerrado') {
-    return { label: 'Pendiente', background: 'var(--s-warn-bg)', color: 'var(--s-warn)' };
-  }
-  return { label: 'Finalizado', background: 'var(--n-100)', color: 'var(--n-500)' };
-}
-
-function fuenteVisual(row: AnioHistoricoFiscal): { label: string; icon?: React.ReactNode; dashed?: boolean } {
-  if (row.tienePDF) {
-    return { label: 'PDF AEAT', icon: <FileText size={14} /> };
-  }
-  if (row.fuente !== 'sin_datos') {
-    return { label: 'Manual', icon: <Edit3 size={14} /> };
-  }
-  return { label: 'Sin datos', dashed: true };
-}
-
-function agruparPagos(eventos: EventoFiscal[]): Array<{ titulo: string; total: number; pendientes: number; pagados: number }> {
-  const grupos = new Map<string, { titulo: string; total: number; pendientes: number; pagados: number }>();
-
-  eventos.forEach((evento) => {
-    const key = evento.modelo === 'IRPF_FRACCIONES' ? 'IRPF fraccionado' : evento.modelo === 'IRPF_ANUAL' ? 'IRPF anual' : evento.modelo;
-    const actual = grupos.get(key) ?? { titulo: key, total: 0, pendientes: 0, pagados: 0 };
-    actual.total += Math.abs(evento.importe);
-    actual[evento.pagado ? 'pagados' : 'pendientes'] += 1;
-    grupos.set(key, actual);
-  });
-
-  return Array.from(grupos.values());
-}
-
 const HistoricoPage: React.FC = () => {
   const navigate = useNavigate();
   const [historico, setHistorico] = useState<AnioHistoricoFiscal[]>([]);
-  const [eventos, setEventos] = useState<EventoFiscal[]>([]);
-  const [entidades, setEntidades] = useState<EntidadAtribucionRentas[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
