@@ -3,15 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import FiscalPageShell from '../components/FiscalPageShell';
-import { DeclaracionIRPF } from '../../../../services/irpfCalculationService';
-import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
 import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
 import {
-  calcularEstimacionEnCurso,
-  EstimacionEjercicioEnCurso,
   getNivelConfianza,
   getConfianzaLabel,
   getConfianzaStyles,
@@ -26,6 +22,8 @@ import {
   getRentabilidadColor,
   RentabilidadInmueble,
 } from '../../../../services/rentabilidadInmuebleService';
+import { useFiscalData } from '../../../../contexts/FiscalContext';
+import type { FuenteDeclaracion } from '../../../../services/declaracionResolverService';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -57,16 +55,10 @@ function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: 
 const FiscalDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
-  const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
-  const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
-  const [loading, setLoading] = useState(true);
+  const { ejercicio, setEjercicio, declaracion, fuente, estimacion, loading: contextLoading } = useFiscalData();
   const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
-
-  // T23: Estimación en tiempo real
-  const [estimacion, setEstimacion] = useState<EstimacionEjercicioEnCurso | null>(null);
 
   // T24: Alertas proactivas
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
@@ -75,54 +67,55 @@ const FiscalDashboard: React.FC = () => {
   // T25: Rentabilidad por inmueble
   const [rentabilidades, setRentabilidades] = useState<RentabilidadInmueble[]>([]);
 
+  // Additional data loading: secondary data that depends on the declaration
+  const [secondaryLoading, setSecondaryLoading] = useState(false);
+  const loading = contextLoading || secondaryLoading;
+
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4], [currentYear]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      // T23: Use estimación en curso for current year
-      const [declResult, historico, estimacionResult] = await Promise.all([
-        obtenerDeclaracionParaEjercicio(ejercicio),
-        cargarHistoricoFiscal(years),
-        calcularEstimacionEnCurso(ejercicio),
-      ]);
-
-      setDeclaracion(declResult.declaracion);
-      setFuente(declResult.fuente);
-      setEstimacion(estimacionResult);
-      await generarEventosFiscales(ejercicio, declResult.declaracion);
-
-      // T24: Generate alerts
-      try {
-        const alertas = await generarAlertasFiscales(declResult.declaracion, ejercicio);
-        setAlertasFiscales(alertas);
-      } catch {
-        setAlertasFiscales([]);
-      }
-
-      // T25: Calculate rentabilidad
-      try {
-        const rents = await calcularRentabilidadTodosInmuebles(declResult.declaracion);
-        setRentabilidades(rents);
-      } catch {
-        setRentabilidades([]);
-      }
-
-      const hasAnyData = historico.some(
-        (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
-      );
-      setIsColdStart(!hasAnyData);
-    } catch (e) {
-      console.error('Error loading fiscal dashboard:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [ejercicio, years]);
-
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    if (!declaracion || contextLoading) return;
+    let cancelled = false;
+    setSecondaryLoading(true);
+
+    (async () => {
+      try {
+        const historico = await cargarHistoricoFiscal(years);
+        if (cancelled) return;
+        await generarEventosFiscales(ejercicio, declaracion);
+
+        // T24: Generate alerts
+        try {
+          const alertas = await generarAlertasFiscales(declaracion, ejercicio);
+          if (!cancelled) setAlertasFiscales(alertas);
+        } catch {
+          if (!cancelled) setAlertasFiscales([]);
+        }
+
+        // T25: Calculate rentabilidad
+        try {
+          const rents = await calcularRentabilidadTodosInmuebles(declaracion);
+          if (!cancelled) setRentabilidades(rents);
+        } catch {
+          if (!cancelled) setRentabilidades([]);
+        }
+
+        if (!cancelled) {
+          const hasAnyData = historico.some(
+            (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
+          );
+          setIsColdStart(!hasAnyData);
+        }
+      } catch (e) {
+        console.error('Error loading fiscal dashboard secondary data:', e);
+      } finally {
+        if (!cancelled) setSecondaryLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [declaracion, contextLoading, ejercicio, years]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,7 +219,25 @@ const FiscalDashboard: React.FC = () => {
         </header>
 
         {loading || !declaracion ? (
-          <div style={{ color: 'var(--n-500)' }}>Cargando estado fiscal…</div>
+          <section style={{ display: 'grid', gap: 16 }}>
+            {/* Skeleton: hero resultado */}
+            <div>
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 20, width: 160, marginBottom: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 48, width: 240, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 14, width: 320, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            </div>
+            {/* Skeleton: 3 cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ background: 'var(--n-50)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 22px' }}>
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 12, width: 80, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 22, width: 120, marginBottom: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 12, width: 100, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                </div>
+              ))}
+            </div>
+            <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+          </section>
         ) : (
           <>
             {/* ── T23: Hero resultado con badge de confianza ── */}

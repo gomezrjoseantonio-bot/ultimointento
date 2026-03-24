@@ -10,6 +10,7 @@ import { PropertyDisposalTaxResult } from './propertyDisposalTaxService';
 import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
 import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
 import type { CompensacionAhorroResult } from './compensacionAhorroService';
+import { getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -1051,6 +1052,12 @@ export async function calcularDeclaracionIRPF(
   ejercicio: number,
   opciones?: { usarConciliacion?: boolean }
 ): Promise<DeclaracionIRPF> {
+  // Check cache first (skip cache for conciliation mode as it has side effects)
+  if (!opciones?.usarConciliacion) {
+    const cached = await getCachedDeclaracion(ejercicio);
+    if (cached) return cached;
+  }
+
   // PASO 1: Recopilar datos
   const [trabajo, autonomo, { inmuebles, imputaciones }, {
     rcm,
@@ -1285,7 +1292,7 @@ export async function calcularDeclaracionIRPF(
   const totalBase = round2(baseImponibleGeneral + baseImponibleAhorro);
   const tipoEfectivo = totalBase > 0 ? round2((cuotaLiquida / totalBase) * 100) : 0;
 
-  return {
+  const declaracionResult: DeclaracionIRPF = {
     ejercicio,
     baseGeneral,
     baseAhorro,
@@ -1299,4 +1306,11 @@ export async function calcularDeclaracionIRPF(
     compensacionAhorro,
     ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),
   };
+
+  // Store in cache for fast subsequent access
+  if (!opciones?.usarConciliacion) {
+    void setCachedDeclaracion(ejercicio, declaracionResult);
+  }
+
+  return declaracionResult;
 }
