@@ -1,19 +1,39 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import FiscalPageShell from '../components/FiscalPageShell';
-import { type TaxState } from '../../../../store/taxSlice';
 import { DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
 import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
+import {
+  calcularEstimacionEnCurso,
+  EstimacionEjercicioEnCurso,
+  getNivelConfianza,
+  getConfianzaLabel,
+  getConfianzaStyles,
+} from '../../../../services/estimacionFiscalEnCursoService';
+import {
+  generarAlertasFiscales,
+  descartarAlerta,
+  AlertaFiscal,
+} from '../../../../services/alertasFiscalesService';
+import {
+  calcularRentabilidadTodosInmuebles,
+  getRentabilidadColor,
+  RentabilidadInmueble,
+} from '../../../../services/rentabilidadInmuebleService';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const fmtMoney = (n: number) => `${fmtAmount(Math.abs(n))} €`;
+
+const fmtMoneyShort = (n: number) =>
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n)) + ' €';
 
 const sectionTitleStyle: React.CSSProperties = {
   margin: 0,
@@ -28,7 +48,7 @@ const chipStyle = (active: boolean): React.CSSProperties => ({
   fontSize: 12,
   lineHeight: 1,
   background: active ? 'rgba(188, 128, 36, 0.12)' : 'var(--n-100)',
-  color: active ? '#A36400' : 'var(--n-500)',
+  color: active ? 'var(--s-warn)' : 'var(--n-500)',
   border: '1px solid transparent',
 });
 
@@ -47,12 +67,21 @@ const FiscalDashboard: React.FC = () => {
   const location = useLocation();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
-  const [taxState] = useState<(Omit<TaxState, 'ejercicio'> & { ejercicio: number }) | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
   const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
+
+  // T23: Estimación en tiempo real
+  const [estimacion, setEstimacion] = useState<EstimacionEjercicioEnCurso | null>(null);
+
+  // T24: Alertas proactivas
+  const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
+  const [showAllAlertas, setShowAllAlertas] = useState(false);
+
+  // T25: Rentabilidad por inmueble
+  const [rentabilidades, setRentabilidades] = useState<RentabilidadInmueble[]>([]);
 
   const currentYear = new Date().getFullYear();
   const years = useMemo(() => [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4], [currentYear]);
@@ -60,13 +89,33 @@ const FiscalDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [declResult, historico] = await Promise.all([
+      // T23: Use estimación en curso for current year
+      const [declResult, historico, estimacionResult] = await Promise.all([
         obtenerDeclaracionParaEjercicio(ejercicio),
         cargarHistoricoFiscal(years),
+        calcularEstimacionEnCurso(ejercicio),
       ]);
+
       setDeclaracion(declResult.declaracion);
       setFuente(declResult.fuente);
+      setEstimacion(estimacionResult);
       await generarEventosFiscales(ejercicio, declResult.declaracion);
+
+      // T24: Generate alerts
+      try {
+        const alertas = await generarAlertasFiscales(declResult.declaracion, ejercicio);
+        setAlertasFiscales(alertas);
+      } catch {
+        setAlertasFiscales([]);
+      }
+
+      // T25: Calculate rentabilidad
+      try {
+        const rents = await calcularRentabilidadTodosInmuebles(declResult.declaracion);
+        setRentabilidades(rents);
+      } catch {
+        setRentabilidades([]);
+      }
 
       const hasAnyData = historico.some(
         (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
@@ -108,60 +157,47 @@ const FiscalDashboard: React.FC = () => {
 
   const badge = getEstadoBadge(ejercicio, fuente);
 
+  // T23: Confidence badge
+  const confianza = useMemo(() => {
+    if (!estimacion) return null;
+    const nivel = getNivelConfianza(estimacion.cobertura.mesesConDatos);
+    return {
+      nivel,
+      label: getConfianzaLabel(nivel),
+      styles: getConfianzaStyles(nivel),
+    };
+  }, [estimacion]);
+
   const ingresosResumen = useMemo(() => {
-    if (!taxState) return 0;
-    const trabajo = taxState.workIncome.dinerarias + taxState.workIncome.especieValoracion;
-    const inmuebles = taxState.inmuebles.reduce((sum, item) => sum + item.ingresosIntegros, 0);
-    const actividad = taxState.actividades.reduce((sum, item) => sum + item.ingresosExplotacion, 0);
+    if (!declaracion) return 0;
+    const trabajo = declaracion.baseGeneral.rendimientosTrabajo?.salarioBrutoAnual ?? 0;
+    const inmuebles = declaracion.baseGeneral.rendimientosInmuebles.reduce((sum, i) => sum + i.ingresosIntegros, 0);
+    const actividad = declaracion.baseGeneral.rendimientosAutonomo?.ingresos ?? 0;
     return trabajo + inmuebles + actividad;
-  }, [taxState]);
+  }, [declaracion]);
 
   const gastosResumen = useMemo(() => {
-    if (!taxState) return 0;
-    return taxState.inmuebles.reduce((sum, item) => (
-      sum
-      + item.interesesFinanciacion
-      + item.gastosReparacion
-      + item.gastosComunidad
-      + item.serviciosPersonales
-      + item.suministros
-      + item.seguro
-      + item.tributosRecargos
-      + item.amortizacionInmueble
-      + item.amortizacionMuebles
-    ), 0) + taxState.actividades.reduce((sum, item) => (
-      sum + item.seguridadSocialTitular + item.serviciosProfesionales + item.otrosGastos
-    ), 0);
-  }, [taxState]);
+    if (!declaracion) return 0;
+    return declaracion.baseGeneral.rendimientosInmuebles.reduce((sum, i) =>
+      sum + i.gastosDeducibles + i.amortizacion, 0);
+  }, [declaracion]);
 
-  const arrastresResumen = useMemo(() => taxState?.inmuebles.reduce((sum, item) => sum + item.arrastres.reduce((acc, arrastre) => acc + arrastre.aplicado, 0), 0) ?? 0, [taxState]);
+  // T24: Dismiss alert handler
+  const handleDismissAlerta = useCallback((alertaId: string) => {
+    descartarAlerta(ejercicio, alertaId);
+    setAlertasFiscales(prev => prev.filter(a => a.id !== alertaId));
+  }, [ejercicio]);
 
-  const alertas = useMemo(() => {
-    if (!taxState) return [] as string[];
-    const mensajes: string[] = [];
+  // T24: Visible alerts (max 5)
+  const alertasVisibles = useMemo(() => {
+    if (showAllAlertas) return alertasFiscales;
+    return alertasFiscales.slice(0, 5);
+  }, [alertasFiscales, showAllAlertas]);
 
-    taxState.saldosNegativosBIA
-      .filter((item) => item.pendienteFuturo > 0 && item.ejercicio + 4 <= taxState.ejercicio)
-      .forEach((item) => {
-        mensajes.push(`Las pérdidas patrimoniales de ${item.ejercicio} (${fmtMoney(item.pendienteFuturo)}) caducan este ejercicio. Si no se compensan con ganancias, se pierden.`);
-      });
-
-    taxState.inmuebles
-      .filter((item) => item.tipo !== 'disposicion')
-      .forEach((item) => {
-        const faltantes = [
-          ['comunidad', item.gastosComunidad],
-          ['IBI', item.tributosRecargos],
-          ['seguro', item.seguro],
-        ].filter(([, value]) => Number(value) === 0).map(([label]) => label);
-
-        if (faltantes.length > 0) {
-          mensajes.push(`${item.direccion || item.refCatastral} no tiene ${faltantes.join(', ')} dados de alta. Si los pagas, regístralos para que ATLAS los deduzca.`);
-        }
-      });
-
-    return mensajes.slice(0, 3);
-  }, [taxState]);
+  // T25: Get rentabilidad for a specific inmueble
+  const getRentabilidad = useCallback((inmuebleId: number) => {
+    return rentabilidades.find(r => r.inmuebleId === inmuebleId);
+  }, [rentabilidades]);
 
   if (showColdStart) {
     return (
@@ -181,14 +217,14 @@ const FiscalDashboard: React.FC = () => {
 
   return (
     <PageLayout title="Estado fiscal" subtitle="Histórico + situación del año en curso">
-      <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
+      <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui, IBM Plex Sans, sans-serif)' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
-            <p style={{ margin: '6px 0 0', color: 'var(--n-600)', fontSize: 14 }}>Estimación con los datos disponibles</p>
+            <p style={{ margin: '6px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Estimación con los datos disponibles</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <select value={ejercicio} onChange={(event) => setEjercicio(Number(event.target.value))} style={{ border: '1px solid var(--n-300)', borderRadius: 12, padding: '10px 12px', color: 'var(--n-700)', background: 'var(--white)' }}>
+            <select value={ejercicio} onChange={(event) => setEjercicio(Number(event.target.value))} style={{ border: '1px solid var(--n-300)', borderRadius: 'var(--r-md, 12px)', padding: '10px 12px', color: 'var(--n-700)', background: 'var(--white)' }}>
               {years.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
             <span style={{ borderRadius: 999, padding: '10px 18px', background: badge.background, color: badge.color, fontWeight: 500 }}>
@@ -197,23 +233,47 @@ const FiscalDashboard: React.FC = () => {
           </div>
         </header>
 
-        {loading || !declaracion || !taxState ? (
+        {loading || !declaracion ? (
           <div style={{ color: 'var(--n-500)' }}>Cargando estado fiscal…</div>
         ) : (
           <>
+            {/* ── T23: Hero resultado con badge de confianza ── */}
             <section style={{ display: 'grid', gap: 16 }}>
               <div>
-                <div style={{ color: 'var(--n-700)', fontSize: 16, marginBottom: 12 }}>Resultado estimado</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                  <span style={{ color: 'var(--n-700)', fontSize: 16 }}>Resultado estimado</span>
+                  {/* T23: Badge de confianza */}
+                  {confianza && (
+                    <span style={{
+                      padding: '3px 10px',
+                      borderRadius: 'var(--r-sm, 8px)',
+                      fontSize: 'var(--t-xs, 12px)',
+                      fontWeight: 500,
+                      background: confianza.styles.background,
+                      color: confianza.styles.color,
+                    }}>
+                      {confianza.label}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-                  <strong style={{ fontSize: 48, lineHeight: 1, color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 500 }}>
+                  {/* T23: Hero resultado — IBM Plex Mono, --t-2xl */}
+                  <strong style={{
+                    fontSize: 'var(--t-2xl, 48px)',
+                    lineHeight: 1,
+                    color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontWeight: 500,
+                  }}>
                     {fmtMoney(declaracion.resultado)}
                   </strong>
                   <span style={{ color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)', fontSize: 18 }}>
                     {declaracion.resultado > 0 ? 'a pagar' : 'a devolver'}
                   </span>
                 </div>
-                <p style={{ margin: '10px 0 0', color: 'var(--n-700)', fontSize: 14 }}>
-                  Cuota {fmtMoney(declaracion.liquidacion.cuotaLiquida)} · Retenciones {fmtMoney(declaracion.retenciones.total)} = {fmtMoney(declaracion.resultado)} · Tipo medio {declaracion.tipoEfectivo.toFixed(1)}%
+                {/* T23: Subtexto fórmula */}
+                <p style={{ margin: '10px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
+                  Cuota {fmtMoney(declaracion.liquidacion.cuotaLiquida)} − Retenciones {fmtMoney(declaracion.retenciones.total)} = {fmtMoney(declaracion.resultado)} · Tipo medio {declaracion.tipoEfectivo.toFixed(1)}%
                 </p>
               </div>
 
@@ -221,83 +281,188 @@ const FiscalDashboard: React.FC = () => {
                 {[
                   { label: 'Ingresos', value: ingresosResumen, helper: 'Trabajo + inmuebles + actividad' },
                   { label: 'Gastos deducibles', value: gastosResumen, helper: ingresosResumen > 0 ? `${Math.round((gastosResumen / ingresosResumen) * 100)}% de ingresos` : 'Sin ingresos' },
-                  { label: 'Arrastres aplicados', value: arrastresResumen, helper: arrastresResumen > 0 ? 'Aplicados en este ejercicio' : 'Sin arrastres aplicados' },
+                  { label: 'Retenciones', value: declaracion.retenciones.total, helper: declaracion.retenciones.trabajo > 0 ? 'Trabajo + M130 + capital' : 'Sin retenciones confirmadas' },
                 ].map((card) => (
-                  <div key={card.label} style={{ background: 'var(--n-50)', borderRadius: 16, padding: '18px 22px' }}>
-                    <div style={{ color: 'var(--n-500)', marginBottom: 8 }}>{card.label}</div>
+                  <div key={card.label} style={{ background: 'var(--n-50)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 22px' }}>
+                    <div style={{ color: 'var(--n-500)', marginBottom: 8, fontSize: 'var(--t-xs, 12px)' }}>{card.label}</div>
                     <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 22, color: 'var(--n-900)', marginBottom: 6 }}>{fmtMoney(card.value)}</div>
-                    <div style={{ color: 'var(--n-600)', fontSize: 14 }}>{card.helper}</div>
+                    <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>{card.helper}</div>
                   </div>
                 ))}
               </div>
             </section>
 
-            <section style={{ display: 'grid', gap: 16 }}>
-              <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Inmuebles</h2>
-              {taxState.inmuebles.map((inmueble) => {
-                const chips = [
-                  ['Comunidad', inmueble.gastosComunidad],
-                  ['IBI', inmueble.tributosRecargos],
-                  ['Seguro', inmueble.seguro],
-                  ['Amortización', inmueble.amortizacionInmueble],
-                  ['Intereses', inmueble.interesesFinanciacion],
-                  ['Reparaciones', inmueble.gastosReparacion],
-                  ['Suministros', inmueble.suministros],
-                ];
-
-                const arrastre = inmueble.arrastres.reduce((sum, item) => sum + item.aplicado, 0);
-                return (
-                  <article key={inmueble.id} style={{ border: '1px solid var(--n-200)', borderRadius: 18, padding: '18px 24px', background: 'var(--white)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-start' }}>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--n-900)' }}>{inmueble.direccion || inmueble.refCatastral}</h3>
-                        <p style={{ margin: '4px 0 0', color: 'var(--n-500)' }}>{inmueble.tipo} · {inmueble.diasArrendados} días arrendado</p>
+            {/* ── T24: Alertas proactivas ── */}
+            {alertasFiscales.length > 0 && (
+              <section style={{ display: 'grid', gap: 8 }}>
+                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Alertas</h2>
+                {alertasVisibles.map((alerta) => {
+                  const isWarning = alerta.prioridad === 'alta' || alerta.prioridad === 'media';
+                  return (
+                    <div
+                      key={alerta.id}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 'var(--r-md, 12px)',
+                        background: isWarning ? 'var(--s-warn-bg)' : 'var(--n-100)',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: isWarning ? 'var(--s-warn)' : 'var(--n-500)',
+                        flexShrink: 0,
+                        marginTop: 6,
+                      }} />
+                      <div style={{ flex: 1, fontSize: 'var(--t-xs, 12px)', lineHeight: 1.5, color: isWarning ? 'var(--s-warn)' : 'var(--n-700)' }}>
+                        <span>{alerta.descripcion}</span>
+                        {alerta.accion && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(alerta.accion!.ruta)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--blue)',
+                              fontSize: 'var(--t-xs, 12px)',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              marginLeft: 8,
+                              padding: 0,
+                            }}
+                          >
+                            {alerta.accion.label}
+                          </button>
+                        )}
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: 'var(--n-500)' }}>Rendimiento neto</div>
-                        <div style={{ fontFamily: 'IBM Plex Mono, monospace', color: inmueble.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 18, fontWeight: 500 }}>
-                          {fmtMoney(inmueble.rendimientoNeto)}
+                      <button
+                        type="button"
+                        onClick={() => handleDismissAlerta(alerta.id)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 4,
+                          color: isWarning ? 'var(--s-warn)' : 'var(--n-500)',
+                          flexShrink: 0,
+                          minWidth: 44,
+                          minHeight: 44,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        aria-label="Descartar alerta"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {alertasFiscales.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllAlertas(prev => !prev)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--blue)',
+                      fontSize: 'var(--t-xs, 12px)',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      padding: '8px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    {showAllAlertas ? 'Ver menos' : `Ver más (${alertasFiscales.length - 5})`}
+                    {showAllAlertas ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
+                )}
+              </section>
+            )}
+
+            {/* ── Inmuebles con T25: Rentabilidad ── */}
+            {declaracion.baseGeneral.rendimientosInmuebles.length > 0 && (
+              <section style={{ display: 'grid', gap: 16 }}>
+                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Inmuebles</h2>
+                {declaracion.baseGeneral.rendimientosInmuebles
+                  .filter(inm => inm.inmuebleId >= 0)
+                  .map((inmueble) => {
+                    const rent = getRentabilidad(inmueble.inmuebleId);
+                    return (
+                      <article key={inmueble.inmuebleId} style={{ border: '1px solid var(--n-200)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 24px', background: 'var(--white)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-start' }}>
+                          <div>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--n-900)' }}>{inmueble.alias}</h3>
+                            <p style={{ margin: '4px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
+                              {inmueble.esHabitual ? 'Habitual' : 'Alquiler'} · {inmueble.diasAlquilado} días arrendado
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Rendimiento neto</div>
+                            <div style={{ fontFamily: 'IBM Plex Mono, monospace', color: inmueble.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 18, fontWeight: 500 }}>
+                              {fmtMoney(inmueble.rendimientoNeto)}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20, marginTop: 18, paddingBottom: 14, borderBottom: '1px solid var(--n-200)' }}>
-                      <div>
-                        <div style={{ color: 'var(--n-500)' }}>Ingresos</div>
-                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.ingresosIntegros)}</div>
-                      </div>
-                      <div>
-                        <div style={{ color: 'var(--n-500)' }}>Gastos</div>
-                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(
-                          inmueble.interesesFinanciacion + inmueble.gastosReparacion + inmueble.gastosComunidad + inmueble.serviciosPersonales + inmueble.suministros + inmueble.seguro + inmueble.tributosRecargos + inmueble.amortizacionInmueble + inmueble.amortizacionMuebles,
-                        )}</div>
-                      </div>
-                      <div>
-                        <div style={{ color: 'var(--n-500)' }}>Arrastre</div>
-                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{arrastre === 0 ? '–' : fmtMoney(arrastre)}</div>
-                      </div>
-                    </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20, marginTop: 18, paddingBottom: 14, borderBottom: '1px solid var(--n-200)' }}>
+                          <div>
+                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Ingresos</div>
+                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.ingresosIntegros)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Gastos + amortización</div>
+                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.gastosDeducibles + inmueble.amortizacion)}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Reducción</div>
+                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
+                              {inmueble.reduccionHabitual > 0
+                                ? `${fmtMoney(inmueble.reduccionHabitual)} (${Math.round(inmueble.porcentajeReduccionHabitual * 100)}%)`
+                                : '–'}
+                            </div>
+                          </div>
+                        </div>
 
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-                      {chips.map(([label, value]) => (
-                        <span key={label} style={chipStyle(Number(value) > 0)}>
-                          {Number(value) > 0 ? label : `+ ${label}`}
-                        </span>
-                      ))}
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-
-            {alertas.length > 0 && (
-              <section style={{ display: 'grid', gap: 12 }}>
-                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Atención</h2>
-                {alertas.map((alerta) => (
-                  <div key={alerta} style={{ borderRadius: 14, background: '#FFF3DC', color: '#A36400', padding: '16px 20px', fontSize: 14, lineHeight: 1.5 }}>
-                    • {alerta}
-                  </div>
-                ))}
+                        {/* T25: Rentabilidad neta */}
+                        {rent && (
+                          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                            <div>
+                              <span style={{ fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}>Rentabilidad neta </span>
+                              {rent.rentabilidadPorcentaje !== null ? (
+                                <span style={{
+                                  fontFamily: 'IBM Plex Mono, monospace',
+                                  fontSize: 'var(--t-xs, 12px)',
+                                  fontWeight: 500,
+                                  color: getRentabilidadColor(rent.rentabilidadPorcentaje),
+                                }}>
+                                  {rent.rentabilidadPorcentaje.toFixed(1)}% sobre inversión
+                                </span>
+                              ) : (
+                                <span
+                                  style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}
+                                  title={rent.datosFaltantes.length > 0 ? `Faltan: ${rent.datosFaltantes.join(', ')}` : 'Sin datos de inversión'}
+                                >
+                                  —
+                                </span>
+                              )}
+                            </div>
+                            {rent.cashflowNeto !== 0 && (
+                              <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}>
+                                Cashflow: {fmtMoneyShort(rent.cashflowNeto)}/año
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
               </section>
             )}
           </>
