@@ -10,6 +10,8 @@ import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
 import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
 import type { CompensacionDetalle, PerdidaResumen } from '../../../../services/compensacionAhorroService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
+import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
+import ColdStartFiscal from '../estado/ColdStartFiscal';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -42,6 +44,8 @@ const FiscalDashboard: React.FC = () => {
   const [showComparativa, setShowComparativa] = useState(false);
   const [estimacionComparativa, setEstimacionComparativa] = useState<DeclaracionIRPF | null>(null);
   const [loadingComparativa, setLoadingComparativa] = useState(false);
+  const [isColdStart, setIsColdStart] = useState(false);
+  const [coldStartDismissed, setColdStartDismissed] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2];
@@ -49,12 +53,20 @@ const FiscalDashboard: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const { declaracion: decl, fuente: resolvedFuente } = await obtenerDeclaracionParaEjercicio(ejercicio);
-      setDeclaracion(decl);
-      setFuente(resolvedFuente);
+      const [declResult, historico] = await Promise.all([
+        obtenerDeclaracionParaEjercicio(ejercicio),
+        cargarHistoricoFiscal(years),
+      ]);
+      setDeclaracion(declResult.declaracion);
+      setFuente(declResult.fuente);
       setShowComparativa(false);
       setEstimacionComparativa(null);
-      await generarEventosFiscales(ejercicio, decl);
+      await generarEventosFiscales(ejercicio, declResult.declaracion);
+
+      const hasAnyData = historico.some(
+        (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
+      );
+      setIsColdStart(!hasAnyData);
     } catch (e) {
       console.error('Error loading fiscal dashboard:', e);
     } finally {
@@ -116,8 +128,16 @@ const FiscalDashboard: React.FC = () => {
     ? round2(estimacionComparativa.resultado - declaracion.resultado)
     : null;
 
+  if (!loading && isColdStart && !coldStartDismissed) {
+    return (
+      <PageLayout title="Estado fiscal" subtitle="Tu situación fiscal en ATLAS">
+        <ColdStartFiscal onDismiss={() => setColdStartDismissed(true)} />
+      </PageLayout>
+    );
+  }
+
   return (
-    <PageLayout title="Resumen fiscal" subtitle="Histórico + situación del año en curso">
+    <PageLayout title="Estado fiscal" subtitle="Histórico + situación del año en curso">
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <div>

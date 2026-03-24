@@ -7,16 +7,9 @@ import RealEstateBlock from './blocks/RealEstateBlock';
 import BusinessBlock from './blocks/BusinessBlock';
 import SavingsGPBlock from './blocks/SavingsGPBlock';
 import ResultBlock from './blocks/ResultBlock';
-import SimuladorBlock from './blocks/SimuladorBlock';
-import DataTraceabilityBlock from './blocks/DataTraceabilityBlock';
 import { hydrateFromCalculation, setEjercicio, type TaxState } from '../../store/taxSlice';
 import { calcularDeclaracionIRPF } from '../../services/irpfCalculationService';
 import { mapDeclaracionToTaxState } from './taxHydrationMapper';
-import {
-  buildFiscalExerciseContext,
-  getDeclarationBootstrapCopy,
-  summarizeFiscalLifecycle,
-} from '../../modules/horizon/fiscalidad/modeloFundacional';
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
@@ -124,7 +117,7 @@ function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omi
   };
 }
 
-const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado', 'Simulador', 'Trazabilidad'] as const;
+const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado'] as const;
 type Tab = typeof TABS[number];
 
 function EstadoBanner({
@@ -206,13 +199,6 @@ const TaxView: React.FC = () => {
 
   const currentYear = new Date().getFullYear();
   const isCurrentYear = tax.ejercicio === currentYear;
-  const lifecycle = summarizeFiscalLifecycle(
-    buildFiscalExerciseContext(tax.ejercicio, currentYear, fiscalExercise),
-  );
-  const bootstrapCopy = getDeclarationBootstrapCopy(
-    tax.inmuebles.length + tax.actividades.length,
-    lifecycle.truthPriority === 'aeat',
-  );
 
   const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
 
@@ -294,74 +280,9 @@ const TaxView: React.FC = () => {
       {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
       {loadingError && <div className="tv-sync-note tv-sync-note--error">{loadingError}</div>}
 
-      <section className="tv-foundation-card" aria-label="modelo fundacional fiscal">
-        <div className="tv-foundation-card__header">
-          <div>
-            <p className="tv-foundation-card__eyebrow">Modelo fundacional ATLAS</p>
-            <h3 className="tv-foundation-card__title">Ejercicio {tax.ejercicio}: {lifecycle.estadoLabel}</h3>
-          </div>
-          <div className="tv-foundation-pill-group">
-            {lifecycle.visibleColumns.map((column) => (
-              <span key={column} className="tv-foundation-pill">
-                {column}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <p className="tv-foundation-card__copy">{lifecycle.subtitle}</p>
-
-        <div className="tv-foundation-grid">
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Motor</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.recalculaMotor ? 'Recalcula' : 'Congelado'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.calculadoCongelado ? 'La foto ATLAS queda congelada tras importar AEAT.' : 'ATLAS usa la foto viva o cerrada del ejercicio.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Verdad principal</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.truthPriority === 'aeat' ? 'AEAT' : lifecycle.truthPriority === 'atlas' ? 'ATLAS' : 'Manual'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.truthPriority === 'aeat'
-                ? 'La declaración presentada manda sobre cualquier recálculo posterior.'
-                : lifecycle.truthPriority === 'atlas'
-                  ? 'La mejor referencia disponible sigue siendo el cálculo interno de ATLAS.'
-                  : 'Sin cálculo persistido: arranca vacío y admite captura mínima.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Arrastres N+1</span>
-            <strong className="tv-foundation-stat__value">
-              {lifecycle.carryForwardSource === 'casillas_aeat'
-                ? 'Casillas AEAT'
-                : lifecycle.carryForwardSource === 'calculo_atlas'
-                  ? 'Cálculo ATLAS'
-                  : 'Entrada manual'}
-            </strong>
-            <span className="tv-foundation-stat__meta">
-              {lifecycle.carryForwardSource === 'casillas_aeat'
-                ? 'Se heredan desde las casillas declaradas del ejercicio origen.'
-                : lifecycle.carryForwardSource === 'calculo_atlas'
-                  ? 'Se estiman con la foto calculada hasta que llegue la AEAT.'
-                  : 'Fallback para clientes sin histórico importado.'}
-            </span>
-          </div>
-          <div className="tv-foundation-stat">
-            <span className="tv-foundation-stat__label">Bootstrap</span>
-            <strong className="tv-foundation-stat__value">Primera declaración</strong>
-            <span className="tv-foundation-stat__meta">{bootstrapCopy}</span>
-          </div>
-        </div>
-      </section>
-
       {shouldShowUploadButton && (
         <div className="tv-actions-row">
-          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historico')}>
+          <button type="button" className="tv-upload-button" onClick={() => navigate('/fiscalidad/historial')}>
             <Upload size={16} />
             Subir declaración AEAT
           </button>
@@ -401,8 +322,6 @@ const TaxView: React.FC = () => {
         {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
         {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
         {tab === 'Resultado' && <ResultBlock />}
-        {tab === 'Simulador' && <SimuladorBlock readOnly={!esEditable} />}
-        {tab === 'Trazabilidad' && <DataTraceabilityBlock />}
       </div>
     </div>
   );

@@ -78,6 +78,7 @@ const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacio
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
+const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
 const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
 const EntidadesAtribucionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/entidades/EntidadesAtribucionPage'));
@@ -411,9 +412,9 @@ function App() {
             </Route>
             
             <Route path="fiscalidad">
-              <Route index element={<Navigate to="/fiscalidad/resumen" replace />} />
-              {/* New fiscal module tabs */}
-              <Route path="resumen" element={
+              <Route index element={<Navigate to="/fiscalidad/estado" replace />} />
+              {/* New 3-tab fiscal module: Estado, Declaración, Historial */}
+              <Route path="estado" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FiscalDashboard />
                 </React.Suspense>
@@ -423,24 +424,18 @@ function App() {
                   <DeclaracionPage />
                 </React.Suspense>
               } />
-              <Route path="simulador" element={<Navigate to="/fiscalidad/resumen" replace />} />
-              <Route path="pagos" element={
+              <Route path="historial" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PagosPage />
-                </React.Suspense>
-              } />
-              <Route path="dashboard" element={<Navigate to="/fiscalidad/resumen" replace />} />
-              <Route path="historico" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <HistoricoPage />
-                </React.Suspense>
-              } />
-              <Route path="entidades" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <EntidadesAtribucionPage />
+                  <HistorialPage />
                 </React.Suspense>
               } />
               {/* Legacy routes — redirect to new equivalents */}
+              <Route path="resumen" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="simulador" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="pagos" element={<Navigate to="/fiscalidad/historial" replace />} />
+              <Route path="historico" element={<Navigate to="/fiscalidad/historial" replace />} />
+              <Route path="entidades" element={<Navigate to="/fiscalidad/historial" replace />} />
               <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
               <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />
             </Route>
