@@ -76,6 +76,7 @@ const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/In
 // Financing Module - New standalone financing module
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
+const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
 const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
 const PreDeclaracionView = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/PreDeclaracionView'));
@@ -409,7 +410,11 @@ function App() {
               } />
             </Route>
             
-            <Route path="fiscalidad">
+            <Route path="fiscalidad" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <FiscalLayout />
+              </React.Suspense>
+            }>
               <Route index element={<Navigate to="/fiscalidad/estado" replace />} />
               {/* New 3-tab fiscal module: Estado, Declaración, Historial */}
               <Route path="estado" element={

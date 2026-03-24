@@ -69,53 +69,28 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
   const db = await initDB();
   const mesesConDatos = new Set<number>();
 
-  // Rentas cobradas
-  try {
-    const rentas = await db.getAll('rentaMensual');
-    for (const r of rentas) {
-      const fecha = (r as any).fecha ?? (r as any).mes;
-      if (fecha) {
-        const d = new Date(fecha);
-        if (d.getFullYear() === ejercicio) mesesConDatos.add(d.getMonth());
-      }
-    }
-  } catch { /* ignore */ }
+  // Load all data sources in parallel
+  const [rentas, payments, movements, gastos] = await Promise.all([
+    db.getAll('rentaMensual').catch(() => [] as any[]),
+    db.getAll('rentPayments').catch(() => [] as any[]),
+    db.getAll('movements').catch(() => [] as any[]),
+    db.getAll('gastos').catch(() => [] as any[]),
+  ]);
 
-  // Rent payments
-  try {
-    const payments = await db.getAll('rentPayments');
-    for (const p of payments) {
-      const fecha = (p as any).fecha ?? (p as any).date;
+  const extractMonths = (records: any[], fechaKeys: string[]) => {
+    for (const r of records) {
+      const fecha = fechaKeys.reduce<string | undefined>((acc, k) => acc ?? (r as any)[k], undefined);
       if (fecha) {
         const d = new Date(fecha);
         if (d.getFullYear() === ejercicio) mesesConDatos.add(d.getMonth());
       }
     }
-  } catch { /* ignore */ }
+  };
 
-  // Movimientos bancarios
-  try {
-    const movements = await db.getAll('movements');
-    for (const m of movements) {
-      const fecha = (m as any).fecha ?? (m as any).date;
-      if (fecha) {
-        const d = new Date(fecha);
-        if (d.getFullYear() === ejercicio) mesesConDatos.add(d.getMonth());
-      }
-    }
-  } catch { /* ignore */ }
-
-  // Gastos registrados
-  try {
-    const gastos = await db.getAll('gastos');
-    for (const g of gastos) {
-      const fecha = (g as any).fecha ?? (g as any).date;
-      if (fecha) {
-        const d = new Date(fecha);
-        if (d.getFullYear() === ejercicio) mesesConDatos.add(d.getMonth());
-      }
-    }
-  } catch { /* ignore */ }
+  extractMonths(rentas, ['fecha', 'mes']);
+  extractMonths(payments, ['fecha', 'date']);
+  extractMonths(movements, ['fecha', 'date']);
+  extractMonths(gastos, ['fecha', 'date']);
 
   return mesesConDatos.size;
 }
@@ -158,28 +133,38 @@ async function calcularIngresosProyectadosInmuebles(ejercicio: number): Promise<
 
 async function calcularInmueblesConGastos(ejercicio: number): Promise<number> {
   const db = await initDB();
-  const properties = await db.getAll('properties');
+  const [properties, allSummaries] = await Promise.all([
+    db.getAll('properties'),
+    db.getAllFromIndex('fiscalSummaries', 'exerciseYear', ejercicio).catch(() => [] as any[]),
+  ]);
+
   const activas = properties.filter((p: any) => p.state === 'activo');
+
+  // Index summaries by propertyId for O(1) lookup
+  const summaryByProp = new Map<number, any>();
+  for (const s of allSummaries) {
+    const pid = (s as any).propertyId;
+    if (pid != null && !summaryByProp.has(pid)) {
+      summaryByProp.set(pid, s);
+    }
+  }
 
   let count = 0;
   for (const prop of activas) {
-    try {
-      const summaries = await db.getAllFromIndex('fiscalSummaries', 'property-year', [prop.id!, ejercicio]);
-      const summary = summaries?.[0];
-      if (summary) {
-        const totalGastos = (
-          ((summary as any).box0105 ?? 0) +
-          ((summary as any).box0106 ?? 0) +
-          ((summary as any).box0109 ?? 0) +
-          ((summary as any).box0112 ?? 0) +
-          ((summary as any).box0113 ?? 0) +
-          ((summary as any).box0114 ?? 0) +
-          ((summary as any).box0115 ?? 0) +
-          ((summary as any).box0117 ?? 0)
-        );
-        if (totalGastos > 0) count++;
-      }
-    } catch { /* ignore */ }
+    const summary = summaryByProp.get(prop.id!);
+    if (summary) {
+      const totalGastos = (
+        ((summary as any).box0105 ?? 0) +
+        ((summary as any).box0106 ?? 0) +
+        ((summary as any).box0109 ?? 0) +
+        ((summary as any).box0112 ?? 0) +
+        ((summary as any).box0113 ?? 0) +
+        ((summary as any).box0114 ?? 0) +
+        ((summary as any).box0115 ?? 0) +
+        ((summary as any).box0117 ?? 0)
+      );
+      if (totalGastos > 0) count++;
+    }
   }
 
   return count;
