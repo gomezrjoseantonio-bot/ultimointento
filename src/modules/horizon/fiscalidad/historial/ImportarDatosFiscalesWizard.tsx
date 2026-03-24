@@ -6,7 +6,6 @@ import {
   Landmark,
   ArrowRightLeft,
   Users,
-  Edit3,
   X,
   Check,
   Info,
@@ -114,7 +113,6 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
   const [datos, setDatos] = useState<DatosFiscalesExtraidos | null>(null);
   const [cambios, setCambios] = useState<CambioDetectado[]>([]);
   const [inmuebleComps, setInmuebleComps] = useState<InmuebleComparacion[]>([]);
-  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +215,6 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
 
   const handleImportar = useCallback(async () => {
     if (!datos) return;
-    setImporting(true);
     setStep(4);
 
     try {
@@ -236,8 +233,6 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported }) =
     } catch (err) {
       toast.error('Error al importar datos fiscales');
       setStep(3);
-    } finally {
-      setImporting(false);
     }
   }, [datos, onImported, onClose]);
 

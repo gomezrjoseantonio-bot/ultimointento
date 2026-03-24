@@ -4,7 +4,6 @@ import {
   Edit3,
   Eye,
   FileText,
-  Image,
   MoreVertical,
   Plus,
   Trash2,
