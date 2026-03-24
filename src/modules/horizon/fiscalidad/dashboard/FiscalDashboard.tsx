@@ -4,6 +4,11 @@ import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/i
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
+import FiscalPageShell from '../components/FiscalPageShell';
+import PageLayout from '../../../../components/common/PageLayout';
+import type { TaxState } from '../../../../store/taxSlice';
+import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
+import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -51,6 +56,7 @@ const FiscalDashboard: React.FC = () => {
   const [loadingComparativa, setLoadingComparativa] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
+  const [showColdStart, setShowColdStart] = useState(false);
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
@@ -163,34 +169,6 @@ const FiscalDashboard: React.FC = () => {
     return mensajes.slice(0, 3);
   }, [taxState]);
 
-  if (showColdStart) {
-    return (
-      <FiscalPageShell>
-        <ColdStartFiscal
-          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
-          onImportarDatosFiscales={() => navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } })}
-          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
-          onExplorar={() => setShowColdStart(false)}
-        />
-      </FiscalPageShell>
-    );
-  }
-
-  if (showColdStart) {
-    return (
-      <PageLayout title="Estado fiscal" subtitle="Qué tienes cargado y cómo avanzar con tu próxima declaración">
-        <ColdStartFiscal
-          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
-          onImportarDatosFiscales={() => {
-            navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } });
-          }}
-          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
-          onExplorar={() => setShowColdStart(false)}
-        />
-      </PageLayout>
-    );
-  }
-
   if (!loading && isColdStart && !coldStartDismissed) {
     return (
       <PageLayout title="Estado fiscal" subtitle="Tu situación fiscal en ATLAS">
@@ -215,7 +193,7 @@ const FiscalDashboard: React.FC = () => {
               {badge.label}
             </span>
           </div>
-        </div>
+        </header>
 
         {loading || !declaracion || !taxState ? (
           <div style={{ color: 'var(--n-500)' }}>Cargando estado fiscal…</div>
@@ -323,7 +301,7 @@ const FiscalDashboard: React.FC = () => {
           </>
         )}
       </div>
-    </FiscalPageShell>
+    </PageLayout>
   );
 };
 
