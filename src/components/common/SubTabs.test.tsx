@@ -5,16 +5,17 @@ import SubTabs from './SubTabs';
 import { ThemeProvider } from '../../contexts/ThemeContext';
 
 describe('SubTabs', () => {
-  test('muestra las tabs Histórico y Entidades dentro de Fiscalidad', () => {
+  test('muestra solo Estado, Declaración e Historial dentro de Fiscalidad', () => {
     render(
       <ThemeProvider>
-        <MemoryRouter initialEntries={['/fiscalidad/historico']}>
+        <MemoryRouter initialEntries={['/fiscalidad/historial']}>
           <SubTabs />
         </MemoryRouter>
       </ThemeProvider>
     );
 
-    expect(screen.getByRole('button', { name: 'Histórico' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Entidades' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Estado' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Declaración' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Historial' })).toBeTruthy();
   });
 });

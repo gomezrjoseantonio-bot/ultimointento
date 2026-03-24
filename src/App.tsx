@@ -81,7 +81,6 @@ const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalid
 const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
 const PagosPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/pagos/PagosPage'));
 const HistoricoPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historico/HistoricoPage'));
-const EntidadesAtribucionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/entidades/EntidadesAtribucionPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
@@ -502,7 +501,7 @@ function App() {
             {/* Personal section (within Horizon) */}
             <Route path="personal">
               <Route index element={<Navigate to="/personal/resumen" replace />} />
-              <Route path="resumen" element={
+              <Route path="estado" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
                 </React.Suspense>

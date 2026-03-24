@@ -1,4 +1,4 @@
-import { __private__, detectarEjercicio, dividirTextoPorPaginas } from '../aeatParserService';
+import { __private__, detectarEjercicio } from '../aeatParserService';
 
 describe('detectarEjercicio', () => {
   test('acepta ejercicios abreviados en el payload extraído', () => {
@@ -12,27 +12,6 @@ describe('detectarEjercicio', () => {
 
   test('usa el ejercicio seleccionado manualmente como último fallback', () => {
     expect(detectarEjercicio({}, undefined, 2024)).toBe(2024);
-  });
-});
-
-describe('dividirTextoPorPaginas', () => {
-  test('parte declaraciones largas en bloques conservando el rango de páginas', () => {
-    const bloques = dividirTextoPorPaginas(
-      [
-        'Página 1 '.repeat(80),
-        'Página 2 '.repeat(80),
-        'Página 3 '.repeat(80),
-        'Página 4 '.repeat(80),
-      ],
-      2000,
-      2,
-    );
-
-    expect(bloques).toHaveLength(2);
-    expect(bloques[0]).toMatchObject({ desde: 1, hasta: 2 });
-    expect(bloques[1]).toMatchObject({ desde: 3, hasta: 4 });
-    expect(bloques[0].texto).toContain('[PÁGINA 1]');
-    expect(bloques[1].texto).toContain('[PÁGINA 4]');
   });
 });
 

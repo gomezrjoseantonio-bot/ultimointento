@@ -1,49 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, CircleDollarSign, Download, FileText, HandCoins, Trash2 } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Download, Edit3, Eye, FileText, MoreHorizontal, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import PageLayout from '../../../../components/common/PageLayout';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useNavigate } from 'react-router-dom';
 import { downloadBlob, getDocumentBlob, initDB } from '../../../../services/db';
 import { AnioHistoricoFiscal, cargarHistoricoFiscal, eliminarDeclaracionImportada } from '../../../../services/fiscalHistoryService';
-import ImportarDeclaracionWizard from './ImportarDeclaracionWizard';
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+import FiscalPageShell from '../components/FiscalPageShell';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_HISTORIC_YEAR = 2020;
-const HISTORIC_YEARS = Array.from(
-  { length: Math.max(0, CURRENT_YEAR - MIN_HISTORIC_YEAR + 1) },
-  (_, index) => CURRENT_YEAR - index,
-);
+const HISTORIC_YEARS = Array.from({ length: Math.max(0, CURRENT_YEAR - MIN_HISTORIC_YEAR + 1) }, (_, index) => CURRENT_YEAR - index);
+
+const fmtMoney = (value: number) => `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(value))} €`;
+const fmtResult = (value: number) => `${value < 0 ? '-' : '+'}${fmtMoney(value)}`;
+
+const monoTextStyle: React.CSSProperties = { fontFamily: 'IBM Plex Mono, monospace' };
+
+function getEstadoBadge(row: AnioHistoricoFiscal): { label: string; background: string; color: string } {
+  if (row.ejercicio === CURRENT_YEAR || row.estado === 'vivo') return { label: 'En curso', background: 'var(--s-pos-bg)', color: 'var(--s-pos)' };
+  if (row.estado === 'cerrado') return { label: 'Pendiente', background: 'var(--s-warn-bg)', color: '#A36400' };
+  return { label: 'Finalizado', background: 'var(--n-100)', color: 'var(--n-700)' };
+}
+
+function getFuenteBadge(row: AnioHistoricoFiscal): { label: string; icon?: React.ReactNode; dashed?: boolean } {
+  if (row.tienePDF) return { label: 'PDF AEAT', icon: <FileText size={18} /> };
+  if (row.fuente !== 'sin_datos') return { label: 'Manual', icon: <Edit3 size={18} /> };
+  return { label: 'Sin datos', dashed: true };
+}
+
+const actionButtonStyle: React.CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: 18,
+  border: '1px solid var(--n-300)',
+  background: 'var(--white)',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'var(--n-700)',
+};
 
 const HistoricoPage: React.FC = () => {
+  const navigate = useNavigate();
   const [historico, setHistorico] = useState<AnioHistoricoFiscal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showImportWizard, setShowImportWizard] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const results = await cargarHistoricoFiscal(HISTORIC_YEARS);
-      setHistorico(results);
-    } catch (e) {
-      console.error('Error loading historico:', e);
+      setHistorico(await cargarHistoricoFiscal(HISTORIC_YEARS));
+    } catch (error) {
+      console.error('Error loading fiscal history:', error);
+      toast.error('No se pudo cargar el historial fiscal');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { void loadData(); }, [loadData]);
 
   const handleDownloadPDF = useCallback(async (ejercicio: number) => {
     try {
@@ -56,173 +70,110 @@ const HistoricoPage: React.FC = () => {
         toast.error('PDF no encontrado');
         return;
       }
-
       const blob = await getDocumentBlob(doc.id);
       if (!blob) {
         toast.error('PDF no encontrado');
         return;
       }
-
       downloadBlob(blob, doc.filename || `Declaracion_IRPF_${ejercicio}.pdf`);
     } catch (error) {
-      console.error('Error descargando PDF:', error);
-      toast.error('Error al descargar la declaración');
+      console.error('Error downloading fiscal pdf:', error);
+      toast.error('No se pudo descargar el PDF');
     }
   }, []);
 
-  const handleDeleteImport = useCallback(async (ejercicio: number) => {
-    const confirmado = window.confirm(
-      `¿Eliminar la declaración importada de ${ejercicio}?\n\nSe borrarán los datos fiscales y el PDF archivado. Esta acción no se puede deshacer.`,
-    );
-    if (!confirmado) return;
-
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) return;
     try {
-      await eliminarDeclaracionImportada(ejercicio);
-      toast.success(`Importación de ${ejercicio} eliminada`);
+      await eliminarDeclaracionImportada(deleteTarget);
+      setDeleteTarget(null);
       await loadData();
+      toast.success(`Importación ${deleteTarget} eliminada`);
     } catch (error) {
-      console.error('Error eliminando importación:', error);
-      toast.error('Error al eliminar la importación');
+      console.error('Error deleting fiscal import:', error);
+      toast.error('No se pudo eliminar la importación');
     }
-  }, [loadData]);
+  }, [deleteTarget, loadData]);
 
   return (
-    <PageLayout
-      title="Histórico IRPF"
-      subtitle="Evolución anual de cuotas, retenciones y resultado de la declaración"
-      primaryAction={{
-        label: '+ Importar declaración',
-        onClick: () => setShowImportWizard(true),
-      }}
-    >
-      {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
-          <div
-            className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent"
-            style={{ borderColor: 'var(--hz-primary)', borderTopColor: 'transparent' }}
-          />
+    <FiscalPageShell>
+      <div style={{ display: 'grid', gap: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Evolución anual</h1>
+          <button type="button" style={{ border: 'none', background: 'transparent', color: 'var(--n-700)' }}>
+            <MoreHorizontal size={24} />
+          </button>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Tabla histórico */}
-          <div className="bg-[var(--hz-card-bg)] border border-[color:var(--hz-neutral-300)] rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-6 text-xs font-semibold text-[var(--hz-neutral-700)] uppercase tracking-wide bg-[var(--hz-neutral-100)] px-4 py-3 border-b border-[color:var(--hz-neutral-300)]">
-              <span>Ejercicio</span>
-              <span>Cuota líquida</span>
-              <span>Retenciones</span>
+
+        {loading ? (
+          <div style={{ color: 'var(--n-500)' }}>Cargando historial…</div>
+        ) : (
+          <div style={{ borderTop: '1px solid var(--n-200)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 2.3fr 1fr 1fr 1fr 0.8fr 1.4fr', gap: 16, padding: '16px 24px', color: 'var(--n-500)', fontWeight: 600 }}>
+              <span>Año</span>
+              <span>Estado / Fuente</span>
+              <span>Cuota</span>
+              <span>Reten.</span>
               <span>Resultado</span>
-              <span>Tipo efectivo</span>
-              <span>Acciones</span>
+              <span>Tipo</span>
+              <span />
             </div>
-            {historico.map(row => (
-              <div key={row.ejercicio} className="grid grid-cols-6 text-sm px-4 py-3 border-b border-[color:var(--hz-neutral-100)] last:border-0 items-center">
-                <span className="font-semibold text-[var(--hz-neutral-900)] flex items-center gap-2">
-                  {row.ejercicio}
-                  {row.fuente !== 'sin_datos' && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide bg-[var(--hz-neutral-200)] text-[var(--hz-neutral-700)]">
-                      {row.fuente}
+            {historico.map((row) => {
+              const estado = getEstadoBadge(row);
+              const fuente = getFuenteBadge(row);
+              return (
+                <div key={row.ejercicio} style={{ display: 'grid', gridTemplateColumns: '0.8fr 2.3fr 1fr 1fr 1fr 0.8fr 1.4fr', gap: 16, padding: '20px 24px', borderTop: '1px solid var(--n-200)', alignItems: 'center' }}>
+                  <span style={{ fontSize: 26, fontWeight: 500, color: 'var(--n-900)' }}>{row.ejercicio}</span>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ borderRadius: 999, padding: '8px 16px', background: estado.background, color: estado.color, fontWeight: 600 }}>{estado.label}</span>
+                    <span style={{ borderRadius: 999, padding: '8px 16px', background: fuente.dashed ? 'transparent' : 'var(--n-50)', color: 'var(--n-700)', border: fuente.dashed ? '1px dashed var(--n-300)' : '1px solid transparent', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      {fuente.icon}
+                      {fuente.label}
                     </span>
-                  )}
-                  {row.tienePDF && (
-                    <span title="PDF archivado">
-                      <FileText className="w-3.5 h-3.5 text-blue-500" />
-                    </span>
-                  )}
-                </span>
-                <span>{fmt(row.cuotaLiquida)}</span>
-                <span style={{ color: 'var(--ok)' }}>{fmt(row.retenciones)}</span>
-                <span
-                  className="font-medium"
-                  style={{
-                    color: row.resultado > 0
-                      ? 'var(--error)'
-                      : row.resultado < 0
-                        ? 'var(--ok)'
-                        : 'var(--hz-neutral-500)'
-                  }}
-                >
-                  {row.resultado > 0 ? `A pagar: ${fmt(row.resultado)}` : row.resultado < 0 ? `A devolver: ${fmt(Math.abs(row.resultado))}` : '—'}
-                </span>
-                <span className="text-[var(--hz-neutral-700)]">{row.tipoEfectivo.toFixed(1)}%</span>
-                <span>
-                  {row.fuente === 'declarado' && row.origen === 'importado' && (
-                    <div className="flex items-center gap-2">
-                      {row.tienePDF && (
-                        <button
-                          onClick={() => handleDownloadPDF(row.ejercicio)}
-                          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-                          title="Descargar declaración"
-                        >
-                          <Download className="w-4 h-4 text-gray-500" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDeleteImport(row.ejercicio)}
-                        className="p-1.5 rounded hover:bg-red-50 transition-colors"
-                        title="Eliminar importación"
-                      >
-                        <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                  </div>
+                  <span style={{ ...monoTextStyle, fontSize: 20 }}>{row.cuotaLiquida === 0 ? '—' : fmtMoney(row.cuotaLiquida)}</span>
+                  <span style={{ ...monoTextStyle, fontSize: 20 }}>{row.retenciones === 0 ? '—' : fmtMoney(row.retenciones)}</span>
+                  <span style={{ ...monoTextStyle, fontSize: 20, color: row.resultado > 0 ? 'var(--s-neg)' : row.resultado < 0 ? 'var(--s-pos)' : 'var(--n-500)' }}>{row.resultado === 0 ? '—' : fmtResult(row.resultado)}</span>
+                  <span style={{ ...monoTextStyle, fontSize: 18 }}>{row.fuente === 'sin_datos' ? '—' : `${row.tipoEfectivo.toFixed(1)}%`}</span>
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                    {row.fuente !== 'sin_datos' && (
+                      <button type="button" onClick={() => navigate(`/fiscalidad/declaracion?ejercicio=${row.ejercicio}`)} style={actionButtonStyle} title="Ver declaración">
+                        <Eye size={20} />
                       </button>
-                    </div>
-                  )}
-                </span>
-              </div>
-            ))}
+                    )}
+                    {row.tienePDF && (
+                      <button type="button" onClick={() => handleDownloadPDF(row.ejercicio)} style={actionButtonStyle} title="Descargar PDF">
+                        <Download size={20} />
+                      </button>
+                    )}
+                    {(row.origen === 'importado' || row.origen === 'mixto') && (
+                      <button type="button" onClick={() => setDeleteTarget(row.ejercicio)} style={actionButtonStyle} title="Eliminar datos">
+                        <Trash2 size={20} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+        )}
+      </div>
 
-          {/* Evolución visual */}
-          <div className="bg-[var(--hz-card-bg)] border border-[color:var(--hz-neutral-300)] rounded-lg p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-[var(--hz-neutral-900)] mb-4">Evolución cuota líquida vs retenciones</h3>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[...historico].sort((a, b) => a.ejercicio - b.ejercicio)} margin={{ top: 8, right: 20, left: 20, bottom: 8 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(20, 44, 80, 0.12)" />
-                  <XAxis dataKey="ejercicio" tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }} axisLine={{ stroke: 'var(--hz-neutral-300)' }} tickLine={{ stroke: 'var(--hz-neutral-300)' }} />
-                  <YAxis
-                    tickFormatter={(value: number) => `${Math.round(value / 1000)}k€`}
-                    tick={{ fill: 'var(--hz-neutral-700)', fontSize: 12 }}
-                    axisLine={{ stroke: 'var(--hz-neutral-300)' }}
-                    tickLine={{ stroke: 'var(--hz-neutral-300)' }}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => fmt(value)}
-                    labelFormatter={(label) => `Ejercicio ${label}`}
-                  />
-                  <Legend />
-                  <Bar dataKey="cuotaLiquida" name="Cuota líquida" radius={[6, 6, 0, 0]} fill="var(--error)" />
-                  <Bar dataKey="retenciones" name="Retenciones" radius={[6, 6, 0, 0]} fill="var(--ok)" />
-                </BarChart>
-              </ResponsiveContainer>
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(2,30,63,0.45)', display: 'grid', placeItems: 'center', zIndex: 1200 }}>
+          <div style={{ width: 'min(440px, 100%)', background: 'var(--white)', borderRadius: 18, padding: 24, display: 'grid', gap: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, color: 'var(--n-900)' }}>Eliminar importación</h3>
+              <p style={{ margin: '8px 0 0', color: 'var(--n-500)' }}>Se borrarán los datos y el PDF archivado de {deleteTarget}. Esta acción no se puede deshacer.</p>
             </div>
-
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-1.5 text-xs text-[var(--hz-neutral-700)]">
-                <CircleDollarSign className="w-3.5 h-3.5" style={{ color: 'var(--error)' }} />
-                Cuota líquida
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-[var(--hz-neutral-700)]">
-                <HandCoins className="w-3.5 h-3.5" style={{ color: 'var(--ok)' }} />
-                Retenciones
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button type="button" onClick={() => setDeleteTarget(null)} style={{ border: '1px solid var(--n-300)', borderRadius: 12, background: 'var(--white)', padding: '10px 14px' }}>Cancelar</button>
+              <button type="button" onClick={confirmDelete} style={{ border: 'none', borderRadius: 12, background: 'var(--s-neg)', color: 'var(--white)', padding: '10px 14px' }}>Eliminar</button>
             </div>
-          </div>
-
-          {/* Note about pending data */}
-          <div className="rounded-lg p-4 flex items-start gap-3" style={{ backgroundColor: 'rgba(4, 44, 94, 0.08)', border: '1px solid rgba(4, 44, 94, 0.25)' }}>
-            <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--atlas-blue)' }} />
-            <p className="text-sm" style={{ color: 'var(--atlas-blue)' }}>
-              Este histórico usa solo fuentes persistidas por ejercicio: año en curso = vivo, años cerrados = snapshot de cierre, años declarados/importados = snapshot declarado. No se recalculan ejercicios pasados automáticamente.
-            </p>
           </div>
         </div>
       )}
-      {showImportWizard && (
-        <ImportarDeclaracionWizard
-          onClose={() => setShowImportWizard(false)}
-          onImported={loadData}
-        />
-      )}
-    </PageLayout>
+    </FiscalPageShell>
   );
 };
 

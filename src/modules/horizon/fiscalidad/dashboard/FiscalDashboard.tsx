@@ -1,44 +1,49 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { LayoutDashboard } from 'lucide-react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js';
-import PageLayout from '../../../../components/common/PageLayout';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from '../../../../services/irpfCalculationService';
-import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
-import FiscalKpiCard from '../../../../components/fiscal/ui/FiscalKpiCard';
-import FiscalChip from '../../../../components/fiscal/ui/FiscalChip';
-import FiscalCoverageBar from '../../../../components/fiscal/ui/FiscalCoverageBar';
-import type { CompensacionDetalle, PerdidaResumen } from '../../../../services/compensacionAhorroService';
 import { FuenteDeclaracion, obtenerDeclaracionParaEjercicio } from '../../../../services/declaracionResolverService';
 import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
 import ColdStartFiscal from '../estado/ColdStartFiscal';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
+const fmtAmount = (n: number) =>
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
-const fmt = (n: number) => new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
+const fmtMoney = (n: number) => `${fmtAmount(Math.abs(n))} €`;
 
-const cardStyle: React.CSSProperties = {
-  background: 'var(--n-50)',
-  border: '1.5px solid var(--n-200)',
-  borderRadius: 'var(--r-lg)',
-  padding: 'var(--s5)',
+const sectionTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 16,
+  fontWeight: 600,
+  color: 'var(--n-900)',
 };
 
-const badgeStyleByFuente: Record<FuenteDeclaracion, React.CSSProperties> = {
-  declarado: { background: '#dcfce7', color: '#15803d' },
-  importado: { background: '#dbeafe', color: '#1d4ed8' },
-  vivo: { background: '#fef3c7', color: '#b45309' },
-};
+const chipStyle = (active: boolean): React.CSSProperties => ({
+  borderRadius: 999,
+  padding: '6px 12px',
+  fontSize: 12,
+  lineHeight: 1,
+  background: active ? 'rgba(188, 128, 36, 0.12)' : 'var(--n-100)',
+  color: active ? '#A36400' : 'var(--n-500)',
+  border: '1px solid transparent',
+});
 
-const badgeLabelByFuente: Record<FuenteDeclaracion, string> = {
-  declarado: 'Declarado (importado)',
-  importado: 'Importado parcial',
-  vivo: 'Estimación en tiempo real',
-};
+function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: string; background: string; color: string } {
+  const currentYear = new Date().getFullYear();
+  if (ejercicio >= currentYear) {
+    return { label: `${ejercicio} · en curso`, background: 'var(--s-pos-bg)', color: 'var(--s-pos)' };
+  }
+  if (fuente === 'declarado') {
+    return { label: `${ejercicio} · finalizado`, background: 'var(--n-100)', color: 'var(--n-700)' };
+  }
+  return { label: `${ejercicio} · pendiente`, background: 'var(--s-warn-bg)', color: 'var(--s-warn)' };
+}
 
 const FiscalDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
+  const [taxState, setTaxState] = useState<(Omit<TaxState, 'ejercicio'> & { ejercicio: number }) | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
   const [loading, setLoading] = useState(true);
   const [showComparativa, setShowComparativa] = useState(false);
@@ -48,7 +53,7 @@ const FiscalDashboard: React.FC = () => {
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
 
   const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear - 1, currentYear - 2];
+  const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4];
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -75,58 +80,116 @@ const FiscalDashboard: React.FC = () => {
   }, [ejercicio]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   useEffect(() => {
-    if (!showComparativa || fuente !== 'declarado') {
-      return;
-    }
-
     let cancelled = false;
-    setLoadingComparativa(true);
-
-    calcularDeclaracionIRPF(ejercicio)
-      .then((estimacion) => {
-        if (!cancelled) {
-          setEstimacionComparativa(estimacion);
-        }
+    getAllEjercicios()
+      .then((ejercicios) => {
+        if (cancelled) return;
+        const tieneDatos = ejercicios.some((item) => {
+          const resumen = item.declaracionAeat?.basesYCuotas ?? item.calculoAtlas?.basesYCuotas;
+          return Boolean(
+            item.declaracionAeat
+            || item.declaracionAeatPdfRef
+            || (resumen && ((resumen.cuotaLiquida ?? 0) !== 0 || (resumen.retencionesTotal ?? 0) !== 0 || (resumen.resultadoDeclaracion ?? 0) !== 0))
+          );
+        });
+        const dismissColdStart = Boolean((location.state as { dismissColdStart?: boolean } | null)?.dismissColdStart);
+        setShowColdStart(!tieneDatos && !dismissColdStart);
       })
-      .catch((error) => {
-        console.error('Error loading live estimate comparison:', error);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingComparativa(false);
-        }
-      });
+      .catch((error) => console.error('Error comprobando cold start fiscal:', error));
 
     return () => {
       cancelled = true;
     };
-  }, [showComparativa, fuente, ejercicio]);
+  }, [location.state]);
 
-  const totalIngresosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.ingresosIntegros, 0) ?? 0;
-  const totalGastosInmuebles = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + i.gastosDeducibles + i.amortizacion, 0) ?? 0;
-  const totalArrastres = declaracion?.baseGeneral.rendimientosInmuebles.reduce((s, i) => s + (i.arrastresAplicados ?? 0), 0) ?? 0;
+  const badge = getEstadoBadge(ejercicio, fuente);
 
-  const coverageReal = declaracion ? (fuente === 'declarado' ? 1 : declaracion.retenciones.total > 0 ? 0.75 : 0) : 0;
-  const coverageRet = declaracion ? Math.min(1, declaracion.retenciones.total / Math.max(1, declaracion.liquidacion.cuotaIntegra || 1)) : 0;
-  const coverageGastos = declaracion ? Math.min(1, totalGastosInmuebles / Math.max(1, totalIngresosInmuebles || 1)) : 0;
+  const ingresosResumen = useMemo(() => {
+    if (!taxState) return 0;
+    const trabajo = taxState.workIncome.dinerarias + taxState.workIncome.especieValoracion;
+    const inmuebles = taxState.inmuebles.reduce((sum, item) => sum + item.ingresosIntegros, 0);
+    const actividad = taxState.actividades.reduce((sum, item) => sum + item.ingresosExplotacion, 0);
+    return trabajo + inmuebles + actividad;
+  }, [taxState]);
 
-  const monthly = useMemo(() => {
-    const ingresosBase = totalIngresosInmuebles > 0 ? totalIngresosInmuebles / 12 : 0;
-    const gastosBase = totalGastosInmuebles > 0 ? totalGastosInmuebles / 12 : 0;
-    return {
-      labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-      ingresos: Array.from({ length: 6 }, (_, i) => ingresosBase * (1 + i * 0.02)),
-      gastos: Array.from({ length: 6 }, (_, i) => gastosBase * (1 + i * 0.01)),
-    };
-  }, [totalIngresosInmuebles, totalGastosInmuebles]);
+  const gastosResumen = useMemo(() => {
+    if (!taxState) return 0;
+    return taxState.inmuebles.reduce((sum, item) => (
+      sum
+      + item.interesesFinanciacion
+      + item.gastosReparacion
+      + item.gastosComunidad
+      + item.serviciosPersonales
+      + item.suministros
+      + item.seguro
+      + item.tributosRecargos
+      + item.amortizacionInmueble
+      + item.amortizacionMuebles
+    ), 0) + taxState.actividades.reduce((sum, item) => (
+      sum + item.seguridadSocialTitular + item.serviciosProfesionales + item.otrosGastos
+    ), 0);
+  }, [taxState]);
 
-  const comparativaResultado = declaracion && estimacionComparativa
-    ? round2(estimacionComparativa.resultado - declaracion.resultado)
-    : null;
+  const arrastresResumen = useMemo(() => taxState?.inmuebles.reduce((sum, item) => sum + item.arrastres.reduce((acc, arrastre) => acc + arrastre.aplicado, 0), 0) ?? 0, [taxState]);
+
+  const alertas = useMemo(() => {
+    if (!taxState) return [] as string[];
+    const mensajes: string[] = [];
+
+    taxState.saldosNegativosBIA
+      .filter((item) => item.pendienteFuturo > 0 && item.ejercicio + 4 <= taxState.ejercicio)
+      .forEach((item) => {
+        mensajes.push(`Las pérdidas patrimoniales de ${item.ejercicio} (${fmtMoney(item.pendienteFuturo)}) caducan este ejercicio. Si no se compensan con ganancias, se pierden.`);
+      });
+
+    taxState.inmuebles
+      .filter((item) => item.tipo !== 'disposicion')
+      .forEach((item) => {
+        const faltantes = [
+          ['comunidad', item.gastosComunidad],
+          ['IBI', item.tributosRecargos],
+          ['seguro', item.seguro],
+        ].filter(([, value]) => Number(value) === 0).map(([label]) => label);
+
+        if (faltantes.length > 0) {
+          mensajes.push(`${item.direccion || item.refCatastral} no tiene ${faltantes.join(', ')} dados de alta. Si los pagas, regístralos para que ATLAS los deduzca.`);
+        }
+      });
+
+    return mensajes.slice(0, 3);
+  }, [taxState]);
+
+  if (showColdStart) {
+    return (
+      <FiscalPageShell>
+        <ColdStartFiscal
+          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
+          onImportarDatosFiscales={() => navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } })}
+          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
+          onExplorar={() => setShowColdStart(false)}
+        />
+      </FiscalPageShell>
+    );
+  }
+
+  if (showColdStart) {
+    return (
+      <PageLayout title="Estado fiscal" subtitle="Qué tienes cargado y cómo avanzar con tu próxima declaración">
+        <ColdStartFiscal
+          onImportarDeclaracion={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'pdf' } })}
+          onImportarDatosFiscales={() => {
+            navigate('/fiscalidad/historial', { state: { openFiscalDataWizard: true } });
+          }}
+          onRellenarManualmente={() => navigate('/fiscalidad/historial', { state: { openImportWizard: true, defaultMethod: 'formulario' } })}
+          onExplorar={() => setShowColdStart(false)}
+        />
+      </PageLayout>
+    );
+  }
 
   if (!loading && isColdStart && !coldStartDismissed) {
     return (
@@ -141,323 +204,127 @@ const FiscalDashboard: React.FC = () => {
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui)' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-              <LayoutDashboard size={20} color="var(--blue)" />
-              <h1 style={{ fontSize: 'var(--t-xl)', fontWeight: 600, color: 'var(--n-900)' }}>Dashboard fiscal</h1>
-              {!loading && declaracion && (
-                <span
-                  style={{
-                    ...badgeStyleByFuente[fuente],
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    fontSize: '10px',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {badgeLabelByFuente[fuente]}
-                </span>
-              )}
-            </div>
-            <p style={{ fontSize: 'var(--t-base)', color: 'var(--n-500)' }}>Visión consolidada por ejercicio</p>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
+            <p style={{ margin: '6px 0 0', color: 'var(--n-600)', fontSize: 14 }}>Estimación con los datos disponibles</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s2)' }}>
-            <select
-              value={ejercicio}
-              onChange={e => setEjercicio(Number(e.target.value))}
-              style={{
-                padding: '6px 10px', border: '1.5px solid var(--n-300)', borderRadius: 'var(--r-md)', fontFamily: 'var(--font-ui)',
-                fontSize: 'var(--t-base)', color: 'var(--n-900)', transition: 'all 150ms ease',
-              }}
-            >
-              {years.map(y => <option key={y} value={y}>{y}</option>)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <select value={ejercicio} onChange={(event) => setEjercicio(Number(event.target.value))} style={{ border: '1px solid var(--n-300)', borderRadius: 12, padding: '10px 12px', color: 'var(--n-700)', background: 'var(--white)' }}>
+              {years.map((year) => <option key={year} value={year}>{year}</option>)}
             </select>
-            <button style={{ padding: 'var(--s2) var(--s3)', borderRadius: 'var(--r-md)', background: 'var(--blue)', color: 'var(--white)', transition: 'all 150ms ease' }}>
-              Exportar declaración
-            </button>
+            <span style={{ borderRadius: 999, padding: '10px 18px', background: badge.background, color: badge.color, fontWeight: 500 }}>
+              {badge.label}
+            </span>
           </div>
-        </header>
+        </div>
 
-        {!loading && declaracion && (
+        {loading || !declaracion || !taxState ? (
+          <div style={{ color: 'var(--n-500)' }}>Cargando estado fiscal…</div>
+        ) : (
           <>
-            {fuente === 'declarado' && (
-              <section style={{ ...cardStyle, display: 'grid', gap: 'var(--s3)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s3)', flexWrap: 'wrap' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 600 }}>Declaración importada como snapshot declarado</h3>
-                    <p style={{ margin: '6px 0 0', color: 'var(--n-600)', fontSize: 'var(--t-sm)' }}>
-                      Este ejercicio usa los datos reales presentados ante AEAT en lugar de recalcularse en vivo.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowComparativa((current) => !current)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: 'var(--r-md)',
-                      border: '1px solid var(--n-300)',
-                      background: 'white',
-                      color: 'var(--blue)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {showComparativa ? 'Ocultar comparativa ATLAS' : 'Comparar con estimación ATLAS'}
-                  </button>
+            <section style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <div style={{ color: 'var(--n-700)', fontSize: 16, marginBottom: 12 }}>Resultado estimado</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 48, lineHeight: 1, color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)', fontFamily: 'IBM Plex Mono, monospace', fontWeight: 500 }}>
+                    {fmtMoney(declaracion.resultado)}
+                  </strong>
+                  <span style={{ color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)', fontSize: 18 }}>
+                    {declaracion.resultado > 0 ? 'a pagar' : 'a devolver'}
+                  </span>
                 </div>
+                <p style={{ margin: '10px 0 0', color: 'var(--n-700)', fontSize: 14 }}>
+                  Cuota {fmtMoney(declaracion.liquidacion.cuotaLiquida)} · Retenciones {fmtMoney(declaracion.retenciones.total)} = {fmtMoney(declaracion.resultado)} · Tipo medio {declaracion.tipoEfectivo.toFixed(1)}%
+                </p>
+              </div>
 
-                {showComparativa && (
-                  <div style={{ padding: 'var(--s3)', background: 'var(--n-100)', borderRadius: 'var(--r-md)' }}>
-                    {loadingComparativa && <p style={{ margin: 0, color: 'var(--n-600)' }}>Calculando estimación ATLAS…</p>}
-                    {!loadingComparativa && estimacionComparativa && comparativaResultado !== null && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s3)' }}>
-                        <div>
-                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>Declarado</div>
-                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: 'var(--n-900)' }}>{fmt(declaracion.resultado)}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>ATLAS estimado</div>
-                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: 'var(--n-900)' }}>{fmt(estimacionComparativa.resultado)}</div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)', textTransform: 'uppercase' }}>Desviación</div>
-                          <div style={{ fontSize: 'var(--t-lg)', fontWeight: 700, color: comparativaResultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)' }}>
-                            {fmt(comparativaResultado)}
-                          </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
+                {[
+                  { label: 'Ingresos', value: ingresosResumen, helper: 'Trabajo + inmuebles + actividad' },
+                  { label: 'Gastos deducibles', value: gastosResumen, helper: ingresosResumen > 0 ? `${Math.round((gastosResumen / ingresosResumen) * 100)}% de ingresos` : 'Sin ingresos' },
+                  { label: 'Arrastres aplicados', value: arrastresResumen, helper: arrastresResumen > 0 ? 'Aplicados en este ejercicio' : 'Sin arrastres aplicados' },
+                ].map((card) => (
+                  <div key={card.label} style={{ background: 'var(--n-50)', borderRadius: 16, padding: '18px 22px' }}>
+                    <div style={{ color: 'var(--n-500)', marginBottom: 8 }}>{card.label}</div>
+                    <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 22, color: 'var(--n-900)', marginBottom: 6 }}>{fmtMoney(card.value)}</div>
+                    <div style={{ color: 'var(--n-600)', fontSize: 14 }}>{card.helper}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section style={{ display: 'grid', gap: 16 }}>
+              <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Inmuebles</h2>
+              {taxState.inmuebles.map((inmueble) => {
+                const chips = [
+                  ['Comunidad', inmueble.gastosComunidad],
+                  ['IBI', inmueble.tributosRecargos],
+                  ['Seguro', inmueble.seguro],
+                  ['Amortización', inmueble.amortizacionInmueble],
+                  ['Intereses', inmueble.interesesFinanciacion],
+                  ['Reparaciones', inmueble.gastosReparacion],
+                  ['Suministros', inmueble.suministros],
+                ];
+
+                const arrastre = inmueble.arrastres.reduce((sum, item) => sum + item.aplicado, 0);
+                return (
+                  <article key={inmueble.id} style={{ border: '1px solid var(--n-200)', borderRadius: 18, padding: '18px 24px', background: 'var(--white)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-start' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--n-900)' }}>{inmueble.direccion || inmueble.refCatastral}</h3>
+                        <p style={{ margin: '4px 0 0', color: 'var(--n-500)' }}>{inmueble.tipo} · {inmueble.diasArrendados} días arrendado</p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: 'var(--n-500)' }}>Rendimiento neto</div>
+                        <div style={{ fontFamily: 'IBM Plex Mono, monospace', color: inmueble.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 18, fontWeight: 500 }}>
+                          {fmtMoney(inmueble.rendimientoNeto)}
                         </div>
                       </div>
-                    )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20, marginTop: 18, paddingBottom: 14, borderBottom: '1px solid var(--n-200)' }}>
+                      <div>
+                        <div style={{ color: 'var(--n-500)' }}>Ingresos</div>
+                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.ingresosIntegros)}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--n-500)' }}>Gastos</div>
+                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(
+                          inmueble.interesesFinanciacion + inmueble.gastosReparacion + inmueble.gastosComunidad + inmueble.serviciosPersonales + inmueble.suministros + inmueble.seguro + inmueble.tributosRecargos + inmueble.amortizacionInmueble + inmueble.amortizacionMuebles,
+                        )}</div>
+                      </div>
+                      <div>
+                        <div style={{ color: 'var(--n-500)' }}>Arrastre</div>
+                        <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{arrastre === 0 ? '–' : fmtMoney(arrastre)}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+                      {chips.map(([label, value]) => (
+                        <span key={label} style={chipStyle(Number(value) > 0)}>
+                          {Number(value) > 0 ? label : `+ ${label}`}
+                        </span>
+                      ))}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+
+            {alertas.length > 0 && (
+              <section style={{ display: 'grid', gap: 12 }}>
+                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Atención</h2>
+                {alertas.map((alerta) => (
+                  <div key={alerta} style={{ borderRadius: 14, background: '#FFF3DC', color: '#A36400', padding: '16px 20px', fontSize: 14, lineHeight: 1.5 }}>
+                    • {alerta}
                   </div>
-                )}
+                ))}
               </section>
             )}
-
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--s3)' }}>
-              <FiscalKpiCard label="Ingresos íntegros" value={fmt(totalIngresosInmuebles)} variant="default" />
-              <FiscalKpiCard label="Gastos deducibles" value={fmt(totalGastosInmuebles)} variant="neutral" />
-              <FiscalKpiCard label="Arrastres aplicados" value={fmt(totalArrastres)} variant="positive" />
-              <FiscalKpiCard label={fuente === 'declarado' ? 'Cuota declarada' : 'Cuota estimada'} value={fmt(declaracion.liquidacion.cuotaLiquida)} variant="negative" />
-            </section>
-
-            <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--s4)' }}>
-              <article style={cardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
-                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Cobertura de datos</h3>
-                  <FiscalChip label={`${Math.round(coverageReal * 100)}% cobertura`} variant="pos" />
-                </div>
-                <div style={{ display: 'grid', gap: 'var(--s3)' }}>
-                  <FiscalCoverageBar label="Datos reales" value={coverageReal} colorVar="--blue" />
-                  <FiscalCoverageBar label="Retenciones" value={coverageRet} colorVar="--c2" />
-                  <FiscalCoverageBar label="Gastos" value={coverageGastos} colorVar="--s-warn" />
-                </div>
-              </article>
-
-              <article style={cardStyle}>
-                <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500, marginBottom: 'var(--s3)' }}>Ingresos vs gastos mensuales</h3>
-                <div style={{ display: 'flex', gap: 'var(--s3)', marginBottom: 'var(--s2)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', background: 'var(--c1)', borderRadius: 'var(--r-sm)' }} />Ingresos</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s1)', fontSize: 'var(--t-xs)', color: 'var(--n-700)' }}><span style={{ width: '10px', height: '10px', background: 'var(--c5)', borderRadius: 'var(--r-sm)' }} />Gastos</span>
-                </div>
-                <Bar
-                  data={{
-                    labels: monthly.labels,
-                    datasets: [
-                      { label: 'Ingresos', data: monthly.ingresos, backgroundColor: 'var(--c1)' },
-                      { label: 'Gastos', data: monthly.gastos, backgroundColor: 'var(--c5)' },
-                    ],
-                  }}
-                  options={{ responsive: true, plugins: { legend: { display: false } } }}
-                />
-              </article>
-            </section>
-
-            {declaracion.compensacionAhorro && (
-              <article style={cardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)', gap: 'var(--s3)', flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Ganancias y pérdidas patrimoniales — Base del ahorro</h3>
-                  <FiscalChip
-                    label={fmt(declaracion.compensacionAhorro.saldoNetoTrasCompensar)}
-                    variant={declaracion.compensacionAhorro.saldoNetoTrasCompensar > 0 ? 'pos' : 'neu'}
-                  />
-                </div>
-
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      {['Fuente', 'Ganancias', 'Pérdidas', 'Saldo'].map(h => (
-                        <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        label: 'Venta de inmuebles',
-                        plusvalias: declaracion.compensacionAhorro.fuentes.inmuebles.plusvalias,
-                        minusvalias: declaracion.compensacionAhorro.fuentes.inmuebles.minusvalias,
-                      },
-                      {
-                        label: 'Inversiones y crypto',
-                        plusvalias: declaracion.compensacionAhorro.fuentes.inversiones.plusvalias,
-                        minusvalias: declaracion.compensacionAhorro.fuentes.inversiones.minusvalias,
-                      },
-                    ].map((row) => {
-                      const saldo = row.plusvalias - row.minusvalias;
-                      return (
-                        <tr key={row.label} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
-                          <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)', fontWeight: 500 }}>{row.label}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)', color: row.plusvalias > 0 ? 'var(--s-pos)' : 'var(--n-400)' }}>{row.plusvalias > 0 ? fmt(row.plusvalias) : '—'}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)', color: row.minusvalias > 0 ? 'var(--s-neg)' : 'var(--n-400)' }}>{row.minusvalias > 0 ? fmt(-row.minusvalias) : '—'}</td>
-                          <td style={{ fontFamily: 'var(--font-mono)', color: saldo >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{fmt(saldo)}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr>
-                      <td style={{ paddingTop: 'var(--s2)', fontWeight: 600, color: 'var(--n-900)' }}>Saldo neto del ejercicio</td>
-                      <td colSpan={2} />
-                      <td style={{ paddingTop: 'var(--s2)', fontFamily: 'var(--font-mono)', fontWeight: 600, color: declaracion.compensacionAhorro.saldoNetoEjercicio >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>{fmt(declaracion.compensacionAhorro.saldoNetoEjercicio)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                {declaracion.compensacionAhorro.compensacionAplicada.length > 0 && (
-                  <div style={{ marginTop: 'var(--s4)' }}>
-                    <h4 style={{ fontSize: 'var(--t-sm)', color: 'var(--n-900)', fontWeight: 600, marginBottom: 'var(--s2)' }}>Compensación con pérdidas pendientes</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          {['Ejercicio origen', 'Importe aplicado', 'Pendiente restante', 'Caduca'].map(h => (
-                            <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {declaracion.compensacionAhorro.compensacionAplicada.map((item: CompensacionDetalle) => (
-                          <tr key={item.ejercicioOrigen} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
-                            <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)' }}>{item.ejercicioOrigen}</td>
-                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--s-pos)' }}>{fmt(-item.importeAplicado)}</td>
-                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-700)' }}>{fmt(item.importeRestanteTras)}</td>
-                            <td style={{ color: 'var(--n-700)' }}>{item.ejercicioOrigen + 4}</td>
-                          </tr>
-                        ))}
-                        <tr>
-                          <td style={{ paddingTop: 'var(--s2)', fontWeight: 600, color: 'var(--n-900)' }}>Total compensado</td>
-                          <td style={{ paddingTop: 'var(--s2)', fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--s-pos)' }}>{fmt(-declaracion.compensacionAhorro.totalCompensado)}</td>
-                          <td colSpan={2} />
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                <div style={{ marginTop: 'var(--s4)', padding: 'var(--s3)', background: 'var(--n-100)', borderRadius: 'var(--r-md)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s3)', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--n-900)' }}>G/P netas que tributan en base del ahorro</span>
-                    <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: declaracion.compensacionAhorro.saldoNetoTrasCompensar > 0 ? 'var(--s-pos)' : 'var(--n-500)' }}>
-                      {fmt(declaracion.compensacionAhorro.saldoNetoTrasCompensar)}
-                    </span>
-                  </div>
-                  {declaracion.compensacionAhorro.compensacionConCapitalMobiliario > 0 && (
-                    <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-600)' }}>
-                      Compensado contra capital mobiliario: {fmt(declaracion.compensacionAhorro.compensacionConCapitalMobiliario)}
-                      {' · '}Límite 25%: {fmt(declaracion.compensacionAhorro.limiteCapitalMobiliario)}
-                    </div>
-                  )}
-                  {declaracion.compensacionAhorro.totalCompensado > 0 && (
-                    <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-600)' }}>
-                      Ahorro fiscal estimado al 19%: {fmt(declaracion.compensacionAhorro.totalCompensado * 0.19)}
-                    </div>
-                  )}
-                </div>
-
-                {declaracion.compensacionAhorro.perdidasCaducadas.length > 0 && (
-                  <div style={{ marginTop: 'var(--s3)', padding: 'var(--s3)', background: 'var(--s-warn-bg)', borderRadius: 'var(--r-md)', color: 'var(--s-warn)', fontSize: 'var(--t-xs)' }}>
-                    ⚠️ {declaracion.compensacionAhorro.perdidasCaducadas.length} pérdida(s) han caducado en este ejercicio.
-                  </div>
-                )}
-
-                {declaracion.compensacionAhorro.perdidasPendientesDespues.length > 0 && (
-                  <div style={{ marginTop: 'var(--s2)', fontSize: 'var(--t-xs)', color: 'var(--n-500)' }}>
-                    Pérdidas pendientes futuras: {declaracion.compensacionAhorro.perdidasPendientesDespues
-                      .map((item: PerdidaResumen) => `${item.ejercicioOrigen}: ${fmt(item.importePendiente)} (caduca ${item.ejercicioCaducidad})`)
-                      .join(' · ')}
-                  </div>
-                )}
-              </article>
-            )}
-
-            {declaracion.ventasInmuebles && declaracion.ventasInmuebles.length > 0 && (
-              <article style={cardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--s3)' }}>
-                  <h3 style={{ fontSize: 'var(--t-md)', color: 'var(--n-900)', fontWeight: 500 }}>Ganancias y pérdidas patrimoniales — Inmuebles</h3>
-                  <FiscalChip
-                    label={fmt(declaracion.ventasInmuebles.reduce((sum, item) => sum + item.gananciaPatrimonial, 0))}
-                    variant={declaracion.ventasInmuebles.reduce((sum, item) => sum + item.gananciaPatrimonial, 0) >= 0 ? 'pos' : 'neg'}
-                  />
-                </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr>
-                      {['Inmueble', 'Fecha venta', 'V. transmisión', 'V. adquisición', 'Amortización', 'G/P patrimonial'].map(h => (
-                        <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {declaracion.ventasInmuebles.map((venta) => (
-                      <tr key={venta.inmuebleId} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
-                        <td style={{ padding: 'var(--s2) 0', color: 'var(--n-900)', fontWeight: 500 }}>{venta.alias}</td>
-                        <td style={{ color: 'var(--n-700)' }}>{new Date(`${venta.fechaVenta}T00:00:00`).toLocaleDateString('es-ES')}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)' }}>{fmt(venta.valorTransmision)}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)' }}>{fmt(venta.valorAdquisicion)}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-700)' }}>{fmt(venta.amortizacionAplicada)}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: venta.esPerdida ? 'var(--s-neg)' : 'var(--s-pos)' }}>{fmt(venta.gananciaPatrimonial)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </article>
-            )}
-
-            <article style={cardStyle}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    {['Inmueble', 'Ingresos', 'Gastos', 'Arrastre', 'Rendimiento neto', 'Estado'].map(h => (
-                      <th key={h} style={{ textAlign: 'left', fontSize: 'var(--t-xs)', fontWeight: 600, color: 'var(--n-500)', textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: 'var(--s2)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {declaracion.baseGeneral.rendimientosInmuebles.map(item => {
-                    const arrastre = item.arrastresAplicados ?? 0;
-                    const variant = item.rendimientoNeto > 0 ? 'pos' : item.rendimientoNeto < 0 ? 'neg' : 'neu';
-                    return (
-                      <tr key={item.inmuebleId} style={{ borderBottom: '0.5px solid var(--n-200)' }}>
-                        <td style={{ padding: 'var(--s2) 0' }}>
-                          <div style={{ fontSize: 'var(--t-base)', fontWeight: 500, color: 'var(--n-900)' }}>{item.alias}</div>
-                          <div style={{ fontSize: 'var(--t-xs)', color: 'var(--n-500)' }}>Dirección no disponible</div>
-                        </td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--s-pos)', fontSize: 'var(--t-base)' }}>{fmt(item.ingresosIntegros)}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--n-900)', fontSize: 'var(--t-base)' }}>{fmt(item.gastosDeducibles + item.amortizacion)}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: arrastre > 0 ? 'var(--s-pos)' : 'var(--n-300)', fontSize: 'var(--t-base)' }}>{arrastre > 0 ? fmt(arrastre) : '—'}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: item.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 'var(--t-base)' }}>{fmt(item.rendimientoNeto)}</td>
-                        <td><FiscalChip label={item.rendimientoNeto > 0 ? 'Positivo' : item.rendimientoNeto < 0 ? 'Negativo' : 'Neutro'} variant={variant} /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </article>
           </>
         )}
-        {loading && <p style={{ color: 'var(--n-500)', fontSize: 'var(--t-base)' }}>Cargando…</p>}
       </div>
-    </PageLayout>
+    </FiscalPageShell>
   );
 };
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
-}
 
 export default FiscalDashboard;

@@ -29,6 +29,7 @@ type MetodoEntrada = 'formulario' | 'pdf';
 interface ImportarDeclaracionWizardProps {
   onClose: () => void;
   onImported: () => void | Promise<void>;
+  defaultMethod?: MetodoEntrada;
 }
 
 const currentYear = new Date().getFullYear();
@@ -545,10 +546,10 @@ async function archivarPdfImportado(
   ejercicioImportacion: number,
   metodo: MetodoEntrada,
   totalCasillas: number,
-): Promise<void> {
-  if (!uploadedFile) return;
+): Promise<string | undefined> {
+  if (!uploadedFile) return undefined;
 
-  await saveDocumentWithBlob({
+  const documentId = await saveDocumentWithBlob({
     filename: `Declaracion_IRPF_${ejercicioImportacion}.pdf`,
     type: 'declaracion_irpf',
     content: uploadedFile,
@@ -566,12 +567,14 @@ async function archivarPdfImportado(
       status: 'Archivado',
     },
   });
+
+  return `document:${documentId}`;
 }
 
-const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported }) => {
+const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ onClose, onImported, defaultMethod = 'pdf' }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ejercicio, setEjercicio] = useState(currentYear - 1);
-  const [metodo, setMetodo] = useState<MetodoEntrada>('pdf');
+  const [metodo, setMetodo] = useState<MetodoEntrada>(defaultMethod);
   const [data, setData] = useState<ImportacionManualData>(() => crearImportacionManualVacia(currentYear - 1));
   const [casillasExtraidas, setCasillasExtraidas] = useState<CasillaExtraida[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -586,6 +589,10 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
   }, [ejercicio]);
+
+  useEffect(() => {
+    setMetodo(defaultMethod);
+  }, [defaultMethod]);
 
   const resumen = useMemo(() => ({
     cuotaIntegra: data.cuotaIntegraEstatal + data.cuotaIntegraAutonomica,
@@ -679,6 +686,13 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         ? resultadoExtraccion.meta.ejercicio
         : data.ejercicio;
 
+      const pdfRef = await archivarPdfImportado(
+        uploadedFile,
+        ejercicioImportacion,
+        metodo,
+        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
+      );
+
       if (resultadoExtraccion?.exito) {
         const declaracionSanitizada = sanitizarParaIndexedDB(resultadoExtraccion.declaracion);
 
@@ -687,7 +701,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           declaracionSanitizada,
           'pdf_importado',
           resultadoExtraccion.meta.fechaPresentacion,
-          undefined,
+          pdfRef,
         );
 
         if (resultadoAnalisis) {
@@ -702,11 +716,11 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
             });
 
             if (!resumenEjecucion.exito) {
-              toast.error('Declaración importada, pero hubo incidencias creando entidades en ATLAS.');
+              toast('Declaración importada, pero hubo incidencias creando entidades en ATLAS.', { icon: '⚠️' });
             }
           } catch (importError) {
             console.error('Error creando entidades detectadas durante la importación', importError);
-            toast.error('Declaración importada, pero hubo un error creando inmuebles o contratos.');
+            toast('Declaración importada, pero hubo un error creando inmuebles o contratos.', { icon: '⚠️' });
           }
         }
       } else {
@@ -758,13 +772,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           notasRevision: 'Importación manual desde wizard histórico IRPF',
         });
       }
-
-      await archivarPdfImportado(
-        uploadedFile,
-        ejercicioImportacion,
-        metodo,
-        resultadoExtraccion?.totalCasillas ?? casillasExtraidas.length,
-      );
 
       toast.success(`Declaración ${ejercicioImportacion} importada y archivada`);
       await onImported();
