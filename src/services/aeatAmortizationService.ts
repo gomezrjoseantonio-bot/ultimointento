@@ -68,10 +68,12 @@ export const getUnifiedFiscalData = (property: Property): UnifiedPropertyFiscalD
     fiscalData?.constructionCadastralValue,
   );
 
-  const constructionPercentage = pickPositiveNumber(
-    aeat?.constructionPercentage,
-    fiscalData?.constructionPercentage,
-  ) || getConstructionPercentageFromValues(cadastralValue, constructionCadastralValue);
+  // Always recalculate from actual values when both are available for accuracy;
+  // only use stored percentage as fallback when one of the values is missing.
+  const calculatedPct = getConstructionPercentageFromValues(cadastralValue, constructionCadastralValue);
+  const constructionPercentage = calculatedPct > 0
+    ? calculatedPct
+    : pickPositiveNumber(aeat?.constructionPercentage, fiscalData?.constructionPercentage);
 
   return {
     acquisitionType: aeat?.acquisitionType ?? 'onerosa',
@@ -169,11 +171,13 @@ export const calculateAEATAmortization = async (
 
   try {
     const mejorasNuevo = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', propertyId) as any[];
-    historicalImprovements = mejorasNuevo
+    // Only 'mejora' and 'ampliacion' increase amortization base; 'reparacion' goes to box 0106
+    const mejorasCapitalizables = mejorasNuevo.filter((m: any) => m?.tipo !== 'reparacion');
+    historicalImprovements = mejorasCapitalizables
       .filter((mejora: any) => toNumber(mejora?.ejercicio) <= exerciseYear)
       .reduce((total: number, mejora: any) => total + toNumber(mejora?.importe), 0);
 
-    allImprovements = mejorasNuevo
+    allImprovements = mejorasCapitalizables
       .map((mejora: any) => ({
         propertyId,
         year: toNumber(mejora?.ejercicio),

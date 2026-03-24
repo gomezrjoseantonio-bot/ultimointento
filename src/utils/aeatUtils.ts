@@ -134,6 +134,7 @@ export const getAEATBoxLabel = (box: AEATBox): string => {
 };
 
 // Calculate AEAT limits for a property in a tax year
+// Interest (0105) has priority over repairs (0106) per AEAT rules
 export const calculateAEATLimits = (
   totalIncome: number,
   financingExpenses: number,
@@ -142,16 +143,25 @@ export const calculateAEATLimits = (
   limit: number;
   applied: number;
   excess: number;
+  appliedFinancing: number;
+  appliedRepairs: number;
 } => {
   const totalDeductible = financingExpenses + repairExpenses;
   const limit = totalIncome;
   const applied = Math.min(totalDeductible, limit);
   const excess = Math.max(0, totalDeductible - applied);
 
+  // Interest (0105) has priority: deduct fully before applying repairs
+  const appliedFinancing = Math.min(financingExpenses, limit);
+  const remainingLimit = Math.max(0, limit - appliedFinancing);
+  const appliedRepairs = Math.min(repairExpenses, remainingLimit);
+
   return {
     limit,
     applied,
-    excess
+    excess,
+    appliedFinancing,
+    appliedRepairs,
   };
 };
 

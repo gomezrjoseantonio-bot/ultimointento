@@ -466,15 +466,30 @@ async function aplicarCambiosInmueble(
 
   for (const campo of campos) {
     switch (campo.campo) {
-      case 'valorCatastral':
-        property.fiscalData = { ...property.fiscalData, cadastralValue: toNumber(campo.valorAeat) };
+      case 'valorCatastral': {
+        const vc = toNumber(campo.valorAeat);
+        property.fiscalData = { ...property.fiscalData, cadastralValue: vc };
+        if (property.aeatAmortization) {
+          property.aeatAmortization = { ...property.aeatAmortization, cadastralValue: vc };
+        }
         break;
-      case 'valorCatastralConstruccion':
-        property.fiscalData = { ...property.fiscalData, constructionCadastralValue: toNumber(campo.valorAeat) };
+      }
+      case 'valorCatastralConstruccion': {
+        const vcc = toNumber(campo.valorAeat);
+        property.fiscalData = { ...property.fiscalData, constructionCadastralValue: vcc };
+        if (property.aeatAmortization) {
+          property.aeatAmortization = { ...property.aeatAmortization, constructionCadastralValue: vcc };
+        }
         break;
-      case 'porcentajeConstruccion':
-        property.fiscalData = { ...property.fiscalData, constructionPercentage: toNumber(campo.valorAeat) };
+      }
+      case 'porcentajeConstruccion': {
+        const pct = toNumber(campo.valorAeat);
+        property.fiscalData = { ...property.fiscalData, constructionPercentage: pct };
+        if (property.aeatAmortization) {
+          property.aeatAmortization = { ...property.aeatAmortization, constructionPercentage: pct };
+        }
         break;
+      }
       case 'importeAdquisicion':
         property.acquisitionCosts = { ...property.acquisitionCosts, price: toNumber(campo.valorAeat) };
         break;
@@ -533,6 +548,17 @@ async function crearInmuebleDesdeAeat(inmueble: DeclaracionInmueble): Promise<nu
       constructionPercentage: inmueble.porcentajeConstruccion,
       housingReduction: inmueble.derechoReduccion,
       isAccessory: inmueble.esAccesorio,
+    },
+    aeatAmortization: {
+      acquisitionType: 'onerosa',
+      firstAcquisitionDate: inmueble.fechaAdquisicion || new Date().toISOString().slice(0, 10),
+      cadastralValue: toNumber(inmueble.valorCatastral),
+      constructionCadastralValue: toNumber(inmueble.valorCatastralConstruccion),
+      constructionPercentage: toNumber(inmueble.porcentajeConstruccion),
+      onerosoAcquisition: {
+        acquisitionAmount: toNumber(inmueble.importeAdquisicion),
+        acquisitionExpenses: toNumber(inmueble.gastosAdquisicion),
+      },
     },
   };
 

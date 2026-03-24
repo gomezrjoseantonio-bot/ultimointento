@@ -270,6 +270,53 @@ export function calcularReduccionArrendamientoVivienda(
   };
 }
 
+/**
+ * Determine reduction percentage for a contract based on Ley 12/2023 de Vivienda.
+ * - Temporada / vacacional → 0%
+ * - Pre 26/05/2023 habitual → 60% (transitorio)
+ * - Post 26/05/2023 habitual → 50% (general), 60% (rehabilitación), 70% (zona tensionada + joven), 90% (zona tensionada + rebaja ≥5%)
+ */
+export function calcularPorcentajeReduccionContrato(contract: any): number {
+  const modalidad = contract.modalidad ?? contract.type;
+
+  // Temporada and turístico → no reduction
+  if (modalidad === 'temporada' || modalidad === 'vacacional' || modalidad === 'turistico') {
+    return 0;
+  }
+
+  // If contract has explicit reduction override, use it
+  if (contract.reduccion?.activa && contract.reduccion?.porcentaje > 0) {
+    return contract.reduccion.porcentaje;
+  }
+
+  // Determine contract signing date
+  const fechaFirma = contract.fechaFirmaContrato
+    ?? contract.firma?.fechaFirma
+    ?? contract.fechaInicio
+    ?? contract.startDate;
+
+  if (!fechaFirma) {
+    // No date available — assume pre-law for safety (60%)
+    return modalidad === 'habitual' ? 60 : 0;
+  }
+
+  const FECHA_LEY_VIVIENDA = new Date('2023-05-26');
+  const fechaContrato = new Date(fechaFirma);
+
+  // Pre Ley 12/2023: régimen transitorio → 60%
+  if (fechaContrato < FECHA_LEY_VIVIENDA) {
+    return modalidad === 'habitual' ? 60 : 0;
+  }
+
+  // Post Ley 12/2023: graduated reduction
+  if (contract.zonaTensionada && contract.rebajaRenta5pct) return 90;
+  if (contract.zonaTensionada && contract.inquilinoJoven) return 70;
+  if (contract.rehabilitacion) return 60;
+
+  // General case post-law
+  return modalidad === 'habitual' ? 50 : 0;
+}
+
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {
   const nacimiento = new Date(fechaNacimiento);
   return ejercicio - nacimiento.getFullYear();
@@ -568,10 +615,10 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
 
     if (diasAlquilado > 0) {
       // Property is rented (fully or partially)
+      // Per-contract income and reduction (Ley 12/2023 de Vivienda)
       let ingresosIntegros = 0;
       let esHabitual = false;
-      let tieneReduccion = false;
-      let porcentajeReduccionHabitual = 0;
+      const contractIncomes: { income: number; reductionPct: number }[] = [];
 
       for (const contract of propContracts) {
         const renta = contract.rentaMensual ?? 0;
@@ -580,55 +627,39 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
         const mesInicio = inicio.getFullYear() < ejercicio ? 1 : inicio.getMonth() + 1;
         const mesFin = fin.getFullYear() > ejercicio ? 12 : fin.getMonth() + 1;
         const meses = Math.max(0, mesFin - mesInicio + 1);
-        ingresosIntegros += renta * meses;
+        const contractIncome = renta * meses;
+        ingresosIntegros += contractIncome;
 
-        const contractReductionActive = Boolean(
-          (contract as any).reduccion?.activa
-          ?? (contract as any).reduction?.active
-          ?? (contract as any).tieneReduccion
-          ?? false
-        );
-        const contractReductionPercent = Number(
-          (contract as any).reduccion?.porcentaje
-          ?? (contract as any).reduction?.percentage
-          ?? (contract as any).porcentajeReduccion
-          ?? (contract as any).pctReduccion
-          ?? 0
-        );
+        if (contract.modalidad === 'habitual') esHabitual = true;
 
-        if (contract.modalidad === 'habitual') {
-          esHabitual = true;
-          tieneReduccion = true;
-          if (contractReductionPercent > 0) porcentajeReduccionHabitual = contractReductionPercent;
-        } else if (contractReductionActive) {
-          tieneReduccion = true;
-          if (contractReductionPercent > 0) porcentajeReduccionHabitual = contractReductionPercent;
-        }
+        // Determine reduction % for THIS contract using Ley 12/2023 rules
+        const pctReduccion = calcularPorcentajeReduccionContrato(contract);
+        contractIncomes.push({ income: contractIncome, reductionPct: pctReduccion });
       }
 
-      if (!tieneReduccion) {
-        const propertyReductionActive = Boolean(
-          (prop as any).fiscalData?.tiene_reduccion
-          ?? (prop as any).fiscalData?.tieneReduccion
-          ?? (prop as any).fiscalData?.reduccionArrendamientoActiva
-          ?? false
-        );
+      // Fallback: if no contracts have explicit reduction info, check property-level flag (legacy)
+      const tieneReduccion = contractIncomes.some((c) => c.reductionPct > 0);
+      if (!tieneReduccion && esHabitual) {
+        // Legacy fallback: property-level reduction for habitual contracts
         const propertyReductionPercent = Number(
           (prop as any).fiscalData?.porcentaje_reduccion
           ?? (prop as any).fiscalData?.porcentajeReduccion
           ?? (prop as any).fiscalData?.pctReduccion
           ?? 0
         );
-
-        if (propertyReductionActive || propertyReductionPercent > 0) {
-          tieneReduccion = true;
-          porcentajeReduccionHabitual = propertyReductionPercent;
+        const fallbackPct = propertyReductionPercent > 0
+          ? propertyReductionPercent
+          : CONSTANTES_IRPF.reduccionViviendaHabitual * 100;
+        // Apply fallback to all habitual contracts
+        for (const ci of contractIncomes) {
+          if (ci.reductionPct <= 0) ci.reductionPct = fallbackPct;
         }
       }
 
-      if (tieneReduccion && porcentajeReduccionHabitual <= 0) {
-        porcentajeReduccionHabitual = esHabitual ? CONSTANTES_IRPF.reduccionViviendaHabitual : 0;
-      }
+      // Compute weighted-average reduction percentage for display
+      const porcentajeReduccionHabitual = ingresosIntegros > 0
+        ? contractIncomes.reduce((sum, c) => sum + c.reductionPct * (c.income / ingresosIntegros), 0)
+        : 0;
 
 
       // Get fiscal summary and prorate expenses by rental days ratio
@@ -699,13 +730,25 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       }
 
       const rendimientoNetoAlquiler = round2(ingresosIntegros - gastosDeducibles - amortizacion);
-      const { reduccionHabitual, rendimientoNetoReducido, porcentajeNormalizado } = tieneReduccion
-        ? calcularReduccionArrendamientoVivienda(rendimientoNetoAlquiler, porcentajeReduccionHabitual)
-        : {
-            reduccionHabitual: 0,
-            rendimientoNetoReducido: rendimientoNetoAlquiler,
-            porcentajeNormalizado: 0,
-          };
+
+      // Per-contract reduction: distribute net income proportionally, apply each contract's %
+      let reduccionHabitual = 0;
+      let rendimientoNetoReducido = rendimientoNetoAlquiler;
+      const anyReduction = contractIncomes.some((c) => c.reductionPct > 0);
+      if (anyReduction && rendimientoNetoAlquiler > 0 && ingresosIntegros > 0) {
+        for (const ci of contractIncomes) {
+          if (ci.reductionPct <= 0 || ci.income <= 0) continue;
+          const proporcion = ci.income / ingresosIntegros;
+          const netoContrato = rendimientoNetoAlquiler * proporcion;
+          const pctNorm = ci.reductionPct > 1 ? ci.reductionPct / 100 : ci.reductionPct;
+          reduccionHabitual += round2(netoContrato * pctNorm);
+        }
+        reduccionHabitual = round2(reduccionHabitual);
+        rendimientoNetoReducido = round2(rendimientoNetoAlquiler - reduccionHabitual);
+      }
+      const porcentajeNormalizado = porcentajeReduccionHabitual > 1
+        ? round2(porcentajeReduccionHabitual / 100 * 100) / 100
+        : round2(porcentajeReduccionHabitual * 100) / 100;
 
       // Imputación for vacant days (integrated into this property's rendimiento)
       const valorCatastral = prop.fiscalData?.cadastralValue ?? prop.aeatAmortization?.cadastralValue ?? 0;

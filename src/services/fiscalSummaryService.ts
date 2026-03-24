@@ -2,7 +2,7 @@ import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
 import { getExerciseStatus } from './aeatClassificationService';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from './mobiliarioActivoService';
-import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
+import { getTotalMejorasHastaEjercicio, getTotalReparacionesEjercicio } from './mejoraActivoService';
 import {
   generarOperacionesDesdeIntereses,
   generarOperacionesDesdeRecurrentes,
@@ -29,12 +29,14 @@ export const calculateFiscalSummary = async (
   const diasDisponibles = isLeapYear(exerciseYear) ? 366 : 365;
   const box0117 = await calcularAmortizacionMobiliarioAnual(propertyId, exerciseYear, diasArrendados, diasDisponibles);
   const capexTotal = await getTotalMejorasHastaEjercicio(propertyId, exerciseYear);
+  // Reparaciones registered as MejoraActivo tipo='reparacion' → add to box 0106
+  const reparacionesFromMejoras = await getTotalReparacionesEjercicio(propertyId, exerciseYear);
 
   const summary: Omit<FiscalSummary, 'id'> = {
     propertyId,
     exerciseYear,
     box0105: casillas['0105'] || 0,
-    box0106: casillas['0106'] || 0,
+    box0106: (casillas['0106'] || 0) + reparacionesFromMejoras,
     box0109: casillas['0109'] || 0,
     box0112: casillas['0112'] || 0,
     box0113: casillas['0113'] || 0,
@@ -61,8 +63,11 @@ export const calculateFiscalSummary = async (
   }
 
   const financingAndRepairs = summary.box0105 + summary.box0106;
-  const contractsForProperty = await db.getAllFromIndex('contracts', 'propertyId', propertyId);
-  const propertyContracts = (contractsForProperty as any[]).filter((c: any) => {
+  // Query contracts: check both inmuebleId (new) and propertyId (legacy) fields
+  const allContracts = await db.getAll('contracts');
+  const propertyContracts = (allContracts as any[]).filter((c: any) => {
+    const matchesProperty = (c.inmuebleId === propertyId) || (c.propertyId === propertyId);
+    if (!matchesProperty) return false;
     const inicio = new Date(c.fechaInicio ?? c.startDate);
     const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
     return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
