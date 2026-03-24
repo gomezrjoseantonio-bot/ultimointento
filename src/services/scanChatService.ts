@@ -1,5 +1,5 @@
 interface ScanChatPayload {
-  tipo: 'scan' | 'scan_irpf';
+  tipo: 'scan' | 'scan_irpf' | 'scan_datos_fiscales';
   imagen?: string;
   imagenes?: string[];
   mimeType?: string;
@@ -13,7 +13,7 @@ interface CallScanChatOptions {
 
 export interface ScanChatResponse {
   ok: boolean;
-  tipo?: 'scan' | 'scan_irpf';
+  tipo?: 'scan' | 'scan_irpf' | 'scan_datos_fiscales';
   model?: string;
   extraido?: any;
   error?: string;

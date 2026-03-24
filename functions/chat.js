@@ -278,7 +278,154 @@ Ejemplo de respuesta:
       return jsonResponse(200, { ok: true, tipo: 'scan_irpf', model: SCAN_MODEL, extraido });
     }
 
-    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan" o "scan_irpf"' });
+    // ── SCAN DATOS FISCALES ──────────────────────────────────────────────────
+    if (tipo === 'scan_datos_fiscales') {
+      const mimeType = typeof body?.mimeType === 'string' && body.mimeType.trim()
+        ? body.mimeType.trim()
+        : 'image/jpeg';
+
+      const imagenes = Array.isArray(body?.imagenes)
+        ? body.imagenes.map(cleanBase64).filter(Boolean)
+        : [];
+      const base64Data = cleanBase64(body?.imagen);
+
+      const mediaBlocks = imagenes.length > 0
+        ? imagenes.map((img) => ({
+            type: 'image',
+            source: { type: 'base64', media_type: 'image/jpeg', data: img },
+          }))
+        : base64Data
+          ? [{ type: 'image', source: { type: 'base64', media_type: mimeType.toLowerCase(), data: base64Data } }]
+          : [];
+
+      if (!mediaBlocks.length) {
+        return jsonResponse(400, { ok: false, error: 'Campo "imagen" o "imagenes" obligatorio para scan_datos_fiscales' });
+      }
+
+      const system = `Eres un experto en fiscalidad española. Analiza las capturas de pantalla de los Datos Fiscales de la AEAT y extrae TODOS los datos estructurados.
+
+Devuelve ÚNICAMENTE un objeto JSON con esta estructura:
+{
+  "ejercicio": 2025,
+  "trabajo": [{
+    "pagador": "nombre empresa",
+    "nif": "A12345678",
+    "retribucionDineraria": 118981.06,
+    "retribucionEspecie": 2472.73,
+    "retencionIRPF": 40990.88,
+    "ingresosACuenta": 851.85
+  }],
+  "actividades": [{
+    "tipo": "profesional",
+    "epigrafe": "724",
+    "pagador": "nombre",
+    "nif": "B12345678",
+    "ingresos": 5040.66,
+    "retencion": 756.11
+  }],
+  "cuentasBancarias": [{
+    "entidad": "ING Direct",
+    "cuenta": "ES12...",
+    "intereses": 464.65,
+    "retencion": 88.08
+  }],
+  "planesPensiones": [{
+    "entidad": "nombre",
+    "aportacion": 3259.00
+  }],
+  "inmuebles": [{
+    "refCatastral": "7949807TP6074N0006YM",
+    "direccion": "CL FUERTES ACEVEDO 32...",
+    "valorCatastral": 89432.00,
+    "valorConstruccion": 52180.00,
+    "porcentajeParticipacion": 100,
+    "diasEnEjercicio": 365,
+    "uso": "arrendado",
+    "revisado": true,
+    "situacion": "1"
+  }],
+  "prestamos": [{
+    "entidad": "ING Direct",
+    "nifEntidad": "...",
+    "saldoPendiente": 89432.00,
+    "interesesPagados": 1201.17,
+    "tipo": "hipoteca_vivienda"
+  }],
+  "entidades": [{
+    "nombre": "Residencial Smart Santa Catalina CB",
+    "nif": "E25904640",
+    "tipoEntidad": "CB",
+    "participacion": 10,
+    "rendimientos": 1682.80,
+    "retenciones": 136.05
+  }],
+  "arrastres": {
+    "gastosPendientes": [{
+      "inmueble": "referencia o nombre",
+      "importe": 28239.24,
+      "origenEjercicio": 2024
+    }],
+    "perdidasPatrimoniales": [{
+      "importe": 1344.99,
+      "origenEjercicio": 2022,
+      "tipo": "ahorro"
+    }]
+  },
+  "pagosFraccionados": [{
+    "modelo": "130",
+    "trimestre": "T1",
+    "importe": 730.15
+  }],
+  "ventasInmuebles": [{
+    "refCatastral": "...",
+    "fechaVenta": "2025-11-27",
+    "valorTransmision": 185000
+  }]
+}
+
+INSTRUCCIONES:
+- Usa punto decimal para números (148505.78, no 148.505,78)
+- Si un dato no aparece en las capturas, NO lo inventes
+- Si una captura está borrosa o ilegible, indica qué campo no se pudo leer
+- Las capturas pueden venir desordenadas — reorganiza por sección
+- Devuelve ÚNICAMENTE el JSON, sin texto adicional`;
+
+      const result = await callAnthropic({
+        model: SCAN_MODEL,
+        system,
+        maxTokens: 16000,
+        temperature: 0,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analiza estas capturas de pantalla de los Datos Fiscales de la AEAT y extrae todos los datos estructurados en JSON.' },
+              ...mediaBlocks,
+            ],
+          },
+        ],
+      });
+
+      if (!result.ok) return jsonResponse(result.status || 502, { ok: false, error: result.error, details: result.raw });
+
+      let extraido = result.text;
+      try {
+        extraido = JSON.parse(result.text);
+      } catch (_e) {
+        const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            extraido = JSON.parse(jsonMatch[0]);
+          } catch {
+            // mantener texto original
+          }
+        }
+      }
+
+      return jsonResponse(200, { ok: true, tipo: 'scan_datos_fiscales', model: SCAN_MODEL, extraido });
+    }
+
+    return jsonResponse(400, { ok: false, error: 'El campo "tipo" debe ser "chat", "scan", "scan_irpf" o "scan_datos_fiscales"' });
   } catch (error) {
     console.error('netlify/functions/chat error:', error);
     return jsonResponse(500, { ok: false, error: 'No se pudo procesar la solicitud' });
