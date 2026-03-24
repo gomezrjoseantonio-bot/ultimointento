@@ -66,12 +66,6 @@ export async function calcularRentabilidadInmueble(
 
   // Gastos operativos (OPEX) = gastos deducibles - financieros
   // gastosDeducibles includes everything prorated
-  const gastosFinancieros = round2(
-    (inmueble.gastosFinanciacionYReparacion ?? 0) > 0
-      ? Math.min(inmueble.gastosFinanciacionYReparacion ?? 0, inmueble.ingresosIntegros) * 0.5 // Approximate: half is financial
-      : 0
-  );
-
   // Try to get actual loan data for this property
   let cuotasPrestamo = 0;
   let interesesReales = 0;

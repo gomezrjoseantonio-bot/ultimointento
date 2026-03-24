@@ -142,7 +142,6 @@ async function calcularIngresosProyectadosInmuebles(ejercicio: number): Promise<
     const renta = (contract as any).rentaMensual ?? 0;
     if (renta <= 0) continue;
 
-    const inicio = new Date((contract as any).fechaInicio ?? (contract as any).startDate);
     const fin = new Date((contract as any).fechaFin ?? (contract as any).endDate ?? `${ejercicio}-12-31`);
 
     // Meses restantes del año (desde mesActual+1 hasta el fin del contrato o diciembre)
