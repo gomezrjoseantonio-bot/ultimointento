@@ -46,7 +46,7 @@ const sectionTitleStyle: React.CSSProperties = {
 const FiscalDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { declaracion, fuente, estimacion, loading: contextLoading } = useFiscalData();
+  const { declaracion, estimacion, loading: contextLoading } = useFiscalData();
   const ejercicio = new Date().getFullYear();
   const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);

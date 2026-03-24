@@ -10,7 +10,7 @@ import { mapDeclaracionToTaxState } from './taxHydrationMapper';
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
 import { ejercicioFiscalService, getAllEjercicios } from '../../services/ejercicioFiscalService';
-import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
+import type { DeclaracionIRPF as FiscalDeclaracionIRPF } from '../../types/fiscal';
 import FiscalPageShell from '../../modules/horizon/fiscalidad/components/FiscalPageShell';
 import './tax-view.css';
 
@@ -137,16 +137,12 @@ const TaxView: React.FC = () => {
   const {
     estado,
     declarado,
-    cobertura,
-    esEditable,
     tieneAeat,
   } = useEjercicioFiscal(tax.ejercicio);
 
   const fmt = (v: number) => v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtSignedMoney = (v: number) => `${v >= 0 ? '+' : '-'}${fmt(Math.abs(v))} €`;
 
-  const currentYear = new Date().getFullYear();
-  const isCurrentYear = tax.ejercicio === currentYear;
   const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
 
   // C2: Default to most recent "pendiente" exercise, then en_curso, then latest with data
