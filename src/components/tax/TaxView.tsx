@@ -1,19 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CheckCircle, ChevronDown, ChevronRight, Clock, Info, Upload, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Upload } from 'lucide-react';
 import { RootState } from '../../store';
-import WorkIncomeBlock from './blocks/WorkIncomeBlock';
-import RealEstateBlock from './blocks/RealEstateBlock';
-import BusinessBlock from './blocks/BusinessBlock';
-import SavingsGPBlock from './blocks/SavingsGPBlock';
-import ResultBlock from './blocks/ResultBlock';
-import { hydrateFromCalculation, setEjercicio, type TaxState } from '../../store/taxSlice';
+// Sub-tab block imports removed (C3 — cascade is the complete view)
+import { hydrateFromCalculation, setEjercicio, type TaxState, type Inmueble as TaxInmueble } from '../../store/taxSlice';
 import { calcularDeclaracionIRPF } from '../../services/irpfCalculationService';
 import { mapDeclaracionToTaxState } from './taxHydrationMapper';
 import EjercicioSelector from '../fiscal/EjercicioSelector';
 import { useEjercicioFiscal } from '../../hooks/useEjercicioFiscal';
-import { ejercicioFiscalService } from '../../services/ejercicioFiscalService';
+import { ejercicioFiscalService, getAllEjercicios } from '../../services/ejercicioFiscalService';
 import type { DeclaracionIRPF as FiscalDeclaracionIRPF, EstadoEjercicio } from '../../types/fiscal';
 import FiscalPageShell from '../../modules/horizon/fiscalidad/components/FiscalPageShell';
 import './tax-view.css';
@@ -107,61 +103,12 @@ function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omi
   };
 }
 
-const TABS = ['Resumen', 'Trabajo', 'Inmuebles', 'Actividad', 'Ahorro y G/P', 'Resultado'] as const;
-type Tab = typeof TABS[number];
+// TABS removed (C3)
 
-function EstadoBanner({
-  estado,
-  tieneAeat,
-  ejercicio,
-  coberturaLineas,
-}: {
-  estado: EstadoEjercicio;
-  tieneAeat: boolean;
-  ejercicio: number;
-  coberturaLineas: number;
-}) {
-  const configs: Record<EstadoEjercicio, { texto: string; colorVar: string; bgVar: string; Icon: LucideIcon }> = {
-    en_curso: {
-      texto: `Estimación en tiempo real del ejercicio ${ejercicio}. Los datos se actualizan con cada cambio.`,
-      colorVar: 'var(--s-pos)',
-      bgVar: 'var(--s-pos-bg)',
-      Icon: Info,
-    },
-    cerrado: {
-      texto: tieneAeat
-        ? 'Ejercicio cerrado. Declaración AEAT subida — puedes seguir añadiendo documentación.'
-        : 'Ejercicio cerrado, pendiente de declarar. Puedes ajustar datos antes de presentar.',
-      colorVar: 'var(--s-warn)',
-      bgVar: 'var(--s-warn-bg)',
-      Icon: Clock,
-    },
-    declarado: {
-      texto: tieneAeat
-        ? 'Ejercicio declarado. Datos de Hacienda importados. Puedes añadir documentación para mejorar la cobertura.'
-        : 'Ejercicio declarado según datos de ATLAS. Sube el PDF de Hacienda para tener la verdad oficial.',
-      colorVar: 'var(--blue)',
-      bgVar: 'var(--n-100)',
-      Icon: CheckCircle,
-    },
-  };
-
-  const config = configs[estado];
-  const BannerIcon = config.Icon;
-
-  return (
-    <div className="tv-state-banner" style={{ background: config.bgVar, color: config.colorVar }}>
-      <BannerIcon size={16} />
-      <span>{config.texto}</span>
-      {coberturaLineas > 0 && (
-        <span className="tv-state-banner__meta">Cobertura documental: {coberturaLineas} conceptos monitorizados.</span>
-      )}
-    </div>
-  );
-}
+// EstadoBanner removed (C4 — banners were noise)
 
 interface SectionRow { label: string; value: number; accent?: 'positive' | 'negative' | 'neutral'; }
-interface SectionData { id: string; title: string; total: number; rows?: SectionRow[]; note?: string; defaultOpen?: boolean; }
+interface SectionData { id: string; title: string; total: number; rows?: SectionRow[]; note?: string; defaultOpen?: boolean; inmuebles?: TaxInmueble[]; }
 
 const sectionCardStyle: React.CSSProperties = {
   border: '1px solid var(--n-200)',
@@ -175,7 +122,6 @@ const TaxView: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tax = useSelector((state: RootState) => state.tax);
-  const [tab, setTab] = useState<Tab>('Trabajo');
   const [loadingDeclaracion, setLoadingDeclaracion] = useState(false);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -186,6 +132,8 @@ const TaxView: React.FC = () => {
     cuotaIntegra: false,
     retenciones: true,
   });
+  // C5: Track which individual inmuebles are expanded (first one open by default)
+  const [openInmuebles, setOpenInmuebles] = useState<Record<string, boolean>>({});
   const {
     estado,
     declarado,
@@ -201,12 +149,34 @@ const TaxView: React.FC = () => {
   const isCurrentYear = tax.ejercicio === currentYear;
   const shouldShowUploadButton = estado === 'cerrado' || (estado === 'declarado' && !tieneAeat);
 
+  // C2: Default to most recent "pendiente" exercise, then en_curso, then latest with data
   useEffect(() => {
     const ejercicioFromUrl = Number(searchParams.get('ejercicio'));
     if (Number.isInteger(ejercicioFromUrl) && ejercicioFromUrl > 2009 && ejercicioFromUrl !== tax.ejercicio) {
       dispatch(setEjercicio(ejercicioFromUrl));
+      return;
     }
-  }, [dispatch, searchParams, tax.ejercicio]);
+
+    // Only run default selection on initial mount (no URL param)
+    if (searchParams.get('ejercicio')) return;
+
+    getAllEjercicios().then((ejercicios) => {
+      const sorted = [...ejercicios].sort((a, b) => b.ejercicio - a.ejercicio);
+      const now = new Date().getFullYear();
+
+      const pendiente = sorted.find((e) => e.estado === 'cerrado' && e.ejercicio < now);
+      const enCurso = sorted.find((e) => e.estado === 'en_curso' || e.ejercicio === now);
+      const conDatos = sorted.find((e) => {
+        const r = e.declaracionAeat?.basesYCuotas ?? e.calculoAtlas?.basesYCuotas;
+        return r && ((r.cuotaLiquida ?? 0) !== 0 || (r.retencionesTotal ?? 0) !== 0);
+      });
+
+      const best = pendiente || enCurso || conDatos;
+      if (best && best.ejercicio !== tax.ejercicio) {
+        dispatch(setEjercicio(best.ejercicio));
+      }
+    }).catch(() => { /* keep current default */ });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -263,16 +233,8 @@ const TaxView: React.FC = () => {
         title: 'Rendimientos de inmuebles',
         total: totalInmuebles,
         defaultOpen: true,
-        note: tax.inmuebles.length > 1 ? `${tax.inmuebles.length - 1} inmuebles más con desglose similar` : undefined,
-        rows: tax.inmuebles.length > 0 ? [
-          { label: `${tax.inmuebles[0].direccion || tax.inmuebles[0].refCatastral} · Ingresos íntegros`, value: tax.inmuebles[0].ingresosIntegros },
-          { label: 'Gastos financieros', value: -tax.inmuebles[0].interesesFinanciacion, accent: 'negative' },
-          { label: 'Reparación y conservación', value: -tax.inmuebles[0].gastosReparacion, accent: 'negative' },
-          { label: 'Amortización inmueble', value: -tax.inmuebles[0].amortizacionInmueble, accent: 'negative' },
-          { label: 'Otros gastos', value: -(tax.inmuebles[0].gastosComunidad + tax.inmuebles[0].serviciosPersonales + tax.inmuebles[0].suministros + tax.inmuebles[0].seguro + tax.inmuebles[0].tributosRecargos), accent: 'negative' },
-          { label: 'Rendimiento neto', value: tax.inmuebles[0].rendimientoNeto },
-          { label: 'Rendimiento neto reducido', value: tax.inmuebles[0].rendimientoNetoReducido, accent: 'positive' },
-        ] : [{ label: 'Sin inmuebles arrendados', value: 0 }],
+        inmuebles: tax.inmuebles,
+        rows: tax.inmuebles.length === 0 ? [{ label: 'Sin inmuebles arrendados', value: 0 }] : undefined,
       },
       { id: 'actividad', title: 'Actividades económicas', total: totalActividad, rows: tax.actividades.map((item) => ({ label: item.codigoActividad || 'Actividad', value: item.rendimientoNeto })) },
       { id: 'base', title: 'Base imponible general', total: tax.baseImponibleGeneral },
@@ -305,20 +267,35 @@ const TaxView: React.FC = () => {
           </div>
           <div className="tv-header-right">
             {estado === 'declarado' && tieneAeat && <span className="tv-source-pill">Fuente AEAT</span>}
+            <button
+              type="button"
+              disabled
+              title="Próximamente"
+              style={{
+                padding: '10px 16px',
+                borderRadius: 'var(--r-md, 12px)',
+                border: '1px solid var(--n-300)',
+                background: 'var(--white)',
+                color: 'var(--n-500)',
+                cursor: 'not-allowed',
+                fontWeight: 500,
+                fontSize: 'var(--t-sm, 14px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                opacity: 0.6,
+                minHeight: 44,
+              }}
+            >
+              <Download size={16} />
+              Exportar borrador
+            </button>
             <div className="tv-year-picker">
               <label className="tv-year-label">Ejercicio</label>
               <EjercicioSelector value={tax.ejercicio} onChange={(ejercicio) => dispatch(setEjercicio(ejercicio))} />
             </div>
           </div>
         </div>
-
-        <EstadoBanner estado={estado} tieneAeat={tieneAeat} ejercicio={tax.ejercicio} coberturaLineas={cobertura?.lineas.length ?? 0} />
-
-        {isCurrentYear && (
-          <div className="tv-forecast-note">
-            Ejercicio en curso: la declaración se calcula en modo previsión (budget) y se ajustará con datos reales conciliados.
-          </div>
-        )}
 
         {readOnlyMessage && <div className="tv-sync-note">{readOnlyMessage}</div>}
         {loadingDeclaracion && <div className="tv-sync-note">Cargando datos reales de la declaración…</div>}
@@ -335,7 +312,8 @@ const TaxView: React.FC = () => {
 
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
           {sections.map((section) => {
-            const collapsible = Boolean(section.rows && section.rows.length);
+            const hasInmuebles = section.inmuebles && section.inmuebles.length > 0;
+            const collapsible = Boolean((section.rows && section.rows.length) || hasInmuebles);
             const isOpen = openSections[section.id] ?? section.defaultOpen ?? false;
             return (
               <div key={section.id} style={sectionCardStyle}>
@@ -354,6 +332,51 @@ const TaxView: React.FC = () => {
                 </button>
                 {collapsible && isOpen ? (
                   <div style={{ borderTop: '1px solid var(--n-200)', padding: '12px 18px 0' }}>
+                    {/* C5: Render each inmueble as a collapsible sub-block */}
+                    {hasInmuebles && section.inmuebles!.map((inm, idx) => {
+                      const inmKey = inm.id;
+                      const inmOpen = openInmuebles[inmKey] ?? (idx === 0);
+                      const inmName = inm.direccion || inm.refCatastral || `Inmueble ${idx + 1}`;
+                      return (
+                        <div key={inmKey} style={{ borderBottom: idx < section.inmuebles!.length - 1 ? '1px solid var(--n-100)' : 'none', paddingBottom: 8, marginBottom: 4 }}>
+                          <button
+                            type="button"
+                            onClick={() => setOpenInmuebles(prev => ({ ...prev, [inmKey]: !inmOpen }))}
+                            style={{ width: '100%', border: 0, background: 'transparent', padding: '8px 0', display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 8, alignItems: 'center', cursor: 'pointer', minHeight: 36 }}
+                          >
+                            {inmOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span style={{ textAlign: 'left', fontWeight: 500, color: 'var(--n-700)', fontSize: 14 }}>{inmName}</span>
+                            <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 14, color: inm.rendimientoNetoReducido >= 0 ? 'var(--s-pos)' : 'var(--s-neg)' }}>
+                              {fmtSignedMoney(inm.rendimientoNetoReducido)}
+                            </span>
+                          </button>
+                          {inmOpen && (
+                            <div style={{ paddingLeft: 22 }}>
+                              {[
+                                { label: 'Ingresos íntegros', value: inm.ingresosIntegros },
+                                { label: 'Gastos financieros', value: -inm.interesesFinanciacion, accent: 'negative' as const },
+                                { label: 'Amortización inmueble', value: -inm.amortizacionInmueble, accent: 'negative' as const },
+                                { label: 'Otros gastos', value: -(inm.gastosComunidad + inm.serviciosPersonales + inm.suministros + inm.seguro + inm.tributosRecargos + inm.gastosReparacion), accent: 'negative' as const },
+                                { label: 'Rendimiento neto', value: inm.rendimientoNeto },
+                                { label: 'Rendimiento neto reducido', value: inm.rendimientoNetoReducido, accent: 'positive' as const },
+                              ].map((row) => (
+                                <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '4px 12px', color: 'var(--n-700)', fontSize: 13 }}>
+                                  <span>{row.label}</span>
+                                  <span style={{ fontFamily: 'IBM Plex Mono, monospace', color: row.accent === 'positive' ? 'var(--s-pos)' : row.accent === 'negative' ? 'var(--s-neg)' : 'var(--n-900)' }}>{fmtSignedMoney(row.value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {/* Total line for inmuebles */}
+                    {hasInmuebles && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '8px 12px 14px', color: 'var(--n-700)', fontSize: 14, fontWeight: 600 }}>
+                        <span>Total rendimientos netos reducidos</span>
+                        <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtSignedMoney(section.total)}</span>
+                      </div>
+                    )}
                     {section.rows?.map((row) => (
                       <div key={row.label} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '8px 12px', color: 'var(--n-700)', fontSize: 14 }}>
                         <span>{row.label}</span>
@@ -372,52 +395,10 @@ const TaxView: React.FC = () => {
           })}
         </div>
 
-        <div style={{ textAlign: 'center', color: 'var(--n-500)', fontFamily: 'IBM Plex Mono, monospace' }}>===</div>
-
-        <nav className="tv-tabs">
-          {TABS.map((tabName) => (
-            <button key={tabName} className={`tv-tab ${tab === tabName ? 'tv-tab--active' : ''}`} onClick={() => setTab(tabName)}>
-              {tabName}
-            </button>
-          ))}
-        </nav>
-
-        <div className={`tv-content ${!esEditable ? 'tv-content--readonly' : ''}`}>
-          {tab === 'Resumen' && <ResumenInline tax={tax} fmt={fmt} />}
-          {tab === 'Trabajo' && <WorkIncomeBlock readOnly={!esEditable} />}
-          {tab === 'Inmuebles' && <RealEstateBlock readOnly={!esEditable} />}
-          {tab === 'Actividad' && <BusinessBlock readOnly={!esEditable} />}
-          {tab === 'Ahorro y G/P' && <SavingsGPBlock readOnly={!esEditable} />}
-          {tab === 'Resultado' && <ResultBlock />}
-        </div>
+        {/* Sub-tabs removed — cascade above is the complete declaration view */}
       </div>
     </FiscalPageShell>
   );
 };
-
-const ResumenInline: React.FC<{ tax: TaxState; fmt: (v: number) => string }> = ({ tax, fmt }) => (
-  <div className="tv-resumen">
-    <div className="tv-resumen-grid">
-      {[
-        { label: 'Rendimientos del trabajo', value: tax.workIncome.dinerarias, color: 'neutral' },
-        { label: 'Rendimientos de inmuebles', value: tax.inmuebles.reduce((a, i) => a + i.rendimientoNetoReducido, 0), color: 'neutral' },
-        { label: 'Actividades económicas', value: tax.actividades.reduce((a, act) => a + act.rendimientoNeto, 0), color: 'neutral' },
-        { label: 'Capital mobiliario', value: tax.capitalMobiliario.interesesCuentasDepositos, color: 'neutral' },
-        { label: 'Base imponible general', value: tax.baseImponibleGeneral, color: 'neutral', bold: true },
-        { label: 'Reducción previsión social', value: -tax.previsionSocial.importeAplicado, color: 'pos' },
-        { label: 'Base liquidable general', value: tax.baseLiquidableGeneral, color: 'neutral', bold: true },
-        { label: 'Base liquidable del ahorro', value: tax.baseLiquidableAhorro, color: 'neutral' },
-        { label: 'Cuota íntegra', value: tax.cuotaIntegra, color: 'neutral', bold: true },
-        { label: 'Total retenciones', value: -tax.totalRetenciones, color: 'pos' },
-        { label: 'Cuota diferencial', value: tax.cuotaDiferencial, color: tax.cuotaDiferencial > 0 ? 'neg' : 'pos', bold: true },
-      ].map(({ label, value, color, bold }) => (
-        <div key={label} className={`tv-resumen-row ${bold ? 'row-bold' : ''}`}>
-          <span className="tv-resumen-label">{label}</span>
-          <span className={`tv-resumen-value color-${color}`}>{fmt(value)} €</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
 export default TaxView;
