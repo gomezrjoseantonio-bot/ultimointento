@@ -1,0 +1,491 @@
+import { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import {
+  Home, Building2, TrendingUp, FileText, Wallet,
+  Shield, DoorOpen, Receipt, BadgePercent,
+  CalendarDays, Zap, ChevronRight, LayoutDashboard,
+} from "lucide-react";
+
+// ─── ATLAS Design Tokens v3 (source of truth) ──────────────
+const T = {
+  blue: "#042C5E",
+  teal: "#1DA0BA",
+  n900: "#1A2332",
+  n700: "#303A4C",
+  n500: "#6C757D",
+  n300: "#C8D0DC",
+  n200: "#DDE3EC",
+  n100: "#EEF1F5",
+  n50: "#F8F9FA",
+  white: "#FFFFFF",
+  // Semantic — ONLY for real validated states
+  sPos: "#1A7A3C",
+  sPosBg: "#E8F5ED",
+  sNeg: "#B91C1C",
+  sNegBg: "#FEE9E9",
+  sWarn: "#92620A",
+  sWarnBg: "#FEF3DC",
+  // Chart palette — for ALL data visualization
+  c1: "#042C5E",
+  c2: "#5B8DB8",
+  c3: "#1DA0BA",
+  c4: "#A8C4DE",
+  c5: "#C8D0DC",
+  c6: "#303A4C",
+};
+
+const euro = (v) =>
+  new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(v);
+
+// ─── Circular Gauge — chart color, threshold badge separate ─
+const Gauge = ({ value, max, chartColor, icon: Icon, label, unit }) => {
+  const size = 80;
+  const r = 32;
+  const circ = 2 * Math.PI * r;
+  const ratio = Math.min(value / max, 1);
+  const offset = circ * (1 - ratio);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px" }}>
+      <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+        <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={T.n100} strokeWidth={5} />
+          <circle
+            cx={size/2} cy={size/2} r={r} fill="none"
+            stroke={chartColor} strokeWidth={5} strokeLinecap="round"
+            strokeDasharray={circ} strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 0.8s ease" }}
+          />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Icon size={18} strokeWidth={1.5} style={{ color: chartColor }} />
+        </div>
+      </div>
+      <div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 600, color: T.n900, lineHeight: 1 }}>
+          {value}{unit}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: T.n700, marginTop: 3 }}>{label}</div>
+      </div>
+    </div>
+  );
+};
+
+// ─── KPI compacto ───────────────────────────────────────────
+const KpiCompact = ({ icon: Icon, value, label, context, chartColor }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px" }}>
+    <div style={{
+      width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+      background: T.n100,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <Icon size={18} strokeWidth={1.5} style={{ color: chartColor || T.n700 }} />
+    </div>
+    <div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 600, color: T.n900, lineHeight: 1 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: T.n700, marginTop: 3 }}>{label}</div>
+      {context && <div style={{ fontSize: 11, color: T.n500, marginTop: 1 }}>{context}</div>}
+    </div>
+  </div>
+);
+
+// ─── Progress Bar de cumplimiento ───────────────────────────
+const FlujoProgress = ({ icon: Icon, label, actual, previsto, chartColor, sub, isLast }) => {
+  const ratio = previsto > 0 ? Math.min(actual / previsto, 1.15) : 0;
+  const pctNum = previsto > 0 ? (actual / previsto * 100) : 0;
+
+  return (
+    <div style={{ padding: "14px 0", borderBottom: isLast ? "none" : `1px solid ${T.n100}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 6,
+            background: T.n100,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Icon size={14} strokeWidth={1.5} style={{ color: chartColor }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 600, color: T.n700 }}>{label}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 600, color: T.n900 }}>
+            {euro(actual)}
+          </span>
+          <span style={{ fontSize: 11, color: T.n500 }}>/ {euro(previsto)}</span>
+        </div>
+      </div>
+
+      <div style={{ position: "relative", height: 6, background: T.n100, borderRadius: 3, overflow: "hidden" }}>
+        <div style={{
+          height: "100%",
+          width: `${Math.min(ratio * 100, 100)}%`,
+          background: chartColor,
+          borderRadius: 3,
+          transition: "width 0.8s ease",
+          opacity: 0.65,
+        }} />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+        <span style={{ fontSize: 11, color: T.n500 }}>{sub}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace", color: T.n700 }}>
+          {pctNum.toFixed(0)}%
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─── DATA ───────────────────────────────────────────────────
+
+// Donut: activos y deuda representados. Deuda como segmento propio.
+// Para que el donut sea legible, usamos valor absoluto de la deuda.
+const PATRIMONIO_TOTAL = 842917;
+const PATRIMONIO_DONUT = [
+  { name: "Inmuebles", value: 975000, color: T.c1 },
+  { name: "Inversiones", value: 225725, color: T.c2 },
+  { name: "Cuentas", value: 38192, color: T.c3 },
+  { name: "Deuda", value: 396000, color: T.c5 },  // abs value, visually distinct
+];
+const PATRIMONIO_LEGEND = [
+  { name: "Inmuebles", value: 975000, color: T.c1 },
+  { name: "Inversiones", value: 225725, color: T.c2 },
+  { name: "Cuentas", value: 38192, color: T.c3 },
+  { name: "Deuda", value: -396000, color: T.c5 },  // signed for display
+];
+
+const FLUJOS = [
+  { icon: Home, label: "Economía familiar", actual: 7228, previsto: 7500, chartColor: T.c1, sub: "Ingresos − Gastos del mes" },
+  { icon: Building2, label: "Inmuebles", actual: 4987, previsto: 5400, chartColor: T.c3, sub: "Alquiler − gastos − hipoteca" },
+  { icon: TrendingUp, label: "Inversiones", actual: 608, previsto: 608, chartColor: T.c2, sub: "Rendimiento + dividendos" },
+];
+
+const CUENTAS = [
+  { banco: "Abanca", hoy: 437, fin: 122 },
+  { banco: "Bankinter", hoy: 948, fin: 98 },
+  { banco: "BBVA", hoy: 584, fin: 156 },
+  { banco: "ING", hoy: 102, fin: 62 },
+  { banco: "MyInvestor", hoy: 22540, fin: 22540 },
+  { banco: "Revolut", hoy: 1, fin: 1 },
+  { banco: "Sabadell", hoy: 499, fin: 294 },
+  { banco: "Trade Republic", hoy: 13081, fin: 12919 },
+];
+
+const ALERTAS = [
+  { id: 1, icon: CalendarDays, titulo: "Contrato vence en 18d", desc: "Fuertes Acevedo · Hab. 3", dias: 18 },
+  { id: 2, icon: Wallet, titulo: "Renta pendiente", desc: "Tenderina 64 · Marzo", dias: -3, importe: 450 },
+];
+
+// ─── DASHBOARD ──────────────────────────────────────────────
+export default function AtlasDashboard() {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => { requestAnimationFrame(() => setLoaded(true)); }, []);
+
+  const totalHoy = CUENTAS.reduce((s, c) => s + c.hoy, 0);
+  const totalFin = CUENTAS.reduce((s, c) => s + c.fin, 0);
+
+  return (
+    <div style={{
+      fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+      background: T.n50, minHeight: "100vh", color: T.n700,
+      opacity: loaded ? 1 : 0, transition: "opacity 0.4s ease",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; }
+        .ac { background: ${T.white}; border: 1px solid ${T.n200}; border-radius: 12px; transition: box-shadow 150ms ease; }
+        .ac:hover { box-shadow: 0 2px 12px rgba(4,44,94,.05); }
+        .al { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: ${T.n500}; }
+        .am { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+      `}</style>
+
+      <div style={{ maxWidth: 1080, margin: "0 auto", padding: "24px 24px 16px" }}>
+
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <LayoutDashboard size={18} strokeWidth={1.5} style={{ color: T.blue }} />
+            <div>
+              <h1 style={{ fontSize: 17, fontWeight: 700, color: T.n900, lineHeight: 1 }}>Dashboard ejecutivo</h1>
+              <p style={{ fontSize: 11, color: T.n500, marginTop: 3 }}>MAR 2026 · Actualizado 24/3/2026</p>
+            </div>
+          </div>
+          <button style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "7px 14px", borderRadius: 8, border: `1px solid ${T.n300}`,
+            background: T.white, fontSize: 12, fontWeight: 500, color: T.n700,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>
+            <Zap size={13} strokeWidth={1.5} /> Actualizar valores
+          </button>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* ROW 1 — Patrimonio (donut completo) + 4 KPIs */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 14, marginBottom: 14 }}>
+
+          {/* Patrimonio con donut COMPLETO (incluye deuda) */}
+          <div className="ac" style={{ padding: "22px 24px", display: "flex", alignItems: "center", gap: 24 }}>
+            <div style={{ flexShrink: 0, width: 140, height: 140, position: "relative" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={PATRIMONIO_DONUT}
+                    cx="50%" cy="50%"
+                    innerRadius={46} outerRadius={64}
+                    startAngle={90} endAngle={450}
+                    dataKey="value" stroke={T.white} strokeWidth={2}
+                    paddingAngle={1}
+                  >
+                    {PATRIMONIO_DONUT.map((d, i) => (
+                      <Cell key={i} fill={d.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", flexDirection: "column",
+                justifyContent: "center", alignItems: "center",
+              }}>
+                <span className="al" style={{ fontSize: 8, marginBottom: 1 }}>Neto</span>
+                <span className="am" style={{ fontSize: 17, fontWeight: 700, color: T.n900 }}>
+                  {(PATRIMONIO_TOTAL / 1000).toFixed(0)}K
+                </span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div className="al" style={{ marginBottom: 4 }}>Patrimonio neto · MAR 2026</div>
+              <div className="am" style={{ fontSize: 28, fontWeight: 700, color: T.blue, lineHeight: 1, marginBottom: 14 }}>
+                {euro(PATRIMONIO_TOTAL)}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {PATRIMONIO_LEGEND.map((d) => (
+                  <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: 10, color: T.n500 }}>{d.name}</div>
+                      <div className="am" style={{ fontSize: 12, fontWeight: 600, color: T.n900 }}>
+                        {euro(d.value)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 4 KPIs — grid 2×2 */}
+          {/* Gauges use CHART colors (c1-c6). Semantic ONLY in threshold badge. */}
+          <div className="ac" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+            <div style={{ borderRight: `1px solid ${T.n100}`, borderBottom: `1px solid ${T.n100}` }}>
+              <Gauge
+                value={19} max={24} chartColor={T.c1}
+                icon={Shield} label="Colchón emerg." unit=" m"
+              />
+            </div>
+            <div style={{ borderBottom: `1px solid ${T.n100}` }}>
+              <Gauge
+                value={72.2} max={100} chartColor={T.c2}
+                icon={DoorOpen} label="Ocupación" unit="%"
+              />
+            </div>
+            <div style={{ borderRight: `1px solid ${T.n100}` }}>
+              <KpiCompact
+                icon={Receipt}
+                value={euro(-7923)}
+                label="Comprometido 30d"
+                chartColor={T.c6}
+              />
+            </div>
+            <div>
+              <KpiCompact
+                icon={BadgePercent}
+                value="83%"
+                label="Tasa cobro rentas"
+                context="5 de 6 cobradas"
+                chartColor={T.c3}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* ROW 2 — Flujos (cumplimiento) + Tesorería */}
+        {/* ════════════════════════════════════════════════════════ */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+
+          {/* Flujos de caja — cumplimiento vs previsión + neto */}
+          <div className="ac" style={{ padding: "18px 22px" }}>
+            <div style={{ marginBottom: 2 }}>
+              <span className="al">Flujos de caja · MAR 2026</span>
+            </div>
+            {FLUJOS.map((f) => (
+              <FlujoProgress key={f.label} {...f} />
+            ))}
+            {/* Neto — same component, subtle bg to close the block */}
+            <div style={{ background: T.n50, margin: "0 -22px", padding: "0 22px", borderRadius: "0 0 12px 12px" }}>
+              <FlujoProgress
+                icon={Wallet}
+                label="Neto total"
+                actual={FLUJOS.reduce((s, f) => s + f.actual, 0)}
+                previsto={FLUJOS.reduce((s, f) => s + f.previsto, 0)}
+                chartColor={T.c6}
+                sub="Suma de los tres flujos"
+                isLast
+              />
+            </div>
+          </div>
+
+          {/* Tesorería — with inline balance bars */}
+          <div className="ac" style={{ padding: "18px 22px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span className="al">Tesorería · {CUENTAS.length} cuentas</span>
+              <span style={{ fontSize: 11, color: T.n500 }}>Datos a 24/3/2026</span>
+            </div>
+
+            {(() => {
+              const maxBal = Math.max(...CUENTAS.map(c => c.hoy));
+              return (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      {["Banco", "Hoy", "", "Fin mes"].map((h, i) => (
+                        <th key={i} style={{
+                          textAlign: i === 0 ? "left" : i === 2 ? "left" : "right",
+                          padding: "6px 0", fontSize: 10, fontWeight: 700,
+                          letterSpacing: ".08em", textTransform: "uppercase",
+                          color: T.n500, borderBottom: `1px solid ${T.n200}`,
+                          width: i === 2 ? "30%" : "auto",
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {CUENTAS.map((c) => {
+                      const barW = maxBal > 0 ? (c.hoy / maxBal) * 100 : 0;
+                      return (
+                        <tr key={c.banco}>
+                          <td style={{ padding: "9px 0", fontSize: 13, fontWeight: 500, color: T.n700, borderBottom: `1px solid ${T.n100}` }}>
+                            {c.banco}
+                          </td>
+                          <td className="am" style={{ padding: "9px 0", textAlign: "right", fontSize: 13, color: T.n700, borderBottom: `1px solid ${T.n100}` }}>
+                            {euro(c.hoy)}
+                          </td>
+                          <td style={{ padding: "9px 8px", borderBottom: `1px solid ${T.n100}` }}>
+                            <div style={{ height: 5, background: T.n100, borderRadius: 3, overflow: "hidden" }}>
+                              <div style={{
+                                height: "100%", width: `${barW}%`,
+                                background: T.c1, borderRadius: 3, opacity: 0.45,
+                                transition: "width 0.6s ease",
+                              }} />
+                            </div>
+                          </td>
+                          <td className="am" style={{ padding: "9px 0", textAlign: "right", fontSize: 13, color: T.n700, borderBottom: `1px solid ${T.n100}` }}>
+                            {euro(c.fin)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {/* Total row with accent */}
+                    <tr>
+                      <td style={{
+                        padding: "10px 0", fontSize: 13, fontWeight: 700, color: T.n900,
+                        borderTop: `2px solid ${T.c1}`,
+                      }}>Total</td>
+                      <td className="am" style={{
+                        padding: "10px 0", textAlign: "right", fontSize: 13, fontWeight: 700, color: T.n900,
+                        borderTop: `2px solid ${T.c1}`,
+                      }}>
+                        {euro(totalHoy)}
+                      </td>
+                      <td style={{ borderTop: `2px solid ${T.c1}` }}></td>
+                      <td className="am" style={{
+                        padding: "10px 0", textAlign: "right", fontSize: 13, fontWeight: 700, color: T.n900,
+                        borderTop: `2px solid ${T.c1}`,
+                      }}>
+                        {euro(totalFin)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════ */}
+        {/* ROW 3 — Alertas (cada una clicable a su destino) */}
+        {/* ════════════════════════════════════════════════════════ */}
+        {ALERTAS.length > 0 && (
+          <div className="ac" style={{ padding: "16px 22px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span className="al">Requiere atención</span>
+              <span style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                minWidth: 20, height: 20, borderRadius: 6,
+                background: T.sWarnBg, color: T.sWarn,
+                fontSize: 11, fontWeight: 700,
+              }}>
+                {ALERTAS.length}
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 10 }}>
+              {ALERTAS.map((a) => {
+                const AlertIcon = a.icon;
+                const vencido = a.dias < 0;
+                return (
+                  <div key={a.id} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 14px", borderRadius: 8,
+                    background: vencido ? T.sNegBg : T.sWarnBg,
+                    border: `1px solid ${vencido ? "rgba(185,28,28,.12)" : "rgba(146,98,10,.12)"}`,
+                    cursor: "pointer",
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                      background: T.white,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <AlertIcon size={15} strokeWidth={1.5} style={{ color: vencido ? T.sNeg : T.sWarn }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.n900 }}>{a.titulo}</div>
+                      <div style={{ fontSize: 11, color: T.n500 }}>{a.desc}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      {a.importe && (
+                        <span className="am" style={{ fontSize: 13, fontWeight: 600, color: T.n900 }}>
+                          {euro(a.importe)}
+                        </span>
+                      )}
+                      <span style={{
+                        padding: "2px 7px", borderRadius: 4,
+                        fontSize: 10, fontWeight: 700,
+                        background: vencido ? "rgba(185,28,28,.10)" : "rgba(146,98,10,.10)",
+                        color: vencido ? T.sNeg : T.sWarn,
+                      }}>
+                        {a.dias > 0 ? `En ${a.dias}d` : `Hace ${Math.abs(a.dias)}d`}
+                      </span>
+                      <ChevronRight size={14} strokeWidth={1.5} style={{ color: T.n300 }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
