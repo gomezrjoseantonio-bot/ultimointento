@@ -24,6 +24,16 @@ function cleanBase64(base64Input) {
   return trimmed;
 }
 
+function detectMimeFromBase64(base64Data) {
+  if (!base64Data) return 'image/png';
+  const header = base64Data.slice(0, 16);
+  if (header.startsWith('iVBOR')) return 'image/png';
+  if (header.startsWith('/9j/')) return 'image/jpeg';
+  if (header.startsWith('R0lG')) return 'image/gif';
+  if (header.startsWith('UklGR')) return 'image/webp';
+  return 'image/png';
+}
+
 async function callAnthropic({ model, system, messages, maxTokens = 800, temperature = 0.2 }) {
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -180,10 +190,11 @@ Si un campo no aparece en el documento usa null.`;
 
       const texto = typeof body?.texto === 'string' ? body.texto.trim() : '';
 
+      const mimeTypes = Array.isArray(body?.mimeTypes) ? body.mimeTypes : [];
       const mediaBlocks = imagenes.length > 0
-        ? imagenes.map((img) => ({
+        ? imagenes.map((img, i) => ({
             type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: img },
+            source: { type: 'base64', media_type: (mimeTypes[i] || detectMimeFromBase64(img)).toLowerCase(), data: img },
           }))
         : base64Data
           ? [
@@ -289,10 +300,11 @@ Ejemplo de respuesta:
         : [];
       const base64Data = cleanBase64(body?.imagen);
 
+      const mimeTypes = Array.isArray(body?.mimeTypes) ? body.mimeTypes : [];
       const mediaBlocks = imagenes.length > 0
-        ? imagenes.map((img) => ({
+        ? imagenes.map((img, i) => ({
             type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: img },
+            source: { type: 'base64', media_type: (mimeTypes[i] || detectMimeFromBase64(img)).toLowerCase(), data: img },
           }))
         : base64Data
           ? [{ type: 'image', source: { type: 'base64', media_type: mimeType.toLowerCase(), data: base64Data } }]
