@@ -42,15 +42,6 @@ const sectionTitleStyle: React.CSSProperties = {
   color: 'var(--n-900)',
 };
 
-const chipStyle = (active: boolean): React.CSSProperties => ({
-  borderRadius: 999,
-  padding: '6px 12px',
-  fontSize: 12,
-  lineHeight: 1,
-  background: active ? 'rgba(188, 128, 36, 0.12)' : 'var(--n-100)',
-  color: active ? 'var(--s-warn)' : 'var(--n-500)',
-  border: '1px solid transparent',
-});
 
 function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: string; background: string; color: string } {
   const currentYear = new Date().getFullYear();
@@ -65,6 +56,7 @@ function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: 
 
 const FiscalDashboard: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');

@@ -1,7 +1,7 @@
 // ATLAS — T26: Pre-declaración automática
 // Genera un borrador con todas las casillas IRPF que ATLAS puede calcular.
 
-import { round2, DeclaracionIRPF, calcularDeclaracionIRPF } from './irpfCalculationService';
+import { DeclaracionIRPF, calcularDeclaracionIRPF } from './irpfCalculationService';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
