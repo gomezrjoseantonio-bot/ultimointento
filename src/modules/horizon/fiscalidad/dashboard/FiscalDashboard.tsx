@@ -65,6 +65,7 @@ function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: 
 
 const FiscalDashboard: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [ejercicio, setEjercicio] = useState<number>(new Date().getFullYear());
   const [declaracion, setDeclaracion] = useState<DeclaracionIRPF | null>(null);
   const [fuente, setFuente] = useState<FuenteDeclaracion>('vivo');
