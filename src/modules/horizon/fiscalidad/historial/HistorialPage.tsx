@@ -44,17 +44,31 @@ const HISTORIC_YEARS = Array.from(
 type EstadoBadge = 'en_curso' | 'pendiente' | 'finalizado';
 type FuenteBadge = 'pdf_aeat' | 'manual' | 'sin_datos';
 
-function getEstadoBadge(row: AnioHistoricoFiscal): { label: string; type: EstadoBadge } {
-  if (row.ejercicio === CURRENT_YEAR) return { label: 'En curso', type: 'en_curso' };
-  if (row.fuente === 'declarado') return { label: 'Finalizado', type: 'finalizado' };
-  if (row.fuente === 'cerrado') return { label: 'Pendiente', type: 'pendiente' };
-  if (row.fuente === 'vivo' && row.ejercicio < CURRENT_YEAR) return { label: 'Pendiente', type: 'pendiente' };
-  return { label: 'Pendiente', type: 'pendiente' };
+// C8: Correct estado logic — years older than (currentYear - 1) are always "Finalizado"
+// "Pendiente" only applies to the previous year during tax filing season (Jan–Jun)
+function esCampañaRenta(): boolean {
+  const month = new Date().getMonth(); // 0-indexed: 0=Jan, 5=Jun
+  return month >= 0 && month <= 5;
 }
 
+function getEstadoBadge(row: AnioHistoricoFiscal): { label: string; type: EstadoBadge } {
+  if (row.ejercicio === CURRENT_YEAR) return { label: 'En curso', type: 'en_curso' };
+  if (row.ejercicio === CURRENT_YEAR - 1 && esCampañaRenta() && row.fuente !== 'declarado') {
+    return { label: 'Pendiente', type: 'pendiente' };
+  }
+  // Any year older than current-1 (or current-1 outside campaign) is finalizado
+  if (row.ejercicio < CURRENT_YEAR) return { label: 'Finalizado', type: 'finalizado' };
+  return { label: 'Finalizado', type: 'finalizado' };
+}
+
+// C8: Correct fuente logic — "Manual" means user entered data manually
+// If ATLAS has no imported data, show "Sin datos" (with dashed border), not "Manual"
 function getFuenteBadge(row: AnioHistoricoFiscal): { label: string; type: FuenteBadge } {
   if (row.tienePDF) return { label: 'PDF AEAT', type: 'pdf_aeat' };
-  if (row.fuente === 'declarado' || row.fuente === 'cerrado' || row.fuente === 'vivo') return { label: 'Manual', type: 'manual' };
+  // Check if there's actual data (non-zero amounts) — if not, it's "Sin datos"
+  const hasRealData = row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0;
+  if (row.fuente === 'declarado' && hasRealData) return { label: 'Manual', type: 'manual' };
+  if (hasRealData) return { label: 'Manual', type: 'manual' };
   return { label: 'Sin datos', type: 'sin_datos' };
 }
 

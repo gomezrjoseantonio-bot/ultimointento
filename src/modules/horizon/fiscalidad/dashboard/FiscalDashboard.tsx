@@ -23,7 +23,8 @@ import {
   RentabilidadInmueble,
 } from '../../../../services/rentabilidadInmuebleService';
 import { useFiscalData } from '../../../../contexts/FiscalContext';
-import type { FuenteDeclaracion } from '../../../../services/declaracionResolverService';
+import { getOpexRulesForProperty } from '../../../../services/opexService';
+import type { OpexRule } from '../../../../services/db';
 
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -41,21 +42,12 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 
-function getEstadoBadge(ejercicio: number, fuente: FuenteDeclaracion): { label: string; background: string; color: string } {
-  const currentYear = new Date().getFullYear();
-  if (ejercicio >= currentYear) {
-    return { label: `${ejercicio} · en curso`, background: 'var(--s-pos-bg)', color: 'var(--s-pos)' };
-  }
-  if (fuente === 'declarado') {
-    return { label: `${ejercicio} · finalizado`, background: 'var(--n-100)', color: 'var(--n-700)' };
-  }
-  return { label: `${ejercicio} · pendiente`, background: 'var(--s-warn-bg)', color: 'var(--s-warn)' };
-}
 
 const FiscalDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { ejercicio, setEjercicio, declaracion, fuente, estimacion, loading: contextLoading } = useFiscalData();
+  const { declaracion, fuente, estimacion, loading: contextLoading } = useFiscalData();
+  const ejercicio = new Date().getFullYear();
   const [showColdStart, setShowColdStart] = useState(false);
   const [isColdStart, setIsColdStart] = useState(false);
   const [coldStartDismissed, setColdStartDismissed] = useState(false);
@@ -66,6 +58,9 @@ const FiscalDashboard: React.FC = () => {
 
   // T25: Rentabilidad por inmueble
   const [rentabilidades, setRentabilidades] = useState<RentabilidadInmueble[]>([]);
+
+  // C7: Expense tags per inmueble
+  const [opexByInmueble, setOpexByInmueble] = useState<Record<number, OpexRule[]>>({});
 
   // Additional data loading: secondary data that depends on the declaration
   const [secondaryLoading, setSecondaryLoading] = useState(false);
@@ -99,6 +94,20 @@ const FiscalDashboard: React.FC = () => {
           if (!cancelled) setRentabilidades(rents);
         } catch {
           if (!cancelled) setRentabilidades([]);
+        }
+
+        // C7: Load opex rules per inmueble
+        try {
+          const inmuebleIds = declaracion.baseGeneral.rendimientosInmuebles
+            .filter(inm => inm.inmuebleId >= 0)
+            .map(inm => inm.inmuebleId);
+          const opexMap: Record<number, OpexRule[]> = {};
+          await Promise.all(inmuebleIds.map(async (id) => {
+            opexMap[id] = await getOpexRulesForProperty(id);
+          }));
+          if (!cancelled) setOpexByInmueble(opexMap);
+        } catch {
+          if (!cancelled) setOpexByInmueble({});
         }
 
         if (!cancelled) {
@@ -139,8 +148,6 @@ const FiscalDashboard: React.FC = () => {
       cancelled = true;
     };
   }, [location.state]);
-
-  const badge = getEstadoBadge(ejercicio, fuente);
 
   // T23: Confidence badge
   const confianza = useMemo(() => {
@@ -203,19 +210,9 @@ const FiscalDashboard: React.FC = () => {
   return (
     <PageLayout title="Estado fiscal" subtitle="Histórico + situación del año en curso">
       <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui, IBM Plex Sans, sans-serif)' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--s4)', flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
-            <p style={{ margin: '6px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Estimación con los datos disponibles</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <select value={ejercicio} onChange={(event) => setEjercicio(Number(event.target.value))} style={{ border: '1px solid var(--n-300)', borderRadius: 'var(--r-md, 12px)', padding: '10px 12px', color: 'var(--n-700)', background: 'var(--white)' }}>
-              {years.map((year) => <option key={year} value={year}>{year}</option>)}
-            </select>
-            <span style={{ borderRadius: 999, padding: '10px 18px', background: badge.background, color: badge.color, fontWeight: 500 }}>
-              {badge.label}
-            </span>
-          </div>
+        <header>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
+          <p style={{ margin: '6px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Estimación ejercicio {ejercicio} con los datos disponibles</p>
         </header>
 
         {loading || !declaracion ? (
@@ -463,6 +460,59 @@ const FiscalDashboard: React.FC = () => {
                             )}
                           </div>
                         )}
+
+                        {/* C7: Expense category tags */}
+                        {(() => {
+                          const rules = opexByInmueble[inmueble.inmuebleId] ?? [];
+                          const EXPECTED_CATEGORIES: { key: string; label: string; match: (r: OpexRule) => boolean; alwaysRegistered?: boolean }[] = [
+                            { key: 'comunidad', label: 'Comunidad', match: (r) => r.categoria === 'comunidad' },
+                            { key: 'ibi', label: 'IBI', match: (r) => r.categoria === 'impuesto' && r.concepto.toLowerCase().includes('ibi') },
+                            { key: 'seguro', label: 'Seguro', match: (r) => r.categoria === 'seguro' },
+                            { key: 'suministros', label: 'Suministros', match: (r) => r.categoria === 'suministro' },
+                            { key: 'amortizacion', label: 'Amortización', match: () => true, alwaysRegistered: true },
+                            { key: 'intereses', label: 'Intereses hipoteca', match: (r) => r.concepto.toLowerCase().includes('hipoteca') || r.concepto.toLowerCase().includes('interés') || r.concepto.toLowerCase().includes('interes') },
+                            { key: 'reparaciones', label: 'Reparaciones', match: (r) => r.concepto.toLowerCase().includes('reparac') || r.concepto.toLowerCase().includes('conservac') },
+                          ];
+                          return (
+                            <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {EXPECTED_CATEGORIES.map((cat) => {
+                                const registered = cat.alwaysRegistered || rules.some((r) => r.activo && cat.match(r));
+                                if (registered) {
+                                  return (
+                                    <span key={cat.key} style={{
+                                      padding: '3px 10px',
+                                      borderRadius: 'var(--r-sm, 8px)',
+                                      fontSize: 'var(--t-xs, 12px)',
+                                      background: 'var(--n-100)',
+                                      color: 'var(--n-500)',
+                                    }}>
+                                      {cat.label}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    key={cat.key}
+                                    type="button"
+                                    onClick={() => navigate(`/inmuebles/${inmueble.inmuebleId}/gastos`)}
+                                    style={{
+                                      padding: '3px 10px',
+                                      borderRadius: 'var(--r-sm, 8px)',
+                                      fontSize: 'var(--t-xs, 12px)',
+                                      background: 'var(--s-warn-bg)',
+                                      color: 'var(--s-warn)',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      minHeight: 28,
+                                    }}
+                                  >
+                                    + {cat.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </article>
                     );
                   })}
