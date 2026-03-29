@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Download, FileText, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import FiscalPageShell from '../components/FiscalPageShell';
 import EjercicioPillSelector from '../components/EjercicioPillSelector';
 import ResumenDeclaracion from '../../../../components/fiscal/ResumenDeclaracion';
@@ -76,7 +75,6 @@ function calcCompleteness(decl: DeclaracionIRPF | null): number {
 
 // ── Main Component ─────────────────────────────────────────
 const MiIRPFPage: React.FC = () => {
-  const navigate = useNavigate();
   const { declaracion: contextDecl, loading: contextLoading, setEjercicio: setContextEjercicio } = useFiscalData();
 
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
