@@ -22,7 +22,7 @@ export interface SeccionRendimientoProps {
 
 const fmt = (v: number) =>
   v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} \u20ac`;
+const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} €`;
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',
@@ -100,7 +100,7 @@ const SeccionRendimiento: React.FC<SeccionRendimientoProps> = ({
             fontSize: 'var(--t-sm, 13px)',
             color: sinDatos ? 'var(--n-500)' : 'var(--n-900)',
           }}>
-            {total !== null ? fmtSigned(total) : '\u2014'}
+            {total !== null ? fmtSigned(total) : '—'}
           </span>
         </div>
       </button>

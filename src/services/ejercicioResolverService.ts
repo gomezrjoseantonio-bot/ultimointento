@@ -345,15 +345,17 @@ export async function bootstrapEjercicios(): Promise<void> {
 // ═══════════════════════════════════════════════
 
 function crearEjercicioInicial(año: number): EjercicioFiscalCoord {
-  const añoActual = new Date().getFullYear();
+  const hoy = new Date();
+  const añoActual = hoy.getFullYear();
   let estado: EjercicioFiscalCoord['estado'];
 
   if (año === añoActual) {
     estado = 'en_curso';
   } else if (año === añoActual - 1) {
-    estado = 'pendiente';
+    const finCampaña = new Date(añoActual, 5, 30); // 30 de junio
+    estado = hoy <= finCampaña ? 'pendiente' : 'declarado';
   } else {
-    estado = 'pendiente';
+    estado = 'declarado';
   }
 
   const now = new Date().toISOString();

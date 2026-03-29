@@ -22,7 +22,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 // ── Formatters ─────────────────────────────────────────────
 const fmtMoney = (n: number) =>
-  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n)) + ' \u20ac';
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n)) + ' €';
 
 // ── Types ──────────────────────────────────────────────────
 type EstadoFiscal = 'declarado' | 'pendiente' | 'en_curso';
@@ -37,9 +37,17 @@ interface HistorialRow {
 }
 
 // ── Estado / Fuente logic ──────────────────────────────────
-function getEstadoFiscal(year: number, rawEstado: EjercicioFiscalCoord['estado']): EstadoFiscal {
-  if (year === CURRENT_YEAR || rawEstado === 'en_curso') return 'en_curso';
-  if (year === CURRENT_YEAR - 1 || rawEstado === 'pendiente') return 'pendiente';
+function getEstadoFiscal(year: number, _rawEstado: EjercicioFiscalCoord['estado']): EstadoFiscal {
+  const hoy = new Date();
+  const añoActual = hoy.getFullYear();
+
+  if (year === añoActual) return 'en_curso';
+
+  if (year === añoActual - 1) {
+    const finCampaña = new Date(añoActual, 5, 30); // 30 de junio
+    return hoy <= finCampaña ? 'pendiente' : 'declarado';
+  }
+
   return 'declarado';
 }
 
@@ -135,7 +143,7 @@ const HistorialPage: React.FC = () => {
       if (!blob) { toast.error('PDF no encontrado'); return; }
       downloadBlob(blob, doc.filename || `Declaracion_IRPF_${año}.pdf`);
     } catch {
-      toast.error('Error al descargar la declaraci\u00f3n');
+      toast.error('Error al descargar la declaración');
     }
   }, []);
 
@@ -149,7 +157,7 @@ const HistorialPage: React.FC = () => {
               Historial
             </h2>
             <p style={{ margin: '4px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
-              Evoluci\u00f3n anual y archivo de declaraciones
+              Evolución anual y archivo de declaraciones
             </p>
           </div>
           <button
@@ -209,7 +217,7 @@ const HistorialPage: React.FC = () => {
               color: 'var(--n-500)',
               minWidth: 700,
             }}>
-              <span>A\u00f1o</span>
+              <span>Año</span>
               <span>Estado</span>
               <span>Fuente</span>
               <span style={{ textAlign: 'right' }}>Cuota</span>
@@ -237,7 +245,7 @@ const HistorialPage: React.FC = () => {
                     minWidth: 700,
                   }}
                 >
-                  {/* A\u00f1o */}
+                  {/* Año */}
                   <span style={{ fontWeight: 600, color: 'var(--n-700)' }}>{row.año}</span>
 
                   {/* Estado — badge con color */}
@@ -267,12 +275,12 @@ const HistorialPage: React.FC = () => {
 
                   {/* Cuota */}
                   <span style={{ textAlign: 'right', ...monoStyle, color: 'var(--n-700)' }}>
-                    {hasData ? fmtMoney(row.resumen!.cuotaIntegra) : '\u2014'}
+                    {hasData ? fmtMoney(row.resumen!.cuotaIntegra) : '—'}
                   </span>
 
                   {/* Retenciones */}
                   <span style={{ textAlign: 'right', ...monoStyle, color: 'var(--n-700)' }}>
-                    {hasData ? fmtMoney(row.resumen!.retenciones) : '\u2014'}
+                    {hasData ? fmtMoney(row.resumen!.retenciones) : '—'}
                   </span>
 
                   {/* Resultado */}
@@ -284,7 +292,7 @@ const HistorialPage: React.FC = () => {
                       ? (row.resumen!.resultado > 0 ? 'var(--s-neg)' : row.resumen!.resultado < 0 ? 'var(--s-pos)' : 'var(--n-500)')
                       : 'var(--n-500)',
                   }}>
-                    {hasData ? fmtMoney(row.resumen!.resultado) : '\u2014'}
+                    {hasData ? fmtMoney(row.resumen!.resultado) : '—'}
                   </span>
 
                   {/* Acciones — SIEMPRE 3 iconos */}
@@ -292,7 +300,7 @@ const HistorialPage: React.FC = () => {
                     {/* Ver */}
                     <button
                       type="button"
-                      title="Ver declaraci\u00f3n"
+                      title="Ver declaración"
                       onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
                       style={actionBtnStyle}
                     >
@@ -312,7 +320,7 @@ const HistorialPage: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        title="Importar declaraci\u00f3n"
+                        title="Importar declaración"
                         onClick={() => setShowImportWizard(true)}
                         style={actionBtnStyle}
                       >
@@ -326,7 +334,7 @@ const HistorialPage: React.FC = () => {
                       title="Completar / editar"
                       onClick={() => {
                         // TODO: Open manual completion modal for this year
-                        toast('Completar manualmente estar\u00e1 disponible pr\u00f3ximamente.');
+                        toast('Completar manualmente estará disponible próximamente.');
                       }}
                       style={actionBtnStyle}
                     >

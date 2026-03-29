@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ContratoReduccionProps {
   habitacion?: string;
-  tipo: 'Larga estancia' | 'Temporada' | 'Tur\u00edstico';
+  tipo: 'Larga estancia' | 'Temporada' | 'Turístico';
   fecha?: string;
   reduccion: 0 | 50 | 60 | 70 | 90;
   reduccionImporte: number;
@@ -33,13 +33,13 @@ const ContratoReduccion: React.FC<ContratoReduccionProps> = ({
       fontSize: 'var(--t-xs, 12px)',
       color: 'var(--n-700)',
     }}>
-      <span>{parts.join(' \u00b7 ')}</span>
+      <span>{parts.join(' · ')}</span>
       <span style={{
         fontFamily: 'IBM Plex Mono, monospace',
         fontVariantNumeric: 'tabular-nums',
         color: reduccionImporte < 0 ? 'var(--s-pos)' : 'var(--n-700)',
       }}>
-        {reduccionImporte !== 0 ? `${reduccionImporte < 0 ? '-' : ''}${fmt(Math.abs(reduccionImporte))} \u20ac` : '\u2014'}
+        {reduccionImporte !== 0 ? `${reduccionImporte < 0 ? '-' : ''}${fmt(Math.abs(reduccionImporte))} €` : '—'}
       </span>
     </div>
   );
