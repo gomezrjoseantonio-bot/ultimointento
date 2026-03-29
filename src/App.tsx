@@ -511,6 +511,11 @@ function App() {
                   <Personal />
                 </React.Suspense>
               } />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <Personal />
+                </React.Suspense>
+              } />
               <Route path="nomina" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />

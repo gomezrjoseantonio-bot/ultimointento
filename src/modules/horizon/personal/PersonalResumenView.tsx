@@ -23,12 +23,10 @@ import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyec
 import { ProyeccionAnual, MonthlyProjectionRow } from '../proyeccion/mensual/types/proyeccionMensual';
 import { personalDataService } from '../../../services/personalDataService';
 import { personalExpensesService } from '../../../services/personalExpensesService';
-import { gastosPersonalesService } from '../../../services/gastosPersonalesService';
 import { autonomoService } from '../../../services/autonomoService';
 import { prestamosService } from '../../../services/prestamosService';
 import {
   getPersonalExpenseAmountForMonth,
-  gastoRecurrenteAppliesToMonth,
 } from '../proyeccion/mensual/services/forecastEngine';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -83,17 +81,8 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, accent = 'd
       ? 'text-gray-700'
       : 'text-gray-900';
 
-  const accentBorder =
-    accent === 'navy'
-      ? 'border-t-blue-900'
-      : accent === 'positive'
-      ? 'border-t-gray-300'
-      : accent === 'danger'
-      ? 'border-t-gray-300'
-      : 'border-t-gray-300';
-
   return (
-    <div className={`bg-white border border-gray-200 border-t-4 ${accentBorder} rounded-3xl p-6 flex flex-col gap-3`}>
+    <div className={`bg-white border border-gray-200 rounded-3xl p-6 flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{title}</p>
         <div className={`p-2 rounded-full bg-gray-50`}>
@@ -481,24 +470,16 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, hasP
       try {
         const personalData = await personalDataService.getPersonalData();
         const personalDataId = personalData?.id ?? 1;
-        const [personalExpenses, gastosRecurrentes] = await Promise.all([
-          personalExpensesService.getExpenses(personalDataId),
-          gastosPersonalesService.getGastosRecurrentesActivos(personalDataId),
-        ]);
-        const activeExpenses = personalExpenses.filter(e => e.activo);
+        const personalExpenses = await personalExpensesService.getExpenses(personalDataId);
+        const activeExpenses = personalExpenses.filter(e => e.activo && e.importe > 0);
 
-        // Compute annual total per category (frequency-aware)
+        // Compute annual total per category (frequency-aware) — only from personalExpenses
         const categoryTotals: Record<string, number> = {};
         for (let m = 1; m <= 12; m++) {
           for (const exp of activeExpenses) {
             const amount = getPersonalExpenseAmountForMonth(exp, m);
             if (amount > 0) {
               categoryTotals[exp.categoria] = (categoryTotals[exp.categoria] ?? 0) + amount;
-            }
-          }
-          for (const gasto of gastosRecurrentes) {
-            if (gastoRecurrenteAppliesToMonth(gasto, m)) {
-              categoryTotals[gasto.categoria] = (categoryTotals[gasto.categoria] ?? 0) + gasto.importe;
             }
           }
         }

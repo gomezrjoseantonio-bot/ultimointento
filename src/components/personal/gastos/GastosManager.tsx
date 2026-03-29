@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
-import { LayoutTemplate, MoreVertical, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { LayoutTemplate, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   PersonalData,
@@ -189,31 +189,20 @@ const GastosManager: React.FC = () => {
 
   return (
     <div style={{ fontFamily: FONT, maxWidth: 1320, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <div style={{ width: 42, height: 42, borderRadius: 10, background: '#E8EFF7', color: BLUE, display: 'grid', placeItems: 'center' }}><Wallet size={20} /></div>
-          <div>
-            <h1 style={{ margin: 0, color: '#1E2B42', fontSize: 18 }}>Gastos Personales</h1>
-            <p style={{ margin: '4px 0 0', color: N500 }}>Gestión de gastos recurrentes y análisis de distribución</p>
-          </div>
-        </div>
-        <button onClick={() => { setEditingGasto(undefined); setDrawerOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: BLUE, color: '#fff', borderRadius: 12, padding: '12px 20px', cursor: 'pointer', fontWeight: 600 }}><Plus size={18} />Añadir gasto</button>
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginBottom: 16 }}>
-        <div style={{ border: `1px solid ${N300}`, borderLeft: '4px solid #C1121F', borderRadius: 14, padding: 16, background: '#fff' }}>
+        <div style={{ border: `1px solid ${N300}`, borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>GASTO MENSUAL ESTIMADO</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#C1121F', fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: N700, fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
           <p style={{ margin: '6px 0 0', color: N500 }}>{gastosConImporte.length} gastos con importe</p>
         </div>
-        <div style={{ border: `1px solid ${N300}`, borderLeft: `4px solid ${BLUE}`, borderRadius: 14, padding: 16, background: '#fff' }}>
+        <div style={{ border: `1px solid ${N300}`, borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>GASTO ANUAL ESTIMADO</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: BLUE, fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${(totalMensual * 12).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: N700, fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${(totalMensual * 12).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
           <p style={{ margin: '6px 0 0', color: N500 }}>Proyección 12 meses</p>
         </div>
-        <div style={{ border: `1px solid ${N300}`, borderLeft: '4px solid #5EA3D6', borderRadius: 14, padding: 16, background: '#fff' }}>
+        <div style={{ border: `1px solid ${N300}`, borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>MAYOR CATEGORÍA</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#4E81B1', fontWeight: 700, fontFamily: MONO }}>{majorCategory && majorCategory[1] > 0 ? `${majorCategory[1].toLocaleString('es-ES', { maximumFractionDigits: 0 })} €` : '—'}</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: N700, fontWeight: 700, fontFamily: MONO }}>{majorCategory && majorCategory[1] > 0 ? `${majorCategory[1].toLocaleString('es-ES', { maximumFractionDigits: 0 })} €` : '—'}</p>
           <p style={{ margin: '6px 0 0', color: N500 }}>{majorCategory && majorCategory[1] > 0 ? CATEGORIA_LABEL[majorCategory[0]] : 'Sin datos'}</p>
         </div>
       </div>
@@ -282,8 +271,8 @@ const GastosManager: React.FC = () => {
                     <div style={{ fontSize: 12, color: N500 }}>{CATEGORIA_LABEL[g.categoria]} · {FRECUENCIA_LABEL[g.frecuencia]}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <strong style={{ color: BLUE, fontFamily: MONO, fontSize: 18 }}>€{g.importe.toFixed(2)}</strong>
-                    {g.frecuencia !== 'mensual' && <div style={{ fontSize: 11, color: N500, fontFamily: MONO }}>€{mensual.toFixed(2)}/mes</div>}
+                    <strong style={{ color: BLUE, fontFamily: MONO, fontSize: 18 }}>{g.importe.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</strong>
+                    {g.frecuencia !== 'mensual' && <div style={{ fontSize: 11, color: N500, fontFamily: MONO }}>{mensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/mes</div>}
                   </div>
                   <KebabMenu onEdit={() => { setEditingGasto(g); setDrawerOpen(true); }} onDelete={() => setDeleteTarget(g)} />
                 </article>

@@ -11,7 +11,6 @@ import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
-import { gastosPersonalesService } from '../../../../../services/gastosPersonalesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
 import { GastoRecurrente, PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
@@ -875,19 +874,12 @@ async function loadBaseData(): Promise<BaseData> {
   }
 
   // ── E. GASTOS PERSONALES ─────────────────────────────────────────────────
-  // Load via gastosPersonalesService (used by forecastEngine functions)
-  let gastosRecurrentes: GastoRecurrente[] = [];
-  try {
-    gastosRecurrentes = await gastosPersonalesService.getGastosRecurrentesActivos(personalDataId);
-  } catch {
-    // No personal gastos data available
-  }
-
-  // Load OPEX-style PersonalExpense records (new model with advanced frequency fields)
+  // Load PersonalExpense records (new model with advanced frequency fields)
+  // NOTE: Old gastosRecurrentes store is no longer used — all expenses come from personalExpenses
   let personalExpenses: PersonalExpense[] = [];
   try {
     const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
-    personalExpenses = allPersonalExpenses.filter(e => e.activo);
+    personalExpenses = allPersonalExpenses.filter(e => e.activo && e.importe > 0);
   } catch {
     // No PersonalExpense data available
   }
@@ -903,7 +895,7 @@ async function loadBaseData(): Promise<BaseData> {
     pensionDrillDown,
     opexRules,
     propertyAliasMap,
-    gastosRecurrentes,
+    gastosRecurrentes: [] as GastoRecurrente[],
     personalExpenses,
     valoracionIndex,
     inmuebleInitialValues,

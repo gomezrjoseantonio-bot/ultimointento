@@ -60,7 +60,9 @@ class PersonalExpensesService {
 
   async calcularTotalMensual(personalDataId: number): Promise<number> {
     const expenses = await this.getExpenses(personalDataId);
-    return expenses.reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
+    return expenses
+      .filter(e => e.activo && e.importe > 0)
+      .reduce((sum, e) => sum + this.calcularImporteMensual(e), 0);
   }
 
   private buildIdealExpenseItems(personalDataId: number, profile?: PersonalData | null, includeBase = true): Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'>[] {
