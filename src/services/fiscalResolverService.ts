@@ -292,7 +292,6 @@ function resolverDesdeDeclaracion(
 
 export async function resolverDatosEjercicio(año: number): Promise<DatosFiscalesEjercicio> {
   const estado = getEstado(año);
-  const añoActual = new Date().getFullYear();
 
   // 1. Try ejercicioResolverService (the coord store)
   let coordEj: EjercicioFiscalCoord | null = null;
