@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Historical valuations view (read-only)
 
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, Calendar, List } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { valoracionesService } from '../../../../services/valoracionesService';
 import type { ValoracionesMensuales } from '../../../../types/valoraciones';
 
@@ -34,10 +34,10 @@ const Valoraciones: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const tabs: { id: ValoracionesTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'historico', label: 'Histórico', icon: <List size={16} strokeWidth={1.5} aria-hidden="true" /> },
-    { id: 'evolucion', label: 'Evolución', icon: <TrendingUp size={16} strokeWidth={1.5} aria-hidden="true" /> },
-    { id: 'detalle', label: 'Detalle', icon: <Calendar size={16} strokeWidth={1.5} aria-hidden="true" /> },
+  const tabs: { id: ValoracionesTab; label: string }[] = [
+    { id: 'historico', label: 'Histórico' },
+    { id: 'evolucion', label: 'Evolución' },
+    { id: 'detalle', label: 'Detalle' },
   ];
 
   return (
@@ -75,7 +75,6 @@ const Valoraciones: React.FC = () => {
               marginBottom: '-1px',
             }}
           >
-            {tab.icon}
             {tab.label}
           </button>
         ))}

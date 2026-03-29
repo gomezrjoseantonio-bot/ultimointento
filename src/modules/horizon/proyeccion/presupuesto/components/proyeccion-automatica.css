@@ -22,14 +22,10 @@
 }
 
 .proyeccion-hero__icon {
-  width: 40px;
-  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--r-lg);
-  background: var(--n-100);
-  color: var(--c1);
+  color: #6C757D;
   flex-shrink: 0;
 }
 

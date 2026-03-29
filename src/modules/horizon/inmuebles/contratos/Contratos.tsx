@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, CreditCard, List } from 'lucide-react';
+// lucide-react icons removed – v4 underline tabs without icons
 import PageLayout from '../../../../components/common/PageLayout';
 import ErrorBoundary from '../../../../components/common/ErrorBoundary';
 import { Contract } from '../../../../services/db';
@@ -13,13 +13,12 @@ type TabId = 'lista' | 'calendario' | 'cobros';
 interface Tab {
   id: TabId;
   label: string;
-  icon: React.ElementType;
 }
 
 const tabs: Tab[] = [
-  { id: 'lista', label: 'Lista', icon: List },
-  { id: 'calendario', label: 'Calendario', icon: Calendar },
-  { id: 'cobros', label: 'Cobros', icon: CreditCard },
+  { id: 'lista', label: 'Lista' },
+  { id: 'calendario', label: 'Calendario' },
+  { id: 'cobros', label: 'Cobros' },
 ];
 
 const Contratos: React.FC = () => {
@@ -103,30 +102,32 @@ const Contratos: React.FC = () => {
     >
       {/* Row 3: Segment Control - 12px spacing to content - Only show when not creating new contract */}
       {!showNewContract && (
-        <div className="mb-3">
-          <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
+        <div className="mb-3" style={{ borderBottom: '1px solid var(--grey-200, #e5e7eb)' }}>
+          <div role="tablist" className="flex" style={{ gap: 0 }}>
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              const activeColor = 'text-atlas-blue'; // Always use ATLAS blue for Horizon
-              
+
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   role="tab"
                   aria-selected={isActive}
-                  className={`
-                    inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
-                    ${isActive
-                      ? `bg-white ${activeColor} shadow-sm`
-                      : 'text-gray-600 hover:text-gray-900'
-                    }
-                  `}
+                  style={{
+                    padding: '10px 0',
+                    marginRight: 32,
+                    fontSize: 'var(--t-base, 0.875rem)',
+                    fontWeight: isActive ? 500 : 400,
+                    color: isActive ? 'var(--atlas-blue, #2563EB)' : 'var(--grey-500, #6B7280)',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid var(--atlas-blue, #2563EB)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 150ms ease',
+                    marginBottom: -1,
+                  }}
                 >
-                  <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${
-                    isActive ? activeColor : 'text-gray-400'
-                  }`} />
                   {tab.label}
                 </button>
               );

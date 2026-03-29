@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Building, TrendingUp, Plus, Download } from 'lucide-react';
+import { TrendingUp, Plus, Download } from 'lucide-react';
 import { PresupuestoLinea } from '../../../../../services/db';
 import BudgetTableEditor from './BudgetTableEditor';
 
@@ -74,17 +74,8 @@ const ScopedBudgetView: React.FC<ScopedBudgetViewProps> = ({
     }
   };
 
-  const getTabIcon = (tab: TabType) => {
-    switch (tab) {
-      case 'PERSONAL':
-        return <User className="h-4 w-4" />;
-      case 'INMUEBLES':
-        return <Building className="h-4 w-4" />;
-      case 'CONSOLIDADO':
-        return <TrendingUp className="h-4 w-4" />;
-      default:
-        return null;
-    }
+  const getTabIcon = (_tab: TabType) => {
+    return null;
   };
 
   const getTabTitle = (tab: TabType) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileTextIcon, BarChart3Icon } from 'lucide-react';
+// lucide-react icons removed – v4 underline tabs without icons
 import PageLayout from '../../../../components/common/PageLayout';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import GastosTab from './components/GastosTab';
@@ -13,16 +13,8 @@ const GastosCapex: React.FC = () => {
   const { currentModule } = useTheme();
 
   const tabs = [
-    {
-      id: 'gastos' as TabType,
-      name: 'Gastos',
-      icon: FileTextIcon
-    },
-    {
-      id: 'resumen' as TabType,
-      name: 'Resumen',
-      icon: BarChart3Icon
-    }
+    { id: 'gastos' as TabType, name: 'Gastos' },
+    { id: 'resumen' as TabType, name: 'Resumen' },
   ];
 
   const handleAddExpense = () => {
@@ -48,31 +40,33 @@ const GastosCapex: React.FC = () => {
         onClick: handleAddExpense
       }}
     >
-      {/* Segmented Control - Row 3 with proper spacing */}
-      <div className="mb-3">
-        <div role="tablist" className="flex bg-gray-100 rounded-lg p-1 w-fit">
+      {/* v4 Underline tabs — sin iconos */}
+      <div className="mb-3" style={{ borderBottom: '1px solid var(--grey-200, #e5e7eb)' }}>
+        <div role="tablist" className="flex" style={{ gap: 0 }}>
           {tabs.map((tab) => {
-            const Icon = tab.icon;
             const isActive = activeTab === tab.id;
-            const activeColor = currentModule === 'horizon' ? 'text-brand-navy' : 'text-brand-teal';
-            
+
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 role="tab"
                 aria-selected={isActive}
-                className={`
-                  inline-flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200
-                  ${isActive
-                    ? `bg-white ${activeColor} shadow-sm`
-                    : 'text-gray-600 hover:text-gray-900'
-                  }
-                `}
+                style={{
+                  padding: '10px 0',
+                  marginRight: 32,
+                  fontSize: 'var(--t-base, 0.875rem)',
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? 'var(--atlas-blue, #2563EB)' : 'var(--grey-500, #6B7280)',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid var(--atlas-blue, #2563EB)' : '2px solid transparent',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 150ms ease',
+                  marginBottom: -1,
+                }}
               >
-                <Icon className={`-ml-0.5 mr-2 h-4 w-4 ${
-                  isActive ? activeColor : 'text-gray-400'
-                }`} />
                 {tab.name}
               </button>
             );

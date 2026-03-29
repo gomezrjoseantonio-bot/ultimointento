@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Banknote, BarChart3 } from 'lucide-react';
+// lucide-react icons removed – v4 underline tabs without icons
 import PageHeader from '../../../../components/common/PageHeader';
 import CuentasManagement, { CuentasManagementRef } from './components/CuentasManagement';
 import AccountAnalytics from './components/AccountAnalytics';
@@ -14,16 +14,8 @@ const CuentasContainer: React.FC = () => {
   const cuentasRef = React.useRef<CuentasManagementRef>(null);
 
   const tabs = [
-    {
-      id: 'cuentas' as const,
-      name: 'Cuentas Bancarias',
-      icon: Banknote,
-    },
-    {
-      id: 'analytics' as const,
-      name: 'Analítica',
-      icon: BarChart3,
-    }
+    { id: 'cuentas' as const, name: 'Cuentas Bancarias' },
+    { id: 'analytics' as const, name: 'Analítica' },
   ];
 
   return (
@@ -44,22 +36,20 @@ const CuentasContainer: React.FC = () => {
         <div className="px-6">
           <div className="flex flex-wrap gap-6">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2 flex items-center gap-2
-                    ${isActive 
+                    px-1 py-3 text-sm font-medium transition-colors duration-200 relative border-b-2
+                    ${isActive
                       ? 'border-atlas-blue text-atlas-blue'
                       : 'text-text-gray hover:text-atlas-navy-1 border-transparent hover:border-gray-300'
                     }
                   `}
                 >
-                  <Icon className="h-6 w-6" style={{ strokeWidth: 1.5 }} />
                   {tab.name}
                 </button>
               );
