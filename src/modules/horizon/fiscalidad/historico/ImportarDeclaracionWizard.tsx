@@ -322,7 +322,8 @@ const VerificacionExtraccion: React.FC<{
   reconciliacionDisponible: boolean;
   onAbrirReconciliacion: () => void;
   avisoOrden?: string | null;
-}> = ({ resultado, avisoOrden }) => {
+  analisis?: ResultadoAnalisis | null;
+}> = ({ resultado, avisoOrden, analisis }) => {
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
   const validacion = useMemo(
     () => validarDeclaracionExtraida(declaracion, casillasRaw),
@@ -440,7 +441,14 @@ const VerificacionExtraccion: React.FC<{
             Inmuebles detectados ({inmueblesDetalle.length})
           </div>
           {inmueblesDetalle.map((inmueble, index) => {
-            const isNew = true; // All are "new" during initial import until analyzed
+            // Determine badge using analysis results: check if ref catastral matches an existing property
+            const ref = (inmueble.datos.referenciaCatastral ?? '').replace(/[\s\-.]/g, '').toUpperCase();
+            const existeEnAtlas = analisis
+              ? (analisis.inmuebles.coinciden.some((c) => c.referenciaCatastral.replace(/[\s\-.]/g, '').toUpperCase() === ref)
+                || analisis.inmuebles.actualizar.some((a) => a.referenciaCatastral.replace(/[\s\-.]/g, '').toUpperCase() === ref))
+              : false;
+            const isNew = !existeEnAtlas;
+            const badgeLabel = inmueble.datos.esAccesorio ? 'Accesorio' : existeEnAtlas ? 'Existente' : 'Nuevo';
             return (
               <div key={index} style={{
                 padding: '0.75rem 1rem',
@@ -468,9 +476,9 @@ const VerificacionExtraccion: React.FC<{
                   fontWeight: 600,
                   ...(isNew
                     ? { background: 'var(--s-pos-bg, #E9F8EE)', color: 'var(--s-pos, #1A7A3C)' }
-                    : { background: 'var(--s-warn-bg, #FFF1CF)', color: 'var(--s-warn, #A36B00)' }),
+                    : { background: 'var(--n-100, #F0F2F5)', color: 'var(--n-600, #6C757D)' }),
                 }}>
-                  {inmueble.datos.esAccesorio ? 'Accesorio' : 'Nuevo'}
+                  {badgeLabel}
                 </span>
               </div>
             );
@@ -609,20 +617,31 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     setData((prev) => ({ ...prev, ejercicio }));
   }, [ejercicio]);
 
-  // T1B.4: Check if previous year is declared for chained import warning
+  // T1B.4: Check for missing years in the import chain
   useEffect(() => {
     if (ejercicio <= 2020) { setAvisoOrden(null); return; }
     let cancelled = false;
-    getEjercicio(ejercicio - 1).then((ejPrev) => {
-      if (cancelled) return;
-      if (!ejPrev.aeat && ejPrev.estado !== 'declarado' && ejPrev.estado !== 'prescrito') {
-        setAvisoOrden(
-          `Para mejores resultados, importa primero la declaración de ${ejercicio - 1}. Los arrastres se calculan en cadena.`,
-        );
-      } else {
-        setAvisoOrden(null);
+    (async () => {
+      try {
+        const añosFaltantes: number[] = [];
+        for (let a = ejercicio - 1; a >= 2020; a--) {
+          const ej = await getEjercicio(a);
+          if (ej.aeat || ej.estado === 'declarado' || ej.estado === 'prescrito') break;
+          añosFaltantes.push(a);
+        }
+        if (cancelled) return;
+        if (añosFaltantes.length > 0) {
+          const listaAños = añosFaltantes.sort((a, b) => a - b).join(', ');
+          setAvisoOrden(
+            `Faltan las declaraciones de ${listaAños}. Los arrastres se propagarán automáticamente cuando las importes.`,
+          );
+        } else {
+          setAvisoOrden(null);
+        }
+      } catch {
+        if (!cancelled) setAvisoOrden(null);
       }
-    }).catch(() => { if (!cancelled) setAvisoOrden(null); });
+    })();
     return () => { cancelled = true; };
   }, [ejercicio]);
 
@@ -1080,6 +1099,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 reconciliacionDisponible={Boolean(reconciliacion)}
                 onAbrirReconciliacion={() => setStep(4)}
                 avisoOrden={avisoOrden}
+                analisis={resultadoAnalisis}
               />
             ) : (
               <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>
@@ -1308,6 +1328,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                   reconciliacion={reconciliacionPreview}
                   reconciliacionDisponible={Boolean(reconciliacion)}
                   onAbrirReconciliacion={() => setStep(4)}
+                  analisis={resultadoAnalisis}
                 />
               ) : (
                 <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--hz-neutral-300)' }}>

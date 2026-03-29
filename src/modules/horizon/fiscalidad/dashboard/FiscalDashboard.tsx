@@ -373,8 +373,8 @@ const FiscalDashboard: React.FC = () => {
                               fontSize: 'var(--t-xs, 11px)',
                               color: 'var(--n-500)',
                             }}>
-                              {inmueble.esHabitual ? 'Habitual' : `${inmueble.diasAlquilado} días arrendado`}
-                              {inmueble.esHabitual ? '' : ' · alquiler'}
+                              {`${inmueble.diasAlquilado} días arrendado`}
+                              {inmueble.esHabitual ? ' · larga estancia' : ' · alquiler'}
                             </p>
                           </div>
                           <div style={{ textAlign: 'right' }}>

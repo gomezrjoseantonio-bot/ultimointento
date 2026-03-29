@@ -280,16 +280,27 @@ export async function bootstrapEjercicios(): Promise<void> {
   const añoActual = new Date().getFullYear();
 
   // Asegurar que existen registros para 7 años atrás + actual
-  for (let año = añoActual - 6; año <= añoActual; año++) {
+  const añoInicio = añoActual - 6; // e.g. 2020
+  const añoFin = añoActual;        // e.g. 2026
+
+  for (let año = añoInicio; año <= añoFin; año++) {
     const existe = await db.get('ejerciciosFiscalesCoord', año);
     if (!existe) {
       await db.put('ejerciciosFiscalesCoord', crearEjercicioInicial(año));
     }
   }
 
-  // Verificar consistencia y prescripción
+  // Limpiar ejercicios fuera del rango válido (basura de bootstrap anteriores)
   const todos = await db.getAll('ejerciciosFiscalesCoord');
   for (const ej of todos) {
+    if (ej.año > añoFin || ej.año < 2015) {
+      await db.delete('ejerciciosFiscalesCoord', ej.año);
+    }
+  }
+
+  // Verificar consistencia y prescripción de los que quedan
+  const validos = await db.getAll('ejerciciosFiscalesCoord');
+  for (const ej of validos) {
     let modificado = false;
 
     // Si tiene AEAT pero no está como declarado/prescrito, corregir

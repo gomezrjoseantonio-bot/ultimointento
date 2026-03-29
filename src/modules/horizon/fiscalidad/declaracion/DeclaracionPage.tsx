@@ -71,7 +71,10 @@ const DeclaracionPage: React.FC = () => {
   // Load available years
   useEffect(() => {
     getTodosLosEjercicios().then((todos) => {
-      const years = todos.map((e) => e.año).sort((a, b) => b - a);
+      const years = todos
+        .map((e) => e.año)
+        .filter((año) => año <= currentYear && año >= 2015)
+        .sort((a, b) => b - a);
       setAllYears(years.length > 0 ? years : Array.from({ length: 7 }, (_, i) => currentYear - i));
     }).catch(() => {
       setAllYears(Array.from({ length: 7 }, (_, i) => currentYear - i));
@@ -113,20 +116,27 @@ const DeclaracionPage: React.FC = () => {
 
       const inmuebleDetails: InmuebleDetail[] = declaracion.baseGeneral.rendimientosInmuebles
         .filter((inm) => inm.inmuebleId >= 0)
-        .map((inm) => ({
-          name: inm.alias || `Inmueble ${inm.inmuebleId}`,
-          rendimientoReducido: inm.rendimientoNetoReducido,
-          rows: [
-            { label: 'Ingresos íntegros', value: inm.ingresosIntegros },
-            { label: 'Gastos deducibles', value: -inm.gastosDeducibles, accent: 'negative' as const },
-            { label: 'Amortización', value: -inm.amortizacion, accent: 'negative' as const },
-            { label: 'Rendimiento neto', value: inm.rendimientoNeto },
-            ...(inm.reduccionHabitual > 0 ? [
-              { label: `Reducción (${Math.round(inm.porcentajeReduccionHabitual * 100)}%)`, value: -inm.reduccionHabitual, accent: 'negative' as const },
-            ] : []),
-            { label: 'Rendimiento neto reducido', value: inm.rendimientoNetoReducido },
-          ],
-        }));
+        .map((inm) => {
+          // Round reduction % to nearest legal value (0, 50, 60, 70, 90)
+          const rawPct = Math.round(inm.porcentajeReduccionHabitual * 100);
+          const legalPcts = [0, 50, 60, 70, 90];
+          const displayPct = legalPcts.reduce((best, l) => Math.abs(l - rawPct) < Math.abs(best - rawPct) ? l : best, 0);
+
+          return {
+            name: inm.alias || `Inmueble ${inm.inmuebleId}`,
+            rendimientoReducido: inm.rendimientoNetoReducido,
+            rows: [
+              { label: 'Ingresos íntegros', value: inm.ingresosIntegros },
+              { label: 'Gastos deducibles', value: -inm.gastosDeducibles, accent: 'negative' as const },
+              { label: 'Amortización', value: -inm.amortizacion, accent: 'negative' as const },
+              { label: 'Rendimiento neto', value: inm.rendimientoNetoAlquiler },
+              ...(inm.reduccionHabitual > 0 ? [
+                { label: `Reducción (${displayPct}%)`, value: -inm.reduccionHabitual, accent: 'negative' as const },
+              ] : []),
+              { label: 'Rendimiento neto reducido', value: inm.rendimientoNetoReducido },
+            ],
+          };
+        });
 
       const totalInmuebles = inmuebleDetails.reduce((s, i) => s + i.rendimientoReducido, 0);
       const totalActividad = declaracion.baseGeneral.rendimientosAutonomo?.rendimientoNeto ?? 0;
@@ -163,9 +173,9 @@ const DeclaracionPage: React.FC = () => {
       }
 
       result.push(
-        { id: 'baseGeneral', title: 'Base imponible general', total: resumen?.baseImponibleGeneral ?? declaracion.liquidacion?.baseImponibleGeneral ?? 0 },
-        { id: 'baseAhorro', title: 'Base imponible del ahorro', total: resumen?.baseImponibleAhorro ?? declaracion.liquidacion?.baseImponibleAhorro ?? 0 },
-        { id: 'cuota', title: 'Cuota íntegra', total: resumen?.cuotaIntegra ?? declaracion.liquidacion?.cuotaIntegra ?? 0 },
+        { id: 'baseGeneral', title: 'Base imponible general', total: declaracion.liquidacion?.baseImponibleGeneral ?? resumen?.baseImponibleGeneral ?? 0 },
+        { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion.liquidacion?.baseImponibleAhorro ?? resumen?.baseImponibleAhorro ?? 0 },
+        { id: 'cuota', title: 'Cuota íntegra', total: declaracion.liquidacion?.cuotaIntegra ?? resumen?.cuotaIntegra ?? 0 },
         {
           id: 'retenciones',
           title: 'Retenciones y pagos a cuenta',

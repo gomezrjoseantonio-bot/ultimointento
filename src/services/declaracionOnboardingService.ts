@@ -195,7 +195,7 @@ const EMPTY_ADDRESS = {
 };
 
 function normalizeRef(value?: string | null): string {
-  return (value ?? '').replace(/\s+/g, '').trim().toUpperCase();
+  return (value ?? '').replace(/[\s\-\.]/g, '').trim().toUpperCase();
 }
 
 function normalizeNif(value?: string | null): string {

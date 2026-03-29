@@ -97,9 +97,10 @@ const HistorialPage: React.FC = () => {
       setEntidades(ents);
       setConfig(cfg);
 
-      // Build rows from resolver data
+      // Build rows from resolver data (filter out future/invalid years)
+      const validEjercicios = ejercicios.filter((ej) => ej.año <= CURRENT_YEAR && ej.año >= 2015);
       const histRows: HistorialRow[] = await Promise.all(
-        ejercicios.sort((a, b) => b.año - a.año).map(async (ej) => {
+        validEjercicios.sort((a, b) => b.año - a.año).map(async (ej) => {
           const decl = await getDeclaracion(ej.año);
           return {
             año: ej.año,
@@ -295,6 +296,7 @@ const HistorialPage: React.FC = () => {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '70px 140px 1fr 1fr 1fr 120px 90px',
+                  columnGap: 8,
                   padding: '10px 16px',
                   background: 'var(--n-100)',
                   borderBottom: '1px solid var(--n-200)',
@@ -326,6 +328,7 @@ const HistorialPage: React.FC = () => {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '70px 140px 1fr 1fr 1fr 120px 90px',
+                        columnGap: 8,
                         padding: '10px 16px',
                         alignItems: 'center',
                         borderBottom: '1px solid var(--n-100)',
