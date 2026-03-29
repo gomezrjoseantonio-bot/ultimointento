@@ -173,9 +173,9 @@ const DeclaracionPage: React.FC = () => {
       }
 
       result.push(
-        { id: 'baseGeneral', title: 'Base imponible general', total: declaracion.liquidacion?.baseImponibleGeneral ?? resumen?.baseImponibleGeneral ?? 0 },
-        { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion.liquidacion?.baseImponibleAhorro ?? resumen?.baseImponibleAhorro ?? 0 },
-        { id: 'cuota', title: 'Cuota íntegra', total: declaracion.liquidacion?.cuotaIntegra ?? resumen?.cuotaIntegra ?? 0 },
+        { id: 'baseGeneral', title: 'Base imponible general', total: declaracion.liquidacion?.baseImponibleGeneral ?? resumen?.baseLiquidableGeneral ?? 0 },
+        { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion.liquidacion?.baseImponibleAhorro ?? resumen?.baseLiquidableAhorro ?? 0 },
+        { id: 'cuota', title: 'Cuota íntegra', total: declaracion.liquidacion?.cuotaIntegra ?? ((resumen?.cuotaIntegraEstatal ?? 0) + (resumen?.cuotaIntegraAutonomica ?? 0)) },
         {
           id: 'retenciones',
           title: 'Retenciones y pagos a cuenta',
