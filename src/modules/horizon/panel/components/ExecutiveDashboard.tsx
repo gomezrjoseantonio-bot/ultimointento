@@ -5,7 +5,7 @@ import {
   Home, Building2, TrendingUp, Wallet,
   Shield, DoorOpen, Receipt, BadgePercent,
   CalendarDays, FileText, Bell,
-  ChevronRight, LayoutDashboard, Zap, RefreshCw,
+  ChevronRight, LayoutDashboard, RefreshCw,
 } from 'lucide-react';
 import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import type { LucideIcon } from 'lucide-react';

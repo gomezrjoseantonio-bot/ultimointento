@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   BarChart3,
   ChevronLeft,
@@ -25,12 +25,6 @@ export default function PresupuestosView() {
   const [year, setYear] = useState<number>(CURRENT_YEAR);
   const [projectionData, setProjectionData] = useState<ProyeccionMensualData | null>(null);
   const [exporting, setExporting] = useState(false);
-
-  const tabs = useMemo(() => [
-    { id: 'proyeccion' as const, label: 'Proyección Automática' },
-    { id: 'presupuesto' as const, label: 'Crear Presupuesto' },
-    { id: 'comparativa' as const, label: 'Real vs Previsión' },
-  ], []);
 
   const handleExport = async () => {
     if (!projectionData || exporting) return;
