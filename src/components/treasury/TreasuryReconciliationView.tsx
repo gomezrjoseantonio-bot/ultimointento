@@ -19,6 +19,7 @@ import {
   Landmark,
   Upload,
 } from 'lucide-react';
+import PageHeader, { HeaderSecondaryButton } from './../../components/shared/PageHeader';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
@@ -763,31 +764,12 @@ const TreasuryReconciliationView: React.FC = () => {
     <div className="tv3-view">
 
       {/* ══ TOPBAR ══ */}
-      <div className="tv3-topbar">
-        <div className="tv3-topbar-left">
-          <div className="tv3-page-icon"><Landmark size={20} /></div>
-          <div>
-            <div className="tv3-page-label">Tesorería</div>
-            <div className="tv3-page-sub">Conciliación mensual</div>
-          </div>
-        </div>
-        <div className="tv3-topbar-right">
-          <button className="tv3-btn tv3-btn--ghost tv3-btn--sm">
-            <Upload size={14} /> Importar CSV
-          </button>
-          <button className="tv3-btn tv3-btn--ghost tv3-btn--sm" onClick={() => setShowAddModal(true)}>
-            <Plus size={14} /> Movimiento directo
-          </button>
-          <button
-            className="tv3-btn tv3-btn--primary tv3-btn--sm"
-            onClick={handleGenerateForecasts}
-            disabled={syncingForecasts}
-          >
-            <RefreshCw size={14} className={syncingForecasts ? 'tv3-spin' : ''} />
-            {syncingForecasts ? 'Sincronizando…' : 'Generar previsiones'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon={Landmark}
+        title="Tesorería"
+        subtitle="Conciliación mensual"
+        actions={<HeaderSecondaryButton icon={Upload} label="Importar CSV" />}
+      />
 
       <div className="tv3-content">
 

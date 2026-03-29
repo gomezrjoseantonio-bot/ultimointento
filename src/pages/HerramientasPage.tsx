@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Wrench } from 'lucide-react';
-import PageHeader from '../components/common/PageHeader';
+import PageHeader from '../components/shared/PageHeader';
 import ExportadorDatos from '../modules/horizon/herramientas/exporters/ExportadorDatos';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {

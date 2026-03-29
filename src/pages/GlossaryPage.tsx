@@ -1,17 +1,16 @@
 import React from 'react';
 import { BookOpen } from 'lucide-react';
-import PageLayout from '../components/common/PageLayout';
+import PageHeader from '../components/shared/PageHeader';
 import { Glossary } from '../components/common/Glossary';
 
 const GlossaryPage: React.FC = () => {
   return (
-    <PageLayout
-      title="Glosario"
-      subtitle="Definiciones de conceptos financieros y técnicos"
-      icon={BookOpen}
-    >
-      <Glossary />
-    </PageLayout>
+    <div>
+      <PageHeader icon={BookOpen} title="Glosario" />
+      <div className="p-6">
+        <Glossary />
+      </div>
+    </div>
   );
 };
 

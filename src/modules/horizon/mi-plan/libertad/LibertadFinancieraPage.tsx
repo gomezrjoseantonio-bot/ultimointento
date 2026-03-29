@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, Download, Goal, Home, Loader2, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
-import PageLayout from '../../../../components/common/PageLayout';
+import PageHeader from '../../../../components/shared/PageHeader';
 import { getObjetivos, saveObjetivos } from '../../../../services/objetivosService';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
@@ -298,10 +298,13 @@ const LibertadFinancieraPage: React.FC = () => {
   const fechaMitad = simulation.mesMitad !== null ? addMonths(new Date(), simulation.mesMitad) : null;
 
   return (
-    <PageLayout
-      title="Libertad financiera"
-      subtitle="Simulación basada en tus datos reales de ATLAS. El objetivo se sincroniza con Mis objetivos."
-    >
+    <div>
+      <PageHeader
+        icon={Target}
+        title="Libertad financiera"
+        subtitle="Simulación basada en tus datos reales de ATLAS"
+      />
+      <div className="p-6">
       <div className="space-y-6">
         <section className="atlas-card">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -479,7 +482,8 @@ const LibertadFinancieraPage: React.FC = () => {
           )}
         </section>
       </div>
-    </PageLayout>
+      </div>
+    </div>
   );
 };
 

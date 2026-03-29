@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, AlertCircle } from 'lucide-react';
-import PageHeader from '../../../components/common/PageHeader';
+import PageHeader, { HeaderPrimaryButton } from '../../../components/shared/PageHeader';
 import { inversionesService } from '../../../services/inversionesService';
 import { rendimientosService } from '../../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../../services/migrations/migrateInversiones';
@@ -186,55 +186,16 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
     <div>
       {/* v4 Header */}
       <PageHeader
-        title="Inversiones"
         icon={TrendingUp}
-        primaryAction={{
-          label: '+ Nueva posición',
-          onClick: handleNewPosicion,
-          icon: Plus,
-        }}
+        title="Inversiones"
+        tabs={[
+          { id: 'cartera', label: 'Cartera' },
+          { id: 'rendimientos', label: pendingRendimientos > 0 ? `Rendimientos (${pendingRendimientos})` : 'Rendimientos' },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as Tab)}
+        actions={<HeaderPrimaryButton icon={Plus} label="Nueva posición" onClick={handleNewPosicion} />}
       />
-
-      {/* v4 Underline tabs — sin iconos */}
-      <div style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--white)', padding: '0 24px' }}>
-        <div style={{ display: 'flex' }}>
-          {tabItems.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '10px 0',
-                marginRight: 32,
-                fontSize: 'var(--t-base)',
-                fontWeight: activeTab === tab.id ? 500 : 400,
-                color: activeTab === tab.id ? 'var(--grey-900)' : 'var(--grey-500)',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === tab.id ? '2px solid var(--navy-900)' : '2px solid transparent',
-                marginBottom: -1,
-                cursor: 'pointer',
-                transition: 'all 150ms ease',
-                fontFamily: 'var(--font-base)',
-              }}
-            >
-              {tab.label}
-              {tab.id === 'rendimientos' && pendingRendimientos > 0 && (
-                <span style={{
-                  background: 'var(--grey-100)',
-                  color: 'var(--grey-700)',
-                  borderRadius: 6,
-                  fontSize: 'var(--t-xs)',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  marginLeft: 8,
-                }}>
-                  {pendingRendimientos}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
 
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       {/* Pending rendimientos alert */}

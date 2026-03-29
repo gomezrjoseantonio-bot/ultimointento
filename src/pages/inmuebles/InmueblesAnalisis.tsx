@@ -27,6 +27,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import {
   LineChart,
   Line,
@@ -1249,31 +1250,19 @@ export default function InmueblesAnalisis() {
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       <div style={{ padding: 24 }}>
         {/* Page header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
-          <Building2 size={20} color="#6C757D" />
-          <div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Cartera inmobiliaria</div>
-            <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus propiedades</div>
-          </div>
-        </div>
-
-        {/* Underline tabs */}
-        <div style={{ display: 'flex', borderBottom: `1px solid ${C.n200}`, marginBottom: 20 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => handleTabChange(t.id)} style={{
-              padding: '10px 0',
-              marginRight: 32,
-              fontSize: 14,
-              fontWeight: activeTab === t.id ? 500 : 400,
-              color: activeTab === t.id ? '#1A2332' : '#6C757D',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === t.id ? '2px solid #042C5E' : '2px solid transparent',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}>{t.label}</button>
-          ))}
-        </div>
+        <PageHeader
+          icon={Building2}
+          title="Cartera inmobiliaria"
+          tabs={[
+            { id: 'resumen', label: 'Resumen' },
+            { id: 'cartera', label: 'Cartera' },
+            { id: 'evolucion', label: 'Evolución general' },
+            { id: 'individual', label: 'Individual' },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(id) => handleTabChange(id as Tab)}
+          actions={<HeaderPrimaryButton icon={Plus} label="Nuevo inmueble" onClick={() => navigate('/inmuebles/cartera/nuevo')} />}
+        />
 
         {/* Tab content */}
         {activeTab === 'resumen'    && <TabResumen properties={properties} />}

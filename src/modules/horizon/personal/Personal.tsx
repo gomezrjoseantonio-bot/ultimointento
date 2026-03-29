@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Settings } from 'lucide-react';
-import PageLayout from '../../../components/common/PageLayout';
+import PageHeader, { HeaderSecondaryButton } from '../../../components/shared/PageHeader';
 import NominaManager from '../../../components/personal/nomina/NominaManager';
 import AutonomoView from '../../personal/components/AutonomoView';
 import PensionTab from '../../../components/personal/PensionTab';
@@ -160,59 +160,41 @@ const Personal: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout title="Personal" subtitle="Gestión de finanzas personales" icon={User}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <div className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--navy-900)', borderTopColor: 'transparent' }} />
-          <span style={{ marginLeft: 8, color: 'var(--grey-500)' }}>Cargando configuración...</span>
+      <div>
+        <PageHeader
+          icon={User}
+          title="Personal"
+          subtitle="Gestión de finanzas personales"
+        />
+        <div className="p-6">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+            <div className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--navy-900)', borderTopColor: 'transparent' }} />
+            <span style={{ marginLeft: 8, color: 'var(--grey-500)' }}>Cargando configuración...</span>
+          </div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout
-      title="Personal"
-      subtitle="Gestión de finanzas personales"
-      icon={User}
-      primaryAction={{
-        label: 'Configurar',
-        onClick: () => navigate('/cuenta/perfil'),
-        variant: 'header',
-        icon: Settings,
-      }}
-    >
-      {/* v4 Underline tabs — sin iconos */}
-      <div style={{ borderBottom: '1px solid var(--grey-200)', marginBottom: 24 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab)}
-                style={{
-                  padding: '10px 0',
-                  marginRight: 32,
-                  fontSize: 'var(--t-base)',
-                  fontWeight: isActive ? 500 : 400,
-                  color: isActive ? 'var(--grey-900)' : 'var(--grey-500)',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: isActive ? '2px solid var(--navy-900)' : '2px solid transparent',
-                  marginBottom: -1,
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease',
-                }}
-              >
-                {tab.name}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        icon={User}
+        title="Personal"
+        subtitle="Gestión de finanzas personales"
+        tabs={tabs.map((tab) => ({ id: tab.id, label: tab.name }))}
+        activeTab={activeTab}
+        onTabChange={(tabId) => {
+          const tab = tabs.find((t) => t.id === tabId);
+          if (tab) handleTabClick(tab);
+        }}
+        actions={<HeaderSecondaryButton icon={Settings} label="Configurar" onClick={() => navigate('/cuenta/perfil')} />}
+      />
 
-      {renderTabContent()}
-    </PageLayout>
+      <div className="p-6">
+        {renderTabContent()}
+      </div>
+    </div>
   );
 };
 

@@ -6,6 +6,7 @@ import {
   Download,
 } from 'lucide-react';
 import { AtlasButton } from '../../../../components/atlas/AtlasButton';
+import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import ProyeccionAutomaticaView from './components/ProyeccionAutomaticaView';
 import type { ProyeccionMensualData } from './types/ProyeccionData';
 import ProyeccionPresupuesto from './ProyeccionPresupuesto';
@@ -90,51 +91,33 @@ export default function PresupuestosView() {
 
   return (
     <div className="proyeccion-automatica-page">
-      <section className="proyeccion-hero">
-        <div className="proyeccion-hero__intro">
-          <div className="proyeccion-hero__icon">
-            <BarChart3 size={20} color="#6C757D" />
-          </div>
-          <div>
-            <h1 className="proyeccion-hero__title">Proyección Mensual</h1>
-          </div>
+      <PageHeader
+        icon={BarChart3}
+        title="Proyección mensual"
+        tabs={[
+          { id: 'proyeccion', label: 'Proyección Automática' },
+          { id: 'presupuesto', label: 'Crear Presupuesto' },
+          { id: 'comparativa', label: 'Real vs Previsión' },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id as PresupuestosTab)}
+        actions={activeTab === 'proyeccion' ? <HeaderSecondaryButton icon={Download} label={exporting ? 'Exportando…' : 'Exportar'} onClick={handleExport} /> : undefined}
+      />
+
+      {/* Year selector — only for projection tab */}
+      {activeTab === 'proyeccion' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px 0' }}>
+          <AtlasButton variant="secondary" size="sm" className="gap-2" onClick={() => setYear((value) => value - 1)}>
+            <ChevronLeft size={16} />
+            <span>{year - 1}</span>
+          </AtlasButton>
+          <span className="proyeccion-year-pill">{year}</span>
+          <AtlasButton variant="secondary" size="sm" className="gap-2" onClick={() => setYear((value) => value + 1)}>
+            <span>{year + 1}</span>
+            <ChevronRight size={16} />
+          </AtlasButton>
         </div>
-
-        {activeTab === 'proyeccion' ? (
-          <div className="proyeccion-hero__actions">
-            <AtlasButton variant="secondary" size="sm" className="gap-2" onClick={() => setYear((value) => value - 1)}>
-              <ChevronLeft size={16} />
-              <span>{year - 1}</span>
-            </AtlasButton>
-            <span className="proyeccion-year-pill">{year}</span>
-            <AtlasButton variant="secondary" size="sm" className="gap-2" onClick={() => setYear((value) => value + 1)}>
-              <span>{year + 1}</span>
-              <ChevronRight size={16} />
-            </AtlasButton>
-            <AtlasButton variant="secondary" size="sm" className="gap-2" onClick={handleExport} disabled={!projectionData || exporting}>
-              <Download size={16} />
-              <span>{exporting ? 'Exportando…' : 'Exportar'}</span>
-            </AtlasButton>
-          </div>
-        ) : null}
-      </section>
-
-      <nav className="proyeccion-tabs" aria-label="Navegación de presupuesto">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
-
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`proyeccion-tab ${isActive ? 'active' : ''}`}
-            >
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      )}
 
       <div>{renderContent()}</div>
     </div>

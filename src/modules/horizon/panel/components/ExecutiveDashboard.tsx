@@ -5,8 +5,9 @@ import {
   Home, Building2, TrendingUp, Wallet,
   Shield, DoorOpen, Receipt, BadgePercent,
   CalendarDays, FileText, Bell,
-  ChevronRight, LayoutDashboard, Zap,
+  ChevronRight, LayoutDashboard, Zap, RefreshCw,
 } from 'lucide-react';
+import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import type { LucideIcon } from 'lucide-react';
 import type { DashboardSnapshot } from '../../../../services/dashboardService';
 import DashboardGauge from './DashboardGauge';
@@ -114,26 +115,12 @@ const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ data, flujos, o
     <div style={{ maxWidth: 1080, margin: '0 auto', padding: '24px 24px 16px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <LayoutDashboard size={18} strokeWidth={1.5} style={{ color: 'var(--blue)' }} />
-          <div>
-            <h1 style={{ fontSize: 17, fontWeight: 700, color: 'var(--n-900)', lineHeight: 1, margin: 0 }}>Dashboard ejecutivo</h1>
-            <p style={{ fontSize: 11, color: 'var(--n-500)', marginTop: 3, margin: 0 }}>{monthLabel} · Actualizado {dateLabel}</p>
-          </div>
-        </div>
-        <button
-          onClick={onOpenDrawer}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', borderRadius: 8, border: '1px solid var(--n-300)',
-            background: 'var(--white)', fontSize: 12, fontWeight: 500, color: 'var(--n-700)',
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <Zap size={13} strokeWidth={1.5} /> Actualizar valores
-        </button>
-      </div>
+      <PageHeader
+        icon={LayoutDashboard}
+        title="Dashboard ejecutivo"
+        subtitle={`${monthLabel} · Actualizado ${dateLabel}`}
+        actions={<HeaderSecondaryButton icon={RefreshCw} label="Actualizar valores" onClick={onOpenDrawer} />}
+      />
 
       {/* ═══ ROW 1 — Patrimonio + KPIs ═══ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 14, marginBottom: 14 }}>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { CreditCard, Plus } from 'lucide-react';
-import PageLayout from '../../../components/common/PageLayout';
+import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../../../components/shared/PageHeader';
 import PrestamosWizard from './components/PrestamosWizard';
 import PrestamosList from './components/PrestamosList';
 import PrestamoDetailPage from './components/PrestamoDetailPage';
@@ -125,21 +125,21 @@ const Financiacion: React.FC = () => {
   }
 
   return (
-    <PageLayout
-      title="Financiación"
-      icon={CreditCard}
-      primaryAction={{
-        label: '+ Crear préstamo',
-        onClick: handleCreateNew,
-        icon: Plus,
-      }}
-      secondaryAction={{
-        label: 'Crear desde FEIN',
-        onClick: handleCreateFromFEIN,
-      }}
-    >
-      {renderContent()}
-    </PageLayout>
+    <div>
+      <PageHeader
+        icon={CreditCard}
+        title="Financiación"
+        actions={
+          <>
+            <HeaderSecondaryButton label="Crear desde FEIN" onClick={handleCreateFromFEIN} />
+            <HeaderPrimaryButton icon={Plus} label="Crear préstamo" onClick={handleCreateNew} />
+          </>
+        }
+      />
+      <div className="p-6">
+        {renderContent()}
+      </div>
+    </div>
   );
 };
 
