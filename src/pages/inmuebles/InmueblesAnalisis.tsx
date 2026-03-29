@@ -1067,6 +1067,7 @@ const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
 
 export default function InmueblesAnalisis() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const currentTabParam = searchParams.get('tab');
   const refreshFlag = searchParams.get('refresh');
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
@@ -1172,8 +1173,46 @@ export default function InmueblesAnalisis() {
 
   if (!properties.length) {
     return (
-      <div style={{ minHeight: '100vh', background: C.n50, display: 'grid', placeItems: 'center' }}>
-        <p style={{ color: C.n500 }}>No hay inmuebles activos en tus datos.</p>
+      <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+        <div style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building2 size={20} color={C.blue} />
+            </div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Cartera inmobiliaria</div>
+              <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus propiedades</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 16 }}>
+            <Building2 size={48} color={C.n300} />
+            <p style={{ fontSize: 18, fontWeight: 600, color: C.n700, margin: 0 }}>No hay inmuebles en tu cartera</p>
+            <p style={{ fontSize: 14, color: C.n500, margin: 0, textAlign: 'center', maxWidth: 400 }}>
+              Añade tu primer inmueble para empezar a gestionar tu patrimonio inmobiliario
+            </p>
+            <button
+              onClick={() => navigate('/inmuebles/cartera/nuevo')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 8,
+                padding: '10px 20px',
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#fff',
+                background: C.blue,
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <Plus size={16} />
+              Añadir inmueble
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
