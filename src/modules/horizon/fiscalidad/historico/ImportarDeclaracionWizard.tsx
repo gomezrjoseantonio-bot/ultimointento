@@ -18,6 +18,8 @@ import {
   ejecutarImportacion,
 } from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
+import ConflictReviewStep, { collectAllConflicts } from '../../../../components/fiscal/ConflictReviewStep';
+import type { ConflictResolutions } from '../../../../components/fiscal/ConflictReviewStep';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import {
   importarDeclaracionAEAT,
@@ -612,6 +614,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avisoOrden, setAvisoOrden] = useState<string | null>(null);
+  const [showConflictReview, setShowConflictReview] = useState(false);
+  const [conflictResolutions, setConflictResolutions] = useState<ConflictResolutions>({});
 
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
@@ -735,6 +739,16 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   };
 
   const handleConfirmarImportacion = async () => {
+    // Check for conflicts first — show review step if needed and not yet reviewed
+    if (
+      resultadoAnalisis
+      && !showConflictReview
+      && resultadoAnalisis.resumen.tieneConflictos
+    ) {
+      setShowConflictReview(true);
+      return;
+    }
+
     setSaving(true);
     try {
       const ejercicioImportacion = resultadoExtraccion?.exito && resultadoExtraccion.meta.ejercicio > 0
@@ -751,12 +765,16 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
       if (resultadoExtraccion?.exito) {
         const declaracionSanitizada = sanitizarParaIndexedDB(resultadoExtraccion.declaracion);
 
+        // Persist casillasRaw alongside the declaration for direct view access
+        const casillasRawSanitizado = sanitizarParaIndexedDB(resultadoExtraccion.casillasRaw);
+
         await declararEjercicio(
           ejercicioImportacion,
           declaracionSanitizada,
           'pdf_importado',
           resultadoExtraccion.meta.fechaPresentacion,
           pdfRef,
+          casillasRawSanitizado,
         );
 
         // Sync con ejercicioResolverService (store coordinador)
@@ -778,6 +796,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
               crearContratos: true,
               importarArrastres: true,
               guardarDeclaracion: false,
+              guardarDatosPersonales: true,
+              resolucionesConflicto: showConflictReview ? conflictResolutions : undefined,
             });
 
             inmuebleIdsCreados = resumenEjecucion.inmuebleIdsCreados ?? [];
@@ -899,6 +919,10 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   }, [step, resultadoExtraccion, metodo, reconciliacionPreview, generandoReconciliacion]);
 
   const handleBack = () => {
+    if (showConflictReview) {
+      setShowConflictReview(false);
+      return;
+    }
     if (step === 1) {
       if (embedded && onBack) onBack();
       else onClose();
@@ -907,7 +931,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     }
   };
 
-  const navigationFooter = (
+  const navigationFooter = showConflictReview ? null : (
     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
       <button
         type="button"
@@ -1092,43 +1116,56 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
         {step === 3 && (
           <>
-            {resultadoExtraccion?.exito ? (
-              <VerificacionExtraccion
-                resultado={resultadoExtraccion}
-                reconciliacion={reconciliacionPreview}
-                reconciliacionDisponible={Boolean(reconciliacion)}
-                onAbrirReconciliacion={() => setStep(4)}
-                avisoOrden={avisoOrden}
+            {showConflictReview && resultadoAnalisis ? (
+              <ConflictReviewStep
                 analisis={resultadoAnalisis}
+                resoluciones={conflictResolutions}
+                onResolve={(campo, valor) => setConflictResolutions((prev) => ({ ...prev, [campo]: valor }))}
+                onConfirm={handleConfirmarImportacion}
+                onCancel={() => setShowConflictReview(false)}
+                saving={saving}
               />
             ) : (
-              <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>
-                <strong style={{ color: 'var(--n-900)', fontSize: 'var(--t-sm, 0.875rem)' }}>Resumen manual</strong>
-                <div style={{ marginTop: '1rem' }}>
-                  <KeyValueGrid rows={[
-                    { label: 'Ejercicio', value: data.ejercicio },
-                    { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
-                    { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
-                    { label: 'Resultado', value: formatCurrency(data.resultado) },
-                  ]} />
+              <>
+                {resultadoExtraccion?.exito ? (
+                  <VerificacionExtraccion
+                    resultado={resultadoExtraccion}
+                    reconciliacion={reconciliacionPreview}
+                    reconciliacionDisponible={Boolean(reconciliacion)}
+                    onAbrirReconciliacion={() => setStep(4)}
+                    avisoOrden={avisoOrden}
+                    analisis={resultadoAnalisis}
+                  />
+                ) : (
+                  <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>
+                    <strong style={{ color: 'var(--n-900)', fontSize: 'var(--t-sm, 0.875rem)' }}>Resumen manual</strong>
+                    <div style={{ marginTop: '1rem' }}>
+                      <KeyValueGrid rows={[
+                        { label: 'Ejercicio', value: data.ejercicio },
+                        { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
+                        { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
+                        { label: 'Resultado', value: formatCurrency(data.resultado) },
+                      ]} />
+                    </div>
+                  </div>
+                )}
+
+                {generandoReconciliacion && (
+                  <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-sm, 0.875rem)' }}>
+                    Generando la reconciliación con ATLAS…
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button type="button" onClick={() => setStep(2)} style={{ background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }}>
+                    Atrás
+                  </button>
+                  <button type="button" disabled={saving} onClick={handleConfirmarImportacion} style={embeddedBtnPrimary}>
+                    {saving ? 'Importando…' : 'Importar y crear entidades'}
+                  </button>
                 </div>
-              </div>
+              </>
             )}
-
-            {generandoReconciliacion && (
-              <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-sm, 0.875rem)' }}>
-                Generando la reconciliación con ATLAS…
-              </div>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button type="button" onClick={() => setStep(2)} style={{ background: 'transparent', color: 'var(--n-700)', border: 'none', borderRadius: 'var(--r-md, 10px)', padding: '0.6rem 1.2rem', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }}>
-                Atrás
-              </button>
-              <button type="button" disabled={saving} onClick={handleConfirmarImportacion} style={embeddedBtnPrimary}>
-                {saving ? 'Importando…' : 'Importar y crear entidades'}
-              </button>
-            </div>
           </>
         )}
       </div>
@@ -1313,7 +1350,11 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 <h2 style={{ margin: 0, color: 'var(--atlas-navy-1)', fontSize: '2rem' }}>
                   Importar declaración IRPF {resultadoExtraccion?.meta.ejercicio || data.ejercicio}
                 </h2>
-                <p style={sectionSubtitleStyle}>Revisa lo extraído y confirma qué crear en ATLAS.</p>
+                <p style={sectionSubtitleStyle}>
+                  {showConflictReview
+                    ? 'Revisa las diferencias encontradas antes de importar.'
+                    : 'Revisa lo extraído y confirma qué crear en ATLAS.'}
+                </p>
               </div>
 
               <div style={progressRailStyle}>
@@ -1322,32 +1363,45 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 ))}
               </div>
 
-              {resultadoExtraccion?.exito ? (
-                <VerificacionExtraccion
-                  resultado={resultadoExtraccion}
-                  reconciliacion={reconciliacionPreview}
-                  reconciliacionDisponible={Boolean(reconciliacion)}
-                  onAbrirReconciliacion={() => setStep(4)}
+              {showConflictReview && resultadoAnalisis ? (
+                <ConflictReviewStep
                   analisis={resultadoAnalisis}
+                  resoluciones={conflictResolutions}
+                  onResolve={(campo, valor) => setConflictResolutions((prev) => ({ ...prev, [campo]: valor }))}
+                  onConfirm={handleConfirmarImportacion}
+                  onCancel={() => setShowConflictReview(false)}
+                  saving={saving}
                 />
               ) : (
-                <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--hz-neutral-300)' }}>
-                  <strong style={{ color: 'var(--atlas-navy-1)' }}>Resumen manual</strong>
-                  <div style={{ marginTop: '1rem' }}>
-                    <KeyValueGrid rows={[
-                      { label: 'Ejercicio', value: data.ejercicio },
-                      { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
-                      { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
-                      { label: 'Resultado', value: formatCurrency(data.resultado) },
-                    ]} />
-                  </div>
-                </div>
-              )}
+                <>
+                  {resultadoExtraccion?.exito ? (
+                    <VerificacionExtraccion
+                      resultado={resultadoExtraccion}
+                      reconciliacion={reconciliacionPreview}
+                      reconciliacionDisponible={Boolean(reconciliacion)}
+                      onAbrirReconciliacion={() => setStep(4)}
+                      analisis={resultadoAnalisis}
+                    />
+                  ) : (
+                    <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--hz-neutral-300)' }}>
+                      <strong style={{ color: 'var(--atlas-navy-1)' }}>Resumen manual</strong>
+                      <div style={{ marginTop: '1rem' }}>
+                        <KeyValueGrid rows={[
+                          { label: 'Ejercicio', value: data.ejercicio },
+                          { label: 'Base general', value: formatCurrency(data.baseImponibleGeneral) },
+                          { label: 'Retenciones', value: formatCurrency(data.totalRetenciones) },
+                          { label: 'Resultado', value: formatCurrency(data.resultado) },
+                        ]} />
+                      </div>
+                    </div>
+                  )}
 
-              {generandoReconciliacion && (
-                <div style={{ color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
-                  Generando la reconciliación con ATLAS…
-                </div>
+                  {generandoReconciliacion && (
+                    <div style={{ color: 'var(--hz-neutral-700)', fontSize: '0.92rem' }}>
+                      Generando la reconciliación con ATLAS…
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
