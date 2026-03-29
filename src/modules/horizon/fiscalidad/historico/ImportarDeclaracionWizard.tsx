@@ -18,7 +18,7 @@ import {
   ejecutarImportacion,
 } from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
-import ConflictReviewStep, { collectAllConflicts } from '../../../../components/fiscal/ConflictReviewStep';
+import ConflictReviewStep from '../../../../components/fiscal/ConflictReviewStep';
 import type { ConflictResolutions } from '../../../../components/fiscal/ConflictReviewStep';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
 import {
