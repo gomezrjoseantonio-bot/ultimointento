@@ -23,8 +23,7 @@ const HORIZON_SUBTABS: SubTabsConfig = {
     { label: 'Análisis', path: '/inversiones/analisis' },
   ],
   fiscalidad: [
-    { label: 'Estado', path: '/fiscalidad/estado' },
-    { label: 'Declaración', path: '/fiscalidad/declaracion' },
+    { label: 'Mi IRPF', path: '/fiscalidad/mi-irpf' },
     { label: 'Historial', path: '/fiscalidad/historial' },
   ],
   proyeccion: [

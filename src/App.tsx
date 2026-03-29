@@ -77,9 +77,7 @@ const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/In
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
-const FiscalDashboard = lazyWithPreload(() => import('./modules/horizon/fiscalidad/dashboard/FiscalDashboard'));
-const DeclaracionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionPage'));
-const PreDeclaracionView = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/PreDeclaracionView'));
+const MiIRPFPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/mi-irpf/MiIRPFPage'));
 const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
@@ -415,21 +413,11 @@ function App() {
                 <FiscalLayout />
               </React.Suspense>
             }>
-              <Route index element={<Navigate to="/fiscalidad/estado" replace />} />
-              {/* New 3-tab fiscal module: Estado, Declaración, Historial */}
-              <Route path="estado" element={
+              <Route index element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              {/* 2-tab fiscal module: Mi IRPF + Historial */}
+              <Route path="mi-irpf" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <FiscalDashboard />
-                </React.Suspense>
-              } />
-              <Route path="declaracion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <DeclaracionPage />
-                </React.Suspense>
-              } />
-              <Route path="pre-declaracion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PreDeclaracionView />
+                  <MiIRPFPage />
                 </React.Suspense>
               } />
               <Route path="historial" element={
@@ -438,14 +426,17 @@ function App() {
                 </React.Suspense>
               } />
               {/* Legacy routes — redirect to new equivalents */}
-              <Route path="resumen" element={<Navigate to="/fiscalidad/estado" replace />} />
-              <Route path="dashboard" element={<Navigate to="/fiscalidad/estado" replace />} />
-              <Route path="simulador" element={<Navigate to="/fiscalidad/estado" replace />} />
+              <Route path="estado" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="resumen" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="simulador" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="declaracion" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="pre-declaracion" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
               <Route path="pagos" element={<Navigate to="/fiscalidad/historial" replace />} />
               <Route path="historico" element={<Navigate to="/fiscalidad/historial" replace />} />
               <Route path="entidades" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="detalle" element={<Navigate to="/fiscalidad/declaracion" replace />} />
-              <Route path="declaraciones" element={<Navigate to="/fiscalidad/declaracion" replace />} />
+              <Route path="detalle" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              <Route path="declaraciones" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
             </Route>
             
             {/* Financing Module - Standalone loan management */}
