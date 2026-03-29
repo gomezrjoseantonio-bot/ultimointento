@@ -2,15 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Settings } from 'lucide-react';
 import PageHeader, { HeaderSecondaryButton } from '../../../components/shared/PageHeader';
-import NominaManager from '../../../components/personal/nomina/NominaManager';
-import AutonomoView from '../../personal/components/AutonomoView';
-import PensionTab from '../../../components/personal/PensionTab';
-import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
 import GastosManager from '../../../components/personal/gastos/GastosManager';
+import IngresosUnifiedManager from '../../../components/personal/ingresos/IngresosUnifiedManager';
 import { personalDataService } from '../../../services/personalDataService';
 import { personalResumenService } from '../../../services/personalResumenService';
 import { PersonalData, PersonalModuleConfig, ResumenPersonalMensual } from '../../../types/personal';
 import PersonalResumenView from './PersonalResumenView';
+
+const TABS = [
+  { id: 'resumen', label: 'Resumen' },
+  { id: 'ingresos', label: 'Ingresos' },
+  { id: 'gastos', label: 'Gastos' },
+];
 
 const Personal: React.FC = () => {
   const navigate = useNavigate();
@@ -23,12 +26,8 @@ const Personal: React.FC = () => {
 
   const getActiveTab = () => {
     const path = location.pathname;
-    if (path.includes('/resumen')) return 'resumen';
-    if (path.includes('/nomina')) return 'nomina';
-    if (path.includes('/autonomo')) return 'autonomo';
-    if (path.includes('/pension')) return 'pension';
+    if (path.includes('/ingresos') || path.includes('/nomina') || path.includes('/autonomo') || path.includes('/pension') || path.includes('/otros-ingresos')) return 'ingresos';
     if (path.includes('/gastos')) return 'gastos';
-    if (path.includes('/otros-ingresos')) return 'otros-ingresos';
     return 'resumen';
   };
 
@@ -39,7 +38,7 @@ const Personal: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (config && activeTab === 'resumen') {
+    if (activeTab === 'resumen') {
       loadResumen();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,76 +76,28 @@ const Personal: React.FC = () => {
     }
   };
 
-  const getAllTabs = () => {
-    const situacion = personalData?.situacionLaboral ?? [];
-    const isEmployed = config?.seccionesActivas.nomina ?? situacion.includes('asalariado');
-    const isSelfEmployed = config?.seccionesActivas.autonomo ?? situacion.includes('autonomo');
-    const isRetired = situacion.includes('jubilado') || (personalData?.situacionLaboralConyugue ?? []).includes('jubilado');
-    return [
-      { id: 'resumen', name: 'Resumen', href: '/personal/resumen', show: true },
-      { id: 'nomina', name: 'Nómina', href: '/personal/nomina', show: isEmployed },
-      { id: 'autonomo', name: 'Autónomos', href: '/personal/autonomo', show: isSelfEmployed },
-      { id: 'pension', name: 'Pensión', href: '/personal/pension', show: isRetired },
-      {
-        id: 'gastos',
-        name: personalData?.maritalStatus === 'single' && !personalData?.hasChildren ? 'Gastos' : 'Gastos',
-        href: '/personal/gastos',
-        show: true,
-      },
-      { id: 'otros-ingresos', name: 'Ingresos', href: '/personal/otros-ingresos', show: true },
-    ];
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    navigate(`/personal/${tabId}`);
   };
 
-  const getActiveTabs = () => getAllTabs().filter(tab => tab.show);
-  const tabs = getActiveTabs();
-
-  const handleTabClick = (tab: typeof tabs[0]) => {
-    setActiveTab(tab.id);
-    navigate(tab.href);
-  };
+  const hasProfile = !!(config && personalData);
 
   const renderTabContent = () => {
-    if (!config) {
-      return (
-        <div style={{
-          background: 'var(--white)',
-          border: '1px solid var(--grey-200)',
-          borderRadius: 'var(--r-lg)',
-          padding: 24,
-        }}>
-          <h3 style={{ fontSize: 'var(--t-md)', fontWeight: 600, color: 'var(--grey-700)', marginBottom: 8 }}>
-            Configuración pendiente
-          </h3>
-          <p style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)', marginBottom: 16 }}>
-            Para usar el módulo Personal, primero configura tus datos personales.
-          </p>
-          <button onClick={() => navigate('/cuenta/perfil')} className="atlas-btn-primary">
-            Configurar Datos Personales
-          </button>
-        </div>
-      );
-    }
-
     switch (activeTab) {
       case 'resumen':
         return renderResumenSection();
-      case 'nomina':
-        return config?.seccionesActivas.nomina ? <NominaManager /> : null;
-      case 'autonomo':
-        return config?.seccionesActivas.autonomo ? <AutonomoView /> : null;
-      case 'pension':
-        return <PensionTab />;
+      case 'ingresos':
+        return <IngresosUnifiedManager />;
       case 'gastos':
         return <GastosManager />;
-      case 'otros-ingresos':
-        return <OtrosIngresosManager />;
       default:
         return null;
     }
   };
 
   const renderResumenSection = () => {
-    if (resumenLoading) {
+    if (resumenLoading && config) {
       return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <div className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full" style={{ borderColor: 'var(--navy-900)', borderTopColor: 'transparent' }} />
@@ -154,8 +105,15 @@ const Personal: React.FC = () => {
         </div>
       );
     }
-    const gastosTabLabel = tabs.find(tab => tab.id === 'gastos')?.name ?? 'Gastos';
-    return <PersonalResumenView resumen={resumen} config={config} gastosTabLabel={gastosTabLabel} />;
+    return (
+      <PersonalResumenView
+        resumen={resumen}
+        config={config}
+        hasProfile={hasProfile}
+        onConfigure={() => navigate('/cuenta/perfil')}
+        gastosTabLabel="Gastos"
+      />
+    );
   };
 
   if (loading) {
@@ -182,12 +140,9 @@ const Personal: React.FC = () => {
         icon={User}
         title="Personal"
         subtitle="Gestión de finanzas personales"
-        tabs={tabs.map((tab) => ({ id: tab.id, label: tab.name }))}
+        tabs={TABS}
         activeTab={activeTab}
-        onTabChange={(tabId) => {
-          const tab = tabs.find((t) => t.id === tabId);
-          if (tab) handleTabClick(tab);
-        }}
+        onTabChange={handleTabChange}
         actions={<HeaderSecondaryButton icon={Settings} label="Configurar" onClick={() => navigate('/cuenta/perfil')} />}
       />
 
