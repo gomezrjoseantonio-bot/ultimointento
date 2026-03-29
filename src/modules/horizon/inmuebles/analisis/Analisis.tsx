@@ -40,7 +40,7 @@ const chartPalette = {
   grid: 'var(--hz-neutral-200, #D1D5DB)',
   axis: 'var(--hz-neutral-700, #374151)',
   portfolioValue: 'var(--hz-primary, #1D4ED8)',
-  equityValue: 'var(--hz-success, #059669)',
+  equityValue: 'var(--hz-info, #3B82F6)',
 };
 
 const calculateYearsSince = (isoDate: string): number => {

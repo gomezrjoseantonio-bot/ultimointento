@@ -67,8 +67,8 @@ const MOCK_EXPENSE_CATEGORIES = [
   { label: 'Transporte', amount: 280 * 12, color: 'var(--hz-info, #3B82F6)', icon: Car },
   { label: 'Seguros', amount: 180 * 12, color: 'var(--hz-neutral-500)', icon: Shield },
   { label: 'Suscripciones', amount: 120 * 12, color: 'var(--hz-neutral-400)', icon: Receipt },
-  { label: 'Salud', amount: 110 * 12, color: 'var(--hz-success, #059669)', icon: HeartPulse },
-  { label: 'Educación', amount: 90 * 12, color: 'var(--hz-warning, #D97706)', icon: GraduationCap },
+  { label: 'Salud', amount: 110 * 12, color: 'var(--hz-info, #3B82F6)', icon: HeartPulse },
+  { label: 'Educación', amount: 90 * 12, color: 'var(--hz-neutral-500)', icon: GraduationCap },
   { label: 'Otros', amount: 770 * 12, color: 'var(--hz-neutral-400)', icon: Receipt },
 ];
 
@@ -99,8 +99,8 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Luci
   suscripciones: { label: 'Suscripciones', color: 'var(--hz-neutral-400)', icon: Receipt },
   suministros:   { label: 'Suministros',   color: 'var(--hz-neutral-400)', icon: Receipt },
   ocio:          { label: 'Ocio',          color: 'var(--hz-neutral-500)', icon: Coins },
-  salud:         { label: 'Salud',         color: 'var(--hz-success, #059669)', icon: HeartPulse },
-  educacion:     { label: 'Educación',     color: 'var(--hz-warning, #D97706)', icon: GraduationCap },
+  salud:         { label: 'Salud',         color: 'var(--hz-info, #3B82F6)', icon: HeartPulse },
+  educacion:     { label: 'Educación',     color: 'var(--hz-neutral-500)', icon: GraduationCap },
   otros:         { label: 'Otros',         color: 'var(--hz-neutral-400)', icon: Receipt },
 };
 

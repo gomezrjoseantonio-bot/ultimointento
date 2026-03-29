@@ -33,11 +33,7 @@
 }
 
 .tv3-page-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--blue, #042C5E);
-  color: #fff;
+  color: #6C757D;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -751,7 +747,7 @@
   transition: background 0.12s;
 }
 .tv3-iab--ok    { background: var(--navy-900, #042C5E); color: #fff; }
-.tv3-iab--ok:hover { background: #155d2e; }
+.tv3-iab--ok:hover { background: #063672; }
 .tv3-iab--pend  { background: var(--n-100, #f3f4f6); color: var(--n-700, #374151); }
 .tv3-iab--pend:hover { background: var(--n-200, #e5e7eb); }
 .tv3-iab--cancel { background: transparent; color: var(--n-400, #9ca3af); padding: 4px 6px; }
