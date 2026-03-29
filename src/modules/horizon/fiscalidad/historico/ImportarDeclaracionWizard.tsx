@@ -29,7 +29,6 @@ import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleS
 import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
 import { generarReconciliacion, requiereReconciliacion } from '../../../../services/reconciliacionService';
 import { parseDeclaracionXml, isAeatXml } from '../../../../services/aeatXmlParserService';
-import type { DeclaracionXmlResult } from '../../../../services/aeatXmlParserService';
 
 type MetodoEntrada = 'formulario' | 'pdf' | 'xml';
 
@@ -621,7 +620,6 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [xmlResult, setXmlResult] = useState<DeclaracionXmlResult | null>(null);
   const [avisoOrden, setAvisoOrden] = useState<string | null>(null);
   const [showConflictReview, setShowConflictReview] = useState(false);
   const [conflictResolutions, setConflictResolutions] = useState<ConflictResolutions>({});
