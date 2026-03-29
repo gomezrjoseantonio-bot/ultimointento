@@ -26,8 +26,16 @@ type EstadoFiscal = 'declarado' | 'pendiente' | 'en_curso';
 type FuenteDatos = 'pdf_aeat' | 'atlas' | 'manual' | 'parcial' | 'sin_datos';
 
 function getEstadoFiscal(year: number): EstadoFiscal {
-  if (year === CURRENT_YEAR) return 'en_curso';
-  if (year === CURRENT_YEAR - 1) return 'pendiente';
+  const hoy = new Date();
+  const añoActual = hoy.getFullYear();
+
+  if (year === añoActual) return 'en_curso';
+
+  if (year === añoActual - 1) {
+    const finCampaña = new Date(añoActual, 5, 30); // 30 de junio
+    return hoy <= finCampaña ? 'pendiente' : 'declarado';
+  }
+
   return 'declarado';
 }
 
@@ -214,7 +222,7 @@ const MiIRPFPage: React.FC = () => {
         sinDatos: !hasTrabajo,
         defaultOpen: true,
         rows: hasTrabajo ? [
-          { label: 'Retribuciones \u00edntegras', value: trabajoBruto },
+          { label: 'Retribuciones íntegras', value: trabajoBruto },
           { label: 'Gastos deducibles (SS)', value: -trabajoGastos, accent: 'negative' as const },
         ] : undefined,
       },
@@ -248,7 +256,7 @@ const MiIRPFPage: React.FC = () => {
       sinDatos: !hasAhorro,
       rows: hasAhorro ? [
         { label: 'Capital mobiliario', value: ahorro.capitalMobiliario.total },
-        { label: 'Ganancias y p\u00e9rdidas', value: ahorro.gananciasYPerdidas.plusvalias - ahorro.gananciasYPerdidas.minusvalias },
+        { label: 'Ganancias y pérdidas', value: ahorro.gananciasYPerdidas.plusvalias - ahorro.gananciasYPerdidas.minusvalias },
       ] : undefined,
     });
 
@@ -256,7 +264,7 @@ const MiIRPFPage: React.FC = () => {
     result.push(
       { id: 'baseGeneral', title: 'Base imponible general', total: declaracion.liquidacion.baseImponibleGeneral },
       { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion.liquidacion.baseImponibleAhorro },
-      { id: 'cuota', title: 'Cuota \u00edntegra', total: declaracion.liquidacion.cuotaIntegra },
+      { id: 'cuota', title: 'Cuota íntegra', total: declaracion.liquidacion.cuotaIntegra },
       {
         id: 'retenciones',
         title: 'Retenciones y pagos a cuenta',
@@ -309,7 +317,7 @@ const MiIRPFPage: React.FC = () => {
             </h2>
             {estado === 'en_curso' && (
               <p style={{ margin: '4px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
-                Estimaci\u00f3n del ejercicio en curso
+                Estimación del ejercicio en curso
               </p>
             )}
           </div>
@@ -368,7 +376,7 @@ const MiIRPFPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowImportWizard(true)}
-                title="Importar declaraci\u00f3n"
+                title="Importar declaración"
                 style={{
                   border: '1px solid var(--n-300)',
                   borderRadius: 'var(--r-md, 8px)',
@@ -422,7 +430,7 @@ const MiIRPFPage: React.FC = () => {
             border: '1px dashed var(--n-300)',
           }}>
             <p style={{ margin: 0, color: 'var(--n-500)', fontSize: 'var(--t-sm, 13px)' }}>
-              No hay datos para {selectedYear}. Importa la declaraci\u00f3n o los Datos Fiscales.
+              No hay datos para {selectedYear}. Importa la declaración o los Datos Fiscales.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
               <button
@@ -445,7 +453,7 @@ const MiIRPFPage: React.FC = () => {
                 }}
               >
                 <FileText size={16} />
-                Importar declaraci\u00f3n
+                Importar declaración
               </button>
             </div>
           </section>
@@ -466,7 +474,7 @@ const MiIRPFPage: React.FC = () => {
             {showCompleteness && (
               <CompletenessBar
                 porcentaje={completeness}
-                label={`Completitud de la declaraci\u00f3n ${selectedYear}`}
+                label={`Completitud de la declaración ${selectedYear}`}
               />
             )}
 
@@ -485,7 +493,7 @@ const MiIRPFPage: React.FC = () => {
                   rows={section.rows}
                   inmuebles={section.inmuebles}
                   sinDatos={section.sinDatos}
-                  onCompletar={section.sinDatos ? handleCompletar : undefined}
+                  onCompletar={section.sinDatos && fuente !== 'pdf_aeat' ? handleCompletar : undefined}
                   defaultOpen={section.defaultOpen}
                 />
               ))}
@@ -515,7 +523,7 @@ const MiIRPFPage: React.FC = () => {
                     color: declaracion.resultado < 0 ? 'var(--s-pos)' : 'var(--s-neg)',
                   }}>
                     {declaracion.resultado < 0 ? 'A devolver ' : 'A pagar '}
-                    {Math.abs(declaracion.resultado).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20ac
+                    {Math.abs(declaracion.resultado).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
                 </div>
               )}

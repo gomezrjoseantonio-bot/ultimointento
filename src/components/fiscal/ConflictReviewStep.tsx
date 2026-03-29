@@ -94,7 +94,7 @@ const btnSecondary: React.CSSProperties = {
 // ═══════════════════════════════════════════════════════════════
 
 function formatValue(valor: unknown): string {
-  if (valor === null || valor === undefined || valor === '') return '\u2014';
+  if (valor === null || valor === undefined || valor === '') return '—';
   if (typeof valor === 'number') {
     return valor.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
   }
@@ -112,7 +112,7 @@ function collectAllConflicts(analisis: ResultadoAnalisis): Diferencia[] {
   // Property conflicts (only real conflicts, not empty->filled)
   for (const inm of analisis.inmuebles.actualizar) {
     for (const diff of inm.diferencias) {
-      if (diff.valorAtlas !== '\u2014') {
+      if (diff.valorAtlas !== '—') {
         conflicts.push({
           ...diff,
           campo: `inm_${inm.inmuebleIdExistente}_${diff.campo}`,
@@ -138,7 +138,7 @@ function collectNewData(analisis: ResultadoAnalisis): Array<{ label: string; val
   // Property enrichment (empty fields filled)
   for (const inm of analisis.inmuebles.actualizar) {
     for (const diff of inm.diferencias) {
-      if (diff.valorAtlas === '\u2014') {
+      if (diff.valorAtlas === '—') {
         items.push({
           label: `${inm.direccion?.split(',')[0] || inm.referenciaCatastral}: ${diff.labelCampo}`,
           valor: formatValue(diff.valorAeat),

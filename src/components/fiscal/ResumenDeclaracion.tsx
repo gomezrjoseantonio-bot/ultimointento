@@ -13,7 +13,7 @@ interface ResumenDeclaracionProps {
 const fmt = (v: number) =>
   v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtMoney = (v: number) => `${fmt(Math.abs(v))} \u20ac`;
+const fmtMoney = (v: number) => `${fmt(Math.abs(v))} €`;
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',
@@ -63,7 +63,7 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
             fontWeight: 600,
             color: resultColor,
           }}>
-            {hasResult ? fmtMoney(resultado) : '\u2014'}
+            {hasResult ? fmtMoney(resultado) : '—'}
           </span>
           {hasResult && (
             <span style={{ fontSize: 'var(--t-sm, 13px)', fontWeight: 500, color: resultColor }}>
