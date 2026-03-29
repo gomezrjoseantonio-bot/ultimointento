@@ -1,9 +1,10 @@
 import React from 'react';
-import { LucideIcon } from 'lucide-react';
+import { CircleHelp, LucideIcon } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  showInfoIcon?: boolean;
   icon?: LucideIcon;
   primaryAction?: {
     label: string;
@@ -23,6 +24,7 @@ interface PageHeaderProps {
 const PageHeader: React.FC<PageHeaderProps> = ({
   title,
   subtitle,
+  showInfoIcon,
   icon: Icon,
   primaryAction,
   secondaryAction,
@@ -48,16 +50,42 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             }}>
               {title}
             </h1>
-            {subtitle && (
-              <p style={{
-                fontSize: 'var(--t-sm)',
-                fontWeight: 400,
-                color: 'var(--grey-500)',
-                margin: '2px 0 0',
-                lineHeight: 1.4,
-              }}>
-                {subtitle}
-              </p>
+            {(subtitle || showInfoIcon) && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                {subtitle && (
+                  <p style={{
+                    fontSize: 'var(--t-sm)',
+                    fontWeight: 400,
+                    color: 'var(--grey-500)',
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}>
+                    {subtitle}
+                  </p>
+                )}
+                {showInfoIcon && (
+                  <button
+                    type="button"
+                    aria-label="page-info-tooltip"
+                    title={subtitle || 'Más información'}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 20,
+                      height: 20,
+                      border: 'none',
+                      borderRadius: '50%',
+                      background: 'transparent',
+                      color: 'var(--grey-500)',
+                      cursor: 'help',
+                      padding: 0,
+                    }}
+                  >
+                    <CircleHelp size={14} />
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
