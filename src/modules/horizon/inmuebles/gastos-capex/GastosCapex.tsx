@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// lucide-react icons removed – v4 underline tabs without icons
 import PageLayout from '../../../../components/common/PageLayout';
-import { useTheme } from '../../../../contexts/ThemeContext';
 import GastosTab from './components/GastosTab';
 import ResumenTab from './components/ResumenTab';
 
@@ -10,8 +8,6 @@ type TabType = 'gastos' | 'resumen';
 const GastosCapex: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('gastos');
   const [triggerAddExpense, setTriggerAddExpense] = useState(false);
-  const { currentModule } = useTheme();
-
   const tabs = [
     { id: 'gastos' as TabType, name: 'Gastos' },
     { id: 'resumen' as TabType, name: 'Resumen' },
