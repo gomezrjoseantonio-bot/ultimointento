@@ -160,7 +160,6 @@ const TreasuryReconciliationView: React.FC = () => {
   const [newMovementForm, setNewMovementForm] = useState<NewMovementForm>(DEFAULT_NEW_MOVEMENT);
   const [savingMovement, setSavingMovement] = useState(false);
   const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
-  const [syncingForecasts, setSyncingForecasts] = useState(false);
   useEffect(() => {
     if (editState && amountInputRef.current) {
       amountInputRef.current.focus();
@@ -281,7 +280,6 @@ const TreasuryReconciliationView: React.FC = () => {
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleGenerateForecasts = async () => {
-    setSyncingForecasts(true);
     try {
       const [year, month] = currentMonth.split('-').map(Number);
       const result = await generateMonthlyForecasts(year, month);
@@ -297,8 +295,6 @@ const TreasuryReconciliationView: React.FC = () => {
     } catch (err) {
       console.error('Error generating forecasts:', err);
       toast.error('Error al generar previsiones');
-    } finally {
-      setSyncingForecasts(false);
     }
   };
 
@@ -312,12 +308,6 @@ const TreasuryReconciliationView: React.FC = () => {
     const [year, month] = currentMonth.split('-').map(Number);
     const newDate = new Date(year, month, 1);
     setCurrentMonth(`${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}`);
-  };
-
-  const formatMonthYear = (monthStr: string): string => {
-    const [year, month] = monthStr.split('-');
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    return `${monthNames[parseInt(month) - 1]} ${year}`;
   };
 
   const formatAmount = (value: number): string =>
