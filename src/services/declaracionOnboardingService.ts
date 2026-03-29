@@ -11,6 +11,8 @@ import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
 import { saveContract } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
+import { ejecutarOnboardingPersonal, analizarDatosPersonales } from './personalOnboardingService';
+import type { AnalisisPersonal } from './personalOnboardingService';
 
 // ═══════════════════════════════════════════════════════════════
 // TIPOS DEL RESULTADO DE ANÁLISIS
@@ -57,11 +59,14 @@ export interface ResultadoAnalisis {
     perdidasAhorro: PerdidaDetectada[];
   };
 
+  perfilDetalle?: AnalisisPersonal;
+
   resumen: {
     totalEntidadesNuevas: number;
     totalActualizaciones: number;
     totalArrastres: number;
     requiereConfirmacion: boolean;
+    tieneConflictos: boolean;
   };
 
   declaracion: DeclaracionIRPF;
@@ -272,6 +277,13 @@ export async function analizarDeclaracion(
       }
     : undefined;
 
+  let perfilDetalle: AnalisisPersonal | undefined;
+  try {
+    perfilDetalle = await analizarDatosPersonales(decl);
+  } catch {
+    perfilDetalle = undefined;
+  }
+
   const totalEntidadesNuevas =
     inmuebles.nuevos.length
     + prestamos.filter((item) => !item.yaExisteEnAtlas).length
@@ -280,6 +292,10 @@ export async function analizarDeclaracion(
 
   const totalActualizaciones = inmuebles.actualizar.length + perfil.diferencias.length;
   const totalArrastres = arrastres.gastos0105_0106.length + arrastres.perdidasAhorro.length;
+  const tieneConflictos =
+    perfil.diferencias.length > 0
+    || inmuebles.actualizar.some((item) => item.diferencias.some((d) => d.valorAtlas !== '—'))
+    || (perfilDetalle?.conflictos.length ?? 0) > 0;
 
   return {
     ejercicio,
@@ -292,11 +308,13 @@ export async function analizarDeclaracion(
     capitalMobiliario,
     planPensiones,
     arrastres,
+    perfilDetalle,
     resumen: {
       totalEntidadesNuevas,
       totalActualizaciones,
       totalArrastres,
       requiereConfirmacion: totalEntidadesNuevas > 0 || totalActualizaciones > 0 || totalArrastres > 0,
+      tieneConflictos,
     },
     declaracion: decl,
   };
@@ -581,6 +599,8 @@ export interface OpcionesEjecucion {
   crearContratos: boolean;
   importarArrastres: boolean;
   guardarDeclaracion: boolean;
+  guardarDatosPersonales: boolean;
+  resolucionesConflicto?: Record<string, 'atlas' | 'aeat'>;
 }
 
 export interface ResumenEjecucion {
@@ -591,6 +611,7 @@ export interface ResumenEjecucion {
   contratosCreados: number;
   arrastresImportados: number;
   declaracionGuardada: boolean;
+  perfilActualizado: boolean;
   inmuebleIdsCreados: number[];
   errores: string[];
 }
@@ -607,6 +628,7 @@ export async function ejecutarImportacion(
     contratosCreados: 0,
     arrastresImportados: 0,
     declaracionGuardada: false,
+    perfilActualizado: false,
     inmuebleIdsCreados: [],
     errores: [],
   };
@@ -704,6 +726,18 @@ export async function ejecutarImportacion(
         resumen.arrastresImportados = await importarArrastresDesdeDeclaracion(resultado);
       } catch (error) {
         resumen.errores.push(`Error importando arrastres: ${String(error)}`);
+      }
+    }
+
+    if (opciones.guardarDatosPersonales) {
+      try {
+        const resultadoPersonal = await ejecutarOnboardingPersonal(
+          resultado.declaracion,
+          opciones.resolucionesConflicto,
+        );
+        resumen.perfilActualizado = resultadoPersonal.datosAplicados.length > 0;
+      } catch (error) {
+        resumen.errores.push(`Error actualizando perfil personal: ${String(error)}`);
       }
     }
 
