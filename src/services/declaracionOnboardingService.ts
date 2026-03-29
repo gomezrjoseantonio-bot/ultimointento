@@ -591,6 +591,7 @@ export interface ResumenEjecucion {
   contratosCreados: number;
   arrastresImportados: number;
   declaracionGuardada: boolean;
+  inmuebleIdsCreados: number[];
   errores: string[];
 }
 
@@ -606,6 +607,7 @@ export async function ejecutarImportacion(
     contratosCreados: 0,
     arrastresImportados: 0,
     declaracionGuardada: false,
+    inmuebleIdsCreados: [],
     errores: [],
   };
 
@@ -625,6 +627,7 @@ export async function ejecutarImportacion(
           const id = await crearInmuebleDesdeDeclaracion(inmueble.datos);
           refsAIds.set(normalizeRef(inmueble.datos.referenciaCatastral), id);
           resumen.inmueblesCreados += 1;
+          resumen.inmuebleIdsCreados.push(id);
         } catch (error) {
           resumen.errores.push(`Error creando ${inmueble.datos.direccion}: ${String(error)}`);
         }
@@ -636,6 +639,7 @@ export async function ejecutarImportacion(
           const id = await crearInmuebleDesdeDeclaracion(inmueble.datos, principalId);
           refsAIds.set(normalizeRef(inmueble.datos.referenciaCatastral), id);
           resumen.inmueblesCreados += 1;
+          resumen.inmuebleIdsCreados.push(id);
         } catch (error) {
           resumen.errores.push(`Error creando accesorio ${inmueble.datos.referenciaCatastral}: ${String(error)}`);
         }
@@ -647,6 +651,10 @@ export async function ejecutarImportacion(
         try {
           await actualizarInmuebleDesdeDeclaracion(inmueble);
           resumen.inmueblesActualizados += 1;
+          if (inmueble.inmuebleIdExistente) {
+            const numId = Number(inmueble.inmuebleIdExistente);
+            if (!Number.isNaN(numId)) resumen.inmuebleIdsCreados.push(numId);
+          }
         } catch (error) {
           resumen.errores.push(`Error actualizando ${inmueble.direccion}: ${String(error)}`);
         }

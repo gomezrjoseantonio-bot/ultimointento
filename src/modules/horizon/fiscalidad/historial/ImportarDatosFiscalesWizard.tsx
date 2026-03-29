@@ -410,6 +410,30 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported, emb
 
     return (
       <div style={{ display: 'grid', gap: '1.5rem' }}>
+        {/* Header */}
+        <div style={{
+          border: '1px solid var(--n-200)',
+          borderRadius: 'var(--r-lg, 16px)',
+          padding: '1.25rem',
+          background: 'white',
+        }}>
+          <div style={{ fontSize: 'var(--t-lg, 1.125rem)', fontWeight: 600, color: 'var(--n-900)' }}>
+            Datos Fiscales {datos.ejercicio || ejercicio}
+          </div>
+          <div style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-500)', marginTop: '0.5rem' }}>
+            ATLAS ha detectado:{' '}
+            {[
+              datos.trabajo?.length ? `${datos.trabajo.length} pagador${datos.trabajo.length > 1 ? 'es' : ''}` : null,
+              datos.inmuebles?.length ? `${datos.inmuebles.length} inmueble${datos.inmuebles.length > 1 ? 's' : ''}` : null,
+              datos.prestamos?.length ? `${datos.prestamos.length} préstamo${datos.prestamos.length > 1 ? 's' : ''}` : null,
+              datos.entidades?.length ? `${datos.entidades.length} entidad${datos.entidades.length > 1 ? 'es' : ''}` : null,
+              (datos.arrastres?.gastosPendientes?.length || 0) + (datos.arrastres?.perdidasPatrimoniales?.length || 0) > 0
+                ? `${(datos.arrastres?.gastosPendientes?.length || 0) + (datos.arrastres?.perdidasPatrimoniales?.length || 0)} arrastre${(datos.arrastres?.gastosPendientes?.length || 0) + (datos.arrastres?.perdidasPatrimoniales?.length || 0) > 1 ? 's' : ''}`
+                : null,
+            ].filter(Boolean).join(' · ') || 'sin datos relevantes'}
+          </div>
+        </div>
+
         {/* T22: Changes detected */}
         {cambios.length > 0 && (
           <div>
@@ -642,6 +666,18 @@ const ImportarDatosFiscalesWizard: React.FC<Props> = ({ onClose, onImported, emb
             </div>
           </div>
         )}
+
+        {/* Advisory note */}
+        <div style={{
+          padding: '0.75rem 1rem',
+          borderRadius: 'var(--r-md, 10px)',
+          background: 'var(--n-50, #F8F9FA)',
+          border: '1px solid var(--n-200)',
+          fontSize: 'var(--t-sm, 0.875rem)',
+          color: 'var(--n-500)',
+        }}>
+          Los Datos Fiscales no son una declaración. ATLAS usará estos datos para enriquecer tus inmuebles y mejorar el cálculo del ejercicio.
+        </div>
 
         {/* Footer */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
