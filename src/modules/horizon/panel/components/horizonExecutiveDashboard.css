@@ -1,32 +1,3 @@
-:root {
-  --blue: #042c5e;
-  --teal: #1da0ba;
-  --white: #ffffff;
-  --n-900: #1a2332;
-  --n-700: #303a4c;
-  --n-500: #6c757d;
-  --n-300: #c8d0dc;
-  --n-200: #dde3ec;
-  --n-100: #eef1f5;
-  --n-50: #f8f9fa;
-  --s-pos: #1a7a3c;
-  --s-pos-bg: #e8f5ed;
-  --s-neg: #b91c1c;
-  --s-neg-bg: #fee9e9;
-  --s-warn: #92620a;
-  --s-warn-bg: #fef3dc;
-  --s-neu: #374151;
-  --s-neu-bg: #f3f4f6;
-  --c1: #042c5e;
-  --c2: #5b8db8;
-  --c3: #1da0ba;
-  --c4: #a8c4de;
-  --c5: #c8d0dc;
-  --c6: #303a4c;
-  --font: 'IBM Plex Sans', system-ui, sans-serif;
-  --mono: 'IBM Plex Mono', monospace;
-}
-
 /* Dashboard v4 */
 .dash-card {
   background: var(--white);
