@@ -354,7 +354,7 @@ const VerificacionExtraccion: React.FC<{
           fontSize: '2rem',
           fontWeight: 700,
           fontFamily: 'IBM Plex Mono, monospace',
-          color: esDevolver ? 'var(--s-pos, #1A7A3C)' : 'var(--s-neg, #B91C1C)',
+          color: esDevolver ? 'var(--s-pos, #042C5E)' : 'var(--s-neg, #303A4C)',
           marginBottom: '1rem',
         }}>
           {formatCurrency(resultadoDecl)}
@@ -406,7 +406,7 @@ const VerificacionExtraccion: React.FC<{
 
       {/* ═══ AVISO DE ORDEN DE IMPORTACIÓN ═══ */}
       {avisoOrden && (
-        <div style={{ padding: '0.75rem 1rem', borderRadius: '12px', background: 'var(--s-warn-bg, #FEF3DC)', color: 'var(--s-warn, #92620A)', fontSize: '0.9rem' }}>
+        <div style={{ padding: '0.75rem 1rem', borderRadius: '12px', background: 'var(--s-warn-bg, #EEF1F5)', color: 'var(--s-warn, #6C757D)', fontSize: '0.9rem' }}>
           {avisoOrden}
         </div>
       )}
@@ -477,7 +477,7 @@ const VerificacionExtraccion: React.FC<{
                   fontSize: '0.75rem',
                   fontWeight: 600,
                   ...(isNew
-                    ? { background: 'var(--s-pos-bg, #E9F8EE)', color: 'var(--s-pos, #1A7A3C)' }
+                    ? { background: 'var(--s-pos-bg, #E8EFF7)', color: 'var(--s-pos, #042C5E)' }
                     : { background: 'var(--n-100, #F0F2F5)', color: 'var(--n-600, #6C757D)' }),
                 }}>
                   {badgeLabel}

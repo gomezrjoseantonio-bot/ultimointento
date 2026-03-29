@@ -58,10 +58,10 @@ const C = {
   c3: '#1DA0BA',
   c4: '#A8C4DE',
   c5: '#C8D0DC',
-  pos: '#1A7A3C',
-  posBg: '#E8F5ED',
-  neg: '#B91C1C',
-  negBg: '#FEE9E9',
+  pos: '#042C5E',      // navy-900 (v4: sin semáforo)
+  posBg: '#E8EFF7',    // navy-100
+  neg: '#303A4C',      // grey-700
+  negBg: '#EEF1F5',    // grey-100
   n700: '#303A4C',
   n500: '#6C757D',
   n300: '#C8D0DC',
@@ -1176,9 +1176,7 @@ export default function InmueblesAnalisis() {
       <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
         <div style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <Building2 size={20} color={C.blue} />
-            </div>
+            <Building2 size={20} color="#6C757D" />
             <div>
               <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Cartera inmobiliaria</div>
               <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus propiedades</div>
@@ -1252,26 +1250,29 @@ export default function InmueblesAnalisis() {
       <div style={{ padding: 24 }}>
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Building2 size={20} color={C.blue} />
-          </div>
+          <Building2 size={20} color="#6C757D" />
           <div>
             <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Cartera inmobiliaria</div>
             <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus propiedades</div>
           </div>
         </div>
 
-        {/* Pill tabs */}
-        <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3, marginBottom: 20 }}>
-          {TABS.map(t => {
-            const Icon = t.icon;
-            const on = activeTab === t.id;
-            return (
-              <button key={t.id} onClick={() => handleTabChange(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 13, fontWeight: on ? 600 : 500, color: on ? C.blue : C.n500, background: on ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: on ? '0 1px 3px rgba(4,44,94,.08)' : 'none', transition: 'all 150ms', fontFamily: 'inherit' }}>
-                <Icon size={14} />{t.label}
-              </button>
-            );
-          })}
+        {/* Underline tabs */}
+        <div style={{ display: 'flex', borderBottom: `1px solid ${C.n200}`, marginBottom: 20 }}>
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => handleTabChange(t.id)} style={{
+              padding: '10px 0',
+              marginRight: 32,
+              fontSize: 14,
+              fontWeight: activeTab === t.id ? 500 : 400,
+              color: activeTab === t.id ? '#1A2332' : '#6C757D',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === t.id ? '2px solid #042C5E' : '2px solid transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}>{t.label}</button>
+          ))}
         </div>
 
         {/* Tab content */}
@@ -1291,7 +1292,7 @@ export default function InmueblesAnalisis() {
                 <button
                   onClick={() => handleRevertSale(property.id as number)}
                   disabled={!latestSaleByPropertyId[property.id as number]}
-                  style={{ border: '1px solid #B91C1C', color: '#B91C1C', background: '#fff', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}
+                  style={{ border: '1px solid #303A4C', color: '#303A4C', background: '#fff', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}
                 >
                   Revertir venta
                 </button>

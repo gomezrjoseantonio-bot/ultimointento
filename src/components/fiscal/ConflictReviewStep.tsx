@@ -234,7 +234,7 @@ const ConflictReviewStep: React.FC<ConflictReviewStepProps> = ({
           </div>
           {newData.map((item, index) => (
             <div key={index} style={newDataRowStyle}>
-              <CheckCircle2 size={16} style={{ color: 'var(--s-pos, #1A7A3C)', flexShrink: 0 }} />
+              <CheckCircle2 size={16} style={{ color: 'var(--s-pos, #042C5E)', flexShrink: 0 }} />
               <span>{item.label}: <strong>{item.valor}</strong></span>
             </div>
           ))}
