@@ -10,60 +10,15 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import FiscalPageShell from '../components/FiscalPageShell';
 import {
-  getTodosLosEjercicios,
-  getDeclaracion,
-} from '../../../../services/ejercicioResolverService';
-import type { EjercicioFiscalCoord, ResumenFiscal } from '../../../../services/ejercicioResolverService';
+  resolverTodosLosEjercicios,
+  formatFiscalValueShort,
+} from '../../../../services/fiscalResolverService';
+import type {
+  DatosFiscalesEjercicio,
+  EstadoEjercicioFiscal,
+} from '../../../../services/fiscalResolverService';
 import { initDB, downloadBlob, getDocumentBlob } from '../../../../services/db';
 import ImportarDatosWizard from './ImportarDatosWizard';
-
-// ── Constants ──────────────────────────────────────────────
-const CURRENT_YEAR = new Date().getFullYear();
-
-// ── Formatters ─────────────────────────────────────────────
-const fmtMoney = (n: number) =>
-  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n)) + ' €';
-
-// ── Types ──────────────────────────────────────────────────
-type EstadoFiscal = 'declarado' | 'pendiente' | 'en_curso';
-type FuenteDatos = 'PDF AEAT' | 'ATLAS' | 'Manual' | 'Parcial' | 'Sin datos';
-
-interface HistorialRow {
-  año: number;
-  estado: EstadoFiscal;
-  fuente: FuenteDatos;
-  resumen: ResumenFiscal | null;
-  hasPDF: boolean;
-}
-
-// ── Estado / Fuente logic ──────────────────────────────────
-function getEstadoFiscal(year: number, _rawEstado: EjercicioFiscalCoord['estado']): EstadoFiscal {
-  const hoy = new Date();
-  const añoActual = hoy.getFullYear();
-
-  if (year === añoActual) return 'en_curso';
-
-  if (year === añoActual - 1) {
-    const finCampaña = new Date(añoActual, 5, 30); // 30 de junio
-    return hoy <= finCampaña ? 'pendiente' : 'declarado';
-  }
-
-  return 'declarado';
-}
-
-function mapFuente(resolverFuente: string, hasPDF: boolean): FuenteDatos {
-  if (hasPDF || resolverFuente === 'aeat') return 'PDF AEAT';
-  if (resolverFuente === 'atlas') return 'ATLAS';
-  if (resolverFuente === 'manual') return 'Manual';
-  if (resolverFuente === 'ninguno') return 'Sin datos';
-  return 'Parcial';
-}
-
-const ESTADO_BADGE: Record<EstadoFiscal, { label: string; bg: string; color: string }> = {
-  declarado: { label: 'Declarado', bg: 'var(--s-pos-bg)', color: 'var(--s-pos)' },
-  pendiente: { label: 'Pendiente', bg: 'var(--s-warn-bg)', color: 'var(--s-warn)' },
-  en_curso: { label: 'En curso', bg: '#E6F7FA', color: 'var(--teal)' },
-};
 
 // ── Styles ─────────────────────────────────────────────────
 const monoStyle: React.CSSProperties = {
@@ -86,42 +41,139 @@ const actionBtnStyle: React.CSSProperties = {
   transition: 'all 150ms ease',
 };
 
+const ESTADO_BADGE: Record<EstadoEjercicioFiscal, { label: string; bg: string; color: string }> = {
+  declarado: { label: 'Declarado', bg: 'var(--s-pos-bg)', color: 'var(--s-pos)' },
+  pendiente: { label: 'Pendiente', bg: 'var(--s-warn-bg)', color: 'var(--s-warn)' },
+  en_curso: { label: 'En curso', bg: '#E6F7FA', color: 'var(--teal)' },
+};
+
+function fuenteLabel(fuente: string): string {
+  switch (fuente) {
+    case 'pdf_aeat': return 'PDF AEAT';
+    case 'xml_aeat': return 'XML AEAT';
+    case 'atlas': return 'ATLAS';
+    default: return 'Sin datos';
+  }
+}
+
+// ── Mini Bar Chart ─────────────────────────────────────────
+const MiniBarChart: React.FC<{ rows: DatosFiscalesEjercicio[] }> = ({ rows }) => {
+  const withData = rows.filter((r) => r.resultado !== null).sort((a, b) => a.año - b.año);
+  if (withData.length < 2) return null;
+
+  const maxAbs = Math.max(...withData.map((r) => Math.abs(r.resultado!)), 1);
+  const barW = Math.max(24, Math.min(48, 300 / withData.length));
+  const chartH = 80;
+  const midY = chartH / 2;
+
+  return (
+    <div style={{
+      border: '1px solid var(--n-200)',
+      borderRadius: 'var(--r-lg, 12px)',
+      padding: '16px 20px 8px',
+      background: 'var(--white)',
+      marginBottom: 8,
+    }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        gap: 6,
+        height: chartH,
+        position: 'relative',
+      }}>
+        {/* Zero line */}
+        <div style={{
+          position: 'absolute',
+          left: 0, right: 0,
+          top: midY,
+          height: 1,
+          background: 'var(--n-200)',
+        }} />
+
+        {withData.map((row) => {
+          const val = row.resultado!;
+          const pct = (Math.abs(val) / maxAbs) * (midY - 4);
+          const isPagar = val >= 0;
+
+          return (
+            <div
+              key={row.año}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                width: barW,
+                height: chartH,
+                position: 'relative',
+                cursor: 'pointer',
+              }}
+              title={`${row.año}: ${val >= 0 ? '+' : ''}${val.toLocaleString('es-ES')} €`}
+            >
+              {/* Bar */}
+              <div style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: Math.max(12, barW - 8),
+                borderRadius: 3,
+                background: isPagar ? 'var(--blue)' : 'var(--teal)',
+                ...(isPagar
+                  ? { bottom: midY + 1, height: Math.max(2, pct) }
+                  : { top: midY + 1, height: Math.max(2, pct) }
+                ),
+                transition: 'height 300ms ease',
+              }} />
+            </div>
+          );
+        })}
+      </div>
+      {/* Year labels */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: 4,
+      }}>
+        {withData.map((row) => (
+          <span key={row.año} style={{
+            width: barW,
+            textAlign: 'center',
+            fontSize: 10,
+            color: 'var(--n-500)',
+            fontFamily: 'IBM Plex Mono, monospace',
+          }}>
+            {String(row.año).slice(-2)}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Component ──────────────────────────────────────────────
 const HistorialPage: React.FC = () => {
   const navigate = useNavigate();
-  const [rows, setRows] = useState<HistorialRow[]>([]);
+  const [rows, setRows] = useState<DatosFiscalesEjercicio[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pdfYears, setPdfYears] = useState<Set<number>>(new Set());
   const [showImportWizard, setShowImportWizard] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const ejercicios = await getTodosLosEjercicios();
-      const validEjercicios = ejercicios.filter((ej) => ej.año <= CURRENT_YEAR && ej.año >= 2015);
+      const data = await resolverTodosLosEjercicios();
+      setRows(data);
 
-      // Check which years have PDFs
+      // Check PDFs
       const db = await initDB();
       const allDocs = await db.getAll('documents');
-      const pdfYears = new Set(
+      const years = new Set(
         (allDocs as Array<{ type?: string; metadata?: { ejercicio?: number } }>)
           .filter((d) => d.type === 'declaracion_irpf' && typeof d.metadata?.ejercicio === 'number')
           .map((d) => d.metadata!.ejercicio as number),
       );
-
-      const histRows: HistorialRow[] = await Promise.all(
-        validEjercicios.sort((a, b) => b.año - a.año).map(async (ej) => {
-          const decl = await getDeclaracion(ej.año);
-          const hasPDF = pdfYears.has(ej.año);
-          return {
-            año: ej.año,
-            estado: getEstadoFiscal(ej.año, ej.estado),
-            fuente: mapFuente(decl.fuente, hasPDF),
-            resumen: decl.resumen,
-            hasPDF,
-          };
-        }),
-      );
-      setRows(histRows);
+      setPdfYears(years);
     } catch (e) {
       console.error('Error loading historial:', e);
       toast.error('Error cargando el historial fiscal');
@@ -164,18 +216,10 @@ const HistorialPage: React.FC = () => {
             type="button"
             onClick={() => setShowImportWizard(true)}
             style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--r-md, 8px)',
-              border: '1px solid var(--n-300)',
-              background: 'var(--white)',
-              color: 'var(--n-900)',
-              fontWeight: 500,
-              fontSize: 'var(--t-sm, 13px)',
-              cursor: 'pointer',
-              minHeight: 44,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
+              padding: '10px 16px', borderRadius: 'var(--r-md, 8px)',
+              border: '1px solid var(--n-300)', background: 'var(--white)',
+              color: 'var(--n-900)', fontWeight: 500, fontSize: 'var(--t-sm, 13px)',
+              cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', gap: 8,
               fontFamily: 'var(--font-base, IBM Plex Sans, sans-serif)',
               transition: 'all 150ms ease',
             }}
@@ -185,7 +229,7 @@ const HistorialPage: React.FC = () => {
           </button>
         </header>
 
-        {/* ── Table ── */}
+        {/* ── Content ── */}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
             <div style={{
@@ -196,147 +240,130 @@ const HistorialPage: React.FC = () => {
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : (
-          <div style={{
-            border: '1px solid var(--n-200)',
-            borderRadius: 'var(--r-lg, 12px)',
-            overflow: 'auto',
-            background: 'var(--white)',
-          }}>
-            {/* Table header */}
+          <>
+            {/* ── Mini bar chart ── */}
+            <MiniBarChart rows={rows} />
+
+            {/* ── Table ── */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '70px 110px 90px 1fr 100px',
-              columnGap: 8,
-              padding: '10px 16px',
-              background: 'var(--n-100)',
-              borderBottom: '1px solid var(--n-200)',
-              fontSize: 'var(--t-xs, 11px)',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: 'var(--n-500)',
-              minWidth: 500,
+              border: '1px solid var(--n-200)',
+              borderRadius: 'var(--r-lg, 12px)',
+              overflow: 'auto',
+              background: 'var(--white)',
             }}>
-              <span>Año</span>
-              <span>Estado</span>
-              <span>Fuente</span>
-              <span style={{ textAlign: 'right' }}>Resultado</span>
-              <span style={{ textAlign: 'right' }}>Acciones</span>
-            </div>
+              {/* Header */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '70px 110px 90px 1fr 100px',
+                columnGap: 8,
+                padding: '10px 16px',
+                background: 'var(--n-100)',
+                borderBottom: '1px solid var(--n-200)',
+                fontSize: 'var(--t-xs, 11px)',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                color: 'var(--n-500)',
+                minWidth: 500,
+              }}>
+                <span>Año</span>
+                <span>Estado</span>
+                <span>Fuente</span>
+                <span style={{ textAlign: 'right' }}>Resultado</span>
+                <span style={{ textAlign: 'right' }}>Acciones</span>
+              </div>
 
-            {/* Table rows */}
-            {rows.map((row) => {
-              const badge = ESTADO_BADGE[row.estado];
-              const hasData = row.resumen !== null;
+              {/* Rows */}
+              {rows.map((row) => {
+                const badge = ESTADO_BADGE[row.estado];
+                const hasData = row.resultado !== null;
+                const hasPDF = pdfYears.has(row.año);
 
-              return (
-                <div
-                  key={row.año}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '70px 110px 90px 1fr 100px',
-                    columnGap: 8,
-                    padding: '10px 16px',
-                    alignItems: 'center',
-                    borderBottom: '1px solid var(--n-100)',
-                    fontSize: 'var(--t-sm, 13px)',
-                    minWidth: 500,
-                  }}
-                >
-                  {/* Año */}
-                  <span style={{ fontWeight: 600, color: 'var(--n-700)' }}>{row.año}</span>
+                // Result color: navy (blue) for pagar, teal for devolver
+                const resultColor = hasData
+                  ? (row.resultado! > 0 ? 'var(--blue)' : row.resultado! < 0 ? 'var(--teal)' : 'var(--n-500)')
+                  : 'var(--n-500)';
 
-                  {/* Estado — badge con color */}
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '3px 10px',
-                    borderRadius: 999,
-                    fontSize: 'var(--t-xs, 11px)',
-                    fontWeight: 600,
-                    background: badge.bg,
-                    color: badge.color,
-                    whiteSpace: 'nowrap',
-                    width: 'fit-content',
-                  }}>
-                    {badge.label}
-                  </span>
+                return (
+                  <div
+                    key={row.año}
+                    onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '70px 110px 90px 1fr 100px',
+                      columnGap: 8,
+                      padding: '10px 16px',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--n-100)',
+                      fontSize: 'var(--t-sm, 13px)',
+                      minWidth: 500,
+                      cursor: 'pointer',
+                      transition: 'background 150ms ease',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--n-50)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = ''; }}
+                  >
+                    {/* Año */}
+                    <span style={{ fontWeight: 600, color: 'var(--n-700)' }}>{row.año}</span>
 
-                  {/* Fuente — texto plano gris, SIN badge */}
-                  <span style={{
-                    color: 'var(--n-500)',
-                    fontSize: 12,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {row.fuente}
-                  </span>
+                    {/* Estado */}
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', padding: '3px 10px',
+                      borderRadius: 999, fontSize: 'var(--t-xs, 11px)', fontWeight: 600,
+                      background: badge.bg, color: badge.color, whiteSpace: 'nowrap', width: 'fit-content',
+                    }}>
+                      {badge.label}
+                    </span>
 
-                  {/* Resultado */}
-                  <span style={{
-                    textAlign: 'right',
-                    ...monoStyle,
-                    fontWeight: 500,
-                    color: hasData
-                      ? (row.resumen!.resultado > 0 ? 'var(--s-neg)' : row.resumen!.resultado < 0 ? 'var(--s-pos)' : 'var(--n-500)')
-                      : 'var(--n-500)',
-                  }}>
-                    {hasData ? fmtMoney(row.resumen!.resultado) : '—'}
-                  </span>
+                    {/* Fuente */}
+                    <span style={{ color: 'var(--n-500)', fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {fuenteLabel(row.fuente)}
+                    </span>
 
-                  {/* Acciones — SIEMPRE 3 iconos */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                    {/* Ver */}
-                    <button
-                      type="button"
-                      title="Ver declaración"
-                      onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
-                      style={actionBtnStyle}
-                    >
-                      <Eye size={16} />
-                    </button>
+                    {/* Resultado */}
+                    <span style={{
+                      textAlign: 'right', ...monoStyle, fontWeight: 500, color: resultColor,
+                    }}>
+                      {hasData ? formatFiscalValueShort(row.resultado) : '—'}
+                    </span>
 
-                    {/* Descargar PDF / Importar */}
-                    {row.hasPDF ? (
-                      <button
-                        type="button"
-                        title="Descargar PDF"
-                        onClick={() => handleDownloadPDF(row.año)}
-                        style={actionBtnStyle}
-                      >
-                        <Download size={16} />
+                    {/* Acciones */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}
+                      onClick={(e) => e.stopPropagation()}>
+                      <button type="button" title="Ver declaración"
+                        onClick={() => navigate(`/fiscalidad/mi-irpf?ejercicio=${row.año}`)}
+                        style={actionBtnStyle}>
+                        <Eye size={16} />
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        title="Importar declaración"
-                        onClick={() => setShowImportWizard(true)}
-                        style={actionBtnStyle}
-                      >
-                        <Upload size={16} />
-                      </button>
-                    )}
 
-                    {/* Editar / Completar */}
-                    <button
-                      type="button"
-                      title="Completar / editar"
-                      onClick={() => {
-                        // TODO: Open manual completion modal for this year
-                        toast('Completar manualmente estará disponible próximamente.');
-                      }}
-                      style={actionBtnStyle}
-                    >
-                      <Edit2 size={16} />
-                    </button>
+                      {hasPDF ? (
+                        <button type="button" title="Descargar PDF"
+                          onClick={() => handleDownloadPDF(row.año)}
+                          style={actionBtnStyle}>
+                          <Download size={16} />
+                        </button>
+                      ) : (
+                        <button type="button" title="Importar declaración"
+                          onClick={() => setShowImportWizard(true)}
+                          style={actionBtnStyle}>
+                          <Upload size={16} />
+                        </button>
+                      )}
+
+                      <button type="button" title="Completar / editar"
+                        onClick={() => toast('Completar manualmente estará disponible próximamente.')}
+                        style={actionBtnStyle}>
+                        <Edit2 size={16} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
-      {/* ── Import wizard ── */}
       {showImportWizard && (
         <ImportarDatosWizard
           onClose={() => setShowImportWizard(false)}

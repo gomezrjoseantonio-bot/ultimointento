@@ -96,6 +96,7 @@ const btnSecondary: React.CSSProperties = {
 function formatValue(valor: unknown): string {
   if (valor === null || valor === undefined || valor === '') return '—';
   if (typeof valor === 'number') {
+    if (!Number.isFinite(valor)) return '—';
     return valor.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
   }
   return String(valor);
