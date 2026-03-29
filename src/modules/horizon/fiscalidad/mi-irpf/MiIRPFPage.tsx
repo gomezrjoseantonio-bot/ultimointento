@@ -75,10 +75,10 @@ function calcCompleteness(decl: DeclaracionIRPF | null): number {
   if (!decl) return 0;
   let total = 4;
   let filled = 0;
-  if (decl.baseGeneral.rendimientosTrabajo) filled++;
-  if (decl.baseGeneral.rendimientosInmuebles.length > 0) filled++;
-  if (decl.baseGeneral.rendimientosAutonomo) filled++;
-  if (decl.baseAhorro && decl.baseAhorro.total !== 0) filled++;
+  if (decl?.baseGeneral?.rendimientosTrabajo) filled++;
+  if ((decl?.baseGeneral?.rendimientosInmuebles ?? []).length > 0) filled++;
+  if (decl?.baseGeneral?.rendimientosAutonomo) filled++;
+  if (decl?.baseAhorro && (decl.baseAhorro.total ?? 0) !== 0) filled++;
   return Math.round((filled / total) * 100);
 }
 
@@ -150,13 +150,13 @@ const MiIRPFPage: React.FC = () => {
   const sections = useMemo<Array<SeccionRendimientoProps & { isResult?: boolean }>>(() => {
     if (!declaracion) return [];
 
-    const trabajo = declaracion.baseGeneral.rendimientosTrabajo;
+    const trabajo = declaracion?.baseGeneral?.rendimientosTrabajo ?? null;
     const trabajoBruto = (trabajo?.salarioBrutoAnual ?? 0) + (trabajo?.especieAnual ?? 0);
     const trabajoGastos = trabajo?.cotizacionSS ?? 0;
     const trabajoNeto = trabajo?.rendimientoNeto ?? (trabajoBruto - trabajoGastos);
     const hasTrabajo = trabajo !== null;
 
-    const inmuebleDetails: InmuebleDetalleData[] = declaracion.baseGeneral.rendimientosInmuebles
+    const inmuebleDetails: InmuebleDetalleData[] = (declaracion?.baseGeneral?.rendimientosInmuebles ?? [])
       .filter((inm) => inm.inmuebleId >= 0)
       .map((inm) => {
         const rawPct = Math.round(inm.porcentajeReduccionHabitual * 100);
@@ -206,11 +206,11 @@ const MiIRPFPage: React.FC = () => {
     const totalInmuebles = inmuebleDetails.reduce((s, i) => s + i.rendimientoNetoReducido, 0);
     const hasInmuebles = inmuebleDetails.length > 0;
 
-    const autonomo = declaracion.baseGeneral.rendimientosAutonomo;
+    const autonomo = declaracion?.baseGeneral?.rendimientosAutonomo ?? null;
     const totalActividad = autonomo?.rendimientoNeto ?? 0;
     const hasActividad = autonomo !== null && (autonomo.ingresos > 0 || totalActividad !== 0);
 
-    const ahorro = declaracion.baseAhorro;
+    const ahorro = declaracion?.baseAhorro ?? null;
     const totalAhorro = ahorro?.total ?? 0;
     const hasAhorro = totalAhorro !== 0;
 
@@ -255,25 +255,25 @@ const MiIRPFPage: React.FC = () => {
       total: hasAhorro ? totalAhorro : null,
       sinDatos: !hasAhorro,
       rows: hasAhorro ? [
-        { label: 'Capital mobiliario', value: ahorro.capitalMobiliario.total },
-        { label: 'Ganancias y pérdidas', value: ahorro.gananciasYPerdidas.plusvalias - ahorro.gananciasYPerdidas.minusvalias },
+        { label: 'Capital mobiliario', value: ahorro?.capitalMobiliario?.total ?? 0 },
+        { label: 'Ganancias y pérdidas', value: (ahorro?.gananciasYPerdidas?.plusvalias ?? 0) - (ahorro?.gananciasYPerdidas?.minusvalias ?? 0) },
       ] : undefined,
     });
 
     // Summary rows (not expandable)
     result.push(
-      { id: 'baseGeneral', title: 'Base imponible general', total: declaracion.liquidacion.baseImponibleGeneral },
-      { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion.liquidacion.baseImponibleAhorro },
-      { id: 'cuota', title: 'Cuota íntegra', total: declaracion.liquidacion.cuotaIntegra },
+      { id: 'baseGeneral', title: 'Base imponible general', total: declaracion?.liquidacion?.baseImponibleGeneral ?? null },
+      { id: 'baseAhorro', title: 'Base imponible del ahorro', total: declaracion?.liquidacion?.baseImponibleAhorro ?? null },
+      { id: 'cuota', title: 'Cuota íntegra', total: declaracion?.liquidacion?.cuotaIntegra ?? null },
       {
         id: 'retenciones',
         title: 'Retenciones y pagos a cuenta',
-        total: -declaracion.retenciones.total,
+        total: -(declaracion?.retenciones?.total ?? 0),
         defaultOpen: false,
         rows: [
-          { label: 'Retenciones trabajo', value: -(declaracion.retenciones.trabajo), accent: 'positive' as const },
-          { label: 'Retenciones capital mobiliario', value: -(declaracion.retenciones.capitalMobiliario), accent: 'positive' as const },
-          { label: 'Pagos fraccionados (M130)', value: -(declaracion.retenciones.autonomoM130), accent: 'positive' as const },
+          { label: 'Retenciones trabajo', value: -(declaracion?.retenciones?.trabajo ?? 0), accent: 'positive' as const },
+          { label: 'Retenciones capital mobiliario', value: -(declaracion?.retenciones?.capitalMobiliario ?? 0), accent: 'positive' as const },
+          { label: 'Pagos fraccionados (M130)', value: -(declaracion?.retenciones?.autonomoM130 ?? 0), accent: 'positive' as const },
         ],
       },
     );
