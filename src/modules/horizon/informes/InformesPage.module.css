@@ -204,7 +204,7 @@
 }
 
 .error {
-  color: var(--error);
+  color: var(--grey-700);
 }
 
 .placeholder {

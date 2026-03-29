@@ -7,60 +7,55 @@ interface ThemeContextType {
   setCurrentModule: (module: AppModule) => void;
   primaryColor: string;
   accentColor: string;
-  // ATLAS token access
   atlasTokens: AtlasTokens;
-  // Locale formatting
   formatCurrency: (amount: number) => string;
   formatDate: (date: Date) => string;
   formatNumber: (num: number) => string;
 }
 
 interface AtlasTokens {
-  // ATLAS Color Tokens - Exact Specification
   colors: {
-    atlasBlue: string;      // Primary brand token
-    atlasTeal: string;      // Accent token for gestión
-    atlasNavy1: string;     // Texto principal
-    atlasNavy2: string;     // Barra lateral / topbar
-    ok: string;             // Estado success
-    warn: string;           // Estado warning
-    error: string;          // Estado error
-    bg: string;             // Fondo base
-    textGray: string;       // Texto secundario
+    atlasBlue: string;
+    atlasTeal: string;
+    atlasNavy1: string;
+    atlasNavy2: string;
+    ok: string;
+    warn: string;
+    error: string;
+    bg: string;
+    textGray: string;
   };
-  // Typography - Inter only
   fonts: {
-    sans: string;           // Inter with fallbacks
+    sans: string;
   };
-  // Spacing - 4px grid
   spacing: {
-    xs: string;    // 4px
-    sm: string;    // 8px
-    md: string;    // 12px
-    lg: string;    // 16px
-    xl: string;    // 20px
-    xxl: string;   // 24px
+    xs: string;
+    sm: string;
+    md: string;
+    lg: string;
+    xl: string;
+    xxl: string;
   };
 }
 
 const ATLAS_TOKENS: AtlasTokens = {
   colors: {
-    atlasBlue: 'var(--atlas-blue)',
-    atlasTeal: 'var(--atlas-teal)',
-    atlasNavy1: 'var(--atlas-navy-1)',
-    atlasNavy2: 'var(--atlas-navy-2)',
-    ok: 'var(--ok)',
-    warn: 'var(--warn)',
-    error: 'var(--error)',
-    bg: 'var(--bg)',
-    textGray: 'var(--text-gray)',
+    atlasBlue: 'var(--navy-900)',
+    atlasTeal: 'var(--teal-600)',
+    atlasNavy1: 'var(--grey-700)',
+    atlasNavy2: 'var(--grey-900)',
+    ok: 'var(--navy-900)',
+    warn: 'var(--grey-500)',
+    error: 'var(--grey-700)',
+    bg: 'var(--grey-50)',
+    textGray: 'var(--grey-500)',
   },
   fonts: {
-    sans: 'var(--font-inter, "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif)',
+    sans: 'var(--font-base)',
   },
   spacing: {
     xs: '4px',
-    sm: '8px', 
+    sm: '8px',
     md: '12px',
     lg: '16px',
     xl: '20px',
@@ -84,8 +79,7 @@ interface ThemeProviderProps {
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [currentModule, setCurrentModule] = useState<AppModule>('horizon');
-  
-  // ES-ES Locale formatting functions as per ATLAS requirements
+
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -98,7 +92,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const formatDate = (date: Date): string => {
     return new Intl.DateTimeFormat('es-ES', {
       day: '2-digit',
-      month: '2-digit', 
+      month: '2-digit',
       year: 'numeric'
     }).format(date);
   };
@@ -110,36 +104,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }).format(num);
   };
 
-  // Theme configuration based on ATLAS requirements
-  const getThemeColors = (_module: AppModule) => {
-    // Both modules comparten los mismos tokens de color base
-    const primaryColor = ATLAS_TOKENS.colors.atlasBlue;
-    const accentColor = ATLAS_TOKENS.colors.atlasTeal;
+  const primaryColor = ATLAS_TOKENS.colors.atlasBlue;
+  const accentColor = ATLAS_TOKENS.colors.atlasTeal;
 
-    return { primaryColor, accentColor };
-  };
-
-  const { primaryColor, accentColor } = getThemeColors(currentModule);
-
-  // Apply ATLAS theme globally when provider mounts
   useEffect(() => {
-    const root = document.documentElement;
-    
-    // Apply Inter font family globally
-    root.style.setProperty('--font-inter', '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif');
-    root.style.fontFamily = ATLAS_TOKENS.fonts.sans;
-    
-    // Enable tabular numbers globally for financial data
-    root.style.fontVariantNumeric = 'tabular-nums';
-    
-    // Add ATLAS class to body for scoped styles
     document.body.classList.add('atlas-theme');
-    document.body.classList.add(`atlas-${currentModule}`);
-    
     return () => {
-      document.body.classList.remove('atlas-theme', `atlas-${currentModule}`);
+      document.body.classList.remove('atlas-theme');
     };
-  }, [currentModule]);
+  }, []);
 
   const value: ThemeContextType = {
     currentModule,

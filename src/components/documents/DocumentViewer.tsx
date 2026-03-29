@@ -133,7 +133,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
               file={previewDataUrl}
               onLoadSuccess={onDocumentLoadSuccess}
               loading={<div className="p-10">Procesando PDF...</div>}
-              error={<div className="p-10 text-red-500">No se pudo cargar el PDF.</div>}
+              error={<div className="p-10 text-gray-700">No se pudo cargar el PDF.</div>}
             >
               <Page 
                 pageNumber={pageNumber} 
@@ -207,7 +207,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
            <div><span className="font-medium">Proveedor:</span> {isEditingMetadata ? <input className="ml-2 border p-1 rounded" value={metadata.proveedor} onChange={e => setMetadata({...metadata, proveedor: e.target.value})} /> : <span className="ml-2 text-neutral-600">{metadata.proveedor || 'No detectado'}</span>}</div>
            <div><span className="font-medium">Categoría:</span> <span className="ml-2 text-neutral-600">{metadata.categoria}</span></div>
-           <div><span className="font-medium">Estado:</span> <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">{metadata.status || 'Procesado'}</span></div>
+           <div><span className="font-medium">Estado:</span> <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-900 rounded-full text-xs">{metadata.status || 'Procesado'}</span></div>
         </div>
       </div>
 
@@ -229,7 +229,7 @@ const DocumentViewer: React.FC<DocumentViewerProps> = ({ document, onAssign, onD
         <button onClick={handleDownload} className="flex items-center gap-2 px-4 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50">
           <Download className="w-4 h-4" /> Descargar
         </button>
-        <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center gap-2 px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+        <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center gap-2 px-4 py-2 text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>

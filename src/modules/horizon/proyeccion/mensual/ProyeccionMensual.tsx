@@ -257,11 +257,11 @@ const ProyeccionMensual: React.FC = () => {
 
       {/* Error state */}
       {!loading && error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="rounded-lg border border-gray-200 bg-gray-100 p-6 text-center">
+          <p className="text-sm text-gray-700">{error}</p>
           <button
             onClick={loadData}
-            className="mt-3 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            className="mt-3 rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-white hover:bg-gray-50"
           >
             Reintentar
           </button>
@@ -302,7 +302,7 @@ const ProyeccionMensual: React.FC = () => {
           {currentProjection ? (
             <MonthlyProjectionTable projection={currentProjection} />
           ) : (
-            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-center text-sm text-yellow-800">
+            <div className="rounded-lg border border-gray-200 bg-gray-100 p-6 text-center text-sm text-gray-700">
               No hay datos de proyección para el año {selectedYear}.
             </div>
           )}

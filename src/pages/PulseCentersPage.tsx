@@ -1,13 +1,30 @@
 import React from 'react';
+import { Target } from 'lucide-react';
+import PageLayout from '../components/common/PageLayout';
+import EmptyState from '../components/common/EmptyState';
 
 const PulseCentersPage: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Pulse Centers</h1>
-      <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-500">Pulse centers page - coming soon</p>
-      </div>
-    </div>
+    <PageLayout
+      title="Mi Plan"
+      subtitle="Seguimiento de objetivos"
+      icon={Target}
+      primaryAction={{
+        label: 'Editar objetivos',
+        onClick: () => {},
+        variant: 'header',
+      }}
+    >
+      <EmptyState
+        lucideIcon={Target}
+        title="No hay objetivos configurados"
+        description="Define tus objetivos para hacer seguimiento"
+        action={{
+          label: 'Configurar objetivos',
+          onClick: () => {},
+        }}
+      />
+    </PageLayout>
   );
 };
 

@@ -160,7 +160,7 @@ const AccountCalendar: React.FC<AccountCalendarProps> = ({
     
     if (movement.state === 'ignored') {
       // Ignorado - Red
-      return `${baseStyle} bg-red-400`;
+      return `${baseStyle} bg-gray-100`;
     }
     
     // Fallback to amount-based colors

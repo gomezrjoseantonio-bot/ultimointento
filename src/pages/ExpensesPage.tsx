@@ -1,13 +1,21 @@
 import React from 'react';
+import { User } from 'lucide-react';
+import PageLayout from '../components/common/PageLayout';
+import EmptyState from '../components/common/EmptyState';
 
 const ExpensesPage: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Expenses</h1>
-      <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-500">Expenses page - coming soon</p>
-      </div>
-    </div>
+    <PageLayout
+      title="Personal"
+      subtitle="Gestión de finanzas personales"
+      icon={User}
+    >
+      <EmptyState
+        lucideIcon={User}
+        title="Sin datos personales"
+        description="Configura tu perfil para ver tus finanzas personales"
+      />
+    </PageLayout>
   );
 };
 

@@ -1,13 +1,20 @@
 import React from 'react';
+import { Key } from 'lucide-react';
+import PageLayout from '../components/common/PageLayout';
+import EmptyState from '../components/common/EmptyState';
 
 const ContractsPage: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Contracts</h1>
-      <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-500">Contracts page - coming soon</p>
-      </div>
-    </div>
+    <PageLayout
+      title="Alquileres"
+      icon={Key}
+    >
+      <EmptyState
+        lucideIcon={Key}
+        title="Sin contratos de alquiler"
+        description="Añade tu primer contrato de alquiler"
+      />
+    </PageLayout>
   );
 };
 

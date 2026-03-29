@@ -1,8 +1,6 @@
-// InversionesPage.tsx
-// ATLAS HORIZON: Investment positions page - Refactored with tabs
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, TrendingUp, BarChart3, AlertCircle } from 'lucide-react';
+import { Plus, TrendingUp, AlertCircle } from 'lucide-react';
+import PageHeader from '../../../components/common/PageHeader';
 import { inversionesService } from '../../../services/inversionesService';
 import { rendimientosService } from '../../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../../services/migrations/migrateInversiones';
@@ -179,129 +177,90 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
     );
   }
 
-  const tabs: { id: Tab; label: string; icon: React.ReactElement }[] = [
-    { id: 'cartera', label: 'Cartera', icon: <TrendingUp size={16} /> },
-    { id: 'rendimientos', label: 'Rendimientos', icon: <BarChart3 size={16} /> },
+  const tabItems: { id: Tab; label: string }[] = [
+    { id: 'cartera', label: 'Cartera' },
+    { id: 'rendimientos', label: 'Rendimientos' },
   ];
 
   return (
-    <div style={{ padding: 'var(--space-6)', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: 'var(--r-lg)',
-            background: 'var(--n-100)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <TrendingUp size={24} style={{ color: 'var(--blue)' }} />
-          </div>
-          <h1 style={{
-            fontFamily: 'var(--font-base)',
-            fontSize: 'var(--text-xl)',
-            fontWeight: 600,
-            color: 'var(--atlas-navy-1)',
-            margin: 0,
-          }}>
-            Inversiones
-          </h1>
+    <div>
+      {/* v4 Header */}
+      <PageHeader
+        title="Inversiones"
+        icon={TrendingUp}
+        primaryAction={{
+          label: '+ Nueva posición',
+          onClick: handleNewPosicion,
+          icon: Plus,
+        }}
+      />
+
+      {/* v4 Underline tabs — sin iconos */}
+      <div style={{ borderBottom: '1px solid var(--grey-200)', background: 'var(--white)', padding: '0 24px' }}>
+        <div style={{ display: 'flex' }}>
+          {tabItems.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '10px 0',
+                marginRight: 32,
+                fontSize: 'var(--t-base)',
+                fontWeight: activeTab === tab.id ? 500 : 400,
+                color: activeTab === tab.id ? 'var(--grey-900)' : 'var(--grey-500)',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab.id ? '2px solid var(--navy-900)' : '2px solid transparent',
+                marginBottom: -1,
+                cursor: 'pointer',
+                transition: 'all 150ms ease',
+                fontFamily: 'var(--font-base)',
+              }}
+            >
+              {tab.label}
+              {tab.id === 'rendimientos' && pendingRendimientos > 0 && (
+                <span style={{
+                  background: 'var(--grey-100)',
+                  color: 'var(--grey-700)',
+                  borderRadius: 6,
+                  fontSize: 'var(--t-xs)',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  marginLeft: 8,
+                }}>
+                  {pendingRendimientos}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-        <button
-          onClick={handleNewPosicion}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1.5rem',
-            background: 'var(--blue)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--r-md)',
-            fontFamily: 'var(--font-base)',
-            fontSize: '1rem',
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-hover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--blue)'; }}
-        >
-          <Plus size={20} />
-          Nueva posición
-        </button>
       </div>
 
+    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       {/* Pending rendimientos alert */}
       {pendingRendimientos > 0 && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '0.75rem',
-          padding: '0.875rem 1.25rem',
-          background: 'var(--s-warning-bg)',
-          border: '1px solid var(--s-warning)',
+          gap: 12,
+          padding: '12px 16px',
+          background: 'var(--grey-100)',
+          border: '1px solid var(--grey-300)',
           borderRadius: 'var(--r-md)',
-          marginBottom: '1.5rem',
+          marginBottom: 24,
         }}>
-          <AlertCircle size={18} style={{ color: 'var(--s-warning)', flexShrink: 0 }} />
-          <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', color: 'var(--s-warning)', margin: 0 }}>
+          <AlertCircle size={18} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
+          <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', color: 'var(--grey-700)', margin: 0 }}>
             Tienes <strong>{pendingRendimientos}</strong> {pendingRendimientos === 1 ? 'rendimiento pendiente' : 'rendimientos pendientes'} de cobrar.{' '}
             <button
               onClick={() => setActiveTab('rendimientos')}
-              style={{ background: 'none', border: 'none', color: 'var(--s-warning)', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--text-base)', padding: 0 }}
+              style={{ background: 'none', border: 'none', color: 'var(--navy-900)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', padding: 0 }}
             >
               Ver rendimientos
             </button>
           </p>
         </div>
       )}
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--n-200)', paddingBottom: '0' }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.25rem',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid var(--blue)' : '2px solid transparent',
-              color: activeTab === tab.id ? 'var(--blue)' : 'var(--text-gray)',
-              fontFamily: 'var(--font-base)',
-              fontSize: 'var(--text-base)',
-              fontWeight: activeTab === tab.id ? 600 : 500,
-              cursor: 'pointer',
-              marginBottom: '-1px',
-              transition: 'color 0.15s',
-            }}
-          >
-            {tab.icon}
-            {tab.label}
-            {tab.id === 'rendimientos' && pendingRendimientos > 0 && (
-              <span style={{
-                background: 'var(--error)',
-                color: 'white',
-                borderRadius: '999px',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-                padding: '0.1rem 0.4rem',
-                minWidth: '18px',
-                textAlign: 'center',
-              }}>
-                {pendingRendimientos}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
 
       {/* Tab content */}
       {activeTab === 'cartera' && (
@@ -325,38 +284,25 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
 
           {posiciones.length === 0 ? (
             <div style={{
-              background: 'var(--hz-card-bg)',
-              border: '1px solid var(--n-300)',
+              background: 'var(--white)',
+              border: '1px solid var(--grey-200)',
               borderRadius: 'var(--r-lg)',
-              padding: '3rem 2rem',
+              padding: '48px 24px',
               textAlign: 'center',
             }}>
-              <div style={{
-                width: '64px',
-                height: '64px',
-                borderRadius: '50%',
-                background: 'var(--n-100)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 1rem',
-              }}>
-                <TrendingUp size={32} style={{ color: 'var(--text-gray)' }} />
-              </div>
+              <TrendingUp size={48} style={{ color: 'var(--grey-400)', margin: '0 auto 16px', display: 'block' }} />
               <h3 style={{
-                fontFamily: 'var(--font-base)',
-                fontSize: '1.125rem',
+                fontSize: 'var(--t-md)',
                 fontWeight: 600,
-                color: 'var(--atlas-navy-1)',
-                margin: '0 0 0.5rem 0',
+                color: 'var(--grey-700)',
+                margin: '0 0 4px',
               }}>
                 No hay posiciones todavía
               </h3>
               <p style={{
-                fontFamily: 'var(--font-base)',
-                fontSize: 'var(--text-sm)',
-                color: 'var(--text-gray)',
-                margin: '0 0 1.5rem 0',
+                fontSize: 'var(--t-sm)',
+                color: 'var(--grey-500)',
+                margin: '0 0 24px',
               }}>
                 Comienza añadiendo tu primera posición de inversión
               </p>
@@ -365,19 +311,19 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.75rem 1.5rem',
-                  background: 'var(--blue)',
-                  color: 'white',
+                  gap: 6,
+                  padding: '10px 16px',
+                  background: 'var(--navy-900)',
+                  color: 'var(--white)',
                   border: 'none',
                   borderRadius: 'var(--r-md)',
                   fontFamily: 'var(--font-base)',
-                  fontSize: '1rem',
+                  fontSize: 'var(--t-base)',
                   fontWeight: 500,
                   cursor: 'pointer',
                 }}
               >
-                <Plus size={20} />
+                <Plus size={16} />
                 Añadir primera posición
               </button>
             </div>
@@ -396,7 +342,7 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
       )}
 
       {activeTab === 'rendimientos' && <RendimientosTab />}
-
+    </div>
       {/* Detail Modal */}
       {showDetail && editingPosicion && (
         <PosicionDetailModal

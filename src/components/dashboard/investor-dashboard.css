@@ -160,13 +160,13 @@
 }
 
 .mesa-atlas-card--critical {
-  border-left: 4px solid var(--error);
+  border-left: 4px solid var(--grey-700);
 }
 
 .mesa-atlas-card--warning {
-  border-left: 4px solid var(--warn);
+  border-left: 4px solid var(--grey-500);
 }
 
 .mesa-atlas-card--healthy {
-  border-left: 4px solid var(--ok);
+  border-left: 4px solid var(--navy-900);
 }

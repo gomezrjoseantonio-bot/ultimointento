@@ -1,131 +1,106 @@
-import React, { useState } from 'react';
-import { Info, ChevronRight } from 'lucide-react';
-
-interface BreadcrumbItem {
-  name: string;
-  href: string;
-}
+import React from 'react';
+import { LucideIcon } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
-  infoText?: string;
-  breadcrumb?: BreadcrumbItem[];
-  showInfoIcon?: boolean;
+  icon?: LucideIcon;
   primaryAction?: {
     label: string;
     onClick: () => void;
     disabled?: boolean;
+    variant?: 'primary' | 'header';
+    icon?: LucideIcon;
   };
-  secondaryActions?: {
+  secondaryAction?: {
     label: string;
     onClick: () => void;
     disabled?: boolean;
-  }[];
+    icon?: LucideIcon;
+  };
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ 
-  title, 
-  subtitle, 
-  infoText,
-  breadcrumb,
-  showInfoIcon = false,
+const PageHeader: React.FC<PageHeaderProps> = ({
+  title,
+  subtitle,
+  icon: Icon,
   primaryAction,
-  secondaryActions = []
+  secondaryAction,
 }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-4">
-      {/* Breadcrumb */}
-      {breadcrumb && breadcrumb.length > 0 && (
-        <nav className="flex mb-2" aria-label="Breadcrumb">
-          <ol className="flex items-center space-x-2">
-            {breadcrumb.map((item, index) => (
-              <li key={index} className="flex items-center">
-                {index > 0 && (
-                  <ChevronRight className="h-4 w-4 text-gray-400 mx-2" />
-                )}
-                <a
-                  href={item.href}
-                  className={`text-sm ${
-                    index === breadcrumb.length - 1
-                      ? 'text-gray-500'
-                      : 'text-atlas-blue hover:text-primary-800'
-                  }`}
-                >
-                  {item.name}
-                </a>
-              </li>
-            ))}
-          </ol>
-        </nav>
-      )}
-      
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <h1 
-            className="font-semibold tracking-[-0.01em] text-[24px] leading-[32px]" 
-            style={{ color: 'var(--n-700)' }}
-          >
-            {title}
-          </h1>
-          {showInfoIcon && infoText && !subtitle && (
-            <div className="relative">
-              <button
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-                className="inline-flex items-center justify-center h-4 w-4 rounded-full border transition-colors"
-                style={{ borderColor: 'var(--n-300)', color: 'var(--n-500)' }}
-                aria-describedby="page-info-tooltip"
-                aria-label="Más información"
-              >
-                <Info className="h-3 w-3" />
-              </button>
-              {showTooltip && (
-                <div 
-                  id="page-info-tooltip"
-                  className="absolute top-6 left-0 text-sm rounded-md px-3 py-2 z-10 max-w-xs border shadow-md"
-                  style={{ background: 'var(--white)', color: 'var(--n-700)', borderColor: 'var(--n-300)' }}
-                  role="tooltip"
-                >
-                  {infoText}
-                </div>
-              )}
-            </div>
+    <div style={{
+      background: 'var(--white)',
+      borderBottom: '1px solid var(--grey-200)',
+      padding: '16px 24px 0',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          {Icon && (
+            <Icon size={20} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
           )}
+          <div>
+            <h1 style={{
+              fontSize: 'var(--t-xl)',
+              fontWeight: 700,
+              color: 'var(--grey-900)',
+              lineHeight: 1.3,
+              margin: 0,
+            }}>
+              {title}
+            </h1>
+            {subtitle && (
+              <p style={{
+                fontSize: 'var(--t-sm)',
+                fontWeight: 400,
+                color: 'var(--grey-500)',
+                margin: '2px 0 0',
+                lineHeight: 1.4,
+              }}>
+                {subtitle}
+              </p>
+            )}
+          </div>
         </div>
-        
-        {/* Primary Action Button - Top Right as per specification */}
-        <div className="flex items-center gap-2">
-          {secondaryActions.map((action, index) => (
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          {secondaryAction && (
             <button
-              key={index}
-              onClick={action.onClick}
-              disabled={action.disabled}
-              className="horizon-secondary px-4 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={secondaryAction.onClick}
+              disabled={secondaryAction.disabled}
+              className="btn-header"
             >
-              {action.label}
+              {secondaryAction.icon && <secondaryAction.icon size={16} />}
+              {secondaryAction.label}
             </button>
-          ))}
+          )}
           {primaryAction && (
             <button
               onClick={primaryAction.onClick}
               disabled={primaryAction.disabled}
-              className="horizon-primary px-4 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={primaryAction.variant === 'header' ? 'btn-header' : ''}
+              style={primaryAction.variant !== 'header' ? {
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 16px',
+                borderRadius: 'var(--r-md)',
+                border: 'none',
+                background: 'var(--navy-900)',
+                color: 'var(--white)',
+                fontSize: 'var(--t-base)',
+                fontWeight: 500,
+                cursor: primaryAction.disabled ? 'not-allowed' : 'pointer',
+                opacity: primaryAction.disabled ? 0.4 : 1,
+                fontFamily: 'var(--font-base)',
+                transition: 'all 150ms ease',
+              } : undefined}
             >
+              {primaryAction.icon && <primaryAction.icon size={16} />}
               {primaryAction.label}
             </button>
           )}
         </div>
       </div>
-      
-      {/* Subtitle below title when not using info icon */}
-      {!showInfoIcon && subtitle && (
-        <p className="text-neutral-600 text-sm leading-5 font-normal mt-1">
-          {subtitle}
-        </p>
-      )}
     </div>
   );
 };

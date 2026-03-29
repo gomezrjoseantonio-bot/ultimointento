@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Wrench } from 'lucide-react';
 import PageHeader from '../components/common/PageHeader';
 import ExportadorDatos from '../modules/horizon/herramientas/exporters/ExportadorDatos';
 
@@ -41,11 +42,8 @@ const HerramientasPage: React.FC = () => {
     <div className="min-h-full" style={{ backgroundColor: 'var(--n-50)' }}>
       <PageHeader
         title="Herramientas"
-        subtitle="Calculadora de interés compuesto y simulaciones financieras básicas."
-        breadcrumb={[
-          { name: 'Panel', href: '/panel' },
-          { name: 'Herramientas', href: '/herramientas' },
-        ]}
+        subtitle="Calculadora de interés compuesto y simulaciones"
+        icon={Wrench}
       />
 
       <div className="p-4 md:p-6 space-y-6">

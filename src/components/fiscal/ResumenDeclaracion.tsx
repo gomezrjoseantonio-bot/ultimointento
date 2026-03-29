@@ -41,7 +41,7 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
   const hasResult = resultado !== null;
   const isDevolver = hasResult && resultado < 0;
   const resultColor = hasResult
-    ? (isDevolver ? 'var(--s-pos)' : 'var(--s-neg)')
+    ? (isDevolver ? 'var(--teal)' : 'var(--blue)')
     : 'var(--n-500)';
 
   return (
@@ -88,10 +88,10 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
       }}>
         <LineItem label="Base liquidable general" value={baseLiquidableGeneral} />
         <LineItem label="Base liquidable del ahorro" value={baseLiquidableAhorro} />
-        <LineItem label="Cuota \u00edntegra estatal" value={cuotaIntegraEstatal} />
-        <LineItem label="Cuota \u00edntegra auton\u00f3mica" value={cuotaIntegraAutonomica} />
-        <LineItem label="Cuota l\u00edquida estatal" value={cuotaLiquidaEstatal} />
-        <LineItem label="Cuota l\u00edquida auton\u00f3mica" value={cuotaLiquidaAutonomica} />
+        <LineItem label="Cuota íntegra estatal" value={cuotaIntegraEstatal} />
+        <LineItem label="Cuota íntegra autonómica" value={cuotaIntegraAutonomica} />
+        <LineItem label="Cuota líquida estatal" value={cuotaLiquidaEstatal} />
+        <LineItem label="Cuota líquida autonómica" value={cuotaLiquidaAutonomica} />
       </div>
     </div>
   );

@@ -38,7 +38,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
   onConfigure,
   onReset,
   isResetting = false,
-  badgeLabel = 'Atlas • Pulse',
+  badgeLabel = 'ATLAS • Dashboard',
   excludePersonal = false,
   onToggleExcludePersonal,
   isUpdatingPersonalPreference = false
@@ -124,7 +124,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3 lg:grid-cols-2">
                 <div className="rounded-xl bg-white/10 p-4">
-                  <span className="text-xs uppercase tracking-wide text-white/60">Atlas Pulse</span>
+                  <span className="text-xs uppercase tracking-wide text-white/60">Inmuebles</span>
                   <p className="mt-1 text-2xl font-semibold text-white">{propertyCount}</p>
                   <p className="text-xs text-white/60">Inmuebles gestionados activamente</p>
                 </div>
@@ -134,9 +134,9 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                   <p className="text-xs text-white/60">Resumen operativo y financiero</p>
                 </div>
                 <div className="rounded-xl bg-white/10 p-4 sm:col-span-2 lg:col-span-2">
-                  <span className="text-xs uppercase tracking-wide text-white/60">Atlas Horrizon</span>
+                  <span className="text-xs uppercase tracking-wide text-white/60">Visión General</span>
                   <p className="mt-1 text-base font-semibold text-white">
-                    Supervisión financiera sincronizada con Pulse
+                    Supervisión financiera sincronizada
                   </p>
                   <p className="mt-2 text-xs text-white/60">
                     Ajusta bloques, orden y presets en segundos sin perder visibilidad financiera.
@@ -190,7 +190,7 @@ const PulseDashboardHero: React.FC<PulseDashboardHeroProps> = ({
                 <div className="rounded-xl bg-white/10 px-4 py-3 text-xs text-white/70">
                   <p className="font-semibold uppercase tracking-[0.25em] text-white/60">Atlas insight</p>
                   <p className="mt-2 text-white/80">
-                    Alterna en cualquier momento para que Horrizon muestre métricas puramente de inversión o una visión completa.
+                    Alterna en cualquier momento para mostrar métricas puramente de inversión o una visión completa.
                   </p>
                 </div>
               </div>

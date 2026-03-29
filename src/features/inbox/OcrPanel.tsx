@@ -78,7 +78,7 @@ const CONFIDENCE_THRESHOLDS = {
 
 const getConfidenceColor = (confidence: number): string => {
   if (confidence >= CONFIDENCE_THRESHOLDS.HIGH) return 'text-success-500 bg-success-50'; // Verde OK según guía
-  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'text-warning-500 bg-amber-50'; // Amarillo warning según guía
+  if (confidence >= CONFIDENCE_THRESHOLDS.MEDIUM) return 'text-warning-500 bg-gray-100'; // Amarillo warning según guía
   return 'text-error-500 bg-error-50'; // Rojo error según guía
 };
 
@@ -243,12 +243,12 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
             <div className="mt-4 text-left">
               <button
                 onClick={() => setShowDevJson(true)}
-                className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded"
+                className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded"
               >
                 Ver respuesta cruda (DEV)
               </button>
               {showDevJson && (
-                <pre className="bg-gray-50 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96 mt-2">
+                <pre className="bg-gray-50 text-gray-900 text-xs p-4 rounded-lg overflow-auto max-h-96 mt-2">
                   {JSON.stringify(ocrResult, null, 2)}
                 </pre>
               )}
@@ -549,7 +549,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
         <div className="mt-6 pt-6 border-t border-gray-200">
           <button
             onClick={() => setShowDevJson(!showDevJson)}
-            className="flex items-center space-x-2 text-sm font-medium text-amber-600 hover:text-amber-700"
+            className="flex items-center space-x-2 text-sm font-medium text-gray-500 hover:text-gray-700"
           >
             {showDevJson ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <Bug className="h-4 w-4" />
@@ -558,7 +558,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
           
           {showDevJson && (
             <div className="mt-4">
-              <pre className="bg-gray-50 text-green-400 text-xs p-4 rounded-lg overflow-auto max-h-96">
+              <pre className="bg-gray-50 text-gray-900 text-xs p-4 rounded-lg overflow-auto max-h-96">
                 {JSON.stringify(ocrResult, null, 2)}
               </pre>
             </div>
@@ -578,14 +578,14 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <span className="text-sm text-gray-600">Nombre:</span>
                   <span className="text-sm font-medium">{aligned.supplier.name || '—'}</span>
                   {aligned.meta.rawConfidenceSummary.supplier_name && aligned.meta.rawConfidenceSummary.supplier_name.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">NIF:</span>
                   <span className="text-sm font-medium">{aligned.supplier.taxId || '—'}</span>
                   {aligned.meta.rawConfidenceSummary.supplier_tax_id && aligned.meta.rawConfidenceSummary.supplier_tax_id.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
@@ -606,14 +606,14 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <span className="text-sm text-gray-600">Nº:</span>
                   <span className="text-sm font-medium">{aligned.invoice.id || '—'}</span>
                   {aligned.meta.rawConfidenceSummary.invoice_id && aligned.meta.rawConfidenceSummary.invoice_id.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Fecha:</span>
                   <span className="text-sm font-medium">{aligned.invoice.date || '—'}</span>
                   {aligned.meta.rawConfidenceSummary.invoice_date && aligned.meta.rawConfidenceSummary.invoice_date.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
@@ -634,21 +634,21 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                   <span className="text-sm text-gray-600">Base:</span>
                   <span className="text-sm font-medium">{aligned.invoice.net.value.toFixed(2)} {aligned.invoice.currency}</span>
                   {aligned.meta.rawConfidenceSummary.net_amount && aligned.meta.rawConfidenceSummary.net_amount.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Impuestos:</span>
                   <span className="text-sm font-medium">{aligned.invoice.tax.value.toFixed(2)} {aligned.invoice.currency}</span>
                   {aligned.meta.rawConfidenceSummary.total_tax_amount && aligned.meta.rawConfidenceSummary.total_tax_amount.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-gray-600">Total:</span>
                   <span className="text-sm font-bold">{aligned.invoice.total.value.toFixed(2)} {aligned.invoice.currency}</span>
                   {aligned.meta.rawConfidenceSummary.total_amount && aligned.meta.rawConfidenceSummary.total_amount.score < 0.80 && (
-                    <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded">Revisar</span>
+                    <span className="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded">Revisar</span>
                   )}
                 </div>
                 {aligned.meta.blockingErrors.length > 0 && (
@@ -663,8 +663,8 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                       <span className="text-sm text-success-800">✓ Los importes cuadran correctamente</span>
                     </div>
                   ) : (
-                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded">
-                      <span className="text-sm text-amber-800">⚠ Revisar importes: {(aligned.invoice.net.value + aligned.invoice.tax.value).toFixed(2)} ≠ {aligned.invoice.total.value.toFixed(2)}</span>
+                    <div className="mt-2 p-2 bg-gray-100 border border-gray-300 rounded">
+                      <span className="text-sm text-gray-500">⚠ Revisar importes: {(aligned.invoice.net.value + aligned.invoice.tax.value).toFixed(2)} ≠ {aligned.invoice.total.value.toFixed(2)}</span>
                     </div>
                   )
                 )}
@@ -732,8 +732,8 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     pattern="ES\d{2}\s?\d{4}\s?\d{4}\s?\d{2}\s?\d{10}"
                   />
                   {(editablePaymentFields.method ?? aligned.payment.method) === 'SEPA' && !(editablePaymentFields.iban ?? aligned.payment.iban) && (
-                    <div className="mt-1 p-2 bg-amber-50 border border-amber-200 rounded">
-                      <span className="text-sm text-amber-800">⚠ Falta IBAN para domiciliación SEPA</span>
+                    <div className="mt-1 p-2 bg-gray-100 border border-gray-300 rounded">
+                      <span className="text-sm text-gray-500">⚠ Falta IBAN para domiciliación SEPA</span>
                     </div>
                   )}
                 </div>
@@ -802,7 +802,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                               placeholder={field.status === 'empty' ? 'Pendiente' : field.status === 'pending' ? 'Revisar' : ''}
                               className={`w-full text-sm border rounded-md px-3 py-2 focus:ring-2 focus:ring-navy-600 focus:border-navy-600 ${
                                 field.status === 'empty' ? 'border-gray-300 bg-gray-50' : 
-                                field.status === 'pending' ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
+                                field.status === 'pending' ? 'border-gray-300 bg-gray-100' : 'border-gray-300'
                               }`}
                             />
                           ) : (

@@ -390,9 +390,9 @@
   transition: background 0.2s;
 }
 
-.tv3-bank-chip--ok::before     { background: var(--s-pos, #1A7A3C); }
-.tv3-bank-chip--warn::before   { background: var(--s-neg, #B91C1C); }
-.tv3-bank-chip--active::before { background: var(--blue, #042C5E); }
+.tv3-bank-chip--ok::before     { background: var(--navy-900, #042C5E); }
+.tv3-bank-chip--warn::before   { background: var(--grey-500, #6C757D); }
+.tv3-bank-chip--active::before { background: var(--navy-900, #042C5E); }
 
 .tv3-bank-chip:hover { border-color: var(--n-300, #d1d5db); }
 .tv3-bank-chip--active {
@@ -457,7 +457,7 @@
 }
 
 .tv3-bank-finmes--neg span {
-  color: var(--s-neg, #B91C1C);
+  color: var(--grey-700, #303A4C);
 }
 
 .tv3-bank-status {
@@ -465,8 +465,8 @@
   flex-shrink: 0;
   line-height: 0;
 }
-.tv3-bank-status.ok      { color: var(--s-pos, #1A7A3C); }
-.tv3-bank-status.warn    { color: var(--s-neg, #B91C1C); }
+.tv3-bank-status.ok      { color: var(--navy-900, #042C5E); }
+.tv3-bank-status.warn    { color: var(--grey-700, #303A4C); }
 .tv3-bank-status.pending { color: var(--n-300, #d1d5db); }
 
 .tv3-bank-track {
@@ -483,8 +483,8 @@
   transition: width 0.4s ease;
 }
 .tv3-bank-fill--blue  { background: var(--blue, #042C5E); }
-.tv3-bank-fill--full  { background: var(--s-pos, #1A7A3C); }
-.tv3-bank-fill--neg   { background: var(--s-neg, #B91C1C); }
+.tv3-bank-fill--full  { background: var(--navy-900, #042C5E); }
+.tv3-bank-fill--neg   { background: var(--grey-700, #303A4C); }
 
 .tv3-bank-badge {
   display: inline-block;
@@ -494,7 +494,7 @@
   padding: 2px 7px;
   border-radius: 99px;
 }
-.tv3-bank-badge--done { background: #dcfce7; color: var(--s-pos, #1A7A3C); }
+.tv3-bank-badge--done { background: var(--navy-100, #E8EFF7); color: var(--navy-900, #042C5E); }
 .tv3-bank-badge--pend { background: var(--n-100, #f3f4f6); color: var(--n-500, #6b7280); }
 
 .tv3-loading-msg {
@@ -644,7 +644,7 @@
   background: transparent;
 }
 .tv3-event-row__bar--vencido {
-  background: var(--s-neg, #B91C1C);
+  background: var(--grey-700, #303A4C);
 }
 
 /* Punteo toggle */
@@ -663,8 +663,8 @@
   transition: color 0.15s, background 0.15s;
 }
 .tv3-punteo-btn:hover { color: var(--blue, #042C5E); background: var(--n-50, #f9fafb); }
-.tv3-punteo-btn--done { color: var(--s-pos, #1A7A3C); }
-.tv3-punteo-btn--done:hover { color: var(--s-neg, #B91C1C); }
+.tv3-punteo-btn--done { color: var(--navy-900, #042C5E); }
+.tv3-punteo-btn--done:hover { color: var(--grey-700, #303A4C); }
 
 /* Tipo icono */
 .tv3-evt-icon {
@@ -678,7 +678,7 @@
   background: var(--n-100, #EEF1F5);
   color: var(--n-500, #6C757D);
 }
-.tv3-evt-icon--income  { background: var(--s-pos-bg, #E8F5ED); color: var(--s-pos, #1A7A3C); }
+.tv3-evt-icon--income  { background: var(--navy-100, #E8EFF7); color: var(--navy-900, #042C5E); }
 .tv3-evt-icon--expense { background: var(--n-100, #EEF1F5); color: var(--n-500, #6C757D); }
 .tv3-evt-icon--finance { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
 .tv3-evt-icon--financing { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
@@ -769,7 +769,7 @@
   border: none;
   transition: background 0.12s;
 }
-.tv3-iab--ok    { background: var(--s-pos, #1A7A3C); color: #fff; }
+.tv3-iab--ok    { background: var(--navy-900, #042C5E); color: #fff; }
 .tv3-iab--ok:hover { background: #155d2e; }
 .tv3-iab--pend  { background: var(--n-100, #f3f4f6); color: var(--n-700, #374151); }
 .tv3-iab--pend:hover { background: var(--n-200, #e5e7eb); }
@@ -785,7 +785,7 @@
   border-radius: 99px;
   white-space: nowrap;
 }
-.tv3-estado--conf { background: #dcfce7; color: var(--s-pos, #1A7A3C); }
+.tv3-estado--conf { background: var(--navy-100, #E8EFF7); color: var(--navy-900, #042C5E); }
 .tv3-estado--prev { background: var(--n-100, #f3f4f6); color: var(--n-500, #6b7280); }
 .tv3-estado--venc { background: #fef3c7; color: var(--s-warn, #92620A); }
 
@@ -821,7 +821,7 @@
 }
 .tv3-rental-head:hover { background: #e5f0ff; }
 .tv3-rental-head--done { background: #f0fdf4; }
-.tv3-rental-head--done:hover { background: #dcfce7; }
+.tv3-rental-head--done:hover { background: var(--navy-100, #E8EFF7); }
 
 .tv3-rental-toggle {
   flex-shrink: 0;
@@ -854,7 +854,7 @@
   font-family: var(--mono, 'IBM Plex Mono', monospace);
   font-size: 13px;
   font-weight: 700;
-  color: var(--s-pos, #1A7A3C);
+  color: var(--navy-900, #042C5E);
 }
 
 /* Footer */

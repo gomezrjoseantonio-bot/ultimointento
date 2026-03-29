@@ -119,26 +119,26 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = '
     accent === 'navy'
       ? 'text-blue-900'
       : accent === 'positive'
-      ? 'text-[var(--s-pos)]'
+      ? 'text-gray-900'
       : accent === 'danger'
-      ? 'text-red-700'
+      ? 'text-gray-700'
       : 'text-gray-900';
 
   const accentBorder =
     accent === 'navy'
       ? 'border-t-blue-900'
       : accent === 'positive'
-      ? 'border-t-[var(--s-pos)]'
+      ? 'border-t-gray-300'
       : accent === 'danger'
-      ? 'border-t-red-600'
+      ? 'border-t-gray-300'
       : 'border-t-gray-300';
 
   return (
     <div className={`bg-white border border-gray-200 border-t-4 ${accentBorder} rounded-3xl p-6 flex flex-col gap-3`}>
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">{title}</p>
-        <div className={`p-2 rounded-full ${accent === 'positive' ? 'bg-[var(--s-pos-bg)]' : 'bg-gray-50'}`}>
-          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-[var(--s-pos)]' : accent === 'danger' ? 'text-red-700' : 'text-gray-400'}`} />
+        <div className={`p-2 rounded-full bg-gray-50`}>
+          <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-gray-900' : accent === 'danger' ? 'text-gray-700' : 'text-gray-400'}`} />
         </div>
       </div>
       <p className={`text-3xl font-bold tracking-tight ${amountClass}`}>{fmt(amount)}</p>
@@ -223,11 +223,11 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-gray-400">Préstamos</p>
-            <p className="text-sm font-semibold text-red-700">{fmt(activeMonth.loanExpenses)}</p>
+            <p className="text-sm font-semibold text-gray-700">{fmt(activeMonth.loanExpenses)}</p>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-gray-400">Ahorro</p>
-            <p className={`text-sm font-semibold ${activeMonth.savings >= 0 ? 'text-[var(--s-pos)]' : 'text-red-700'}`}>
+            <p className={`text-sm font-semibold ${activeMonth.savings >= 0 ? 'text-gray-900' : 'text-gray-700'}`}>
               {fmt(activeMonth.savings)}
             </p>
           </div>
@@ -652,7 +652,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
           icon={Wallet}
           accent={netSavings >= 0 ? 'positive' : 'danger'}
           sub={
-            <span className={`font-semibold text-sm ${netSavings >= 0 ? 'text-[var(--s-pos)]' : 'text-red-700'}`}>
+            <span className={`font-semibold text-sm ${netSavings >= 0 ? 'text-gray-900' : 'text-gray-700'}`}>
               Tasa de ahorro: {pct(savingsRate)}
             </span>
           }
