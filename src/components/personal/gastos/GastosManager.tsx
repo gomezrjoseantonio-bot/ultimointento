@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip } from 'chart.js';
-import { LayoutTemplate, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import { LayoutTemplate, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   PersonalData,
