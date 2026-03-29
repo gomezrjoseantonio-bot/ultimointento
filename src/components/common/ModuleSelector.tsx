@@ -22,7 +22,7 @@ const ModuleSelector: React.FC = () => {
         }`}
         onClick={() => handleModuleChange('horizon' as AppModule)}
       >
-        Horizon
+        Supervisión
       </button>
       <div className="w-px h-4 bg-gray-300 mx-1" />
       <button
@@ -33,7 +33,7 @@ const ModuleSelector: React.FC = () => {
         }`}
         onClick={() => handleModuleChange('pulse' as AppModule)}
       >
-        Pulse
+        Operativa
       </button>
     </div>
   );

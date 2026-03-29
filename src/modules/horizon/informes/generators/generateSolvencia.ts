@@ -79,7 +79,7 @@ const drawCover = (doc: jsPDF, data: InformesData, dti: number): void => {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...COLOR.teal);
-  doc.text('HORIZON & PULSE', 18, ly + lh + 19);
+  doc.text('SUPERVISIÓN & OPERATIVA', 18, ly + lh + 19);
 
   doc.setDrawColor(...COLOR.teal);
   doc.setLineWidth(0.5);
