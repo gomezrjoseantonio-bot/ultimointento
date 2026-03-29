@@ -44,6 +44,7 @@ export interface EjercicioFiscal {
   declaracionAeatFecha?: string;
   declaracionAeatPdfRef?: string;
   declaracionAeatOrigen: OrigenDeclaracion;
+  casillasRaw?: Record<string, number | string>;
   arrastresRecibidos: ArrastresEjercicio;
   arrastresGenerados: ArrastresEjercicio;
   createdAt: string;
