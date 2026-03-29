@@ -391,7 +391,7 @@ const PrestamosCreation: React.FC<PrestamosCreationProps> = ({
                 {isEditMode ? 'Editar Préstamo' : 'Crear Préstamo'}
               </h1>
               <p className="text-sm text-text-gray">
-                Financiación - ATLAS Horizon
+                Financiación - ATLAS
               </p>
             </div>
           </div>

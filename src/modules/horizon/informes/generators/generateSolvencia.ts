@@ -117,7 +117,7 @@ const drawCover = (doc: jsPDF, data: InformesData, dti: number): void => {
     ['Empresa', data.personal.empresa || 'No disponible'],
     ['Actividad', 'Gestor de patrimonio inmobiliario'],
     ['Cartera', `${data.inmuebles.filter((i) => i.estado !== 'VENDIDO').length} inmuebles activos`],
-    ['Sistema', 'ATLAS Horizon & Pulse'],
+    ['Sistema', 'ATLAS'],
   ];
   let fy = by + 21;
   fields.forEach(([label, value]) => {

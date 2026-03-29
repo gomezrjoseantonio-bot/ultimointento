@@ -46,9 +46,9 @@ const EmailEntrante: React.FC = () => {
   // Properties for property aliases
   const [properties, setProperties] = useState<any[]>([]);
 
-  const subtitle = currentModule === 'horizon' 
-    ? 'Gestión de correo entrante para recepción automática de facturas en Horizon.'
-    : 'Gestión de correo entrante para recepción automática de documentos en Pulse.';
+  const subtitle = currentModule === 'horizon'
+    ? 'Gestión de correo entrante para recepción automática de facturas en el sistema.'
+    : 'Gestión de correo entrante para recepción automática de documentos en el sistema.';
 
   // Initialize with enhanced data including tenant tokens
   useEffect(() => {

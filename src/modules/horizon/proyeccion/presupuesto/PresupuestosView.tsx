@@ -1,12 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Activity,
-  ArrowLeftRight,
   BarChart3,
   ChevronLeft,
   ChevronRight,
   Download,
-  Plus,
 } from 'lucide-react';
 import { AtlasButton } from '../../../../components/atlas/AtlasButton';
 import ProyeccionAutomaticaView from './components/ProyeccionAutomaticaView';
@@ -29,9 +26,9 @@ export default function PresupuestosView() {
   const [exporting, setExporting] = useState(false);
 
   const tabs = useMemo(() => [
-    { id: 'proyeccion' as const, label: 'Proyección Automática', icon: Activity },
-    { id: 'presupuesto' as const, label: 'Crear Presupuesto', icon: Plus },
-    { id: 'comparativa' as const, label: 'Real vs Previsión', icon: ArrowLeftRight },
+    { id: 'proyeccion' as const, label: 'Proyección Automática' },
+    { id: 'presupuesto' as const, label: 'Crear Presupuesto' },
+    { id: 'comparativa' as const, label: 'Real vs Previsión' },
   ], []);
 
   const handleExport = async () => {
@@ -96,10 +93,9 @@ export default function PresupuestosView() {
       <section className="proyeccion-hero">
         <div className="proyeccion-hero__intro">
           <div className="proyeccion-hero__icon">
-            <BarChart3 size={40} />
+            <BarChart3 size={20} color="#6C757D" />
           </div>
           <div>
-            <p className="proyeccion-hero__eyebrow">Horizon · Presupuesto</p>
             <h1 className="proyeccion-hero__title">Proyección Mensual</h1>
           </div>
         </div>
@@ -125,7 +121,6 @@ export default function PresupuestosView() {
 
       <nav className="proyeccion-tabs" aria-label="Navegación de presupuesto">
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           const isActive = activeTab === tab.id;
 
           return (
@@ -135,7 +130,6 @@ export default function PresupuestosView() {
               onClick={() => setActiveTab(tab.id)}
               className={`proyeccion-tab ${isActive ? 'active' : ''}`}
             >
-              <Icon size={16} />
               <span>{tab.label}</span>
             </button>
           );
