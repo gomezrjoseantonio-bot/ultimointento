@@ -19,6 +19,10 @@ import {
 } from '../../../../services/declaracionOnboardingService';
 import type { ResultadoAnalisis } from '../../../../services/declaracionOnboardingService';
 import { declararEjercicio } from '../../../../services/ejercicioFiscalService';
+import {
+  importarDeclaracionAEAT,
+  getEjercicio,
+} from '../../../../services/ejercicioResolverService';
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
 import { generarReconciliacion, requiereReconciliacion } from '../../../../services/reconciliacionService';
@@ -317,7 +321,8 @@ const VerificacionExtraccion: React.FC<{
   reconciliacion: ReconciliacionCompleta | null;
   reconciliacionDisponible: boolean;
   onAbrirReconciliacion: () => void;
-}> = ({ resultado }) => {
+  avisoOrden?: string | null;
+}> = ({ resultado, avisoOrden }) => {
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
   const validacion = useMemo(
     () => validarDeclaracionExtraida(declaracion, casillasRaw),
@@ -356,23 +361,29 @@ const VerificacionExtraccion: React.FC<{
         </div>
 
         {/* Key metrics */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Cuota líquida</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Base general</div>
             <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-              {formatCurrency(declaracion.basesYCuotas.cuotaLiquida)}
+              {formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Base ahorro</div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              {formatCurrency(declaracion.basesYCuotas.baseImponibleAhorro)}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Cuota íntegra</div>
+            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+              {formatCurrency(declaracion.basesYCuotas.cuotaIntegra)}
             </div>
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Retenciones</div>
             <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
               {formatCurrency(declaracion.basesYCuotas.retencionesTotal)}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--n-500, #6C757D)', fontFamily: 'IBM Plex Sans, sans-serif' }}>Base general</div>
-            <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-              {formatCurrency(declaracion.basesYCuotas.baseImponibleGeneral)}
             </div>
           </div>
         </div>
@@ -389,6 +400,13 @@ const VerificacionExtraccion: React.FC<{
           {arrastresCount > 0 && <> · <strong>{arrastresCount} arrastre{arrastresCount !== 1 ? 's' : ''}</strong></>}
         </div>
       </div>
+
+      {/* ═══ AVISO DE ORDEN DE IMPORTACIÓN ═══ */}
+      {avisoOrden && (
+        <div style={{ padding: '0.75rem 1rem', borderRadius: '12px', background: 'var(--s-warn-bg, #FEF3DC)', color: 'var(--s-warn, #92620A)', fontSize: '0.9rem' }}>
+          {avisoOrden}
+        </div>
+      )}
 
       {/* ═══ AVISOS DE VALIDACIÓN ═══ */}
       {validacion.avisos.length > 0 && (
@@ -585,9 +603,27 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avisoOrden, setAvisoOrden] = useState<string | null>(null);
 
   useEffect(() => {
     setData((prev) => ({ ...prev, ejercicio }));
+  }, [ejercicio]);
+
+  // T1B.4: Check if previous year is declared for chained import warning
+  useEffect(() => {
+    if (ejercicio <= 2020) { setAvisoOrden(null); return; }
+    let cancelled = false;
+    getEjercicio(ejercicio - 1).then((ejPrev) => {
+      if (cancelled) return;
+      if (!ejPrev.aeat && ejPrev.estado !== 'declarado' && ejPrev.estado !== 'prescrito') {
+        setAvisoOrden(
+          `Para mejores resultados, importa primero la declaración de ${ejercicio - 1}. Los arrastres se calculan en cadena.`,
+        );
+      } else {
+        setAvisoOrden(null);
+      }
+    }).catch(() => { if (!cancelled) setAvisoOrden(null); });
+    return () => { cancelled = true; };
   }, [ejercicio]);
 
   useEffect(() => {
@@ -704,6 +740,16 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           pdfRef,
         );
 
+        // Sync con ejercicioResolverService (store coordinador)
+        const casillasNumericas: Record<string, number> = {};
+        for (const [k, v] of Object.entries(resultadoExtraccion.casillasRaw)) {
+          if (typeof v === 'number' && Number.isFinite(v)) {
+            casillasNumericas[k] = v;
+          }
+        }
+
+        let inmuebleIdsCreados: number[] = [];
+
         if (resultadoAnalisis) {
           try {
             const resumenEjecucion = await ejecutarImportacion(resultadoAnalisis, {
@@ -715,6 +761,8 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
               guardarDeclaracion: false,
             });
 
+            inmuebleIdsCreados = resumenEjecucion.inmuebleIdsCreados ?? [];
+
             if (!resumenEjecucion.exito) {
               toast('Declaración importada, pero hubo incidencias creando entidades en ATLAS.', { icon: '⚠️' });
             }
@@ -722,6 +770,18 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
             console.error('Error creando entidades detectadas durante la importación', importError);
             toast('Declaración importada, pero hubo un error creando inmuebles o contratos.', { icon: '⚠️' });
           }
+        }
+
+        // Registrar en el resolver coordinador (arrastres + inmuebles + estado)
+        try {
+          await importarDeclaracionAEAT({
+            año: ejercicioImportacion,
+            casillas: casillasNumericas,
+            pdfDocumentId: pdfRef,
+            inmuebleIds: inmuebleIdsCreados.length > 0 ? inmuebleIdsCreados : undefined,
+          });
+        } catch (resolverError) {
+          console.warn('Error sincronizando con resolver coordinador:', resolverError);
         }
       } else {
         const casillasMap = casillasExtraidas.length > 0
@@ -1019,6 +1079,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 reconciliacion={reconciliacionPreview}
                 reconciliacionDisponible={Boolean(reconciliacion)}
                 onAbrirReconciliacion={() => setStep(4)}
+                avisoOrden={avisoOrden}
               />
             ) : (
               <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>

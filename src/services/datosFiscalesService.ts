@@ -13,6 +13,11 @@ import {
   actualizarEjercicio,
 } from './entidadAtribucionService';
 import { ejercicioFiscalService } from './ejercicioFiscalService';
+import {
+  getEjercicio as getEjercicioCoord,
+  setInmueblesDelEjercicio,
+  setArrastresManuales,
+} from './ejercicioResolverService';
 import type { Prestamo } from '../types/prestamos';
 
 // ── Types ────────────────────────────────────────────────────
@@ -591,6 +596,47 @@ export async function ejecutarImportacionDatosFiscales(
       } catch (error) {
         resumen.errores.push(`Error arrastres: ${String(error)}`);
       }
+    }
+    // ── Sync con ejercicioResolverService (store coordinador) ──
+    try {
+      // Registrar inmuebles del ejercicio en el resolver
+      const allProps = await cargarPropiedadesExistentes();
+      const inmuebleIds = allProps
+        .filter((p) => p.state === 'activo' && p.id != null)
+        .map((p) => Number(p.id));
+      if (inmuebleIds.length > 0) {
+        await setInmueblesDelEjercicio(ejercicio, inmuebleIds);
+      }
+
+      // Sincronizar arrastres con el resolver (fuente 'aeat' porque Hacienda los calculó)
+      if (resumen.arrastresImportados > 0 && datos.arrastres) {
+        const arrastresGastos = (datos.arrastres.gastosPendientes || [])
+          .filter((g) => g.importe && g.importe > 0)
+          .map((g) => ({
+            inmuebleId: 0,
+            importePendiente: g.importe!,
+            añoOrigen: g.origenEjercicio || ejercicio,
+            casilla: '0105' as const,
+          }));
+        const arrastresPerdidas = (datos.arrastres.perdidasPatrimoniales || [])
+          .filter((p) => p.importe && p.importe > 0)
+          .map((p) => ({
+            tipo: 'patrimonial' as const,
+            importePendiente: p.importe!,
+            añoOrigen: p.origenEjercicio || ejercicio,
+          }));
+
+        if (arrastresGastos.length > 0 || arrastresPerdidas.length > 0) {
+          await setArrastresManuales(ejercicio, {
+            gastosPendientes: arrastresGastos,
+            perdidasPatrimoniales: arrastresPerdidas,
+            amortizacionesAcumuladas: [],
+            deduccionesPendientes: [],
+          });
+        }
+      }
+    } catch (syncError) {
+      console.warn('Error sincronizando Datos Fiscales con resolver coordinador:', syncError);
     }
   } catch (error) {
     resumen.exito = false;
