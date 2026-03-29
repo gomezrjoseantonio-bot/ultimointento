@@ -254,7 +254,9 @@ export const calculateFiscalSummary = async (
           año: exerciseYear,
           snapshot: snapshotCasillas,
           resumen: {
+            baseImponibleGeneral: 0, baseImponibleAhorro: 0,
             baseLiquidableGeneral: 0, baseLiquidableAhorro: 0,
+            cuotaIntegra: 0,
             cuotaIntegraEstatal: 0, cuotaIntegraAutonomica: 0,
             cuotaLiquidaEstatal: 0, cuotaLiquidaAutonomica: 0, resultado: 0,
           },
@@ -283,7 +285,9 @@ export const calculateFiscalSummary = async (
         año: exerciseYear,
         snapshot: snapshotCasillas,
         resumen: {
+          baseImponibleGeneral: 0, baseImponibleAhorro: 0,
           baseLiquidableGeneral: 0, baseLiquidableAhorro: 0,
+          cuotaIntegra: 0,
           cuotaIntegraEstatal: 0, cuotaIntegraAutonomica: 0,
           cuotaLiquidaEstatal: 0, cuotaLiquidaAutonomica: 0, resultado: 0,
         },

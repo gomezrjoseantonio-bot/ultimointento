@@ -1764,8 +1764,11 @@ export interface EjercicioFiscalCoord {
 }
 
 export interface ResumenFiscal {
+  baseImponibleGeneral: number;    // casilla 0435
+  baseImponibleAhorro: number;     // casilla 0460
   baseLiquidableGeneral: number;   // casilla 0505
   baseLiquidableAhorro: number;    // casilla 0510
+  cuotaIntegra: number;            // total cuota íntegra
   cuotaIntegraEstatal: number;     // casilla 0545
   cuotaIntegraAutonomica: number;  // casilla 0546
   cuotaLiquidaEstatal: number;     // casilla 0570
