@@ -95,9 +95,6 @@ const MiIRPFPage: React.FC = () => {
     if (!datos) return [];
 
     const decl = datos.declaracionCompleta;
-    const isSnapshotOnly = !decl;
-    const showCompletarBtn = datos.fuente === 'sin_datos';
-
     // ── Rendimientos del trabajo ──
     const trabajoSections: SeccionRendimientoProps[] = [];
     if (decl?.baseGeneral?.rendimientosTrabajo) {
