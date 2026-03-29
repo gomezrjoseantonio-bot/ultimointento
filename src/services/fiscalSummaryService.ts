@@ -7,13 +7,92 @@ import {
   generarOperacionesDesdeIntereses,
   generarOperacionesDesdeRecurrentes,
   getResumenCasillasAEAT,
+  getOperacionesPorInmuebleYEjercicio,
 } from './operacionFiscalService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
+import { getEjercicio, guardarCalculoATLAS } from './ejercicioResolverService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
 /**
- * Calculate or update fiscal summary for a property and year
+ * Compute a simple hash of inputs that affect the fiscal calculation.
+ * Used to avoid recalculating when nothing changed (bug 9 fix).
+ */
+async function computeInputHash(propertyId: number, exerciseYear: number): Promise<string> {
+  const db = await initDB();
+  const [operaciones, contracts, property] = await Promise.all([
+    getOperacionesPorInmuebleYEjercicio(propertyId, exerciseYear),
+    db.getAll('contracts'),
+    db.get('properties', propertyId),
+  ]);
+
+  const propertyContracts = (contracts as any[]).filter((c: any) => {
+    const matchesProperty = (c.inmuebleId === propertyId) || (c.propertyId === propertyId);
+    if (!matchesProperty) return false;
+    const inicio = new Date(c.fechaInicio ?? c.startDate);
+    const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
+    return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
+  });
+
+  const inputs = {
+    operaciones: operaciones.map((op: any) => ({ id: op.id, total: op.total, casilla: op.casillaAEAT })),
+    contracts: propertyContracts.map((c: any) => ({
+      id: c.id, renta: c.rentaMensual, inicio: c.fechaInicio ?? c.startDate, fin: c.fechaFin ?? c.endDate,
+    })),
+    property: property ? {
+      id: property.id,
+      cadastralValue: property.fiscalData?.cadastralValue,
+      constructionCadastralValue: property.fiscalData?.constructionCadastralValue,
+      acquisitionAmount: property.aeatAmortization?.onerosoAcquisition?.acquisitionAmount,
+    } : null,
+  };
+
+  const json = JSON.stringify(inputs);
+  let hash = 0;
+  for (let i = 0; i < json.length; i++) {
+    hash = ((hash << 5) - hash) + json.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
+/**
+ * Extract a FiscalSummary-like object from an AEAT snapshot for a given property.
+ * Used when the exercise is declared/prescribed — returns frozen data without recalculating.
+ */
+function extraerSummaryDeSnapshot(
+  snapshot: Record<string, number>,
+  propertyId: number,
+  exerciseYear: number,
+): FiscalSummary {
+  return {
+    propertyId,
+    exerciseYear,
+    box0105: snapshot[`${propertyId}_0105`] ?? snapshot['0105'] ?? 0,
+    box0106: snapshot[`${propertyId}_0106`] ?? snapshot['0106'] ?? 0,
+    box0109: snapshot[`${propertyId}_0109`] ?? snapshot['0109'] ?? 0,
+    box0112: snapshot[`${propertyId}_0112`] ?? snapshot['0112'] ?? 0,
+    box0113: snapshot[`${propertyId}_0113`] ?? snapshot['0113'] ?? 0,
+    box0114: snapshot[`${propertyId}_0114`] ?? snapshot['0114'] ?? 0,
+    box0115: snapshot[`${propertyId}_0115`] ?? snapshot['0115'] ?? 0,
+    box0117: snapshot[`${propertyId}_0117`] ?? snapshot['0117'] ?? 0,
+    capexTotal: 0,
+    deductibleExcess: 0,
+    constructionValue: 0,
+    annualDepreciation: 0,
+    status: getExerciseStatus(exerciseYear),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Calculate or update fiscal summary for a property and year.
+ *
+ * Fase 2 flow:
+ * 1. Declared/prescribed exercises → return AEAT snapshot (never recalculate)
+ * 2. Cached ATLAS calculation with matching input hash → return cached
+ * 3. Pending/in-progress exercises → full calculation, then cache result
  */
 export const calculateFiscalSummary = async (
   propertyId: number,
@@ -21,6 +100,43 @@ export const calculateFiscalSummary = async (
 ): Promise<FiscalSummary> => {
   const db = await initDB();
 
+  // ═══ GUARD 1: Declared/prescribed exercises → frozen AEAT snapshot ═══
+  let ej;
+  try {
+    ej = await getEjercicio(exerciseYear);
+  } catch {
+    ej = null;
+  }
+
+  if (ej && (ej.estado === 'declarado' || ej.estado === 'prescrito') && ej.aeat) {
+    // Return snapshot data — the AEAT declaration is the source of truth
+    const snapshotSummary = extraerSummaryDeSnapshot(ej.aeat.snapshot, propertyId, exerciseYear);
+
+    // Try to return persisted summary if it exists (may have extra calculated fields)
+    const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
+    if (existingIndex.length > 0) {
+      return existingIndex[0];
+    }
+
+    return snapshotSummary;
+  }
+
+  // ═══ GUARD 2: Cache by input hash — avoid recalculation on repeated navigation ═══
+  let inputHash: string | undefined;
+  try {
+    inputHash = await computeInputHash(propertyId, exerciseYear);
+    if (ej?.atlas?.hashInputs === inputHash) {
+      // Inputs haven't changed — return persisted summary if available
+      const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
+      if (existingIndex.length > 0) {
+        return existingIndex[0];
+      }
+    }
+  } catch {
+    // Hash computation failed — proceed with full calculation
+  }
+
+  // ═══ FULL CALCULATION: Only for pending/in-progress exercises ═══
   await generarOperacionesDesdeRecurrentes(propertyId, exerciseYear);
   await generarOperacionesDesdeIntereses(propertyId, exerciseYear);
 
@@ -125,11 +241,58 @@ export const calculateFiscalSummary = async (
     const existing = existingIndex[0];
     const updated = { ...summary, id: existing.id, createdAt: existing.createdAt };
     await db.put('fiscalSummaries', updated);
+
+    // Cache the result in the resolver for future hash-based lookups
+    if (inputHash) {
+      const snapshotCasillas: Record<string, number> = {
+        '0105': summary.box0105, '0106': summary.box0106, '0109': summary.box0109,
+        '0112': summary.box0112, '0113': summary.box0113, '0114': summary.box0114,
+        '0115': summary.box0115, '0117': summary.box0117,
+      };
+      try {
+        await guardarCalculoATLAS({
+          año: exerciseYear,
+          snapshot: snapshotCasillas,
+          resumen: {
+            baseImponibleGeneral: 0, baseImponibleAhorro: 0,
+            cuotaIntegra: 0, retenciones: 0, resultado: 0,
+          },
+          hashInputs: inputHash,
+        });
+      } catch {
+        // Non-critical — cache save failed
+      }
+    }
+
     return updated;
   }
 
   const id = (await db.add('fiscalSummaries', summary)) as number;
-  return { ...summary, id };
+  const result = { ...summary, id };
+
+  // Cache the result in the resolver
+  if (inputHash) {
+    const snapshotCasillas: Record<string, number> = {
+      '0105': summary.box0105, '0106': summary.box0106, '0109': summary.box0109,
+      '0112': summary.box0112, '0113': summary.box0113, '0114': summary.box0114,
+      '0115': summary.box0115, '0117': summary.box0117,
+    };
+    try {
+      await guardarCalculoATLAS({
+        año: exerciseYear,
+        snapshot: snapshotCasillas,
+        resumen: {
+          baseImponibleGeneral: 0, baseImponibleAhorro: 0,
+          cuotaIntegra: 0, retenciones: 0, resultado: 0,
+        },
+        hashInputs: inputHash,
+      });
+    } catch {
+      // Non-critical — cache save failed
+    }
+  }
+
+  return result;
 };
 
 /**
@@ -281,12 +444,40 @@ export const calculateCarryForwards = async (
  */
 export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Promise<number> => {
   const db = await initDB();
-  const properties = propertyId
-    ? [propertyId]
-    : (await db.getAll('properties')).filter((property) => property.state === 'activo').map((property) => property.id!);
+  const currentYear = new Date().getFullYear();
+
+  let propertyIds: number[];
+  if (propertyId) {
+    propertyIds = [propertyId];
+  } else {
+    // Use resolver's inmuebleIds for the current year (includes sold properties with activity)
+    let inmuebleIds: number[] = [];
+    try {
+      inmuebleIds = (await getEjercicio(currentYear)).inmuebleIds;
+    } catch {
+      // Resolver unavailable
+    }
+
+    if (inmuebleIds.length > 0) {
+      propertyIds = inmuebleIds;
+    } else {
+      // Fallback: active properties + properties sold during this year
+      const allProperties = await db.getAll('properties');
+      propertyIds = allProperties
+        .filter((p) => {
+          if (p.state === 'activo') return true;
+          if (p.state === 'vendido' || (p as any).state === 'sold') {
+            const saleDate = (p as any).saleDate || (p as any).fechaVenta;
+            return saleDate && new Date(saleDate).getFullYear() === currentYear;
+          }
+          return false;
+        })
+        .map((p) => p.id!);
+    }
+  }
 
   let totalApplied = 0;
-  for (const propId of properties) {
+  for (const propId of propertyIds) {
     const carryForwards = await calculateCarryForwards(propId);
     totalApplied += carryForwards.reduce((sum, carryForward) => sum + (carryForward.appliedThisYear || 0), 0);
   }

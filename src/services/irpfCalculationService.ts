@@ -11,6 +11,7 @@ import { getRendimientosAtribuidosEjercicio } from './entidadAtribucionService';
 import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
 import type { CompensacionAhorroResult } from './compensacionAhorroService';
 import { getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
+import { getInmueblesDelEjercicio } from './ejercicioResolverService';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
 
@@ -550,17 +551,32 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
   const imputaciones: ImputacionRenta[] = [];
   const diasTotal = calcularDiasAnio(ejercicio);
 
-  const activeProperties = properties.filter((p: any) => {
-    if (p.state === 'activo') return true;
+  // Use resolver's inmuebleIds for the exercise (includes sold properties that had activity)
+  let inmuebleIds: number[] = [];
+  try {
+    inmuebleIds = await getInmueblesDelEjercicio(ejercicio);
+  } catch {
+    // Resolver unavailable — use fallback below
+  }
 
-    if (p.state === 'vendido' || p.state === 'sold' || p.state === 'inactive') {
-      const saleDate = p.saleDate || p.fechaVenta || p.saleData?.saleDate;
-      if (!saleDate) return false;
-      return new Date(saleDate).getFullYear() >= ejercicio;
-    }
+  let activeProperties: any[];
+  if (inmuebleIds.length > 0) {
+    // Resolver has registered properties for this exercise
+    activeProperties = properties.filter((p: any) => inmuebleIds.indexOf(p.id) !== -1);
+  } else {
+    // Fallback: active + sold during or after the exercise year
+    activeProperties = properties.filter((p: any) => {
+      if (p.state === 'activo') return true;
 
-    return false;
-  });
+      if (p.state === 'vendido' || p.state === 'sold' || p.state === 'inactive') {
+        const saleDate = p.saleDate || p.fechaVenta || p.saleData?.saleDate;
+        if (!saleDate) return false;
+        return new Date(saleDate).getFullYear() >= ejercicio;
+      }
+
+      return false;
+    });
+  }
 
   // Separate main properties from accessories using the exported helper
   const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
