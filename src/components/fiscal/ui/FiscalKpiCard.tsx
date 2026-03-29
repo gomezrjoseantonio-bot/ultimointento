@@ -10,8 +10,8 @@ interface FiscalKpiCardProps {
 }
 
 const getColor = (variant: FiscalKpiCardVariant) => {
-  if (variant === 'positive') return 'var(--s-pos)';
-  if (variant === 'negative') return 'var(--s-neg)';
+  if (variant === 'positive') return 'var(--blue)';
+  if (variant === 'negative') return 'var(--teal)';
   return 'var(--n-900)';
 };
 

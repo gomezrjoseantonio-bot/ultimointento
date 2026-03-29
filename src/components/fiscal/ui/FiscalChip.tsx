@@ -6,10 +6,10 @@ interface FiscalChipProps {
 }
 
 const palette = {
-  pos: { background: 'var(--s-pos-bg)', color: 'var(--s-pos)' },
-  neg: { background: 'var(--s-neg-bg)', color: 'var(--s-neg)' },
-  warn: { background: 'var(--s-warn-bg)', color: 'var(--s-warn)' },
-  neu: { background: 'var(--s-neu-bg)', color: 'var(--s-neu)' },
+  pos: { background: 'var(--n-100)', color: 'var(--blue)' },
+  neg: { background: 'var(--n-100)', color: 'var(--teal)' },
+  warn: { background: 'var(--n-100)', color: 'var(--n-700)' },
+  neu: { background: 'var(--n-100)', color: 'var(--n-500)' },
 };
 
 const FiscalChip: React.FC<FiscalChipProps> = ({ label, variant }) => {

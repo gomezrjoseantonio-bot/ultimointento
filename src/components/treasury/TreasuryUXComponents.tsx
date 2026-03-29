@@ -36,7 +36,7 @@ export const TreasuryStatusBadge: React.FC<{
         };
       case 'incompleto':
         return { 
-          color: 'bg-warning-100 text-yellow-800', 
+          color: 'bg-warning-100 text-gray-700',
           text: 'Incompleto',
           microcopy: 'Faltan datos para completar el registro'
         };
@@ -104,7 +104,7 @@ export const ValidationFeedback: React.FC<{
       )}
       
       {result.warnings.length > 0 && (
-        <div className="flex items-start gap-2 text-amber-700">
+        <div className="flex items-start gap-2 text-gray-500">
           <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <div className="text-sm">
             <div className="font-medium">Advertencias a revisar:</div>
@@ -258,9 +258,9 @@ export const TreasuryActionFeedback: React.FC<{
         };
       case 'warning':
         return {
-          bg: 'bg-warning-50 border-yellow-200',
-          icon: <AlertTriangle className="w-5 h-5 text-yellow-500" />,
-          titleColor: 'text-yellow-800',
+          bg: 'bg-warning-50 border-gray-300',
+          icon: <AlertTriangle className="w-5 h-5 text-gray-700" />,
+          titleColor: 'text-gray-700',
           messageColor: 'text-warning-700'
         };
       default:
@@ -324,7 +324,7 @@ export const TreasuryEmptyState: React.FC<{
     switch (type) {
       case 'ingreso':
         return {
-          icon: <TrendingUp className="w-12 h-12 text-green-400" />,
+          icon: <TrendingUp className="w-12 h-12 text-gray-900" />,
           title: 'No hay ingresos registrados',
           description: 'Comienza registrando un ingreso manual o activa contratos para generar ingresos automáticamente.',
           buttonText: 'Registrar primer ingreso',
@@ -336,7 +336,7 @@ export const TreasuryEmptyState: React.FC<{
         };
       case 'gasto':
         return {
-          icon: <TrendingDown className="w-12 h-12 text-red-400" />,
+          icon: <TrendingDown className="w-12 h-12 text-gray-700" />,
           title: 'No hay gastos registrados',
           description: 'Registra gastos manualmente o procesa facturas en la bandeja de entrada para crearlos automáticamente.',
           buttonText: 'Registrar primer gasto',
@@ -432,7 +432,7 @@ export const TreasuryQuickStats: React.FC<{
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalIngresos)}
             </p>
           </div>
-          <TrendingUp className="w-8 h-8 text-green-400" />
+          <TrendingUp className="w-8 h-8 text-gray-900" />
         </div>
       </div>
 
@@ -444,7 +444,7 @@ export const TreasuryQuickStats: React.FC<{
               {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalGastos)}
             </p>
           </div>
-          <TrendingDown className="w-8 h-8 text-red-400" />
+          <TrendingDown className="w-8 h-8 text-gray-700" />
         </div>
       </div>
 

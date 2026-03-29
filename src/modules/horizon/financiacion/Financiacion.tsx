@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
+import { CreditCard, Plus } from 'lucide-react';
 import PageLayout from '../../../components/common/PageLayout';
 import PrestamosWizard from './components/PrestamosWizard';
 import PrestamosList from './components/PrestamosList';
@@ -124,19 +125,18 @@ const Financiacion: React.FC = () => {
   }
 
   return (
-    <PageLayout 
-      title="Financiación" 
-      subtitle="Alta y gestión de préstamos manuales para ATLAS Horizon."
+    <PageLayout
+      title="Financiación"
+      icon={CreditCard}
       primaryAction={{
-        label: "Crear desde FEIN (PDF)",
-        onClick: handleCreateFromFEIN
+        label: '+ Crear préstamo',
+        onClick: handleCreateNew,
+        icon: Plus,
       }}
-      secondaryActions={[
-        {
-          label: "Crear Préstamo",
-          onClick: handleCreateNew
-        }
-      ]}
+      secondaryAction={{
+        label: 'Crear desde FEIN',
+        onClick: handleCreateFromFEIN,
+      }}
     >
       {renderContent()}
     </PageLayout>

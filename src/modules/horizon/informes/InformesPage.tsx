@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3, Building2, Download, FileText, Receipt, TrendingUp, Wallet, CreditCard } from 'lucide-react';
+import PageHeader from '../../../components/common/PageHeader';
 import styles from './InformesPage.module.css';
 import { informesDataService } from '../../../services/informesDataService';
 import { generateDashboard } from './generators/generateDashboard';
@@ -177,22 +178,18 @@ const InformesPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <div className={styles.titleWrap}>
-          <h1 className={styles.title}>Informes</h1>
-          <p className={styles.subtitle}>
-            Genera PDFs estándar con datos reales de ATLAS Horizon para compartir, archivar o revisar.
-          </p>
-        </div>
+      <PageHeader
+        title="Informes"
+        icon={FileText}
+      />
 
-        <div className={styles.yearControl}>
-          <label htmlFor="informes-year" className={styles.yearLabel}>Año del informe</label>
-          <select id="informes-year" className={styles.yearSelect} value={año} onChange={handleYearChange}>
-            {availableYears.map((year) => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+      <div style={{ padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <label htmlFor="informes-year" style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)' }}>Año:</label>
+        <select id="informes-year" className={styles.yearSelect} value={año} onChange={handleYearChange}>
+          {availableYears.map((year) => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
       </div>
 
       <div className={styles.grid}>

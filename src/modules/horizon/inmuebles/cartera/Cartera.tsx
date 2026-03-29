@@ -312,7 +312,7 @@ const Cartera: React.FC = () => {
       <div className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
-            <div className="inline-flex p-2 rounded-lg bg-emerald-50 text-emerald-600 mb-3"><Wallet className="h-4 w-4" /></div>
+            <div className="inline-flex p-2 rounded-lg bg-gray-100 text-gray-900 mb-3"><Wallet className="h-4 w-4" /></div>
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Plusvalía latente</p>
             <p className={`text-4xl font-semibold mt-1 ${totalLatentGain >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>{formatEuro(totalLatentGain)}</p>
             <p className="text-sm text-neutral-500 mt-1">Sobre coste de adquisición</p>
@@ -414,7 +414,7 @@ const Cartera: React.FC = () => {
                           {isRented ? (
                             <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium bg-[var(--s-pos-bg)] text-[var(--s-pos)]">Alquilado</span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-medium bg-amber-50 text-amber-700"><TriangleAlert className="h-3.5 w-3.5" />Vacío</span>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-medium bg-gray-100 text-gray-700"><TriangleAlert className="h-3.5 w-3.5" />Vacío</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -424,7 +424,7 @@ const Cartera: React.FC = () => {
                             {property.state === 'activo' && (
                               <button
                                 onClick={() => setSaleModalProperty(property)}
-                                className="p-1.5 text-neutral-500 hover:text-emerald-700 hover:bg-emerald-50 rounded transition-colors"
+                                className="p-1.5 text-neutral-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
                                 title="Vender inmueble"
                               >
                                 <CircleDollarSign className="h-4 w-4" />
@@ -433,7 +433,7 @@ const Cartera: React.FC = () => {
                             {property.state === 'vendido' && (
                               <button
                                 onClick={() => void handleRevertSale(property)}
-                                className="p-1.5 text-neutral-500 hover:text-amber-700 hover:bg-amber-50 rounded transition-colors"
+                                className="p-1.5 text-neutral-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
                                 title="Revertir venta"
                               >
                                 <RotateCcw className="h-4 w-4" />

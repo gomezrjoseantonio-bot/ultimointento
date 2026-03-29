@@ -1,11 +1,11 @@
 :root {
-  /* Brand */
+  /* v4: Brand */
   --blue: #042C5E;
   --teal: #1DA0BA;
 
-  /* Neutrals */
+  /* v4: Neutrals → grey */
   --n-900: #1A2332;
-  --n-800: #253047;
+  --n-800: #142C50;
   --n-700: #303A4C;
   --n-500: #6C757D;
   --n-300: #C8D0DC;
@@ -14,20 +14,20 @@
   --n-50:  #F8F9FA;
   --white: #FFFFFF;
 
-  /* Semantic */
-  --s-pos:     #1A7A3C;
-  --s-pos-bg:  #E8F5ED;
-  --s-neg:     #B91C1C;
-  --s-neg-bg:  #FEE9E9;
-  --s-warn:    #92620A;
-  --s-warn-bg: #FEF3DC;
-  --s-neu:     #374151;
-  --s-neu-bg:  #F3F4F6;
+  /* v4: Semantic → navy/teal/gris (no semaphore) */
+  --s-pos:     #042C5E;
+  --s-pos-bg:  #E8EFF7;
+  --s-neg:     #303A4C;
+  --s-neg-bg:  #EEF1F5;
+  --s-warn:    #6C757D;
+  --s-warn-bg: #EEF1F5;
+  --s-neu:     #303A4C;
+  --s-neu-bg:  #EEF1F5;
 
-  /* Charts */
+  /* v4: Charts — 6 tonos */
   --c1: #042C5E;
-  --c2: #5B8DB8;
-  --c3: #1DA0BA;
+  --c2: #1DA0BA;
+  --c3: #5B8DB8;
   --c4: #A8C4DE;
   --c5: #C8D0DC;
   --c6: #303A4C;
@@ -35,13 +35,13 @@
   /* Typography */
   --font-ui:   'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
-  --t-xs:   11px;
-  --t-sm:   12px;
-  --t-base: 13px;
-  --t-md:   14px;
-  --t-lg:   16px;
-  --t-xl:   20px;
-  --t-2xl:  24px;
+  --t-xs:   0.75rem;
+  --t-sm:   0.8125rem;
+  --t-base: 0.875rem;
+  --t-md:   1rem;
+  --t-lg:   1.125rem;
+  --t-xl:   1.375rem;
+  --t-2xl:  1.75rem;
 
   /* Spacing (4px grid) */
   --s1:  4px;

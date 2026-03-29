@@ -1,13 +1,26 @@
 import React from 'react';
+import { BarChart3, Download } from 'lucide-react';
+import PageLayout from '../components/common/PageLayout';
+import EmptyState from '../components/common/EmptyState';
 
 const ProjectionsPage: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Projections</h1>
-      <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-500">Projections page - coming soon</p>
-      </div>
-    </div>
+    <PageLayout
+      title="Proyección mensual"
+      icon={BarChart3}
+      primaryAction={{
+        label: 'Exportar',
+        onClick: () => {},
+        variant: 'header',
+        icon: Download,
+      }}
+    >
+      <EmptyState
+        lucideIcon={BarChart3}
+        title="Sin datos de proyección"
+        description="Configura tu perfil para generar proyecciones"
+      />
+    </PageLayout>
   );
 };
 

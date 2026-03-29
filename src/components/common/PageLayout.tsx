@@ -1,48 +1,48 @@
 import React from 'react';
+import { LucideIcon } from 'lucide-react';
 import PageHeader from './PageHeader';
 import SubTabs from './SubTabs';
 
 interface PageLayoutProps {
   title: string;
   subtitle?: string;
-  infoText?: string;
-  showInfoIcon?: boolean;
+  icon?: LucideIcon;
   primaryAction?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
+    variant?: 'primary' | 'header';
+    icon?: LucideIcon;
   };
-  secondaryActions?: {
+  secondaryAction?: {
     label: string;
     onClick: () => void;
-  }[];
+    disabled?: boolean;
+    icon?: LucideIcon;
+  };
+  tabs?: { label: string; path: string }[];
   children: React.ReactNode;
 }
 
-const PageLayout: React.FC<PageLayoutProps> = ({ 
-  title, 
-  subtitle, 
-  infoText,
-  showInfoIcon = false,
+const PageLayout: React.FC<PageLayoutProps> = ({
+  title,
+  subtitle,
+  icon,
   primaryAction,
-  secondaryActions,
-  children 
+  secondaryAction,
+  tabs,
+  children
 }) => {
   return (
     <div>
-      {/* Standardized Page Header */}
-      <PageHeader 
-        title={title} 
-        subtitle={subtitle} 
-        infoText={infoText}
-        showInfoIcon={showInfoIcon}
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
         primaryAction={primaryAction}
-        secondaryActions={secondaryActions}
+        secondaryAction={secondaryAction}
       />
-      
-      {/* SubTabs */}
-      <SubTabs />
-      
-      {/* Content */}
+      <SubTabs tabs={tabs} />
       <div className="p-6">
         {children}
       </div>

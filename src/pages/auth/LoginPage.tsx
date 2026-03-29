@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
         {/* Logo/Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-atlas-navy-1">ATLAS</h1>
-          <p className="text-neutral-600 mt-2">Horizon & Pulse</p>
+          <p className="text-neutral-600 mt-2">Gestión patrimonial integral</p>
         </div>
 
         {/* Login Form */}

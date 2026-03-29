@@ -19,20 +19,20 @@ type EstadoConfig = {
 const ESTADO_CONFIG: Record<EstadoEjercicio, EstadoConfig> = {
   en_curso: {
     label: 'En curso',
-    colorVar: 'var(--s-pos)',
-    bgVar: 'var(--s-pos-bg)',
+    colorVar: 'var(--teal-600)',
+    bgVar: 'var(--teal-100)',
     Icon: Circle,
   },
   cerrado: {
-    label: 'Pendiente de declarar',
-    colorVar: 'var(--s-warn)',
-    bgVar: 'var(--s-warn-bg)',
+    label: 'Pendiente',
+    colorVar: 'var(--grey-700)',
+    bgVar: 'var(--grey-100)',
     Icon: Clock,
   },
   declarado: {
     label: 'Declarado',
-    colorVar: 'var(--blue)',
-    bgVar: 'var(--n-100)',
+    colorVar: 'var(--navy-900)',
+    bgVar: 'var(--navy-100)',
     Icon: CheckCircle,
   },
 };

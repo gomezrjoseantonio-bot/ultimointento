@@ -33,8 +33,8 @@ const quickWinIcons: Record<QuickWinIcon, LucideIcon> = {
 };
 
 const riskStyles: Record<ScenarioSummary['riskLevel'], string> = {
-  bajo: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  medio: 'bg-amber-50 border-amber-200 text-amber-700',
+  bajo: 'bg-gray-100 border-gray-300 text-gray-900',
+  medio: 'bg-gray-100 border-gray-300 text-gray-700',
   alto: 'bg-rose-50 border-rose-200 text-rose-700',
 };
 
@@ -161,7 +161,7 @@ const ScenarioManagement: React.FC = () => {
   if (!dashboard) {
     return (
       <div className="rounded border border-dashed border-gray-300 bg-white p-12 text-center">
-        <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-amber-500" />
+        <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-gray-500" />
         <p className="text-lg font-semibold text-gray-700">No hay datos disponibles</p>
         <p className="text-sm text-gray-500">
           Intenta recargar la página o vuelve más tarde. Estamos preparando los escenarios.
@@ -362,7 +362,7 @@ const ScenarioManagement: React.FC = () => {
                   <p
                     className={`mt-1 text-sm font-medium ${
                       metric.trend === 'up'
-                        ? 'text-emerald-600'
+                        ? 'text-gray-900'
                         : metric.trend === 'down'
                         ? 'text-rose-600'
                         : 'text-gray-500'
@@ -428,7 +428,7 @@ const ScenarioManagement: React.FC = () => {
                     <h4 className="text-lg font-semibold text-neutral-900">Stress tests y mitigaciones</h4>
                     <p className="text-sm text-gray-600">Qué ocurre si los supuestos cambian y cómo reaccionar.</p>
                   </div>
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  <AlertTriangle className="h-5 w-5 text-gray-500" />
                 </div>
                 <div className="mt-4 space-y-4">
                   {selectedScenario.detail.stressTests.map((stress) => (

@@ -1,13 +1,27 @@
 import React from 'react';
+import { Landmark, Upload } from 'lucide-react';
+import PageLayout from '../components/common/PageLayout';
+import EmptyState from '../components/common/EmptyState';
 
 const TreasuryPage: React.FC = () => {
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-gray-800">Treasury</h1>
-      <div className="bg-white shadow rounded-lg p-6">
-        <p className="text-gray-500">Treasury page - coming soon</p>
-      </div>
-    </div>
+    <PageLayout
+      title="Tesorería"
+      subtitle="Conciliación mensual"
+      icon={Landmark}
+      primaryAction={{
+        label: 'Importar CSV',
+        onClick: () => {},
+        variant: 'header',
+        icon: Upload,
+      }}
+    >
+      <EmptyState
+        lucideIcon={Landmark}
+        title="Sin cuentas bancarias"
+        description="Añade tu primera cuenta bancaria para empezar"
+      />
+    </PageLayout>
   );
 };
 

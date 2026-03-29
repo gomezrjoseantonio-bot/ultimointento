@@ -3,33 +3,55 @@
 @tailwind utilities;
 
 /* ============================================================
-   ATLAS — SISTEMA DE COLOR UNIFICADO v3.0
-   Paleta única. Sin Horizon/Pulse. Sin semáforos.
+   ATLAS — SISTEMA DE DISEÑO v4.0
+   Solo 3 familias: Navy, Teal, Gris. Sin semáforos.
    ============================================================ */
 :root {
-  /* ===== TOKENS V3 DEFINITIVOS ===== */
-  --blue: #042C5E;
-  --blue-hover: #031F47;
-  --teal: #1DA0BA;
+  /* ===== NAVY (identidad, acción, texto) ===== */
+  --navy-900: #042C5E;
+  --navy-800: #0A3A72;
+  --navy-700: #142C50;
+  --navy-600: #1E3A5F;
+  --navy-100: #E8EFF7;
+  --navy-50: #F0F4FA;
 
-  --n-900: #1A2332;
-  --n-800: #253047;
-  --n-700: #303A4C;
-  --n-500: #6C757D;
-  --n-300: #C8D0DC;
-  --n-200: #DDE3EC;
-  --n-100: #EEF1F5;
-  --n-50: #F8F9FA;
+  /* ===== TEAL (acento, dato vivo) ===== */
+  --teal-600: #1DA0BA;
+  --teal-100: #E6F7FA;
+
+  /* ===== GRIS (estructura, texto, fondos) ===== */
+  --grey-900: #1A2332;
+  --grey-700: #303A4C;
+  --grey-500: #6C757D;
+  --grey-400: #9CA3AF;
+  --grey-300: #C8D0DC;
+  --grey-200: #DDE3EC;
+  --grey-100: #EEF1F5;
+  --grey-50: #F8F9FA;
   --white: #FFFFFF;
 
-  --s-pos: #1A7A3C;
-  --s-pos-bg: #E8F5ED;
-  --s-neg: #B91C1C;
-  --s-neg-bg: #FEE9E9;
-  --s-warn: #92620A;
-  --s-warn-bg: #FEF3DC;
-  --s-neu: #374151;
-  --s-neu-bg: #F3F4F6;
+  /* ===== Aliases de compatibilidad v3→v4 ===== */
+  --blue: var(--navy-900);
+  --blue-hover: var(--navy-800);
+  --teal: var(--teal-600);
+  --n-900: var(--grey-900);
+  --n-800: var(--navy-700);
+  --n-700: var(--grey-700);
+  --n-500: var(--grey-500);
+  --n-300: var(--grey-300);
+  --n-200: var(--grey-200);
+  --n-100: var(--grey-100);
+  --n-50: var(--grey-50);
+
+  /* Semáforo → v4 mapping (para compatibilidad, redirigido a navy/teal/gris) */
+  --s-pos: var(--navy-900);
+  --s-pos-bg: var(--navy-100);
+  --s-neg: var(--grey-700);
+  --s-neg-bg: var(--grey-100);
+  --s-warn: var(--grey-500);
+  --s-warn-bg: var(--grey-100);
+  --s-neu: var(--grey-700);
+  --s-neu-bg: var(--grey-100);
 
   --s-positive: var(--s-pos);
   --s-positive-bg: var(--s-pos-bg);
@@ -40,12 +62,19 @@
   --s-neutral: var(--s-neu);
   --s-neutral-bg: var(--s-neu-bg);
 
+  /* ===== CHART — Paleta de 6 ===== */
   --c1: #042C5E;
-  --c2: #5B8DB8;
-  --c3: #1DA0BA;
+  --c2: #1DA0BA;
+  --c3: #5B8DB8;
   --c4: #A8C4DE;
   --c5: #C8D0DC;
   --c6: #303A4C;
+  --chart-1: var(--c1);
+  --chart-2: var(--c2);
+  --chart-3: var(--c3);
+  --chart-4: var(--c4);
+  --chart-5: var(--c5);
+  --chart-6: var(--c6);
 
   --focus-ring: rgba(4, 44, 94, 0.12);
 
@@ -87,11 +116,11 @@
 
   --t-xs: 0.75rem;
   --t-sm: 0.8125rem;
-  --t-base: 0.9375rem;
-  --t-md: 1.0625rem;
-  --t-lg: 1.25rem;
-  --t-xl: 1.5rem;
-  --t-2xl: 2rem;
+  --t-base: 0.875rem;
+  --t-md: 1rem;
+  --t-lg: 1.125rem;
+  --t-xl: 1.375rem;
+  --t-2xl: 1.75rem;
 
   --font-base: 'IBM Plex Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -100,34 +129,33 @@
   --font-semibold: 600;
   --font-bold: 700;
 
-  /* ===== aliases de compatibilidad ===== */
-  --blue-900: var(--n-900);
-  --blue-800: var(--blue);
-  --blue-700: var(--blue-hover);
-  --blue-600: var(--blue);
-  --blue-500: var(--teal);
-  --blue-200: var(--n-300);
-  --blue-100: var(--n-100);
-  --blue-050: var(--n-100);
+  /* ===== aliases de compatibilidad legacy ===== */
+  --blue-900: var(--grey-900);
+  --blue-800: var(--navy-900);
+  --blue-700: var(--navy-800);
+  --blue-600: var(--navy-900);
+  --blue-500: var(--teal-600);
+  --blue-200: var(--grey-300);
+  --blue-100: var(--grey-100);
+  --blue-050: var(--navy-100);
 
-  --teal-600: var(--teal);
-  --teal-500: var(--teal);
-  --teal-200: #A8DDE8;
-  --teal-050: #E8F7FA;
+  --teal-500: var(--teal-600);
+  --teal-200: var(--teal-100);
+  --teal-050: var(--teal-100);
 
-  --gray-900: var(--n-700);
-  --gray-700: var(--n-500);
-  --gray-500: var(--n-500);
-  --gray-400: #9CA3AF;
-  --gray-300: var(--n-300);
-  --gray-200: var(--n-100);
-  --gray-100: var(--n-100);
-  --gray-050: var(--n-50);
+  --gray-900: var(--grey-700);
+  --gray-700: var(--grey-500);
+  --gray-500: var(--grey-500);
+  --gray-400: var(--grey-400);
+  --gray-300: var(--grey-300);
+  --gray-200: var(--grey-100);
+  --gray-100: var(--grey-100);
+  --gray-050: var(--grey-50);
 
-  --alert: var(--s-negative);
-  --caution: var(--s-warning);
-  --positive: var(--s-positive);
-  --negative: var(--s-negative);
+  --alert: var(--grey-700);
+  --caution: var(--grey-500);
+  --positive: var(--navy-900);
+  --negative: var(--grey-700);
   --surface-page: var(--n-50);
   --surface-card: var(--white);
   --surface-sidebar: var(--n-900);
@@ -152,18 +180,19 @@
   --primary-contrast: var(--white);
   --primary-hover: var(--blue-hover);
 
-  --ok: var(--s-positive);
-  --warn: var(--s-warning);
-  --error: var(--s-negative);
-  --hz-primary: var(--blue);
-  --hz-neutral-900: var(--n-700);
-  --hz-neutral-700: var(--n-500);
-  --hz-neutral-500: var(--n-500);
-  --hz-neutral-300: var(--n-300);
-  --hz-neutral-100: var(--n-100);
+  --ok: var(--navy-900);
+  --warn: var(--grey-500);
+  --error: var(--grey-700);
+  --hz-primary: var(--navy-900);
+  --hz-neutral-900: var(--grey-700);
+  --hz-neutral-700: var(--grey-500);
+  --hz-neutral-500: var(--grey-500);
+  --hz-neutral-300: var(--grey-300);
+  --hz-neutral-100: var(--grey-100);
   --hz-card-bg: var(--white);
-  --chip-bg: var(--n-100);
-  --chip-text: var(--n-700);
+  --hz-text: var(--grey-700);
+  --chip-bg: var(--grey-100);
+  --chip-text: var(--grey-500);
 }
 
 /* ============================================================
@@ -203,9 +232,9 @@ html, #root { min-height: 100vh; }
 /* ── Color helpers ── */
 .text-secondary { color: var(--gray-500); }
 .text-muted     { color: var(--gray-400); }
-.text-positive  { color: var(--s-positive); }
-.text-negative  { color: var(--gray-500); }
-.text-alert     { color: var(--alert);    }
+.text-positive  { color: var(--navy-900); }
+.text-negative  { color: var(--grey-700); }
+.text-alert     { color: var(--grey-700); }
 
 /* ============================================================
    BOTONES
@@ -252,9 +281,9 @@ html, #root { min-height: 100vh; }
 
 .atlas-btn-destructive {
   padding: 10px 16px;
-  background: var(--s-negative);
+  background: var(--navy-900);
   color: var(--white);
-  border: 1px solid var(--s-negative);
+  border: 1px solid var(--navy-900);
 }
 .atlas-btn-destructive:hover { filter: brightness(0.96); }
 
@@ -305,31 +334,29 @@ html, #root { min-height: 100vh; }
   font-weight: var(--font-semibold);
 }
 
+/* v4: Todos los chips son grises */
 .atlas-chip-default,
-.atlas-chip-neutral { background: var(--n-100); color: var(--n-700); }
-.atlas-chip-active { background: rgba(4, 44, 94, 0.1); color: var(--blue); }
-.atlas-chip-positive { background: var(--s-positive-bg); color: var(--s-positive); }
+.atlas-chip-neutral,
+.atlas-chip-positive,
 .atlas-chip-negative,
-.atlas-chip-alert { background: var(--s-negative-bg); color: var(--s-negative); }
-.atlas-chip-warning { background: var(--s-warning-bg); color: var(--s-warning); }
-
-/* Aliases legacy */
-.atlas-chip-pulse { background: rgba(4, 44, 94, 0.1); color: var(--blue); }
-.atlas-chip-success { background: var(--s-positive-bg); color: var(--s-positive); }
-.atlas-chip-error { background: var(--s-negative-bg); color: var(--s-negative); }
+.atlas-chip-alert,
+.atlas-chip-warning,
+.atlas-chip-pulse,
+.atlas-chip-success,
+.atlas-chip-error { background: var(--grey-100); color: var(--grey-500); }
+.atlas-chip-active { background: var(--grey-100); color: var(--grey-700); }
 
 /* Badge (pill) */
 .badge         { border-radius: 999px; padding: .2rem .6rem; font-weight: 600; font-size: var(--text-xs); display: inline-block; }
-.badge-blue    { background: var(--blue-050);  color: var(--blue-800);  border: 1px solid var(--blue-200);  }
-.badge-teal    { background: var(--teal-050);  color: var(--teal-600);  border: 1px solid var(--teal-200);  }
-.badge-gray    { background: var(--gray-100);  color: var(--gray-700);  border: 1px solid var(--gray-300);  }
-.badge-alert   { background: #FDF1EE;          color: var(--alert);     border: 1px solid #F0C4B8;          }
-
-/* Legacy badge aliases */
-.badge-success { background: var(--teal-050); color: var(--teal-600); }
-.badge-warning { background: #FDF5E0;         color: var(--caution);  }
-.badge-danger  { background: #FDF1EE;         color: var(--alert);    }
-.badge-info    { background: var(--blue-050); color: var(--blue-800); }
+/* v4 Badge states: navy, teal, gris only */
+.badge-blue,
+.badge-info    { background: var(--navy-100);  color: var(--navy-900);  border: 1px solid var(--navy-100); }
+.badge-teal,
+.badge-success { background: var(--teal-100);  color: var(--teal-600);  border: 1px solid var(--teal-100); }
+.badge-gray,
+.badge-warning { background: var(--grey-100);  color: var(--grey-700);  border: 1px solid var(--grey-100); }
+.badge-alert,
+.badge-danger  { background: var(--grey-100);  color: var(--grey-700);  border: 1px solid var(--grey-100); }
 .chip { background: var(--chip-bg); color: var(--chip-text); border-radius: 999px; padding: .25rem .6rem; display: inline-block; font-size: var(--text-sm); font-weight: 500; }
 
 /* ============================================================
@@ -351,14 +378,14 @@ html, #root { min-height: 100vh; }
 .atlas-field::placeholder, .input::placeholder { color: var(--gray-400); }
 
 /* ============================================================
-   ESTADOS DE MOVIMIENTOS FINANCIEROS
-   Sin semáforos. Turquesa = positivo/confirmado. Gris = negativo/pendiente.
+   ESTADOS DE MOVIMIENTOS FINANCIEROS v4
+   Navy = ingresos/positivo. Gris = gastos/negativo. Teal = a devolver.
    ============================================================ */
-.movement-ingreso   { color: var(--s-positive); font-weight: var(--font-semibold); }
-.movement-gasto     { color: var(--gray-500); }
-.movement-confirmado{ color: var(--blue-800); font-weight: var(--font-semibold); }
-.movement-vencido   { color: var(--caution);  }
-.movement-no-previsto{ color: var(--gray-400); }
+.movement-ingreso   { color: var(--navy-900); font-weight: var(--font-semibold); }
+.movement-gasto     { color: var(--grey-700); }
+.movement-confirmado{ color: var(--navy-900); font-weight: var(--font-semibold); }
+.movement-vencido   { color: var(--grey-500); }
+.movement-no-previsto{ color: var(--grey-400); }
 
 /* ============================================================
    COMPONENTES TAILWIND (compatibilidad con clases existentes)
@@ -403,8 +430,8 @@ html, #root { min-height: 100vh; }
   .btn-accent-horizon:hover,
   .btn-accent-pulse:hover { background-color: var(--teal-600); }
 
-  .btn-danger         { @apply btn-base bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 disabled:opacity-50; }
-  .btn-danger-outline { @apply btn-base border border-red-600 text-red-600 bg-white hover:bg-red-50 focus:ring-red-600; }
+  .btn-danger         { @apply btn-base text-white disabled:opacity-50; background: var(--grey-700); }
+  .btn-danger-outline { @apply btn-base border bg-white disabled:opacity-50; border-color: var(--grey-300); color: var(--grey-700); }
 
   /* Horizon component aliases */
   .horizon-primary   { background-color: var(--blue-800); color: white; }
@@ -412,10 +439,11 @@ html, #root { min-height: 100vh; }
   .horizon-secondary { border: 1.5px solid var(--blue-800); color: var(--blue-800); background: transparent; }
   .horizon-secondary:hover { background: var(--blue-800); color: white; }
 
-  .horizon-badge-success { background-color: var(--teal-050); color: var(--teal-600); }
-  .horizon-badge-warning { background-color: #FDF5E0;          color: var(--caution);  }
-  .horizon-badge-error   { background-color: #FDF1EE;          color: var(--alert);    }
-  .horizon-badge-info    { background-color: var(--blue-050);  color: var(--blue-800); }
+  /* v4 badge states: navy/teal/gris only */
+  .horizon-badge-success { background-color: var(--teal-100); color: var(--teal-600); }
+  .horizon-badge-warning { background-color: var(--grey-100); color: var(--grey-700); }
+  .horizon-badge-error   { background-color: var(--grey-100); color: var(--grey-700); }
+  .horizon-badge-info    { background-color: var(--navy-100); color: var(--navy-900); }
 
   .horizon-pending-queue { @apply bg-white rounded-xl border shadow-sm; border-color: var(--gray-200); }
 
@@ -524,5 +552,83 @@ table td, .kpi, .financial-data {
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 
 .sidebar-nav-item:hover {
-  background-color: var(--n-800);
+  background-color: var(--navy-600);
+}
+
+/* ============================================================
+   v4 BOTONES DE CABECERA
+   ============================================================ */
+.btn-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--grey-300);
+  background: var(--white);
+  color: var(--grey-700);
+  font-size: var(--t-base);
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font-base);
+  transition: all 150ms ease;
+}
+.btn-header:hover {
+  background: var(--grey-50);
+  color: var(--grey-900);
+}
+
+/* v4 Cerrar modal (X) */
+.btn-close-v4 {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  border: none;
+  background: transparent;
+  color: var(--grey-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-close-v4:hover {
+  background: var(--grey-100);
+  color: var(--grey-700);
+}
+
+/* v4 Cancelar wizard */
+.btn-cancel-v4 {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--t-sm);
+  font-weight: 400;
+  color: var(--grey-500);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.btn-cancel-v4:hover {
+  color: var(--grey-700);
+}
+
+/* v4 Volver (flecha) */
+.btn-back-v4 {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  border: none;
+  background: transparent;
+  color: var(--grey-500);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-back-v4:hover {
+  background: var(--grey-100);
+  color: var(--grey-700);
 }

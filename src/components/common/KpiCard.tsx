@@ -27,59 +27,72 @@ const KpiCard: React.FC<KpiCardProps> = ({
 
   return (
     <div
-      className={`
-        bg-white rounded-lg border border-gray-200 p-6 
-        ${isClickable ? 'cursor-pointer hover:shadow-md hover:border-gray-300 transition-all' : ''}
-        ${className}
-      `}
+      className={className}
       onClick={onClick}
+      style={{
+        background: 'var(--white)',
+        border: '1px solid var(--grey-200)',
+        borderRadius: 'var(--r-lg)',
+        padding: 24,
+        cursor: isClickable ? 'pointer' : 'default',
+        transition: 'all 150ms ease',
+      }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            {icon && (
-              <div className="flex-shrink-0" style={{ color: 'var(--hz-primary)' }}>
-                {icon}
-              </div>
-            )}
-            <h3 className="text-sm font-medium text-gray-600 truncate">
-              {title}
-            </h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        {icon && (
+          <div style={{ color: 'var(--grey-500)', flexShrink: 0 }}>
+            {icon}
           </div>
-          
-          <div className="mb-1">
-            <p 
-              className="text-2xl font-semibold"
-              style={{ color: 'var(--hz-text)' }}
-            >
-              {value}
-            </p>
-          </div>
-          
-          {subtitle && (
-            <p className="text-sm text-gray-500 mb-2">
-              {subtitle}
-            </p>
-          )}
-          
-          {trend && (
-            <div className="flex items-center gap-1">
-              <span
-                className={`text-sm font-medium ${
-                  trend.isPositive ? 'text-hz-success' : 'text-hz-error'
-                }`}
-              >
-                {trend.isPositive ? '+' : ''}{trend.value}%
-              </span>
-              {trend.label && (
-                <span className="text-sm text-gray-500">
-                  {trend.label}
-                </span>
-              )}
-            </div>
+        )}
+        <h3 style={{
+          fontSize: 'var(--t-xs)',
+          fontWeight: 600,
+          color: 'var(--grey-500)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          margin: 0,
+        }}>
+          {title}
+        </h3>
+      </div>
+
+      <p style={{
+        fontSize: 'var(--t-xl)',
+        fontWeight: 600,
+        fontFamily: 'var(--font-mono)',
+        fontVariantNumeric: 'tabular-nums',
+        color: 'var(--grey-900)',
+        margin: '0 0 4px',
+      }}>
+        {value}
+      </p>
+
+      {subtitle && (
+        <p style={{
+          fontSize: 'var(--t-sm)',
+          color: 'var(--grey-500)',
+          margin: 0,
+        }}>
+          {subtitle}
+        </p>
+      )}
+
+      {trend && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          <span style={{
+            fontSize: 'var(--t-sm)',
+            fontWeight: 500,
+            color: trend.isPositive ? 'var(--navy-900)' : 'var(--grey-700)',
+          }}>
+            {trend.isPositive ? '+' : ''}{trend.value}%
+          </span>
+          {trend.label && (
+            <span style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)' }}>
+              {trend.label}
+            </span>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 };
