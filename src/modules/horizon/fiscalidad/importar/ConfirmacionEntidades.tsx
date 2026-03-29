@@ -75,6 +75,7 @@ export default function ConfirmacionEntidades({ resultado, onComplete, onCancel 
     crearContratos: true,
     importarArrastres: true,
     guardarDeclaracion: true,
+    guardarDatosPersonales: true,
   });
 
   const resumenAcciones = useMemo(() => describirResumenAcciones(resultado), [resultado]);
