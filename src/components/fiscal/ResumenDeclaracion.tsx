@@ -11,7 +11,7 @@ interface ResumenDeclaracionProps {
 const fmt = (v: number) =>
   v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtMoney = (v: number) => `${fmt(Math.abs(v))} \u20ac`;
+const fmtMoney = (v: number) => `${fmt(Math.abs(v))} €`;
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',
@@ -22,7 +22,7 @@ const KPI: React.FC<{ label: string; value: number | null }> = ({ label, value }
   <div style={{ flex: 1, minWidth: 120 }}>
     <div style={{ fontSize: 'var(--t-xs, 11px)', color: 'var(--n-500)', marginBottom: 4 }}>{label}</div>
     <div style={{ ...monoStyle, fontSize: 'var(--t-sm, 13px)', color: 'var(--n-900)', fontWeight: 500 }}>
-      {value !== null ? fmtMoney(value) : '\u2014'}
+      {value !== null ? fmtMoney(value) : '—'}
     </div>
   </div>
 );
@@ -59,7 +59,7 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
             fontWeight: 600,
             color: resultColor,
           }}>
-            {hasResult ? fmtMoney(resultado) : '\u2014'}
+            {hasResult ? fmtMoney(resultado) : '—'}
           </span>
           {hasResult && (
             <span style={{ fontSize: 'var(--t-sm, 13px)', fontWeight: 500, color: resultColor }}>
@@ -84,7 +84,7 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
       }}>
         <KPI label="Base general" value={baseGeneral} />
         <KPI label="Base ahorro" value={baseAhorro} />
-        <KPI label="Cuota \u00edntegra" value={cuotaIntegra} />
+        <KPI label="Cuota íntegra" value={cuotaIntegra} />
         <KPI label="Retenciones" value={retenciones} />
       </div>
     </div>

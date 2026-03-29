@@ -1072,7 +1072,7 @@ function extraerInmuebles(
       amortizacionMuebles: n(`0117${suffix}`),
       tipoAdquisicion: b(`0118${suffix}`) ? 'onerosa' : undefined,
       fechaAdquisicion: s(`0120${suffix}`) || undefined,
-      valorCatastral: n(`0123${suffix}`) || undefined,
+      valorCatastral: n(`0123${suffix}`) || n(`0083${suffix}`) || undefined,
       valorCatastralConstruccion: n(`0124${suffix}`) || undefined,
       porcentajeConstruccion: n(`0125${suffix}`) || undefined,
       importeAdquisicion: n(`0126${suffix}`) || undefined,

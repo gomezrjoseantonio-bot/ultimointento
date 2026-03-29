@@ -18,28 +18,28 @@ const BANNER_CONFIG: Record<BannerTipo, {
 }> = {
   en_curso: {
     icon: <BarChart3 size={16} />,
-    text: 'Estimaci\u00f3n en curso \u00b7 se actualiza con cada dato que a\u00f1adas',
+    text: 'Estimación en curso · se actualiza con cada dato que añadas',
     bg: '#E6F7FA',
     color: 'var(--teal)',
     borderColor: 'var(--teal)',
   },
   pendiente_incompleto: {
     icon: <Info size={16} />,
-    text: 'Faltan secciones por completar \u00b7 importa el PDF o completa manualmente',
+    text: 'Faltan secciones por completar · importa el PDF o completa manualmente',
     bg: 'var(--s-warn-bg)',
     color: 'var(--s-warn)',
     borderColor: 'var(--s-warn)',
   },
   declarado_atlas: {
     icon: <Info size={16} />,
-    text: 'Datos estimados por ATLAS \u00b7 puedes importar el PDF o completar manualmente',
+    text: 'Datos estimados por ATLAS · puedes importar el PDF o completar manualmente',
     bg: 'var(--n-50)',
     color: 'var(--n-700)',
     borderColor: 'var(--n-300)',
   },
   declarado_pdf: {
     icon: <FileText size={16} />,
-    text: 'Declaraci\u00f3n importada desde PDF AEAT',
+    text: 'Declaración importada desde PDF AEAT',
     bg: 'var(--s-pos-bg)',
     color: 'var(--s-pos)',
     borderColor: 'var(--s-pos)',

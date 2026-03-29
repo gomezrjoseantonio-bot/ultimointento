@@ -5,7 +5,7 @@ import GastosFaltantes from './GastosFaltantes';
 
 export interface ContratoData {
   habitacion?: string;
-  tipo: 'Larga estancia' | 'Temporada' | 'Tur\u00edstico';
+  tipo: 'Larga estancia' | 'Temporada' | 'Turístico';
   fecha?: string;
   reduccion: 0 | 50 | 60 | 70 | 90;
   reduccionImporte: number;
@@ -30,7 +30,7 @@ interface InmuebleDetalleProps {
 
 const fmt = (v: number) =>
   v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} \u20ac`;
+const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} €`;
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',
@@ -99,9 +99,9 @@ const InmuebleDetalle: React.FC<InmuebleDetalleProps> = ({ data, defaultOpen = f
 
       {open && (
         <div style={{ paddingLeft: 22 }}>
-          <DetailRow label="Ingresos \u00edntegros" value={data.ingresosIntegros} />
+          <DetailRow label="Ingresos íntegros" value={data.ingresosIntegros} />
           <DetailRow label="Gastos deducibles" value={-Math.abs(data.gastosDeducibles)} negative />
-          <DetailRow label="Amortizaci\u00f3n" value={-Math.abs(data.amortizacion)} negative />
+          <DetailRow label="Amortización" value={-Math.abs(data.amortizacion)} negative />
 
           {/* Reducciones por contrato */}
           {data.contratos.length > 0 && (
