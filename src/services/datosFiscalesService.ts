@@ -14,7 +14,6 @@ import {
 } from './entidadAtribucionService';
 import { ejercicioFiscalService } from './ejercicioFiscalService';
 import {
-  getEjercicio as getEjercicioCoord,
   setInmueblesDelEjercicio,
   setArrastresManuales,
 } from './ejercicioResolverService';
