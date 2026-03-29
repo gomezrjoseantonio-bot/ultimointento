@@ -6,7 +6,6 @@ import {
   TrendingUp,
   TrendingDown,
   CreditCard,
-  Activity,
   CheckCircle2,
   Circle,
   X,
@@ -16,7 +15,7 @@ import {
   MoreHorizontal,
   Calendar,
   Landmark,
-  Upload,
+  RefreshCw,
 } from 'lucide-react';
 import PageHeader, { HeaderSecondaryButton } from './../../components/shared/PageHeader';
 import toast from 'react-hot-toast';
@@ -28,6 +27,7 @@ import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../ser
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
 import { calculateTreasuryMonthOpeningBalance } from './treasuryMonthOpeningBalance';
 import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
+import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -160,6 +160,7 @@ const TreasuryReconciliationView: React.FC = () => {
   const [newMovementForm, setNewMovementForm] = useState<NewMovementForm>(DEFAULT_NEW_MOVEMENT);
   const [savingMovement, setSavingMovement] = useState(false);
   const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
+  const [syncingForecasts, setSyncingForecasts] = useState(false);
   useEffect(() => {
     if (editState && amountInputRef.current) {
       amountInputRef.current.focus();
@@ -278,6 +279,28 @@ const TreasuryReconciliationView: React.FC = () => {
   }, [currentMonth]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleGenerateForecasts = async () => {
+    setSyncingForecasts(true);
+    try {
+      const [year, month] = currentMonth.split('-').map(Number);
+      const result = await generateMonthlyForecasts(year, month);
+      if (result.created > 0 || result.updated > 0) {
+        const messages: string[] = [];
+        if (result.created > 0) messages.push(`${result.created} previsión${result.created > 1 ? 'es' : ''} creada${result.created > 1 ? 's' : ''}`);
+        if (result.updated > 0) messages.push(`${result.updated} previsión${result.updated > 1 ? 'es' : ''} actualizada${result.updated > 1 ? 's' : ''}`);
+        toast.success(messages.join(' · '));
+        await loadData();
+      } else {
+        toast.success('El mes ya está sincronizado');
+      }
+    } catch (err) {
+      console.error('Error generating forecasts:', err);
+      toast.error('Error al generar previsiones');
+    } finally {
+      setSyncingForecasts(false);
+    }
+  };
 
   const handlePrevMonth = () => {
     const [year, month] = currentMonth.split('-').map(Number);
@@ -743,7 +766,7 @@ const TreasuryReconciliationView: React.FC = () => {
         icon={Landmark}
         title="Tesorería"
         subtitle="Conciliación mensual"
-        actions={<HeaderSecondaryButton icon={Upload} label="Importar CSV" />}
+        actions={<HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />}
       />
 
       <div className="tv3-content">
@@ -759,77 +782,92 @@ const TreasuryReconciliationView: React.FC = () => {
           </div>
         )}
 
-        {/* ══ ZONA 1 — MES HERO ══ */}
-        <section className="tv3-mes-hero">
+        {/* ══ SELECTOR DE MES v4 ══ */}
+        {(() => {
+          const [y, m] = currentMonth.split('-').map(Number);
+          const prevDate = new Date(y, m - 2, 1);
+          const nextDate = new Date(y, m, 1);
+          const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+          const prevLabel = `${monthNames[prevDate.getMonth()]} ${prevDate.getFullYear()}`;
+          const curLabel = `${monthNames[m - 1]} ${y}`;
+          const nextLabel = `${monthNames[nextDate.getMonth()]} ${nextDate.getFullYear()}`;
+          const baseBtnStyle: React.CSSProperties = {
+            padding: '8px 16px', fontSize: 13, fontWeight: 500, border: '1px solid var(--grey-200, #DDE3EC)',
+            background: 'var(--white, #fff)', color: 'var(--grey-700, #303A4C)', cursor: 'pointer',
+            fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+          };
+          const activeBtnStyle: React.CSSProperties = {
+            ...baseBtnStyle, background: 'var(--navy-900, #042C5E)', color: '#fff', borderColor: 'var(--navy-900, #042C5E)',
+          };
+          return (
+            <div style={{ display: 'flex', gap: 0 }}>
+              <button style={{ ...baseBtnStyle, borderRadius: '8px 0 0 8px', borderRight: 'none' }} onClick={handlePrevMonth}>
+                <ChevronLeft size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />{prevLabel}
+              </button>
+              <button style={activeBtnStyle}>
+                {curLabel}
+              </button>
+              <button style={{ ...baseBtnStyle, borderRadius: '0 8px 8px 0', borderLeft: 'none' }} onClick={handleNextMonth}>
+                {nextLabel}<ChevronRight size={14} style={{ verticalAlign: 'middle', marginLeft: 4 }} />
+              </button>
+            </div>
+          );
+        })()}
+
+        {/* ══ ZONA 1 — KPI CARDS v4 ══ */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {/* CF Neto */}
-          <div className="tv3-hero-cf">
-            <div className="tv3-hero-cf-eye">
-              <Activity size={10} /> Cashflow neto
+          <div style={{ background: 'var(--white, #fff)', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--grey-500, #6C757D)', marginBottom: 8 }}>
+              CF NETO
             </div>
-            <div className="tv3-hero-cf-val">
-              {globalTotals.cashflow.previsto >= 0 ? '+' : '−'}
-              {formatAmount(Math.abs(globalTotals.cashflow.previsto))} €
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700, color: 'var(--grey-900, #1A2332)' }}>
+              {globalTotals.cashflow.previsto >= 0 ? '+' : '−'}{formatAmount(Math.abs(globalTotals.cashflow.previsto))} €
             </div>
-            <div className="tv3-hero-cf-label">
-              Previsto · Real:{' '}
-              <span>{globalTotals.cashflow.real >= 0 ? '+' : '−'}{formatAmount(Math.abs(globalTotals.cashflow.real))} €</span>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', marginTop: 4 }}>
+              Real: {globalTotals.cashflow.real >= 0 ? '+' : '−'}{formatAmount(Math.abs(globalTotals.cashflow.real))} €
             </div>
           </div>
 
-          {/* 4 columnas métricas */}
-          <div className="tv3-hero-cols">
-            {([
-              { key: 'ingresos' as const, label: 'Ingresos', Icon: TrendingUp },
-              { key: 'gastos' as const, label: 'Gastos', Icon: TrendingDown },
-              { key: 'financiacion' as const, label: 'Financiación', Icon: CreditCard },
-            ]).map(({ key, label, Icon }) => {
-              const pct = globalTotals[key].previsto > 0
-                ? Math.min(100, (globalTotals[key].real / globalTotals[key].previsto) * 100)
-                : 0;
-              return (
-                <div className="tv3-hero-col" key={key}>
-                  <div className="tv3-hero-col-title"><Icon size={11} /> {label}</div>
-                  <div className="tv3-hero-col-prev">{formatAmount(globalTotals[key].previsto)} €</div>
-                  <div className="tv3-hero-col-real">{formatAmount(globalTotals[key].real)} €</div>
-                  <div className="tv3-hero-col-bar">
-                    <div className="tv3-hero-col-bar-fill" style={{ width: `${Math.min(pct, 100)}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-            {/* Punteado */}
-            <div className="tv3-hero-col">
-              <div className="tv3-hero-col-title"><CheckCircle2 size={11} /> Punteado</div>
-              <div className="tv3-hero-col-prev">
-                {events.filter(e => e.status === 'confirmado').length} / {events.length} mov.
-              </div>
-              <div className="tv3-hero-col-real tv3-hero-col-real--teal">{pctConciliado}%</div>
-              <div className="tv3-hero-col-bar">
-                <div className="tv3-hero-col-bar-fill tv3-hero-col-bar-fill--white" style={{ width: `${pctConciliado}%` }} />
-              </div>
+          {/* Ingresos */}
+          <div style={{ background: 'var(--white, #fff)', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--grey-500, #6C757D)', marginBottom: 8 }}>
+              INGRESOS
+            </div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700, color: 'var(--grey-900, #1A2332)' }}>
+              {formatAmount(globalTotals.ingresos.previsto)} €
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', marginTop: 4 }}>
+              Real: {formatAmount(globalTotals.ingresos.real)} €
             </div>
           </div>
 
-          {/* Nav + progreso */}
-          <div className="tv3-hero-right">
-            <div className="tv3-mes-nav">
-              <button className="tv3-mes-nav-btn" onClick={handlePrevMonth} aria-label="Mes anterior">
-                <ChevronLeft size={16} />
-              </button>
-              <span className="tv3-mes-month">{formatMonthYear(currentMonth)}</span>
-              <button className="tv3-mes-nav-btn" onClick={handleNextMonth} aria-label="Mes siguiente">
-                <ChevronRight size={16} />
-              </button>
+          {/* Gastos */}
+          <div style={{ background: 'var(--white, #fff)', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--grey-500, #6C757D)', marginBottom: 8 }}>
+              GASTOS
             </div>
-            <div className="tv3-concil-wrap">
-              <div className="tv3-concil-track">
-                <div className="tv3-concil-fill" style={{ width: `${pctConciliado}%` }} />
-              </div>
-              <span className="tv3-concil-pct">{pctConciliado}%</span>
-              <span className="tv3-concil-label">conciliado</span>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700, color: 'var(--grey-900, #1A2332)' }}>
+              {formatAmount(globalTotals.gastos.previsto)} €
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', marginTop: 4 }}>
+              Real: {formatAmount(globalTotals.gastos.real)} €
             </div>
           </div>
-        </section>
+
+          {/* Financiación + Punteado */}
+          <div style={{ background: 'var(--white, #fff)', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 12, padding: 24 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--grey-500, #6C757D)', marginBottom: 8 }}>
+              FINANCIACIÓN
+            </div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 700, color: 'var(--grey-900, #1A2332)' }}>
+              {formatAmount(globalTotals.financiacion.previsto)} €
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', marginTop: 4 }}>
+              Punteado: {events.filter(e => e.status === 'confirmado').length}/{events.length} mov. · {pctConciliado}%
+            </div>
+          </div>
+        </div>
 
         {/* ══ ZONA 2 — BALANCE BANCARIO ══ */}
         <div>
