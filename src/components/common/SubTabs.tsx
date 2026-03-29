@@ -115,15 +115,24 @@ const SubTabs: React.FC = () => {
               <button
                 key={tab.path}
                 onClick={() => navigate(tab.path)}
-                className={`
-                  px-4 py-2.5 text-sm transition-colors duration-150 relative border-b-2 -mb-px flex items-center gap-1.5
-                  ${isActive
-                    ? 'font-semibold border-[var(--blue)]'
-                    : 'font-medium border-transparent hover:border-[var(--n-200)]'}
-                `}
-                style={{ color: isActive ? 'var(--blue)' : 'var(--n-500)' }}
+                style={{
+                  padding: '10px 16px',
+                  fontSize: 'var(--t-sm, 14px)',
+                  fontFamily: 'var(--font-base, IBM Plex Sans, sans-serif)',
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? 'var(--n-900)' : 'var(--n-500)',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid var(--blue)' : '2px solid transparent',
+                  marginBottom: -1,
+                  cursor: 'pointer',
+                  transition: 'all 150ms ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  minHeight: 44,
+                }}
               >
-                {TabIcon && <TabIcon className="h-4 w-4" />}
                 {tab.label}
               </button>
             );
