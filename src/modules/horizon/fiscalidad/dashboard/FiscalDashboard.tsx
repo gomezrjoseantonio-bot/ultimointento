@@ -1,106 +1,122 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
-import PageLayout from '../../../../components/common/PageLayout';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronUp, Scale, X } from 'lucide-react';
 import FiscalPageShell from '../components/FiscalPageShell';
-import { cargarHistoricoFiscal } from '../../../../services/fiscalHistoryService';
-import { generarEventosFiscales } from '../../../../services/fiscalPaymentsService';
-import { getAllEjercicios } from '../../../../services/ejercicioFiscalService';
-import ColdStartFiscal from '../estado/ColdStartFiscal';
+import EjercicioPillSelector from '../components/EjercicioPillSelector';
 import {
-  getNivelConfianza,
-  getConfianzaLabel,
-  getConfianzaStyles,
-} from '../../../../services/estimacionFiscalEnCursoService';
+  getEjercicio,
+  getDeclaracion,
+  getInmueblesDelEjercicio,
+  getTodosLosEjercicios,
+  getArrastresParaAño,
+} from '../../../../services/ejercicioResolverService';
+import type { EjercicioFiscalCoord, ResumenFiscal } from '../../../../services/ejercicioResolverService';
+import { useFiscalData } from '../../../../contexts/FiscalContext';
 import {
   generarAlertasFiscales,
   descartarAlerta,
   AlertaFiscal,
 } from '../../../../services/alertasFiscalesService';
-import {
-  calcularRentabilidadTodosInmuebles,
-  getRentabilidadColor,
-  RentabilidadInmueble,
-} from '../../../../services/rentabilidadInmuebleService';
-import { useFiscalData } from '../../../../contexts/FiscalContext';
 import { getOpexRulesForProperty } from '../../../../services/opexService';
 import type { OpexRule } from '../../../../services/db';
 
+// ── Formatters ──────────────────────────────────────────────
 const fmtAmount = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-
 const fmtMoney = (n: number) => `${fmtAmount(Math.abs(n))} €`;
-
 const fmtMoneyShort = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n)) + ' €';
 
-const sectionTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: 16,
-  fontWeight: 600,
-  color: 'var(--n-900)',
+// ── Estado badge config ─────────────────────────────────────
+type EstadoType = EjercicioFiscalCoord['estado'];
+
+const ESTADO_BADGE: Record<EstadoType, { label: string; bg: string; color: string }> = {
+  en_curso: { label: 'En curso', bg: 'var(--s-pos-bg)', color: 'var(--s-pos)' },
+  pendiente: { label: 'Pendiente', bg: 'var(--s-warn-bg)', color: 'var(--s-warn)' },
+  declarado: { label: 'Finalizado', bg: 'var(--n-100)', color: 'var(--n-500)' },
+  prescrito: { label: 'Prescrito', bg: 'var(--n-100)', color: 'var(--n-300)' },
 };
 
+const ESTADO_LABEL: Record<EstadoType, string> = {
+  en_curso: 'Estimación con los datos disponibles',
+  pendiente: 'Cálculo previo con datos de ATLAS',
+  declarado: 'Resultado declarado',
+  prescrito: 'Resultado declarado (prescrito)',
+};
 
+// ── Expected expense categories ─────────────────────────────
+const EXPECTED_CATEGORIES: { key: string; label: string; match: (r: OpexRule) => boolean; alwaysRegistered?: boolean }[] = [
+  { key: 'comunidad', label: 'Comunidad', match: (r) => r.categoria === 'comunidad' },
+  { key: 'ibi', label: 'IBI', match: (r) => r.categoria === 'impuesto' && r.concepto.toLowerCase().includes('ibi') },
+  { key: 'seguro', label: 'Seguro', match: (r) => r.categoria === 'seguro' },
+  { key: 'suministros', label: 'Suministros', match: (r) => r.categoria === 'suministro' },
+  { key: 'amortizacion', label: 'Amortización', match: () => true, alwaysRegistered: true },
+  { key: 'intereses', label: 'Intereses hipoteca', match: (r) => r.concepto.toLowerCase().includes('hipoteca') || r.concepto.toLowerCase().includes('interés') || r.concepto.toLowerCase().includes('interes') },
+  { key: 'reparaciones', label: 'Reparaciones', match: (r) => r.concepto.toLowerCase().includes('reparac') || r.concepto.toLowerCase().includes('conservac') },
+];
 
+// ── Component ───────────────────────────────────────────────
 const FiscalDashboard: React.FC = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { declaracion, estimacion, loading: contextLoading } = useFiscalData();
-  const ejercicio = new Date().getFullYear();
-  const [showColdStart, setShowColdStart] = useState(false);
-  const [isColdStart, setIsColdStart] = useState(false);
-  const [coldStartDismissed, setColdStartDismissed] = useState(false);
+  const { declaracion, loading: contextLoading } = useFiscalData();
 
-  // T24: Alertas proactivas
+  const currentYear = new Date().getFullYear();
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [ejercicio, setEjercicio] = useState<EjercicioFiscalCoord | null>(null);
+  const [resumen, setResumen] = useState<ResumenFiscal | null>(null);
+  const [fuente, setFuente] = useState<'aeat' | 'atlas' | 'ninguno'>('ninguno');
+  const [allYears, setAllYears] = useState<number[]>([]);
+  const [arrastresTotal, setArrastresTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // Alerts
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
   const [showAllAlertas, setShowAllAlertas] = useState(false);
 
-  // T25: Rentabilidad por inmueble
-  const [rentabilidades, setRentabilidades] = useState<RentabilidadInmueble[]>([]);
-
-  // C7: Expense tags per inmueble
+  // Opex per inmueble
   const [opexByInmueble, setOpexByInmueble] = useState<Record<number, OpexRule[]>>({});
 
-  // Additional data loading: secondary data that depends on the declaration
-  const [secondaryLoading, setSecondaryLoading] = useState(false);
-  const loading = contextLoading || secondaryLoading;
-
-  const currentYear = new Date().getFullYear();
-  const years = useMemo(() => [currentYear, currentYear - 1, currentYear - 2, currentYear - 3, currentYear - 4], [currentYear]);
-
+  // Load available years
   useEffect(() => {
-    if (!declaracion || contextLoading) return;
+    getTodosLosEjercicios().then((todos) => {
+      const years = todos.map((e) => e.año).sort((a, b) => b - a);
+      if (years.length === 0) {
+        const defaultYears = Array.from({ length: 7 }, (_, i) => currentYear - i);
+        setAllYears(defaultYears);
+      } else {
+        setAllYears(years);
+      }
+    }).catch(() => {
+      setAllYears(Array.from({ length: 7 }, (_, i) => currentYear - i));
+    });
+  }, [currentYear]);
+
+  // Load exercise data when year changes
+  useEffect(() => {
     let cancelled = false;
-    setSecondaryLoading(true);
+    setLoading(true);
 
     (async () => {
       try {
-        const historico = await cargarHistoricoFiscal(years);
+        const [ej, decl, arrastres] = await Promise.all([
+          getEjercicio(selectedYear),
+          getDeclaracion(selectedYear),
+          getArrastresParaAño(selectedYear),
+        ]);
         if (cancelled) return;
-        await generarEventosFiscales(ejercicio, declaracion);
+        setEjercicio(ej);
+        setFuente(decl.fuente);
+        setResumen(decl.resumen);
 
-        // T24: Generate alerts
-        try {
-          const alertas = await generarAlertasFiscales(declaracion, ejercicio);
-          if (!cancelled) setAlertasFiscales(alertas);
-        } catch {
-          if (!cancelled) setAlertasFiscales([]);
-        }
+        // Calculate total arrastres
+        const totalArrastres =
+          arrastres.gastosPendientes.reduce((s, g) => s + g.importePendiente, 0) +
+          arrastres.perdidasPatrimoniales.reduce((s, p) => s + p.importePendiente, 0);
+        setArrastresTotal(totalArrastres);
 
-        // T25: Calculate rentabilidad
+        // Load opex rules for inmuebles
         try {
-          const rents = await calcularRentabilidadTodosInmuebles(declaracion);
-          if (!cancelled) setRentabilidades(rents);
-        } catch {
-          if (!cancelled) setRentabilidades([]);
-        }
-
-        // C7: Load opex rules per inmueble
-        try {
-          const inmuebleIds = declaracion.baseGeneral.rendimientosInmuebles
-            .filter(inm => inm.inmuebleId >= 0)
-            .map(inm => inm.inmuebleId);
+          const inmuebleIds = await getInmueblesDelEjercicio(selectedYear);
           const opexMap: Record<number, OpexRule[]> = {};
           await Promise.all(inmuebleIds.map(async (id) => {
             opexMap[id] = await getOpexRulesForProperty(id);
@@ -109,56 +125,43 @@ const FiscalDashboard: React.FC = () => {
         } catch {
           if (!cancelled) setOpexByInmueble({});
         }
-
-        if (!cancelled) {
-          const hasAnyData = historico.some(
-            (row) => row.cuotaLiquida !== 0 || row.retenciones !== 0 || row.resultado !== 0 || row.fuente === 'declarado',
-          );
-          setIsColdStart(!hasAnyData);
-        }
       } catch (e) {
-        console.error('Error loading fiscal dashboard secondary data:', e);
+        console.error('Error loading fiscal estado:', e);
       } finally {
-        if (!cancelled) setSecondaryLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [declaracion, contextLoading, ejercicio, years]);
+  }, [selectedYear]);
 
+  // Load alerts (only for en_curso/pendiente, not for finalized)
   useEffect(() => {
+    if (!declaracion || !ejercicio) return;
+    if (ejercicio.estado === 'declarado' || ejercicio.estado === 'prescrito') {
+      setAlertasFiscales([]);
+      return;
+    }
     let cancelled = false;
-    getAllEjercicios()
-      .then((ejercicios) => {
-        if (cancelled) return;
-        const tieneDatos = ejercicios.some((item) => {
-          const resumen = item.declaracionAeat?.basesYCuotas ?? item.calculoAtlas?.basesYCuotas;
-          return Boolean(
-            item.declaracionAeat
-            || item.declaracionAeatPdfRef
-            || (resumen && ((resumen.cuotaLiquida ?? 0) !== 0 || (resumen.retencionesTotal ?? 0) !== 0 || (resumen.resultadoDeclaracion ?? 0) !== 0))
-          );
-        });
-        const dismissColdStart = Boolean((location.state as { dismissColdStart?: boolean } | null)?.dismissColdStart);
-        setShowColdStart(!tieneDatos && !dismissColdStart);
-      })
-      .catch((error) => console.error('Error comprobando cold start fiscal:', error));
+    generarAlertasFiscales(declaracion, selectedYear)
+      .then((alertas) => { if (!cancelled) setAlertasFiscales(alertas); })
+      .catch(() => { if (!cancelled) setAlertasFiscales([]); });
+    return () => { cancelled = true; };
+  }, [declaracion, ejercicio, selectedYear]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [location.state]);
+  const handleDismissAlerta = useCallback((alertaId: string) => {
+    descartarAlerta(selectedYear, alertaId);
+    setAlertasFiscales((prev) => prev.filter((a) => a.id !== alertaId));
+  }, [selectedYear]);
 
-  // T23: Confidence badge
-  const confianza = useMemo(() => {
-    if (!estimacion) return null;
-    const nivel = getNivelConfianza(estimacion.cobertura.mesesConDatos);
-    return {
-      nivel,
-      label: getConfianzaLabel(nivel),
-      styles: getConfianzaStyles(nivel),
-    };
-  }, [estimacion]);
+  const alertasVisibles = useMemo(() => {
+    return showAllAlertas ? alertasFiscales : alertasFiscales.slice(0, 5);
+  }, [alertasFiscales, showAllAlertas]);
+
+  // Derive amounts from resolver resumen or FiscalContext declaracion
+  const resultado = resumen?.resultado ?? declaracion?.resultado ?? 0;
+  const cuotaIntegra = resumen?.cuotaIntegra ?? declaracion?.liquidacion?.cuotaLiquida ?? 0;
+  const retenciones = resumen?.retenciones ?? declaracion?.retenciones?.total ?? 0;
 
   const ingresosResumen = useMemo(() => {
     if (!declaracion) return 0;
@@ -174,198 +177,344 @@ const FiscalDashboard: React.FC = () => {
       sum + i.gastosDeducibles + i.amortizacion, 0);
   }, [declaracion]);
 
-  // T24: Dismiss alert handler
-  const handleDismissAlerta = useCallback((alertaId: string) => {
-    descartarAlerta(ejercicio, alertaId);
-    setAlertasFiscales(prev => prev.filter(a => a.id !== alertaId));
-  }, [ejercicio]);
+  const estado = ejercicio?.estado ?? 'en_curso';
+  const badge = ESTADO_BADGE[estado];
+  const hasData = fuente !== 'ninguno';
 
-  // T24: Visible alerts (max 5)
-  const alertasVisibles = useMemo(() => {
-    if (showAllAlertas) return alertasFiscales;
-    return alertasFiscales.slice(0, 5);
-  }, [alertasFiscales, showAllAlertas]);
-
-  // T25: Get rentabilidad for a specific inmueble
-  const getRentabilidad = useCallback((inmuebleId: number) => {
-    return rentabilidades.find(r => r.inmuebleId === inmuebleId);
-  }, [rentabilidades]);
-
-  if (showColdStart) {
-    return (
-      <FiscalPageShell>
-        <ColdStartFiscal onDismiss={() => setShowColdStart(false)} />
-      </FiscalPageShell>
-    );
-  }
-
-  if (!loading && isColdStart && !coldStartDismissed) {
-    return (
-      <PageLayout title="Estado fiscal" subtitle="Tu situación fiscal en ATLAS">
-        <ColdStartFiscal onDismiss={() => setColdStartDismissed(true)} />
-      </PageLayout>
-    );
-  }
+  const isLoading = loading || (selectedYear === currentYear && contextLoading);
 
   return (
-    <PageLayout title="Estado fiscal" subtitle="Histórico + situación del año en curso">
-      <div style={{ display: 'grid', gap: 'var(--s4)', fontFamily: 'var(--font-ui, IBM Plex Sans, sans-serif)' }}>
-        <header>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, color: 'var(--n-900)' }}>Estado fiscal</h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Estimación ejercicio {ejercicio} con los datos disponibles</p>
+    <FiscalPageShell>
+      <div style={{ display: 'grid', gap: 'var(--s4, 16px)', fontFamily: 'var(--font-base, IBM Plex Sans, sans-serif)' }}>
+        {/* ── Canonical header ── */}
+        <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <Scale size={40} strokeWidth={1.5} style={{ color: 'var(--blue)', flexShrink: 0 }} />
+            <div>
+              <h1 style={{ margin: 0, fontSize: 'var(--t-xl, 24px)', fontWeight: 600, color: 'var(--n-900)' }}>
+                Impuestos
+              </h1>
+              <p style={{ margin: '4px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
+                {ESTADO_LABEL[estado]}
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{
+              padding: '4px 12px',
+              borderRadius: 999,
+              fontSize: 'var(--t-xs, 12px)',
+              fontWeight: 500,
+              background: badge.bg,
+              color: badge.color,
+            }}>
+              {selectedYear} · {badge.label}
+            </span>
+          </div>
         </header>
 
-        {loading || !declaracion ? (
+        {/* ── Exercise selector pills ── */}
+        {allYears.length > 0 && (
+          <EjercicioPillSelector value={selectedYear} onChange={setSelectedYear} years={allYears} />
+        )}
+
+        {/* ── Loading skeleton ── */}
+        {isLoading ? (
           <section style={{ display: 'grid', gap: 16 }}>
-            {/* Skeleton: hero resultado */}
             <div>
-              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 20, width: 160, marginBottom: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 48, width: 240, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 12px)', height: 14, width: 320, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 8px)', height: 16, width: 160, marginBottom: 12, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 8px)', height: 40, width: 240, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-md, 8px)', height: 14, width: 320, animation: 'pulse 1.5s ease-in-out infinite' }} />
             </div>
-            {/* Skeleton: 3 cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
               {[0, 1, 2].map((i) => (
-                <div key={i} style={{ background: 'var(--n-50)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 22px' }}>
-                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 12, width: 80, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 22, width: 120, marginBottom: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 8px)', height: 12, width: 100, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div key={i} style={{ background: 'var(--n-50)', borderRadius: 'var(--r-md, 8px)', padding: '18px 22px' }}>
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 4px)', height: 12, width: 80, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ background: 'var(--n-100)', borderRadius: 'var(--r-sm, 4px)', height: 22, width: 120, animation: 'pulse 1.5s ease-in-out infinite' }} />
                 </div>
               ))}
             </div>
             <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
           </section>
+        ) : !hasData ? (
+          /* ── Empty state ── */
+          <section style={{
+            padding: 48,
+            textAlign: 'center',
+            background: 'var(--n-50)',
+            borderRadius: 'var(--r-lg, 12px)',
+            border: '1px dashed var(--n-300)',
+          }}>
+            <p style={{ margin: 0, color: 'var(--n-500)', fontSize: 'var(--t-sm, 13px)' }}>
+              No hay datos para {selectedYear}. Importa la declaración o los Datos Fiscales.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={() => navigate('/fiscalidad/historial')}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 'var(--r-md, 8px)',
+                  border: '1px solid var(--n-300)',
+                  background: 'var(--white)',
+                  color: 'var(--n-900)',
+                  fontWeight: 500,
+                  fontSize: 'var(--t-sm, 13px)',
+                  cursor: 'pointer',
+                  minHeight: 44,
+                  fontFamily: 'var(--font-base, IBM Plex Sans, sans-serif)',
+                }}
+              >
+                Importar datos
+              </button>
+            </div>
+          </section>
         ) : (
           <>
-            {/* ── T23: Hero resultado con badge de confianza ── */}
-            <section style={{ display: 'grid', gap: 16 }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                  <span style={{ color: 'var(--n-700)', fontSize: 16 }}>Resultado estimado</span>
-                  {/* T23: Badge de confianza */}
-                  {confianza && (
-                    <span style={{
-                      padding: '3px 10px',
-                      borderRadius: 'var(--r-sm, 8px)',
-                      fontSize: 'var(--t-xs, 12px)',
-                      fontWeight: 500,
-                      background: confianza.styles.background,
-                      color: confianza.styles.color,
-                    }}>
-                      {confianza.label}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-                  {/* T23: Hero resultado — IBM Plex Mono, --t-2xl */}
-                  <strong style={{
-                    fontSize: 'var(--t-2xl, 48px)',
-                    lineHeight: 1,
-                    color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
-                    fontFamily: 'IBM Plex Mono, monospace',
-                    fontWeight: 500,
-                  }}>
-                    {fmtMoney(declaracion.resultado)}
-                  </strong>
-                  <span style={{ color: declaracion.resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)', fontSize: 18 }}>
-                    {declaracion.resultado > 0 ? 'a pagar' : 'a devolver'}
-                  </span>
-                </div>
-                {/* T23: Subtexto fórmula */}
-                <p style={{ margin: '10px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
-                  Cuota {fmtMoney(declaracion.liquidacion.cuotaLiquida)} − Retenciones {fmtMoney(declaracion.retenciones.total)} = {fmtMoney(declaracion.resultado)} · Tipo medio {declaracion.tipoEfectivo.toFixed(1)}%
-                </p>
+            {/* ── Hero resultado ── */}
+            <section>
+              <div style={{
+                fontSize: 'var(--t-xs, 11px)',
+                color: 'var(--n-500)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                marginBottom: 8,
+              }}>
+                Resultado estimado
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
-                {[
-                  { label: 'Ingresos', value: ingresosResumen, helper: 'Trabajo + inmuebles + actividad' },
-                  { label: 'Gastos deducibles', value: gastosResumen, helper: ingresosResumen > 0 ? `${Math.round((gastosResumen / ingresosResumen) * 100)}% de ingresos` : 'Sin ingresos' },
-                  { label: 'Retenciones', value: declaracion.retenciones.total, helper: declaracion.retenciones.trabajo > 0 ? 'Trabajo + M130 + capital' : 'Sin retenciones confirmadas' },
-                ].map((card) => (
-                  <div key={card.label} style={{ background: 'var(--n-50)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 22px' }}>
-                    <div style={{ color: 'var(--n-500)', marginBottom: 8, fontSize: 'var(--t-xs, 12px)' }}>{card.label}</div>
-                    <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 22, color: 'var(--n-900)', marginBottom: 6 }}>{fmtMoney(card.value)}</div>
-                    <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>{card.helper}</div>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                <strong style={{
+                  fontSize: 'var(--t-2xl, 2rem)',
+                  lineHeight: 1,
+                  color: resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
+                  fontFamily: 'IBM Plex Mono, monospace',
+                  fontWeight: 500,
+                }}>
+                  {fmtMoney(resultado)}
+                </strong>
+                <span style={{
+                  color: resultado > 0 ? 'var(--s-neg)' : 'var(--s-pos)',
+                  fontSize: 'var(--t-base, 14px)',
+                  fontWeight: 500,
+                }}>
+                  {resultado > 0 ? 'a pagar' : 'a devolver'}
+                </span>
               </div>
+              <p style={{ margin: '8px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 11px)' }}>
+                Cuota {fmtMoney(cuotaIntegra)} − Retenciones {fmtMoney(retenciones)}
+              </p>
             </section>
 
-            {/* ── T24: Alertas proactivas ── */}
-            {alertasFiscales.length > 0 && (
+            {/* ── 3 KPIs ── */}
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+              {[
+                { label: 'INGRESOS TOTALES', value: ingresosResumen },
+                { label: 'GASTOS DEDUCIBLES', value: gastosResumen },
+                { label: 'ARRASTRES APLICADOS', value: arrastresTotal },
+              ].map((kpi) => (
+                <div key={kpi.label} style={{
+                  background: 'var(--n-50)',
+                  borderRadius: 'var(--r-md, 8px)',
+                  padding: '16px 20px',
+                }}>
+                  <div style={{
+                    color: 'var(--n-500)',
+                    fontSize: 'var(--t-xs, 11px)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    marginBottom: 8,
+                  }}>
+                    {kpi.label}
+                  </div>
+                  <div style={{
+                    fontFamily: 'IBM Plex Mono, monospace',
+                    fontSize: 'var(--t-lg, 1.25rem)',
+                    color: 'var(--n-900)',
+                  }}>
+                    {fmtMoneyShort(kpi.value)}
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            {/* ── Inmuebles ── */}
+            {declaracion && declaracion.baseGeneral.rendimientosInmuebles.length > 0 && (
+              <section style={{ display: 'grid', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--n-900)' }}>Inmuebles</h2>
+                {declaracion.baseGeneral.rendimientosInmuebles
+                  .filter((inm) => inm.inmuebleId >= 0)
+                  .map((inmueble) => {
+                    const rules = opexByInmueble[inmueble.inmuebleId] ?? [];
+                    return (
+                      <article
+                        key={inmueble.inmuebleId}
+                        style={{
+                          border: '1px solid var(--n-200)',
+                          borderRadius: 'var(--r-lg, 12px)',
+                          padding: '16px 20px',
+                          background: 'var(--white)',
+                          transition: 'all 150ms ease',
+                        }}
+                      >
+                        {/* Top row: name + rendimiento */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' }}>
+                          <div>
+                            <h3 style={{
+                              margin: 0,
+                              fontFamily: 'IBM Plex Sans, sans-serif',
+                              fontSize: 'var(--t-sm, 13px)',
+                              fontWeight: 500,
+                              color: 'var(--n-900)',
+                            }}>
+                              {inmueble.alias}
+                            </h3>
+                            <p style={{
+                              margin: '2px 0 0',
+                              fontSize: 'var(--t-xs, 11px)',
+                              color: 'var(--n-500)',
+                            }}>
+                              {inmueble.esHabitual ? 'Habitual' : `${inmueble.diasAlquilado} días arrendado`}
+                              {inmueble.esHabitual ? '' : ' · alquiler'}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 'var(--t-xs, 11px)', color: 'var(--n-500)' }}>Rto</div>
+                            <div style={{
+                              fontFamily: 'IBM Plex Mono, monospace',
+                              fontSize: 'var(--t-sm, 13px)',
+                              fontWeight: 500,
+                              color: inmueble.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)',
+                            }}>
+                              {fmtMoney(inmueble.rendimientoNeto)}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Income/Expenses row */}
+                        <div style={{
+                          display: 'flex',
+                          gap: 24,
+                          marginTop: 12,
+                          fontSize: 'var(--t-xs, 11px)',
+                        }}>
+                          <span style={{ color: 'var(--n-700)' }}>
+                            Ingresos: <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoneyShort(inmueble.ingresosIntegros)}</span>
+                          </span>
+                          <span style={{ color: 'var(--n-700)' }}>
+                            Gastos: <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoneyShort(inmueble.gastosDeducibles + inmueble.amortizacion)}</span>
+                          </span>
+                        </div>
+
+                        {/* Expense tags */}
+                        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          {EXPECTED_CATEGORIES.map((cat) => {
+                            const registered = cat.alwaysRegistered || rules.some((r) => r.activo && cat.match(r));
+                            if (registered) {
+                              return (
+                                <span key={cat.key} style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 'var(--r-sm, 4px)',
+                                  fontSize: 'var(--t-xs, 11px)',
+                                  background: 'var(--n-100)',
+                                  color: 'var(--n-500)',
+                                }}>
+                                  {cat.label}
+                                </span>
+                              );
+                            }
+                            return (
+                              <button
+                                key={cat.key}
+                                type="button"
+                                onClick={() => navigate(`/inmuebles/${inmueble.inmuebleId}/gastos`)}
+                                style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 'var(--r-sm, 4px)',
+                                  fontSize: 'var(--t-xs, 11px)',
+                                  background: 'var(--s-warn-bg)',
+                                  color: 'var(--s-warn)',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  minHeight: 28,
+                                }}
+                              >
+                                + {cat.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    );
+                  })}
+              </section>
+            )}
+
+            {/* ── Atención (alertas) ── */}
+            {alertasFiscales.length > 0 && estado !== 'declarado' && estado !== 'prescrito' && (
               <section style={{ display: 'grid', gap: 8 }}>
-                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Alertas</h2>
-                {alertasVisibles.map((alerta) => {
-                  const isWarning = alerta.prioridad === 'alta' || alerta.prioridad === 'media';
-                  return (
-                    <div
-                      key={alerta.id}
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--n-900)' }}>Atención</h2>
+                {alertasVisibles.map((alerta) => (
+                  <div
+                    key={alerta.id}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: 'var(--r-md, 8px)',
+                      background: 'var(--s-warn-bg)',
+                      color: 'var(--s-warn)',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      fontSize: 'var(--t-xs, 12px)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      {alerta.descripcion}
+                      {alerta.accion && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(alerta.accion!.ruta)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--blue)',
+                            fontSize: 'var(--t-xs, 12px)',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            marginLeft: 8,
+                            padding: 0,
+                          }}
+                        >
+                          {alerta.accion.label}
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDismissAlerta(alerta.id)}
+                      aria-label="Descartar alerta"
                       style={{
-                        padding: '10px 14px',
-                        borderRadius: 'var(--r-md, 12px)',
-                        background: isWarning ? 'var(--s-warn-bg)' : 'var(--n-100)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 4,
+                        color: 'var(--s-warn)',
+                        flexShrink: 0,
+                        minWidth: 44,
+                        minHeight: 44,
                         display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 10,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      <div style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: isWarning ? 'var(--s-warn)' : 'var(--n-500)',
-                        flexShrink: 0,
-                        marginTop: 6,
-                      }} />
-                      <div style={{ flex: 1, fontSize: 'var(--t-xs, 12px)', lineHeight: 1.5, color: isWarning ? 'var(--s-warn)' : 'var(--n-700)' }}>
-                        <span>{alerta.descripcion}</span>
-                        {alerta.accion && (
-                          <button
-                            type="button"
-                            onClick={() => navigate(alerta.accion!.ruta)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: 'var(--blue)',
-                              fontSize: 'var(--t-xs, 12px)',
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              marginLeft: 8,
-                              padding: 0,
-                            }}
-                          >
-                            {alerta.accion.label}
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDismissAlerta(alerta.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 4,
-                          color: isWarning ? 'var(--s-warn)' : 'var(--n-500)',
-                          flexShrink: 0,
-                          minWidth: 44,
-                          minHeight: 44,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        aria-label="Descartar alerta"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
                 {alertasFiscales.length > 5 && (
                   <button
                     type="button"
-                    onClick={() => setShowAllAlertas(prev => !prev)}
+                    onClick={() => setShowAllAlertas((prev) => !prev)}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -385,143 +534,10 @@ const FiscalDashboard: React.FC = () => {
                 )}
               </section>
             )}
-
-            {/* ── Inmuebles con T25: Rentabilidad ── */}
-            {declaracion.baseGeneral.rendimientosInmuebles.length > 0 && (
-              <section style={{ display: 'grid', gap: 16 }}>
-                <h2 style={{ ...sectionTitleStyle, fontSize: 18 }}>Inmuebles</h2>
-                {declaracion.baseGeneral.rendimientosInmuebles
-                  .filter(inm => inm.inmuebleId >= 0)
-                  .map((inmueble) => {
-                    const rent = getRentabilidad(inmueble.inmuebleId);
-                    return (
-                      <article key={inmueble.inmuebleId} style={{ border: '1px solid var(--n-200)', borderRadius: 'var(--r-lg, 16px)', padding: '18px 24px', background: 'var(--white)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 24, alignItems: 'flex-start' }}>
-                          <div>
-                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--n-900)' }}>{inmueble.alias}</h3>
-                            <p style={{ margin: '4px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>
-                              {inmueble.esHabitual ? 'Habitual' : 'Alquiler'} · {inmueble.diasAlquilado} días arrendado
-                            </p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Rendimiento neto</div>
-                            <div style={{ fontFamily: 'IBM Plex Mono, monospace', color: inmueble.rendimientoNeto >= 0 ? 'var(--s-pos)' : 'var(--s-neg)', fontSize: 18, fontWeight: 500 }}>
-                              {fmtMoney(inmueble.rendimientoNeto)}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20, marginTop: 18, paddingBottom: 14, borderBottom: '1px solid var(--n-200)' }}>
-                          <div>
-                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Ingresos</div>
-                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.ingresosIntegros)}</div>
-                          </div>
-                          <div>
-                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Gastos + amortización</div>
-                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{fmtMoney(inmueble.gastosDeducibles + inmueble.amortizacion)}</div>
-                          </div>
-                          <div>
-                            <div style={{ color: 'var(--n-500)', fontSize: 'var(--t-xs, 12px)' }}>Reducción</div>
-                            <div style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
-                              {inmueble.reduccionHabitual > 0
-                                ? `${fmtMoney(inmueble.reduccionHabitual)} (${Math.round(inmueble.porcentajeReduccionHabitual * 100)}%)`
-                                : '–'}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* T25: Rentabilidad neta */}
-                        {rent && (
-                          <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                            <div>
-                              <span style={{ fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}>Rentabilidad neta </span>
-                              {rent.rentabilidadPorcentaje !== null ? (
-                                <span style={{
-                                  fontFamily: 'IBM Plex Mono, monospace',
-                                  fontSize: 'var(--t-xs, 12px)',
-                                  fontWeight: 500,
-                                  color: getRentabilidadColor(rent.rentabilidadPorcentaje),
-                                }}>
-                                  {rent.rentabilidadPorcentaje.toFixed(1)}% sobre inversión
-                                </span>
-                              ) : (
-                                <span
-                                  style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}
-                                  title={rent.datosFaltantes.length > 0 ? `Faltan: ${rent.datosFaltantes.join(', ')}` : 'Sin datos de inversión'}
-                                >
-                                  —
-                                </span>
-                              )}
-                            </div>
-                            {rent.cashflowNeto !== 0 && (
-                              <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 'var(--t-xs, 12px)', color: 'var(--n-500)' }}>
-                                Cashflow: {fmtMoneyShort(rent.cashflowNeto)}/año
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* C7: Expense category tags */}
-                        {(() => {
-                          const rules = opexByInmueble[inmueble.inmuebleId] ?? [];
-                          const EXPECTED_CATEGORIES: { key: string; label: string; match: (r: OpexRule) => boolean; alwaysRegistered?: boolean }[] = [
-                            { key: 'comunidad', label: 'Comunidad', match: (r) => r.categoria === 'comunidad' },
-                            { key: 'ibi', label: 'IBI', match: (r) => r.categoria === 'impuesto' && r.concepto.toLowerCase().includes('ibi') },
-                            { key: 'seguro', label: 'Seguro', match: (r) => r.categoria === 'seguro' },
-                            { key: 'suministros', label: 'Suministros', match: (r) => r.categoria === 'suministro' },
-                            { key: 'amortizacion', label: 'Amortización', match: () => true, alwaysRegistered: true },
-                            { key: 'intereses', label: 'Intereses hipoteca', match: (r) => r.concepto.toLowerCase().includes('hipoteca') || r.concepto.toLowerCase().includes('interés') || r.concepto.toLowerCase().includes('interes') },
-                            { key: 'reparaciones', label: 'Reparaciones', match: (r) => r.concepto.toLowerCase().includes('reparac') || r.concepto.toLowerCase().includes('conservac') },
-                          ];
-                          return (
-                            <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                              {EXPECTED_CATEGORIES.map((cat) => {
-                                const registered = cat.alwaysRegistered || rules.some((r) => r.activo && cat.match(r));
-                                if (registered) {
-                                  return (
-                                    <span key={cat.key} style={{
-                                      padding: '3px 10px',
-                                      borderRadius: 'var(--r-sm, 8px)',
-                                      fontSize: 'var(--t-xs, 12px)',
-                                      background: 'var(--n-100)',
-                                      color: 'var(--n-500)',
-                                    }}>
-                                      {cat.label}
-                                    </span>
-                                  );
-                                }
-                                return (
-                                  <button
-                                    key={cat.key}
-                                    type="button"
-                                    onClick={() => navigate(`/inmuebles/${inmueble.inmuebleId}/gastos`)}
-                                    style={{
-                                      padding: '3px 10px',
-                                      borderRadius: 'var(--r-sm, 8px)',
-                                      fontSize: 'var(--t-xs, 12px)',
-                                      background: 'var(--s-warn-bg)',
-                                      color: 'var(--s-warn)',
-                                      border: 'none',
-                                      cursor: 'pointer',
-                                      minHeight: 28,
-                                    }}
-                                  >
-                                    + {cat.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          );
-                        })()}
-                      </article>
-                    );
-                  })}
-              </section>
-            )}
           </>
         )}
       </div>
-    </PageLayout>
+    </FiscalPageShell>
   );
 };
 
