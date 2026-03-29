@@ -4,11 +4,10 @@ import { Calculator, ChevronDown, ChevronRight, FileCheck, FileText, Pencil, Cam
 import FiscalPageShell from '../components/FiscalPageShell';
 import EjercicioPillSelector from '../components/EjercicioPillSelector';
 import {
-  getEjercicio,
   getDeclaracion,
   getTodosLosEjercicios,
 } from '../../../../services/ejercicioResolverService';
-import type { EjercicioFiscalCoord, ResumenFiscal } from '../../../../services/ejercicioResolverService';
+import type { ResumenFiscal } from '../../../../services/ejercicioResolverService';
 import { useFiscalData } from '../../../../contexts/FiscalContext';
 import type { DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 
@@ -57,7 +56,6 @@ const DeclaracionPage: React.FC = () => {
   const initialYear = Number(searchParams.get('ejercicio')) || currentYear;
   const [selectedYear, setSelectedYear] = useState(initialYear);
   const [allYears, setAllYears] = useState<number[]>([]);
-  const [ejercicio, setEjercicio] = useState<EjercicioFiscalCoord | null>(null);
   const [fuente, setFuente] = useState<'aeat' | 'atlas' | 'ninguno'>('ninguno');
   const [resumen, setResumen] = useState<ResumenFiscal | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,12 +84,8 @@ const DeclaracionPage: React.FC = () => {
     setLoading(true);
     (async () => {
       try {
-        const [ej, decl] = await Promise.all([
-          getEjercicio(selectedYear),
-          getDeclaracion(selectedYear),
-        ]);
+        const decl = await getDeclaracion(selectedYear);
         if (cancelled) return;
-        setEjercicio(ej);
         setFuente(decl.fuente);
         setResumen(decl.resumen);
       } catch (e) {

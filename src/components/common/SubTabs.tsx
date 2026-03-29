@@ -109,7 +109,6 @@ const SubTabs: React.FC = () => {
         <div className="flex flex-wrap">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
-            const TabIcon = tab.icon;
 
             return (
               <button
