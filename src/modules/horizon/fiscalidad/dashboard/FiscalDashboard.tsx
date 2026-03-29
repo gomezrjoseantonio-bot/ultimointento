@@ -160,8 +160,12 @@ const FiscalDashboard: React.FC = () => {
 
   // Derive amounts from resolver resumen or FiscalContext declaracion
   const resultado = resumen?.resultado ?? declaracion?.resultado ?? 0;
-  const cuotaIntegra = resumen?.cuotaIntegra ?? declaracion?.liquidacion?.cuotaLiquida ?? 0;
-  const retenciones = resumen?.retenciones ?? declaracion?.retenciones?.total ?? 0;
+  const cuotaIntegraTotal = resumen
+    ? (resumen.cuotaIntegraEstatal + resumen.cuotaIntegraAutonomica)
+    : (declaracion?.liquidacion?.cuotaIntegra ?? 0);
+  const cuotaLiquidaTotal = resumen
+    ? (resumen.cuotaLiquidaEstatal + resumen.cuotaLiquidaAutonomica)
+    : (declaracion?.liquidacion?.cuotaLiquida ?? 0);
 
   const ingresosResumen = useMemo(() => {
     if (!declaracion) return 0;
@@ -301,7 +305,7 @@ const FiscalDashboard: React.FC = () => {
                 </span>
               </div>
               <p style={{ margin: '8px 0 0', color: 'var(--n-500)', fontSize: 'var(--t-xs, 11px)' }}>
-                Cuota {fmtMoney(cuotaIntegra)} − Retenciones {fmtMoney(retenciones)}
+                Cuota íntegra {fmtMoney(cuotaIntegraTotal)} − Cuota líquida {fmtMoney(cuotaLiquidaTotal)}
               </p>
             </section>
 

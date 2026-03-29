@@ -200,10 +200,12 @@ const DeclaracionPage: React.FC = () => {
     // Fallback: use resumen only (less detail)
     if (resumen) {
       return [
-        { id: 'baseGeneral', title: 'Base imponible general', total: resumen.baseImponibleGeneral },
-        { id: 'baseAhorro', title: 'Base imponible del ahorro', total: resumen.baseImponibleAhorro },
-        { id: 'cuota', title: 'Cuota íntegra', total: resumen.cuotaIntegra },
-        { id: 'retenciones', title: 'Retenciones y pagos a cuenta', total: -resumen.retenciones },
+        { id: 'baseGeneral', title: 'Base liquidable general', total: resumen.baseLiquidableGeneral },
+        { id: 'baseAhorro', title: 'Base liquidable del ahorro', total: resumen.baseLiquidableAhorro },
+        { id: 'cuotaEstatal', title: 'Cuota íntegra estatal', total: resumen.cuotaIntegraEstatal },
+        { id: 'cuotaAutonomica', title: 'Cuota íntegra autonómica', total: resumen.cuotaIntegraAutonomica },
+        { id: 'cuotaLiqEstatal', title: 'Cuota líquida estatal', total: resumen.cuotaLiquidaEstatal },
+        { id: 'cuotaLiqAutonomica', title: 'Cuota líquida autonómica', total: resumen.cuotaLiquidaAutonomica },
         { id: 'resultado', title: 'RESULTADO', total: resumen.resultado, isResult: true },
       ];
     }

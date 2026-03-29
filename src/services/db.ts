@@ -1764,11 +1764,13 @@ export interface EjercicioFiscalCoord {
 }
 
 export interface ResumenFiscal {
-  baseImponibleGeneral: number;
-  baseImponibleAhorro: number;
-  cuotaIntegra: number;
-  retenciones: number;
-  resultado: number;  // negativo = a devolver
+  baseLiquidableGeneral: number;   // casilla 0505
+  baseLiquidableAhorro: number;    // casilla 0510
+  cuotaIntegraEstatal: number;     // casilla 0545
+  cuotaIntegraAutonomica: number;  // casilla 0546
+  cuotaLiquidaEstatal: number;     // casilla 0570
+  cuotaLiquidaAutonomica: number;  // casilla 0571
+  resultado: number;               // casilla 0695/0670, negativo = a devolver
 }
 
 export interface ArrastresEjercicioCoord {

@@ -2,10 +2,12 @@ import React from 'react';
 
 interface ResumenDeclaracionProps {
   resultado: number | null;
-  baseGeneral: number | null;
-  baseAhorro: number | null;
-  cuotaIntegra: number | null;
-  retenciones: number | null;
+  baseLiquidableGeneral: number | null;
+  baseLiquidableAhorro: number | null;
+  cuotaIntegraEstatal: number | null;
+  cuotaIntegraAutonomica: number | null;
+  cuotaLiquidaEstatal: number | null;
+  cuotaLiquidaAutonomica: number | null;
 }
 
 const fmt = (v: number) =>
@@ -18,21 +20,23 @@ const monoStyle: React.CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
 };
 
-const KPI: React.FC<{ label: string; value: number | null }> = ({ label, value }) => (
-  <div style={{ flex: 1, minWidth: 120 }}>
-    <div style={{ fontSize: 'var(--t-xs, 11px)', color: 'var(--n-500)', marginBottom: 4 }}>{label}</div>
-    <div style={{ ...monoStyle, fontSize: 'var(--t-sm, 13px)', color: 'var(--n-900)', fontWeight: 500 }}>
-      {value !== null ? fmtMoney(value) : '—'}
-    </div>
+const LineItem: React.FC<{ label: string; value: number | null }> = ({ label, value }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '3px 0' }}>
+    <span style={{ fontSize: 'var(--t-sm, 13px)', color: 'var(--n-600)' }}>{label}</span>
+    <span style={{ ...monoStyle, fontSize: 'var(--t-sm, 13px)', color: 'var(--n-900)', fontWeight: 500 }}>
+      {value !== null ? fmtMoney(value) : '\u2014'}
+    </span>
   </div>
 );
 
 const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
   resultado,
-  baseGeneral,
-  baseAhorro,
-  cuotaIntegra,
-  retenciones,
+  baseLiquidableGeneral,
+  baseLiquidableAhorro,
+  cuotaIntegraEstatal,
+  cuotaIntegraAutonomica,
+  cuotaLiquidaEstatal,
+  cuotaLiquidaAutonomica,
 }) => {
   const hasResult = resultado !== null;
   const isDevolver = hasResult && resultado < 0;
@@ -49,7 +53,7 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
     }}>
       {/* Resultado principal */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 'var(--t-xs, 11px)', color: 'var(--n-500)', marginBottom: 4 }}>
+        <div style={{ fontSize: 'var(--t-xs, 11px)', color: 'var(--n-500)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
           Resultado
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -74,18 +78,20 @@ const ResumenDeclaracion: React.FC<ResumenDeclaracionProps> = ({
         </div>
       </div>
 
-      {/* KPIs */}
+      {/* Casillas oficiales del resumen Modelo 100 */}
       <div style={{
-        display: 'flex',
-        gap: 16,
-        flexWrap: 'wrap',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '4px 32px',
         paddingTop: 16,
         borderTop: '1px solid var(--n-100)',
       }}>
-        <KPI label="Base general" value={baseGeneral} />
-        <KPI label="Base ahorro" value={baseAhorro} />
-        <KPI label="Cuota íntegra" value={cuotaIntegra} />
-        <KPI label="Retenciones" value={retenciones} />
+        <LineItem label="Base liquidable general" value={baseLiquidableGeneral} />
+        <LineItem label="Base liquidable del ahorro" value={baseLiquidableAhorro} />
+        <LineItem label="Cuota \u00edntegra estatal" value={cuotaIntegraEstatal} />
+        <LineItem label="Cuota \u00edntegra auton\u00f3mica" value={cuotaIntegraAutonomica} />
+        <LineItem label="Cuota l\u00edquida estatal" value={cuotaLiquidaEstatal} />
+        <LineItem label="Cuota l\u00edquida auton\u00f3mica" value={cuotaLiquidaAutonomica} />
       </div>
     </div>
   );

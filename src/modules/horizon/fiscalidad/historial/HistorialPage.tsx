@@ -205,7 +205,7 @@ const HistorialPage: React.FC = () => {
             {/* Table header */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '70px 110px 90px 1fr 1fr 1fr 100px',
+              gridTemplateColumns: '70px 110px 90px 1fr 100px',
               columnGap: 8,
               padding: '10px 16px',
               background: 'var(--n-100)',
@@ -215,13 +215,11 @@ const HistorialPage: React.FC = () => {
               textTransform: 'uppercase',
               letterSpacing: '0.04em',
               color: 'var(--n-500)',
-              minWidth: 700,
+              minWidth: 500,
             }}>
               <span>Año</span>
               <span>Estado</span>
               <span>Fuente</span>
-              <span style={{ textAlign: 'right' }}>Cuota</span>
-              <span style={{ textAlign: 'right' }}>Retenciones</span>
               <span style={{ textAlign: 'right' }}>Resultado</span>
               <span style={{ textAlign: 'right' }}>Acciones</span>
             </div>
@@ -236,13 +234,13 @@ const HistorialPage: React.FC = () => {
                   key={row.año}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '70px 110px 90px 1fr 1fr 1fr 100px',
+                    gridTemplateColumns: '70px 110px 90px 1fr 100px',
                     columnGap: 8,
                     padding: '10px 16px',
                     alignItems: 'center',
                     borderBottom: '1px solid var(--n-100)',
                     fontSize: 'var(--t-sm, 13px)',
-                    minWidth: 700,
+                    minWidth: 500,
                   }}
                 >
                   {/* Año */}
@@ -271,16 +269,6 @@ const HistorialPage: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}>
                     {row.fuente}
-                  </span>
-
-                  {/* Cuota */}
-                  <span style={{ textAlign: 'right', ...monoStyle, color: 'var(--n-700)' }}>
-                    {hasData ? fmtMoney(row.resumen!.cuotaIntegra) : '—'}
-                  </span>
-
-                  {/* Retenciones */}
-                  <span style={{ textAlign: 'right', ...monoStyle, color: 'var(--n-700)' }}>
-                    {hasData ? fmtMoney(row.resumen!.retenciones) : '—'}
                   </span>
 
                   {/* Resultado */}

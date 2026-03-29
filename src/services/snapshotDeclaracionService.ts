@@ -84,12 +84,26 @@ async function computeSha256(payload: unknown): Promise<string> {
 }
 
 function buildCasillasAEAT(snapshot: SnapshotDeclaracion['datos']): Record<string, number> {
+  const baseLiquidableGeneral = Math.max(0, (snapshot.baseGeneral.total ?? 0) - (snapshot.reducciones?.total ?? 0));
+  const cuotaIntegra = snapshot.liquidacion.cuotaIntegra ?? 0;
+  // Approximate estatal/autonómica split as 50/50 for ATLAS-computed snapshots
+  const cuotaIntegraEstatal = Math.round(cuotaIntegra * 50) / 100;
+  const cuotaIntegraAutonomica = Math.round((cuotaIntegra - cuotaIntegraEstatal) * 100) / 100;
+  const cuotaLiquida = snapshot.liquidacion.cuotaLiquida ?? 0;
+  const cuotaLiquidaEstatal = Math.round(cuotaLiquida * 50) / 100;
+  const cuotaLiquidaAutonomica = Math.round((cuotaLiquida - cuotaLiquidaEstatal) * 100) / 100;
   return {
     '0435': snapshot.baseGeneral.total ?? 0,
     '0460': snapshot.baseAhorro.total ?? 0,
     '0500': snapshot.minimosPersonales.total ?? 0,
-    '0560': snapshot.liquidacion.cuotaIntegra ?? 0,
-    '0595': snapshot.liquidacion.cuotaLiquida ?? 0,
+    '0505': baseLiquidableGeneral,
+    '0510': snapshot.baseAhorro.total ?? 0,
+    '0545': cuotaIntegraEstatal,
+    '0546': cuotaIntegraAutonomica,
+    '0560': cuotaIntegra,
+    '0570': cuotaLiquidaEstatal,
+    '0571': cuotaLiquidaAutonomica,
+    '0595': cuotaLiquida,
     '0670': snapshot.liquidacion.deduccionesDobleImposicion ?? 0,
   };
 }

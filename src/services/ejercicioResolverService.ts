@@ -418,11 +418,13 @@ async function propagarArrastres(añoOrigen: number): Promise<void> {
 
 function extraerResumenDeCasillas(casillas: Record<string, number>): ResumenFiscal {
   return {
-    baseImponibleGeneral: casillas['0435'] || 0,
-    baseImponibleAhorro: casillas['0460'] || 0,
-    cuotaIntegra: casillas['0545'] || 0,
-    retenciones: casillas['0596'] || 0,
-    resultado: casillas['0670'] || 0
+    baseLiquidableGeneral: casillas['0505'] || casillas['0500'] || 0,
+    baseLiquidableAhorro: casillas['0510'] || 0,
+    cuotaIntegraEstatal: casillas['0545'] || 0,
+    cuotaIntegraAutonomica: casillas['0546'] || 0,
+    cuotaLiquidaEstatal: casillas['0570'] || 0,
+    cuotaLiquidaAutonomica: casillas['0571'] || 0,
+    resultado: casillas['0695'] || casillas['0670'] || 0,
   };
 }
 

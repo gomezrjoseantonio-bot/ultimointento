@@ -11,6 +11,7 @@ import {
   getTodosLosEjercicios,
   getDeclaracion,
 } from '../../../../services/ejercicioResolverService';
+import type { ResumenFiscal } from '../../../../services/ejercicioResolverService';
 import type { DeclaracionIRPF } from '../../../../services/irpfCalculationService';
 import type { InmuebleDetalleData } from '../../../../components/fiscal/InmuebleDetalle';
 import type { SeccionRendimientoProps } from '../../../../components/fiscal/SeccionRendimiento';
@@ -88,6 +89,7 @@ const MiIRPFPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [allYears, setAllYears] = useState<number[]>([]);
   const [resolverFuente, setResolverFuente] = useState<string>('ninguno');
+  const [resolverResumen, setResolverResumen] = useState<ResumenFiscal | null>(null);
   const [hasPDF, setHasPDF] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showImportWizard, setShowImportWizard] = useState(false);
@@ -119,6 +121,7 @@ const MiIRPFPage: React.FC = () => {
         const decl = await getDeclaracion(selectedYear);
         if (cancelled) return;
         setResolverFuente(decl.fuente);
+        setResolverResumen(decl.resumen);
         // Check if PDF exists for year
         const db = await initDB();
         const docs = await db.getAll('documents');
@@ -458,11 +461,13 @@ const MiIRPFPage: React.FC = () => {
           <>
             {/* ── Resumen ── */}
             <ResumenDeclaracion
-              resultado={declaracion?.resultado ?? null}
-              baseGeneral={declaracion?.liquidacion.baseImponibleGeneral ?? null}
-              baseAhorro={declaracion?.liquidacion.baseImponibleAhorro ?? null}
-              cuotaIntegra={declaracion?.liquidacion.cuotaIntegra ?? null}
-              retenciones={declaracion?.retenciones.total ?? null}
+              resultado={resolverResumen?.resultado ?? declaracion?.resultado ?? null}
+              baseLiquidableGeneral={resolverResumen?.baseLiquidableGeneral ?? (declaracion ? Math.max(0, declaracion.liquidacion.baseImponibleGeneral - (declaracion.reducciones?.total ?? 0)) : null)}
+              baseLiquidableAhorro={resolverResumen?.baseLiquidableAhorro ?? declaracion?.liquidacion.baseImponibleAhorro ?? null}
+              cuotaIntegraEstatal={resolverResumen?.cuotaIntegraEstatal ?? declaracion?.liquidacion.cuotaBaseGeneral ?? null}
+              cuotaIntegraAutonomica={resolverResumen?.cuotaIntegraAutonomica ?? declaracion?.liquidacion.cuotaBaseAhorro ?? null}
+              cuotaLiquidaEstatal={resolverResumen?.cuotaLiquidaEstatal ?? declaracion?.liquidacion.cuotaBaseGeneral ?? null}
+              cuotaLiquidaAutonomica={resolverResumen?.cuotaLiquidaAutonomica ?? declaracion?.liquidacion.cuotaBaseAhorro ?? null}
             />
 
             {/* ── Completeness bar (only for pendiente + parcial) ── */}
