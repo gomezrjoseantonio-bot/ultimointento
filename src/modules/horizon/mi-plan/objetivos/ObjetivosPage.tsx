@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { BarChart3, Home, Landmark, Target, Wallet, X, type LucideIcon } from 'lucide-react';
-import PageLayout from '../../../../components/common/PageLayout';
+import { BarChart3, Home, Landmark, Settings, Target, Wallet, X, type LucideIcon } from 'lucide-react';
+import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import {
   getObjetivos,
   ObjetivosFinancieros,
@@ -403,54 +403,40 @@ const ObjetivosPage: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout
-        title="Mi Plan"
-        subtitle="Seguimiento de tus metas financieras con datos reales de ATLAS."
-      >
-        <div className={styles.page}>
-          <div className={`atlas-card ${styles.loading}`}>Cargando objetivos financieros...</div>
+      <div>
+        <PageHeader icon={Target} title="Mi Plan" subtitle="Seguimiento de objetivos" />
+        <div className="p-6">
+          <div className={styles.page}>
+            <div className={`atlas-card ${styles.loading}`}>Cargando objetivos financieros...</div>
+          </div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   if (!obj) {
     return (
-      <PageLayout
-        title="Mi Plan"
-        subtitle="Seguimiento de tus metas financieras con datos reales de ATLAS."
-      >
-        <div className={styles.page}>
-          <div className="atlas-card">No se pudieron cargar los objetivos.</div>
+      <div>
+        <PageHeader icon={Target} title="Mi Plan" subtitle="Seguimiento de objetivos" />
+        <div className="p-6">
+          <div className={styles.page}>
+            <div className="atlas-card">No se pudieron cargar los objetivos.</div>
+          </div>
         </div>
-      </PageLayout>
+      </div>
     );
   }
 
   return (
-    <PageLayout
-      title="Mi Plan"
-      subtitle="Seguimiento de tus metas financieras con datos reales de ATLAS."
-    >
+    <div>
+      <PageHeader
+        icon={Target}
+        title="Mi Plan"
+        subtitle="Seguimiento de objetivos"
+        actions={<HeaderSecondaryButton icon={Settings} label="Editar objetivos" onClick={() => setEditOpen(true)} />}
+      />
+      <div className="p-6">
       <div className={styles.page}>
-        <div className={styles.pageHeader}>
-          <div>
-            <p className={styles.pageHeaderSub}>
-              Actualizado {new Date().toLocaleDateString('es-ES', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </p>
-          </div>
-          <button
-            type="button"
-            className={styles.editButton}
-            onClick={() => setEditOpen(true)}
-          >
-            Editar objetivos
-          </button>
-        </div>
 
         <div className={styles.cardsGrid}>
           <ObjectiveCard
@@ -548,7 +534,8 @@ const ObjetivosPage: React.FC = () => {
           />
         )}
       </div>
-    </PageLayout>
+      </div>
+    </div>
   );
 };
 

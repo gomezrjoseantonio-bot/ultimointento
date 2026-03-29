@@ -1,5 +1,7 @@
 import React from 'react';
+import { Scale } from 'lucide-react';
 import SubTabs from '../../../../components/common/SubTabs';
+import PageHeader from '../../../../components/shared/PageHeader';
 
 interface FiscalPageShellProps {
   children: React.ReactNode;
@@ -8,6 +10,10 @@ interface FiscalPageShellProps {
 const FiscalPageShell: React.FC<FiscalPageShellProps> = ({ children }) => {
   return (
     <div style={{ background: 'var(--white)', minHeight: '100%' }}>
+      <PageHeader
+        icon={Scale}
+        title="Impuestos"
+      />
       <SubTabs />
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 56px' }}>
         {children}

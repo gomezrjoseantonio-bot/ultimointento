@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart3, Building2, Download, FileText, Receipt, TrendingUp, Wallet, CreditCard } from 'lucide-react';
-import PageHeader from '../../../components/common/PageHeader';
+import PageHeader from '../../../components/shared/PageHeader';
 import styles from './InformesPage.module.css';
 import { informesDataService } from '../../../services/informesDataService';
 import { generateDashboard } from './generators/generateDashboard';
@@ -179,8 +179,8 @@ const InformesPage: React.FC = () => {
   return (
     <div className={styles.page}>
       <PageHeader
-        title="Informes"
         icon={FileText}
+        title="Informes"
       />
 
       <div style={{ padding: '16px 24px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
