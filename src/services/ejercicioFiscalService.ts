@@ -103,6 +103,7 @@ function toDomain(record?: DbEjercicioFiscal): EjercicioFiscal | undefined {
     declaracionAeatFecha: record.declaracionAeatFecha,
     declaracionAeatPdfRef: record.declaracionAeatPdfRef,
     declaracionAeatOrigen: record.declaracionAeatOrigen ?? 'no_presentada',
+    casillasRaw: record.casillasRaw ? clone(record.casillasRaw) : undefined,
     arrastresRecibidos: normalizeArrastres(record.arrastresRecibidos),
     arrastresGenerados: normalizeArrastres(record.arrastresGenerados),
     createdAt: record.createdAt,
@@ -125,6 +126,7 @@ function toDbRecord(ejercicio: EjercicioFiscal, existing?: DbEjercicioFiscal): D
     declaracionAeatFecha: ejercicio.declaracionAeatFecha,
     declaracionAeatPdfRef: ejercicio.declaracionAeatPdfRef,
     declaracionAeatOrigen: ejercicio.declaracionAeatOrigen,
+    casillasRaw: ejercicio.casillasRaw ? clone(ejercicio.casillasRaw) : undefined,
     arrastresRecibidos: normalizeArrastres(ejercicio.arrastresRecibidos),
     arrastresGenerados: normalizeArrastres(ejercicio.arrastresGenerados),
     declaracionInmuebles: ejercicio.declaracionAeat?.inmuebles ?? ejercicio.calculoAtlas?.inmuebles,
@@ -374,6 +376,7 @@ class EjercicioFiscalService {
     origen: OrigenDeclaracion,
     fechaPresentacion?: string,
     pdfRef?: string,
+    casillasRaw?: Record<string, number | string>,
   ): Promise<EjercicioFiscal> {
     const current = await this.getOrCreateEjercicio(ejercicio);
     const fecha = fechaPresentacion ?? nowIso();
@@ -384,6 +387,7 @@ class EjercicioFiscalService {
       declaracionAeatFecha: fecha,
       declaracionAeatPdfRef: pdfRef,
       declaracionAeatOrigen: origen,
+      casillasRaw: casillasRaw ? clone(casillasRaw) : current.casillasRaw,
       arrastresGenerados: extraerArrastresDeDeclaracion(datosAeat, ejercicio),
       cerradoAt: current.cerradoAt ?? fecha,
       declaradoAt: fecha,
@@ -650,9 +654,10 @@ export async function declararEjercicio(
   origen: OrigenDeclaracion = 'manual',
   fechaPresentacion?: string,
   pdfRef?: string,
+  casillasRaw?: Record<string, number | string>,
 ): Promise<DbEjercicioFiscal> {
   const datos = datosAeat ?? (await ejercicioFiscalService.getVerdadVigente(ejercicio)) ?? createEmptyDeclaracion();
-  return toLegacyView(await ejercicioFiscalService.declararEjercicio(ejercicio, datos, origen, fechaPresentacion, pdfRef));
+  return toLegacyView(await ejercicioFiscalService.declararEjercicio(ejercicio, datos, origen, fechaPresentacion, pdfRef, casillasRaw));
 }
 
 export async function guardarCalculoAtlas(ejercicio: number, calculo: DeclaracionIRPF): Promise<EjercicioFiscal> {
