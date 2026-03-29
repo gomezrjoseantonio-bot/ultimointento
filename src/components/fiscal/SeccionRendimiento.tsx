@@ -20,9 +20,14 @@ export interface SeccionRendimientoProps {
   defaultOpen?: boolean;
 }
 
-const fmt = (v: number) =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} €`;
+const fmt = (v: number) => {
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+const fmtSigned = (v: number) => {
+  if (!Number.isFinite(v)) return '—';
+  return `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} €`;
+};
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',

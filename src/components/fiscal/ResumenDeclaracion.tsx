@@ -10,10 +10,15 @@ interface ResumenDeclaracionProps {
   cuotaLiquidaAutonomica: number | null;
 }
 
-const fmt = (v: number) =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (v: number) => {
+  if (!Number.isFinite(v)) return '—';
+  return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
-const fmtMoney = (v: number) => `${fmt(Math.abs(v))} €`;
+const fmtMoney = (v: number) => {
+  if (!Number.isFinite(v)) return '—';
+  return `${fmt(Math.abs(v))} €`;
+};
 
 const monoStyle: React.CSSProperties = {
   fontFamily: 'IBM Plex Mono, monospace',
