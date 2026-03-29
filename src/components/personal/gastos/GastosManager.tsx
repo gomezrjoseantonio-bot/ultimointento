@@ -141,16 +141,21 @@ const GastosManager: React.FC = () => {
 
   const filtered = useMemo(() => activeTab === 'todas' ? gastos : gastos.filter((g) => g.categoria === activeTab), [gastos, activeTab]);
   const gastosActivos = useMemo(() => gastos.filter((g) => g.activo), [gastos]);
-  const totalMensual = useMemo(() => gastosActivos.reduce((sum, g) => sum + personalExpensesService.calcularImporteMensual(g), 0), [gastosActivos]);
+  // Only count expenses with importe > 0 in totals
+  const gastosConImporte = useMemo(() => gastosActivos.filter((g) => g.importe > 0), [gastosActivos]);
+  const totalMensual = useMemo(() => gastosConImporte.reduce((sum, g) => sum + personalExpensesService.calcularImporteMensual(g), 0), [gastosConImporte]);
 
   const byCategory = useMemo(() => {
     const sums = new Map<PersonalExpenseCategory, number>();
-    for (const g of gastosActivos) {
+    // Only count expenses with importe > 0 in category breakdown
+    for (const g of gastosConImporte) {
       const prev = sums.get(g.categoria) ?? 0;
       sums.set(g.categoria, prev + personalExpensesService.calcularImporteMensual(g));
     }
-    return Array.from(sums.entries()).sort((a, b) => b[1] - a[1]);
-  }, [gastosActivos]);
+    return Array.from(sums.entries())
+      .filter(([, amount]) => amount > 0)
+      .sort((a, b) => b[1] - a[1]);
+  }, [gastosConImporte]);
 
   const majorCategory = byCategory[0];
 
@@ -198,22 +203,23 @@ const GastosManager: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 14, marginBottom: 16 }}>
         <div style={{ border: `1px solid ${N300}`, borderLeft: '4px solid #C1121F', borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>GASTO MENSUAL ESTIMADO</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#C1121F', fontWeight: 700, fontFamily: MONO }}>{totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</p>
-          <p style={{ margin: '6px 0 0', color: N500 }}>{gastosActivos.length} gastos activos</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#C1121F', fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
+          <p style={{ margin: '6px 0 0', color: N500 }}>{gastosConImporte.length} gastos con importe</p>
         </div>
         <div style={{ border: `1px solid ${N300}`, borderLeft: `4px solid ${BLUE}`, borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>GASTO ANUAL ESTIMADO</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: BLUE, fontWeight: 700, fontFamily: MONO }}>{(totalMensual * 12).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: BLUE, fontWeight: 700, fontFamily: MONO }}>{totalMensual > 0 ? `${(totalMensual * 12).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €` : '—'}</p>
           <p style={{ margin: '6px 0 0', color: N500 }}>Proyección 12 meses</p>
         </div>
         <div style={{ border: `1px solid ${N300}`, borderLeft: '4px solid #5EA3D6', borderRadius: 14, padding: 16, background: '#fff' }}>
           <p style={{ margin: 0, fontSize: 13, color: N500, fontWeight: 600, letterSpacing: 1 }}>MAYOR CATEGORÍA</p>
-          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#4E81B1', fontWeight: 700, fontFamily: MONO }}>{(majorCategory?.[1] ?? 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })} €</p>
-          <p style={{ margin: '6px 0 0', color: N500 }}>{majorCategory ? CATEGORIA_LABEL[majorCategory[0]] : 'Sin datos'}</p>
+          <p style={{ margin: '6px 0 0', fontSize: 18, color: '#4E81B1', fontWeight: 700, fontFamily: MONO }}>{majorCategory && majorCategory[1] > 0 ? `${majorCategory[1].toLocaleString('es-ES', { maximumFractionDigits: 0 })} €` : '—'}</p>
+          <p style={{ margin: '6px 0 0', color: N500 }}>{majorCategory && majorCategory[1] > 0 ? CATEGORIA_LABEL[majorCategory[0]] : 'Sin datos'}</p>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px minmax(0, 1fr)', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: byCategory.length > 0 ? '280px minmax(0, 1fr)' : '1fr', gap: 16 }}>
+        {byCategory.length > 0 && (
         <section style={{ border: `1px solid ${N300}`, borderRadius: 14, background: '#fff', padding: 14 }}>
           <h3 style={{ margin: '4px 0 12px', color: '#1E2B42' }}>Distribución</h3>
           <div style={{ width: 180, margin: '0 auto', position: 'relative' }}>
@@ -234,10 +240,11 @@ const GastosManager: React.FC = () => {
             })}
           </div>
         </section>
+        )}
 
         <section style={{ border: `1px solid ${N300}`, borderRadius: 14, background: '#fff' }}>
           <div style={{ padding: '16px 18px', borderBottom: `1px solid ${N300}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0 }}>{filtered.length} gastos · <span style={{ color: '#C1121F', fontFamily: MONO }}>{totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/mes</span></h3>
+            <h3 style={{ margin: 0 }}>{filtered.length} gastos · <span style={{ color: '#C1121F', fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/mes` : '—'}</span></h3>
           </div>
 
           <div style={{ padding: 14, display: 'flex', gap: 8, overflowX: 'auto' }}>
@@ -248,11 +255,20 @@ const GastosManager: React.FC = () => {
           </div>
 
           <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 360, background: SURFACE, borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}>
-            {!loading && filtered.length === 0 && (
+            {!loading && gastos.length === 0 && (
               <div style={{ border: `1.5px dashed ${N300}`, borderRadius: 12, padding: 28, textAlign: 'center', background: '#fff' }}>
                 <LayoutTemplate size={32} style={{ color: N300 }} />
-                <p style={{ color: N700 }}>No hay gastos registrados</p>
-                <button onClick={handleLoadTemplate} style={{ border: 'none', borderRadius: 10, background: BLUE, color: '#fff', padding: '10px 14px', cursor: 'pointer' }}>Cargar plantilla de gastos comunes</button>
+                <p style={{ color: N700, fontWeight: 500 }}>Sin gastos configurados</p>
+                <p style={{ color: N500, fontSize: 13, marginBottom: 12 }}>Añade tus gastos recurrentes para hacer seguimiento</p>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  <button onClick={() => { setEditingGasto(undefined); setDrawerOpen(true); }} style={{ border: 'none', borderRadius: 10, background: BLUE, color: '#fff', padding: '10px 14px', cursor: 'pointer' }}>Añadir gasto</button>
+                  <button onClick={handleLoadTemplate} style={{ border: `1px solid ${N300}`, borderRadius: 10, background: '#fff', color: N700, padding: '10px 14px', cursor: 'pointer' }}>Cargar plantilla</button>
+                </div>
+              </div>
+            )}
+            {!loading && gastos.length > 0 && filtered.length === 0 && (
+              <div style={{ border: `1.5px dashed ${N300}`, borderRadius: 12, padding: 28, textAlign: 'center', background: '#fff' }}>
+                <p style={{ color: N500 }}>No hay gastos en esta categoría</p>
               </div>
             )}
             {loading && <p style={{ color: N500 }}>Cargando...</p>}

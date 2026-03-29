@@ -15,6 +15,7 @@ import {
   Banknote,
   Coins,
   PiggyBank,
+  User,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/personal';
@@ -38,55 +39,6 @@ const fmt = (value: number) =>
 const pct = (value: number) =>
   `${new Intl.NumberFormat('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(value)} %`;
 
-// ─── Fallback / demo values (annual) ─────────────────────────────────────────
-
-const DEFAULT_ANNUAL_INCOME = 5403.41 * 12;
-const DEFAULT_ANNUAL_EXPENSES = 3150.0 * 12;
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_MONTHLY_DATA = [
-  { label: 'Ene', income: 5200, expenses: 3100 },
-  { label: 'Feb', income: 5200, expenses: 3250 },
-  { label: 'Mar', income: 5403, expenses: 3150 },
-  { label: 'Abr', income: 5403, expenses: 3400 },
-  { label: 'May', income: 5403, expenses: 3050 },
-  { label: 'Jun', income: 6800, expenses: 3200 },
-  { label: 'Jul', income: 5403, expenses: 3600 },
-  { label: 'Ago', income: 5403, expenses: 3800 },
-  { label: 'Sep', income: 5403, expenses: 3100 },
-  { label: 'Oct', income: 5403, expenses: 3050 },
-  { label: 'Nov', income: 5403, expenses: 3300 },
-  { label: 'Dic', income: 6800, expenses: 3900 },
-];
-
-// Annual amounts (monthly × 12)
-const MOCK_EXPENSE_CATEGORIES = [
-  { label: 'Vivienda', amount: 950 * 12, color: 'var(--hz-primary)', icon: Home },
-  { label: 'Alimentación', amount: 650 * 12, color: 'var(--hz-primary-600, #2563EB)', icon: Utensils },
-  { label: 'Transporte', amount: 280 * 12, color: 'var(--hz-info, #3B82F6)', icon: Car },
-  { label: 'Seguros', amount: 180 * 12, color: 'var(--hz-neutral-500)', icon: Shield },
-  { label: 'Suscripciones', amount: 120 * 12, color: 'var(--hz-neutral-400)', icon: Receipt },
-  { label: 'Salud', amount: 110 * 12, color: 'var(--hz-info, #3B82F6)', icon: HeartPulse },
-  { label: 'Educación', amount: 90 * 12, color: 'var(--hz-neutral-500)', icon: GraduationCap },
-  { label: 'Otros', amount: 770 * 12, color: 'var(--hz-neutral-400)', icon: Receipt },
-];
-
-const MOCK_INCOME_SOURCES = [
-  { label: 'Nómina 1', amount: 2800.0 * 12 },
-  { label: 'Nómina 2', amount: 1503.41 * 12 },
-  { label: 'Autónomos', amount: 900.0 * 12 },
-  { label: 'Otros Ingresos', amount: 200.0 * 12 },
-];
-
-
-const getIncomeSourceIcon = (label: string): React.ElementType => {
-  if (label.toLowerCase().includes('nómina')) return Banknote;
-  if (label.toLowerCase().includes('autónom')) return Briefcase;
-  if (label.toLowerCase().includes('pensión')) return PiggyBank;
-  return Coins;
-};
-
 // ─── Category config for expense breakdown ────────────────────────────────────
 
 const MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -104,17 +56,24 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: Luci
   otros:         { label: 'Otros',         color: 'var(--hz-neutral-400)', icon: Receipt },
 };
 
+const getIncomeSourceIcon = (label: string): React.ElementType => {
+  if (label.toLowerCase().includes('nómina')) return Banknote;
+  if (label.toLowerCase().includes('autónom')) return Briefcase;
+  if (label.toLowerCase().includes('pensión') || label.toLowerCase().includes('pension')) return PiggyBank;
+  return Coins;
+};
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface KpiCardProps {
   title: string;
-  amount: number;
+  value: string;
   icon: React.ElementType;
   accent?: 'navy' | 'positive' | 'default' | 'danger';
   sub?: React.ReactNode;
 }
 
-const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = 'default', sub }) => {
+const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon: Icon, accent = 'default', sub }) => {
   const amountClass =
     accent === 'navy'
       ? 'text-blue-900'
@@ -141,7 +100,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, amount, icon: Icon, accent = '
           <Icon className={`w-4 h-4 ${accent === 'navy' ? 'text-blue-900' : accent === 'positive' ? 'text-gray-900' : accent === 'danger' ? 'text-gray-700' : 'text-gray-400'}`} />
         </div>
       </div>
-      <p className={`text-3xl font-bold tracking-tight ${amountClass}`}>{fmt(amount)}</p>
+      <p className={`text-3xl font-bold tracking-tight ${amountClass}`}>{value}</p>
       {sub && <div className="text-sm text-gray-500">{sub}</div>}
     </div>
   );
@@ -183,8 +142,8 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
       <div className="flex items-end gap-1.5" style={{ height: 160 }}>
         {data.map(({ label, income, personalExpenses, loanExpenses }, idx) => {
           const totalExpenses = personalExpenses + loanExpenses;
-          const incomeH = Math.round((income / maxValue) * 140);
-          const expensesH = Math.round((totalExpenses / maxValue) * 140);
+          const incomeH = maxValue > 0 ? Math.round((income / maxValue) * 140) : 0;
+          const expensesH = maxValue > 0 ? Math.round((totalExpenses / maxValue) * 140) : 0;
           const selected = selectedMonth === idx;
           return (
             <button
@@ -196,7 +155,6 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
               <div className="w-full flex items-end justify-center gap-0.5" style={{ height: 148 }}>
                 <div
                   className="w-[45%] rounded-t-sm transition-all"
-                  
                   style={{ height: incomeH, backgroundColor: "var(--hz-primary)" }}
                   title={`Ingresos: ${fmt(income)}`}
                 />
@@ -237,8 +195,15 @@ const CashFlowChart: React.FC<CashFlowChartProps> = ({ data }) => {
   );
 };
 
+interface ExpenseCategoryItem {
+  label: string;
+  amount: number;
+  color: string;
+  icon: LucideIcon;
+}
+
 interface ExpenseBreakdownProps {
-  categories: typeof MOCK_EXPENSE_CATEGORIES;
+  categories: ExpenseCategoryItem[];
   incomeTotal: number;
   annualLoanCost: number;
 }
@@ -327,8 +292,13 @@ const ExpenseBreakdown: React.FC<ExpenseBreakdownProps> = ({ categories, incomeT
   );
 };
 
+interface IncomeSourceItem {
+  label: string;
+  amount: number;
+}
+
 interface IncomeSourcesProps {
-  sources: typeof MOCK_INCOME_SOURCES;
+  sources: IncomeSourceItem[];
   total: number;
 }
 
@@ -375,6 +345,43 @@ const IncomeSources: React.FC<IncomeSourcesProps> = ({ sources, total }) => {
   );
 };
 
+// ─── Empty state components ──────────────────────────────────────────────────
+
+const EmptyStateNoProfile: React.FC<{ onConfigure: () => void }> = ({ onConfigure }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-4">
+    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+      <User className="w-8 h-8 text-gray-300" />
+    </div>
+    <h3 className="text-lg font-semibold text-gray-700 mb-2">Configura tu perfil personal</h3>
+    <p className="text-sm text-gray-500 text-center max-w-md mb-6">
+      Define tu situación laboral, vivienda y familia para personalizar ATLAS
+    </p>
+    <button
+      onClick={onConfigure}
+      className="px-5 py-2.5 bg-blue-900 text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors"
+    >
+      Configurar perfil
+    </button>
+  </div>
+);
+
+const EmptyStateNoData: React.FC = () => (
+  <div className="space-y-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <KpiCard title="Ingresos Anuales" value="—" icon={TrendingUp} accent="navy" />
+      <KpiCard title="Gastos" value="—" icon={TrendingDown} accent="default" />
+      <KpiCard title="Gastos préstamos" value="—" icon={TrendingDown} accent="danger" />
+      <KpiCard title="Cashflow anual" value="—" icon={Wallet} accent="default" />
+    </div>
+    <div className="bg-white border border-gray-200 rounded-3xl p-8 text-center">
+      <h3 className="text-base font-semibold text-gray-700 mb-2">Añade tus ingresos y gastos</h3>
+      <p className="text-sm text-gray-500">
+        Ve a las pestañas Ingresos y Gastos para empezar a registrar tus finanzas personales
+      </p>
+    </div>
+  </div>
+);
+
 // ─── Monthly row helpers (personal figures only) ──────────────────────────────
 
 /** Net personal income for a single month (rental income excluded; autonomous shown net of business expenses). */
@@ -393,6 +400,8 @@ const monthPersonalExpenses = (m: MonthlyProjectionRow): number =>
 interface PersonalResumenViewProps {
   resumen: ResumenPersonalMensual | null;
   config: PersonalModuleConfig | null;
+  hasProfile: boolean;
+  onConfigure?: () => void;
   gastosTabLabel?: string;
 }
 
@@ -409,12 +418,13 @@ interface AutonomoMonthlyData {
   neto: number;
 }
 
-const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gastosTabLabel }) => {
+const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, hasProfile, onConfigure, gastosTabLabel }) => {
   const [proyeccion, setProyeccion] = useState<ProyeccionAnual | null>(null);
-  const [expenseCategories, setExpenseCategories] = useState<typeof MOCK_EXPENSE_CATEGORIES | null>(null);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategoryItem[] | null>(null);
   const [autonomoAnual, setAutonomoAnual] = useState<AutonomoAnnualData | null>(null);
   const [autonomoMensual, setAutonomoMensual] = useState<AutonomoMonthlyData[] | null>(null);
   const [annualLoanCost, setAnnualLoanCost] = useState(0);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     const currentYear = new Date().getFullYear();
@@ -493,6 +503,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
           }
         }
 
+        // Only include categories with amount > 0
         const categories = Object.entries(categoryTotals)
           .filter(([, amount]) => amount > 0)
           .sort((a, b) => b[1] - a[1])
@@ -503,42 +514,48 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
             icon: CATEGORY_CONFIG[key]?.icon ?? Receipt,
           }));
 
-        if (categories.length > 0) setExpenseCategories(categories);
+        setExpenseCategories(categories.length > 0 ? categories : []);
       } catch (err) {
         console.error('[PersonalResumenView] Failed to load expense categories:', err);
+        setExpenseCategories([]);
+      } finally {
+        setDataLoaded(true);
       }
     }
     loadExpenseCategories();
   }, []);
 
+  // ── State 1: No profile configured ──
+  if (!hasProfile) {
+    return <EmptyStateNoProfile onConfigure={onConfigure ?? (() => {})} />;
+  }
+
   // Annual totals — strictly personal (no rental income, no property OPEX)
-  // Autonomous net = serviciosFreelance - gastosAutonomo (business expenses already deducted)
-  /** True when the projection has actual autónomo income data (used to decide fallback path). */
   const proyeccionHasAutonomo = proyeccion
     ? proyeccion.months.some(m => m.ingresos.serviciosFreelance > 0)
     : false;
   const autonomoNetInProyeccion = proyeccion
     ? proyeccion.months.reduce((s, m) => s + m.ingresos.serviciosFreelance - m.gastos.gastosAutonomo, 0)
     : 0;
-  // Use directly-fetched autonomo net rendimiento when projection doesn't include autónomo income
   const autonomoNetAnual = proyeccionHasAutonomo
     ? autonomoNetInProyeccion
     : (autonomoAnual?.rendimientoNeto ?? 0);
 
-  // Annual gastosAutonomo — already netted in autonomo income; not added to expense categories
+  // Income: only real data, NO fallback
   const totalIncome = proyeccion
     ? proyeccion.months.reduce((s, m) => s + monthPersonalIncome(m), 0)
       + (!proyeccionHasAutonomo ? autonomoNetAnual : 0)
     : resumen && resumen.ingresos.total > 0
     ? (resumen.ingresos.nomina + resumen.ingresos.otros) * 12 + autonomoNetAnual
-    : DEFAULT_ANNUAL_INCOME;
+    : 0;
 
-  // Personal expenses (property OPEX excluded; gastosAutonomo already netted in income)
+  // Personal expenses: only real data, NO fallback
   const totalExpensesBase = proyeccion
     ? proyeccion.months.reduce((s, m) => s + monthPersonalExpenses(m), 0)
     : resumen && resumen.gastos.total > 0
     ? resumen.gastos.total * 12
-    : DEFAULT_ANNUAL_EXPENSES;
+    : 0;
+
   const annualLoanCostFromProyeccion = proyeccion
     ? proyeccion.months.reduce((s, m) => s + m.financiacion.cuotasPrestamos, 0)
     : annualLoanCost;
@@ -548,8 +565,17 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
   const netSavings = totalIncome - totalExpenses;
   const savingsRate = totalIncome > 0 ? (netSavings / totalIncome) * 100 : 0;
 
-  // Build annual income sources — no rental; autonomous shown as net (billing − business expenses)
-  const incomeSources = proyeccion
+  const hasAnyData = totalIncome > 0 || totalExpensesBase > 0 || annualLoanCostFromProyeccion > 0;
+
+  // ── State 2: Profile but no data ──
+  if (!hasAnyData && dataLoaded && (!expenseCategories || expenseCategories.length === 0)) {
+    return <EmptyStateNoData />;
+  }
+
+  // ── State 3: With real data ──
+
+  // Build annual income sources — no rental; autonomous shown as net
+  const incomeSources: IncomeSourceItem[] = proyeccion
     ? (() => {
         const totals = { nomina: 0, pensiones: 0, otros: 0 };
         for (const m of proyeccion.months) {
@@ -570,13 +596,13 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
         { label: 'Autónomos', amount: autonomoNetAnual },
         { label: 'Otros Ingresos', amount: resumen.ingresos.otros * 12 },
       ].filter(s => s.amount > 0)
-    : MOCK_INCOME_SOURCES;
+    : [];
 
-  // Expense categories: real data if loaded, else annualised mock.
-  // gastosAutonomo is already netted in autonomo income; not re-added here.
-  const expenseCatsToShow = expenseCategories ?? MOCK_EXPENSE_CATEGORIES;
+  // Expense categories: only real data (categories with amount > 0)
+  const expenseCatsToShow = (expenseCategories ?? []).filter(c => c.amount > 0);
+  const hasExpenseCategories = expenseCatsToShow.length > 0;
 
-  // Monthly cash-flow chart: real personal figures from projection, else mock
+  // Monthly cash-flow chart: only from projection or autonomo real data
   const cashFlowData = proyeccion
     ? proyeccion.months.map((m, i) => {
         const income = monthPersonalIncome(m)
@@ -586,13 +612,13 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
         const personalExpenses = monthPersonalExpenses(m);
         const loanExpenses = m.financiacion.cuotasPrestamos;
         return {
-        label: MONTH_LABELS[i],
-        income,
-        personalExpenses,
-        loanExpenses,
-        savings: income - personalExpenses - loanExpenses,
-      };
-    })
+          label: MONTH_LABELS[i],
+          income,
+          personalExpenses,
+          loanExpenses,
+          savings: income - personalExpenses - loanExpenses,
+        };
+      })
     : autonomoMensual
     ? MONTH_LABELS.map((label, i) => ({
         label,
@@ -601,13 +627,10 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
         loanExpenses: annualLoanCost / 12,
         savings: (autonomoMensual[i]?.neto ?? 0) - (annualLoanCost / 12),
       }))
-    : MOCK_MONTHLY_DATA.map(({ label, income, expenses }) => ({
-        label,
-        income,
-        personalExpenses: expenses,
-        loanExpenses: 0,
-        savings: income - expenses,
-      }));
+    : null;
+
+  // Check if cashflow has any actual data
+  const hasCashFlowData = cashFlowData && cashFlowData.some(d => d.income > 0 || d.personalExpenses > 0 || d.loanExpenses > 0);
 
   return (
     <div className="space-y-3">
@@ -615,57 +638,69 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, gast
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiCard
           title="Ingresos Anuales"
-          amount={totalIncome}
+          value={totalIncome > 0 ? fmt(totalIncome) : '—'}
           icon={TrendingUp}
           accent="navy"
           sub={
-            <span className="text-xs text-gray-400">
-              {incomeSources.length === 1 ? '1 fuente activa' : `${incomeSources.length} fuentes activas`}
-            </span>
+            totalIncome > 0 ? (
+              <span className="text-xs text-gray-400">
+                {incomeSources.length === 1 ? '1 fuente activa' : `${incomeSources.length} fuentes activas`}
+              </span>
+            ) : undefined
           }
         />
         <KpiCard
           title={gastosTabLabel ?? "Gastos"}
-          amount={totalExpensesBase}
+          value={totalExpensesBase > 0 ? fmt(totalExpensesBase) : '—'}
           icon={TrendingDown}
           accent="default"
           sub={
-            <span className="text-xs text-gray-400">
-              Datos de {gastosTabLabel ?? 'Gastos'}
-            </span>
+            totalExpensesBase > 0 ? (
+              <span className="text-xs text-gray-400">
+                Datos de {gastosTabLabel ?? 'Gastos'}
+              </span>
+            ) : undefined
           }
         />
         <KpiCard
           title="Gastos préstamos"
-          amount={annualLoanCostFromProyeccion}
+          value={annualLoanCostFromProyeccion > 0 ? fmt(annualLoanCostFromProyeccion) : '—'}
           icon={TrendingDown}
           accent="danger"
           sub={
-            <span className="text-xs text-gray-400">
-              Préstamos de ámbito PERSONAL
-            </span>
+            annualLoanCostFromProyeccion > 0 ? (
+              <span className="text-xs text-gray-400">
+                Préstamos de ámbito PERSONAL
+              </span>
+            ) : undefined
           }
         />
         <KpiCard
           title="Cashflow anual"
-          amount={netSavings}
+          value={hasAnyData ? fmt(netSavings) : '—'}
           icon={Wallet}
-          accent={netSavings >= 0 ? 'positive' : 'danger'}
+          accent={hasAnyData ? (netSavings >= 0 ? 'positive' : 'danger') : 'default'}
           sub={
-            <span className={`font-semibold text-sm ${netSavings >= 0 ? 'text-gray-900' : 'text-gray-700'}`}>
-              Tasa de ahorro: {pct(savingsRate)}
-            </span>
+            hasAnyData ? (
+              <span className={`font-semibold text-sm ${netSavings >= 0 ? 'text-gray-900' : 'text-gray-700'}`}>
+                Tasa de ahorro: {pct(savingsRate)}
+              </span>
+            ) : undefined
           }
         />
       </div>
 
-      {/* ── Middle Row: Cash Flow Visual ─────────────────────────────── */}
-      <CashFlowChart data={cashFlowData} />
+      {/* ── Middle Row: Cash Flow Visual (only if real data) ────────── */}
+      {hasCashFlowData && cashFlowData && <CashFlowChart data={cashFlowData} />}
 
       {/* ── Bottom Row: Expense Breakdown + Income Sources ─────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ExpenseBreakdown categories={expenseCatsToShow} incomeTotal={totalIncome} annualLoanCost={annualLoanCostFromProyeccion} />
-        <IncomeSources sources={incomeSources} total={totalIncome} />
+        {hasExpenseCategories && (
+          <ExpenseBreakdown categories={expenseCatsToShow} incomeTotal={totalIncome} annualLoanCost={annualLoanCostFromProyeccion} />
+        )}
+        {incomeSources.length > 0 && (
+          <IncomeSources sources={incomeSources} total={totalIncome} />
+        )}
       </div>
     </div>
   );
