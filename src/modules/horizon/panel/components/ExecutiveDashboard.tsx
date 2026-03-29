@@ -352,7 +352,7 @@ const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ data, flujos, o
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '10px 14px', borderRadius: 8,
                     background: vencido ? 'var(--s-neg-bg)' : 'var(--s-warn-bg)',
-                    border: `1px solid ${vencido ? 'rgba(185,28,28,.12)' : 'rgba(146,98,10,.12)'}`,
+                    border: `1px solid ${vencido ? 'rgba(48,58,76,.12)' : 'rgba(108,117,125,.12)'}`,
                     cursor: 'pointer',
                   }}
                 >
@@ -376,7 +376,7 @@ const ExecutiveDashboard: React.FC<ExecutiveDashboardProps> = ({ data, flujos, o
                     <span style={{
                       padding: '2px 7px', borderRadius: 4,
                       fontSize: 10, fontWeight: 700,
-                      background: vencido ? 'rgba(185,28,28,.10)' : 'rgba(146,98,10,.10)',
+                      background: vencido ? 'rgba(48,58,76,.10)' : 'rgba(108,117,125,.10)',
                       color: vencido ? 'var(--s-neg)' : 'var(--s-warn)',
                     }}>
                       {a.diasVencimiento > 0 ? `En ${a.diasVencimiento}d` : a.diasVencimiento < 0 ? `Hace ${Math.abs(a.diasVencimiento)}d` : 'Hoy'}

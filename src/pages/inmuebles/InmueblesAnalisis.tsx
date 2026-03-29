@@ -896,7 +896,7 @@ function TabEvolucion({ properties }: { properties: PropertySnapshot[] }) {
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} €`} />
               <Tooltip formatter={(v: number) => [`${v} €/mes`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
-              <Bar dataKey="cf" name="Cashflow neto €/mes" fill="rgba(26,122,60,.7)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="cf" name="Cashflow neto €/mes" fill="rgba(4,44,94,.7)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -1043,7 +1043,7 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
                 <XAxis dataKey="year" tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v / 1000}k`} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                <Bar dataKey="ing" name="Ingresos" fill="rgba(26,122,60,.7)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="ing" name="Ingresos" fill="rgba(4,44,94,.7)" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="gas" name="Gastos" fill="rgba(200,208,220,.8)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>

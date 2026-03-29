@@ -234,8 +234,8 @@ const RadarPanel: React.FC = () => {
       {/* Module Toggle */}
       <div className="flex gap-2">
         {[
-          { key: 'pulse' as const, label: 'Pulse' },
-          { key: 'horizon' as const, label: 'Horizon' },
+          { key: 'pulse' as const, label: 'Personal' },
+          { key: 'horizon' as const, label: 'Profesional' },
           { key: 'consolidado' as const, label: 'Consolidado' }
         ].map(module => (
           <button

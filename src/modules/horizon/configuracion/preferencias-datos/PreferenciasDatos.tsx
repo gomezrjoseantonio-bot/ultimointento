@@ -31,9 +31,9 @@ const PreferenciasDatos: React.FC = () => {
     }
   }, [location.hash]);
   
-  const subtitle = currentModule === 'horizon' 
-    ? 'Configuración de preferencias y datos del módulo Horizon.'
-    : 'Configuración de preferencias y datos del módulo Pulse.';
+  const subtitle = currentModule === 'horizon'
+    ? 'Configuración de preferencias y datos del módulo.'
+    : 'Configuración de preferencias y datos del módulo.';
 
   const handleExportSnapshot = async () => {
     setIsExporting(true);

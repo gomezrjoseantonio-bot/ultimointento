@@ -49,7 +49,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <span>Los dos módulos principales: Horizon y Pulse</span>
+                <span>Los dos módulos principales: Supervisión y Gestión</span>
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
@@ -66,7 +66,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
     },
     {
       id: 'horizon',
-      title: 'ATLAS Horizon - Supervisión Financiera',
+      title: 'ATLAS — Supervisión Financiera',
       description: 'Vista ejecutiva para inversores y gestores de alto nivel',
       icon: Sunrise,
       content: (
@@ -74,7 +74,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
           <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg p-6 border border-primary-200">
             <div className="flex items-center gap-3 mb-3">
               <Sunrise className="w-8 h-8 text-atlas-blue" />
-              <h3 className="text-xl font-bold text-white">Horizon</h3>
+              <h3 className="text-xl font-bold text-white">Supervisión</h3>
             </div>
             <p className="text-gray-700 mb-4">
               Módulo de supervisión financiera con KPIs y métricas clave para inversores.
@@ -107,7 +107,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
     },
     {
       id: 'pulse',
-      title: 'ATLAS Pulse - Gestión Operativa',
+      title: 'ATLAS — Gestión Operativa',
       description: 'Herramientas para tareas administrativas y flujos de trabajo diarios',
       icon: Activity,
       content: (
@@ -115,7 +115,7 @@ const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ onComplete, onSkip 
           <div className="bg-gradient-to-r from-teal-900/20 to-teal-800/20 rounded-lg p-6 border border-teal-700/30">
             <div className="flex items-center gap-3 mb-3">
               <Activity className="w-8 h-8 text-teal-400" />
-              <h3 className="text-xl font-bold text-white">Pulse</h3>
+              <h3 className="text-xl font-bold text-white">Gestión</h3>
             </div>
             <p className="text-gray-700 mb-4">
               Módulo de gestión operativa diaria para el día a día de tu negocio inmobiliario.

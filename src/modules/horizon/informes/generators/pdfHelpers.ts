@@ -47,7 +47,7 @@ export function drawHeader(doc: jsPDF, titulo: string, subtitulo: string, pagina
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...COLOR.white);
-  doc.text('ATLAS Horizon', 34, 11);
+  doc.text('ATLAS', 34, 11);
 
   doc.setFontSize(13);
   doc.text(titulo, 14, 32);
@@ -67,7 +67,7 @@ export function drawFooter(doc: jsPDF): void {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...COLOR.white);
-  doc.text('ATLAS Horizon - Uso confidencial', 14, height - 5.5);
+  doc.text('ATLAS - Uso confidencial', 14, height - 5.5);
   doc.text('atlas.app/horizon', width - 14, height - 5.5, { align: 'right' });
 }
 

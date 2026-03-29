@@ -10,11 +10,11 @@ const ModulePanel: React.FC<ModulePanelProps> = ({ module }) => {
   const config = {
     horizon: {
       title: "Panel",
-      subtitle: "Vista general del módulo Horizon con resumen de inversiones."
+      subtitle: "Vista general del módulo con resumen de inversiones."
     },
     pulse: {
       title: "Panel", 
-      subtitle: "Vista general del módulo Pulse con resumen de finanzas personales."
+      subtitle: "Vista general del módulo con resumen de finanzas personales."
     }
   };
   

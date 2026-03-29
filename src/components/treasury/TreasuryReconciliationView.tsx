@@ -765,7 +765,7 @@ const TreasuryReconciliationView: React.FC = () => {
       {/* ══ TOPBAR ══ */}
       <div className="tv3-topbar">
         <div className="tv3-topbar-left">
-          <div className="tv3-page-icon"><Landmark size={18} /></div>
+          <div className="tv3-page-icon"><Landmark size={20} /></div>
           <div>
             <div className="tv3-page-label">Tesorería</div>
             <div className="tv3-page-sub">Conciliación mensual</div>

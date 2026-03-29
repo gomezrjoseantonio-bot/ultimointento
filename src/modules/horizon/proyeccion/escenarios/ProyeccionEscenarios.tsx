@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { BarChart3, Calculator, LayoutDashboard, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 
 // Direct imports for internal navigation
@@ -14,26 +13,10 @@ const ProyeccionEscenarios: React.FC = () => {
   const [activeTab, setActiveTab] = useState<EscenarioTab>('gestion');
 
   const tabs = [
-    {
-      id: 'gestion' as const,
-      label: 'Gestión',
-      icon: LayoutDashboard,
-    },
-    {
-      id: 'base' as const,
-      label: 'Base',
-      icon: Calculator,
-    },
-    {
-      id: 'simulaciones' as const,
-      label: 'Simulaciones',
-      icon: TrendingUp,
-    },
-    {
-      id: 'comparativas' as const,
-      label: 'Comparativas',
-      icon: BarChart3,
-    }
+    { id: 'gestion' as const, label: 'Gestión' },
+    { id: 'base' as const, label: 'Base' },
+    { id: 'simulaciones' as const, label: 'Simulaciones' },
+    { id: 'comparativas' as const, label: 'Comparativas' },
   ];
 
   const renderTabContent = () => {
@@ -73,9 +56,8 @@ const ProyeccionEscenarios: React.FC = () => {
         <div className="border-b" style={{ borderColor: 'var(--n-200)' }}>
           <nav className="-mb-px flex space-x-8">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               return (
                 <button
                   key={tab.id}
@@ -86,11 +68,6 @@ const ProyeccionEscenarios: React.FC = () => {
                       : 'border-transparent text-[var(--n-500)] hover:text-[var(--n-700)] hover:border-[var(--n-200)]'
                   }`}
                 >
-                  <Icon 
-                    className={`mr-2 h-4 w-4 ${
-                      isActive ? 'text-[var(--blue)]' : 'text-[var(--n-500)] group-hover:text-[var(--n-700)]'
-                    }`} 
-                  />
                   {tab.label}
                 </button>
               );

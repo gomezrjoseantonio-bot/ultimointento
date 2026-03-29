@@ -126,7 +126,7 @@ Usuario: Sistema
 Versión: H9 Fiscalidad
 Formato: es-ES
 
-Este documento ha sido generado automáticamente por el sistema Atlas Horizon.
+Este documento ha sido generado automáticamente por el sistema ATLAS.
 Para mayor información, consulte los documentos fuente y extractos bancarios.
 `;
   };
@@ -294,7 +294,7 @@ Para mayor información, consulte los documentos fuente y extractos bancarios.
       metadata: {
         exerciseYear: year,
         generatedAt: new Date().toISOString(),
-        generatedBy: 'Atlas Horizon H9 Fiscalidad',
+        generatedBy: 'ATLAS H9 Fiscalidad',
         version: '2.0',
         format: 'es-ES',
         currency: 'EUR',

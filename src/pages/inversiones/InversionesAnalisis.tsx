@@ -839,24 +839,30 @@ export default function InversionesAnalisis() {
       <div style={{ padding: 24 }}>
         {/* Page header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 20 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 8, background: 'rgba(4,44,94,.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <TrendingUp size={20} color={C.blue} />
-          </div>
+          <TrendingUp size={20} color="#6C757D" style={{ flexShrink: 0, marginTop: 4 }} />
           <div>
             <div style={{ fontSize: 24, fontWeight: 700, color: C.n700, letterSpacing: '-.02em', lineHeight: 1 }}>Portfolio de inversiones</div>
             <div style={{ fontSize: 13, color: C.n500, marginTop: 3 }}>Análisis de rendimiento y evolución de tus posiciones financieras</div>
           </div>
         </div>
 
-        {/* Pill tabs */}
-        <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3, marginBottom: 20 }}>
+        {/* Underline tabs */}
+        <div style={{ display: 'flex', borderBottom: `1px solid ${C.n200}`, marginBottom: 20 }}>
           {TABS.map(t => {
-            const Icon = t.icon;
             const on = activeTab === t.id;
             return (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', fontSize: 13, fontWeight: on ? 600 : 500, color: on ? C.blue : C.n500, background: on ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: on ? '0 1px 3px rgba(4,44,94,.08)' : 'none', transition: 'all 150ms', fontFamily: 'inherit' }}>
-                <Icon size={14} />{t.label}
-              </button>
+              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+                padding: '10px 0',
+                marginRight: 32,
+                fontSize: 14,
+                fontWeight: on ? 500 : 400,
+                color: on ? '#1A2332' : '#6C757D',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: on ? '2px solid #042C5E' : '2px solid transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}>{t.label}</button>
             );
           })}
         </div>
