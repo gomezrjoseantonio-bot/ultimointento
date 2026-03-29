@@ -161,9 +161,9 @@ export const TECHNICAL_TERMS = {
   'ocr': 'Reconocimiento Óptico de Caracteres. Tecnología que extrae texto de documentos escaneados o fotografiados.',
   'fein': 'Federal Employer Identification Number. Número de identificación fiscal empresarial en USA.',
   
-  // Horizon Module Concepts (5)
-  'horizon': 'Módulo de supervisión financiera. Vista ejecutiva para inversores y gestores de alto nivel.',
-  'pulse': 'Módulo de gestión operativa diaria. Herramientas para tareas administrativas y documentación.',
+  // Module Concepts (5)
+  'supervisión': 'Módulo de supervisión financiera. Vista ejecutiva para inversores y gestores de alto nivel.',
+  'operativa': 'Módulo de gestión operativa diaria. Herramientas para tareas administrativas y documentación.',
   'dashboard': 'Panel principal que muestra KPIs y métricas clave de forma visual y resumida.',
   'kpi': 'Key Performance Indicator. Métrica principal para medir rendimiento (ej: ocupación, rentabilidad).',
   'proyección': 'Estimación de ingresos y gastos futuros basada en datos históricos y expectativas.',

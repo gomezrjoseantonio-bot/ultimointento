@@ -20,7 +20,7 @@ const N700 = '#303A4C';
 const N500 = '#6B7483';
 const N300 = '#C8D0DC';
 const SURFACE = '#F8FAFC';
-const S_NEG = '#B91C1C';
+const S_NEG = '#303A4C';
 const FONT = 'IBM Plex Sans, Inter, sans-serif';
 const MONO = 'IBM Plex Mono, monospace';
 

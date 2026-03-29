@@ -51,10 +51,10 @@ const C = {
   c3: '#1DA0BA',
   c4: '#A8C4DE',
   c5: '#C8D0DC',
-  pos: '#1A7A3C',
-  posBg: '#E8F5ED',
-  neg: '#B91C1C',
-  negBg: '#FEE9E9',
+  pos: '#042C5E',      // navy-900 (v4: sin semáforo)
+  posBg: '#E8EFF7',    // navy-100
+  neg: '#303A4C',      // grey-700
+  negBg: '#EEF1F5',    // grey-100
   n700: '#303A4C',
   n500: '#6C757D',
   n300: '#C8D0DC',

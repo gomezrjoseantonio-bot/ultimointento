@@ -3,25 +3,6 @@
    Design Guide v3 — tokens, semántica y tipografía
    ═══════════════════════════════════════════════════════════════ */
 
-:root {
-  --blue:      #042C5E;
-  --teal:      #1DA0BA;
-  --s-pos:     #1A7A3C;   --s-pos-bg: #E8F5ED;
-  --s-neg:     #B91C1C;   --s-neg-bg: #FEE9E9;
-  --s-warn:    #92620A;   --s-warn-bg: #FEF3DC;
-  --s-neu:     #374151;   --s-neu-bg: #F3F4F6;
-  --n-900:     #1A2332;
-  --n-700:     #303A4C;
-  --n-500:     #6C757D;
-  --n-300:     #C8D0DC;
-  --n-200:     #DDE3EC;
-  --n-100:     #EEF1F5;
-  --n-50:      #F8F9FA;
-  --white:     #FFFFFF;
-  --font:      'IBM Plex Sans', system-ui, sans-serif;
-  --mono:      'IBM Plex Mono', monospace;
-}
-
 /* ── BASE ── */
 .tv3-view {
   display: flex;
@@ -137,7 +118,7 @@
   background: #fefce8;
   border: 1px solid rgba(146, 98, 10, .2);
   border-radius: 10px;
-  color: var(--s-warn, #92620A);
+  color: var(--s-warn, #6C757D);
   font-size: 13px;
 }
 
@@ -680,8 +661,8 @@
 }
 .tv3-evt-icon--income  { background: var(--navy-100, #E8EFF7); color: var(--navy-900, #042C5E); }
 .tv3-evt-icon--expense { background: var(--n-100, #EEF1F5); color: var(--n-500, #6C757D); }
-.tv3-evt-icon--finance { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
-.tv3-evt-icon--financing { background: var(--s-warn-bg, #FEF3DC); color: var(--s-warn, #92620A); }
+.tv3-evt-icon--finance { background: var(--s-warn-bg, #EEF1F5); color: var(--s-warn, #6C757D); }
+.tv3-evt-icon--financing { background: var(--s-warn-bg, #EEF1F5); color: var(--s-warn, #6C757D); }
 
 /* Body */
 .tv3-event-body {
@@ -787,7 +768,7 @@
 }
 .tv3-estado--conf { background: var(--navy-100, #E8EFF7); color: var(--navy-900, #042C5E); }
 .tv3-estado--prev { background: var(--n-100, #f3f4f6); color: var(--n-500, #6b7280); }
-.tv3-estado--venc { background: #fef3c7; color: var(--s-warn, #92620A); }
+.tv3-estado--venc { background: #EEF1F5; color: var(--s-warn, #6C757D); }
 
 /* Kebab */
 .tv3-kebab {
