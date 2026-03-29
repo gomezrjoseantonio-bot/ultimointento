@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { FileText, Image, Edit3 } from 'lucide-react';
+import { FileText, Image, Edit3, Code2 } from 'lucide-react';
 import ImportarDeclaracionWizard from '../historico/ImportarDeclaracionWizard';
 import ImportarDatosFiscalesWizard from './ImportarDatosFiscalesWizard';
 
-type TipoImportacion = 'pdf' | 'capturas' | 'manual' | null;
+type TipoImportacion = 'xml' | 'pdf' | 'capturas' | 'manual' | null;
 
 interface Props {
   onClose: () => void;
@@ -42,6 +42,12 @@ const cardStyle: React.CSSProperties = {
 
 const cards: Array<{ tipo: TipoImportacion; icon: React.ReactNode; title: string; description: string }> = [
   {
+    tipo: 'xml',
+    icon: <Code2 size={24} color="var(--n-500)" />,
+    title: 'Declaración XML (AEAT)',
+    description: 'Archivo XML descargado de la sede electrónica de AEAT',
+  },
+  {
     tipo: 'pdf',
     icon: <FileText size={24} color="var(--n-500)" />,
     title: 'Declaración IRPF',
@@ -62,6 +68,7 @@ const cards: Array<{ tipo: TipoImportacion; icon: React.ReactNode; title: string
 ];
 
 const subtitles: Record<string, string> = {
+  xml: 'XML de la sede electrónica de AEAT',
   pdf: 'PDF del Modelo 100',
   capturas: 'Capturas de la web de Hacienda',
   manual: 'Introduce las casillas clave directamente',
@@ -122,6 +129,17 @@ const ImportarDatosWizard: React.FC<Props> = ({ onClose, onImported }) => {
               </button>
             ))}
           </div>
+        )}
+
+        {/* ── Sub-wizard: XML declaration ─────────────────── */}
+        {tipo === 'xml' && (
+          <ImportarDeclaracionWizard
+            embedded
+            defaultMethod="xml"
+            onClose={onClose}
+            onImported={onImported}
+            onBack={handleBack}
+          />
         )}
 
         {/* ── Sub-wizard: PDF declaration ─────────────────── */}

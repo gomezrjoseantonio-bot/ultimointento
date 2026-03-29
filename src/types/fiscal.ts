@@ -1,7 +1,7 @@
 // ═══ ESTADOS Y TIPOS BASE ═══
 
 export type EstadoEjercicio = 'en_curso' | 'cerrado' | 'declarado';
-export type OrigenDeclaracion = 'pdf_importado' | 'manual' | 'no_presentada';
+export type OrigenDeclaracion = 'pdf_importado' | 'xml_importado' | 'manual' | 'no_presentada';
 export type TipoDocumentoFiscal =
   | 'factura'
   | 'contrato'

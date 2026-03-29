@@ -28,8 +28,10 @@ import {
 import { importarDeclaracionManual } from '../../../../services/fiscalLifecycleService';
 import type { ReconciliacionCompleta } from '../../../../services/reconciliacionService';
 import { generarReconciliacion, requiereReconciliacion } from '../../../../services/reconciliacionService';
+import { parseDeclaracionXml, isAeatXml } from '../../../../services/aeatXmlParserService';
+import type { DeclaracionXmlResult } from '../../../../services/aeatXmlParserService';
 
-type MetodoEntrada = 'formulario' | 'pdf';
+type MetodoEntrada = 'formulario' | 'pdf' | 'xml';
 
 interface ImportarDeclaracionWizardProps {
   onClose: () => void;
@@ -325,7 +327,8 @@ const VerificacionExtraccion: React.FC<{
   onAbrirReconciliacion: () => void;
   avisoOrden?: string | null;
   analisis?: ResultadoAnalisis | null;
-}> = ({ resultado, avisoOrden, analisis }) => {
+  fuenteImportacion?: 'xml' | 'pdf';
+}> = ({ resultado, avisoOrden, analisis, fuenteImportacion }) => {
   const { declaracion, casillasRaw, inmueblesDetalle, arrastres } = resultado;
   const validacion = useMemo(
     () => validarDeclaracionExtraida(declaracion, casillasRaw),
@@ -345,8 +348,13 @@ const VerificacionExtraccion: React.FC<{
         padding: '1.5rem',
         background: 'white',
       }}>
-        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--hz-neutral-700)', marginBottom: '0.5rem' }}>
+        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--hz-neutral-700)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           Ejercicio {resultado.meta.ejercicio}
+          {fuenteImportacion === 'xml' && (
+            <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 6, color: '#0d9488', background: '#ccfbf1' }}>
+              XML AEAT
+            </span>
+          )}
         </div>
 
         {/* Big result number */}
@@ -613,6 +621,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
   const [reconciliacionPreview, setReconciliacionPreview] = useState<ReconciliacionCompleta | null>(null);
   const [generandoReconciliacion, setGenerandoReconciliacion] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [xmlResult, setXmlResult] = useState<DeclaracionXmlResult | null>(null);
   const [avisoOrden, setAvisoOrden] = useState<string | null>(null);
   const [showConflictReview, setShowConflictReview] = useState(false);
   const [conflictResolutions, setConflictResolutions] = useState<ConflictResolutions>({});
@@ -738,6 +747,226 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
     }
   };
 
+  const handleXmlFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFile(file);
+    setStep(2);
+    setResultadoExtraccion(null);
+    setResultadoAnalisis(null);
+    setReconciliacion(null);
+    setReconciliacionPreview(null);
+    setCasillasExtraidas([]);
+    setXmlResult(null);
+
+    try {
+      const text = await file.text();
+
+      if (!isAeatXml(text)) {
+        toast.error('El archivo no parece ser un XML de declaración AEAT (DeclaVisor).');
+        return;
+      }
+
+      const result = await parseDeclaracionXml(text);
+      setXmlResult(result);
+
+      const ejercicioDetectado = result.ejercicio > 0 ? result.ejercicio : ejercicio;
+      setEjercicio(ejercicioDetectado);
+
+      // Build casillasRaw and ExtraccionCompleta-compatible result
+      const casillasRaw: Record<string, number | string> = { ...result.casillas };
+      const normalizedCasillas = Object.entries(result.casillas)
+        .map(([numero, valor]) => ({
+          numero,
+          valor,
+          confianza: 'alta' as const,
+          lineaOriginal: '[XML AEAT]',
+        }))
+        .sort((a, b) => a.numero.localeCompare(b.numero));
+
+      setCasillasExtraidas(normalizedCasillas);
+
+      // Build a minimal ExtraccionCompleta from XML data
+      const extraccion: ExtraccionCompleta = {
+        exito: true,
+        errores: [],
+        warnings: [],
+        meta: {
+          ejercicio: ejercicioDetectado,
+          modelo: result.modelo,
+          nif: result.declarante.nif,
+          nombre: result.declarante.nombre,
+          fechaPresentacion: result.metadatos.fechaPresentacion,
+          numeroJustificante: result.metadatos.nroJustificante,
+          codigoVerificacion: result.metadatos.csv,
+          esRectificativa: false,
+        },
+        declaracion: {
+          personal: {
+            nif: result.declarante.nif,
+            nombre: result.declarante.nombre,
+            estadoCivil: result.declarante.estadoCivil === 1 ? 'soltero' : 'casado',
+            comunidadAutonoma: String(result.ccaa),
+            fechaNacimiento: result.declarante.fechaNacimiento,
+          },
+          trabajo: {
+            retribucionesDinerarias: result.casillas['0003'] || 0,
+            retribucionEspecie: result.casillas['0007'] || 0,
+            ingresosACuenta: result.casillas['0005'] || 0,
+            contribucionesPPEmpresa: 0,
+            totalIngresosIntegros: result.casillas['0008'] || 0,
+            cotizacionSS: result.casillas['0013'] || 0,
+            rendimientoNetoPrevio: result.casillas['0017'] || 0,
+            otrosGastosDeducibles: result.casillas['0019'] || 0,
+            rendimientoNeto: result.casillas['0022'] || 0,
+            rendimientoNetoReducido: result.casillas['0025'] || 0,
+            retencionesTrabajoTotal: result.casillas['0596'] || 0,
+          },
+          inmuebles: result.inmuebles.map((inm, idx) => ({
+            orden: idx + 1,
+            referenciaCatastral: inm.refCatastral,
+            direccion: inm.direccion,
+            porcentajePropiedad: inm.porcentajePropiedad,
+            uso: inm.usoDisposicion === 1 ? 'arrendamiento' as const : 'disposicion' as const,
+            esAccesorio: false,
+            derechoReduccion: false,
+            diasArrendado: 0,
+            diasDisposicion: inm.diasDisposicion,
+            rentaImputada: inm.rentaImputada,
+            ingresosIntegros: 0,
+            arrastresRecibidos: 0,
+            arrastresAplicados: 0,
+            interesesFinanciacion: 0,
+            gastosReparacion: 0,
+            gastos0105_0106Aplicados: 0,
+            arrastresGenerados: 0,
+            gastosComunidad: 0,
+            gastosServicios: 0,
+            gastosSuministros: 0,
+            gastosSeguros: 0,
+            gastosTributos: 0,
+            amortizacionMuebles: 0,
+            amortizacionInmueble: 0,
+            valorCatastral: inm.valorCatastral,
+            rendimientoNeto: 0,
+            reduccion: 0,
+            rendimientoNetoReducido: 0,
+          })),
+          actividades: [],
+          capitalMobiliario: {
+            interesesCuentas: result.casillas['0027'] || 0,
+            otrosRendimientos: result.casillas['0029'] || 0,
+            totalIngresosIntegros: result.casillas['0036'] || 0,
+            rendimientoNeto: result.casillas['0037'] || 0,
+            rendimientoNetoReducido: result.casillas['0041'] || 0,
+            retencionesCapital: result.casillas['0597'] || 0,
+          },
+          gananciasPerdidas: {
+            gananciasNoTransmision: result.casillas['0304'] || 0,
+            perdidasNoTransmision: 0,
+            saldoNetoGeneral: result.casillas['0420'] || 0,
+            gananciasTransmision: result.casillas['0316'] || 0,
+            perdidasTransmision: 0,
+            saldoNetoAhorro: 0,
+            compensacionPerdidasAnteriores: 0,
+            perdidasPendientes: [],
+          },
+          planPensiones: {
+            aportacionesTrabajador: result.reduccionesPrevisionSocial.aportacionesIndividuales,
+            contribucionesEmpresariales: result.reduccionesPrevisionSocial.contribucionesEmpresariales,
+            totalConDerecho: result.reduccionesPrevisionSocial.total,
+            reduccionAplicada: result.reduccionesPrevisionSocial.total,
+          },
+          basesYCuotas: {
+            baseImponibleGeneral: result.casillas['0435'] || 0,
+            baseImponibleAhorro: result.casillas['0460'] || 0,
+            baseLiquidableGeneral: result.casillas['0505'] || 0,
+            baseLiquidableAhorro: result.casillas['0510'] || 0,
+            cuotaIntegraEstatal: result.casillas['0545'] || 0,
+            cuotaIntegraAutonomica: result.casillas['0546'] || 0,
+            cuotaIntegra: (result.casillas['0545'] || 0) + (result.casillas['0546'] || 0),
+            cuotaLiquidaEstatal: result.casillas['0570'] || 0,
+            cuotaLiquidaAutonomica: result.casillas['0571'] || 0,
+            cuotaLiquida: (result.casillas['0570'] || 0) + (result.casillas['0571'] || 0),
+            cuotaResultante: result.casillas['0595'] || 0,
+            retencionesTotal: result.casillas['0609'] || 0,
+            cuotaDiferencial: result.casillas['0610'] || 0,
+            resultadoDeclaracion: result.casillas['0670'] || result.resultado,
+          },
+          rentasImputadas: {
+            sumaImputaciones: result.casillas['0155'] || 0,
+          },
+        },
+        casillasRaw,
+        inmueblesDetalle: result.inmuebles.map((inm, idx) => ({
+          datos: {
+            orden: idx + 1,
+            referenciaCatastral: inm.refCatastral,
+            direccion: inm.direccion,
+            porcentajePropiedad: inm.porcentajePropiedad,
+            uso: inm.usoDisposicion === 1 ? 'arrendamiento' as const : 'disposicion' as const,
+            esAccesorio: false,
+            derechoReduccion: false,
+            diasArrendado: 0,
+            diasDisposicion: inm.diasDisposicion,
+            rentaImputada: inm.rentaImputada,
+            ingresosIntegros: 0,
+            arrastresRecibidos: 0,
+            arrastresAplicados: 0,
+            interesesFinanciacion: 0,
+            gastosReparacion: 0,
+            gastos0105_0106Aplicados: 0,
+            arrastresGenerados: 0,
+            gastosComunidad: 0,
+            gastosServicios: 0,
+            gastosSuministros: 0,
+            gastosSeguros: 0,
+            gastosTributos: 0,
+            amortizacionMuebles: 0,
+            amortizacionInmueble: 0,
+            valorCatastral: inm.valorCatastral,
+            rendimientoNeto: 0,
+            reduccion: 0,
+            rendimientoNetoReducido: 0,
+          },
+          extras: {
+            situacion: String(inm.situacion),
+            urbana: inm.urbana,
+          },
+        })),
+        arrastres: {
+          gastos0105_0106: [],
+          perdidasAhorro: [],
+          gastosInmuebleDetalle: [],
+        },
+        paginasProcesadas: 0,
+        totalCasillas: Object.keys(result.casillas).length,
+      };
+
+      setResultadoExtraccion(extraccion);
+      setData((prev) => ({
+        ...prev,
+        ...mapearCasillasAImportacion(normalizedCasillas, ejercicioDetectado),
+        ejercicio: ejercicioDetectado,
+      }));
+
+      try {
+        const analisis = await analizarDeclaracionParaOnboarding(extraccion);
+        setResultadoAnalisis(analisis);
+      } catch (analysisError) {
+        console.warn('Error analizando entidades detectadas en la declaración XML:', analysisError);
+        setResultadoAnalisis(null);
+      }
+
+      toast.success(`XML importado: ${Object.keys(result.casillas).length} casillas extraídas`);
+      setStep(3);
+    } catch (error) {
+      console.error('Error procesando XML AEAT', error);
+      toast.error(error instanceof Error ? error.message : 'Error al procesar el XML');
+    }
+  };
+
   const handleConfirmarImportacion = async () => {
     // Check for conflicts first — show review step if needed and not yet reviewed
     if (
@@ -771,7 +1000,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         await declararEjercicio(
           ejercicioImportacion,
           declaracionSanitizada,
-          'pdf_importado',
+          metodo === 'xml' ? 'xml_importado' : 'pdf_importado',
           resultadoExtraccion.meta.fechaPresentacion,
           pdfRef,
           casillasRawSanitizado,
@@ -895,7 +1124,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
   useEffect(() => {
     let cancelled = false;
-    if (step !== 3 || !resultadoExtraccion?.exito || metodo !== 'pdf' || reconciliacionPreview || generandoReconciliacion) return undefined;
+    if (step !== 3 || !resultadoExtraccion?.exito || (metodo !== 'pdf' && metodo !== 'xml') || reconciliacionPreview || generandoReconciliacion) return undefined;
 
     setGenerandoReconciliacion(true);
     generarReconciliacion(resultadoExtraccion.declaracion, resultadoExtraccion.meta.ejercicio)
@@ -944,9 +1173,9 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
         {step === 1 ? 'Cancelar' : 'Atrás'}
       </button>
 
-      {step === 1 && metodo === 'pdf' ? (
+      {step === 1 && (metodo === 'pdf' || metodo === 'xml') ? (
         <div style={{ color: 'var(--hz-neutral-700)', display: 'flex', alignItems: 'center', fontSize: '0.95rem' }}>
-          Selecciona un PDF para comenzar.
+          {metodo === 'xml' ? 'Selecciona un XML para comenzar.' : 'Selecciona un PDF para comenzar.'}
         </div>
       ) : step < 3 ? (
         <button
@@ -1030,7 +1259,20 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
           <>
             {ejercicioSelectEmbedded}
 
-            {metodo === 'pdf' ? (
+            {metodo === 'xml' ? (
+              <label htmlFor="aeat-xml-input-embedded" style={embeddedDropzoneStyle}>
+                <input id="aeat-xml-input-embedded" type="file" accept=".xml" onChange={handleXmlFileUpload} style={{ display: 'none' }} />
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <Upload size={42} style={{ justifySelf: 'center', color: 'var(--n-300)' }} />
+                  <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-500)', margin: 0 }}>
+                    Arrastra el XML aquí o haz clic para seleccionar
+                  </p>
+                  <p style={{ fontSize: 'var(--t-xs, 0.75rem)', color: 'var(--n-400)', margin: 0 }}>
+                    DeclaVisor XML · Sede electrónica AEAT
+                  </p>
+                </div>
+              </label>
+            ) : metodo === 'pdf' ? (
               <label htmlFor="aeat-pdf-input-embedded" style={embeddedDropzoneStyle}>
                 <input id="aeat-pdf-input-embedded" type="file" accept=".pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -1066,7 +1308,14 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
         {step === 2 && (
           <>
-            {metodo === 'pdf' ? (
+            {metodo === 'xml' ? (
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent', margin: '0 auto 1.5rem' }} />
+                <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-700)', margin: '0 0 1rem' }}>
+                  Procesando XML de AEAT…
+                </p>
+              </div>
+            ) : metodo === 'pdf' ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent', margin: '0 auto 1.5rem' }} />
                 <p style={{ fontSize: 'var(--t-sm, 0.875rem)', color: 'var(--n-700)', margin: '0 0 1rem' }}>
@@ -1135,6 +1384,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                     onAbrirReconciliacion={() => setStep(4)}
                     avisoOrden={avisoOrden}
                     analisis={resultadoAnalisis}
+                    fuenteImportacion={metodo === 'xml' ? 'xml' : 'pdf'}
                   />
                 ) : (
                   <div style={{ padding: '1rem', borderRadius: 'var(--r-md, 10px)', border: '1px solid var(--n-200)' }}>
@@ -1184,7 +1434,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
 
         <div style={{ padding: '0 2rem 2rem', display: 'grid', gap: '1.5rem', background: '#FAFBFD' }}>
           <div style={stepEyebrowStyle}>
-            {step === 1 && 'PASO 1 — SUBIR PDF'}
+            {step === 1 && (metodo === 'xml' ? 'PASO 1 — SUBIR XML' : 'PASO 1 — SUBIR PDF')}
             {step === 2 && 'PASO 2 — PROCESANDO (AUTOMÁTICO)'}
             {(step === 3 || step === 4) && 'PASO 3 — CONFIRMAR E IMPORTAR'}
           </div>
@@ -1202,7 +1452,11 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 ))}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setMetodo('xml')} style={{ ...actionButtonStyle, borderColor: metodo === 'xml' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)', borderRadius: '999px', padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText size={18} style={{ color: 'var(--atlas-blue)' }} />
+                  <strong>XML AEAT</strong>
+                </button>
                 <button type="button" onClick={() => setMetodo('pdf')} style={{ ...actionButtonStyle, borderColor: metodo === 'pdf' ? 'var(--atlas-blue)' : 'var(--hz-neutral-300)', borderRadius: '999px', padding: '0.7rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Upload size={18} style={{ color: 'var(--atlas-blue)' }} />
                   <strong>PDF AEAT</strong>
@@ -1213,7 +1467,21 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                 </button>
               </div>
 
-              {metodo === 'pdf' ? (
+              {metodo === 'xml' ? (
+                <>
+                  <label htmlFor="aeat-xml-input" style={uploadDropzoneStyle}>
+                    <input id="aeat-xml-input" type="file" accept=".xml" onChange={handleXmlFileUpload} style={{ display: 'none' }} />
+                    <div style={{ display: 'grid', gap: '0.9rem' }}>
+                      <Upload size={42} style={{ justifySelf: 'center', color: '#C5D2E2' }} />
+                      <strong style={{ fontSize: '1.15rem' }}>Arrastra el XML aquí o haz clic para seleccionar</strong>
+                      <span style={{ color: 'var(--hz-neutral-700)' }}>DeclaVisor XML · Sede electrónica AEAT</span>
+                    </div>
+                  </label>
+                  <p style={{ margin: 0, textAlign: 'center', color: 'var(--hz-neutral-700)' }}>
+                    Importación determinista desde el XML de AEAT — sin OCR, sin ambigüedad.
+                  </p>
+                </>
+              ) : metodo === 'pdf' ? (
                 <>
                   <label htmlFor="aeat-pdf-input" style={uploadDropzoneStyle}>
                     <input id="aeat-pdf-input" type="file" accept=".pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -1381,6 +1649,7 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({ o
                       reconciliacionDisponible={Boolean(reconciliacion)}
                       onAbrirReconciliacion={() => setStep(4)}
                       analisis={resultadoAnalisis}
+                      fuenteImportacion={metodo === 'xml' ? 'xml' : 'pdf'}
                     />
                   ) : (
                     <div style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--hz-neutral-300)' }}>
