@@ -25,7 +25,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 36; // V3.6: stores fundacionales de ejercicio fiscal y documentación
+const DB_VERSION = 37; // V3.7: store coordinador ejerciciosFiscalesCoord (4 regímenes)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1721,6 +1721,98 @@ export interface ConfiguracionFiscal {
   updatedAt: string;
 }
 
+// ═══════════════════════════════════════════════
+// MODELO FISCAL COORDINADOR — 4 REGÍMENES
+// ═══════════════════════════════════════════════
+
+export interface EjercicioFiscalCoord {
+  año: number;  // keyPath — 2020, 2021, ..., 2026
+
+  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito';
+
+  // Fecha de prescripción (calculada: 30 jun del año+5)
+  fechaPrescripcion?: string;
+
+  // Fuente AEAT (solo si declarado o prescrito)
+  aeat?: {
+    snapshot: Record<string, number>;   // casillas: { '0435': 112096.62, ... }
+    resumen: ResumenFiscal;
+    pdfDocumentId?: string;
+    fechaImportacion: string;
+  };
+
+  // Cálculo ATLAS (para pendiente/en_curso; también para comparativa en declarado)
+  atlas?: {
+    snapshot: Record<string, number>;
+    resumen: ResumenFiscal;
+    fechaCalculo: string;
+    hashInputs: string;  // cache key
+  };
+
+  // Arrastres ENTRANTES (de año-1 → este año)
+  arrastresIn: ArrastresEjercicioCoord;
+
+  // Arrastres SALIENTES (de este año → año+1)
+  arrastresOut?: ArrastresOutEjercicioCoord;
+
+  // Inmuebles con actividad fiscal en este ejercicio
+  inmuebleIds: number[];
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResumenFiscal {
+  baseImponibleGeneral: number;
+  baseImponibleAhorro: number;
+  cuotaIntegra: number;
+  retenciones: number;
+  resultado: number;  // negativo = a devolver
+}
+
+export interface ArrastresEjercicioCoord {
+  fuente: 'aeat' | 'atlas' | 'manual' | 'ninguno';
+  gastosPendientes: ArrastreGasto[];
+  perdidasPatrimoniales: ArrastrePerdida[];
+  amortizacionesAcumuladas: AmortizacionAcumulada[];
+  deduccionesPendientes: DeduccionPendiente[];
+}
+
+export interface ArrastresOutEjercicioCoord {
+  fuente: 'aeat' | 'atlas';
+  gastosPendientes: ArrastreGasto[];
+  perdidasPatrimoniales: ArrastrePerdida[];
+  amortizacionesAcumuladas: AmortizacionAcumulada[];
+  deduccionesPendientes: DeduccionPendiente[];
+}
+
+export interface ArrastreGasto {
+  inmuebleId: number;
+  inmuebleAlias?: string;
+  importePendiente: number;
+  añoOrigen: number;
+  casilla: '0105' | '0106';
+}
+
+export interface ArrastrePerdida {
+  tipo: 'ahorro_general' | 'ahorro_renta_variable' | 'patrimonial';
+  importePendiente: number;
+  añoOrigen: number;
+}
+
+export interface AmortizacionAcumulada {
+  inmuebleId: number;
+  inmuebleAlias?: string;
+  amortizacionAcumulada: number;
+  baseAmortizacion: number;
+}
+
+export interface DeduccionPendiente {
+  tipo: string;
+  importePendiente: number;
+  añoOrigen: number;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
@@ -1797,6 +1889,7 @@ interface AtlasHorizonDB {
   perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
   entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
+  ejerciciosFiscalesCoord: EjercicioFiscalCoord; // V3.7: Modelo fiscal coordinador (4 regímenes)
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -2346,6 +2439,12 @@ export const initDB = async () => {
           entidadesStore.createIndex('tipoRenta', 'tipoRenta', { unique: false });
         }
 
+
+        // V3.7: Ejercicios Fiscales Coordinador store (4 regímenes)
+        if (!db.objectStoreNames.contains('ejerciciosFiscalesCoord')) {
+          const coordStore = db.createObjectStore('ejerciciosFiscalesCoord', { keyPath: 'año' });
+          coordStore.createIndex('estado', 'estado');
+        }
 
         // V2.8: Allow multiple snapshots per ejercicio (force snapshots)
         if (db.objectStoreNames.contains('snapshotsDeclaracion')) {
