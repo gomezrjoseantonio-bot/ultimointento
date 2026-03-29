@@ -11,7 +11,6 @@ import {
   Circle,
   X,
   Plus,
-  RefreshCw,
   Home,
   AlertTriangle,
   MoreHorizontal,
@@ -24,7 +23,6 @@ import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount, Movement as DBMovement } from '../../services/db';
-import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
 import { prestamosService } from '../../services/prestamosService';
 import { finalizePropertySaleLoanCancellationFromTreasuryEvent } from '../../services/propertySaleService';
 import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
@@ -161,7 +159,6 @@ const TreasuryReconciliationView: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMovementForm, setNewMovementForm] = useState<NewMovementForm>(DEFAULT_NEW_MOVEMENT);
   const [savingMovement, setSavingMovement] = useState(false);
-  const [syncingForecasts, setSyncingForecasts] = useState(false);
   const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (editState && amountInputRef.current) {
@@ -302,28 +299,6 @@ const TreasuryReconciliationView: React.FC = () => {
 
   const formatAmount = (value: number): string =>
     value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const handleGenerateForecasts = async () => {
-    setSyncingForecasts(true);
-    try {
-      const [year, month] = currentMonth.split('-').map(Number);
-      const result = await generateMonthlyForecasts(year, month);
-      if (result.created > 0 || result.updated > 0) {
-        const messages: string[] = [];
-        if (result.created > 0) messages.push(`${result.created} previsión${result.created > 1 ? 'es' : ''} creada${result.created > 1 ? 's' : ''}`);
-        if (result.updated > 0) messages.push(`${result.updated} previsión${result.updated > 1 ? 'es' : ''} actualizada${result.updated > 1 ? 's' : ''}`);
-        toast.success(messages.join(' · '));
-        await loadData();
-      } else {
-        toast.success('El mes ya está sincronizado');
-      }
-    } catch (err) {
-      console.error('Error generating forecasts:', err);
-      toast.error('Error al generar previsiones');
-    } finally {
-      setSyncingForecasts(false);
-    }
-  };
 
   const handleToggleStatus = async (eventId: string) => {
     const ev = events.find(e => e.id === eventId);

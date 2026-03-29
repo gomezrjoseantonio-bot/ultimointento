@@ -177,11 +177,6 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
     );
   }
 
-  const tabItems: { id: Tab; label: string }[] = [
-    { id: 'cartera', label: 'Cartera' },
-    { id: 'rendimientos', label: 'Rendimientos' },
-  ];
-
   return (
     <div>
       {/* v4 Header */}
