@@ -255,6 +255,8 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
     if (inm.esAccesorioDe) continue;
 
     const rc = normalizeRef(inm.refCatastral);
+    if (!rc) continue;
+
     const dirCorta = acortarDireccion(inm.direccion);
     const existente = porRefCatastral.get(rc);
 
@@ -494,7 +496,10 @@ function pushGasto(
 }
 
 function normalizeRef(value?: string | null): string {
-  return (value ?? '').replace(/[\s-.]/g, '').trim().toUpperCase();
+  return (value ?? '')
+    .replace(/[\s.-]/g, '')
+    .trim()
+    .toUpperCase();
 }
 
 function sumGastosAdquisicion(acquisitionCosts: Property['acquisitionCosts']): number {
