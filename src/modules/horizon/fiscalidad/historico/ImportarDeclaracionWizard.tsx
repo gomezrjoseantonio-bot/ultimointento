@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { Upload, CheckCircle2 } from 'lucide-react';
 import { parseIrpfXml } from '../../../../services/irpfXmlParserService';
-import { distribuirDeclaracion } from '../../../../services/declaracionDistributorService';
+import { distribuirDeclaracion, acortarDireccion } from '../../../../services/declaracionDistributorService';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../../../types/declaracionCompleta';
 import type { InformeDistribucion } from '../../../../types/informeDistribucion';
 
@@ -15,21 +16,29 @@ interface ImportarDeclaracionWizardProps {
   onBack?: () => void;
 }
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const NAVY = '#0a1628';
-const TEAL = '#0d9488';
-const TEAL_50 = '#f0fdfa';
-const GREY_900 = '#1a1a1a';
-const GREY_700 = '#404040';
-const GREY_400 = '#9ca3af';
-const GREY_300 = '#d1d5db';
-const GREY_200 = '#e5e7eb';
-const GREY_100 = '#f3f4f6';
-const GREY_50 = '#f9fafb';
+// ─── Design tokens V4 ────────────────────────────────────────────────────────
+const NAVY = '#042C5E';      // --navy-900: botones primarios, texto principal
+const TEAL = '#1DA0BA';      // --teal-600: acento UI, a devolver
+const TEAL_100 = '#E6F7FA';  // --teal-100: fondo badge teal
+const GREY_900 = '#1A2332';  // --grey-900: texto principal
+const GREY_700 = '#303A4C';  // --grey-700: texto cuerpo
+const GREY_400 = '#9CA3AF';  // --grey-400: texto deshabilitado
+const GREY_300 = '#C8D0DC';  // --grey-300: bordes
+const GREY_200 = '#DDE3EC';  // --grey-200: separadores
+const GREY_100 = '#EEF1F5';  // --grey-100: fondo sección, zebra rows
+const GREY_50 = '#F8F9FA';   // --grey-50: fondo de página
 const fontSans = "'IBM Plex Sans', system-ui, sans-serif";
 const fontMono = "'IBM Plex Mono', monospace";
 
 const CASILLAS_PRINCIPALES = ['0505', '0510', '0545', '0546', '0570', '0571', '0595', '0609', '0695'];
+
+const CCAA_NOMBRES: Record<string, string> = {
+  '01': 'Andalucía', '02': 'Aragón', '03': 'Asturias', '04': 'Baleares',
+  '05': 'Canarias', '06': 'Cantabria', '07': 'Castilla y León', '08': 'Castilla-La Mancha',
+  '09': 'Cataluña', '10': 'Extremadura', '11': 'Galicia', '12': 'Madrid',
+  '13': 'Murcia', '14': 'Navarra', '15': 'País Vasco', '16': 'La Rioja',
+  '17': 'Comunidad Valenciana', '18': 'Ceuta', '19': 'Melilla',
+};
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -42,22 +51,22 @@ function construirDetalleInmueble(inm: InmuebleDeclarado): string[] {
   if (inm.fechaAdquisicion || inm.precioAdquisicion) {
     let linea = 'Adquisición:';
     if (inm.fechaAdquisicion) linea += ` ${inm.fechaAdquisicion}`;
-    if (inm.precioAdquisicion) linea += ` · ${fmt(inm.precioAdquisicion)} \u20ac`;
-    if (inm.gastosAdquisicion) linea += ` + ${fmt(inm.gastosAdquisicion)} \u20ac gastos`;
+    if (inm.precioAdquisicion) linea += ` · ${fmt(inm.precioAdquisicion)} €`;
+    if (inm.gastosAdquisicion) linea += ` + ${fmt(inm.gastosAdquisicion)} € gastos`;
     lineas.push(linea);
   }
 
   if (inm.amortizacionAnualInmueble) {
     lineas.push(
-      `Amortización: ${fmt(inm.amortizacionAnualInmueble)} \u20ac/año (base ${fmt(inm.baseAmortizacion ?? 0)} \u20ac)`,
+      `Amortización: ${fmt(inm.amortizacionAnualInmueble)} €/año (base ${fmt(inm.baseAmortizacion ?? 0)} €)`,
     );
   }
 
   if (inm.mejorasAnteriores || inm.mejorasEjercicio.length > 0) {
     let linea = 'Mejoras:';
-    if (inm.mejorasAnteriores) linea += ` ${fmt(inm.mejorasAnteriores)} \u20ac anteriores`;
+    if (inm.mejorasAnteriores) linea += ` ${fmt(inm.mejorasAnteriores)} € anteriores`;
     for (const m of inm.mejorasEjercicio) {
-      linea += ` + ${fmt(m.importe)} \u20ac en ejercicio`;
+      linea += ` + ${fmt(m.importe)} € en ejercicio`;
       if (m.nifProveedor) linea += ` (${m.nifProveedor})`;
     }
     lineas.push(linea);
@@ -74,44 +83,44 @@ function construirDetalleInmueble(inm: InmuebleDeclarado): string[] {
   }
 
   for (const prov of inm.proveedores.filter((p) => p.concepto === 'reparacion')) {
-    let linea = `Reparación: ${fmt(prov.importe)} \u20ac (NIF ${prov.nif})`;
+    let linea = `Reparación: ${fmt(prov.importe)} € (NIF ${prov.nif})`;
     if (inm.gastosPendientesGenerados > 0) {
-      linea += ` \u2014 excedente: ${fmt(inm.gastosPendientesGenerados)} \u20ac \u2192 arrastre`;
+      linea += ` \u2014 excedente: ${fmt(inm.gastosPendientesGenerados)} € \u2192 arrastre`;
     }
     lineas.push(linea);
   }
 
   if (inm.gastos.interesesFinanciacion > 0) {
-    lineas.push(`Intereses préstamo: ${fmt(inm.gastos.interesesFinanciacion)} \u20ac`);
+    lineas.push(`Intereses préstamo: ${fmt(inm.gastos.interesesFinanciacion)} €`);
   }
 
   const gastosLinea: string[] = [];
-  if (inm.gastos.comunidad > 0) gastosLinea.push(`Comunidad: ${fmt(inm.gastos.comunidad)} \u20ac`);
-  if (inm.gastos.suministros > 0) gastosLinea.push(`Suministros: ${fmt(inm.gastos.suministros)} \u20ac`);
-  if (inm.gastos.seguros > 0) gastosLinea.push(`Seguros: ${fmt(inm.gastos.seguros)} \u20ac`);
-  if (inm.gastos.ibiTasas > 0) gastosLinea.push(`IBI: ${fmt(inm.gastos.ibiTasas)} \u20ac`);
+  if (inm.gastos.comunidad > 0) gastosLinea.push(`Comunidad: ${fmt(inm.gastos.comunidad)} €`);
+  if (inm.gastos.suministros > 0) gastosLinea.push(`Suministros: ${fmt(inm.gastos.suministros)} €`);
+  if (inm.gastos.seguros > 0) gastosLinea.push(`Seguros: ${fmt(inm.gastos.seguros)} €`);
+  if (inm.gastos.ibiTasas > 0) gastosLinea.push(`IBI: ${fmt(inm.gastos.ibiTasas)} €`);
   if (gastosLinea.length > 0) lineas.push(gastosLinea.join(' · '));
 
   for (const prov of inm.proveedores.filter((p) => p.concepto === 'gestion')) {
-    lineas.push(`Gestión delegada: ${prov.nif} · ${fmt(prov.importe)} \u20ac/año`);
+    lineas.push(`Gestión delegada: ${prov.nif} · ${fmt(prov.importe)} €/año`);
   }
 
   if (inm.amortizacionMobiliario) {
-    lineas.push(`Mobiliario: ${fmt(inm.amortizacionMobiliario)} \u20ac amortización`);
+    lineas.push(`Mobiliario: ${fmt(inm.amortizacionMobiliario)} € amortización`);
   }
 
   if (inm.accesorio) {
     lineas.push(
-      `Accesorio: ${inm.accesorio.refCatastral} (${fmt(inm.accesorio.precioAdquisicion ?? 0)} \u20ac, amort. ${fmt(
+      `Accesorio: ${inm.accesorio.refCatastral} (${fmt(inm.accesorio.precioAdquisicion ?? 0)} €, amort. ${fmt(
         inm.accesorio.amortizacionAnual ?? 0,
-      )} \u20ac/año)`,
+      )} €/año)`,
     );
   }
 
   for (const uso of inm.usos.filter((u) => u.tipo === 'disposicion')) {
     if (uso.rentaImputada) {
       lineas.push(
-        `VC: ${fmt(inm.valorCatastral ?? 0)} \u20ac${inm.catastralRevisado ? ' (revisado)' : ''} · Renta imputada: ${fmt(uso.rentaImputada)} \u20ac`,
+        `VC: ${fmt(inm.valorCatastral ?? 0)} €${inm.catastralRevisado ? ' (revisado)' : ''} · Renta imputada: ${fmt(uso.rentaImputada)} €`,
       );
     }
   }
@@ -342,7 +351,7 @@ function Paso1({
     borderRadius: 12,
     padding: '1rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: selected ? '#f0f4ff' : disabled ? GREY_50 : 'white',
+    background: selected ? '#F0F4FA' : disabled ? GREY_50 : 'white',
     opacity: disabled ? 0.6 : 1,
     flex: 1,
     minWidth: 0,
@@ -360,8 +369,8 @@ function Paso1({
             <span style={{ fontWeight: 600, color: NAVY, fontSize: '0.9rem' }}>XML de la AEAT</span>
             <span
               style={{
-                background: TEAL,
-                color: 'white',
+                background: TEAL_100,
+                color: TEAL,
                 fontSize: '0.65rem',
                 fontWeight: 700,
                 padding: '0.15rem 0.5rem',
@@ -400,12 +409,12 @@ function Paso1({
       {metodo === 'pdf' && (
         <div
           style={{
-            background: '#fef9c3',
-            border: '1px solid #fde047',
+            background: GREY_100,
+            border: `1px solid ${GREY_300}`,
             borderRadius: 10,
             padding: '0.75rem 1rem',
             fontSize: '0.85rem',
-            color: '#713f12',
+            color: GREY_700,
             fontFamily: fontSans,
           }}
         >
@@ -426,14 +435,14 @@ function Paso1({
             padding: '2rem',
             textAlign: 'center',
             cursor: 'pointer',
-            background: dragging ? TEAL_50 : GREY_50,
+            background: dragging ? TEAL_100 : GREY_50,
             transition: 'all 0.15s',
             fontFamily: fontSans,
           }}
         >
           {file ? (
             <div>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>\u2705</div>
+              <CheckCircle2 size={28} color={TEAL} style={{ marginBottom: '0.5rem' }} />
               <div style={{ fontWeight: 600, color: NAVY, fontSize: '0.9rem' }}>{file.name}</div>
               <div style={{ fontSize: '0.78rem', color: GREY_400, marginTop: '0.25rem' }}>
                 {(file.size / 1024).toFixed(1)} KB · Haz clic para cambiar
@@ -441,7 +450,7 @@ function Paso1({
             </div>
           ) : (
             <div>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: GREY_400 }}>\u2601</div>
+              <Upload size={28} color={GREY_400} style={{ marginBottom: '0.5rem' }} />
               <div style={{ fontWeight: 500, color: GREY_700, fontSize: '0.88rem' }}>
                 Arrastra tu fichero {metodo === 'xml' ? '.xml' : '.pdf'} aquí o haz clic
               </div>
@@ -463,12 +472,12 @@ function Paso1({
       {error && (
         <div
           style={{
-            background: '#fef2f2',
-            border: '1px solid #fca5a5',
+            background: GREY_100,
+            border: `1px solid ${GREY_300}`,
             borderRadius: 10,
             padding: '0.75rem 1rem',
             fontSize: '0.85rem',
-            color: '#991b1b',
+            color: GREY_700,
             fontFamily: fontSans,
           }}
         >
@@ -518,8 +527,8 @@ function Paso2({
       {/* Header result */}
       <div
         style={{
-          background: esDevolver ? TEAL_50 : '#f0f4ff',
-          border: `1px solid ${esDevolver ? '#99f6e4' : '#c7d2fe'}`,
+          background: GREY_50,
+          border: `1px solid ${GREY_200}`,
           borderRadius: 12,
           padding: '1rem 1.25rem',
           display: 'flex',
@@ -544,7 +553,7 @@ function Paso2({
                 color: esDevolver ? TEAL : NAVY,
               }}
             >
-              {fmt(Math.abs(res))} \u20ac
+              {fmt(Math.abs(res))} €
             </span>
             <span style={{ fontSize: '0.85rem', color: esDevolver ? TEAL : NAVY, fontWeight: 600 }}>
               {esDevolver ? 'a devolver' : 'a ingresar'}
@@ -554,8 +563,8 @@ function Paso2({
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span
             style={{
-              background: NAVY,
-              color: 'white',
+              background: GREY_100,
+              color: GREY_700,
               fontSize: '0.72rem',
               fontWeight: 600,
               padding: '0.2rem 0.6rem',
@@ -567,8 +576,8 @@ function Paso2({
           </span>
           <span
             style={{
-              background: TEAL,
-              color: 'white',
+              background: GREY_100,
+              color: GREY_700,
               fontSize: '0.72rem',
               fontWeight: 600,
               padding: '0.2rem 0.6rem',
@@ -587,7 +596,7 @@ function Paso2({
         <KVRow label="Nombre" value={declarante.nombreCompleto} />
         <KVRow label="Nacimiento" value={declarante.fechaNacimiento ?? '\u2014'} />
         <KVRow label="Estado civil" value={estadoCivilMap[declarante.estadoCivil ?? ''] ?? '\u2014'} />
-        <KVRow label="Residencia" value={declarante.nombreCCAA ?? declarante.codigoCCAA ?? '\u2014'} />
+        <KVRow label="Residencia" value={declarante.nombreCCAA ?? (declarante.codigoCCAA ? (CCAA_NOMBRES[declarante.codigoCCAA] ?? declarante.codigoCCAA) : '—')} />
         <KVRow label="Tributación" value={declarante.tributacion === 'individual' ? 'Individual' : 'Conjunta'} />
         <p style={{ fontSize: '0.75rem', color: GREY_400, fontStyle: 'italic', margin: '0.5rem 0 0', fontFamily: fontSans }}>
           Primera importación — todos los campos son nuevos. En importaciones posteriores, solo se completan campos vacíos. Nunca se sobreescribe lo que hayas editado.
@@ -600,30 +609,30 @@ function Paso2({
           {trabajo.empleador && (
             <KVRow label="Empleador" value={`${trabajo.empleador.nombre ?? ''} (${trabajo.empleador.nif})`} />
           )}
-          <KVRow label="Salario bruto" value={`${fmt(trabajo.retribucionesDinerarias)} \u20ac`} mono />
+          <KVRow label="Salario bruto" value={`${fmt(trabajo.retribucionesDinerarias)} €`} mono />
           {trabajo.valoracionEspecie > 0 && (
-            <KVRow label="Especie" value={`${fmt(trabajo.valoracionEspecie)} \u20ac`} mono />
+            <KVRow label="Especie" value={`${fmt(trabajo.valoracionEspecie)} €`} mono />
           )}
-          <KVRow label="Total íntegros" value={`${fmt(trabajo.totalIngresosIntegros)} \u20ac`} mono />
-          <KVRow label="Cotización SS" value={`${fmt(trabajo.cotizacionesSS)} \u20ac`} mono />
-          <KVRow label="Rendimiento neto" value={`${fmt(trabajo.rendimientoNeto)} \u20ac`} mono />
-          <KVRow label="Retenciones" value={`${fmt(trabajo.retenciones)} \u20ac`} mono />
+          <KVRow label="Total íntegros" value={`${fmt(trabajo.totalIngresosIntegros)} €`} mono />
+          <KVRow label="Cotización SS" value={`${fmt(trabajo.cotizacionesSS)} €`} mono />
+          <KVRow label="Rendimiento neto" value={`${fmt(trabajo.rendimientoNeto)} €`} mono />
+          <KVRow label="Retenciones" value={`${fmt(trabajo.retenciones)} €`} mono />
         </AccordionSection>
       )}
 
       {/* Inmuebles */}
       <AccordionSection
         id="inmuebles"
-        title={`Inmuebles detectados (${inmuebles.length})`}
+        title={`Inmuebles detectados (${inmuebles.filter((inm) => !inm.esAccesorioDe).length})`}
         open={!!open.inmuebles}
         onToggle={toggle}
       >
-        {inmuebles.length === 0 && (
+        {inmuebles.filter((inm) => !inm.esAccesorioDe).length === 0 && (
           <p style={{ fontSize: '0.85rem', color: GREY_400, margin: 0, fontFamily: fontSans }}>
             No se han detectado inmuebles en esta declaración.
           </p>
         )}
-        {inmuebles.map((inm) => {
+        {inmuebles.filter((inm) => !inm.esAccesorioDe).map((inm) => {
           const expanded = !!inmExpanded[inm.refCatastral];
           const diasArr = inm.usos.find((u) => u.tipo === 'arrendado')?.dias ?? 0;
           const diasVac = inm.usos.find((u) => u.tipo === 'disposicion')?.dias ?? 0;
@@ -653,7 +662,7 @@ function Paso2({
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, color: NAVY, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {inm.direccion || inm.refCatastral}
+                    {acortarDireccion(inm.direccion) || inm.refCatastral}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: GREY_400, fontFamily: fontMono }}>
                     {inm.refCatastral}
@@ -664,7 +673,7 @@ function Paso2({
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   {ingBrutos > 0 && (
                     <div style={{ fontSize: '0.82rem', color: GREY_700, fontFamily: fontMono, fontFeatureSettings: "'tnum'" }}>
-                      {fmt(ingBrutos)} \u20ac ing.
+                      {fmt(ingBrutos)} € ing.
                     </div>
                   )}
                   <div
@@ -676,7 +685,7 @@ function Paso2({
                       fontWeight: 600,
                     }}
                   >
-                    {fmt(inm.rendimientoNeto)} \u20ac
+                    {inm.rendimientoNeto === 0 && ingBrutos === 0 ? '—' : `${fmt(inm.rendimientoNeto)} €`}
                   </div>
                 </div>
                 <span style={{ fontSize: '0.65rem', color: GREY_400, flexShrink: 0 }}>{expanded ? '\u25b2' : '\u25bc'}</span>
@@ -698,10 +707,10 @@ function Paso2({
       {/* Capital mobiliario */}
       {capitalMobiliario && (
         <AccordionSection id="capitalMobiliario" title="Capital mobiliario" open={!!open.capitalMobiliario} onToggle={toggle}>
-          <KVRow label="Total bruto" value={`${fmt(capitalMobiliario.totalBruto)} \u20ac`} mono />
-          <KVRow label="Gastos deducibles" value={`${fmt(capitalMobiliario.gastosDeducibles)} \u20ac`} mono />
-          <KVRow label="Rendimiento neto" value={`${fmt(capitalMobiliario.rendimientoNeto)} \u20ac`} mono />
-          <KVRow label="Retenciones" value={`${fmt(capitalMobiliario.retenciones)} \u20ac`} mono />
+          <KVRow label="Total bruto" value={`${fmt(capitalMobiliario.totalBruto)} €`} mono />
+          <KVRow label="Gastos deducibles" value={`${fmt(capitalMobiliario.gastosDeducibles)} €`} mono />
+          <KVRow label="Rendimiento neto" value={`${fmt(capitalMobiliario.rendimientoNeto)} €`} mono />
+          <KVRow label="Retenciones" value={`${fmt(capitalMobiliario.retenciones)} €`} mono />
         </AccordionSection>
       )}
 
@@ -716,12 +725,16 @@ function Paso2({
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: GREY_700, marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Pérdidas patrimoniales del ahorro
                 </div>
-                {arrastres.perdidasPatrimoniales.map((p, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.25rem 0', borderBottom: `1px solid ${GREY_100}`, fontFamily: fontSans }}>
-                    <span style={{ color: GREY_700 }}>Origen {p.añoOrigen} · caduca {p.añoOrigen + 4}</span>
-                    <span style={{ fontFamily: fontMono, fontFeatureSettings: "'tnum'", color: NAVY }}>{fmt(p.importePendiente)} \u20ac</span>
-                  </div>
-                ))}
+                {arrastres.perdidasPatrimoniales.map((p, i) => {
+                  const añoReal = meta.ejercicio - p.añoOrigen;
+                  const caducidad = añoReal + 4;
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.25rem 0', borderBottom: `1px solid ${GREY_100}`, fontFamily: fontSans }}>
+                      <span style={{ color: GREY_700 }}>De {añoReal} · caduca {caducidad}</span>
+                      <span style={{ fontFamily: fontMono, fontFeatureSettings: "'tnum'", color: NAVY }}>{fmt(p.importePendiente)} €</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {arrastres.gastosPendientes.length > 0 && (
@@ -729,12 +742,16 @@ function Paso2({
                 <div style={{ fontSize: '0.78rem', fontWeight: 600, color: GREY_700, marginBottom: '0.35rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Gastos pendientes por inmueble
                 </div>
-                {arrastres.gastosPendientes.map((g, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.25rem 0', borderBottom: `1px solid ${GREY_100}`, fontFamily: fontSans }}>
-                    <span style={{ color: GREY_700, fontFamily: fontMono, fontSize: '0.75rem' }}>{g.refCatastral} · caduca {g.añoOrigen + 4}</span>
-                    <span style={{ fontFamily: fontMono, fontFeatureSettings: "'tnum'", color: NAVY }}>{fmt(g.importePendiente)} \u20ac</span>
-                  </div>
-                ))}
+                {arrastres.gastosPendientes.map((g, i) => {
+                  const añoReal = meta.ejercicio - g.añoOrigen;
+                  const caducidad = añoReal + 4;
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', padding: '0.25rem 0', borderBottom: `1px solid ${GREY_100}`, fontFamily: fontSans }}>
+                      <span style={{ color: GREY_700, fontFamily: fontMono, fontSize: '0.75rem' }}>{g.refCatastral} · De {añoReal} · caduca {caducidad}</span>
+                      <span style={{ fontFamily: fontMono, fontFeatureSettings: "'tnum'", color: NAVY }}>{fmt(g.importePendiente)} €</span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
@@ -746,12 +763,12 @@ function Paso2({
         <AccordionSection id="actividad" title="Actividad económica" open={!!open.actividad} onToggle={toggle}>
           <KVRow label="IAE" value={actividadEconomica.iae} />
           <KVRow label="Modalidad" value={actividadEconomica.modalidad} />
-          <KVRow label="Total ingresos" value={`${fmt(actividadEconomica.totalIngresos)} \u20ac`} mono />
-          <KVRow label="Total gastos" value={`${fmt(actividadEconomica.totalGastos)} \u20ac`} mono />
-          <KVRow label="Rendimiento neto" value={`${fmt(actividadEconomica.rendimientoNeto)} \u20ac`} mono />
-          <KVRow label="Retenciones" value={`${fmt(actividadEconomica.retenciones)} \u20ac`} mono />
+          <KVRow label="Total ingresos" value={`${fmt(actividadEconomica.totalIngresos)} €`} mono />
+          <KVRow label="Total gastos" value={`${fmt(actividadEconomica.totalGastos)} €`} mono />
+          <KVRow label="Rendimiento neto" value={`${fmt(actividadEconomica.rendimientoNeto)} €`} mono />
+          <KVRow label="Retenciones" value={`${fmt(actividadEconomica.retenciones)} €`} mono />
           {actividadEconomica.pagosFraccionados > 0 && (
-            <KVRow label="Pagos fraccionados (M130)" value={`${fmt(actividadEconomica.pagosFraccionados)} \u20ac`} mono />
+            <KVRow label="Pagos fraccionados (M130)" value={`${fmt(actividadEconomica.pagosFraccionados)} €`} mono />
           )}
         </AccordionSection>
       )}
@@ -774,7 +791,7 @@ function Paso2({
             >
               <span style={{ color: GREY_700 }}>{c}</span>
               <span style={{ fontFamily: fontMono, fontFeatureSettings: "'tnum'", color: NAVY }}>
-                {casillas[c] !== undefined ? `${fmt(casillas[c])} \u20ac` : '\u2014'}
+                {casillas[c] !== undefined ? `${fmt(casillas[c])} €` : '\u2014'}
               </span>
             </div>
           ))}
@@ -824,7 +841,7 @@ function Paso3({
           {contratosConNif.map((c, i) => (
             <PropuestaRow
               key={i}
-              text={`${c.direccionCorta} · NIF ${c.nifInquilinos.join(', ')} · desde ${c.fechaContrato ?? '\u2014'} · ${fmt(c.ingresosAnuales)} \u20ac/año · ${c.tipoArrendamiento ?? '\u2014'}`}
+              text={`${c.direccionCorta} · NIF ${c.nifInquilinos.join(', ')} · desde ${c.fechaContrato ?? '\u2014'} · ${fmt(c.ingresosAnuales)} €/año · ${c.tipoArrendamiento ?? '\u2014'}`}
               buttonLabel="Crear contrato"
               onAction={() => toast('Próximamente: esta acción creará el contrato en Alquileres')}
             />
@@ -841,7 +858,7 @@ function Paso3({
           {prestamosConIntereses.map((p, i) => (
             <PropuestaRow
               key={i}
-              text={`${p.direccionCorta} · ${fmt(p.interesesAnuales)} \u20ac/año en intereses`}
+              text={`${p.direccionCorta} · ${fmt(p.interesesAnuales)} €/año en intereses`}
               buttonLabel="Crear préstamo"
               onAction={() => toast('Próximamente: esta acción creará el préstamo en Financiación')}
             />
@@ -858,7 +875,7 @@ function Paso3({
           {proveedores.map((p, i) => (
             <PropuestaRow
               key={i}
-              text={`NIF ${p.nif} · ${p.concepto} · ${fmt(p.importe)} \u20ac${p.inmuebleRef ? ` · ${p.inmuebleRef}` : ''}`}
+              text={`NIF ${p.nif} · ${p.concepto} · ${fmt(p.importe)} €${p.inmuebleRef ? ` · ${p.inmuebleRef}` : ''}`}
               buttonLabel="Registrar proveedor"
               onAction={() => toast('Próximamente: esta acción registrará el proveedor')}
             />

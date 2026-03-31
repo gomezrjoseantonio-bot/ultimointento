@@ -244,6 +244,7 @@ function extraerTrabajo(tda: Element): TrabajoDeclarado | undefined {
     otrosGastosDeducibles: 2000,
     rendimientoNeto: num(rt, 'TPRNP') - 2000,
     rendimientoNetoReducido: num(rt, 'TPRNP') - 2000,
+    // IDRE = retención declarada por el pagador (no el total de RetencionesRes/RET1)
     retenciones: num(rend, 'IDRE'),
     empleador,
   };

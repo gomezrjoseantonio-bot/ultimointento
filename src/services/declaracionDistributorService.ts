@@ -185,8 +185,8 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
     if (!existente) {
       const nuevoProperty = construirPropertyDesdeDeclaracion(inm);
-      const id = await db.add('properties', nuevoProperty);
-      porRefCatastral.set(rc, { ...nuevoProperty, id: Number(id) });
+      const id = await db.add('properties', nuevoProperty as Property);
+      porRefCatastral.set(rc, { ...nuevoProperty, id: Number(id) } as Property);
       accion = 'creado';
     } else {
       let modificado = false;
@@ -282,9 +282,7 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
   return { distribuidos, contratos, gastosRecurrentes, prestamos, proveedores };
 }
 
-function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Property {
-  const now = new Date().toISOString();
-
+function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Property, 'id'> {
   return {
     alias: acortarDireccion(inm.direccion) || inm.refCatastral,
     address: inm.direccion || inm.refCatastral,
@@ -321,9 +319,7 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Property {
       },
     },
     notes: 'Creado desde importación de declaración fiscal',
-    createdAt: now,
-    updatedAt: now,
-  } as Property & { createdAt: string; updatedAt: string };
+  };
 }
 
 function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): InformeDistribucion {
@@ -433,7 +429,7 @@ function sumGastosAdquisicion(acquisitionCosts: Property['acquisitionCosts']): n
     + Number((acquisitionCosts.other || []).reduce((sum, item) => sum + Number(item.amount || 0), 0));
 }
 
-function acortarDireccion(dir: string): string {
+export function acortarDireccion(dir: string): string {
   if (!dir) return '';
   return dir
     .replace(/^(CL|CR|AV|PZ|PS|CM)\s+/i, '')
