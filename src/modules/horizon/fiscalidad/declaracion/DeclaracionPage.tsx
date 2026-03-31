@@ -19,7 +19,9 @@ const fmtSigned = (v: number) => `${v >= 0 ? '' : '-'}${fmt(Math.abs(v))} €`;
 
 // ── Source badge config ─────────────────────────────────────
 const SOURCE_BADGE: Record<string, { label: string; icon: React.ReactNode }> = {
-  aeat: { label: 'PDF AEAT', icon: <FileCheck size={14} /> },
+  aeat: { label: 'AEAT', icon: <FileCheck size={14} /> },
+  xml_aeat: { label: 'XML AEAT', icon: <FileCheck size={14} /> },
+  pdf_aeat: { label: 'PDF AEAT', icon: <FileCheck size={14} /> },
   atlas: { label: 'Cálculo ATLAS', icon: <Calculator size={14} /> },
   manual: { label: 'Manual', icon: <Pencil size={14} /> },
 };
@@ -56,7 +58,7 @@ const DeclaracionPage: React.FC = () => {
   const initialYear = Number(searchParams.get('ejercicio')) || currentYear;
   const [selectedYear, setSelectedYear] = useState(initialYear);
   const [allYears, setAllYears] = useState<number[]>([]);
-  const [fuente, setFuente] = useState<'aeat' | 'atlas' | 'ninguno'>('ninguno');
+  const [fuente, setFuente] = useState<'aeat' | 'xml_aeat' | 'pdf_aeat' | 'atlas' | 'ninguno'>('ninguno');
   const [resumen, setResumen] = useState<ResumenFiscal | null>(null);
   const [loading, setLoading] = useState(true);
 
