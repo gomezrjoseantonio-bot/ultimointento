@@ -44,6 +44,15 @@ const PRIORIDAD_ARRASTRES: Record<string, number> = {
 
 type DB = Awaited<ReturnType<typeof initDB>>;
 
+/** Convert dd/mm/yyyy → YYYY-MM-DD for <input type="date"> */
+function toISODate(dateStr: string): string {
+  if (!dateStr) return '';
+  const m = dateStr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  // Already ISO or unknown format — return as-is
+  return dateStr;
+}
+
 function extraerUbicacion(direccion: string): { province: string; municipality: string; ccaa: string } {
   const dir = direccion.toUpperCase();
   if (dir.includes('OVIEDO')) return { province: 'Asturias', municipality: 'Oviedo', ccaa: 'Asturias' };
@@ -225,7 +234,7 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       next.fiscalData = { ...(existente.fiscalData || {}) };
 
       if (!next.purchaseDate && inm.fechaAdquisicion) {
-        next.purchaseDate = inm.fechaAdquisicion;
+        next.purchaseDate = toISODate(inm.fechaAdquisicion);
         camposNuevos.push('Fecha de compra');
         modificado = true;
       }
@@ -259,7 +268,7 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         modificado = true;
       }
       if (!next.fiscalData.acquisitionDate && inm.fechaAdquisicion) {
-        next.fiscalData.acquisitionDate = inm.fechaAdquisicion;
+        next.fiscalData.acquisitionDate = toISODate(inm.fechaAdquisicion);
         camposNuevos.push('Fecha adquisición');
         modificado = true;
       }
@@ -269,7 +278,13 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         modificado = true;
       }
       if (!sumGastosAdquisicion(next.acquisitionCosts) && inm.gastosAdquisicion) {
-        next.acquisitionCosts.other = [...(next.acquisitionCosts.other || []), { concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }];
+        // AEAT gastosAdquisicion already includes ITP+notaría+registro+gestoría as a single total.
+        // Clear any auto-calculated ITP to avoid double-counting.
+        next.acquisitionCosts.itp = 0;
+        next.acquisitionCosts.notary = 0;
+        next.acquisitionCosts.registry = 0;
+        next.acquisitionCosts.management = 0;
+        next.acquisitionCosts.other = [{ concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }];
         camposNuevos.push('Gastos adquisición');
         modificado = true;
       }
@@ -279,7 +294,7 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         const amort = { ...next.aeatAmortization };
         let amortModificado = false;
         if (!amort.firstAcquisitionDate && inm.fechaAdquisicion) {
-          amort.firstAcquisitionDate = inm.fechaAdquisicion;
+          amort.firstAcquisitionDate = toISODate(inm.fechaAdquisicion);
           amortModificado = true;
         }
         if (!amort.baseAmortizacion && inm.baseAmortizacion) {
@@ -367,7 +382,7 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     province: ubicacion.province,
     municipality: ubicacion.municipality,
     ccaa: ubicacion.ccaa,
-    purchaseDate: inm.fechaAdquisicion || '',
+    purchaseDate: toISODate(inm.fechaAdquisicion || ''),
     cadastralReference: normalizeRef(inm.refCatastral) || undefined,
     squareMeters: 0,
     bedrooms: 0,
@@ -383,7 +398,7 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
       constructionCadastralValue: inm.valorCatastralConstruccion || 0,
       constructionPercentage: inm.porcentajeConstruccion || 0,
       cadastralRevised: inm.catastralRevisado,
-      acquisitionDate: inm.fechaAdquisicion || '',
+      acquisitionDate: toISODate(inm.fechaAdquisicion || ''),
     },
     aeatAmortization: {
       acquisitionType: (
@@ -394,7 +409,7 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
           donacion: 'lucrativa',
         } as const
       )[inm.tipoAdquisicion ?? 'onerosa'] ?? 'onerosa',
-      firstAcquisitionDate: inm.fechaAdquisicion || '',
+      firstAcquisitionDate: toISODate(inm.fechaAdquisicion || ''),
       cadastralValue: inm.valorCatastral || 0,
       constructionCadastralValue: inm.valorCatastralConstruccion || 0,
       constructionPercentage: inm.porcentajeConstruccion || 0,
