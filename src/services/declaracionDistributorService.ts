@@ -57,7 +57,7 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
   const año = decl.meta.ejercicio;
   const ahora = new Date().toISOString();
 
-  let ej = await db.get('ejerciciosFiscales', año);
+  let ej = await db.get('ejerciciosFiscalesCoord', año);
   if (!ej) {
     ej = {
       año,
@@ -110,7 +110,7 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
     deduccionesPendientes: [],
   };
 
-  const ejSiguiente = await db.get('ejerciciosFiscales', año + 1);
+  const ejSiguiente = await db.get('ejerciciosFiscalesCoord', año + 1);
   if (ejSiguiente) {
     const fuente = ejSiguiente.arrastresIn?.fuente ?? 'ninguno';
     if ((PRIORIDAD_ARRASTRES[fuente] ?? 0) <= PRIORIDAD_ARRASTRES.aeat) {
@@ -122,12 +122,12 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
         deduccionesPendientes: [],
       };
       ejSiguiente.updatedAt = ahora;
-      await db.put('ejerciciosFiscales', ejSiguiente);
+      await db.put('ejerciciosFiscalesCoord', ejSiguiente);
     }
   }
 
   ej.updatedAt = ahora;
-  await db.put('ejerciciosFiscales', ej);
+  await db.put('ejerciciosFiscalesCoord', ej);
 }
 
 async function archivarDocumentoImportado(db: DB, decl: DeclaracionCompleta): Promise<void> {
