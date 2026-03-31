@@ -56,6 +56,8 @@ const EXPECTED_CATEGORIES: { key: string; label: string; match: (r: OpexRule) =>
 ];
 
 // ── Component ───────────────────────────────────────────────
+type FuenteResolver = Awaited<ReturnType<typeof getDeclaracion>>['fuente'];
+
 const FiscalDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { declaracion, loading: contextLoading } = useFiscalData();
@@ -64,7 +66,7 @@ const FiscalDashboard: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [ejercicio, setEjercicio] = useState<EjercicioFiscalCoord | null>(null);
   const [resumen, setResumen] = useState<ResumenFiscal | null>(null);
-  const [fuente, setFuente] = useState<'aeat' | 'atlas' | 'ninguno'>('ninguno');
+  const [fuente, setFuente] = useState<FuenteResolver>('ninguno');
   const [allYears, setAllYears] = useState<number[]>([]);
   const [arrastresTotal, setArrastresTotal] = useState(0);
   const [loading, setLoading] = useState(true);
