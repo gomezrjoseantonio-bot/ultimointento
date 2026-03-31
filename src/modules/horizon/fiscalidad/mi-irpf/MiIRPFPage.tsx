@@ -38,11 +38,12 @@ const FUENTE_DISPLAY: Record<FuenteDatosEjercicio, { label: string; bg: string; 
   sin_datos: { label: 'Sin datos', bg: 'var(--n-100)', color: 'var(--n-500)' },
 };
 
-function getBannerTipo(estado: EstadoEjercicioFiscal, fuente: FuenteDatosEjercicio): 'en_curso' | 'pendiente_incompleto' | 'declarado_atlas' | 'declarado_pdf' | null {
+function getBannerTipo(estado: EstadoEjercicioFiscal, fuente: FuenteDatosEjercicio): 'en_curso' | 'pendiente_incompleto' | 'declarado_atlas' | 'declarado_pdf' | 'declarado_xml' | null {
   if (estado === 'en_curso') return 'en_curso';
   if (estado === 'pendiente' && (fuente === 'sin_datos' || fuente === 'atlas')) return 'pendiente_incompleto';
   if (estado === 'declarado' && fuente === 'atlas') return 'declarado_atlas';
-  if (fuente === 'pdf_aeat' || fuente === 'xml_aeat') return 'declarado_pdf';
+  if (fuente === 'xml_aeat') return 'declarado_xml';
+  if (fuente === 'pdf_aeat') return 'declarado_pdf';
   return null;
 }
 
