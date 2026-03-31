@@ -623,16 +623,16 @@ function Paso2({
       {/* Inmuebles */}
       <AccordionSection
         id="inmuebles"
-        title={`Inmuebles detectados (${inmuebles.filter((inm) => !inm.esAccesorioDe).length})`}
+        title={`Inmuebles detectados (${inmuebles.length})`}
         open={!!open.inmuebles}
         onToggle={toggle}
       >
-        {inmuebles.filter((inm) => !inm.esAccesorioDe).length === 0 && (
+        {inmuebles.length === 0 && (
           <p style={{ fontSize: '0.85rem', color: GREY_400, margin: 0, fontFamily: fontSans }}>
             No se han detectado inmuebles en esta declaración.
           </p>
         )}
-        {inmuebles.filter((inm) => !inm.esAccesorioDe).map((inm) => {
+        {inmuebles.map((inm) => {
           const expanded = !!inmExpanded[inm.refCatastral];
           const diasArr = inm.usos.find((u) => u.tipo === 'arrendado')?.dias ?? 0;
           const diasVac = inm.usos.find((u) => u.tipo === 'disposicion')?.dias ?? 0;
@@ -666,6 +666,7 @@ function Paso2({
                   </div>
                   <div style={{ fontSize: '0.75rem', color: GREY_400, fontFamily: fontMono }}>
                     {inm.refCatastral}
+                    {inm.esAccesorioDe && <span style={{ marginLeft: '0.4rem', padding: '0.1rem 0.35rem', borderRadius: 4, background: '#E0F2FE', color: '#0369A1', fontSize: '0.68rem', fontFamily: fontSans, fontWeight: 600 }}>Accesorio</span>}
                     {diasArr > 0 && ` · ${diasArr}d arr.`}
                     {diasVac > 0 && ` + ${diasVac}d vacío`}
                   </div>
@@ -817,7 +818,7 @@ function Paso3({
   onConfirm: () => void;
   confirming: boolean;
 }) {
-  const { stats, contratosDetectados, prestamosDetectados, proveedores, cuentaBancaria } = informe;
+  const { stats, contratosDetectados, prestamosDetectados, proveedores, cuentaBancaria, vinculosAccesorio } = informe;
 
   const contratosConNif = contratosDetectados.filter((c) => c.nifInquilinos.length > 0);
   const prestamosConIntereses = prestamosDetectados.filter((p) => p.interesesAnuales > 0);
@@ -894,6 +895,23 @@ function Paso3({
             buttonLabel="Crear en Cuentas"
             onAction={() => toast('Próximamente: esta acción creará la cuenta en Cuentas')}
           />
+        </div>
+      )}
+
+      {/* Vínculos accesorio */}
+      {vinculosAccesorio.length > 0 && (
+        <div>
+          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+            Vínculos accesorio
+          </div>
+          {vinculosAccesorio.map((v, i) => (
+            <PropuestaRow
+              key={i}
+              text={`El parking ${v.refAccesorio} (${v.direccionAccesorio}) aparece como accesorio de ${v.direccionPrincipal} (${v.refPrincipal}) en la declaración. ¿Quieres vincularlo?`}
+              buttonLabel="Vincular"
+              onAction={() => toast('Próximamente: esta acción vinculará el accesorio en Alquileres')}
+            />
+          ))}
         </div>
       )}
 

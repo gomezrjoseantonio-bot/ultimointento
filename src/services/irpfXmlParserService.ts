@@ -331,12 +331,23 @@ function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
       !nodo.querySelector('InmuebleArrendado') &&
       !nodo.querySelector('DisposicionTitulares')
     ) {
+      const accNode = nodo.querySelector('InmuebleAccesorio');
       inmuebles.push({
         refCatastral: txt(nodo, 'RC'),
         direccion: txt(nodo, 'CDIRECCION'),
         porcentajePropiedad: num(nodo, 'PC'),
         esUrbana: true,
         valorCatastralTotal: num(nodo, 'VACATOT') || undefined,
+        valorCatastral: num(nodo, 'C_VCARR') || num(nodo, 'C_VC'),
+        valorCatastralConstruccion: num(nodo, 'C_VCC'),
+        porcentajeConstruccion: num(nodo, 'C_PORVCC'),
+        catastralRevisado: txt(nodo, 'C_REV') === 'SI' ? true : undefined,
+        fechaAdquisicion: txt(nodo, 'C_FADQ'),
+        precioAdquisicion: num(nodo, 'C_COSTEAD'),
+        gastosAdquisicion: num(nodo, 'C_TRIBUAD'),
+        tipoAdquisicion: nodo.querySelector('C_ONEROSA') ? 'onerosa' : undefined,
+        baseAmortizacion: num(nodo, 'C_BASEAMOR'),
+        amortizacionAnualInmueble: num(nodo, 'C_AMORT'),
         usos: [{ tipo: 'accesorio', dias: 0 }],
         arrendamientos: [],
         gastos: gastosVacios(),
@@ -348,7 +359,7 @@ function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
         rendimientoNetoReducido: 0,
         gastosPendientesGenerados: 0,
         proveedores: [],
-        esAccesorioDe: txt(nodo.querySelector('InmuebleAccesorio'), 'C_RCPRAL'),
+        esAccesorioDe: txt(accNode, 'C_RCPRAL'),
       });
       continue;
     }

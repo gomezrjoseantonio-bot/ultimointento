@@ -34,6 +34,7 @@ export interface InformeDistribucion {
   prestamosDetectados: PrestamoDetectado[];
   proveedores: ProveedorDistribuido[];
   inversiones: InversionDetectada[];
+  vinculosAccesorio: VinculoAccesorio[];
 
   arrastres: {
     perdidasPendientesTotal: number;
@@ -108,6 +109,13 @@ export interface ProveedorDistribuido {
   concepto: string;
   importe: number;
   inmuebleRef?: string;
+}
+
+export interface VinculoAccesorio {
+  refAccesorio: string;
+  direccionAccesorio: string;
+  refPrincipal: string;
+  direccionPrincipal: string;
 }
 
 export interface InversionDetectada {
