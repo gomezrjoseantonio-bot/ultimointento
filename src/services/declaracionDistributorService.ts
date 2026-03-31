@@ -309,7 +309,12 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     },
     aeatAmortization: {
       acquisitionType: (
-        { onerosa: 'onerosa', herencia: 'lucrativa', donacion: 'lucrativa' } as const
+        {
+          onerosa: 'onerosa',
+          lucrativa: 'lucrativa',
+          herencia: 'lucrativa',
+          donacion: 'lucrativa',
+        } as const
       )[inm.tipoAdquisicion ?? 'onerosa'] ?? 'onerosa',
       firstAcquisitionDate: inm.fechaAdquisicion || '',
       cadastralValue: inm.valorCatastral || 0,

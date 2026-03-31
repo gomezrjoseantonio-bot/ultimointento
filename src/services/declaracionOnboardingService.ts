@@ -804,7 +804,12 @@ async function crearInmuebleDesdeDeclaracion(
     },
     aeatAmortization: {
       acquisitionType: (
-        { onerosa: 'onerosa', herencia: 'lucrativa', donacion: 'lucrativa' } as const
+        {
+          onerosa: 'onerosa',
+          lucrativa: 'lucrativa',
+          herencia: 'lucrativa',
+          donacion: 'lucrativa',
+        } as const
       )[datos.tipoAdquisicion ?? 'onerosa'] ?? 'onerosa',
       firstAcquisitionDate: datos.fechaAdquisicion || '',
       cadastralValue: datos.valorCatastral || 0,
