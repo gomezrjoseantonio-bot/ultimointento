@@ -92,6 +92,7 @@ export interface Property {
     cadastralValue?: number;
     constructionCadastralValue?: number;
     constructionPercentage?: number;
+    cadastralRevised?: boolean; // catastralRevisado AEAT
     acquisitionDate?: string;
     contractUse?: 'vivienda-habitual' | 'turistico' | 'otros';
     housingReduction?: boolean;
@@ -129,6 +130,11 @@ export interface Property {
       inherentExpenses: number; // gastos inherentes
     };
     
+    // Amortization base data from AEAT declaration
+    baseAmortizacion?: number; // base amortizable (importe adquisición + gastos + mejoras)
+    mejorasAnteriores?: number; // mejoras realizadas en ejercicios anteriores
+    amortizacionAnualInmueble?: number; // amortización anual del inmueble calculada por AEAT
+
     // Special cases configuration
     specialCase?: {
       type: 'usufructo-temporal' | 'usufructo-vitalicio' | 'diferenciado' | 'parcial-alquiler' | 

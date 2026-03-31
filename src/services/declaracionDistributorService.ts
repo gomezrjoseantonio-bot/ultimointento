@@ -203,6 +203,11 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
       next.fiscalData = { ...(existente.fiscalData || {}) };
 
+      if (!next.purchaseDate && inm.fechaAdquisicion) {
+        next.purchaseDate = inm.fechaAdquisicion;
+        camposNuevos.push('Fecha de compra');
+        modificado = true;
+      }
       if (!next.fiscalData.cadastralValue && inm.valorCatastral) {
         next.fiscalData.cadastralValue = inm.valorCatastral;
         camposNuevos.push('Valor catastral');
@@ -216,6 +221,10 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       if (!next.fiscalData.constructionPercentage && inm.porcentajeConstruccion) {
         next.fiscalData.constructionPercentage = inm.porcentajeConstruccion;
         camposNuevos.push('% construcción');
+        modificado = true;
+      }
+      if (next.fiscalData.cadastralRevised === undefined && inm.catastralRevisado !== undefined) {
+        next.fiscalData.cadastralRevised = inm.catastralRevisado;
         modificado = true;
       }
       if (!next.fiscalData.acquisitionDate && inm.fechaAdquisicion) {
@@ -232,6 +241,33 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         next.acquisitionCosts.other = [...(next.acquisitionCosts.other || []), { concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }];
         camposNuevos.push('Gastos adquisición');
         modificado = true;
+      }
+
+      // Enriquecer campos de amortización AEAT solo si están vacíos
+      if (next.aeatAmortization) {
+        const amort = { ...next.aeatAmortization };
+        let amortModificado = false;
+        if (!amort.firstAcquisitionDate && inm.fechaAdquisicion) {
+          amort.firstAcquisitionDate = inm.fechaAdquisicion;
+          amortModificado = true;
+        }
+        if (!amort.baseAmortizacion && inm.baseAmortizacion) {
+          amort.baseAmortizacion = inm.baseAmortizacion;
+          camposNuevos.push('Base amortización');
+          amortModificado = true;
+        }
+        if (!amort.mejorasAnteriores && inm.mejorasAnteriores) {
+          amort.mejorasAnteriores = inm.mejorasAnteriores;
+          amortModificado = true;
+        }
+        if (!amort.amortizacionAnualInmueble && inm.amortizacionAnualInmueble) {
+          amort.amortizacionAnualInmueble = inm.amortizacionAnualInmueble;
+          amortModificado = true;
+        }
+        if (amortModificado) {
+          next.aeatAmortization = amort;
+          modificado = true;
+        }
       }
 
       if (modificado) {
@@ -314,6 +350,7 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
       cadastralValue: inm.valorCatastral || 0,
       constructionCadastralValue: inm.valorCatastralConstruccion || 0,
       constructionPercentage: inm.porcentajeConstruccion || 0,
+      cadastralRevised: inm.catastralRevisado,
       acquisitionDate: inm.fechaAdquisicion || '',
     },
     aeatAmortization: {
@@ -329,6 +366,9 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
       cadastralValue: inm.valorCatastral || 0,
       constructionCadastralValue: inm.valorCatastralConstruccion || 0,
       constructionPercentage: inm.porcentajeConstruccion || 0,
+      baseAmortizacion: inm.baseAmortizacion,
+      mejorasAnteriores: inm.mejorasAnteriores,
+      amortizacionAnualInmueble: inm.amortizacionAnualInmueble,
       onerosoAcquisition: {
         acquisitionAmount: inm.precioAdquisicion || 0,
         acquisitionExpenses: inm.gastosAdquisicion || 0,

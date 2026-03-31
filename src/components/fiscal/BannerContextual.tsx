@@ -1,7 +1,7 @@
 import React from 'react';
 import { Info, BarChart3, FileText } from 'lucide-react';
 
-type BannerTipo = 'en_curso' | 'pendiente_incompleto' | 'declarado_atlas' | 'declarado_pdf';
+type BannerTipo = 'en_curso' | 'pendiente_incompleto' | 'declarado_atlas' | 'declarado_pdf' | 'declarado_xml';
 
 interface BannerContextualProps {
   tipo: BannerTipo;
@@ -40,6 +40,13 @@ const BANNER_CONFIG: Record<BannerTipo, {
   declarado_pdf: {
     icon: <FileText size={16} />,
     text: 'Declaración importada desde PDF AEAT',
+    bg: 'var(--s-pos-bg)',
+    color: 'var(--s-pos)',
+    borderColor: 'var(--s-pos)',
+  },
+  declarado_xml: {
+    icon: <FileText size={16} />,
+    text: 'Declaración importada desde XML AEAT',
     bg: 'var(--s-pos-bg)',
     color: 'var(--s-pos)',
     borderColor: 'var(--s-pos)',
