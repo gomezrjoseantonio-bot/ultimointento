@@ -12,6 +12,7 @@
 
 import { initDB } from './db';
 import type { Property, EjercicioFiscalCoord, Document } from './db';
+import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
   InformeDistribucion,
   InmuebleDistribuido,
@@ -50,6 +51,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   await archivarDocumentoImportado(db, decl);
 
   const resultadoInmuebles = await procesarInmuebles(db, decl);
+  invalidateCachedStores(['properties']);
   return construirInforme(decl, resultadoInmuebles);
 }
 
@@ -185,9 +187,16 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
     if (!existente) {
       const nuevoProperty = construirPropertyDesdeDeclaracion(inm);
-      const id = await db.add('properties', nuevoProperty as Property);
-      porRefCatastral.set(rc, { ...nuevoProperty, id: Number(id) } as Property);
-      accion = 'creado';
+      console.log('[distribuidor] db.add properties — inicio', rc, nuevoProperty);
+      try {
+        const id = await db.add('properties', nuevoProperty as Property);
+        console.log('[distribuidor] db.add properties — OK, id:', id);
+        porRefCatastral.set(rc, { ...nuevoProperty, id: Number(id) } as Property);
+        accion = 'creado';
+      } catch (addError) {
+        console.error('[distribuidor] db.add properties — ERROR', rc, addError);
+        throw addError;
+      }
     } else {
       let modificado = false;
       const next: Property = { ...existente, acquisitionCosts: { ...(existente.acquisitionCosts || { price: 0 }) } };
