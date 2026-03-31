@@ -62,7 +62,8 @@
     "migrate:colors": "node scripts/replace-hardcoded-colors.js",
     "fix:aria-labels": "node scripts/add-aria-labels.js",
     "fix:divs-to-buttons": "node scripts/convert-divs-to-buttons.js",
-    "migrate:atlas": "node scripts/migrate-to-atlas.js"
+    "migrate:atlas": "node scripts/migrate-to-atlas.js",
+    "validate:package": "node -e \"JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json is valid')\""
   },
   "eslintConfig": {
     "extends": [
