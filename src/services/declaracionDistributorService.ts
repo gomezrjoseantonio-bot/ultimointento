@@ -27,6 +27,7 @@ import type {
   DeclaracionCompleta,
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
+import { crearOActualizarContrato } from './declaracionOnboardingService';
 
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
@@ -82,6 +83,38 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
 
   const resultadoInmuebles = await procesarInmuebles(db, decl);
   invalidateCachedStores(['properties']);
+
+  // Crear/actualizar contratos automáticamente desde los arrendamientos
+  const todasProperties = await db.getAll('properties');
+  const porRefCatastral = new Map<string, Property>();
+  for (const property of todasProperties) {
+    const ref = normalizeRef(property.cadastralReference);
+    if (ref) porRefCatastral.set(ref, property);
+  }
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    for (const arr of inm.arrendamientos) {
+      if (arr.nifArrendatarios.length === 0) continue;
+
+      await crearOActualizarContrato({
+        propertyId: property.id,
+        nifArrendatario: arr.nifArrendatarios[0],
+        nifArrendatario2: arr.nifArrendatarios[1],
+        fechaContrato: arr.fechaContrato,
+        ingresosAnuales: arr.ingresos,
+        tipoArrendamiento: arr.tipoArrendamiento,
+        tieneReduccion: inm.reduccionVivienda > 0,
+        ejercicio: decl.meta.ejercicio,
+      });
+    }
+  }
+  invalidateCachedStores(['contracts']);
+
   return construirInforme(decl, resultadoInmuebles);
 }
 
