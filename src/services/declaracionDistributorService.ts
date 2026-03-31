@@ -21,90 +21,10 @@ import type {
   ProveedorDistribuido,
   InversionDetectada,
 } from '../types/informeDistribucion';
-
-interface DeclaracionCompleta {
-  meta: {
-    ejercicio: number;
-    fuenteImportacion: 'xml' | 'pdf' | 'manual';
-    confianza: 'total' | 'alta' | 'media';
-    tipoDeclaracion: string;
-    documentoImportadoId?: number;
-  };
-  declarante: {
-    nif: string;
-    nombreCompleto: string;
-    nombreCCAA?: string;
-    codigoCCAA?: string;
-  };
-  casillas: Record<string, number>;
-  integracion: {
-    baseImponibleGeneral: number;
-    baseImponibleAhorro: number;
-    baseLiquidableGeneral: number;
-    baseLiquidableAhorro: number;
-  };
-  resultado: {
-    cuotaIntegraEstatal: number;
-    cuotaIntegraAutonomica: number;
-    totalRetencionesPagos: number;
-    resultadoDeclaracion: number;
-  };
-  inmuebles: InmuebleDeclarado[];
-  arrastres: {
-    gastosPendientes: Array<{ refCatastral: string; importePendiente: number; añoOrigen: number }>;
-    perdidasPatrimoniales: Array<{ tipo: 'ahorro' | 'patrimonial'; importePendiente: number; añoOrigen: number }>;
-  };
-  gananciasPerdidas?: {
-    fondos: Array<{ nifFondo: string; ganancia: number }>;
-    criptomonedas: Array<{ moneda: string; resultado: number }>;
-  };
-  cuentaDevolucion?: { iban?: string };
-  cuentaIngreso?: { iban?: string };
-  trabajo?: {
-    totalIngresosIntegros: number;
-    retenciones: number;
-    empleador?: { nombre?: string; nif?: string };
-  };
-  actividadEconomica?: {
-    iae: string;
-    modalidad: string;
-    rendimientoNeto: number;
-  };
-}
-
-interface InmuebleDeclarado {
-  refCatastral: string;
-  direccion: string;
-  esAccesorioDe?: string;
-  porcentajePropiedad: number;
-  tipoAdquisicion?: 'onerosa' | 'lucrativa' | 'mixta';
-  fechaAdquisicion?: string;
-  precioAdquisicion?: number;
-  gastosAdquisicion?: number;
-  valorCatastral?: number;
-  valorCatastralConstruccion?: number;
-  porcentajeConstruccion?: number;
-  catastralRevisado?: boolean;
-  baseAmortizacion?: number;
-  usos: Array<{ tipo: 'disposicion' | 'arrendado' | string; dias: number }>;
-  arrendamientos: Array<{
-    ingresos: number;
-    nifArrendatarios: string[];
-    fechaContrato?: string;
-    tipoArrendamiento?: string;
-  }>;
-  gastos: {
-    comunidad: number;
-    seguros: number;
-    ibiTasas: number;
-    suministros: number;
-    serviciosTerceros: number;
-    interesesFinanciacion: number;
-  };
-  proveedores: Array<{ nif: string; concepto: string; importe: number }>;
-  rendimientoNetoReducido: number;
-  reduccionVivienda: number;
-}
+import type {
+  DeclaracionCompleta,
+  InmuebleDeclarado,
+} from '../types/declaracionCompleta';
 
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
@@ -211,7 +131,7 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
 }
 
 async function archivarDocumentoImportado(db: DB, decl: DeclaracionCompleta): Promise<void> {
-  const docId = decl.meta.documentoImportadoId;
+  const docId = decl.camposExtra.documentoImportadoId as number | undefined;
   if (typeof docId !== 'number') {
     return;
   }
