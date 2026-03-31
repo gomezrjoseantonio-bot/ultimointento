@@ -44,6 +44,26 @@ const PRIORIDAD_ARRASTRES: Record<string, number> = {
 
 type DB = Awaited<ReturnType<typeof initDB>>;
 
+function extraerUbicacion(direccion: string): { province: string; municipality: string; ccaa: string } {
+  const dir = direccion.toUpperCase();
+  if (dir.includes('OVIEDO')) return { province: 'Asturias', municipality: 'Oviedo', ccaa: 'Asturias' };
+  if (dir.includes('GIJON') || dir.includes('GIJÓN')) return { province: 'Asturias', municipality: 'Gijón', ccaa: 'Asturias' };
+  if (dir.includes('MANRESA')) return { province: 'Barcelona', municipality: 'Manresa', ccaa: 'Cataluña' };
+  if (dir.includes('FRUITOS') || dir.includes('FRUITÓS') || dir.includes('FRUITÒS')) return { province: 'Barcelona', municipality: 'Sant Fruitós de Bages', ccaa: 'Cataluña' };
+  if (dir.includes('BARCELONA')) return { province: 'Barcelona', municipality: 'Barcelona', ccaa: 'Cataluña' };
+  if (dir.includes('MADRID')) return { province: 'Madrid', municipality: 'Madrid', ccaa: 'Madrid' };
+  if (dir.includes('VALENCIA') || dir.includes('VALÈNCIA')) return { province: 'Valencia', municipality: 'Valencia', ccaa: 'Comunidad Valenciana' };
+  if (dir.includes('SEVILLA')) return { province: 'Sevilla', municipality: 'Sevilla', ccaa: 'Andalucía' };
+  if (dir.includes('MALAGA') || dir.includes('MÁLAGA')) return { province: 'Málaga', municipality: 'Málaga', ccaa: 'Andalucía' };
+  if (dir.includes('ZARAGOZA')) return { province: 'Zaragoza', municipality: 'Zaragoza', ccaa: 'Aragón' };
+  if (dir.includes('BILBAO')) return { province: 'Vizcaya', municipality: 'Bilbao', ccaa: 'País Vasco' };
+  if (dir.includes('ALICANTE')) return { province: 'Alicante', municipality: 'Alicante', ccaa: 'Comunidad Valenciana' };
+  // Fallback: último token de la dirección como municipio
+  const tokens = direccion.trim().split(/\s+/);
+  const lastToken = tokens[tokens.length - 1];
+  return { province: '', municipality: lastToken || '', ccaa: '' };
+}
+
 export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<InformeDistribucion> {
   const db = await initDB();
 
@@ -87,6 +107,7 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
       resultado: decl.resultado.resultadoDeclaracion,
     },
     fechaImportacion: ahora,
+    fuenteImportacion: decl.meta.fuenteImportacion,
   };
 
   (ej.aeat as EjercicioFiscalCoord['aeat'] & { declaracionCompleta?: DeclaracionCompleta }).declaracionCompleta = decl;
@@ -208,6 +229,16 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         camposNuevos.push('Fecha de compra');
         modificado = true;
       }
+      if (!next.province && inm.direccion) {
+        const ubicacion = extraerUbicacion(inm.direccion);
+        if (ubicacion.province) {
+          next.province = ubicacion.province;
+          next.municipality = ubicacion.municipality;
+          next.ccaa = ubicacion.ccaa;
+          camposNuevos.push('Ubicación');
+          modificado = true;
+        }
+      }
       if (!next.fiscalData.cadastralValue && inm.valorCatastral) {
         next.fiscalData.cadastralValue = inm.valorCatastral;
         camposNuevos.push('Valor catastral');
@@ -328,13 +359,14 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 }
 
 function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Property, 'id'> {
+  const ubicacion = extraerUbicacion(inm.direccion || '');
   return {
     alias: acortarDireccion(inm.direccion) || inm.refCatastral,
     address: inm.direccion || inm.refCatastral,
     postalCode: '',
-    province: '',
-    municipality: '',
-    ccaa: '',
+    province: ubicacion.province,
+    municipality: ubicacion.municipality,
+    ccaa: ubicacion.ccaa,
     purchaseDate: inm.fechaAdquisicion || '',
     cadastralReference: normalizeRef(inm.refCatastral) || undefined,
     squareMeters: 0,

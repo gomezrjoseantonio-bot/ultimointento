@@ -70,7 +70,7 @@ export async function getTodosLosEjercicios(): Promise<EjercicioFiscalCoord[]> {
  * - Pendiente/En curso → placeholder (el motor real se conectará en Fase 2)
  */
 export async function getDeclaracion(año: number): Promise<{
-  fuente: 'aeat' | 'atlas' | 'ninguno';
+  fuente: 'aeat' | 'xml_aeat' | 'pdf_aeat' | 'atlas' | 'ninguno';
   snapshot: Record<string, number> | null;
   resumen: ResumenFiscal | null;
 }> {
@@ -78,8 +78,9 @@ export async function getDeclaracion(año: number): Promise<{
 
   // Ejercicio con AEAT → devolver snapshot congelado
   if ((ej.estado === 'declarado' || ej.estado === 'prescrito') && ej.aeat) {
+    const fuenteAeat = ej.aeat.fuenteImportacion === 'xml' ? 'xml_aeat' : 'pdf_aeat';
     return {
-      fuente: 'aeat',
+      fuente: fuenteAeat,
       snapshot: ej.aeat.snapshot,
       resumen: ej.aeat.resumen
     };

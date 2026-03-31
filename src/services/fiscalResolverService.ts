@@ -112,6 +112,7 @@ function detectarFuente(
   snapshotDecl: SnapshotDeclaracion | null,
   hasPDF: boolean,
 ): FuenteDatosEjercicio {
+  if (coordEj?.aeat?.fuenteImportacion === 'xml') return 'xml_aeat';
   if (hasPDF) return 'pdf_aeat';
   if (coordEj?.aeat) return 'pdf_aeat';
   if (snapshotDecl?.origen === 'importacion_manual') return 'pdf_aeat';

@@ -1746,6 +1746,7 @@ export interface EjercicioFiscalCoord {
     resumen: ResumenFiscal;
     pdfDocumentId?: string;
     fechaImportacion: string;
+    fuenteImportacion?: 'xml' | 'pdf' | 'manual';
   };
 
   // Cálculo ATLAS (para pendiente/en_curso; también para comparativa en declarado)
