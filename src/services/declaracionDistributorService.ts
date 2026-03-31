@@ -21,6 +21,7 @@ import type {
   PrestamoDetectado,
   ProveedorDistribuido,
   InversionDetectada,
+  VinculoAccesorio,
 } from '../types/informeDistribucion';
 import type {
   DeclaracionCompleta,
@@ -204,8 +205,6 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
   }
 
   for (const inm of decl.inmuebles) {
-    if (inm.esAccesorioDe) continue;
-
     const rc = normalizeRef(inm.refCatastral);
     if (!rc) continue;
 
@@ -434,6 +433,21 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
     inversiones.push({ tipo: 'crypto', descripcion: c.moneda, resultado: c.resultado });
   }
 
+  const vinculosAccesorio: VinculoAccesorio[] = [];
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) {
+      const principal = decl.inmuebles.find(
+        (p) => normalizeRef(p.refCatastral) === normalizeRef(inm.esAccesorioDe),
+      );
+      vinculosAccesorio.push({
+        refAccesorio: inm.refCatastral,
+        direccionAccesorio: acortarDireccion(inm.direccion) || inm.refCatastral,
+        refPrincipal: inm.esAccesorioDe,
+        direccionPrincipal: principal ? (acortarDireccion(principal.direccion) || principal.refCatastral) : inm.esAccesorioDe,
+      });
+    }
+  }
+
   const perdidasTotal = decl.arrastres.perdidasPatrimoniales.reduce((s, p) => s + p.importePendiente, 0);
   const gastosTotal = decl.arrastres.gastosPendientes.reduce((s, g) => s + g.importePendiente, 0);
 
@@ -462,6 +476,7 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
     prestamosDetectados: ri.prestamos,
     proveedores: ri.proveedores,
     inversiones,
+    vinculosAccesorio,
     arrastres: {
       perdidasPendientesTotal: perdidasTotal,
       gastosPendientesTotal: gastosTotal,
