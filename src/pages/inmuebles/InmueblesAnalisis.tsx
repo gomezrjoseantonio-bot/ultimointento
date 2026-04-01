@@ -856,8 +856,6 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '—';
   const cashflowColor = prop.cashflowMes > 0 ? C.teal : prop.cashflowMes < 0 ? C.n700 : C.n500;
   const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
-  // Cashflow acumulado = solo datos reales de FiscalSummaries declarados
-  const cashflowAcumulado = propCashflowNeto;
   const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
   // Fiscal data for this property — only declared exercises, with robust ID matching
@@ -868,6 +866,8 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const propGastosOp = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) + (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [propSummaries]);
   const propIntereses = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [propSummaries]);
   const propCashflowNeto = propRentas - propGastosOp - propIntereses;
+  // Cashflow acumulado = solo datos reales de FiscalSummaries declarados
+  const cashflowAcumulado = propCashflowNeto;
 
   // Fiscal year breakdown
   const availableYears = useMemo(() => [...new Set(propSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a), [propSummaries]);
