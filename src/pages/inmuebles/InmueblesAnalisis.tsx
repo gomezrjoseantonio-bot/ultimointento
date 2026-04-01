@@ -888,7 +888,7 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Ver / editar ficha"><Pencil size={18} color="var(--grey-500)" /></button>
           <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}?tab=presupuesto`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Gastos del inmueble"><Receipt size={18} color="var(--grey-500)" /></button>
-          <button onClick={() => toast('Próximamente')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Simular venta"><LogOut size={18} color="var(--grey-500)" /></button>
+          <button onClick={() => toast('Venta: disponible desde la ficha del inmueble')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Simular venta"><LogOut size={18} color="var(--grey-500)" /></button>
         </div>
       </div>
 
@@ -1182,16 +1182,8 @@ export default function InmueblesAnalisis() {
         years.add(ej.año);
       }
     });
-    // Fallback: if no ejercicios, include years that have non-zero fiscal data
-    if (years.size === 0) {
-      fiscalSummaries.forEach(fs => {
-        if ((fs.box0102 && fs.box0102 > 0) || (fs.box0105 && fs.box0105 > 0) || (fs.box0106 && fs.box0106 > 0) || (fs.box0109 && fs.box0109 > 0)) {
-          years.add(fs.exerciseYear);
-        }
-      });
-    }
     return years;
-  }, [ejercicios, fiscalSummaries]);
+  }, [ejercicios]);
 
   if (!properties.length) {
     return (
