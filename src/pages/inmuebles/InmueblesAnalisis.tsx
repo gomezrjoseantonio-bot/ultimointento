@@ -348,26 +348,9 @@ const filterDeclaredSummaries = (
 
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
 
-const EVOLUCION_DATA = [
-  { year: '2005', valor: 300000, coste: 128500 },
-  { year: '2008', valor: 380000, coste: 222000 },
-  { year: '2010', valor: 420000, coste: 300000 },
-  { year: '2012', valor: 450000, coste: 322000 },
-  { year: '2014', valor: 520000, coste: 380000 },
-  { year: '2016', valor: 600000, coste: 430000 },
-  { year: '2018', valor: 680000, coste: 480000 },
-  { year: '2020', valor: 730000, coste: 520000 },
-  { year: '2022', valor: 800000, coste: 540680 },
-  { year: '2024', valor: 870000, coste: 540680 },
-  { year: '2026', valor: 916000, coste: 540680 },
-];
+// EVOLUCION_DATA removed — now computed from properties inside TabEvolucion
 
-const CASHFLOW_DATA = [
-  { year: '2010', cf: 400 }, { year: '2012', cf: 520 }, { year: '2014', cf: 780 },
-  { year: '2016', cf: 1100 }, { year: '2018', cf: 1350 }, { year: '2020', cf: 1450 },
-  { year: '2022', cf: 1600 }, { year: '2024', cf: 1750 }, { year: '2025', cf: 1820 },
-  { year: '2026', cf: 1858 },
-];
+// CASHFLOW_DATA removed — now computed from yearlyData inside TabEvolucion
 
 const buildProyeccion = (years: number, base: number, equity0: number, rate: number) => {
   const safeBase = Math.max(0, base);
@@ -404,22 +387,7 @@ const buildIndividualValueSeries = (property: PropertySnapshot) => {
   return [...past, ...projection];
 };
 
-const buildIndividualCashflowSeries = (property: PropertySnapshot) => {
-  const purchaseYear = getPurchaseYear(property.purchaseDate);
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: currentYear - purchaseYear + 1 }, (_, index) => String(purchaseYear + index));
-  const yearlyIncome = Math.max(0, Math.round((property.cashflowMes + property.gastosMes) * 12));
-  const yearlyExpenses = Math.max(0, Math.round(property.gastosMes * 12));
-
-  return years.map((year, index) => {
-    const ratio = 0.72 + index * 0.03;
-    return {
-      year,
-      ing: Math.round(yearlyIncome * ratio),
-      gas: Math.round(yearlyExpenses * (0.8 + index * 0.02)),
-    };
-  });
-};
+// buildIndividualCashflowSeries removed — now computed from propSummaries inside TabIndividual
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -624,7 +592,7 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado, decla
         <ResultRow label="Rentabilidad anualizada" value={`${(weightedRevalRate * 100).toFixed(2)}%`} valueColor={C.blue} />
         <ResultRow label="Tasa media revalorización" value={`${(weightedRevalRate * 100).toFixed(2)}% / año`} />
         <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
-        <ResultRow label="Deuda pendiente" value={fmt(-totalDebt)} valueColor={C.n700} />
+        <ResultRow label="Deuda pendiente" value={(totalDebt == null || totalDebt === 0 || Object.is(totalDebt, -0)) ? '0 €' : fmt(-totalDebt)} valueColor={C.n700} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Equity actual</span>
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.blue }}>{fmt(totalEquity)}</span>
@@ -677,6 +645,54 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
       .sort((a, b) => a.year - b.year);
   }, [realSummaries, ejercicios]);
 
+  // Cashflow chart data — from real yearlyData
+  const cashflowChartData = useMemo(() => {
+    return yearlyData
+      .filter(d => d.ing > 0 || d.gas > 0)
+      .map(d => ({
+        year: String(d.year),
+        cashflow: Math.round(d.cf),
+      }));
+  }, [yearlyData]);
+
+  // Evolution chart data — from real properties
+  const evolucionChartData = useMemo(() => {
+    if (!properties.length) return [];
+
+    const purchaseYears = properties
+      .map(p => parseYear(p.purchaseDate))
+      .filter(Boolean) as number[];
+
+    if (purchaseYears.length === 0) return [];
+
+    const minYear = Math.min(...purchaseYears);
+    const currentYear = new Date().getFullYear();
+
+    const data = [];
+    for (let y = minYear; y <= currentYear; y++) {
+      const costeAcum = properties.reduce((sum, p) => {
+        const py = parseYear(p.purchaseDate);
+        return (py && py <= y) ? sum + p.coste : sum;
+      }, 0);
+
+      // Only current year has real market value; past years use cost as proxy
+      const isCurrentYear = y === currentYear;
+      const valorAcum = isCurrentYear
+        ? properties.reduce((sum, p) => sum + p.valor, 0)
+        : costeAcum;
+
+      if (costeAcum > 0) {
+        data.push({
+          year: String(y),
+          coste: Math.round(costeAcum),
+          valor: Math.round(valorAcum),
+        });
+      }
+    }
+
+    return data;
+  }, [properties]);
+
   const totals = useMemo(() => yearlyData.reduce(
     (acc, r) => ({ ing: acc.ing + r.ing, gas: acc.gas + r.gas, int: acc.int + r.int, neto: acc.neto + r.neto, imp: acc.imp + r.imp, cf: acc.cf + r.cf }),
     { ing: 0, gas: 0, int: 0, neto: 0, imp: 0, cf: 0 }
@@ -709,7 +725,7 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         <ChartCard title="Evolución del valor de cartera" sub="Valor total de mercado vs coste acumulado">
           <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={EVOLUCION_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <LineChart data={evolucionChartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" />
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
@@ -723,12 +739,12 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
 
         <ChartCard title="Cashflow neto por año" sub="Evolución del cashflow anual">
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={CASHFLOW_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+            <BarChart data={cashflowChartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" vertical={false} />
               <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} €`} />
-              <Tooltip formatter={(v: number) => [`${v} €/mes`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
-              <Bar dataKey="cf" name="Cashflow neto €/mes" fill="rgba(4,44,94,.7)" radius={[4, 4, 0, 0]} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v.toLocaleString('es-ES')} €`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Bar dataKey="cashflow" name="Cashflow neto" fill="rgba(4,44,94,.7)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -852,10 +868,7 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const [propId, setPropId] = useState(selectedId || 'acevedo');
   const prop = properties.find(p => p.id === propId) ?? properties[0];
   const indivData = useMemo(() => buildIndividualValueSeries(prop), [prop]);
-  const cashflowData = useMemo(() => buildIndividualCashflowSeries(prop), [prop]);
-  const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '—';
-  const cashflowColor = prop.cashflowMes > 0 ? C.teal : prop.cashflowMes < 0 ? C.n700 : C.n500;
-  const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
+  // cashflowData, cashflowLabel, cashflowColor, cashflowMeta now computed from propSummaries below
   const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
   // Fiscal data for this property — only declared exercises, with robust ID matching
@@ -868,6 +881,59 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const propCashflowNeto = propRentas - propGastosOp - propIntereses;
   // Cashflow acumulado = solo datos reales de FiscalSummaries declarados
   const cashflowAcumulado = propCashflowNeto;
+
+  // Individual cashflow chart — from real propSummaries
+  const cashflowData = useMemo(() => {
+    if (!propSummaries.length) return [];
+    return propSummaries
+      .filter(fs => (fs.box0102 || 0) > 0 || (fs.box0105 || 0) > 0 || (fs.box0106 || 0) > 0)
+      .sort((a, b) => a.exerciseYear - b.exerciseYear)
+      .map(fs => {
+        const ingresos = fs.box0102 || 0;
+        const gastos = (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) +
+                       (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0) +
+                       (fs.box0105 || 0) + (fs.box0106 || 0);
+        return {
+          year: String(fs.exerciseYear),
+          ing: Math.round(ingresos),
+          gas: Math.round(gastos),
+        };
+      });
+  }, [propSummaries]);
+
+  // Yield bruto with fallback to FiscalSummary
+  const yieldBrutoCalc = useMemo(() => {
+    if (prop.yield > 0) return prop.yield;
+    const lastFs = propSummaries
+      .filter(fs => (fs.box0102 || 0) > 0)
+      .sort((a, b) => b.exerciseYear - a.exerciseYear)[0];
+    if (lastFs && prop.coste > 0) {
+      return ((lastFs.box0102 || 0) / prop.coste) * 100;
+    }
+    return null;
+  }, [prop.yield, prop.coste, propSummaries]);
+
+  // Cashflow/mes with fallback to FiscalSummary
+  const cashflowMesCalc = useMemo(() => {
+    if (prop.cashflowMes !== 0) return prop.cashflowMes;
+    const lastFs = propSummaries
+      .filter(fs => (fs.box0102 || 0) > 0)
+      .sort((a, b) => b.exerciseYear - a.exerciseYear)[0];
+    if (lastFs) {
+      const ingresos = lastFs.box0102 || 0;
+      const gastos = (lastFs.box0109 || 0) + (lastFs.box0112 || 0) + (lastFs.box0113 || 0) +
+                     (lastFs.box0114 || 0) + (lastFs.box0115 || 0) + (lastFs.box0117 || 0) +
+                     (lastFs.box0105 || 0);
+      return Math.round((ingresos - gastos) / 12);
+    }
+    return null;
+  }, [prop.cashflowMes, propSummaries]);
+
+  const cashflowLabel = cashflowMesCalc != null && cashflowMesCalc !== 0
+    ? (cashflowMesCalc > 0 ? `+${fmt(cashflowMesCalc)}` : `-${fmt(Math.abs(cashflowMesCalc))}`)
+    : '—';
+  const cashflowColor = cashflowMesCalc != null && cashflowMesCalc > 0 ? C.teal : cashflowMesCalc != null && cashflowMesCalc < 0 ? C.n700 : C.n500;
+  const cashflowMeta = cashflowMesCalc != null ? `Neto tras gastos (${fmt(prop.gastosMes)} / mes)` : 'Sin datos de contrato';
 
   // Fiscal year breakdown
   const availableYears = useMemo(() => [...new Set(propSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a), [propSummaries]);
@@ -916,11 +982,11 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Plusvalía latente', val: `+${fmt(prop.valor - prop.coste)}`, meta: `+${prop.revalTotal.toFixed(2)}% total`, color: C.pos },
-          { label: 'Yield bruto', val: prop.yield > 0 ? `${prop.yield.toFixed(2)}%` : '—', meta: 'Ingresos / coste', color: C.blue },
+          { label: 'Yield bruto', val: yieldBrutoCalc != null ? `${yieldBrutoCalc.toFixed(2)}%` : '—', meta: 'Ingresos / coste', color: C.blue },
           { label: 'Cashflow / mes', val: cashflowLabel, meta: cashflowMeta, color: cashflowColor },
           {
             label: 'Deuda pendiente',
-            val: prop.deudaPendiente > 0 ? `-${fmt(prop.deudaPendiente)}` : '—',
+            val: (prop.deudaPendiente == null || prop.deudaPendiente === 0 || Object.is(prop.deudaPendiente, -0)) ? '0 €' : `-${fmt(prop.deudaPendiente)}`,
             meta: prop.deudaPendiente > 0 ? 'Hipoteca activa' : 'Sin hipoteca activa',
             color: prop.deudaPendiente > 0 ? C.n700 : C.n500,
           },
