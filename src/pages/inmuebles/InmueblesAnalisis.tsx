@@ -13,11 +13,12 @@ import {
   Wallet,
   ArrowUpRight,
   TrendingUp,
-  Eye,
   Pencil,
-  SlidersHorizontal,
+  Receipt,
+  LogOut,
   Plus,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import {
   LineChart,
@@ -34,7 +35,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Contract, Expense, FiscalSummary, initDB, OpexRule, Property } from '../../services/db';
+import { Contract, Expense, FiscalSummary, initDB, OpexRule, Property, EjercicioFiscalCoord } from '../../services/db';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
@@ -132,16 +133,6 @@ const getPurchaseYear = (purchaseDate?: string) => {
 const getElapsedYearsFromPurchase = (purchaseDate?: string) => {
   const purchaseYear = getPurchaseYear(purchaseDate);
   return Math.max(1, new Date().getFullYear() - purchaseYear);
-};
-
-const getElapsedMonthsFromPurchase = (purchaseDate?: string) => {
-  if (!purchaseDate) return 12;
-  const purchase = new Date(purchaseDate);
-  if (Number.isNaN(purchase.getTime())) return 12;
-
-  const now = new Date();
-  const months = (now.getFullYear() - purchase.getFullYear()) * 12 + (now.getMonth() - purchase.getMonth());
-  return Math.max(1, months);
 };
 
 const mapToSnapshot = (
@@ -348,6 +339,13 @@ const mapToSnapshot = (
   };
 };
 
+/** Only keep FiscalSummaries that belong to years with real declared data */
+const filterDeclaredSummaries = (
+  summaries: FiscalSummary[],
+  declaredYears: Set<number>,
+): FiscalSummary[] =>
+  summaries.filter(fs => declaredYears.has(fs.exerciseYear));
+
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
 
 const EVOLUCION_DATA = [
@@ -436,7 +434,7 @@ function KpiCard({
     <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20, position: 'relative', overflow: 'hidden' }}>
       {accentColor && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: accentColor }} />}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500 }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', color: C.n500 }}>{label}</span>
         {Icon && (
           <div style={{ width: 36, height: 36, borderRadius: 8, background: iconBg ?? 'rgba(4,44,94,.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon size={16} />
@@ -495,7 +493,7 @@ function BenefitCard({ title, value, subtitle, teal }: { title: string; value: n
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
-function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number }) {
+function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado, declaredYears }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number; declaredYears: Set<number> }) {
   const totalCost = useMemo(() => properties.reduce((sum, property) => sum + property.coste, 0), [properties]);
   const totalValue = useMemo(() => properties.reduce((sum, property) => sum + property.valor, 0), [properties]);
   const totalCashflowMes = useMemo(() => properties.reduce((sum, property) => sum + property.cashflowMes, 0), [properties]);
@@ -511,12 +509,13 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado }: { p
   const netAssetYield = totalCost > 0 ? ((totalCashflowMes * 12) / totalCost) * 100 : 0;
   const netEquityYield = totalEquity > 0 ? ((totalCashflowMes * 12) / totalEquity) * 100 : 0;
 
-  // Benefit cards from fiscal data
-  const totalRentas = useMemo(() => fiscalSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [fiscalSummaries]);
-  const totalGastosOp = useMemo(() => fiscalSummaries.reduce((s, fs) => s +
+  // Benefit cards from fiscal data — only declared exercises
+  const realSummaries = useMemo(() => filterDeclaredSummaries(fiscalSummaries, declaredYears), [fiscalSummaries, declaredYears]);
+  const totalRentas = useMemo(() => realSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [realSummaries]);
+  const totalGastosOp = useMemo(() => realSummaries.reduce((s, fs) => s +
     (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) +
-    (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [fiscalSummaries]);
-  const totalIntereses = useMemo(() => fiscalSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [fiscalSummaries]);
+    (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [realSummaries]);
+  const totalIntereses = useMemo(() => realSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [realSummaries]);
   const cashflowNeto = totalRentas - totalGastosOp - totalIntereses;
   const plusvalia = totalValue - totalCost;
 
@@ -572,7 +571,7 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado }: { p
           { label: 'Rentabilidad neta s/ equity', val: `${netEquityYield.toFixed(2)}%`, meta: '/ año · Cashflow neto anual / Capital propio' },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', color: C.n500, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 34, fontWeight: 600, color: C.blue, lineHeight: 1, marginBottom: 4 }}>{k.val}</div>
             <div style={{ fontSize: 12, color: C.n500 }}>{k.meta}</div>
           </div>
@@ -638,7 +637,7 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado }: { p
 
 // ─── Tab: Evolución general ───────────────────────────────────────────────────
 
-function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[] }) {
+function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; declaredYears: Set<number>; ejercicios: EjercicioFiscalCoord[] }) {
   const [horizon, setHorizon] = useState(10);
 
   const totalCost = useMemo(() => properties.reduce((s, p) => s + p.coste, 0), [properties]);
@@ -654,10 +653,11 @@ function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySna
     [horizon, totalValue, totalEquity, weightedRevalRate]
   );
 
-  // Year-by-year fiscal table
+  // Year-by-year fiscal table — only declared exercises
+  const realSummaries = useMemo(() => filterDeclaredSummaries(fiscalSummaries, declaredYears), [fiscalSummaries, declaredYears]);
   const yearlyData = useMemo(() => {
     const byYear: Record<number, { ing: number; gas: number; int: number; neto: number; imp: number }> = {};
-    fiscalSummaries.forEach(fs => {
+    realSummaries.forEach(fs => {
       const y = fs.exerciseYear;
       if (!byYear[y]) byYear[y] = { ing: 0, gas: 0, int: 0, neto: 0, imp: 0 };
       byYear[y].ing += fs.box0102 || 0;
@@ -665,24 +665,31 @@ function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySna
       byYear[y].int += fs.box0105 || 0;
       byYear[y].neto += fs.rendimientoNetoReducido || 0;
     });
+    // Add IRPF from ejerciciosFiscalesCoord
+    ejercicios.forEach(ej => {
+      const y = ej.año;
+      if (byYear[y] && ej.aeat?.resumen?.resultado != null) {
+        byYear[y].imp = ej.aeat.resumen.resultado;
+      }
+    });
     return Object.entries(byYear)
       .map(([y, d]) => ({ year: Number(y), ...d, cf: d.ing - d.gas - d.int }))
       .sort((a, b) => a.year - b.year);
-  }, [fiscalSummaries]);
+  }, [realSummaries, ejercicios]);
 
   const totals = useMemo(() => yearlyData.reduce(
     (acc, r) => ({ ing: acc.ing + r.ing, gas: acc.gas + r.gas, int: acc.int + r.int, neto: acc.neto + r.neto, imp: acc.imp + r.imp, cf: acc.cf + r.cf }),
     { ing: 0, gas: 0, int: 0, neto: 0, imp: 0, cf: 0 }
   ), [yearlyData]);
 
-  // Yield comparison by property
+  // Yield comparison by property — only declared years
   const yieldComparison = useMemo(() => {
-    const years = [...new Set(fiscalSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a).slice(0, 2);
+    const years = [...new Set(realSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a).slice(0, 2);
     if (years.length < 2) return [];
     const [latest, prev] = years;
     return properties.map(p => {
       const getYieldForYear = (year: number) => {
-        const fs = fiscalSummaries.find(f => f.propertyId === Number(p.id) && f.exerciseYear === year);
+        const fs = realSummaries.find(f => f.propertyId === Number(p.id) && f.exerciseYear === year);
         return fs?.box0102 && p.coste > 0 ? (fs.box0102 / p.coste) * 100 : 0;
       };
       const yLatest = getYieldForYear(latest);
@@ -691,9 +698,9 @@ function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySna
       const trendColor = trend === '↑' ? C.teal : trend === '→' ? C.n500 : C.n700;
       return { alias: p.alias, latest, prev, yLatest, yPrev, trend, trendColor };
     });
-  }, [properties, fiscalSummaries]);
+  }, [properties, realSummaries]);
 
-  const thStyle: React.CSSProperties = { padding: '10px 14px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, textAlign: 'right', borderBottom: `1px solid ${C.n200}` };
+  const thStyle: React.CSSProperties = { padding: '10px 14px', fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', textTransform: 'uppercase', color: C.n500, textAlign: 'right', borderBottom: `1px solid ${C.n200}` };
   const tdStyle: React.CSSProperties = { padding: '10px 14px', fontSize: 13, fontFamily: "'IBM Plex Mono', monospace", textAlign: 'right', color: C.n700, fontVariantNumeric: 'tabular-nums' };
 
   return (
@@ -840,7 +847,7 @@ function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySna
 
 // ─── Tab: Individual ──────────────────────────────────────────────────────────
 
-function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAmortizado }: { selectedId: string; properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number }) {
+function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAmortizado, declaredYears }: { selectedId: string; properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number; declaredYears: Set<number> }) {
   const navigate = useNavigate();
   const [propId, setPropId] = useState(selectedId || 'acevedo');
   const prop = properties.find(p => p.id === propId) ?? properties[0];
@@ -849,12 +856,14 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '—';
   const cashflowColor = prop.cashflowMes > 0 ? C.teal : prop.cashflowMes < 0 ? C.n700 : C.n500;
   const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
-  const monthsFromPurchase = getElapsedMonthsFromPurchase(prop.purchaseDate);
-  const cashflowAcumulado = prop.cashflowMes * monthsFromPurchase;
+  // Cashflow acumulado = solo datos reales de FiscalSummaries declarados
+  const cashflowAcumulado = propCashflowNeto;
   const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
-  // Fiscal data for this property
-  const propSummaries = useMemo(() => fiscalSummaries.filter(fs => String(fs.propertyId) === prop.id), [fiscalSummaries, prop.id]);
+  // Fiscal data for this property — only declared exercises, with robust ID matching
+  const propSummaries = useMemo(() => fiscalSummaries.filter(fs =>
+    (String(fs.propertyId) === prop.id || Number(fs.propertyId) === Number(prop.id)) && declaredYears.has(fs.exerciseYear)
+  ), [fiscalSummaries, prop.id, declaredYears]);
   const propRentas = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [propSummaries]);
   const propGastosOp = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) + (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [propSummaries]);
   const propIntereses = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [propSummaries]);
@@ -876,15 +885,15 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
         <select value={propId} onChange={e => setPropId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 260, fontFamily: 'inherit' }}>
           {properties.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.addr}</option>)}
         </select>
-        <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver ficha"><Eye size={18} /></button>
-          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}/editar`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Editar"><Pencil size={18} /></button>
-          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}?tab=fiscal`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Configuración"><SlidersHorizontal size={18} /></button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Ver / editar ficha"><Pencil size={18} color="var(--grey-500)" /></button>
+          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}?tab=presupuesto`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Gastos del inmueble"><Receipt size={18} color="var(--grey-500)" /></button>
+          <button onClick={() => toast('Próximamente')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }} title="Simular venta"><LogOut size={18} color="var(--grey-500)" /></button>
         </div>
       </div>
 
       {/* Timeline — Compra card with cost breakdown */}
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.n500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', color: C.n500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         Foto pasado · presente · proyección
         <div style={{ flex: 1, height: 1, background: C.n200 }} />
       </div>
@@ -896,7 +905,7 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
           { label: 'Proyección 10 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1 + projectionRate, 10)))}`, sub: `A ${(projectionRate * 100).toFixed(2)}% anual`, cls: 'future' },
         ].map(t => (
           <div key={t.label} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: `1px solid ${t.cls === 'present' ? C.blue : t.cls === 'future' ? C.teal : C.n200}`, background: t.cls === 'present' ? 'rgba(4,44,94,.04)' : t.cls === 'future' ? 'rgba(29,160,186,.04)' : C.n50 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: C.n500, marginBottom: 4 }}>{t.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', color: C.n500, marginBottom: 4 }}>{t.label}</div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.n700 }}>{t.val}</div>
             <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{t.sub}</div>
           </div>
@@ -917,7 +926,7 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
           },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, letterSpacing: '0.3px', color: C.n500, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: k.color }}>{k.val}</div>
             <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{k.meta}</div>
           </div>
@@ -996,23 +1005,23 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
               <div style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Desglose por ejercicio fiscal</div>
               <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>Datos del FiscalSummary de {prop.alias}</div>
             </div>
-            {/* Rectangular year selector (V4 pattern) */}
-            <div style={{ display: 'inline-flex' }}>
+            {/* Rectangular year selector (V4 period-selector pattern) */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 0 }}>
               {availableYears.map((y, i) => (
                 <button
                   key={y}
                   onClick={() => setSelectedYear(y)}
                   style={{
-                    padding: '6px 14px',
-                    fontSize: 13,
-                    fontWeight: activeYear === y ? 600 : 400,
-                    color: activeYear === y ? '#fff' : C.n700,
-                    background: activeYear === y ? C.blue : '#fff',
-                    border: `1px solid ${C.n300}`,
-                    borderLeft: i > 0 ? 'none' : `1px solid ${C.n300}`,
+                    padding: '8px 16px',
+                    fontSize: 14,
+                    fontWeight: activeYear === y ? 700 : 400,
+                    color: activeYear === y ? 'var(--grey-900, #1A2332)' : 'var(--grey-700, #303A4C)',
+                    background: activeYear === y ? 'var(--grey-100, #EEF1F5)' : 'var(--white, #fff)',
+                    border: '1.5px solid var(--grey-300, #C8D0DC)',
+                    borderLeft: i > 0 ? 'none' : '1.5px solid var(--grey-300, #C8D0DC)',
                     borderRadius: i === 0 ? '8px 0 0 8px' : i === availableYears.length - 1 ? '0 8px 8px 0' : 0,
                     cursor: 'pointer',
-                    fontFamily: 'inherit',
+                    fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
                   }}
                 >
                   {y}
@@ -1079,6 +1088,7 @@ export default function InmueblesAnalisis() {
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
   const [reloadCounter] = useState(0);
   const [fiscalSummaries, setFiscalSummaries] = useState<FiscalSummary[]>([]);
+  const [ejercicios, setEjercicios] = useState<EjercicioFiscalCoord[]>([]);
   const [loansCapitalAmortizado, setLoansCapitalAmortizado] = useState(0);
 
   useEffect(() => {
@@ -1094,7 +1104,7 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, dbFiscalSummaries] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, dbFiscalSummaries, dbEjercicios] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
@@ -1103,6 +1113,7 @@ export default function InmueblesAnalisis() {
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
           getCachedStoreRecords<FiscalSummary>('fiscalSummaries', { forceRefresh: true }),
+          getCachedStoreRecords<EjercicioFiscalCoord>('ejerciciosFiscalesCoord', { forceRefresh: true }),
         ]);
 
         if (!mounted) return;
@@ -1137,6 +1148,7 @@ export default function InmueblesAnalisis() {
         );
         setProperties(snapshots);
         setFiscalSummaries(dbFiscalSummaries);
+        setEjercicios(dbEjercicios);
         // Capital amortizado from loans
         const totalCapAmort = dbLoans.reduce((s, l) => s + ((l as any).capitalAmortizado || 0), 0);
         setLoansCapitalAmortizado(totalCapAmort);
@@ -1159,6 +1171,27 @@ export default function InmueblesAnalisis() {
     nextParams.delete('refresh');
     setSearchParams(nextParams, { replace: true });
   };
+
+  // Compute declared years from ejerciciosFiscalesCoord
+  // A year is "declared" if there's an ejercicio with AEAT data or fiscal summaries with real data
+  const declaredYears = useMemo(() => {
+    const years = new Set<number>();
+    // Years from ejerciciosFiscalesCoord that have AEAT declarations
+    ejercicios.forEach(ej => {
+      if (ej.aeat || ej.estado === 'declarado' || ej.estado === 'prescrito') {
+        years.add(ej.año);
+      }
+    });
+    // Fallback: if no ejercicios, include years that have non-zero fiscal data
+    if (years.size === 0) {
+      fiscalSummaries.forEach(fs => {
+        if ((fs.box0102 && fs.box0102 > 0) || (fs.box0105 && fs.box0105 > 0) || (fs.box0106 && fs.box0106 > 0) || (fs.box0109 && fs.box0109 > 0)) {
+          years.add(fs.exerciseYear);
+        }
+      });
+    }
+    return years;
+  }, [ejercicios, fiscalSummaries]);
 
   if (!properties.length) {
     return (
@@ -1223,9 +1256,9 @@ export default function InmueblesAnalisis() {
         />
 
         {/* Tab content */}
-        {activeTab === 'resumen'    && <TabResumen properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} />}
-        {activeTab === 'evolucion'  && <TabEvolucion properties={properties} fiscalSummaries={fiscalSummaries} />}
-        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} />}
+        {activeTab === 'resumen'    && <TabResumen properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} declaredYears={declaredYears} />}
+        {activeTab === 'evolucion'  && <TabEvolucion properties={properties} fiscalSummaries={fiscalSummaries} declaredYears={declaredYears} ejercicios={ejercicios} />}
+        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} declaredYears={declaredYears} />}
       </div>
 
     </div>
