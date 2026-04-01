@@ -56,7 +56,7 @@ This ensures reliable deployments without conflicts.
 
 ## Netlify Extension Outage Playbook (ENETUNREACH)
 
-If Netlify fails during **Installing extensions** (for example extension `neon`) before `npm ci` starts, the repo build command is not the root cause.
+If Netlify fails during **Installing extensions** (e.g., the `neon` extension) before `npm ci` starts, the configured build command is unlikely to be the root cause.
 
 ### Symptoms
 - Build stops at `Installing extensions`
