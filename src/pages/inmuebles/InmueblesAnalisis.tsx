@@ -645,10 +645,11 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
       .sort((a, b) => a.year - b.year);
   }, [realSummaries, ejercicios]);
 
-  // Cashflow chart data — from real yearlyData
+  // Cashflow chart data — from real yearlyData (guard against offset years)
   const cashflowChartData = useMemo(() => {
+    const currentYear = new Date().getFullYear();
     return yearlyData
-      .filter(d => d.ing > 0 || d.gas > 0)
+      .filter(d => (d.ing > 0 || d.gas > 0) && d.year <= currentYear)
       .map(d => ({
         year: String(d.year),
         cashflow: Math.round(d.cf),
@@ -656,6 +657,7 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
   }, [yearlyData]);
 
   // Evolution chart data — from real properties
+  // Only coste acumulado is a real historical series; valor mercado is only known for the current year
   const evolucionChartData = useMemo(() => {
     if (!properties.length) return [];
 
@@ -668,6 +670,8 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
     const minYear = Math.min(...purchaseYears);
     const currentYear = new Date().getFullYear();
 
+    const totalValorActual = properties.reduce((sum, p) => sum + p.valor, 0);
+
     const data = [];
     for (let y = minYear; y <= currentYear; y++) {
       const costeAcum = properties.reduce((sum, p) => {
@@ -675,17 +679,12 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
         return (py && py <= y) ? sum + p.coste : sum;
       }, 0);
 
-      // Only current year has real market value; past years use cost as proxy
-      const isCurrentYear = y === currentYear;
-      const valorAcum = isCurrentYear
-        ? properties.reduce((sum, p) => sum + p.valor, 0)
-        : costeAcum;
-
       if (costeAcum > 0) {
         data.push({
           year: String(y),
           coste: Math.round(costeAcum),
-          valor: Math.round(valorAcum),
+          // valor mercado: only the current year has real data
+          valor: y === currentYear ? Math.round(totalValorActual) : null,
         });
       }
     }
@@ -698,9 +697,10 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
     { ing: 0, gas: 0, int: 0, neto: 0, imp: 0, cf: 0 }
   ), [yearlyData]);
 
-  // Yield comparison by property — only declared years
+  // Yield comparison by property — only declared years (guard against offset years)
   const yieldComparison = useMemo(() => {
-    const years = [...new Set(realSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a).slice(0, 2);
+    const currentYear = new Date().getFullYear();
+    const years = [...new Set(realSummaries.map(fs => fs.exerciseYear))].filter(y => y <= currentYear).sort((a, b) => b - a).slice(0, 2);
     if (years.length < 2) return [];
     const [latest, prev] = years;
     return properties.map(p => {
@@ -731,7 +731,7 @@ function TabEvolucion({ properties, fiscalSummaries, declaredYears, ejercicios }
               <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="valor" name="Valor mercado" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} fill="rgba(4,44,94,.08)" />
+              <Line type="monotone" dataKey="valor" name="Valor mercado" stroke={C.blue} strokeWidth={2} dot={{ r: 5 }} connectNulls={false} />
               <Line type="monotone" dataKey="coste" name="Coste acumulado" stroke={C.c2} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
