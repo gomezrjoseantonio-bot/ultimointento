@@ -88,22 +88,6 @@ type PropertySnapshot = {
   gastosMes: number;
 };
 
-const getAcquisitionCost = (property: Property): number => {
-  const { acquisitionCosts } = property;
-  const extras = (acquisitionCosts.other || []).reduce((sum, item) => sum + (item.amount || 0), 0);
-  return (
-    (acquisitionCosts.price ?? 0) +
-    (acquisitionCosts.itp ?? 0) +
-    (acquisitionCosts.iva ?? 0) +
-    (acquisitionCosts.notary ?? 0) +
-    (acquisitionCosts.registry ?? 0) +
-    (acquisitionCosts.management ?? 0) +
-    (acquisitionCosts.psi ?? 0) +
-    (acquisitionCosts.realEstate ?? 0) +
-    extras
-  );
-};
-
 const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmueble' | 'inversion') => {
   const latest = new Map<number, number>();
   const sorted = valoraciones
