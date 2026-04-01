@@ -40,6 +40,7 @@ import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
 import { getAllocationFactor } from '../../services/prestamosService';
+import { getTotalMejorasHastaEjercicio } from '../../services/mejoraActivoService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -73,6 +74,10 @@ type PropertySnapshot = {
   ccaa: string;
   purchaseDate: string;
   coste: number;
+  costeVivienda: number;
+  itp: number;
+  otrosGastos: number;
+  mejorasCapex: number;
   valor: number;
   revalTotal: number;
   revalAnual: number;
@@ -143,6 +148,7 @@ const mapToSnapshot = (
   loans: Prestamo[],
   paymentPlansByLoanId: Map<string, PlanPagos>,
   valorActual: number,
+  mejorasCapex: number,
 ): PropertySnapshot => {
   const propertyId = property.id!;
   const normalizedPropertyId = String(propertyId).trim();
@@ -246,7 +252,19 @@ const mapToSnapshot = (
   };
 
   const propertyLoans = loans.filter(isLoanLinkedToProperty);
-  const coste = getAcquisitionCost(property);
+  const { acquisitionCosts } = property;
+  const acqExtras = (acquisitionCosts.other || []).reduce((s, item) => s + (item.amount || 0), 0);
+  const costeVivienda = (acquisitionCosts.price ?? 0) + (acquisitionCosts.iva ?? 0);
+  const itp = acquisitionCosts.itp ?? 0;
+  const otrosGastos =
+    (acquisitionCosts.notary ?? 0) +
+    (acquisitionCosts.registry ?? 0) +
+    (acquisitionCosts.management ?? 0) +
+    (acquisitionCosts.psi ?? 0) +
+    (acquisitionCosts.realEstate ?? 0) +
+    acqExtras;
+  const costeAdquisicion = costeVivienda + itp + otrosGastos;
+  const coste = costeAdquisicion + mejorasCapex;
   const valor = valorActual;
 
   const propertyContracts = contracts.filter((contract) => contract.inmuebleId === propertyId && contract.estadoContrato === 'activo');
@@ -328,6 +346,10 @@ const mapToSnapshot = (
     ccaa: property.ccaa || 'Sin CCAA',
     purchaseDate: property.purchaseDate,
     coste,
+    costeVivienda,
+    itp,
+    otrosGastos,
+    mejorasCapex,
     valor,
     revalTotal,
     revalAnual,
@@ -465,6 +487,10 @@ function BenefitCard({ title, value, subtitle, teal }: { title: string; value: n
 
 function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado, declaredYears }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number; declaredYears: Set<number> }) {
   const totalCost = useMemo(() => properties.reduce((sum, property) => sum + property.coste, 0), [properties]);
+  const totalVivienda = useMemo(() => properties.reduce((sum, p) => sum + p.costeVivienda, 0), [properties]);
+  const totalItp = useMemo(() => properties.reduce((sum, p) => sum + p.itp, 0), [properties]);
+  const totalOtros = useMemo(() => properties.reduce((sum, p) => sum + p.otrosGastos, 0), [properties]);
+  const totalMejoras = useMemo(() => properties.reduce((sum, p) => sum + p.mejorasCapex, 0), [properties]);
   const totalValue = useMemo(() => properties.reduce((sum, property) => sum + property.valor, 0), [properties]);
   const totalCashflowMes = useMemo(() => properties.reduce((sum, property) => sum + property.cashflowMes, 0), [properties]);
   const totalGastosMes = useMemo(() => properties.reduce((sum, property) => sum + property.gastosMes, 0), [properties]);
@@ -500,7 +526,14 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado, decla
     <div>
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
-        <KpiCard label="Coste total" value={fmt(totalCost)} meta="Inversión acumulada en inmuebles activos" accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
+        <KpiCard label="Coste total" value={fmt(totalCost)} meta={
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, color: C.n500 }}>
+            <span>Vivienda {fmt(totalVivienda)}</span>
+            {totalItp > 0 && <span>ITP {fmt(totalItp)}</span>}
+            {totalOtros > 0 && <span>Otros {fmt(totalOtros)}</span>}
+            {totalMejoras > 0 && <span>Mejoras {fmt(totalMejoras)}</span>}
+          </span>
+        } accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
         <KpiCard
           label="Valor actual"
           value={fmt(totalValue)}
@@ -1206,7 +1239,11 @@ export default function InmueblesAnalisis() {
 
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
-        const snapshots = active.map((property) =>
+        const currentYear = new Date().getFullYear();
+        const mejorasPorPropiedad = await Promise.all(
+          active.map((p) => getTotalMejorasHastaEjercicio(p.id as number, currentYear))
+        );
+        const snapshots = active.map((property, idx) =>
           mapToSnapshot(
             property,
             dbContracts,
@@ -1215,6 +1252,7 @@ export default function InmueblesAnalisis() {
             dbLoans,
             paymentPlansByLoanId,
             latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
+            mejorasPorPropiedad[idx],
           )
         );
         setProperties(snapshots);
