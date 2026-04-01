@@ -1384,6 +1384,12 @@ export interface FiscalSummary {
   id?: number;
   propertyId: number;
   exerciseYear: number;
+  // Ingresos (casilla 0102 AEAT)
+  box0102?: number;           // Rendimiento íntegro del inmueble
+  rendimientoNeto?: number;   // Neto después de gastos y amortización
+  reduccionVivienda?: number; // Reducción por vivienda habitual (60%, 50%, etc.)
+  rendimientoNetoReducido?: number; // Neto después de reducción
+  gastosPendientesGenerados?: number; // Excedente de gastos → arrastre
   // AEAT Box totals
   box0105: number; // Interests/financing (manual docs + auto loans)
   box0105_auto?: number; // Interests auto-calculated from linked loans (subset of box0105)
