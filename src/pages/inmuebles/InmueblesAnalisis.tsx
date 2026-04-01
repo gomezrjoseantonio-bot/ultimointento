@@ -1,12 +1,11 @@
 // src/pages/inmuebles/InmueblesAnalisis.tsx
 // Página de análisis de cartera inmobiliaria
-// Tabs: Resumen · Cartera · Evolución general · Individual
+// Tabs: Resumen · Evolución · Individual
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Table2,
   Activity,
   Home,
   Landmark,
@@ -14,18 +13,10 @@ import {
   Wallet,
   ArrowUpRight,
   TrendingUp,
-  TrendingDown,
-  Shield,
-  AlertTriangle,
-  CircleCheck,
-  CircleDollarSign,
   Eye,
   Pencil,
   SlidersHorizontal,
   Plus,
-  Search,
-  ChevronUp,
-  ChevronDown,
 } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import {
@@ -43,12 +34,10 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Contract, Expense, initDB, OpexRule, Property } from '../../services/db';
+import { Contract, Expense, FiscalSummary, initDB, OpexRule, Property } from '../../services/db';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
-import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
-import { cancelPropertySale, getLatestConfirmedSaleForProperty } from '../../services/propertySaleService';
-import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
+import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
 import { getAllocationFactor } from '../../services/prestamosService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -490,10 +479,23 @@ function ChartCard({ title, sub, children, right }: { title: string; sub?: strin
   );
 }
 
+function BenefitCard({ title, value, subtitle, teal }: { title: string; value: number; subtitle: string; teal?: boolean }) {
+  const isPositive = value > 0;
+  const color = teal && isPositive ? C.teal : C.blue;
+  return (
+    <div style={{ background: '#fff', border: '0.5px solid var(--grey-200, #DDE3EC)', borderRadius: 10, padding: '14px 18px' }}>
+      <div style={{ fontSize: 13, fontWeight: 500, color: C.n700 }}>{title}</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 500, color, fontVariantNumeric: 'tabular-nums', marginTop: 4 }}>
+        {value !== 0 ? fmt(value) : '—'}
+      </div>
+      <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{subtitle}</div>
+    </div>
+  );
+}
+
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
-function TabResumen({ properties }: { properties: PropertySnapshot[] }) {
-  const [horizon, setHorizon] = useState(10);
+function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number }) {
   const totalCost = useMemo(() => properties.reduce((sum, property) => sum + property.coste, 0), [properties]);
   const totalValue = useMemo(() => properties.reduce((sum, property) => sum + property.valor, 0), [properties]);
   const totalCashflowMes = useMemo(() => properties.reduce((sum, property) => sum + property.cashflowMes, 0), [properties]);
@@ -508,21 +510,26 @@ function TabResumen({ properties }: { properties: PropertySnapshot[] }) {
   const grossYield = totalCost > 0 ? (((totalCashflowMes + totalGastosMes) * 12) / totalCost) * 100 : 0;
   const netAssetYield = totalCost > 0 ? ((totalCashflowMes * 12) / totalCost) * 100 : 0;
   const netEquityYield = totalEquity > 0 ? ((totalCashflowMes * 12) / totalEquity) * 100 : 0;
-  const cashflowAcumulado = properties.reduce(
-    (sum, property) => sum + (property.cashflowMes * getElapsedMonthsFromPurchase(property.purchaseDate)),
-    0
-  );
+
+  // Benefit cards from fiscal data
+  const totalRentas = useMemo(() => fiscalSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [fiscalSummaries]);
+  const totalGastosOp = useMemo(() => fiscalSummaries.reduce((s, fs) => s +
+    (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) +
+    (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [fiscalSummaries]);
+  const totalIntereses = useMemo(() => fiscalSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [fiscalSummaries]);
+  const cashflowNeto = totalRentas - totalGastosOp - totalIntereses;
+  const plusvalia = totalValue - totalCost;
+
+  const cashflowAcumulado = totalRentas - totalGastosOp - totalIntereses;
   const beneficioTotalVenta = cashflowAcumulado + totalLatentGain;
   const multiploCapital = totalCost > 0 ? totalEquity / totalCost : 0;
 
-  const proyData = useMemo(
-    () => buildProyeccion(horizon, totalValue, totalEquity, weightedRevalRate),
-    [horizon, totalValue, totalEquity, weightedRevalRate]
-  );
+  const donutData = properties.map(p => ({ name: p.alias, value: p.valor }));
+  const yieldData = [...properties].sort((a, b) => b.yield - a.yield).map(p => ({ name: p.alias, yield: p.yield }));
 
   return (
     <div>
-      {/* KPI row 1 */}
+      {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 16 }}>
         <KpiCard label="Coste total" value={fmt(totalCost)} meta="Inversión acumulada en inmuebles activos" accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
         <KpiCard
@@ -533,11 +540,31 @@ function TabResumen({ properties }: { properties: PropertySnapshot[] }) {
           icon={Building2}
           iconBg="rgba(4,44,94,.06)"
         />
-        <KpiCard label="Cashflow neto / mes" value={fmt(totalCashflowMes)} meta="Ingresos − gastos − hipotecas" accentColor={C.pos} icon={Wallet} iconBg={C.posBg} valueColor={C.pos} />
-        <KpiCard label="Plusvalía latente" value={fmt(totalLatentGain)} meta="Si vendes hoy (antes de impuestos)" accentColor={C.teal} icon={ArrowUpRight} iconBg="rgba(29,160,186,.1)" />
+        <KpiCard label="Cashflow acumulado" value={fmt(cashflowAcumulado)} meta="Rentas cobradas − gastos pagados" accentColor={C.pos} icon={Wallet} iconBg={C.posBg} valueColor={cashflowAcumulado >= 0 ? C.teal : C.pos} />
+        <KpiCard label="Plusvalía latente" value={fmt(totalLatentGain)} meta="Si vendes hoy, antes de impuestos" accentColor={C.teal} icon={ArrowUpRight} iconBg="rgba(29,160,186,.1)" />
       </div>
 
-      {/* KPI row 2 */}
+      {/* 3 Benefit cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+        <BenefitCard
+          title="Cashflow neto"
+          value={cashflowNeto}
+          subtitle={`Rentas ${fmt(totalRentas)} − gastos ${fmt(totalGastosOp + totalIntereses)}`}
+          teal={cashflowNeto > 0}
+        />
+        <BenefitCard
+          title="Revalorización"
+          value={plusvalia}
+          subtitle={`Comprado ${fmt(totalCost)} · hoy ${fmt(totalValue)}`}
+        />
+        <BenefitCard
+          title="Deuda amortizada"
+          value={loansCapitalAmortizado}
+          subtitle={`Intereses desgravados: ${fmt(totalIntereses)}`}
+        />
+      </div>
+
+      {/* 3 Rentabilidades */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 16 }}>
         {[
           { label: 'Rentabilidad bruta', val: `${grossYield.toFixed(2)}%`, meta: '/ año · Ingresos anuales / Coste total' },
@@ -552,358 +579,8 @@ function TabResumen({ properties }: { properties: PropertySnapshot[] }) {
         ))}
       </div>
 
-      {/* Charts row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-        <ChartCard
-          title="Proyección de cartera"
-          sub={`Valor de mercado y equity · Tasa media ${(weightedRevalRate * 100).toFixed(2)}%/año`}
-          right={
-            <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3 }}>
-              {[5, 10, 20].map(y => (
-                <button key={y} onClick={() => setHorizon(y)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: horizon === y ? 600 : 500, color: horizon === y ? C.blue : C.n500, background: horizon === y ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: horizon === y ? '0 1px 3px rgba(4,44,94,.08)' : 'none' }}>{y}a</button>
-              ))}
-            </div>
-          }
-        >
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={proyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="rgba(200,208,220,.4)" strokeDasharray="0" />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
-              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-              <Line type="monotone" dataKey="valor" name="Valor cartera" stroke={C.blue} strokeWidth={2} dot={{ r: 3, fill: C.blue }} fill="rgba(4,44,94,.07)" />
-              <Line type="monotone" dataKey="equity" name="Equity neto" stroke={C.teal} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3, fill: C.teal }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Resultado global y equity</div>
-          <ResultRow label="Cashflow neto acumulado" value={fmt(cashflowAcumulado)} valueColor={cashflowAcumulado >= 0 ? C.pos : C.neg} />
-          <ResultRow label="Beneficio total si vendes hoy" value={fmt(beneficioTotalVenta)} valueColor={beneficioTotalVenta >= 0 ? C.pos : C.neg} />
-          <ResultRow label="Múltiplo sobre capital" value={`× ${multiploCapital.toFixed(2)}`} />
-          <ResultRow label="Rentabilidad anualizada" value={`${(weightedRevalRate * 100).toFixed(2)}%`} valueColor={C.blue} />
-          <ResultRow label="Tasa media revalorización" value={`${(weightedRevalRate * 100).toFixed(2)}% / año`} />
-          <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
-          <ResultRow label="Deuda pendiente" value={fmt(-totalDebt)} valueColor={C.neg} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Equity actual</span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.blue }}>{fmt(totalEquity)}</span>
-          </div>
-          <div style={{ fontSize: 11, color: C.n500, marginTop: 8 }}>Métricas calculadas automáticamente con los inmuebles activos y sus últimas valoraciones.</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Cartera ─────────────────────────────────────────────────────────────
-
-function TabCartera({
-  onSelectProperty,
-  onSellProperty,
-  properties,
-}: {
-  onSelectProperty: (id: string) => void;
-  onSellProperty: (id: string) => void;
-  properties: PropertySnapshot[];
-}) {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState<keyof PropertySnapshot>('alias');
-  const [sortAsc, setSortAsc] = useState(true);
-
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase();
-    return properties
-      .filter(p => p.alias.toLowerCase().includes(q) || p.addr.toLowerCase().includes(q))
-      .sort((a, b) => {
-        const va = a[sortKey], vb = b[sortKey];
-        return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
-      });
-  }, [properties, query, sortKey, sortAsc]);
-
-  const handleSort = (key: keyof PropertySnapshot) => {
-    if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(true); }
-  };
-
-  const SortIcon = ({ k }: { k: keyof PropertySnapshot }) =>
-    sortKey === k ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null;
-
-  const totalCost = filtered.reduce((sum, p) => sum + p.coste, 0);
-  const totalValue = filtered.reduce((sum, p) => sum + p.valor, 0);
-  const totalLatentGain = totalValue - totalCost;
-  const totalDebt = filtered.reduce((sum, p) => sum + p.deudaPendiente, 0);
-  const totalMortgage = filtered.reduce((sum, p) => sum + p.cuotaHipotecaMes, 0);
-  const totalExpenses = filtered.reduce((sum, p) => sum + p.gastosMes, 0);
-  const totalRent = filtered.reduce((sum, p) => sum + Math.max(0, p.cashflowMes + p.gastosMes), 0);
-  const totalNetCf = filtered.reduce((sum, p) => sum + (p.cashflowMes - p.cuotaHipotecaMes), 0);
-  const equity = Math.max(0, totalValue - totalDebt);
-  const ltv = totalValue > 0 ? (totalDebt / totalValue) * 100 : 0;
-  const occupiedUnits = filtered.filter((p) => Math.max(0, p.cashflowMes + p.gastosMes) > 0).length;
-  const totalUnits = filtered.length;
-  const occupancyRate = totalUnits > 0 ? (occupiedUnits / totalUnits) * 100 : 0;
-  const mortgageCoverage = totalMortgage > 0 ? totalRent / totalMortgage : 0;
-
-  const rows = filtered.map((p) => {
-    const rent = Math.max(0, p.cashflowMes + p.gastosMes);
-    const netCf = p.cashflowMes - p.cuotaHipotecaMes;
-    return {
-      ...p,
-      rent,
-      netCf,
-      status: rent <= 0 ? 'Vacío' : 'Alquilado',
-    };
-  });
-
-  const distributionData = [...filtered]
-    .sort((a, b) => b.valor - a.valor)
-    .map((p) => ({ name: p.alias, value: p.valor, pct: totalValue > 0 ? (p.valor / totalValue) * 100 : 0 }));
-
-  const geoData = useMemo(() => {
-    const grouped = new Map<string, number>();
-    filtered.forEach((p) => grouped.set(p.ccaa || 'Sin CCAA', (grouped.get(p.ccaa || 'Sin CCAA') ?? 0) + p.valor));
-    return Array.from(grouped.entries())
-      .map(([name, value]) => ({ name, value, pct: totalValue > 0 ? (value / totalValue) * 100 : 0 }))
-      .sort((a, b) => b.value - a.value);
-  }, [filtered, totalValue]);
-
-  const cashflow6m = useMemo(() => {
-    const months = ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'];
-    return months.map((month, i) => ({
-      month,
-      value: Math.max(0, totalNetCf * (0.9 + i * 0.02)),
-      highlight: i === months.length - 1,
-    }));
-  }, [totalNetCf]);
-
-  const currentCashflow = cashflow6m[cashflow6m.length - 1]?.value ?? 0;
-  const arcLength = Math.PI * 50;
-  const ltvProgress = Math.max(0, Math.min(100, ltv));
-
-  return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-        <KpiCard
-          label="Plusvalía latente"
-          value={`${totalLatentGain >= 0 ? '+' : '-'}${fmt(Math.abs(totalLatentGain))}`}
-          meta={<Chip color={totalLatentGain >= 0 ? C.pos : C.neg} bg={totalLatentGain >= 0 ? C.posBg : C.negBg}>{totalCost > 0 ? `${totalLatentGain >= 0 ? '↗' : '↘'} ${Math.abs((totalLatentGain / totalCost) * 100).toFixed(1)}%` : '0,0%'}</Chip>}
-          accentColor={C.pos}
-          icon={ArrowUpRight}
-          iconBg={C.posBg}
-          valueColor={totalLatentGain >= 0 ? C.pos : C.neg}
-        />
-        <KpiCard
-          label="Ocupación"
-          value={`${occupancyRate.toFixed(1).replace('.', ',')}%`}
-          meta={<><span>{occupiedUnits} de {totalUnits} unidades alquiladas</span><div style={{ marginTop: 4 }}><Chip color={occupiedUnits === totalUnits ? C.pos : '#A16207'} bg={occupiedUnits === totalUnits ? C.posBg : '#FEF3C7'}>{occupiedUnits === totalUnits ? <><CircleCheck size={10} /> Completa</> : <><AlertTriangle size={10} /> {totalUnits - occupiedUnits} unidad vacía</>}</Chip></div></>}
-          accentColor={C.teal}
-          icon={Home}
-          iconBg="rgba(29,160,186,.1)"
-        />
-        <KpiCard
-          label="Cobertura hipotecas"
-          value={totalMortgage > 0 ? `${mortgageCoverage.toFixed(1).replace('.', ',')}x` : 'N/A'}
-          meta={<><span>CF ingresos / CF financiación</span><div style={{ marginTop: 4 }}><Chip color={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.pos : C.neg} bg={totalMortgage <= 0 || mortgageCoverage >= 1.2 ? C.posBg : C.negBg}>{totalMortgage <= 0 ? 'Sin deuda' : mortgageCoverage >= 1.2 ? <><CircleCheck size={10} /> Solvente</> : 'En riesgo'}</Chip></div></>}
-          accentColor={C.blue}
-          icon={Shield}
-          iconBg="rgba(4,44,94,.06)"
-        />
-      </div>
-
-      <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.n100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 480, padding: '10px 14px', border: `1.5px solid ${C.n200}`, borderRadius: 10, background: C.n50 }}>
-            <Search size={16} color={C.n500} />
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por alias o dirección..." style={{ border: 'none', background: 'transparent', fontSize: 15, color: C.n700, width: '100%', outline: 'none', fontFamily: 'inherit' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', fontSize: 13, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 10, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
-              <SlidersHorizontal size={14} /> Filtros
-            </button>
-            <button onClick={() => navigate('/inmuebles/cartera/nuevo')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', fontSize: 13, background: C.blue, border: 'none', borderRadius: 10, cursor: 'pointer', color: '#fff', fontFamily: 'inherit', fontWeight: 600 }}>
-              <Plus size={14} /> Nuevo inmueble
-            </button>
-          </div>
-        </div>
-
-        <div style={{ padding: '10px 20px', fontSize: 13, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>{filtered.length} inmuebles</div>
-
-        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-          <colgroup>
-            <col style={{ width: '21%' }} />
-            <col style={{ width: '9%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '8%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '12%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              {[
-                { key: 'alias', label: 'Propiedad', align: 'left' },
-                { key: 'coste', label: 'Coste', align: 'right' },
-                { key: 'valor', label: 'Valor actual', align: 'right' },
-                { key: 'revalTotal', label: 'Plusvalía', align: 'right' },
-                { key: 'cashflowMes', label: 'Renta/mes', align: 'right' },
-                { key: 'yield', label: 'Yield bruto', align: 'right' },
-                { key: 'cuotaHipotecaMes', label: 'Hipoteca/mes', align: 'right' },
-                { key: 'deudaPendiente', label: 'CF neto', align: 'right' },
-              ].map(col => (
-                <th key={col.key} onClick={() => handleSort(col.key as any)} style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col.align as any, cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{col.label}<SortIcon k={col.key as any} /></span>
-                </th>
-              ))}
-              <th style={{ padding: '12px 16px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: 'center' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p, i) => (
-              <tr key={p.id} onClick={() => onSelectProperty(p.id)} style={{ borderBottom: i < rows.length - 1 ? `1px solid ${C.n100}` : 'none', cursor: 'pointer' }}>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%' }}>
-                    <div style={{ fontWeight: 600, color: C.n700, fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.alias}</div>
-                    <Chip color={p.status === 'Alquilado' ? C.pos : C.neg} bg={p.status === 'Alquilado' ? C.posBg : C.negBg}>{p.status}</Chip>
-                  </div>
-                  <div style={{ fontSize: 12, color: C.n500, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.addr}</div>
-                </td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.coste)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.valor)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.revalTotal >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.revalTotal >= 0 ? '+' : '-'}{fmt(Math.abs(p.valor - p.coste))}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.rent)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.yield > 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.yield > 0 ? `${p.yield.toFixed(2).replace('.', ',')}%` : '0%'}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15 }}>{fmt(p.cuotaHipotecaMes)}</td>
-                <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, color: p.netCf >= 0 ? C.pos : C.neg, fontWeight: 600 }}>{p.netCf >= 0 ? '+' : '-'}{fmt(Math.abs(p.netCf))}</td>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver detalle"><Eye size={15} /></button>
-                    <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/gastos?propertyId=${p.id}`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Pack gastos alquileres"><TrendingDown size={15} /></button>
-                    <button onClick={e => { e.stopPropagation(); onSellProperty(p.id); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Vender inmueble"><CircleDollarSign size={15} /></button>
-                    <button onClick={e => { e.stopPropagation(); navigate(`/inmuebles/cartera/${p.id}/editar`); }} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Editar inmueble"><Pencil size={15} /></button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            <tr style={{ background: C.n50, borderTop: `1px solid ${C.n200}` }}>
-              <td style={{ padding: '14px 16px', fontWeight: 700, color: C.n700, fontSize: 18 }}>Total cartera</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{fmt(totalCost)}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{fmt(totalValue)}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', color: totalLatentGain >= 0 ? C.pos : C.neg, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{totalLatentGain >= 0 ? '+' : '-'}{fmt(Math.abs(totalLatentGain))}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{fmt(totalRent)}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', color: C.blue, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{totalCost > 0 ? `${((totalRent * 12 / totalCost) * 100).toFixed(2).replace('.', ',')}%` : '0%'}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{fmt(totalMortgage)}</td>
-              <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap', color: totalNetCf >= 0 ? C.pos : C.neg, fontFamily: "'IBM Plex Mono', monospace", fontSize: 16 }}>{totalNetCf >= 0 ? '+' : '-'}{fmt(Math.abs(totalNetCf))}</td>
-              <td style={{ padding: '14px 16px' }} />
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 16 }}>
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.n200}`, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>Apalancamiento (LTV)</div>
-          <div style={{ padding: 18 }}>
-            <div style={{ display: 'grid', placeItems: 'center', marginBottom: 8 }}>
-              <svg width="230" height="132" viewBox="0 0 120 70">
-                <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke={C.n200} strokeWidth="10" strokeLinecap="round" />
-                <path d="M 10 60 A 50 50 0 0 1 110 60" fill="none" stroke={C.pos} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(arcLength * ltvProgress) / 100} ${arcLength}`} />
-              </svg>
-              <div style={{ marginTop: -22, fontSize: 56, lineHeight: 1, color: C.pos, fontWeight: 700 }}>{ltv.toFixed(1).replace('.', ',')}%</div>
-              <div style={{ fontSize: 18, color: C.n500 }}>Loan-to-Value global</div>
-              <div style={{ fontSize: 13, color: '#8D97A9' }}>Objetivo recomendado: &lt; 50%</div>
-            </div>
-            <div style={{ height: 1, background: C.n200, margin: '14px 0' }} />
-            <ResultRow label="Equity" value={`${fmt(equity)} · ${totalValue > 0 ? ((equity / totalValue) * 100).toFixed(1).replace('.', ',') : '0'}%`} valueColor={C.n700} />
-            <ResultRow label="Deuda viva" value={`${fmt(totalDebt)} · ${ltv.toFixed(1).replace('.', ',')}%`} valueColor={C.n700} />
-          </div>
-        </div>
-
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, padding: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, marginBottom: 12 }}>Distribución por propiedad</div>
-          {distributionData.map((item, i) => (
-            <div key={item.name} style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto auto', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-              <div style={{ fontSize: 14, color: C.n700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
-              <div style={{ height: 10, borderRadius: 999, background: C.n100, overflow: 'hidden' }}><div style={{ width: `${item.pct}%`, height: '100%', background: DONUT_COLORS[i % DONUT_COLORS.length] }} /></div>
-              <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{fmt(item.value)}</div>
-              <div style={{ fontSize: 13, color: C.n500, width: 45, textAlign: 'right' }}>{item.pct.toFixed(1).replace('.', ',')}%</div>
-            </div>
-          ))}
-          <div style={{ height: 1, background: C.n200, margin: '12px 0' }} />
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, marginBottom: 10 }}>Distribución geográfica (CCAA)</div>
-          {geoData.map((item, i) => (
-            <div key={item.name} style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto auto', alignItems: 'center', gap: 8, marginBottom: 9 }}>
-              <div style={{ fontSize: 14, color: C.n700 }}>{item.name}</div>
-              <div style={{ height: 10, borderRadius: 999, background: C.n100, overflow: 'hidden' }}><div style={{ width: `${item.pct}%`, height: '100%', background: DONUT_COLORS[(i + 1) % DONUT_COLORS.length] }} /></div>
-              <div style={{ fontSize: 13, fontWeight: 600, fontFamily: "'IBM Plex Mono', monospace" }}>{fmt(item.value)}</div>
-              <div style={{ fontSize: 13, color: C.n500, width: 45, textAlign: 'right' }}>{item.pct.toFixed(1).replace('.', ',')}%</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, padding: 18 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, marginBottom: 12 }}>Cashflow últimos 6 meses</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 8, marginBottom: 16 }}>
-          {cashflow6m.map((item) => (
-            <div key={item.month} style={{ textAlign: 'center' }}>
-              <div style={{ height: 86, borderRadius: 8, background: item.highlight ? C.blue : C.pos }} />
-              <div style={{ marginTop: 8, fontSize: 13, color: item.highlight ? C.blue : C.n500, fontWeight: item.highlight ? 700 : 500 }}>{item.month}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ height: 1, background: C.n200, marginBottom: 12 }} />
-        <ResultRow label="Cashflow neto · mes actual" value={`${currentCashflow >= 0 ? '+' : '-'}${fmt(Math.abs(currentCashflow))}`} valueColor={currentCashflow >= 0 ? C.pos : C.neg} />
-        <ResultRow label="Ingresos por alquileres" value={`+${fmt(totalRent)}`} valueColor={C.pos} />
-        <ResultRow label="Gastos de inmuebles" value={`-${fmt(totalExpenses)}`} valueColor={C.neg} />
-        <ResultRow label="Cuotas hipotecarias" value={`-${fmt(totalMortgage)}`} valueColor={C.neg} />
-        <ResultRow label="Total salidas" value={`-${fmt(totalExpenses + totalMortgage)}`} valueColor={C.neg} />
-      </div>
-    </div>
-  );
-}
-
-// ─── Tab: Evolución general ───────────────────────────────────────────────────
-
-function TabEvolucion({ properties }: { properties: PropertySnapshot[] }) {
-  const donutData = properties.map(p => ({ name: p.alias, value: p.valor }));
-  const yieldData = [...properties].sort((a, b) => b.yield - a.yield).map(p => ({ name: p.alias, yield: p.yield }));
-
-  return (
-    <div>
+      {/* Charts: Donut + Yield */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-        <ChartCard title="Evolución del valor de cartera" sub="Valor total de mercado vs coste acumulado · 2005–2026">
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={EVOLUCION_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="rgba(200,208,220,.4)" />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Line type="monotone" dataKey="valor" name="Valor mercado" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} fill="rgba(4,44,94,.08)" />
-              <Line type="monotone" dataKey="coste" name="Coste acumulado" stroke={C.c2} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Cashflow neto mensual" sub="Evolución del cashflow por año">
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={CASHFLOW_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="rgba(200,208,220,.4)" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} €`} />
-              <Tooltip formatter={(v: number) => [`${v} €/mes`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
-              <Bar dataKey="cf" name="Cashflow neto €/mes" fill="rgba(4,44,94,.7)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <ChartCard title="Distribución del valor por inmueble" sub="% sobre valor total de cartera">
           <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
             <PieChart width={180} height={180}>
@@ -938,42 +615,282 @@ function TabEvolucion({ properties }: { properties: PropertySnapshot[] }) {
           </ResponsiveContainer>
         </ChartCard>
       </div>
+
+      {/* Resultado global y equity */}
+      <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Resultado global y equity</div>
+        <ResultRow label="Cashflow neto acumulado" value={fmt(cashflowAcumulado)} valueColor={cashflowAcumulado >= 0 ? C.teal : C.pos} />
+        <ResultRow label="Beneficio total si vendes hoy" value={fmt(beneficioTotalVenta)} valueColor={beneficioTotalVenta >= 0 ? C.teal : C.pos} />
+        <ResultRow label="Múltiplo sobre capital" value={`× ${multiploCapital.toFixed(2)}`} />
+        <ResultRow label="Rentabilidad anualizada" value={`${(weightedRevalRate * 100).toFixed(2)}%`} valueColor={C.blue} />
+        <ResultRow label="Tasa media revalorización" value={`${(weightedRevalRate * 100).toFixed(2)}% / año`} />
+        <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
+        <ResultRow label="Deuda pendiente" value={fmt(-totalDebt)} valueColor={C.n700} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Equity actual</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: C.blue }}>{fmt(totalEquity)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Tab: Evolución general ───────────────────────────────────────────────────
+
+function TabEvolucion({ properties, fiscalSummaries }: { properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[] }) {
+  const [horizon, setHorizon] = useState(10);
+
+  const totalCost = useMemo(() => properties.reduce((s, p) => s + p.coste, 0), [properties]);
+  const totalValue = useMemo(() => properties.reduce((s, p) => s + p.valor, 0), [properties]);
+  const totalDebt = useMemo(() => properties.reduce((s, p) => s + p.deudaPendiente, 0), [properties]);
+  const totalEquity = totalValue - totalDebt;
+  const weightedRevalRate = totalCost > 0
+    ? properties.reduce((s, p) => s + ((p.revalAnual / 100) * p.coste), 0) / totalCost
+    : 0;
+
+  const proyData = useMemo(
+    () => buildProyeccion(horizon, totalValue, totalEquity, weightedRevalRate),
+    [horizon, totalValue, totalEquity, weightedRevalRate]
+  );
+
+  // Year-by-year fiscal table
+  const yearlyData = useMemo(() => {
+    const byYear: Record<number, { ing: number; gas: number; int: number; neto: number; imp: number }> = {};
+    fiscalSummaries.forEach(fs => {
+      const y = fs.exerciseYear;
+      if (!byYear[y]) byYear[y] = { ing: 0, gas: 0, int: 0, neto: 0, imp: 0 };
+      byYear[y].ing += fs.box0102 || 0;
+      byYear[y].gas += (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) + (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0);
+      byYear[y].int += fs.box0105 || 0;
+      byYear[y].neto += fs.rendimientoNetoReducido || 0;
+    });
+    return Object.entries(byYear)
+      .map(([y, d]) => ({ year: Number(y), ...d, cf: d.ing - d.gas - d.int }))
+      .sort((a, b) => a.year - b.year);
+  }, [fiscalSummaries]);
+
+  const totals = useMemo(() => yearlyData.reduce(
+    (acc, r) => ({ ing: acc.ing + r.ing, gas: acc.gas + r.gas, int: acc.int + r.int, neto: acc.neto + r.neto, imp: acc.imp + r.imp, cf: acc.cf + r.cf }),
+    { ing: 0, gas: 0, int: 0, neto: 0, imp: 0, cf: 0 }
+  ), [yearlyData]);
+
+  // Yield comparison by property
+  const yieldComparison = useMemo(() => {
+    const years = [...new Set(fiscalSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a).slice(0, 2);
+    if (years.length < 2) return [];
+    const [latest, prev] = years;
+    return properties.map(p => {
+      const getYieldForYear = (year: number) => {
+        const fs = fiscalSummaries.find(f => f.propertyId === Number(p.id) && f.exerciseYear === year);
+        return fs?.box0102 && p.coste > 0 ? (fs.box0102 / p.coste) * 100 : 0;
+      };
+      const yLatest = getYieldForYear(latest);
+      const yPrev = getYieldForYear(prev);
+      const trend = yLatest > yPrev + 0.5 ? '↑' : yLatest < yPrev - 0.5 ? '' : '→';
+      const trendColor = trend === '↑' ? C.teal : trend === '→' ? C.n500 : C.n700;
+      return { alias: p.alias, latest, prev, yLatest, yPrev, trend, trendColor };
+    });
+  }, [properties, fiscalSummaries]);
+
+  const thStyle: React.CSSProperties = { padding: '10px 14px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, textAlign: 'right', borderBottom: `1px solid ${C.n200}` };
+  const tdStyle: React.CSSProperties = { padding: '10px 14px', fontSize: 13, fontFamily: "'IBM Plex Mono', monospace", textAlign: 'right', color: C.n700, fontVariantNumeric: 'tabular-nums' };
+
+  return (
+    <div>
+      {/* Charts row 1: Evolution + Cashflow */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+        <ChartCard title="Evolución del valor de cartera" sub="Valor total de mercado vs coste acumulado">
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={EVOLUCION_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="valor" name="Valor mercado" stroke={C.blue} strokeWidth={2} dot={{ r: 3 }} fill="rgba(4,44,94,.08)" />
+              <Line type="monotone" dataKey="coste" name="Coste acumulado" stroke={C.c2} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard title="Cashflow neto por año" sub="Evolución del cashflow anual">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={CASHFLOW_DATA} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" vertical={false} />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} €`} />
+              <Tooltip formatter={(v: number) => [`${v} €/mes`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Bar dataKey="cf" name="Cashflow neto €/mes" fill="rgba(4,44,94,.7)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+      </div>
+
+      {/* Charts row 2: Proyección + Yield comparison */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 20, marginBottom: 20 }}>
+        <ChartCard
+          title="Proyección de cartera"
+          sub={`Valor de mercado y equity · Tasa media ${(weightedRevalRate * 100).toFixed(2)}%/año`}
+          right={
+            <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3 }}>
+              {[5, 10, 20].map(y => (
+                <button key={y} onClick={() => setHorizon(y)} style={{ padding: '5px 12px', fontSize: 12, fontWeight: horizon === y ? 600 : 500, color: horizon === y ? C.blue : C.n500, background: horizon === y ? '#fff' : 'transparent', border: 'none', borderRadius: 6, cursor: 'pointer', boxShadow: horizon === y ? '0 1px 3px rgba(4,44,94,.08)' : 'none' }}>{y}a</button>
+              ))}
+            </div>
+          }
+        >
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={proyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <CartesianGrid stroke="rgba(200,208,220,.4)" strokeDasharray="0" />
+              <XAxis dataKey="year" tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: C.n500 }} axisLine={false} tickLine={false} tickFormatter={v => v >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-ES')} €`]} contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }} />
+              <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+              <Line type="monotone" dataKey="valor" name="Valor cartera" stroke={C.blue} strokeWidth={2} dot={{ r: 3, fill: C.blue }} fill="rgba(4,44,94,.07)" />
+              <Line type="monotone" dataKey="equity" name="Equity neto" stroke={C.teal} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3, fill: C.teal }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        {/* Yield comparison mini-table */}
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${C.n200}` }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Comparativa yield por inmueble</div>
+            <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>Yield bruto interanual</div>
+          </div>
+          <div style={{ padding: '8px 0' }}>
+            {yieldComparison.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle, textAlign: 'left' }}>Inmueble</th>
+                    <th style={thStyle}>{yieldComparison[0]?.prev}</th>
+                    <th style={thStyle}>{yieldComparison[0]?.latest}</th>
+                    <th style={{ ...thStyle, width: 50 }}>Tend.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yieldComparison.map(row => (
+                    <tr key={row.alias}>
+                      <td style={{ ...tdStyle, textAlign: 'left', fontFamily: "'IBM Plex Sans', system-ui", fontWeight: 500 }}>{row.alias}</td>
+                      <td style={tdStyle}>{row.yPrev > 0 ? `${row.yPrev.toFixed(1)}%` : '—'}</td>
+                      <td style={tdStyle}>{row.yLatest > 0 ? `${row.yLatest.toFixed(1)}%` : '—'}</td>
+                      <td style={{ ...tdStyle, textAlign: 'center', color: row.trendColor, fontWeight: 600 }}>{row.trend}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ padding: '20px 18px', fontSize: 13, color: C.n500, textAlign: 'center' }}>Se necesitan al menos 2 ejercicios fiscales</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Year-by-year fiscal table */}
+      <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.n200}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Desglose fiscal año a año</div>
+          <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>Datos agregados de todos los inmuebles por ejercicio</div>
+        </div>
+        {yearlyData.length > 0 ? (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: C.n50 }}>
+                <th style={{ ...thStyle, textAlign: 'left' }}>Año</th>
+                <th style={thStyle}>Ingresos</th>
+                <th style={thStyle}>Gastos op.</th>
+                <th style={thStyle}>Intereses</th>
+                <th style={thStyle}>Neto fiscal</th>
+                <th style={thStyle}>IRPF</th>
+                <th style={thStyle}>Cashflow real</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearlyData.map(row => (
+                <tr key={row.year} style={{ borderBottom: `1px solid ${C.n100}` }}>
+                  <td style={{ ...tdStyle, textAlign: 'left', fontFamily: "'IBM Plex Sans', system-ui", fontWeight: 600 }}>{row.year}</td>
+                  <td style={tdStyle}>{row.ing ? fmt(row.ing) : '—'}</td>
+                  <td style={tdStyle}>{row.gas ? fmt(row.gas) : '—'}</td>
+                  <td style={tdStyle}>{row.int ? fmt(row.int) : '—'}</td>
+                  <td style={tdStyle}>{row.neto ? fmt(row.neto) : '—'}</td>
+                  <td style={tdStyle}>{row.imp ? fmt(row.imp) : '—'}</td>
+                  <td style={{ ...tdStyle, color: row.cf > 0 ? C.teal : C.n700, fontWeight: 600 }}>{row.cf ? fmt(row.cf) : '—'}</td>
+                </tr>
+              ))}
+              <tr style={{ borderTop: `1.5px solid ${C.n300}`, background: C.n50 }}>
+                <td style={{ ...tdStyle, textAlign: 'left', fontFamily: "'IBM Plex Sans', system-ui", fontWeight: 600 }}>Total</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt(totals.ing)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt(totals.gas)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt(totals.int)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt(totals.neto)}</td>
+                <td style={{ ...tdStyle, fontWeight: 600 }}>{totals.imp ? fmt(totals.imp) : '—'}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: totals.cf > 0 ? C.teal : C.n700 }}>{fmt(totals.cf)}</td>
+              </tr>
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ padding: '30px 20px', fontSize: 13, color: C.n500, textAlign: 'center' }}>No hay datos fiscales disponibles</div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ─── Tab: Individual ──────────────────────────────────────────────────────────
 
-function TabIndividual({ selectedId, properties }: { selectedId: string; properties: PropertySnapshot[] }) {
+function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAmortizado }: { selectedId: string; properties: PropertySnapshot[]; fiscalSummaries: FiscalSummary[]; loansCapitalAmortizado: number }) {
+  const navigate = useNavigate();
   const [propId, setPropId] = useState(selectedId || 'acevedo');
   const prop = properties.find(p => p.id === propId) ?? properties[0];
   const indivData = useMemo(() => buildIndividualValueSeries(prop), [prop]);
   const cashflowData = useMemo(() => buildIndividualCashflowSeries(prop), [prop]);
-  const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '0 €';
-  const cashflowColor = prop.cashflowMes > 0 ? C.pos : prop.cashflowMes < 0 ? C.neg : C.n500;
+  const cashflowLabel = prop.cashflowMes > 0 ? `+${fmt(prop.cashflowMes)}` : prop.cashflowMes < 0 ? `-${fmt(Math.abs(prop.cashflowMes))}` : '—';
+  const cashflowColor = prop.cashflowMes > 0 ? C.teal : prop.cashflowMes < 0 ? C.n700 : C.n500;
   const cashflowMeta = `Neto tras gastos (${fmt(prop.gastosMes)} / mes)`;
   const monthsFromPurchase = getElapsedMonthsFromPurchase(prop.purchaseDate);
   const cashflowAcumulado = prop.cashflowMes * monthsFromPurchase;
   const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
+  // Fiscal data for this property
+  const propSummaries = useMemo(() => fiscalSummaries.filter(fs => String(fs.propertyId) === prop.id), [fiscalSummaries, prop.id]);
+  const propRentas = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [propSummaries]);
+  const propGastosOp = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) + (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [propSummaries]);
+  const propIntereses = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [propSummaries]);
+  const propCashflowNeto = propRentas - propGastosOp - propIntereses;
+
+  // Fiscal year breakdown
+  const availableYears = useMemo(() => [...new Set(propSummaries.map(fs => fs.exerciseYear))].sort((a, b) => b - a), [propSummaries]);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const activeYear = selectedYear ?? availableYears[0] ?? null;
+  const selectedFs = activeYear ? propSummaries.find(s => s.exerciseYear === activeYear) : null;
+
+  const fmtVal = (v: number | undefined | null) => v ? fmt(v) : '—';
+
   return (
     <div>
-      {/* Selector */}
+      {/* Selector with action icons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Inmueble</label>
         <select value={propId} onChange={e => setPropId(e.target.value)} style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 260, fontFamily: 'inherit' }}>
           {properties.map(p => <option key={p.id} value={p.id}>{p.alias} · {p.addr}</option>)}
         </select>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Ver ficha"><Eye size={18} /></button>
+          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}/editar`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Editar"><Pencil size={18} /></button>
+          <button onClick={() => navigate(`/inmuebles/cartera/${prop.id}?tab=fiscal`)} style={{ width: 32, height: 32, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }} title="Configuración"><SlidersHorizontal size={18} /></button>
+        </div>
       </div>
 
-      {/* Timeline */}
+      {/* Timeline — Compra card with cost breakdown */}
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.n500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         Foto pasado · presente · proyección
         <div style={{ flex: 1, height: 1, background: C.n200 }} />
       </div>
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Compra', val: fmt(prop.coste), sub: 'Coste total', cls: 'past' },
+          { label: 'Compra', val: fmt(prop.coste), sub: 'Coste total adquisición', cls: 'past' },
           { label: 'Hoy', val: fmt(prop.valor), sub: 'Valor estimado actual', cls: 'present' },
           { label: 'Proyección 5 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1 + projectionRate, 5)))}`, sub: `A ${(projectionRate * 100).toFixed(2)}% anual`, cls: 'future' },
           { label: 'Proyección 10 años', val: `~${fmt(Math.round(prop.valor * Math.pow(1 + projectionRate, 10)))}`, sub: `A ${(projectionRate * 100).toFixed(2)}% anual`, cls: 'future' },
@@ -986,21 +903,20 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
         ))}
       </div>
 
-      {/* KPI Strip */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, overflowX: 'auto' }}>
+      {/* KPI Strip — max 4 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Plusvalía latente', val: `+${fmt(prop.valor - prop.coste)}`, meta: `+${prop.revalTotal.toFixed(2)}% total`, color: C.pos },
-          { label: 'Reval. anual', val: `${prop.revalAnual.toFixed(2)}%`, meta: 'Media desde compra', color: C.blue },
           { label: 'Yield bruto', val: prop.yield > 0 ? `${prop.yield.toFixed(2)}%` : '—', meta: 'Ingresos / coste', color: C.blue },
           { label: 'Cashflow / mes', val: cashflowLabel, meta: cashflowMeta, color: cashflowColor },
           {
             label: 'Deuda pendiente',
-            val: prop.deudaPendiente > 0 ? `-${fmt(prop.deudaPendiente)}` : '0 €',
+            val: prop.deudaPendiente > 0 ? `-${fmt(prop.deudaPendiente)}` : '—',
             meta: prop.deudaPendiente > 0 ? 'Hipoteca activa' : 'Sin hipoteca activa',
-            color: prop.deudaPendiente > 0 ? C.neg : C.n500,
+            color: prop.deudaPendiente > 0 ? C.n700 : C.n500,
           },
         ].map(k => (
-          <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14, flexShrink: 0, minWidth: 130 }}>
+          <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: k.color }}>{k.val}</div>
             <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{k.meta}</div>
@@ -1008,8 +924,28 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
         ))}
       </div>
 
+      {/* 3 Benefit cards for this asset */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+        <BenefitCard
+          title="Cashflow neto"
+          value={propCashflowNeto}
+          subtitle={`${fmt(propRentas)} rentas − ${fmt(propGastosOp + propIntereses)} gastos`}
+          teal={propCashflowNeto > 0}
+        />
+        <BenefitCard
+          title="Revalorización"
+          value={prop.valor - prop.coste}
+          subtitle={`Compra ${fmt(prop.coste)} · hoy ${fmt(prop.valor)}`}
+        />
+        <BenefitCard
+          title="Deuda amortizada"
+          value={loansCapitalAmortizado}
+          subtitle={`Intereses desgravados: ${fmt(propIntereses)}`}
+        />
+      </div>
+
       {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }}>
         <ChartCard title={`${prop.alias} — Evolución y proyección de valor`} sub="Valor histórico estimado + proyección a 10 años">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={indivData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -1029,12 +965,12 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
             <div style={{ fontSize: 15, fontWeight: 700, color: C.n700, marginBottom: 16 }}>Rentabilidad acumulada</div>
             <ResultRow label="Inversión inicial" value={fmt(prop.coste)} />
             <ResultRow label="Valor actual" value={fmt(prop.valor)} />
-            <ResultRow label="Cashflow acumulado" value={`${cashflowAcumulado >= 0 ? '+' : '-'}${fmt(Math.abs(cashflowAcumulado))}`} valueColor={cashflowAcumulado >= 0 ? C.pos : C.neg} />
-            <ResultRow label="Beneficio total" value={`${(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? '+' : '-'}${fmt(Math.abs(prop.valor - prop.coste + cashflowAcumulado))}`} valueColor={(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? C.pos : C.neg} />
+            <ResultRow label="Cashflow acumulado" value={`${cashflowAcumulado >= 0 ? '+' : '-'}${fmt(Math.abs(cashflowAcumulado))}`} valueColor={cashflowAcumulado >= 0 ? C.teal : C.n700} />
+            <ResultRow label="Beneficio total" value={`${(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? '+' : '-'}${fmt(Math.abs(prop.valor - prop.coste + cashflowAcumulado))}`} valueColor={(prop.valor - prop.coste + cashflowAcumulado) >= 0 ? C.teal : C.n700} />
             <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Múltiplo s/ capital</span>
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× {((prop.valor + cashflowAcumulado) / prop.coste).toFixed(2)}</span>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× {prop.coste > 0 ? ((prop.valor + cashflowAcumulado) / prop.coste).toFixed(2) : '—'}</span>
             </div>
           </div>
 
@@ -1051,19 +987,86 @@ function TabIndividual({ selectedId, properties }: { selectedId: string; propert
           </ChartCard>
         </div>
       </div>
+
+      {/* Fiscal breakdown by exercise year */}
+      {availableYears.length > 0 && (
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.n200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Desglose por ejercicio fiscal</div>
+              <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>Datos del FiscalSummary de {prop.alias}</div>
+            </div>
+            {/* Rectangular year selector (V4 pattern) */}
+            <div style={{ display: 'inline-flex' }}>
+              {availableYears.map((y, i) => (
+                <button
+                  key={y}
+                  onClick={() => setSelectedYear(y)}
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: 13,
+                    fontWeight: activeYear === y ? 600 : 400,
+                    color: activeYear === y ? '#fff' : C.n700,
+                    background: activeYear === y ? C.blue : '#fff',
+                    border: `1px solid ${C.n300}`,
+                    borderLeft: i > 0 ? 'none' : `1px solid ${C.n300}`,
+                    borderRadius: i === 0 ? '8px 0 0 8px' : i === availableYears.length - 1 ? '0 8px 8px 0' : 0,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+          {selectedFs ? (
+            <div style={{ padding: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 40px' }}>
+              {[
+                { label: 'Ingresos brutos', val: selectedFs.box0102 },
+                { label: 'Días arrendado', val: selectedFs.aeatAmortization?.daysRented, isCurrency: false },
+                { label: 'Comunidad', val: selectedFs.box0109 },
+                { label: 'Suministros', val: selectedFs.box0113 },
+                { label: 'Seguros', val: selectedFs.box0114 },
+                { label: 'IBI y tasas', val: selectedFs.box0115 },
+                { label: 'Intereses préstamo', val: selectedFs.box0105 },
+                { label: 'Reparación', val: selectedFs.box0106 },
+                { label: 'Gestión delegada', val: selectedFs.box0112 },
+                { label: 'Amort. inmueble', val: selectedFs.aeatAmortization?.propertyAmortization },
+                { label: 'Amort. mobiliario', val: selectedFs.box0117 },
+                { label: 'Reducción vivienda', val: selectedFs.reduccionVivienda },
+              ].map(row => (
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '8px 0', borderBottom: `1px solid ${C.n100}` }}>
+                  <span style={{ fontSize: 13, color: C.n500 }}>{row.label}</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 500, color: C.n700, fontVariantNumeric: 'tabular-nums' }}>
+                    {row.isCurrency === false ? (row.val ?? '—') : fmtVal(row.val as number | undefined)}
+                  </span>
+                </div>
+              ))}
+              <div style={{ gridColumn: '1 / -1', borderTop: `1.5px solid ${C.n300}`, marginTop: 4, paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Rendimiento neto</span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, fontWeight: 600, color: (selectedFs.rendimientoNeto ?? 0) >= 0 ? C.teal : C.n700 }}>
+                  {fmtVal(selectedFs.rendimientoNeto)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '30px 20px', fontSize: 13, color: C.n500, textAlign: 'center' }}>No hay datos para este ejercicio</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'resumen' | 'cartera' | 'evolucion' | 'individual';
+type Tab = 'resumen' | 'evolucion' | 'individual';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'resumen',    label: 'Resumen',          icon: LayoutDashboard },
-  { id: 'cartera',    label: 'Cartera',           icon: Table2 },
-  { id: 'evolucion',  label: 'Evolución general', icon: Activity },
-  { id: 'individual', label: 'Individual',        icon: Home },
+  { id: 'resumen',    label: 'Resumen',    icon: LayoutDashboard },
+  { id: 'evolucion',  label: 'Evolución',  icon: Activity },
+  { id: 'individual', label: 'Individual', icon: Home },
 ];
 
 export default function InmueblesAnalisis() {
@@ -1074,11 +1077,9 @@ export default function InmueblesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
-  const [activeProperties, setActiveProperties] = useState<Property[]>([]);
-  const [soldProperties, setSoldProperties] = useState<Property[]>([]);
-  const [latestSaleByPropertyId, setLatestSaleByPropertyId] = useState<Record<number, number>>({});
-  const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
+  const [fiscalSummaries, setFiscalSummaries] = useState<FiscalSummary[]>([]);
+  const [loansCapitalAmortizado, setLoansCapitalAmortizado] = useState(0);
 
   useEffect(() => {
     const requestedTab = currentTabParam;
@@ -1093,7 +1094,7 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, dbFiscalSummaries] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
@@ -1101,6 +1102,7 @@ export default function InmueblesAnalisis() {
           getCachedStoreRecords<OpexRule>('opexRules'),
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
+          getCachedStoreRecords<FiscalSummary>('fiscalSummaries', { forceRefresh: true }),
         ]);
 
         if (!mounted) return;
@@ -1121,24 +1123,6 @@ export default function InmueblesAnalisis() {
         });
 
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
-        const sold = dbProperties.filter((property) => property.state === 'vendido' && property.id != null);
-        setActiveProperties(active);
-        setSoldProperties(sold);
-
-        const latestSales = await Promise.all(
-          sold.map(async (soldProperty) => {
-            const sale = await getLatestConfirmedSaleForProperty(soldProperty.id as number);
-            if (!sale?.id) return null;
-            return { propertyId: soldProperty.id as number, saleId: sale.id };
-          })
-        );
-        setLatestSaleByPropertyId(
-          latestSales.reduce<Record<number, number>>((acc, item) => {
-            if (!item) return acc;
-            acc[item.propertyId] = item.saleId;
-            return acc;
-          }, {})
-        );
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const snapshots = active.map((property) =>
           mapToSnapshot(
@@ -1152,6 +1136,10 @@ export default function InmueblesAnalisis() {
           )
         );
         setProperties(snapshots);
+        setFiscalSummaries(dbFiscalSummaries);
+        // Capital amortizado from loans
+        const totalCapAmort = dbLoans.reduce((s, l) => s + ((l as any).capitalAmortizado || 0), 0);
+        setLoansCapitalAmortizado(totalCapAmort);
         setSelectedPropertyId((current) => current || snapshots[0]?.id || '');
       } catch {
         if (mounted) setProperties([]);
@@ -1216,36 +1204,6 @@ export default function InmueblesAnalisis() {
     );
   }
 
-  const handleSelectProperty = (id: string) => {
-    setSelectedPropertyId(id);
-    setActiveTab('individual');
-  };
-
-  const handleSellProperty = (id: string) => {
-    const property = activeProperties.find((item) => String(item.id) === id);
-    if (property) {
-      setSaleModalProperty(property);
-    }
-  };
-
-  const handleRevertSale = async (propertyId: number) => {
-    const saleId = latestSaleByPropertyId[propertyId];
-    if (!saleId) {
-      window.alert('No se encontró una venta confirmada para este inmueble.');
-      return;
-    }
-    const confirmed = window.confirm('¿Seguro que quieres anular la venta y reactivar el inmueble?');
-    if (!confirmed) return;
-    try {
-      await cancelPropertySale(saleId);
-      invalidateCachedStores(['properties', 'valoraciones_historicas', 'treasuryEvents']);
-      setReloadCounter((current) => current + 1);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo anular la venta';
-      window.alert(message);
-    }
-  };
-
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       <div style={{ padding: 24 }}>
@@ -1253,10 +1211,10 @@ export default function InmueblesAnalisis() {
         <PageHeader
           icon={Building2}
           title="Cartera inmobiliaria"
+          subtitle="Análisis de rendimiento y evolución"
           tabs={[
             { id: 'resumen', label: 'Resumen' },
-            { id: 'cartera', label: 'Cartera' },
-            { id: 'evolucion', label: 'Evolución general' },
+            { id: 'evolucion', label: 'Evolución' },
             { id: 'individual', label: 'Individual' },
           ]}
           activeTab={activeTab}
@@ -1265,44 +1223,11 @@ export default function InmueblesAnalisis() {
         />
 
         {/* Tab content */}
-        {activeTab === 'resumen'    && <TabResumen properties={properties} />}
-        {activeTab === 'cartera'    && <TabCartera onSelectProperty={handleSelectProperty} onSellProperty={handleSellProperty} properties={properties} />}
-        {activeTab === 'cartera' && soldProperties.length > 0 && (
-          <div style={{ marginTop: 16, background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${C.n200}`, fontSize: 12, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>
-              Inmuebles vendidos
-            </div>
-            {soldProperties.map((property) => (
-              <div key={property.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: `1px solid ${C.n100}` }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: C.n700 }}>{property.alias}</div>
-                  <div style={{ fontSize: 12, color: C.n500 }}>{property.address}</div>
-                </div>
-                <button
-                  onClick={() => handleRevertSale(property.id as number)}
-                  disabled={!latestSaleByPropertyId[property.id as number]}
-                  style={{ border: '1px solid #303A4C', color: '#303A4C', background: '#fff', borderRadius: 8, padding: '8px 12px', cursor: 'pointer' }}
-                >
-                  Revertir venta
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        {activeTab === 'evolucion'  && <TabEvolucion properties={properties} />}
-        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} />}
+        {activeTab === 'resumen'    && <TabResumen properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} />}
+        {activeTab === 'evolucion'  && <TabEvolucion properties={properties} fiscalSummaries={fiscalSummaries} />}
+        {activeTab === 'individual' && <TabIndividual selectedId={selectedPropertyId} properties={properties} fiscalSummaries={fiscalSummaries} loansCapitalAmortizado={loansCapitalAmortizado} />}
       </div>
 
-      <PropertySaleModal
-        open={Boolean(saleModalProperty)}
-        property={saleModalProperty}
-        source="analisis"
-        onClose={() => setSaleModalProperty(null)}
-        onConfirmed={() => {
-          invalidateCachedStores(['properties', 'valoraciones_historicas', 'treasuryEvents']);
-          setReloadCounter((current) => current + 1);
-        }}
-      />
     </div>
   );
 }
