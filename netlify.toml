@@ -17,6 +17,11 @@
   # Requiere un plan compatible de Netlify; si no, prevalece el límite del runtime.
   timeout = 60
 
+
+[[plugins]]
+  package = "neon"
+  enabled = false
+
 [[redirects]]
   from = "/robots.txt"
   to = "/robots.txt"
