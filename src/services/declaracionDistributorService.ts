@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document } from './db';
+import type { Property, EjercicioFiscalCoord, Document, MejoraActivo } from './db';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
   InformeDistribucion,
@@ -117,6 +117,9 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
 
   // Crear/actualizar FiscalSummaries con ingresos y gastos desde la declaración
   await escribirFiscalSummaries(db, decl, porRefCatastral);
+
+  // Escribir mejoras y reparaciones en mejorasActivo
+  await escribirMejoras(db, decl, porRefCatastral);
 
   return construirInforme(decl, resultadoInmuebles);
 }
@@ -697,6 +700,94 @@ async function escribirFiscalSummaries(
     }
   }
   invalidateCachedStores(['fiscalSummaries']);
+}
+
+async function escribirMejoras(
+  db: DB,
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  const ahora = new Date().toISOString();
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    const existentes: MejoraActivo[] = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', property.id);
+
+    // 1. Mejoras del ejercicio (mejorasEjercicio del parser)
+    for (const mejora of inm.mejorasEjercicio) {
+      if (mejora.importe <= 0) continue;
+
+      const duplicada = existentes.find((m: MejoraActivo) =>
+        m.ejercicio === decl.meta.ejercicio &&
+        m.tipo === 'mejora' &&
+        Math.abs(m.importe - mejora.importe) < 1
+      );
+      if (duplicada) continue;
+
+      await db.add('mejorasActivo', {
+        inmuebleId: property.id,
+        ejercicio: decl.meta.ejercicio,
+        tipo: 'mejora' as const,
+        importe: mejora.importe,
+        descripcion: `Mejora declarada IRPF ${decl.meta.ejercicio}`,
+        fecha: mejora.fecha || '',
+        proveedorNIF: mejora.nifProveedor || '',
+        createdAt: ahora,
+        updatedAt: ahora,
+      });
+    }
+
+    // 2. Reparaciones del ejercicio (gastos.reparacionConservacion > 0)
+    if (inm.gastos.reparacionConservacion > 0) {
+      const duplicada = existentes.find((m: MejoraActivo) =>
+        m.ejercicio === decl.meta.ejercicio &&
+        m.tipo === 'reparacion' &&
+        Math.abs(m.importe - inm.gastos.reparacionConservacion) < 1
+      );
+      if (!duplicada) {
+        const provRep = inm.proveedores.find(p => p.concepto === 'reparacion');
+
+        await db.add('mejorasActivo', {
+          inmuebleId: property.id,
+          ejercicio: decl.meta.ejercicio,
+          tipo: 'reparacion' as const,
+          importe: inm.gastos.reparacionConservacion,
+          descripcion: `Reparación/conservación declarada IRPF ${decl.meta.ejercicio}`,
+          fecha: '',
+          proveedorNIF: provRep?.nif || '',
+          createdAt: ahora,
+          updatedAt: ahora,
+        });
+      }
+    }
+
+    // 3. Mejoras anteriores acumuladas (solo si no hay mejoras previas registradas)
+    if (inm.mejorasAnteriores && inm.mejorasAnteriores > 0) {
+      const tieneAnteriores = existentes.some((m: MejoraActivo) =>
+        m.tipo === 'mejora' && m.ejercicio < decl.meta.ejercicio
+      );
+
+      if (!tieneAnteriores) {
+        await db.add('mejorasActivo', {
+          inmuebleId: property.id,
+          ejercicio: decl.meta.ejercicio - 1,
+          tipo: 'mejora' as const,
+          importe: inm.mejorasAnteriores,
+          descripcion: `Mejoras anteriores acumuladas declaradas en IRPF ${decl.meta.ejercicio}`,
+          fecha: '',
+          proveedorNIF: '',
+          createdAt: ahora,
+          updatedAt: ahora,
+        });
+      }
+    }
+  }
+  invalidateCachedStores(['mejorasActivo']);
 }
 
 export function acortarDireccion(dir: string): string {
