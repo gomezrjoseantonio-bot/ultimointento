@@ -1077,7 +1077,7 @@ export default function InmueblesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('resumen');
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [properties, setProperties] = useState<PropertySnapshot[]>([]);
-  const [reloadCounter, setReloadCounter] = useState(0);
+  const [reloadCounter] = useState(0);
   const [fiscalSummaries, setFiscalSummaries] = useState<FiscalSummary[]>([]);
   const [loansCapitalAmortizado, setLoansCapitalAmortizado] = useState(0);
 
