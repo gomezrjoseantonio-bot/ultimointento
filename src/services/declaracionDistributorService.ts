@@ -309,10 +309,13 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         camposNuevos.push('Precio adquisición');
         modificado = true;
       }
-      if (!sumGastosAdquisicion(next.acquisitionCosts) && inm.gastosAdquisicion) {
-        // AEAT gastosAdquisicion already includes ITP+notaría+registro+gestoría as a single total.
-        // Clear any auto-calculated ITP to avoid double-counting.
+      // AEAT gastosAdquisicion already includes ITP+notaría+registro+gestoría as a single total.
+      // Always clear any auto-calculated ITP to avoid double-counting, even on re-import.
+      if (next.acquisitionCosts.itp) {
         next.acquisitionCosts.itp = 0;
+        modificado = true;
+      }
+      if (!sumGastosAdquisicion(next.acquisitionCosts) && inm.gastosAdquisicion) {
         next.acquisitionCosts.notary = 0;
         next.acquisitionCosts.registry = 0;
         next.acquisitionCosts.management = 0;
@@ -399,6 +402,50 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
     for (const prov of inm.proveedores) {
       proveedores.push({ nif: prov.nif, concepto: prov.concepto, importe: prov.importe, inmuebleRef: rc });
+    }
+  }
+
+  // ── Segundo paso: enriquecer accesorios con datos del principal ──
+  // Los datos de adquisición del accesorio están en inm.accesorio del principal,
+  // no en el InmuebleDeclarado standalone del accesorio.
+  for (const inm of decl.inmuebles) {
+    if (!inm.accesorio) continue;
+
+    const rcAccesorio = normalizeRef(inm.accesorio.refCatastral);
+    if (!rcAccesorio) continue;
+
+    const propAccesorio = porRefCatastral.get(rcAccesorio);
+    if (!propAccesorio) continue;
+
+    let modificado = false;
+    const next = {
+      ...propAccesorio,
+      acquisitionCosts: { ...(propAccesorio.acquisitionCosts || { price: 0 }) },
+      fiscalData: { ...(propAccesorio.fiscalData || {}) },
+    };
+
+    if (!next.purchaseDate && inm.accesorio.fechaAdquisicion) {
+      next.purchaseDate = toISODate(inm.accesorio.fechaAdquisicion);
+      modificado = true;
+    }
+    if (!next.acquisitionCosts.price && inm.accesorio.precioAdquisicion) {
+      next.acquisitionCosts.price = inm.accesorio.precioAdquisicion;
+      next.acquisitionCosts.other = inm.accesorio.gastosAdquisicion
+        ? [{ concept: 'Gastos adquisición AEAT', amount: inm.accesorio.gastosAdquisicion }]
+        : [];
+      modificado = true;
+    }
+    if (!next.fiscalData.cadastralValue && inm.accesorio.valorCatastral) {
+      next.fiscalData.cadastralValue = inm.accesorio.valorCatastral;
+      next.fiscalData.constructionCadastralValue = inm.accesorio.valorCatastralConstruccion || 0;
+      next.fiscalData.constructionPercentage = inm.accesorio.porcentajeConstruccion || 0;
+      modificado = true;
+    }
+
+    if (modificado) {
+      await db.put('properties', next);
+      // Update the map so subsequent logic sees enriched data
+      porRefCatastral.set(rcAccesorio, next);
     }
   }
 
