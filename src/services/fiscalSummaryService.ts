@@ -245,8 +245,10 @@ export const calculateFiscalSummary = async (
   const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
   if (existingIndex.length > 0) {
     const existing = existingIndex[0];
-    const mergedBox0102 = summary.box0102 || existing.box0102 || 0;
-    // DIAG: T48 debug — trazar merge de box0102
+    // Use Math.max to pick the highest non-zero value — the || operator fails
+    // when summary.box0102 is a positive but WRONG value (e.g. rounding from contracts)
+    // that should not override the distributor's authoritative AEAT figure.
+    const mergedBox0102 = Math.max(summary.box0102 ?? 0, existing.box0102 ?? 0);
     console.log(`[calculateFiscalSummary] MERGE property=${propertyId} year=${exerciseYear}: summary.box0102=${summary.box0102} existing.box0102=${existing.box0102} => ${mergedBox0102}`);
     const updated = {
       ...existing,

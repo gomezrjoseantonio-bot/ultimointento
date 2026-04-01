@@ -54,14 +54,12 @@ const getCashflow = (property: Property, contracts: Contract[], fiscalSummaries:
   // Fallback: usar box0102 del FiscalSummary más reciente
   if (!property.id) return 0;
   const propSummaries = fiscalSummaries
-    .filter(fs => fs.propertyId === property.id && fs.box0102 && fs.box0102 > 0)
+    .filter(fs => Number(fs.propertyId) === Number(property.id) && fs.box0102 && fs.box0102 > 0)
     .sort((a, b) => b.exerciseYear - a.exerciseYear);
   // DIAG: T48 debug — trazar fallback fiscal
-  if (fiscalSummaries.length > 0) {
-    const allForProp = fiscalSummaries.filter(fs => fs.propertyId === property.id);
-    if (allForProp.length > 0 || propSummaries.length === 0) {
-      console.log(`[getCashflow] property=${property.id} contracts=${fromContracts} fsTotal=${allForProp.length} fsWithBox0102=${propSummaries.length}`, allForProp.map(fs => ({ year: fs.exerciseYear, box0102: fs.box0102 })));
-    }
+  const allForProp = fiscalSummaries.filter(fs => fs.propertyId === property.id);
+  if (allForProp.length > 0 || fromContracts === 0) {
+    console.log(`[getCashflow] property=${property.id} (${property.alias}) contracts=${fromContracts} fsTotal=${allForProp.length} fsWithBox0102=${propSummaries.length}`, allForProp.map(fs => ({ id: fs.id, year: fs.exerciseYear, box0102: fs.box0102, propId: fs.propertyId, propIdType: typeof fs.propertyId })));
   }
   if (propSummaries.length > 0) {
     return Math.round((propSummaries[0].box0102! / 12) * 100) / 100;
@@ -194,7 +192,7 @@ const Cartera: React.FC = () => {
         getCachedStoreRecords<Property>('properties'),
         getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
         getCachedStoreRecords<Contract>('contracts'),
-        getCachedStoreRecords<FiscalSummary>('fiscalSummaries'),
+        getCachedStoreRecords<FiscalSummary>('fiscalSummaries', { forceRefresh: true }),
       ]);
       setProperties(allProperties);
       setValuations(allValuations);
