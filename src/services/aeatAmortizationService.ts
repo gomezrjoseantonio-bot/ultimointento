@@ -184,7 +184,7 @@ export const calculateAEATAmortization = async (
         amount: toNumber(mejora?.importe),
         date: mejora?.fecha,
         daysInYear: toNumber(mejora?.diasEnEjercicio) || undefined,
-        counterpartyNIF: mejora?.counterpartyNIF,
+        counterpartyNIF: mejora?.proveedorNIF,
         description: mejora?.descripcion ?? 'Mejora',
         createdAt: mejora?.createdAt ?? '',
         updatedAt: mejora?.updatedAt ?? '',

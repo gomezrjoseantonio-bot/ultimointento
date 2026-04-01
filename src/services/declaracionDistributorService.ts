@@ -722,10 +722,12 @@ async function escribirMejoras(
     for (const mejora of inm.mejorasEjercicio) {
       if (mejora.importe <= 0) continue;
 
+      const nifProv = mejora.nifProveedor || '';
       const duplicada = existentes.find((m: MejoraActivo) =>
         m.ejercicio === decl.meta.ejercicio &&
         m.tipo === 'mejora' &&
-        Math.abs(m.importe - mejora.importe) < 1
+        Math.abs(m.importe - mejora.importe) < 1 &&
+        (m.proveedorNIF || '') === nifProv
       );
       if (duplicada) continue;
 
@@ -735,8 +737,8 @@ async function escribirMejoras(
         tipo: 'mejora' as const,
         importe: mejora.importe,
         descripcion: `Mejora declarada IRPF ${decl.meta.ejercicio}`,
-        fecha: mejora.fecha || '',
-        proveedorNIF: mejora.nifProveedor || '',
+        fecha: mejora.fecha ? toISODate(mejora.fecha) : undefined,
+        proveedorNIF: nifProv,
         createdAt: ahora,
         updatedAt: ahora,
       });
@@ -758,7 +760,7 @@ async function escribirMejoras(
           tipo: 'reparacion' as const,
           importe: inm.gastos.reparacionConservacion,
           descripcion: `Reparación/conservación declarada IRPF ${decl.meta.ejercicio}`,
-          fecha: '',
+          fecha: undefined,
           proveedorNIF: provRep?.nif || '',
           createdAt: ahora,
           updatedAt: ahora,
@@ -769,7 +771,7 @@ async function escribirMejoras(
     // 3. Mejoras anteriores acumuladas (solo si no hay mejoras previas registradas)
     if (inm.mejorasAnteriores && inm.mejorasAnteriores > 0) {
       const tieneAnteriores = existentes.some((m: MejoraActivo) =>
-        m.tipo === 'mejora' && m.ejercicio < decl.meta.ejercicio
+        m.tipo !== 'reparacion' && m.ejercicio < decl.meta.ejercicio
       );
 
       if (!tieneAnteriores) {
@@ -779,7 +781,7 @@ async function escribirMejoras(
           tipo: 'mejora' as const,
           importe: inm.mejorasAnteriores,
           descripcion: `Mejoras anteriores acumuladas declaradas en IRPF ${decl.meta.ejercicio}`,
-          fecha: '',
+          fecha: undefined,
           proveedorNIF: '',
           createdAt: ahora,
           updatedAt: ahora,
