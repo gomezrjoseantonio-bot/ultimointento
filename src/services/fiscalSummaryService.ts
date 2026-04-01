@@ -200,6 +200,9 @@ export const calculateFiscalSummary = async (
     ingresosIntegros += renta * meses;
   }
 
+  // Almacenar ingresos íntegros como box0102
+  summary.box0102 = ingresosIntegros;
+
   const { applied: limitApplied, excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
   summary.deductibleExcess = excess;
 
@@ -239,7 +242,18 @@ export const calculateFiscalSummary = async (
   const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
   if (existingIndex.length > 0) {
     const existing = existingIndex[0];
-    const updated = { ...summary, id: existing.id, createdAt: existing.createdAt };
+    const updated = {
+      ...existing,
+      ...summary,
+      // Preserve box0102 from declaración distributor when fiscal service computes 0
+      box0102: summary.box0102 || existing.box0102 || 0,
+      // Preserve distributor-sourced fields not computed by fiscal service
+      rendimientoNeto: summary.rendimientoNeto ?? existing.rendimientoNeto,
+      reduccionVivienda: summary.reduccionVivienda ?? existing.reduccionVivienda,
+      rendimientoNetoReducido: summary.rendimientoNetoReducido ?? existing.rendimientoNetoReducido,
+      gastosPendientesGenerados: summary.gastosPendientesGenerados ?? existing.gastosPendientesGenerados,
+      createdAt: existing.createdAt,
+    };
     await db.put('fiscalSummaries', updated);
 
     // Cache the result in the resolver for future hash-based lookups
