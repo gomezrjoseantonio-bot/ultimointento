@@ -334,13 +334,13 @@ const Cartera: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <div className="inline-flex p-2 rounded-lg bg-gray-100 text-gray-900 mb-3"><Wallet className="h-4 w-4" /></div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Plusvalía latente</p>
+            <p className="text-xs font-medium text-neutral-500">Plusvalía latente</p>
             <p className={`text-4xl font-semibold mt-1 ${totalLatentGain >= 0 ? 'text-[var(--s-pos)]' : 'text-[var(--s-neg)]'}`}>{formatEuro(totalLatentGain)}</p>
             <p className="text-sm text-neutral-500 mt-1">Sobre coste de adquisición</p>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <div className="inline-flex p-2 rounded-lg bg-cyan-50 text-cyan-600 mb-3"><Home className="h-4 w-4" /></div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Ocupación</p>
+            <p className="text-xs font-medium text-neutral-500">Ocupación</p>
             <p className="text-4xl font-semibold mt-1 text-brand-navy">{totalOccupancy.toFixed(1)}%</p>
             <p className="text-sm text-neutral-500 mt-1">
               {filteredProperties.filter(p => getCashflow(p, contracts, fiscalSummaries) > 0).length} de {filteredProperties.length} unidades alquiladas
@@ -348,7 +348,7 @@ const Cartera: React.FC = () => {
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
             <div className="inline-flex p-2 rounded-lg bg-indigo-50 text-indigo-600 mb-3"><Shield className="h-4 w-4" /></div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Cobertura hipotecas</p>
+            <p className="text-xs font-medium text-neutral-500">Cobertura hipotecas</p>
             <p className="text-4xl font-semibold mt-1 text-brand-navy">N/D</p>
             <p className="text-sm text-neutral-500 mt-1">CF ingresos / CF financiación</p>
           </div>
@@ -356,7 +356,7 @@ const Cartera: React.FC = () => {
 
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-200">
-            <h3 className="text-lg font-semibold text-neutral-700 uppercase tracking-wider">Cartera detallada</h3>
+            <h3 className="text-lg font-semibold text-neutral-700">Cartera detallada</h3>
             <button className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 text-neutral-700 bg-white hover:bg-neutral-50 text-sm">
               <Filter className="h-4 w-4" /> Filtrar
             </button>

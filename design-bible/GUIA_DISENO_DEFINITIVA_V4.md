@@ -875,6 +875,19 @@ Cada concepto de negocio tiene UN icono Lucide asignado. Se usa siempre el mismo
 | Gráfico / Evolución | `BarChart3` | Secciones de evolución |
 | Tendencia | `TrendingUp` | Indicadores de tendencia |
 
+### Conceptos de negocio
+
+| Concepto | Icono Lucide | Uso |
+|----------|-------------|-----|
+| Gastos / Expenses | `Receipt` | Presupuesto inmueble, gastos operativos |
+| Ingresos / Rentas | `Coins` | Ingresos por alquiler, cobros |
+| Vender inmueble | `LogOut` | Acción de venta, simulación venta |
+| Comprar / Adquirir | `LogIn` | Registro de compra |
+| Contrato | `FileSignature` | Contratos de alquiler |
+| Inquilino | `UserCheck` | Referencia a inquilinos |
+| Proveedor | `HardHat` | Proveedores de servicios |
+| Factura | `ReceiptText` | Facturas individuales |
+
 ### Regla absoluta
 ```
 ❌ PROHIBIDO usar un icono distinto para el mismo concepto en diferentes pantallas
