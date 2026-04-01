@@ -339,12 +339,14 @@ const mapToSnapshot = (
   };
 };
 
-/** Only keep FiscalSummaries that belong to years with real declared data */
+/** Only keep FiscalSummaries that belong to years with real declared data (exclude projections) */
 const filterDeclaredSummaries = (
   summaries: FiscalSummary[],
   declaredYears: Set<number>,
-): FiscalSummary[] =>
-  summaries.filter(fs => declaredYears.has(fs.exerciseYear));
+): FiscalSummary[] => {
+  const currentYear = new Date().getFullYear();
+  return summaries.filter(fs => fs.exerciseYear <= currentYear && declaredYears.has(fs.exerciseYear));
+};
 
 const DONUT_COLORS = [C.blue, C.c2, C.teal, C.c4, '#8FB0CC', C.c5];
 
@@ -872,9 +874,12 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
   const projectionRate = Math.max(0.004, prop.revalAnual / 100);
 
   // Fiscal data for this property — only declared exercises, with robust ID matching
-  const propSummaries = useMemo(() => fiscalSummaries.filter(fs =>
-    (String(fs.propertyId) === prop.id || Number(fs.propertyId) === Number(prop.id)) && declaredYears.has(fs.exerciseYear)
-  ), [fiscalSummaries, prop.id, declaredYears]);
+  const propSummaries = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return fiscalSummaries.filter(fs =>
+      fs.exerciseYear <= currentYear && (String(fs.propertyId) === prop.id || Number(fs.propertyId) === Number(prop.id)) && declaredYears.has(fs.exerciseYear)
+    );
+  }, [fiscalSummaries, prop.id, declaredYears]);
   const propRentas = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0102 || 0), 0), [propSummaries]);
   const propGastosOp = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0109 || 0) + (fs.box0112 || 0) + (fs.box0113 || 0) + (fs.box0114 || 0) + (fs.box0115 || 0) + (fs.box0117 || 0), 0), [propSummaries]);
   const propIntereses = useMemo(() => propSummaries.reduce((s, fs) => s + (fs.box0105 || 0), 0), [propSummaries]);
