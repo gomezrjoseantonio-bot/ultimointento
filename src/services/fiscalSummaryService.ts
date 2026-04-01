@@ -11,6 +11,7 @@ import {
 } from './operacionFiscalService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
 import { getEjercicio, guardarCalculoATLAS } from './ejercicioResolverService';
+import { invalidateCachedStores } from './indexedDbCacheService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
@@ -202,6 +203,8 @@ export const calculateFiscalSummary = async (
 
   // Almacenar ingresos íntegros como box0102
   summary.box0102 = ingresosIntegros;
+  // DIAG: T48 debug — trazar cálculo de box0102
+  console.log(`[calculateFiscalSummary] property=${propertyId} year=${exerciseYear} ingresosIntegros=${ingresosIntegros} contracts=${propertyContracts.length}`);
 
   const { applied: limitApplied, excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
   summary.deductibleExcess = excess;
@@ -242,11 +245,14 @@ export const calculateFiscalSummary = async (
   const existingIndex = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
   if (existingIndex.length > 0) {
     const existing = existingIndex[0];
+    const mergedBox0102 = summary.box0102 || existing.box0102 || 0;
+    // DIAG: T48 debug — trazar merge de box0102
+    console.log(`[calculateFiscalSummary] MERGE property=${propertyId} year=${exerciseYear}: summary.box0102=${summary.box0102} existing.box0102=${existing.box0102} => ${mergedBox0102}`);
     const updated = {
       ...existing,
       ...summary,
       // Preserve box0102 from declaración distributor when fiscal service computes 0
-      box0102: summary.box0102 || existing.box0102 || 0,
+      box0102: mergedBox0102,
       // Preserve distributor-sourced fields not computed by fiscal service
       rendimientoNeto: summary.rendimientoNeto ?? existing.rendimientoNeto,
       reduccionVivienda: summary.reduccionVivienda ?? existing.reduccionVivienda,
@@ -255,6 +261,7 @@ export const calculateFiscalSummary = async (
       createdAt: existing.createdAt,
     };
     await db.put('fiscalSummaries', updated);
+    invalidateCachedStores(['fiscalSummaries']);
 
     // Cache the result in the resolver for future hash-based lookups
     if (inputHash) {
@@ -285,6 +292,7 @@ export const calculateFiscalSummary = async (
   }
 
   const id = (await db.add('fiscalSummaries', summary)) as number;
+  invalidateCachedStores(['fiscalSummaries']);
   const result = { ...summary, id };
 
   // Cache the result in the resolver
