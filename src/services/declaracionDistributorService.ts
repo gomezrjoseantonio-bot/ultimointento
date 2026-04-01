@@ -312,13 +312,14 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       // AEAT gastosAdquisicion already includes ITP+notaría+registro+gestoría as a single total.
       // Always clear any auto-calculated ITP to avoid double-counting, even on re-import.
       if (next.acquisitionCosts.itp) {
-        next.acquisitionCosts.itp = 0;
+        delete next.acquisitionCosts.itp;
+        delete next.acquisitionCosts.itpIsManual;
         modificado = true;
       }
       if (!sumGastosAdquisicion(next.acquisitionCosts) && inm.gastosAdquisicion) {
-        next.acquisitionCosts.notary = 0;
-        next.acquisitionCosts.registry = 0;
-        next.acquisitionCosts.management = 0;
+        delete next.acquisitionCosts.notary;
+        delete next.acquisitionCosts.registry;
+        delete next.acquisitionCosts.management;
         next.acquisitionCosts.other = [{ concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }];
         camposNuevos.push('Gastos adquisición');
         modificado = true;

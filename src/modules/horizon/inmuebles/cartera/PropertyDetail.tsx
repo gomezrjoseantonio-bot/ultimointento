@@ -465,7 +465,7 @@ const PropertyDetail: React.FC = () => {
             <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.price)}</span>
           </div>
 
-          {property.transmissionRegime === 'usada' && property.acquisitionCosts.itp && (
+          {property.transmissionRegime === 'usada' && !!property.acquisitionCosts.itp && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">
                 ITP ({getITPRateForCCAA(property.ccaa)}% {property.ccaa})
@@ -477,42 +477,42 @@ const PropertyDetail: React.FC = () => {
             </div>
           )}
 
-          {property.transmissionRegime === 'obra-nueva' && property.acquisitionCosts.iva && (
+          {property.transmissionRegime === 'obra-nueva' && !!property.acquisitionCosts.iva && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">IVA</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.iva)}</span>
             </div>
           )}
 
-          {property.acquisitionCosts.notary && (
+          {!!property.acquisitionCosts.notary && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">Notaría</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.notary)}</span>
             </div>
           )}
 
-          {property.acquisitionCosts.registry && (
+          {!!property.acquisitionCosts.registry && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">Registro</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.registry)}</span>
             </div>
           )}
 
-          {property.acquisitionCosts.management && (
+          {!!property.acquisitionCosts.management && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">Gestoría</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.management)}</span>
             </div>
           )}
 
-          {property.acquisitionCosts.psi && (
+          {!!property.acquisitionCosts.psi && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">PSI (personal shopper)</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.psi)}</span>
             </div>
           )}
 
-          {property.acquisitionCosts.realEstate && (
+          {!!property.acquisitionCosts.realEstate && (
             <div className="flex justify-between py-2">
               <span className="text-sm text-neutral-600">Inmobiliaria</span>
               <span className="text-sm font-medium text-neutral-900">{formatEuro(property.acquisitionCosts.realEstate)}</span>
