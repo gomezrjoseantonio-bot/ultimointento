@@ -56,6 +56,20 @@ export async function getTotalMejorasHastaEjercicio(
 }
 
 /**
+ * Get total CAPEX (tipo='mejora' | 'ampliacion', excludes 'reparacion') up to a fiscal year.
+ * Used for portfolio cost breakdown KPI.
+ */
+export async function getTotalCapexHastaEjercicio(
+  inmuebleId: number,
+  ejercicio: number
+): Promise<number> {
+  const mejoras = await getMejorasHastaEjercicio(inmuebleId, ejercicio);
+  return mejoras
+    .filter((m) => m.tipo !== 'reparacion')
+    .reduce((sum, mejora) => sum + mejora.importe, 0);
+}
+
+/**
  * Get total reparaciones (tipo='reparacion') for a property in a specific year → casilla 0106
  */
 export async function getTotalReparacionesEjercicio(

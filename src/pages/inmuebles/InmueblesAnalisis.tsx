@@ -40,7 +40,7 @@ import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
 import { getAllocationFactor } from '../../services/prestamosService';
-import { getTotalMejorasHastaEjercicio } from '../../services/mejoraActivoService';
+import { getTotalCapexHastaEjercicio } from '../../services/mejoraActivoService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -1225,7 +1225,7 @@ export default function InmueblesAnalisis() {
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');
         const currentYear = new Date().getFullYear();
         const mejorasPorPropiedad = await Promise.all(
-          active.map((p) => getTotalMejorasHastaEjercicio(p.id as number, currentYear))
+          active.map((p) => getTotalCapexHastaEjercicio(p.id as number, currentYear))
         );
         const snapshots = active.map((property, idx) =>
           mapToSnapshot(
