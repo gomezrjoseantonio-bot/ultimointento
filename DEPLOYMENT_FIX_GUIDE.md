@@ -53,3 +53,22 @@ project/
 - Redirects: SPA routing configured in netlify.toml
 
 This ensures reliable deployments without conflicts.
+
+## Netlify Extension Outage Playbook (ENETUNREACH)
+
+If Netlify fails during **Installing extensions** (for example extension `neon`) before `npm ci` starts, the repo build command is not the root cause.
+
+### Symptoms
+- Build stops at `Installing extensions`
+- Error includes `npm ERR! ENETUNREACH`
+- Failure references downloading `buildhooks.tgz` from an extension host
+
+### Actions
+1. Open **Netlify UI → Site configuration → Extensions**.
+2. Disable/remove the failing extension (for this incident: `neon`).
+3. Re-run deploy.
+4. If extension is required, retry later once connectivity is restored.
+5. If the failure repeats, contact Netlify support and include the failing host URL + deploy log.
+
+### Why this works
+Netlify installs extensions before running the configured build command (`npm ci && npm run build`). When extension package download fails, deployment exits early with a non-zero code.
