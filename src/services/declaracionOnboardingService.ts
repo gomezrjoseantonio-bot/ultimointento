@@ -9,7 +9,7 @@ import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
-import { saveContract } from './contractService';
+import { saveContract, updateContract, getContractsByProperty } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
 import { ejecutarOnboardingPersonal, analizarDatosPersonales } from './personalOnboardingService';
 import type { AnalisisPersonal } from './personalOnboardingService';
@@ -699,7 +699,16 @@ export async function ejecutarImportacion(
       for (const contrato of resultado.contratos) {
         if (contrato.yaExisteEnAtlas) continue;
         try {
-          await crearContratoDesdeDeclaracion(contrato, refsAIds.get(normalizeRef(contrato.inmuebleRef)));
+          const propId = refsAIds.get(normalizeRef(contrato.inmuebleRef));
+          if (propId == null) throw new Error('No se ha podido resolver el inmueble del contrato');
+          await crearOActualizarContrato({
+            propertyId: propId,
+            nifArrendatario: contrato.nifArrendatario,
+            fechaContrato: contrato.fechaContrato,
+            ingresosAnuales: contrato.ingresosAnuales,
+            tieneReduccion: contrato.derechoReduccion,
+            ejercicio: resultado.ejercicio,
+          });
           resumen.contratosCreados += 1;
         } catch (error) {
           resumen.errores.push(`Error creando contrato ${contrato.nifArrendatario || contrato.inmuebleRef}: ${String(error)}`);
@@ -912,31 +921,83 @@ async function crearPrestamoDesdeDeclaracion(pres: PrestamoDetectado, inmuebleId
   await prestamosService.createPrestamo(prestamo as unknown as Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'>);
 }
 
-async function crearContratoDesdeDeclaracion(cont: ContratoDetectado, inmuebleId?: number): Promise<void> {
-  if (inmuebleId == null) {
-    throw new Error('No se ha podido resolver el inmueble del contrato');
+/**
+ * Crea o actualiza un contrato desde datos de declaración AEAT.
+ * - Deduplicación por propertyId + NIF inquilino
+ * - Detecta cambio de inquilino entre ejercicios y cierra el anterior
+ * - Fecha fin desconocida → 2099-12-31
+ */
+export async function crearOActualizarContrato(params: {
+  propertyId: number;
+  nifArrendatario: string;
+  nifArrendatario2?: string;
+  fechaContrato?: string;
+  ingresosAnuales: number;
+  tipoArrendamiento?: string;
+  tieneReduccion?: boolean;
+  ejercicio: number;
+}): Promise<void> {
+  const {
+    propertyId, nifArrendatario, fechaContrato,
+    ingresosAnuales, tipoArrendamiento, tieneReduccion, ejercicio,
+  } = params;
+
+  if (!propertyId || !nifArrendatario) return;
+
+  // 1. Buscar contratos existentes para este inmueble
+  const contractsExistentes = await getContractsByProperty(propertyId);
+
+  // 2. Deduplicación: si ya existe contrato con mismo NIF → no duplicar
+  const duplicado = contractsExistentes.find(c =>
+    (c.inquilino?.dni && normalizeNif(c.inquilino.dni) === normalizeNif(nifArrendatario))
+    || (c.tenant?.nif && normalizeNif(c.tenant.nif) === normalizeNif(nifArrendatario))
+  );
+  if (duplicado) {
+    // Opcionalmente actualizar renta si cambió
+    const nuevaRenta = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
+    if (nuevaRenta > 0 && duplicado.rentaMensual !== nuevaRenta) {
+      await updateContract(duplicado.id!, { rentaMensual: nuevaRenta, monthlyRent: nuevaRenta });
+    }
+    return;
   }
 
+  // 3. Detectar cambio de inquilino: cerrar contrato activo con otro NIF
+  const contratoActivoOtroNif = contractsExistentes.find(c =>
+    c.estadoContrato === 'activo'
+    && ((c.inquilino?.dni && normalizeNif(c.inquilino.dni) !== normalizeNif(nifArrendatario))
+      || (c.tenant?.nif && normalizeNif(c.tenant.nif) !== normalizeNif(nifArrendatario)))
+  );
+  if (contratoActivoOtroNif) {
+    await updateContract(contratoActivoOtroNif.id!, {
+      estadoContrato: 'finalizado',
+      fechaFin: `${ejercicio - 1}-12-31`,
+      status: 'terminated',
+      endDate: `${ejercicio - 1}-12-31`,
+    });
+  }
+
+  // 4. Crear nuevo contrato
   const db = await initDB();
   const accounts = await db.getAll('accounts');
   const firstActiveAccount = accounts.find((account: any) => account.isActive ?? account.activa ?? true);
-  const fechaInicio = cont.fechaContrato || `${new Date().getFullYear()}-01-01`;
-  const fechaFin = `${new Date(fechaInicio).getFullYear() + 1}-12-31`;
-  const rentaMensual = cont.ingresosAnuales > 0 ? Math.max(0, Math.round(cont.ingresosAnuales / 12)) : 0;
+
+  const fechaInicio = fechaContrato || `${ejercicio}-01-01`;
+  const rentaMensual = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
+  const esVivienda = !tipoArrendamiento || tipoArrendamiento === 'vivienda';
 
   await saveContract({
-    inmuebleId,
-    unidadTipo: 'vivienda',
-    modalidad: 'habitual',
+    inmuebleId: propertyId,
+    unidadTipo: esVivienda ? 'vivienda' : 'habitacion',
+    modalidad: esVivienda ? 'habitual' : 'temporada',
     inquilino: {
       nombre: '',
       apellidos: '',
-      dni: cont.nifArrendatario,
+      dni: nifArrendatario,
       telefono: '',
       email: '',
     },
     fechaInicio,
-    fechaFin,
+    fechaFin: '2099-12-31', // Fin desconocido - importación AEAT
     rentaMensual,
     diaPago: 1,
     margenGraciaDias: 5,
@@ -947,8 +1008,9 @@ async function crearContratoDesdeDeclaracion(cont: ContratoDetectado, inmuebleId
     fianzaEstado: 'retenida',
     cuentaCobroId: Number(firstActiveAccount?.id || 0),
     estadoContrato: 'activo',
+    reduccion: tieneReduccion ? { activa: true, porcentaje: 60, motivo: 'general_post_2023' as const } : undefined,
     documentoContrato: {
-      plantilla: 'habitual',
+      plantilla: esVivienda ? 'habitual' : 'temporada',
       incluirInventario: false,
       incluirCertificadoEnergetico: false,
     },
@@ -958,14 +1020,14 @@ async function crearContratoDesdeDeclaracion(cont: ContratoDetectado, inmuebleId
       enviarCopiaPropietario: false,
       estado: 'borrador',
     },
-    propertyId: inmuebleId,
+    propertyId,
     tenant: {
-      name: cont.nifArrendatario,
-      nif: cont.nifArrendatario,
+      name: nifArrendatario,
+      nif: nifArrendatario,
       email: '',
     },
     startDate: fechaInicio,
-    endDate: fechaFin,
+    endDate: '2099-12-31',
     monthlyRent: rentaMensual,
     paymentDay: 1,
     periodicity: 'monthly',
