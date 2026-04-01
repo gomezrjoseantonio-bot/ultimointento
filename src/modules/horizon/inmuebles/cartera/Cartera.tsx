@@ -22,7 +22,7 @@ import {
   TriangleAlert
 } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
-import { Property, Contract, initDB } from '../../../../services/db';
+import { Property, Contract, FiscalSummary, initDB } from '../../../../services/db';
 import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
@@ -46,16 +46,26 @@ const calculateTotalCost = (property: Property): number => {
 
 const isActiveContract = (c: Contract): boolean => c.estadoContrato === 'activo' || c.status === 'active';
 
-const getCashflow = (property: Property, contracts: Contract[]): number => {
-  return contracts
+const getCashflow = (property: Property, contracts: Contract[], fiscalSummaries: FiscalSummary[] = []): number => {
+  const fromContracts = contracts
     .filter(c => (c.inmuebleId === property.id || c.propertyId === property.id) && isActiveContract(c))
     .reduce((sum, c) => sum + (c.rentaMensual || c.monthlyRent || 0), 0);
+  if (fromContracts > 0) return fromContracts;
+  // Fallback: usar box0102 del FiscalSummary más reciente
+  if (!property.id) return 0;
+  const propSummaries = fiscalSummaries
+    .filter(fs => fs.propertyId === property.id && fs.box0102 && fs.box0102 > 0)
+    .sort((a, b) => b.exerciseYear - a.exerciseYear);
+  if (propSummaries.length > 0) {
+    return Math.round((propSummaries[0].box0102! / 12) * 100) / 100;
+  }
+  return 0;
 };
 
-const getYield = (property: Property, contracts: Contract[]): number => {
+const getYield = (property: Property, contracts: Contract[], fiscalSummaries: FiscalSummary[] = []): number => {
   const totalCost = calculateTotalCost(property);
   if (totalCost <= 0) return 0;
-  return (getCashflow(property, contracts) * 12 / totalCost) * 100;
+  return (getCashflow(property, contracts, fiscalSummaries) * 12 / totalCost) * 100;
 };
 
 const getLatestValuation = (property: Property, valuations: ValoracionHistorica[]): number | null => {
@@ -91,6 +101,7 @@ const Cartera: React.FC = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [valuations, setValuations] = useState<ValoracionHistorica[]>([]);
+  const [fiscalSummaries, setFiscalSummaries] = useState<FiscalSummary[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -133,8 +144,8 @@ const Cartera: React.FC = () => {
             bValue = calculateTotalCost(b);
             break;
           case 'yield':
-            aValue = getYield(a, contracts);
-            bValue = getYield(b, contracts);
+            aValue = getYield(a, contracts, fiscalSummaries);
+            bValue = getYield(b, contracts, fiscalSummaries);
             break;
           case 'currentValue':
             aValue = getLatestValuation(a, valuations) ?? -Infinity;
@@ -149,8 +160,8 @@ const Cartera: React.FC = () => {
             bValue = getAnnualizedRevaluationPct(b, valuations) ?? -Infinity;
             break;
           case 'cashflow':
-            aValue = getCashflow(a, contracts);
-            bValue = getCashflow(b, contracts);
+            aValue = getCashflow(a, contracts, fiscalSummaries);
+            bValue = getCashflow(b, contracts, fiscalSummaries);
             break;
           case 'alias':
           default:
@@ -163,7 +174,7 @@ const Cartera: React.FC = () => {
       });
 
     setFilteredProperties(filtered);
-  }, [properties, contracts, valuations, searchTerm, sortField, sortDirection]);
+  }, [properties, contracts, valuations, fiscalSummaries, searchTerm, sortField, sortDirection]);
 
   useEffect(() => {
     filterAndSortProperties();
@@ -172,13 +183,15 @@ const Cartera: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [allProperties, allValuations, allContracts] = await Promise.all([
+      const [allProperties, allValuations, allContracts, allFiscalSummaries] = await Promise.all([
         getCachedStoreRecords<Property>('properties'),
         getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
         getCachedStoreRecords<Contract>('contracts'),
+        getCachedStoreRecords<FiscalSummary>('fiscalSummaries'),
       ]);
       setProperties(allProperties);
       setValuations(allValuations);
+      setFiscalSummaries(allFiscalSummaries);
 
       const latestSalesEntries = await Promise.all(
         allProperties
@@ -203,9 +216,9 @@ const Cartera: React.FC = () => {
   const totalPortfolioValue = filteredProperties.reduce((sum, p) => sum + (getLatestValuation(p, valuations) ?? 0), 0);
   const totalLatentGain = totalPortfolioValue - totalPortfolioCost;
   const totalOccupancy = filteredProperties.length > 0
-    ? (filteredProperties.filter(p => getCashflow(p, contracts) > 0).length / filteredProperties.length) * 100
+    ? (filteredProperties.filter(p => getCashflow(p, contracts, fiscalSummaries) > 0).length / filteredProperties.length) * 100
     : 0;
-  const totalRent = filteredProperties.reduce((sum, p) => sum + getCashflow(p, contracts), 0);
+  const totalRent = filteredProperties.reduce((sum, p) => sum + getCashflow(p, contracts, fiscalSummaries), 0);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -322,7 +335,7 @@ const Cartera: React.FC = () => {
             <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500">Ocupación</p>
             <p className="text-4xl font-semibold mt-1 text-brand-navy">{totalOccupancy.toFixed(1)}%</p>
             <p className="text-sm text-neutral-500 mt-1">
-              {filteredProperties.filter(p => getCashflow(p, contracts) > 0).length} de {filteredProperties.length} unidades alquiladas
+              {filteredProperties.filter(p => getCashflow(p, contracts, fiscalSummaries) > 0).length} de {filteredProperties.length} unidades alquiladas
             </p>
           </div>
           <div className="bg-white rounded-xl border border-neutral-200 p-5">
@@ -389,8 +402,8 @@ const Cartera: React.FC = () => {
                     const totalCost = calculateTotalCost(property);
                     const currentValue = getLatestValuation(property, valuations);
                     const plusvalia = currentValue !== null ? currentValue - totalCost : null;
-                    const yieldPct = getYield(property, contracts);
-                    const rent = getCashflow(property, contracts);
+                    const yieldPct = getYield(property, contracts, fiscalSummaries);
+                    const rent = getCashflow(property, contracts, fiscalSummaries);
                     const isRented = rent > 0;
                     const annualized = getAnnualizedRevaluationPct(property, valuations);
 

@@ -115,6 +115,9 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   }
   invalidateCachedStores(['contracts']);
 
+  // Crear/actualizar FiscalSummaries con ingresos y gastos desde la declaración
+  await escribirFiscalSummaries(db, decl, porRefCatastral);
+
   return construirInforme(decl, resultadoInmuebles);
 }
 
@@ -625,6 +628,74 @@ function sumGastosAdquisicion(acquisitionCosts: Property['acquisitionCosts']): n
     + Number(acquisitionCosts.psi || 0)
     + Number(acquisitionCosts.realEstate || 0)
     + Number((acquisitionCosts.other || []).reduce((sum, item) => sum + Number(item.amount || 0), 0));
+}
+
+async function escribirFiscalSummaries(
+  db: DB,
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  const ahora = new Date().toISOString();
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    // Buscar si ya existe un FiscalSummary para este inmueble+año
+    const existentes = await db.getAllFromIndex('fiscalSummaries', 'propertyId', property.id);
+    const existente = existentes.find(fs => fs.exerciseYear === decl.meta.ejercicio);
+
+    const ingresosBrutos = inm.arrendamientos.reduce((s, a) => s + (a.ingresos || 0), 0);
+
+    if (existente) {
+      // Actualizar con datos de ingresos sin sobreescribir gastos ya existentes
+      existente.box0102 = ingresosBrutos;
+      existente.rendimientoNeto = inm.rendimientoNeto;
+      existente.reduccionVivienda = inm.reduccionVivienda;
+      existente.rendimientoNetoReducido = inm.rendimientoNetoReducido;
+      existente.gastosPendientesGenerados = inm.gastosPendientesGenerados;
+      // Llenar gastos solo si están vacíos
+      if (!existente.box0105) existente.box0105 = inm.gastos.interesesFinanciacion;
+      if (!existente.box0106) existente.box0106 = inm.gastos.reparacionConservacion;
+      if (!existente.box0109) existente.box0109 = inm.gastos.comunidad;
+      if (!existente.box0113) existente.box0113 = inm.gastos.suministros;
+      if (!existente.box0114) existente.box0114 = inm.gastos.seguros;
+      if (!existente.box0115) existente.box0115 = inm.gastos.ibiTasas;
+      if (!existente.box0117) existente.box0117 = inm.gastos.amortizacionMobiliario;
+      existente.updatedAt = ahora;
+      await db.put('fiscalSummaries', existente);
+    } else {
+      // Crear nuevo FiscalSummary
+      const nuevoSummary = {
+        propertyId: property.id,
+        exerciseYear: decl.meta.ejercicio,
+        box0102: ingresosBrutos,
+        box0105: inm.gastos.interesesFinanciacion,
+        box0106: inm.gastos.reparacionConservacion,
+        box0109: inm.gastos.comunidad,
+        box0112: inm.gastos.serviciosTerceros,
+        box0113: inm.gastos.suministros,
+        box0114: inm.gastos.seguros,
+        box0115: inm.gastos.ibiTasas,
+        box0117: inm.gastos.amortizacionMobiliario,
+        capexTotal: 0,
+        constructionValue: 0,
+        annualDepreciation: 0,
+        rendimientoNeto: inm.rendimientoNeto,
+        reduccionVivienda: inm.reduccionVivienda,
+        rendimientoNetoReducido: inm.rendimientoNetoReducido,
+        gastosPendientesGenerados: inm.gastosPendientesGenerados,
+        status: 'Vivo' as const,
+        createdAt: ahora,
+        updatedAt: ahora,
+      };
+      await db.add('fiscalSummaries', nuevoSummary);
+    }
+  }
+  invalidateCachedStores(['fiscalSummaries']);
 }
 
 export function acortarDireccion(dir: string): string {
