@@ -68,7 +68,7 @@ If Netlify fails during **Installing extensions** (e.g., the `neon` extension) b
 2. Disable/remove the failing extension (for this incident: `neon`).
 3. Re-run deploy.
 4. If extension is required, retry later once connectivity is restored.
-5. If the failure repeats, contact Netlify support and include the failing host URL + deploy log.
+5. If the failure repeats, contact Netlify support and include the failing host URL and the full deploy log (for example, attach the deploy log artifact or link to the failed deploy details page).
 
 ### Why this works
 Netlify installs extensions before running the configured build command (`npm ci && npm run build`). When extension package download fails, deployment exits early with a non-zero code.
