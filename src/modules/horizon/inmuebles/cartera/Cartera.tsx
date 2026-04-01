@@ -56,6 +56,13 @@ const getCashflow = (property: Property, contracts: Contract[], fiscalSummaries:
   const propSummaries = fiscalSummaries
     .filter(fs => fs.propertyId === property.id && fs.box0102 && fs.box0102 > 0)
     .sort((a, b) => b.exerciseYear - a.exerciseYear);
+  // DIAG: T48 debug — trazar fallback fiscal
+  if (fiscalSummaries.length > 0) {
+    const allForProp = fiscalSummaries.filter(fs => fs.propertyId === property.id);
+    if (allForProp.length > 0 || propSummaries.length === 0) {
+      console.log(`[getCashflow] property=${property.id} contracts=${fromContracts} fsTotal=${allForProp.length} fsWithBox0102=${propSummaries.length}`, allForProp.map(fs => ({ year: fs.exerciseYear, box0102: fs.box0102 })));
+    }
+  }
   if (propSummaries.length > 0) {
     return Math.round((propSummaries[0].box0102! / 12) * 100) / 100;
   }
@@ -192,6 +199,9 @@ const Cartera: React.FC = () => {
       setProperties(allProperties);
       setValuations(allValuations);
       setFiscalSummaries(allFiscalSummaries);
+      // DIAG: T48 debug — verificar qué fiscalSummaries llegan a la cartera
+      console.log('[Cartera] fiscalSummaries loaded:', allFiscalSummaries.length, 'records');
+      console.log('[Cartera] fiscalSummaries with box0102 > 0:', allFiscalSummaries.filter((fs: any) => fs.box0102 && fs.box0102 > 0).map((fs: any) => ({ id: fs.id, propertyId: fs.propertyId, year: fs.exerciseYear, box0102: fs.box0102 })));
 
       const latestSalesEntries = await Promise.all(
         allProperties
