@@ -42,6 +42,7 @@ export interface PersonalData {
   ascendientes?: Ascendiente[];
   discapacidad?: NivelDiscapacidad;
   tributacion?: TipoTributacion;
+  fechaNacimiento?: string; // ISO date or dd/mm/yyyy from XML
   fechaCreacion: string;
   fechaActualizacion: string;
 }

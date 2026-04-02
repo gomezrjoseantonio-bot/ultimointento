@@ -85,6 +85,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
     // IRPF personal minimums
     descendientes: Descendiente[];
     ascendientes: Ascendiente[];
+    fechaNacimiento: string;
     discapacidad: NivelDiscapacidad;
     tributacion: TipoTributacion;
     tieneAscendientes: boolean;
@@ -92,6 +93,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
     nombre: '',
     apellidos: '',
     dni: '',
+    fechaNacimiento: '',
     direccion: '',
     situacionPersonal: 'soltero',
     situacionLaboral: [],
@@ -163,6 +165,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
           nombre: data.nombre,
           apellidos: data.apellidos,
           dni: data.dni,
+          fechaNacimiento: data.fechaNacimiento ?? '',
           direccion: data.direccion,
           situacionPersonal: data.situacionPersonal,
           situacionLaboral: data.situacionLaboral,
@@ -229,6 +232,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
     try {
       const dataToSave: Omit<PersonalData, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
         ...formData,
+        fechaNacimiento: formData.fechaNacimiento || undefined,
         situacionPersonal: maritalToSituacionPersonal(formData.maritalStatus),
         spouseName: isMarried(formData.maritalStatus) ? formData.spouseName : undefined,
         descendientes: formData.hasChildren ? formData.descendientes : [],
@@ -344,6 +348,29 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
                   style={inputStyle}
                   placeholder="Tus apellidos"
                   required
+                />
+              </div>
+            </div>
+
+            {/* NIF + Fecha nacimiento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label style={labelStyle}>NIF / NIE</label>
+                <input
+                  type="text"
+                  value={formData.dni}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dni: e.target.value }))}
+                  style={inputStyle}
+                  placeholder="Ej: 12345678X"
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Fecha de nacimiento</label>
+                <input
+                  type="date"
+                  value={formData.fechaNacimiento}
+                  onChange={(e) => setFormData(prev => ({ ...prev, fechaNacimiento: e.target.value }))}
+                  style={inputStyle}
                 />
               </div>
             </div>
