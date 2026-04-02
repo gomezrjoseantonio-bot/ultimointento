@@ -536,6 +536,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
           fechaAlta: date,
           importe: amount,
           vidaUtil: oneOffForm.vidaUtil || 10,
+          ejercicio: new Date(date).getFullYear(),
           proveedorNIF: oneOffForm.proveedorNIF.trim(),
           proveedorNombre: oneOffForm.proveedorNombre.trim() || undefined,
           cuentaBancaria: accountLabel,
