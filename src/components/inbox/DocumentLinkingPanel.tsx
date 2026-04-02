@@ -8,23 +8,10 @@
  */
 import React, { useState, useEffect } from 'react';
 import { Link2, Building, CheckCircle, XCircle, Search, ChevronDown } from 'lucide-react';
-import { confirmLink, rematchPendingDocuments } from '../../services/documentMatchingService';
+import { confirmLink, rematchPendingDocuments, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
 
-interface MatchCandidate {
-  store: 'mejorasActivo' | 'mobiliarioActivo';
-  id: number;
-  inmuebleId: number;
-  inmuebleAlias: string;
-  tipo: string;
-  ejercicio: number;
-  importe: number;
-  descripcion: string;
-  proveedorNIF: string;
-  proveedorNombre?: string;
-  alreadyLinked: boolean;
-  score: number;
-}
+type MatchCandidate = CandidatoMatch;
 
 interface DocumentLinkingPanelProps {
   documentId: number;
@@ -71,7 +58,8 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
     setLinking(true);
     setError(null);
     try {
-      await confirmLink(candidate.store, candidate.id, documentId);
+      const store = candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo';
+      await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, documentId);
 
       // Update document status to Asignado
       const db = await initDB();
@@ -174,7 +162,7 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
         <div className="space-y-2 mb-3">
           {unlinkedCandidates.map((c) => (
             <div
-              key={`${c.store}-${c.id}`}
+              key={`${c.tipo}-${c.id}`}
               className="flex items-center justify-between bg-white border border-neutral-200 p-3"
             >
               <div className="flex-1 min-w-0">
@@ -184,7 +172,7 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
                     {c.inmuebleAlias}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 bg-neutral-100 text-neutral-700">
-                    {TIPO_LABELS[c.tipo] || c.tipo}
+                    {TIPO_LABELS[c.tipoGasto] || c.tipoGasto}
                   </span>
                   <span className="text-xs text-neutral-500">
                     {c.ejercicio}
@@ -223,11 +211,11 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
           <div className="mt-2 space-y-1">
             {linkedCandidates.map((c) => (
               <div
-                key={`${c.store}-${c.id}`}
+                key={`${c.tipo}-${c.id}`}
                 className="flex items-center gap-2 p-2 bg-neutral-50 text-xs text-neutral-500"
               >
                 <Building className="w-3 h-3" />
-                <span>{c.inmuebleAlias} &middot; {TIPO_LABELS[c.tipo] || c.tipo} &middot; {c.ejercicio} &middot; {formatCurrency(c.importe)}</span>
+                <span>{c.inmuebleAlias} &middot; {TIPO_LABELS[c.tipoGasto] || c.tipoGasto} &middot; {c.ejercicio} &middot; {formatCurrency(c.importe)}</span>
                 <span className="ml-auto text-neutral-400">ya vinculada</span>
               </div>
             ))}

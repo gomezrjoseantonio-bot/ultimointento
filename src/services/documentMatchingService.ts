@@ -1,105 +1,191 @@
 /**
- * Document Matching Service — Pieza 8
+ * Document Matching Service — Pieza 8 (multicriteria)
  *
- * Given a supplier NIF (and optional amount / exercise year), finds candidate
+ * Given OCR-extracted data (NIF, dirección, fecha), finds candidate
  * operations in mejorasActivo and mobiliarioActivo that could correspond to an
  * uploaded invoice, so the user can link document → declared operation.
+ *
+ * Scoring:
+ *  - NIF exacto         → +3
+ *  - Dirección coincide  → +2
+ *  - Año coincide        → +1
+ *  - Solo candidatos con score ≥ 2
  */
 
 import { initDB, MejoraActivo, MobiliarioActivo, Property } from './db';
 
-export interface MatchCandidate {
-  store: 'mejorasActivo' | 'mobiliarioActivo';
+export interface CandidatoMatch {
   id: number;
+  tipo: 'mejoraActivo' | 'mobiliarioActivo';
   inmuebleId: number;
   inmuebleAlias: string;
-  tipo: MejoraActivo['tipo'] | 'mobiliario';
   ejercicio: number;
   importe: number;
+  tipoGasto: string; // 'mejora' | 'ampliacion' | 'reparacion' | 'mobiliario'
   descripcion: string;
   proveedorNIF: string;
   proveedorNombre?: string;
-  /** Already has a document linked */
   alreadyLinked: boolean;
-  /** 0-100 relevance score */
   score: number;
 }
 
+// Keep the old MatchCandidate name as alias for backwards compatibility with DocumentLinkingPanel
+export type MatchCandidate = CandidatoMatch;
+
+interface FindCandidatesParams {
+  nif?: string;
+  direccion?: string;
+  fecha?: string;
+}
+
 /**
- * Find mejoras/mobiliario candidates that match a supplier NIF.
- * Results are sorted by score descending (best match first).
+ * Normalise a string for fuzzy address comparison: lowercase, remove accents,
+ * collapse whitespace.
  */
-export async function findCandidates(
-  nif: string,
-  importe?: number,
-  ejercicio?: number
-): Promise<MatchCandidate[]> {
-  if (!nif || nif.trim() === '') return [];
+function normalizeText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Check whether the document address loosely matches a property address or alias.
+ * Returns true if the property address/alias tokens are found within the document address.
+ */
+function addressMatches(docAddress: string, propertyAddress: string, propertyAlias: string): boolean {
+  const normDoc = normalizeText(docAddress);
+  if (!normDoc) return false;
+
+  // Check alias first (shorter, more distinctive)
+  const normAlias = normalizeText(propertyAlias);
+  if (normAlias && normAlias.length >= 3 && normDoc.includes(normAlias)) return true;
+
+  // Check full address — split into meaningful tokens and check overlap
+  const normAddr = normalizeText(propertyAddress);
+  if (!normAddr) return false;
+
+  // If the document address contains the property address directly
+  if (normDoc.includes(normAddr)) return true;
+
+  // Token-based: at least 2 significant tokens from the address must appear
+  const tokens = normAddr.split(' ').filter(t => t.length >= 3);
+  if (tokens.length === 0) return false;
+  const matched = tokens.filter(t => normDoc.includes(t));
+  return matched.length >= Math.min(2, tokens.length);
+}
+
+/**
+ * Find mejoras/mobiliario candidates that match the given multicriteria params.
+ * Results are sorted by score descending (best match first), only score ≥ 2 returned.
+ */
+export async function findCandidates(params: FindCandidatesParams): Promise<CandidatoMatch[]> {
+  const { nif, direccion, fecha } = params;
+
+  // Need at least one criterion
+  if (!nif && !direccion && !fecha) return [];
 
   const db = await initDB();
-  const normalizedNif = nif.trim().toUpperCase().replace(/[\s.-]/g, '');
+  const normalizedNif = nif ? nif.trim().toUpperCase().replace(/[\s.\-]/g, '') : '';
+  const invoiceYear = fecha ? new Date(fecha).getFullYear() : undefined;
 
-  // Fetch all mejoras & mobiliario in parallel
   const [mejoras, mobiliarios, properties] = await Promise.all([
     db.getAll('mejorasActivo') as Promise<MejoraActivo[]>,
     db.getAll('mobiliarioActivo') as Promise<MobiliarioActivo[]>,
     db.getAll('properties') as Promise<Property[]>,
   ]);
 
-  // Build property alias lookup
+  // Build property lookup maps
   const aliasMap = new Map<number, string>();
+  const addressMap = new Map<number, string>();
   for (const p of properties) {
-    if (p.id != null) aliasMap.set(p.id, p.alias || p.address || `Inmueble #${p.id}`);
+    if (p.id != null) {
+      aliasMap.set(p.id, p.alias || p.address || `Inmueble #${p.id}`);
+      addressMap.set(p.id, p.address || '');
+    }
   }
 
-  const candidates: MatchCandidate[] = [];
+  const candidates: CandidatoMatch[] = [];
+
+  // --- Score a single record ---
+  function scoreRecord(
+    recordNif: string,
+    recordInmuebleId: number,
+    recordEjercicio: number,
+  ): number {
+    let score = 0;
+
+    // NIF exacto → +3
+    if (normalizedNif) {
+      const recNif = recordNif.trim().toUpperCase().replace(/[\s.\-]/g, '');
+      if (recNif && recNif === normalizedNif) score += 3;
+    }
+
+    // Dirección del documento contiene dirección o alias del inmueble → +2
+    if (direccion) {
+      const propAddress = addressMap.get(recordInmuebleId) || '';
+      const propAlias = aliasMap.get(recordInmuebleId) || '';
+      if (addressMatches(direccion, propAddress, propAlias)) score += 2;
+    }
+
+    // Año del documento coincide con ejercicio del registro → +1
+    if (invoiceYear && !isNaN(invoiceYear) && recordEjercicio === invoiceYear) {
+      score += 1;
+    }
+
+    return score;
+  }
 
   // --- Mejoras ---
   for (const m of mejoras) {
-    const mNif = (m.proveedorNIF || '').trim().toUpperCase().replace(/[\s.-]/g, '');
-    if (mNif !== normalizedNif) continue;
+    const score = scoreRecord(m.proveedorNIF || '', m.inmuebleId, m.ejercicio);
+    if (score < 2) continue;
 
     candidates.push({
-      store: 'mejorasActivo',
       id: m.id!,
+      tipo: 'mejoraActivo',
       inmuebleId: m.inmuebleId,
       inmuebleAlias: aliasMap.get(m.inmuebleId) || `Inmueble #${m.inmuebleId}`,
-      tipo: m.tipo,
       ejercicio: m.ejercicio,
       importe: m.importe,
+      tipoGasto: m.tipo, // 'mejora' | 'ampliacion' | 'reparacion'
       descripcion: m.descripcion,
       proveedorNIF: m.proveedorNIF,
       proveedorNombre: m.proveedorNombre,
       alreadyLinked: m.documentId != null && m.documentId > 0,
-      score: computeScore(m.importe, m.ejercicio, importe, ejercicio),
+      score,
     });
   }
 
   // --- Mobiliario ---
   for (const mb of mobiliarios) {
-    const mbNif = (mb.proveedorNIF || '').trim().toUpperCase().replace(/[\s.-]/g, '');
-    if (mbNif !== normalizedNif) continue;
+    const score = scoreRecord(mb.proveedorNIF || '', mb.inmuebleId, mb.ejercicio);
+    if (score < 2) continue;
 
     candidates.push({
-      store: 'mobiliarioActivo',
       id: mb.id!,
+      tipo: 'mobiliarioActivo',
       inmuebleId: mb.inmuebleId,
       inmuebleAlias: aliasMap.get(mb.inmuebleId) || `Inmueble #${mb.inmuebleId}`,
-      tipo: 'mobiliario',
       ejercicio: mb.ejercicio,
       importe: mb.importe,
+      tipoGasto: 'mobiliario',
       descripcion: mb.descripcion,
       proveedorNIF: mb.proveedorNIF,
       proveedorNombre: mb.proveedorNombre,
       alreadyLinked: mb.documentId != null && mb.documentId > 0,
-      score: computeScore(mb.importe, mb.ejercicio, importe, ejercicio),
+      score,
     });
   }
 
-  // Sort: unlinked first, then by score descending
+  // Sort by score desc (unlinked first within same score)
   candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
     if (a.alreadyLinked !== b.alreadyLinked) return a.alreadyLinked ? 1 : -1;
-    return b.score - a.score;
+    return 0;
   });
 
   return candidates;
@@ -125,7 +211,7 @@ export async function confirmLink(
 }
 
 /**
- * Run matching for all unlinked documents that have a supplier NIF.
+ * Run matching for all unlinked documents that have OCR data.
  * Returns the number of documents that got new candidates.
  */
 export async function rematchPendingDocuments(): Promise<number> {
@@ -135,19 +221,15 @@ export async function rematchPendingDocuments(): Promise<number> {
 
   for (const doc of allDocs) {
     const status = doc.metadata?.status;
-    // Only process documents that are pending assignment or new
-    if (status !== 'Nuevo' && status !== 'pendiente_asignacion' as any) continue;
+    if (status !== 'Nuevo' && status !== 'pendiente_asignacion') continue;
 
     const nif = extractNifFromDocument(doc);
-    if (!nif) continue;
+    const direccion = extractDireccionFromDocument(doc);
+    const fecha = extractFechaFromDocument(doc);
 
-    const importe = doc.metadata?.financialData?.amount;
-    const ejercicio = doc.metadata?.aeatClassification?.exerciseYear
-      || (doc.metadata?.financialData?.issueDate
-        ? new Date(doc.metadata.financialData.issueDate).getFullYear()
-        : undefined);
+    if (!nif && !direccion && !fecha) continue;
 
-    const candidates = await findCandidates(nif, importe, ejercicio);
+    const candidates = await findCandidates({ nif, direccion, fecha });
 
     if (candidates.length > 0) {
       doc.metadata = {
@@ -182,7 +264,11 @@ export function extractNifFromDocument(doc: any): string | undefined {
     if (taxField?.value) return taxField.value.trim();
   }
 
-  // 2. contraparte (sometimes stores NIF)
+  // 2. OCR data
+  const ocrData = doc.metadata?.ocr?.data;
+  if (ocrData?.nif_proveedor) return String(ocrData.nif_proveedor).trim();
+
+  // 3. contraparte (sometimes stores NIF)
   const contraparte = doc.metadata?.contraparte;
   if (contraparte && /^[A-Z0-9]\d{7}[A-Z0-9]$/i.test(contraparte.trim())) {
     return contraparte.trim();
@@ -191,31 +277,48 @@ export function extractNifFromDocument(doc: any): string | undefined {
   return undefined;
 }
 
-/**
- * Score a candidate 0-100 based on how closely it matches the invoice.
- * - Exact amount match: +50
- * - Close amount (within 5%): +30
- * - Same exercise year: +40
- * - Already linked: -20
- */
-function computeScore(
-  candidateImporte: number,
-  candidateEjercicio: number,
-  invoiceImporte?: number,
-  invoiceEjercicio?: number
-): number {
-  let score = 50; // Base score for NIF match
+/** Extract address from OCR data */
+export function extractDireccionFromDocument(doc: any): string | undefined {
+  // OCR data.direccion
+  const ocrData = doc.metadata?.ocr?.data;
+  if (ocrData?.direccion) return String(ocrData.direccion).trim();
 
-  if (invoiceImporte != null && invoiceImporte > 0 && candidateImporte > 0) {
-    const diff = Math.abs(candidateImporte - invoiceImporte) / candidateImporte;
-    if (diff < 0.001) score += 50;
-    else if (diff < 0.05) score += 30;
-    else if (diff < 0.15) score += 10;
+  // OCR fields
+  const ocrFields = doc.metadata?.ocr?.fields;
+  if (ocrFields) {
+    const addrField = ocrFields.find(
+      (f: any) => f.name === 'service_address' || f.name === 'supplier_address' || f.name === 'receiver_address'
+    );
+    if (addrField?.value) return String(addrField.value).trim();
   }
 
-  if (invoiceEjercicio != null && candidateEjercicio === invoiceEjercicio) {
-    score += 40;
+  // financialData.serviceAddress
+  if (doc.metadata?.financialData?.serviceAddress) {
+    return String(doc.metadata.financialData.serviceAddress).trim();
   }
 
-  return Math.min(100, score);
+  return undefined;
+}
+
+/** Extract date from OCR data */
+export function extractFechaFromDocument(doc: any): string | undefined {
+  // OCR data.fecha
+  const ocrData = doc.metadata?.ocr?.data;
+  if (ocrData?.fecha) return String(ocrData.fecha).trim();
+
+  // OCR fields
+  const ocrFields = doc.metadata?.ocr?.fields;
+  if (ocrFields) {
+    const dateField = ocrFields.find(
+      (f: any) => f.name === 'invoice_date' || f.name === 'issue_date'
+    );
+    if (dateField?.value) return String(dateField.value).trim();
+  }
+
+  // financialData.issueDate
+  if (doc.metadata?.financialData?.issueDate) {
+    return String(doc.metadata.financialData.issueDate).trim();
+  }
+
+  return undefined;
 }

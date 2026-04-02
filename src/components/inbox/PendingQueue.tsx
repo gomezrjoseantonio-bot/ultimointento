@@ -13,20 +13,7 @@ interface BlockingReason {
   action?: string;
 }
 
-interface MatchCandidate {
-  store: 'mejorasActivo' | 'mobiliarioActivo';
-  id: number;
-  inmuebleId: number;
-  inmuebleAlias: string;
-  tipo: string;
-  ejercicio: number;
-  importe: number;
-  descripcion: string;
-  proveedorNIF: string;
-  proveedorNombre?: string;
-  alreadyLinked: boolean;
-  score: number;
-}
+import { CandidatoMatch as MatchCandidate } from '../../services/documentMatchingService';
 
 interface PendingDocument {
   id: number;
