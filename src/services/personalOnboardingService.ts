@@ -137,7 +137,7 @@ export async function analizarDatosPersonales(
   comparar('nombre', 'Nombre', datos.nombre, [perfil.nombre, perfil.apellidos].filter(Boolean).join(' '));
   comparar('estadoCivil', 'Estado civil', datos.estadoCivil, perfil.situacionPersonal);
   comparar('comunidadAutonoma', 'Comunidad autónoma', datos.comunidadAutonoma, perfil.comunidadAutonoma);
-  comparar('fechaNacimiento', 'Fecha nacimiento', datos.fechaNacimiento, ''); // No stored field to compare
+  comparar('fechaNacimiento', 'Fecha nacimiento', datos.fechaNacimiento, perfil.fechaNacimiento);
 
   return { esNuevo: false, camposNuevos, conflictos };
 }
@@ -168,6 +168,7 @@ export async function ejecutarOnboardingPersonal(
       situacionLaboral: ['asalariado'],
       comunidadAutonoma: datos.comunidadAutonoma,
       tributacion: datos.tributacion,
+      fechaNacimiento: datos.fechaNacimiento,
       fechaCreacion: new Date().toISOString(),
       fechaActualizacion: new Date().toISOString(),
     };
@@ -240,7 +241,7 @@ function aplicarCampo(updates: Partial<PersonalData>, campo: string, valor: stri
       updates.comunidadAutonoma = valor;
       break;
     case 'fechaNacimiento':
-      // PersonalData doesn't have this field yet; skip silently
+      updates.fechaNacimiento = valor;
       break;
     case 'tributacion':
       updates.tributacion = valor as 'individual' | 'conjunta';
