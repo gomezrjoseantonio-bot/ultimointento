@@ -121,7 +121,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Escribir mejoras y reparaciones en mejorasActivo
   await escribirMejoras(db, decl, porRefCatastral);
 
-  // Persist IBAN to accounts store with deduplication
+  // Persistir el IBAN en la tabla de accounts evitando duplicados
   const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
   if (iban) {
     const existingAccounts = await db.getAll('accounts');
