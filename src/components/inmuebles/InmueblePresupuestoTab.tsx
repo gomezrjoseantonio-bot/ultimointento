@@ -320,7 +320,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
     const improvementRows: BudgetExpenseRow[] = improvements.map((mejora) => ({
       id: mejora.id || 0,
       source: 'mejoraActivo',
-      businessType: 'mejora',
+      businessType: mejora.tipo === 'reparacion' ? 'reparacion' : 'mejora',
       categoryLabel: mejora.tipo === 'reparacion' ? CATEGORY_LABELS.reparacion : CATEGORY_LABELS.mejora,
       concept: mejora.descripcion,
       amount: mejora.importe,
@@ -567,8 +567,8 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
   const activeRules = rules.filter((r) => r.activo);
   const annualTotalsByType = {
     recurrente: activeRules.reduce((sum, rule) => sum + getAnnualAmount(rule), 0),
-    reparacion: repairOperations.reduce((sum, op) => sum + op.total, 0),
-    mejora: improvements.reduce((sum, mejora) => sum + mejora.importe, 0),
+    reparacion: repairOperations.reduce((sum, op) => sum + op.total, 0) + improvements.filter((m) => m.tipo === 'reparacion').reduce((sum, m) => sum + m.importe, 0),
+    mejora: improvements.filter((m) => m.tipo !== 'reparacion').reduce((sum, mejora) => sum + mejora.importe, 0),
     mobiliario: furniture.filter((item) => item.activo).reduce((sum, item) => sum + item.importe, 0),
   };
   const annualTotal = Object.values(annualTotalsByType).reduce((sum, value) => sum + value, 0);
