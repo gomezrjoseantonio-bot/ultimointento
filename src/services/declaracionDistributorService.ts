@@ -636,13 +636,16 @@ async function persistirVinculosAccesorio(
     );
     if (existente) continue;
 
+    const origenCreacion =
+      decl.meta.fuenteImportacion === 'xml' ? 'XML' : 'manual';
+
     const vinculo: VinculoAccesorioDB = {
       inmueblePrincipalId: propPrincipal.id,
       inmuebleAccesorioId: propAccesorio.id,
       ejercicio,
       fechaInicio: `${ejercicio}-01-01`,
       estado: 'activo',
-      origenCreacion: 'XML',
+      origenCreacion,
       createdAt: ahora,
       updatedAt: ahora,
     };
