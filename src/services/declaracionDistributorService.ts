@@ -134,6 +134,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
+      invalidateCachedStores(['accounts']);
     }
   }
 
