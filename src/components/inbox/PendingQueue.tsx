@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
-import { 
-  FileText, AlertCircle, CheckCircle, Clock, 
-  Building, CreditCard, Eye, Trash2, Edit, 
-  ChevronRight, Search, ArrowUpDown
+import {
+  FileText, AlertCircle, CheckCircle, Clock,
+  Building, CreditCard, Eye, Trash2, Edit,
+  ChevronRight, Search, ArrowUpDown, RefreshCw
 } from 'lucide-react';
+import DocumentLinkingPanel from './DocumentLinkingPanel';
+import { rematchPendingDocuments } from '../../services/documentMatchingService';
 
 interface BlockingReason {
   type: 'error' | 'warning' | 'info';
   message: string;
   action?: string;
+}
+
+interface MatchCandidate {
+  store: 'mejorasActivo' | 'mobiliarioActivo';
+  id: number;
+  inmuebleId: number;
+  inmuebleAlias: string;
+  tipo: string;
+  ejercicio: number;
+  importe: number;
+  descripcion: string;
+  proveedorNIF: string;
+  proveedorNombre?: string;
+  alreadyLinked: boolean;
+  score: number;
 }
 
 interface PendingDocument {
@@ -27,6 +44,9 @@ interface PendingDocument {
   blockingReasons: BlockingReason[];
   isReadyToPublish: boolean;
   thumbnail?: string;
+  /** Pieza 8 */
+  matchCandidates?: MatchCandidate[];
+  documentStatus?: string;
 }
 
 interface PendingQueueProps {
@@ -41,6 +61,7 @@ interface PendingQueueProps {
   onSplitReform: (doc: PendingDocument) => void;
   onMapColumns: (doc: PendingDocument) => void;
   onDiscard: (docs: PendingDocument[]) => void;
+  onRefresh?: () => void;
   loading?: boolean;
 }
 
@@ -56,6 +77,7 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
   onSplitReform,
   onMapColumns,
   onDiscard,
+  onRefresh,
   loading = false
 }) => {
   const [selectedDocs, setSelectedDocs] = useState<number[]>([]);
@@ -63,6 +85,18 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [sortBy, setSortBy] = useState<'date' | 'type' | 'amount'>('date');
+  const [rematching, setRematching] = useState(false);
+  const [expandedLinking, setExpandedLinking] = useState<number | null>(null);
+
+  const handleRematch = async () => {
+    setRematching(true);
+    try {
+      await rematchPendingDocuments();
+      onRefresh?.();
+    } finally {
+      setRematching(false);
+    }
+  };
 
   // Filter and sort documents
   const filteredDocuments = documents
@@ -170,8 +204,19 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
           <h2 className="text-lg font-semibold text-slate-900">
             Bandeja Pendientes
           </h2>
-          <div className="text-sm text-slate-600">
-            {filteredDocuments.length} documentos · {filteredDocuments.filter(d => d.isReadyToPublish).length} listos para publicar
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-600">
+              {filteredDocuments.length} documentos · {filteredDocuments.filter(d => d.isReadyToPublish).length} listos para publicar
+            </span>
+            <button
+              onClick={handleRematch}
+              disabled={rematching}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-navy-700 border border-navy-200 hover:bg-navy-50 disabled:opacity-50"
+              title="Buscar coincidencias NIF en todos los documentos pendientes"
+            >
+              <RefreshCw className={`w-3 h-3 ${rematching ? 'animate-spin' : ''}`} />
+              Buscar coincidencias
+            </button>
           </div>
         </div>
 
@@ -321,157 +366,198 @@ const PendingQueue: React.FC<PendingQueueProps> = ({
             </p>
           </div>
         ) : (
-          filteredDocuments.map((doc) => (
-            <div
-              key={doc.id}
-              className="p-4 cursor-pointer"
-              onClick={() => onSelectDocument(doc)}
-            >
-              <div className="flex items-start gap-4">
-                {/* Selection checkbox */}
-                <input
-                  type="checkbox"
-                  checked={selectedDocs.includes(doc.id)}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    handleSelectDocument(doc.id, e.target.checked);
-                  }}
-                  className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
-                />
+          filteredDocuments.map((doc) => {
+            const hasCandidates = doc.matchCandidates && doc.matchCandidates.length > 0;
+            const needsLinking = doc.documentStatus === 'pendiente_vinculacion' || doc.documentStatus === 'pendiente_asignacion';
+            const showLinkingPanel = expandedLinking === doc.id || (hasCandidates && expandedLinking === null);
 
-                {/* Document thumbnail/icon */}
-                <div className="flex-shrink-0">
-                  {doc.thumbnail ? (
-                    <img 
-                      src={doc.thumbnail} 
-                      alt={doc.filename}
-                      className="w-12 h-12 object-cover border border-neutral-200"
+            return (
+              <div key={doc.id}>
+                <div
+                  className="p-4 cursor-pointer"
+                  onClick={() => onSelectDocument(doc)}
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Selection checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={selectedDocs.includes(doc.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectDocument(doc.id, e.target.checked);
+                      }}
+                      className="mt-1 h-4 w-4 text-navy-700 border-neutral-300 rounded focus:ring-navy-600"
                     />
-                  ) : (
-                    <div className="w-12 h-12 bg-neutral-100 border border-neutral-200 flex items-center justify-center">
-                      {getDocumentIcon(doc.documentType)}
-                    </div>
-                  )}
-                </div>
 
-                {/* Document info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(doc)}
-                        <h3 className="text-sm font-medium text-neutral-900 truncate">
-                          {doc.filename}
-                        </h3>
-                        <span className="text-xs text-neutral-500">
-                          {doc.documentType}
-                        </span>
-                      </div>
-                      
-                      <div className="mt-1 flex items-center gap-4 text-xs text-neutral-600">
-                        {doc.amount && (
-                          <span className="font-medium text-neutral-900">
-                            {formatAmount(doc.amount)}
-                          </span>
-                        )}
-                        {doc.date && (
-                          <span>{formatDate(doc.date)}</span>
-                        )}
-                        {doc.provider && (
-                          <span>{doc.provider}</span>
-                        )}
-                        {doc.inmueble && (
-                          <span className="flex items-center gap-1">
-                            <Building className="w-3 h-3" />
-                            {doc.inmueble}
-                          </span>
-                        )}
-                        {doc.account && (
-                          <span className="flex items-center gap-1">
-                            <CreditCard className="w-3 h-3" />
-                            {doc.account}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Blocking reasons chips */}
-                      {doc.blockingReasons.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {doc.blockingReasons.map((reason, idx) => (
-                            <span
-                              key={idx}
-                              className={`inline-flex items-center px-2 py-1 text-xs font-medium ${
-                                reason.type === 'error'
-                                  ? 'bg-error-100 text-error-800'
-                                  : reason.type === 'warning'
-                                  ? 'bg-warning-100 text-yellow-800'
-                                  : 'bg-navy-100 text-navy-800'
-                              }`}
-                            >
-                              {reason.message}
-                            </span>
-                          ))}
+                    {/* Document thumbnail/icon */}
+                    <div className="flex-shrink-0">
+                      {doc.thumbnail ? (
+                        <img
+                          src={doc.thumbnail}
+                          alt={doc.filename}
+                          className="w-12 h-12 object-cover border border-neutral-200"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-neutral-100 border border-neutral-200 flex items-center justify-center">
+                          {getDocumentIcon(doc.documentType)}
                         </div>
                       )}
                     </div>
 
-                    {/* Quick actions */}
-                    <div className="flex items-center gap-1 ml-4">
-                      {doc.documentType === 'Extracto bancario' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onMapColumns(doc);
-                          }}
-                          className="p-1 text-neutral-400 hover:text-neutral-600"
-                          title="Mapear columnas"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      {doc.documentType === 'Factura' && doc.blockingReasons.some(r => r.message.includes('reforma')) && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSplitReform(doc);
-                          }}
-                          className="p-1 text-neutral-400 hover:text-neutral-600"
-                          title="Dividir reforma"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectDocument(doc);
-                        }}
-                        className="p-1 text-neutral-400 hover:text-neutral-600"
-                        title="Ver detalles"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      
-                      {doc.isReadyToPublish && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onPublishDocument(doc);
-                          }}
-                          className="p-1 text-success-600 hover:text-success-700 font-medium"
-                          title="Publicar ahora"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
-                      )}
+                    {/* Document info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(doc)}
+                            <h3 className="text-sm font-medium text-neutral-900 truncate">
+                              {doc.filename}
+                            </h3>
+                            <span className="text-xs text-neutral-500">
+                              {doc.documentType}
+                            </span>
+                            {hasCandidates && (
+                              <span className="text-xs px-1.5 py-0.5 bg-navy-100 text-navy-700 font-medium">
+                                {doc.matchCandidates!.filter(c => !c.alreadyLinked).length} coincidencia{doc.matchCandidates!.filter(c => !c.alreadyLinked).length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-1 flex items-center gap-4 text-xs text-neutral-600">
+                            {doc.amount && (
+                              <span className="font-medium text-neutral-900">
+                                {formatAmount(doc.amount)}
+                              </span>
+                            )}
+                            {doc.date && (
+                              <span>{formatDate(doc.date)}</span>
+                            )}
+                            {doc.provider && (
+                              <span>{doc.provider}</span>
+                            )}
+                            {doc.inmueble && (
+                              <span className="flex items-center gap-1">
+                                <Building className="w-3 h-3" />
+                                {doc.inmueble}
+                              </span>
+                            )}
+                            {doc.account && (
+                              <span className="flex items-center gap-1">
+                                <CreditCard className="w-3 h-3" />
+                                {doc.account}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Blocking reasons chips */}
+                          {doc.blockingReasons.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {doc.blockingReasons.map((reason, idx) => (
+                                <span
+                                  key={idx}
+                                  className={`inline-flex items-center px-2 py-1 text-xs font-medium ${
+                                    reason.type === 'error'
+                                      ? 'bg-error-100 text-error-800'
+                                      : reason.type === 'warning'
+                                      ? 'bg-warning-100 text-yellow-800'
+                                      : 'bg-navy-100 text-navy-800'
+                                  }`}
+                                >
+                                  {reason.message}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Quick actions */}
+                        <div className="flex items-center gap-1 ml-4">
+                          {(hasCandidates || needsLinking) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedLinking(expandedLinking === doc.id ? null : doc.id);
+                              }}
+                              className="p-1 text-navy-600 hover:text-navy-800"
+                              title="Vincular a operaci\u00f3n"
+                            >
+                              <Search className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {doc.documentType === 'Extracto bancario' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onMapColumns(doc);
+                              }}
+                              className="p-1 text-neutral-400 hover:text-neutral-600"
+                              title="Mapear columnas"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {doc.documentType === 'Factura' && doc.blockingReasons.some(r => r.message.includes('reforma')) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onSplitReform(doc);
+                              }}
+                              className="p-1 text-neutral-400 hover:text-neutral-600"
+                              title="Dividir reforma"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectDocument(doc);
+                            }}
+                            className="p-1 text-neutral-400 hover:text-neutral-600"
+                            title="Ver detalles"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          {doc.isReadyToPublish && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPublishDocument(doc);
+                              }}
+                              className="p-1 text-success-600 hover:text-success-700 font-medium"
+                              title="Publicar ahora"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Pieza 8: Document linking panel */}
+                {showLinkingPanel && (
+                  <div className="px-4 pb-4" onClick={(e) => e.stopPropagation()}>
+                    <DocumentLinkingPanel
+                      documentId={doc.id}
+                      candidates={doc.matchCandidates || []}
+                      status={doc.documentStatus || 'pendiente_asignacion'}
+                      onLinked={() => {
+                        setExpandedLinking(null);
+                        onRefresh?.();
+                      }}
+                      onDismiss={() => setExpandedLinking(null)}
+                    />
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

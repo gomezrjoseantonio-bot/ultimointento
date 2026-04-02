@@ -382,7 +382,7 @@ export interface Document {
     tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros';
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';
-    status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado';
+    status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
     notas?: string;
     carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'capex' | 'otros';
     // H9: Enhanced fiscal classification
@@ -429,6 +429,21 @@ export interface Document {
     fechaImportacion?: string;
     casillasExtraidas?: number;
     metodoExtraccion?: 'texto' | 'ocr';
+    // Pieza 8: Document → operation matching
+    matchCandidates?: Array<{
+      store: 'mejorasActivo' | 'mobiliarioActivo';
+      id: number;
+      inmuebleId: number;
+      inmuebleAlias: string;
+      tipo: string;
+      ejercicio: number;
+      importe: number;
+      descripcion: string;
+      proveedorNIF: string;
+      proveedorNombre?: string;
+      alreadyLinked: boolean;
+      score: number;
+    }>;
   };
   uploadDate: string;
 }
