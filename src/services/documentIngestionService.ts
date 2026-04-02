@@ -12,6 +12,7 @@ import { initDB, Document, Gasto, AEATFiscalType } from './db';
 import { telemetry } from './telemetryService';
 import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
 import { FLAGS } from '../config/flags';
+import { findCandidates, extractNifFromDocument } from './documentMatchingService';
 
 export interface DocumentIngestionResult {
   success: boolean;
@@ -136,6 +137,7 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
   const concept = metadata.description || `Factura ${provider}`;
   const category = getCategoryFromMetadata(metadata);
   const iban = financialData.iban;
+  const supplierNif = extractNifFromDocument(document);
 
   // Determine destination (inmueble or personal)
   const propertyId = metadata.entityId;
@@ -144,7 +146,7 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
   // Create expense entry
   const gasto: Omit<Gasto, 'id'> = {
     contraparte_nombre: provider,
-    contraparte_nif: undefined,
+    contraparte_nif: supplierNif,
     fecha_emision: issueDate,
     fecha_pago_prevista: dueDate,
     total: totalAmount,
@@ -204,6 +206,25 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
       visibilityHours: 72
     }
   );
+
+  // --- Pieza 8: Match document → declared operation ---
+  if (supplierNif) {
+    const ejercicio = issueDate ? new Date(issueDate).getFullYear() : undefined;
+    const candidates = await findCandidates(supplierNif, totalAmount, ejercicio);
+
+    if (candidates.length > 0) {
+      // Store candidates in document metadata for UI review
+      const updatedDoc = await db.get('documents', document.id!);
+      if (updatedDoc) {
+        updatedDoc.metadata = {
+          ...updatedDoc.metadata,
+          status: 'pendiente_vinculacion',
+          matchCandidates: candidates,
+        };
+        await db.put('documents', updatedDoc);
+      }
+    }
+  }
 
   return {
     success: true,
