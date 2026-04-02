@@ -130,7 +130,11 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
       await db.add('accounts', {
         iban,
         ibanMasked: iban.slice(0, 4) + '****' + iban.slice(-4),
-        entity: {},
+        status: 'active',
+        isActive: true,
+        activa: true,
+        destination: 'unknown',
+        bank: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
