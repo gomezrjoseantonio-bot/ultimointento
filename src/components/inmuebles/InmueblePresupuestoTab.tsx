@@ -685,28 +685,28 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                       <button onClick={() => handleDelete(row)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar gasto">
                         <Trash2 className="h-4 w-4" />
                       </button>
-                      {(row.source === 'mejoraActivo' || row.source === 'mobiliarioActivo') && (
-                        <button
-                          onClick={() => {
-                            const docId = (row.raw as MejoraActivo | MobiliarioActivo).documentId;
-                            if (docId) {
-                              navigate(`/inbox?docId=${docId}`);
-                            }
-                          }}
-                          className={`p-1 transition-colors ${
-                            (row.raw as MejoraActivo | MobiliarioActivo).documentId
-                              ? 'text-teal-600'
-                              : 'text-gray-400 hover:text-gray-600'
-                          }`}
-                          title={
-                            (row.raw as MejoraActivo | MobiliarioActivo).documentId
-                              ? 'Ver documento adjunto'
-                              : 'Sin documento adjunto'
-                          }
-                        >
-                          <Paperclip className="h-4 w-4" />
-                        </button>
-                      )}
+                      {(row.source === 'mejoraActivo' || row.source === 'mobiliarioActivo') && (() => {
+                        const docId = (row.raw as MejoraActivo | MobiliarioActivo).documentId;
+                        return (
+                          <button
+                            onClick={() => {
+                              if (docId) {
+                                navigate(`/inbox?docId=${docId}`);
+                              } else {
+                                navigate(`/inbox?destino=inmueble-${propertyId}`);
+                              }
+                            }}
+                            className={`p-1 transition-colors ${
+                              docId
+                                ? 'text-teal-600 hover:text-teal-800'
+                                : 'text-gray-400 hover:text-gray-600'
+                            }`}
+                            title={docId ? 'Ver documento adjunto' : 'Adjuntar factura'}
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </button>
+                        );
+                      })()}
                     </div>
                   </td>
                 </tr>

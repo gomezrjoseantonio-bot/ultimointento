@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronRight,
   FileUp,
@@ -22,6 +23,7 @@ const tabItems = ['Pendientes', 'Procesados', 'Todos'] as const;
 const typeFilters = ['Todos', 'Facturas', 'Contratos'] as const;
 
 const InboxPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
   const [processingOCR, setProcessingOCR] = useState(false);
@@ -64,6 +66,18 @@ const InboxPage: React.FC = () => {
     };
     loadDocuments();
   }, []);
+
+  // ── Auto-select document when docId query param is present ──
+  useEffect(() => {
+    const docIdParam = searchParams.get('docId');
+    if (!docIdParam || documents.length === 0) return;
+    const docId = Number(docIdParam);
+    const target = documents.find((d) => d.id === docId);
+    if (target) {
+      setSelectedDocument(target);
+      setActiveTab('Todos');
+    }
+  }, [searchParams, documents]);
 
   // ── PDF preview: blob cargado directamente para PdfPreview (PDF.js canvas) ──
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
