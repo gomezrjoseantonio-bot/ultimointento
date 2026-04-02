@@ -29,6 +29,7 @@ import type {
 } from '../types/declaracionCompleta';
 import { crearOActualizarContrato } from './declaracionOnboardingService';
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
+import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
 import { prestamosService } from './prestamosService';
 import type { Prestamo } from '../types/prestamos';
@@ -159,6 +160,17 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Rellenar perfil personal desde los datos del declarante
   try {
     const d = decl.declarante;
+
+    // Detectar situación laboral desde datos de la declaración
+    const situacionLaboral: SituacionLaboral[] = [];
+    if (decl.trabajo?.retribucionesDinerarias && decl.trabajo.retribucionesDinerarias > 0) {
+      situacionLaboral.push('asalariado');
+    }
+    if (decl.actividadEconomica) {
+      situacionLaboral.push('autonomo');
+    }
+    if (situacionLaboral.length === 0) situacionLaboral.push('asalariado');
+
     await ejecutarOnboardingPersonal({
       personal: {
         nif: d.nif,
@@ -167,6 +179,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
         estadoCivil: d.estadoCivil,
         comunidadAutonoma: d.codigoCCAA || d.nombreCCAA,
         tributacion: d.tributacion,
+        situacionLaboral,
       },
       trabajo: {} as any,
       inmuebles: [],
