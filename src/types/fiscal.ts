@@ -63,6 +63,7 @@ export interface DeclaracionIRPF {
     comunidadAutonoma?: string;
     fechaNacimiento?: string;
     tributacion?: 'individual' | 'conjunta';
+    situacionLaboral?: Array<'asalariado' | 'autonomo' | 'desempleado' | 'jubilado'>;
   };
   trabajo: DeclaracionTrabajo;
   inmuebles: DeclaracionInmueble[];

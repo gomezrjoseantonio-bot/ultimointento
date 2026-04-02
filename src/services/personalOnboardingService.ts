@@ -1,5 +1,5 @@
 import { initDB } from './db';
-import type { PersonalData } from '../types/personal';
+import type { PersonalData, SituacionLaboral } from '../types/personal';
 import type { DeclaracionIRPF } from '../types/fiscal';
 import type { Diferencia } from './declaracionOnboardingService';
 
@@ -14,6 +14,7 @@ export interface PersonalDesdeDeclaracion {
   comunidadAutonoma: string;
   fechaNacimiento: string;
   tributacion: 'individual' | 'conjunta';
+  situacionLaboral: SituacionLaboral[];
 }
 
 export interface ResultadoPersonalOnboarding {
@@ -36,15 +37,35 @@ function mapearEstadoCivil(valor?: string): PersonalData['situacionPersonal'] | 
   return undefined;
 }
 
+import type { MaritalStatus } from '../types/personal';
+
+function situacionToMarital(sp: PersonalData['situacionPersonal']): MaritalStatus {
+  if (sp === 'casado' || sp === 'pareja-hecho') return 'married';
+  if (sp === 'divorciado') return 'divorced';
+  return 'single';
+}
+
+/**
+ * Normaliza fecha dd/mm/yyyy → YYYY-MM-DD para <input type="date">.
+ * Si ya está en formato ISO o YYYY-MM-DD, la devuelve tal cual.
+ */
+function normalizarFecha(fecha: string): string {
+  const ddmmyyyy = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const match = fecha.match(ddmmyyyy);
+  if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+  return fecha;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // MAPEO CCAA
 // ═══════════════════════════════════════════════════════════════
 
+// Valores deben coincidir con el dropdown de ProfileView.tsx
 const CCAA_MAP: Record<string, string> = {
   '01': 'Andalucía',
   '02': 'Aragón',
-  '03': 'Asturias',
-  '04': 'Islas Baleares',
+  '03': 'Asturias (Principado de)',
+  '04': 'Baleares (Illes)',
   '05': 'Canarias',
   '06': 'Cantabria',
   '07': 'Castilla-La Mancha',
@@ -52,11 +73,11 @@ const CCAA_MAP: Record<string, string> = {
   '09': 'Cataluña',
   '10': 'Extremadura',
   '11': 'Galicia',
-  '12': 'Madrid',
-  '13': 'Murcia',
+  '12': 'Madrid (Comunidad de)',
+  '13': 'Murcia (Región de)',
   '14': 'La Rioja',
   '15': 'País Vasco',
-  '16': 'Navarra',
+  '16': 'Navarra (Comunidad Foral de)',
   '17': 'Comunidad Valenciana',
   '18': 'Ceuta',
   '19': 'Melilla',
@@ -80,7 +101,7 @@ export function extraerDatosPersonales(
 
   if (p.nif) result.nif = p.nif.trim();
   if (p.nombre) result.nombre = p.nombre.trim();
-  if (p.fechaNacimiento) result.fechaNacimiento = p.fechaNacimiento;
+  if (p.fechaNacimiento) result.fechaNacimiento = normalizarFecha(p.fechaNacimiento);
   if (p.comunidadAutonoma) {
     result.comunidadAutonoma = nombreCCAA(p.comunidadAutonoma);
   }
@@ -89,6 +110,7 @@ export function extraerDatosPersonales(
     if (mapped) result.estadoCivil = mapped;
   }
   if (p.tributacion) result.tributacion = p.tributacion;
+  if (p.situacionLaboral?.length) result.situacionLaboral = p.situacionLaboral;
 
   return result;
 }
@@ -157,16 +179,18 @@ export async function ejecutarOnboardingPersonal(
 
   if (!perfil) {
     // Perfil nuevo: crear con todos los datos disponibles
-    const [nombre, ...apellidosParts] = (datos.nombre || '').split(' ');
-    const apellidos = apellidosParts.join(' ');
+    // AEAT format: APELLIDO1 APELLIDO2 NOMBRE(S) — primeros 2 tokens son apellidos
+    const { nombre, apellidos } = splitNombreAeat(datos.nombre || '');
 
+    const sp = datos.estadoCivil || 'soltero';
     const nuevoPerfil: PersonalData = {
       nombre: nombre || '',
       apellidos: apellidos || '',
       dni: datos.nif || '',
       direccion: '',
-      situacionPersonal: datos.estadoCivil || 'soltero',
-      situacionLaboral: ['asalariado'],
+      situacionPersonal: sp,
+      maritalStatus: situacionToMarital(sp),
+      situacionLaboral: datos.situacionLaboral?.length ? datos.situacionLaboral : ['asalariado'],
       comunidadAutonoma: datos.comunidadAutonoma,
       tributacion: datos.tributacion,
       fechaNacimiento: datos.fechaNacimiento,
@@ -224,20 +248,38 @@ export async function ejecutarOnboardingPersonal(
 // HELPERS INTERNOS
 // ═══════════════════════════════════════════════════════════════
 
+/**
+ * Separa "APELLIDO1 APELLIDO2 NOMBRE(S)" → { nombre, apellidos }.
+ * AEAT siempre pone 2 apellidos primero, el resto es nombre.
+ */
+function splitNombreAeat(fullName: string): { nombre: string; apellidos: string } {
+  const tokens = fullName.trim().split(/\s+/);
+  if (tokens.length <= 2) {
+    // Solo 1-2 palabras: no podemos separar, asumimos todo como nombre
+    return { nombre: fullName.trim(), apellidos: '' };
+  }
+  const apellidos = tokens.slice(0, 2).join(' ');
+  const nombre = tokens.slice(2).join(' ');
+  return { nombre, apellidos };
+}
+
 function aplicarCampo(updates: Partial<PersonalData>, campo: string, valor: string): void {
   switch (campo) {
     case 'nif':
       updates.dni = valor;
       break;
     case 'nombre': {
-      const [nombre, ...parts] = valor.split(' ');
+      const { nombre, apellidos } = splitNombreAeat(valor);
       updates.nombre = nombre;
-      updates.apellidos = parts.join(' ');
+      updates.apellidos = apellidos;
       break;
     }
-    case 'estadoCivil':
-      updates.situacionPersonal = valor as PersonalData['situacionPersonal'];
+    case 'estadoCivil': {
+      const sp = valor as PersonalData['situacionPersonal'];
+      updates.situacionPersonal = sp;
+      updates.maritalStatus = situacionToMarital(sp);
       break;
+    }
     case 'comunidadAutonoma':
       updates.comunidadAutonoma = valor;
       break;
