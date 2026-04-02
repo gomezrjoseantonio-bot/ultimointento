@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo } from './db';
+import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo, VinculoAccesorio as VinculoAccesorioDB } from './db';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
   InformeDistribucion,
@@ -151,6 +151,9 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
 
   // Persistir préstamos detectados al store de préstamos
   await persistirPrestamosDetectados(resultadoInmuebles.prestamos, porRefCatastral, decl.meta.ejercicio);
+
+  // Persistir vínculos accesorio (parking/trastero) al store vinculosAccesorio
+  await persistirVinculosAccesorio(db, decl, porRefCatastral);
 
   return construirInforme(decl, resultadoInmuebles);
 }
@@ -604,6 +607,47 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     },
     notes: 'Creado desde importación de declaración fiscal',
   };
+}
+
+async function persistirVinculosAccesorio(
+  db: DB,
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  const ejercicio = decl.meta.ejercicio;
+  const ahora = new Date().toISOString();
+
+  for (const inm of decl.inmuebles) {
+    if (!inm.esAccesorioDe) continue;
+
+    const refAcc = normalizeRef(inm.refCatastral);
+    const refPrincipal = normalizeRef(inm.esAccesorioDe);
+    if (!refAcc || !refPrincipal) continue;
+
+    const propAccesorio = porRefCatastral.get(refAcc);
+    const propPrincipal = porRefCatastral.get(refPrincipal);
+    if (!propAccesorio?.id || !propPrincipal?.id) continue;
+
+    // Deduplicación: buscar por índice compuesto [principal, accesorio, ejercicio]
+    const existente = await db.getFromIndex(
+      'vinculosAccesorio',
+      'principal-accesorio-ejercicio',
+      [propPrincipal.id, propAccesorio.id, ejercicio],
+    );
+    if (existente) continue;
+
+    const vinculo: VinculoAccesorioDB = {
+      inmueblePrincipalId: propPrincipal.id,
+      inmuebleAccesorioId: propAccesorio.id,
+      ejercicio,
+      fechaInicio: `${ejercicio}-01-01`,
+      estado: 'activo',
+      origenCreacion: 'XML',
+      createdAt: ahora,
+      updatedAt: ahora,
+    };
+    await db.add('vinculosAccesorio', vinculo);
+  }
 }
 
 function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): InformeDistribucion {

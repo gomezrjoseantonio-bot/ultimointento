@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 38; // V3.8: stores proveedores + operacionesProveedor + mobiliarioActivo.ejercicio
+const DB_VERSION = 39; // V3.9: store vinculosAccesorio (vínculo temporal parking/trastero por ejercicio)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1869,6 +1869,19 @@ export interface DeduccionPendiente {
   añoOrigen: number;
 }
 
+export interface VinculoAccesorio {
+  id?: number;
+  inmueblePrincipalId: number;
+  inmuebleAccesorioId: number;
+  ejercicio: number;
+  fechaInicio: string;
+  fechaFin?: string;
+  estado: 'activo' | 'inactivo';
+  origenCreacion: 'XML' | 'manual';
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
@@ -1948,6 +1961,7 @@ interface AtlasHorizonDB {
   snapshotsDeclaracion: SnapshotDeclaracion; // V2.7: Frozen declaration snapshots
   entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
   ejerciciosFiscalesCoord: EjercicioFiscalCoord; // V3.7: Modelo fiscal coordinador (4 regímenes)
+  vinculosAccesorio: VinculoAccesorio; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -2542,6 +2556,14 @@ export const initDB = async () => {
         if (!db.objectStoreNames.contains('ejerciciosFiscalesCoord')) {
           const coordStore = db.createObjectStore('ejerciciosFiscalesCoord', { keyPath: 'año' });
           coordStore.createIndex('estado', 'estado');
+        }
+
+        // V3.9: Vínculos accesorio (parking/trastero) por ejercicio
+        if (!db.objectStoreNames.contains('vinculosAccesorio')) {
+          const vinculosStore = db.createObjectStore('vinculosAccesorio', { keyPath: 'id', autoIncrement: true });
+          vinculosStore.createIndex('inmueblePrincipalId', 'inmueblePrincipalId', { unique: false });
+          vinculosStore.createIndex('inmuebleAccesorioId', 'inmuebleAccesorioId', { unique: false });
+          vinculosStore.createIndex('principal-accesorio-ejercicio', ['inmueblePrincipalId', 'inmuebleAccesorioId', 'ejercicio'], { unique: true });
         }
 
         // V2.8: Allow multiple snapshots per ejercicio (force snapshots)
