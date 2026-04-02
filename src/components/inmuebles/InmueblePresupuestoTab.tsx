@@ -321,7 +321,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       id: mejora.id || 0,
       source: 'mejoraActivo',
       businessType: 'mejora',
-      categoryLabel: CATEGORY_LABELS.mejora,
+      categoryLabel: mejora.tipo === 'reparacion' ? CATEGORY_LABELS.reparacion : CATEGORY_LABELS.mejora,
       concept: mejora.descripcion,
       amount: mejora.importe,
       frequencyLabel: FREQUENCY_LABELS.puntual,
