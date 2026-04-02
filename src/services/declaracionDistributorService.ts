@@ -29,6 +29,8 @@ import type {
 } from '../types/declaracionCompleta';
 import { crearOActualizarContrato } from './declaracionOnboardingService';
 import { cuentasService } from './cuentasService';
+import { prestamosService } from './prestamosService';
+import type { Prestamo } from '../types/prestamos';
 
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
