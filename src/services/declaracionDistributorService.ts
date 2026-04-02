@@ -889,6 +889,10 @@ async function escribirMejoras(
   invalidateCachedStores(['mejorasActivo']);
 }
 
+function normalizeNif(nif: string): string {
+  return nif.trim().toUpperCase().replace(/\s+/g, '');
+}
+
 async function escribirProveedores(
   db: DB,
   decl: DeclaracionCompleta,
@@ -905,12 +909,13 @@ async function escribirProveedores(
     if (!property?.id) continue;
 
     // Collect all providers: from mejoras, proveedores array, and arrendamiento-level proveedores
-    const allProvs: { nif: string; tipo: 'mejora' | 'reparacion' | 'gestion' | 'servicios'; importe: number }[] = [];
+    type ProvEntry = { nif: string; tipo: 'mejora' | 'reparacion' | 'gestion' | 'servicios'; importe: number };
+    const rawProvs: ProvEntry[] = [];
 
     // Mejoras con NIF (NIFMJ1..5)
     for (const mejora of inm.mejorasEjercicio) {
       if (mejora.nifProveedor && mejora.importe > 0) {
-        allProvs.push({ nif: mejora.nifProveedor, tipo: 'mejora', importe: mejora.importe });
+        rawProvs.push({ nif: normalizeNif(mejora.nifProveedor), tipo: 'mejora', importe: mejora.importe });
       }
     }
 
@@ -918,7 +923,7 @@ async function escribirProveedores(
     for (const prov of inm.proveedores) {
       if (!prov.nif || prov.importe <= 0) continue;
       const tipo = prov.concepto === 'otro' ? 'servicios' : prov.concepto;
-      allProvs.push({ nif: prov.nif, tipo, importe: prov.importe });
+      rawProvs.push({ nif: normalizeNif(prov.nif), tipo, importe: prov.importe });
     }
 
     // Proveedores dentro de arrendamientos (NIF1GCEM0, NIF1V02SERV)
@@ -927,11 +932,23 @@ async function escribirProveedores(
       for (const prov of arr.proveedores) {
         if (!prov.nif || prov.importe <= 0) continue;
         const tipo = prov.concepto === 'otro' ? 'servicios' : prov.concepto;
-        allProvs.push({ nif: prov.nif, tipo, importe: prov.importe });
+        rawProvs.push({ nif: normalizeNif(prov.nif), tipo, importe: prov.importe });
       }
     }
 
-    for (const p of allProvs) {
+    // Aggregate by (nif, tipo) summing importes to avoid under-counting
+    const grouped = new Map<string, ProvEntry>();
+    for (const p of rawProvs) {
+      const key = `${p.nif}|${p.tipo}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.importe += p.importe;
+      } else {
+        grouped.set(key, { ...p });
+      }
+    }
+
+    for (const p of grouped.values()) {
       // 1. Upsert proveedor entity
       const existing = await db.get('proveedores', p.nif);
       if (existing) {
@@ -949,13 +966,8 @@ async function escribirProveedores(
         });
       }
 
-      // 2. Create operation if not duplicate
-      const existingOps = await db.getAllFromIndex(
-        'operacionesProveedor',
-        'prov-inmueble-ejercicio-tipo',
-        IDBKeyRange.only([p.nif, property.id, ejercicio, p.tipo]),
-      );
-      if (existingOps.length === 0) {
+      // 2. Create operation if not duplicate (unique index enforces this too)
+      try {
         await db.add('operacionesProveedor', {
           proveedorNif: p.nif,
           inmuebleId: property.id!,
@@ -964,6 +976,8 @@ async function escribirProveedores(
           importe: p.importe,
           createdAt: ahora,
         });
+      } catch {
+        // Unique index constraint — operation already exists, skip
       }
     }
   }
@@ -992,19 +1006,20 @@ async function escribirMobiliario(
     // Get existing mobiliario records for this property
     const existentes: MobiliarioActivo[] = await db.getAllFromIndex('mobiliarioActivo', 'inmuebleId', property.id);
 
-    // Sum of annual amortization from existing partidas (each importe / vidaUtil gives annual amort, but importe = coste and vidaUtil=10)
-    // Actually: each existing record represents a partida where importe = coste = amortAnual × 10
-    // So the total expected amortAnual from previous partidas = sum(importe / vidaUtil) for active ones
-    const amortAnterior = existentes
-      .filter((m: MobiliarioActivo) => m.activo && m.ejercicio < ejercicio)
+    // Sum annual amortization from all active partidas (including same ejercicio)
+    // to detect whether V02MUEB implies new furniture beyond what's already tracked.
+    // Tolerate missing ejercicio on legacy records by deriving from fechaAlta.
+    const getEjercicio = (m: MobiliarioActivo) => m.ejercicio ?? new Date(m.fechaAlta).getFullYear();
+    const amortExistente = existentes
+      .filter((m: MobiliarioActivo) => m.activo)
       .reduce((sum: number, m: MobiliarioActivo) => sum + (m.importe / (m.vidaUtil || 10)), 0);
 
-    const delta = amortMob - amortAnterior;
+    const delta = amortMob - amortExistente;
 
     if (delta > 0.5) { // tolerance for rounding
       // New furniture detected — create partida
       const duplicada = existentes.find((m: MobiliarioActivo) =>
-        m.ejercicio === ejercicio && Math.abs(m.importe - delta * 10) < 1
+        getEjercicio(m) === ejercicio && Math.abs(m.importe - delta * 10) < 1
       );
       if (!duplicada) {
         await db.add('mobiliarioActivo', {

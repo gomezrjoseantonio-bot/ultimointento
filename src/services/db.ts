@@ -2064,11 +2064,29 @@ export const initDB = async () => {
           mobiliarioActivoStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
         }
 
-        // V3.8: Add ejercicio index to mobiliarioActivo if missing
+        // V3.8: Add ejercicio index + backfill to mobiliarioActivo
         if (db.objectStoreNames.contains('mobiliarioActivo')) {
           const mobStore = transaction.objectStore('mobiliarioActivo');
           ensureIndex(mobStore, 'ejercicio', 'ejercicio', { unique: false });
           ensureIndex(mobStore, 'inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+
+          // Backfill ejercicio from fechaAlta for legacy records
+          if (oldVersion < 38) {
+            const cursorReq = mobStore.openCursor();
+            cursorReq.onsuccess = () => {
+              const cursor = cursorReq.result;
+              if (!cursor) return;
+              const record = cursor.value as any;
+              if (record.ejercicio == null && record.fechaAlta) {
+                const year = new Date(record.fechaAlta).getFullYear();
+                if (!isNaN(year)) {
+                  record.ejercicio = year;
+                  cursor.update(record);
+                }
+              }
+              cursor.continue();
+            };
+          }
         }
 
         // V3.8: Proveedores store (unique entity per NIF)
@@ -2076,13 +2094,13 @@ export const initDB = async () => {
           db.createObjectStore('proveedores', { keyPath: 'nif' });
         }
 
-        // V3.8: Operaciones proveedor (linked operations)
+        // V3.8: Operaciones proveedor (linked operations, unique per nif+inmueble+ejercicio+tipo)
         if (!db.objectStoreNames.contains('operacionesProveedor')) {
           const opProvStore = db.createObjectStore('operacionesProveedor', { keyPath: 'id', autoIncrement: true });
           opProvStore.createIndex('proveedorNif', 'proveedorNif', { unique: false });
           opProvStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
           opProvStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          opProvStore.createIndex('prov-inmueble-ejercicio-tipo', ['proveedorNif', 'inmuebleId', 'ejercicio', 'tipo'], { unique: false });
+          opProvStore.createIndex('prov-inmueble-ejercicio-tipo', ['proveedorNif', 'inmuebleId', 'ejercicio', 'tipo'], { unique: true });
         }
 
         // H6: KPI Configurations store
