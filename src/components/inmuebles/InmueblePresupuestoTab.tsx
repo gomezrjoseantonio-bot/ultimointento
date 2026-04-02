@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Pencil,
@@ -12,6 +13,7 @@ import {
   Settings,
   MoreHorizontal,
   Eye,
+  Paperclip,
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -184,6 +186,7 @@ const emptyOneOffForm: OneOffExpenseFormData = {
 };
 
 const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propertyId }) => {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<OpexRule[]>([]);
   const [repairOperations, setRepairOperations] = useState<OperacionFiscal[]>([]);
   const [improvements, setImprovements] = useState<MejoraActivo[]>([]);
@@ -682,6 +685,28 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                       <button onClick={() => handleDelete(row)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar gasto">
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      {(row.source === 'mejoraActivo' || row.source === 'mobiliarioActivo') && (
+                        <button
+                          onClick={() => {
+                            const docId = (row.raw as MejoraActivo | MobiliarioActivo).documentId;
+                            if (docId) {
+                              navigate(`/inbox?docId=${docId}`);
+                            }
+                          }}
+                          className={`p-1 transition-colors ${
+                            (row.raw as MejoraActivo | MobiliarioActivo).documentId
+                              ? 'text-teal-600'
+                              : 'text-gray-400 hover:text-gray-600'
+                          }`}
+                          title={
+                            (row.raw as MejoraActivo | MobiliarioActivo).documentId
+                              ? 'Ver documento adjunto'
+                              : 'Sin documento adjunto'
+                          }
+                        >
+                          <Paperclip className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
