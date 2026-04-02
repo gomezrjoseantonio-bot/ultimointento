@@ -29,6 +29,7 @@ import type {
 } from '../types/declaracionCompleta';
 import { crearOActualizarContrato } from './declaracionOnboardingService';
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
+import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
 import { prestamosService } from './prestamosService';
 import type { Prestamo } from '../types/prestamos';
@@ -161,7 +162,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     const d = decl.declarante;
 
     // Detectar situación laboral desde datos de la declaración
-    const situacionLaboral: Array<'asalariado' | 'autonomo'> = [];
+    const situacionLaboral: SituacionLaboral[] = [];
     if (decl.trabajo?.retribucionesDinerarias && decl.trabajo.retribucionesDinerarias > 0) {
       situacionLaboral.push('asalariado');
     }

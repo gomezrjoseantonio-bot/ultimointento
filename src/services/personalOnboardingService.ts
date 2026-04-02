@@ -1,5 +1,5 @@
 import { initDB } from './db';
-import type { PersonalData, SituacionLaboral } from '../types/personal';
+import type { PersonalData, SituacionLaboral, MaritalStatus } from '../types/personal';
 import type { DeclaracionIRPF } from '../types/fiscal';
 import type { Diferencia } from './declaracionOnboardingService';
 
@@ -11,6 +11,7 @@ export interface PersonalDesdeDeclaracion {
   nif: string;
   nombre: string;
   estadoCivil: 'soltero' | 'casado' | 'pareja-hecho' | 'divorciado';
+  estadoCivilOriginal: string; // valor AEAT original para distinguir viudo/divorciado
   comunidadAutonoma: string;
   fechaNacimiento: string;
   tributacion: 'individual' | 'conjunta';
@@ -37,11 +38,14 @@ function mapearEstadoCivil(valor?: string): PersonalData['situacionPersonal'] | 
   return undefined;
 }
 
-import type { MaritalStatus } from '../types/personal';
-
-function situacionToMarital(sp: PersonalData['situacionPersonal']): MaritalStatus {
+function situacionToMarital(sp: PersonalData['situacionPersonal'], originalAeat?: string): MaritalStatus {
   if (sp === 'casado' || sp === 'pareja-hecho') return 'married';
-  if (sp === 'divorciado') return 'divorced';
+  if (sp === 'divorciado') {
+    // Distinguir viudo de divorciado/separado si tenemos el valor AEAT original
+    const lower = originalAeat?.toLowerCase().trim();
+    if (lower === 'viudo' || lower === 'viudo/a') return 'widowed';
+    return 'divorced';
+  }
   return 'single';
 }
 
@@ -107,7 +111,10 @@ export function extraerDatosPersonales(
   }
   if (p.estadoCivil) {
     const mapped = mapearEstadoCivil(p.estadoCivil);
-    if (mapped) result.estadoCivil = mapped;
+    if (mapped) {
+      result.estadoCivil = mapped;
+      result.estadoCivilOriginal = p.estadoCivil;
+    }
   }
   if (p.tributacion) result.tributacion = p.tributacion;
   if (p.situacionLaboral?.length) result.situacionLaboral = p.situacionLaboral;
@@ -160,7 +167,7 @@ export async function analizarDatosPersonales(
   comparar('nombre', 'Nombre', datos.nombre, [perfil.nombre, perfil.apellidos].filter(Boolean).join(' '));
   comparar('estadoCivil', 'Estado civil', datos.estadoCivil, perfil.situacionPersonal);
   comparar('comunidadAutonoma', 'Comunidad autónoma', datos.comunidadAutonoma, perfil.comunidadAutonoma);
-  comparar('fechaNacimiento', 'Fecha nacimiento', datos.fechaNacimiento, perfil.fechaNacimiento);
+  comparar('fechaNacimiento', 'Fecha nacimiento', datos.fechaNacimiento, perfil.fechaNacimiento ? normalizarFecha(perfil.fechaNacimiento) : undefined);
 
   return { esNuevo: false, camposNuevos, conflictos };
 }
@@ -189,7 +196,7 @@ export async function ejecutarOnboardingPersonal(
       dni: datos.nif || '',
       direccion: '',
       situacionPersonal: sp,
-      maritalStatus: situacionToMarital(sp),
+      maritalStatus: situacionToMarital(sp, datos.estadoCivilOriginal),
       situacionLaboral: datos.situacionLaboral?.length ? datos.situacionLaboral : ['asalariado'],
       comunidadAutonoma: datos.comunidadAutonoma,
       tributacion: datos.tributacion,
