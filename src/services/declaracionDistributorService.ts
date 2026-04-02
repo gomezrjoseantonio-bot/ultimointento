@@ -132,6 +132,9 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     }
   }
 
+  // Persistir préstamos detectados al store de préstamos
+  await persistirPrestamosDetectados(resultadoInmuebles.prestamos, porRefCatastral, decl.meta.ejercicio);
+
   return construirInforme(decl, resultadoInmuebles);
 }
 
@@ -468,6 +471,71 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
   }
 
   return { distribuidos, contratos, gastosRecurrentes, prestamos, proveedores };
+}
+
+/**
+ * Persiste préstamos detectados desde la declaración XML al store de préstamos.
+ * Deduplicación estricta: un préstamo por inmueble (por refCatastral o alias/direccionCorta).
+ */
+async function persistirPrestamosDetectados(
+  prestamosDetectados: PrestamoDetectado[],
+  porRefCatastral: Map<string, Property>,
+  ejercicio: number,
+): Promise<void> {
+  if (prestamosDetectados.length === 0) return;
+
+  const todosLosPrestamos = await prestamosService.getAllPrestamos();
+
+  for (const det of prestamosDetectados) {
+    // Buscar el inmuebleId real desde properties por refCatastral
+    const property = porRefCatastral.get(normalizeRef(det.refCatastral));
+    const inmuebleId = property?.id?.toString() ?? det.refCatastral;
+    const alias = det.direccionCorta || det.refCatastral;
+
+    // Buscar préstamo existente para este inmueble (por inmuebleId o por nombre/alias)
+    const existente = todosLosPrestamos.find(
+      (p) =>
+        p.inmuebleId === inmuebleId ||
+        p.nombre === alias,
+    );
+
+    if (existente) {
+      // Solo actualizar interesesAnualesDeclarados añadiendo el año correspondiente
+      const interesesActualizados: Record<number, number> = {
+        ...(existente.interesesAnualesDeclarados || {}),
+        [ejercicio]: det.interesesAnuales,
+      };
+      await prestamosService.updatePrestamo(existente.id, {
+        interesesAnualesDeclarados: interesesActualizados,
+      });
+      console.log(`[distribuidor] Préstamo existente actualizado para ${alias}: intereses ${ejercicio} = €${det.interesesAnuales}`);
+    } else {
+      // Crear préstamo pendiente de completar
+      const nuevoPrestamo: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
+        ambito: 'INMUEBLE',
+        inmuebleId,
+        nombre: alias,
+        principalInicial: 0,
+        principalVivo: 0,
+        fechaFirma: '',
+        fechaPrimerCargo: '',
+        plazoMesesTotal: 0,
+        diaCargoMes: 1,
+        esquemaPrimerRecibo: 'NORMAL',
+        tipo: 'FIJO',
+        sistema: 'FRANCES',
+        carencia: 'NINGUNA',
+        cuentaCargoId: '',
+        cuotasPagadas: 0,
+        estado: 'pendiente_completar',
+        origenCreacion: 'IMPORTACION',
+        activo: true,
+        interesesAnualesDeclarados: { [ejercicio]: det.interesesAnuales },
+      };
+      await prestamosService.createPrestamo(nuevoPrestamo);
+      console.log(`[distribuidor] Préstamo creado (pendiente_completar) para ${alias}: intereses ${ejercicio} = €${det.interesesAnuales}`);
+    }
+  }
 }
 
 function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Property, 'id'> {

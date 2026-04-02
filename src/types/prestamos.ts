@@ -85,8 +85,11 @@ export interface Prestamo {
   // Estado de pagos
   cuotasPagadas: number;
   fechaUltimaCuotaPagada?: string;
-  estado?: 'vivo' | 'cancelado' | 'pendiente_cancelacion_venta';
+  estado?: 'vivo' | 'cancelado' | 'pendiente_cancelacion_venta' | 'pendiente_completar';
   fechaCancelacion?: string;
+
+  // Intereses anuales declarados por ejercicio fiscal (ej: { 2023: 1200.50 })
+  interesesAnualesDeclarados?: Record<number, number>;
 
   // Importación
   origenCreacion: 'MANUAL' | 'FEIN' | 'IMPORTACION';

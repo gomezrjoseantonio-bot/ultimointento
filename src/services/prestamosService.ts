@@ -96,7 +96,13 @@ export class PrestamosService {
 
     await this.savePrestamo(prestamo);
     prestamos.push(prestamo);
-    
+
+    // Skip amortization generation for incomplete loans (detected from XML, pending user completion)
+    if (prestamo.estado === 'pendiente_completar') {
+      console.log(`[PRESTAMOS] Loan ${prestamo.id} is pendiente_completar — skipping amortization schedule generation`);
+      return prestamo;
+    }
+
     // AUTO-GENERATE AND PERSIST AMORTIZATION SCHEDULE ON SAVE
     console.log(`[PRESTAMOS] Auto-generating amortization schedule for loan ${prestamo.id}`);
     try {
@@ -116,7 +122,7 @@ export class PrestamosService {
       console.error(`[PRESTAMOS] Failed to generate amortization schedule for loan ${prestamo.id}:`, error);
       // Don't fail loan creation if schedule generation fails
     }
-    
+
     return prestamo;
   }
 
