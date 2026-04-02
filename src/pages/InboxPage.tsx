@@ -186,8 +186,8 @@ const InboxPage: React.FC = () => {
           financialData: {
             ...updated.metadata.financialData,
             ...(nif ? { nifProveedor: nif } : {}),
-            ...(direccion ? { direccionInmueble: direccion } : {}),
-            ...(fecha ? { fechaDocumento: fecha } : {}),
+            ...(direccion ? { direccionInmueble: direccion, serviceAddress: direccion } : {}),
+            ...(fecha ? { fechaDocumento: fecha, issueDate: fecha } : {}),
           },
         };
 

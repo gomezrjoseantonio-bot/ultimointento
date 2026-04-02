@@ -292,10 +292,10 @@ export function extractDireccionFromDocument(doc: any): string | undefined {
     if (addrField?.value) return String(addrField.value).trim();
   }
 
-  // financialData.serviceAddress
-  if (doc.metadata?.financialData?.serviceAddress) {
-    return String(doc.metadata.financialData.serviceAddress).trim();
-  }
+  // financialData.serviceAddress or direccionInmueble
+  const fd = doc.metadata?.financialData;
+  if (fd?.serviceAddress) return String(fd.serviceAddress).trim();
+  if (fd?.direccionInmueble) return String(fd.direccionInmueble).trim();
 
   return undefined;
 }
@@ -315,10 +315,10 @@ export function extractFechaFromDocument(doc: any): string | undefined {
     if (dateField?.value) return String(dateField.value).trim();
   }
 
-  // financialData.issueDate
-  if (doc.metadata?.financialData?.issueDate) {
-    return String(doc.metadata.financialData.issueDate).trim();
-  }
+  // financialData.issueDate or fechaDocumento
+  const fdDate = doc.metadata?.financialData;
+  if (fdDate?.issueDate) return String(fdDate.issueDate).trim();
+  if (fdDate?.fechaDocumento) return String(fdDate.fechaDocumento).trim();
 
   return undefined;
 }

@@ -185,10 +185,10 @@ const ManualAssignmentForm: React.FC<{
         });
       }
 
-      // Mark document as vinculado
+      // Mark document as Asignado
       const doc = await db.get('documents', documentId);
       if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'vinculado', matchCandidates: undefined };
+        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
         await db.put('documents', doc);
       }
 
@@ -302,19 +302,22 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
     if (!document?.id) return;
     setLinking(true);
     try {
-      const store = candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo';
+      // Support both new shape (tipo = store name) and old shape (store field)
+      const store =
+        (candidate as any).store ??
+        (candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo');
       await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, document.id);
 
       // Update document status
       const db = await initDB();
       const doc = await db.get('documents', document.id);
       if (doc) {
-        doc.metadata = { ...doc.metadata, status: 'vinculado', matchCandidates: undefined };
+        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
         await db.put('documents', doc);
       }
 
       toast.success('Documento vinculado correctamente');
-      onDocumentUpdated?.(doc || { ...document, metadata: { ...document.metadata, status: 'vinculado', matchCandidates: undefined } });
+      onDocumentUpdated?.(doc || { ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
     } catch (e: any) {
       toast.error(e.message || 'Error al vincular');
     } finally {
@@ -514,7 +517,7 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
                 <ManualAssignmentForm
                   documentId={document.id}
                   onAssigned={() => {
-                    onDocumentUpdated?.({ ...document, metadata: { ...document.metadata, status: 'vinculado', matchCandidates: undefined } });
+                    onDocumentUpdated?.({ ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
                   }}
                 />
               </div>

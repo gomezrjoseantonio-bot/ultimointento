@@ -58,7 +58,10 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
     setLinking(true);
     setError(null);
     try {
-      const store = candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo';
+      // Support both new shape (tipo = store name) and old shape (store field)
+      const store =
+        (candidate as any).store ??
+        (candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo');
       await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, documentId);
 
       // Update document status to Asignado
@@ -172,7 +175,7 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
                     {c.inmuebleAlias}
                   </span>
                   <span className="text-xs px-1.5 py-0.5 bg-neutral-100 text-neutral-700">
-                    {TIPO_LABELS[c.tipoGasto] || c.tipoGasto}
+                    {TIPO_LABELS[c.tipoGasto ?? (c as any).tipo] || c.tipoGasto || (c as any).tipo}
                   </span>
                   <span className="text-xs text-neutral-500">
                     {c.ejercicio}
@@ -186,7 +189,7 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
 
               <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                 <span className="text-xs text-neutral-400">
-                  {c.score}%
+                  {c.score}/6
                 </span>
                 <button
                   onClick={() => handleConfirmLink(c)}
@@ -215,7 +218,7 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
                 className="flex items-center gap-2 p-2 bg-neutral-50 text-xs text-neutral-500"
               >
                 <Building className="w-3 h-3" />
-                <span>{c.inmuebleAlias} &middot; {TIPO_LABELS[c.tipoGasto] || c.tipoGasto} &middot; {c.ejercicio} &middot; {formatCurrency(c.importe)}</span>
+                <span>{c.inmuebleAlias} &middot; {TIPO_LABELS[c.tipoGasto ?? (c as any).tipo] || c.tipoGasto || (c as any).tipo} &middot; {c.ejercicio} &middot; {formatCurrency(c.importe)}</span>
                 <span className="ml-auto text-neutral-400">ya vinculada</span>
               </div>
             ))}
