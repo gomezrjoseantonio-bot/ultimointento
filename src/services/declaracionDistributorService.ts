@@ -28,6 +28,7 @@ import type {
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
 import { crearOActualizarContrato } from './declaracionOnboardingService';
+import { cuentasService } from './cuentasService';
 import { prestamosService } from './prestamosService';
 import type { Prestamo } from '../types/prestamos';
 
@@ -123,24 +124,22 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Escribir mejoras y reparaciones en mejorasActivo
   await escribirMejoras(db, decl, porRefCatastral);
 
-  // Persistir el IBAN en la tabla de accounts evitando duplicados
+  // Persistir el IBAN via cuentasService (localStorage + IndexedDB sync)
   const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
   if (iban) {
-    const existingAccounts = await db.getAll('accounts');
-    const exists = existingAccounts.some((a: any) => a.iban === iban);
-    if (!exists) {
-      await db.add('accounts', {
-        iban,
-        ibanMasked: iban.slice(0, 4) + '****' + iban.slice(-4),
-        status: 'active',
-        isActive: true,
-        activa: true,
-        destination: 'unknown',
-        bank: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      invalidateCachedStores(['accounts']);
+    try {
+      await cuentasService.create({ iban });
+    } catch (error) {
+      // Ignorar errores esperados de duplicado/validación, pero avisar ante otros
+      if (
+        error instanceof Error &&
+        /already exists|duplicate|duplicado|validation|validación/i.test(error.message)
+      ) {
+        // Already exists or validation error — ignore
+      } else {
+        // Loguear errores inesperados para facilitar el diagnóstico
+        console.warn('Error inesperado al crear cuenta con IBAN en cuentasService.create:', error);
+      }
     }
   }
 
@@ -183,9 +182,8 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
     },
     fechaImportacion: ahora,
     fuenteImportacion: decl.meta.fuenteImportacion,
+    declaracionCompleta: decl,
   };
-
-  (ej.aeat as EjercicioFiscalCoord['aeat'] & { declaracionCompleta?: DeclaracionCompleta }).declaracionCompleta = decl;
 
   const fechaPrescripcion = new Date(año + 5, 5, 30);
   ej.estado = new Date() > fechaPrescripcion ? 'prescrito' : 'declarado';

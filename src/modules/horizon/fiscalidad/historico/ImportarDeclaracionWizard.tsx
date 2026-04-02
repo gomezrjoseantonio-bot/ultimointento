@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { Upload, CheckCircle2 } from 'lucide-react';
 import { parseIrpfXml } from '../../../../services/irpfXmlParserService';
 import { distribuirDeclaracion, acortarDireccion } from '../../../../services/declaracionDistributorService';
+import { cuentasService } from '../../../../services/cuentasService';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../../../types/declaracionCompleta';
 import type { InformeDistribucion } from '../../../../types/informeDistribucion';
 
@@ -893,7 +894,15 @@ function Paso3({
           <PropuestaRow
             text={`${cuentaBancaria} (cuenta de devolución/ingreso)`}
             buttonLabel="Crear en Cuentas"
-            onAction={() => toast('Próximamente: esta acción creará la cuenta en Cuentas')}
+            onAction={async () => {
+              try {
+                await cuentasService.create({ iban: cuentaBancaria });
+                toast.success('Cuenta bancaria creada');
+              } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : 'Error al crear la cuenta';
+                toast.error(msg);
+              }
+            }}
           />
         </div>
       )}

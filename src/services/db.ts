@@ -1,5 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
+import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 import type { 
@@ -1753,6 +1754,7 @@ export interface EjercicioFiscalCoord {
     pdfDocumentId?: string;
     fechaImportacion: string;
     fuenteImportacion?: 'xml' | 'pdf' | 'manual';
+    declaracionCompleta?: DeclaracionCompleta; // Snapshot completo de la declaración importada
   };
 
   // Cálculo ATLAS (para pendiente/en_curso; también para comparativa en declarado)
