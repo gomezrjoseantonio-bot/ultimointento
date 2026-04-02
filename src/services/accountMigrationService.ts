@@ -6,6 +6,7 @@
 
 import { cuentasService } from './cuentasService';
 import { initDB } from './db';
+import { maskIban } from '../utils/accountHelpers';
 
 const MIGRATION_VERSION = '1.0';
 const MIGRATION_KEY = 'atlas_account_migration_version';
@@ -73,7 +74,7 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
       try {
         await cuentasService.create({ iban });
         added++;
-        console.info(`[MIGRATION] IBAN backfill: added ${iban.slice(0, 4)}****${iban.slice(-4)} from ejercicio ${ej.año}`);
+        console.info(`[MIGRATION] IBAN backfill: added ${maskIban(iban)} from ejercicio ${ej.año}`);
       } catch {
         // Already exists or validation error — skip
       }
