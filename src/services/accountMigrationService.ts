@@ -6,7 +6,6 @@
 
 import { cuentasService } from './cuentasService';
 import { initDB } from './db';
-import { invalidateCachedStores } from './indexedDbCacheService';
 
 const MIGRATION_VERSION = '1.0';
 const MIGRATION_KEY = 'atlas_account_migration_version';
@@ -61,8 +60,6 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
   try {
     const db = await initDB();
     const ejercicios = await db.getAll('ejerciciosFiscalesCoord');
-    const existingAccounts = await db.getAll('accounts');
-    const existingIbans = new Set(existingAccounts.map((a: any) => a.iban).filter(Boolean));
     let added = 0;
 
     for (const ej of ejercicios) {
@@ -71,26 +68,18 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
 
       const iban: string | undefined =
         decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
-      if (!iban || existingIbans.has(iban)) continue;
+      if (!iban) continue;
 
-      await db.add('accounts', {
-        iban,
-        ibanMasked: iban.slice(0, 4) + '****' + iban.slice(-4),
-        status: 'active',
-        isActive: true,
-        activa: true,
-        destination: 'unknown',
-        bank: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      existingIbans.add(iban);
-      added++;
-      console.info(`[MIGRATION] IBAN backfill: added ${iban.slice(0, 4)}****${iban.slice(-4)} from ejercicio ${ej.año}`);
+      try {
+        await cuentasService.create({ iban });
+        added++;
+        console.info(`[MIGRATION] IBAN backfill: added ${iban.slice(0, 4)}****${iban.slice(-4)} from ejercicio ${ej.año}`);
+      } catch {
+        // Already exists or validation error — skip
+      }
     }
 
     if (added > 0) {
-      invalidateCachedStores(['accounts']);
       console.info(`[MIGRATION] IBAN backfill complete: ${added} account(s) added`);
     } else {
       console.info('[MIGRATION] IBAN backfill: no new IBANs to add');
