@@ -209,8 +209,7 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
 
   // --- Pieza 8: Match document → declared operation ---
   if (supplierNif) {
-    const ejercicio = issueDate ? new Date(issueDate).getFullYear() : undefined;
-    const candidates = await findCandidates(supplierNif, totalAmount, ejercicio);
+    const candidates = await findCandidates({ nif: supplierNif, fecha: issueDate });
 
     if (candidates.length > 0) {
       // Store candidates in document metadata for UI review
