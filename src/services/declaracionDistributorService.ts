@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document, MejoraActivo } from './db';
+import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo } from './db';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
   InformeDistribucion,
@@ -123,6 +123,12 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
 
   // Escribir mejoras y reparaciones en mejorasActivo
   await escribirMejoras(db, decl, porRefCatastral);
+
+  // Escribir proveedores y operaciones vinculadas
+  await escribirProveedores(db, decl, porRefCatastral);
+
+  // Escribir mobiliario activo desde V02MUEB
+  await escribirMobiliario(db, decl, porRefCatastral);
 
   // Persistir el IBAN via cuentasService (localStorage + IndexedDB sync)
   const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
@@ -881,6 +887,142 @@ async function escribirMejoras(
     }
   }
   invalidateCachedStores(['mejorasActivo']);
+}
+
+async function escribirProveedores(
+  db: DB,
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  const ahora = new Date().toISOString();
+  const ejercicio = decl.meta.ejercicio;
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    // Collect all providers: from mejoras, proveedores array, and arrendamiento-level proveedores
+    const allProvs: { nif: string; tipo: 'mejora' | 'reparacion' | 'gestion' | 'servicios'; importe: number }[] = [];
+
+    // Mejoras con NIF (NIFMJ1..5)
+    for (const mejora of inm.mejorasEjercicio) {
+      if (mejora.nifProveedor && mejora.importe > 0) {
+        allProvs.push({ nif: mejora.nifProveedor, tipo: 'mejora', importe: mejora.importe });
+      }
+    }
+
+    // Proveedores directos del inmueble (InfAnexoD: GRCNIF, MRINIF, CSPNIF)
+    for (const prov of inm.proveedores) {
+      if (!prov.nif || prov.importe <= 0) continue;
+      const tipo = prov.concepto === 'otro' ? 'servicios' : prov.concepto;
+      allProvs.push({ nif: prov.nif, tipo, importe: prov.importe });
+    }
+
+    // Proveedores dentro de arrendamientos (NIF1GCEM0, NIF1V02SERV)
+    for (const arr of inm.arrendamientos) {
+      if (!arr.proveedores) continue;
+      for (const prov of arr.proveedores) {
+        if (!prov.nif || prov.importe <= 0) continue;
+        const tipo = prov.concepto === 'otro' ? 'servicios' : prov.concepto;
+        allProvs.push({ nif: prov.nif, tipo, importe: prov.importe });
+      }
+    }
+
+    for (const p of allProvs) {
+      // 1. Upsert proveedor entity
+      const existing = await db.get('proveedores', p.nif);
+      if (existing) {
+        if (!existing.tipos.includes(p.tipo)) {
+          existing.tipos.push(p.tipo);
+          existing.updatedAt = ahora;
+          await db.put('proveedores', existing);
+        }
+      } else {
+        await db.add('proveedores', {
+          nif: p.nif,
+          tipos: [p.tipo],
+          createdAt: ahora,
+          updatedAt: ahora,
+        });
+      }
+
+      // 2. Create operation if not duplicate
+      const existingOps = await db.getAllFromIndex(
+        'operacionesProveedor',
+        'prov-inmueble-ejercicio-tipo',
+        IDBKeyRange.only([p.nif, property.id, ejercicio, p.tipo]),
+      );
+      if (existingOps.length === 0) {
+        await db.add('operacionesProveedor', {
+          proveedorNif: p.nif,
+          inmuebleId: property.id!,
+          ejercicio,
+          tipo: p.tipo,
+          importe: p.importe,
+          createdAt: ahora,
+        });
+      }
+    }
+  }
+  invalidateCachedStores(['proveedores', 'operacionesProveedor']);
+}
+
+async function escribirMobiliario(
+  db: DB,
+  decl: DeclaracionCompleta,
+  porRefCatastral: Map<string, Property>,
+): Promise<void> {
+  const ahora = new Date().toISOString();
+  const ejercicio = decl.meta.ejercicio;
+
+  for (const inm of decl.inmuebles) {
+    if (inm.esAccesorioDe) continue;
+
+    // V02MUEB is the annual amortization of furniture (10% of cost)
+    const amortMob = inm.gastos.amortizacionMobiliario;
+    if (!amortMob || amortMob <= 0) continue;
+
+    const rc = normalizeRef(inm.refCatastral);
+    const property = porRefCatastral.get(rc);
+    if (!property?.id) continue;
+
+    // Get existing mobiliario records for this property
+    const existentes: MobiliarioActivo[] = await db.getAllFromIndex('mobiliarioActivo', 'inmuebleId', property.id);
+
+    // Sum of annual amortization from existing partidas (each importe / vidaUtil gives annual amort, but importe = coste and vidaUtil=10)
+    // Actually: each existing record represents a partida where importe = coste = amortAnual × 10
+    // So the total expected amortAnual from previous partidas = sum(importe / vidaUtil) for active ones
+    const amortAnterior = existentes
+      .filter((m: MobiliarioActivo) => m.activo && m.ejercicio < ejercicio)
+      .reduce((sum: number, m: MobiliarioActivo) => sum + (m.importe / (m.vidaUtil || 10)), 0);
+
+    const delta = amortMob - amortAnterior;
+
+    if (delta > 0.5) { // tolerance for rounding
+      // New furniture detected — create partida
+      const duplicada = existentes.find((m: MobiliarioActivo) =>
+        m.ejercicio === ejercicio && Math.abs(m.importe - delta * 10) < 1
+      );
+      if (!duplicada) {
+        await db.add('mobiliarioActivo', {
+          inmuebleId: property.id,
+          ejercicio,
+          descripcion: `Mobiliario detectado IRPF ${ejercicio}`,
+          fechaAlta: `${ejercicio}-01-01`,
+          importe: Math.round(delta * 10 * 100) / 100, // coste = amortAnual × 10
+          vidaUtil: 10,
+          activo: true,
+          proveedorNIF: '', // Sin NIF hasta factura
+          createdAt: ahora,
+          updatedAt: ahora,
+        });
+      }
+    }
+  }
+  invalidateCachedStores(['mobiliarioActivo']);
 }
 
 export function acortarDireccion(dir: string): string {
