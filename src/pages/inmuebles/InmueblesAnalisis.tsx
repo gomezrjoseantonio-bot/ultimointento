@@ -514,7 +514,7 @@ function TabResumen({ properties, fiscalSummaries, loansCapitalAmortizado, decla
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11, color: C.n500 }}>
             <span>Vivienda {fmt(totalVivienda)}</span>
             {totalItp > 0 && <span>ITP {fmt(totalItp)}</span>}
-            {totalOtros > 0 && <span>Gastos y Tributos Compra {fmt(totalOtros)}</span>}
+            {totalOtros > 0 && <span>Gastos y tributos de compra {fmt(totalOtros)}</span>}
             {totalMejoras > 0 && <span>Mejoras {fmt(totalMejoras)}</span>}
           </span>
         } accentColor={C.c2} icon={Landmark} iconBg="rgba(4,44,94,.06)" />
