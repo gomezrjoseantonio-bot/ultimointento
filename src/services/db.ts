@@ -2070,13 +2070,14 @@ export const initDB = async () => {
           ensureIndex(mobStore, 'ejercicio', 'ejercicio', { unique: false });
           ensureIndex(mobStore, 'inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
 
-          // Backfill ejercicio from fechaAlta for legacy records
+          // Backfill ejercicio from fechaAlta for legacy records (sync IDB cursor)
           if (oldVersion < 38) {
-            const cursorReq = mobStore.openCursor();
-            cursorReq.onsuccess = () => {
+            const rawStore = transaction.objectStore('mobiliarioActivo') as unknown as IDBObjectStore;
+            const cursorReq = rawStore.openCursor();
+            cursorReq.onsuccess = function () {
               const cursor = cursorReq.result;
               if (!cursor) return;
-              const record = cursor.value as any;
+              const record = cursor.value;
               if (record.ejercicio == null && record.fechaAlta) {
                 const year = new Date(record.fechaAlta).getFullYear();
                 if (!isNaN(year)) {

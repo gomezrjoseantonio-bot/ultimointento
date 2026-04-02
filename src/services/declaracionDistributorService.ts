@@ -976,7 +976,7 @@ async function escribirProveedores(
           importe: p.importe,
           createdAt: ahora,
         });
-      } catch {
+      } catch (_e) {
         // Unique index constraint — operation already exists, skip
       }
     }
