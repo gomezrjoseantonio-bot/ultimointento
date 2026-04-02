@@ -14,11 +14,38 @@ const MIGRATION_KEY = 'atlas_account_migration_version';
 const IBAN_BACKFILL_VERSION = '1.0';
 const IBAN_BACKFILL_KEY = 'atlas_iban_backfill_version';
 
+/** Safe localStorage.getItem — returns null when storage is unavailable */
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Safe localStorage.setItem — best-effort, ignores storage errors */
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Best-effort: if storage is unavailable the migration will re-run next time
+  }
+}
+
+/** Safe localStorage.removeItem — best-effort, ignores storage errors */
+function safeRemoveItem(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Best-effort
+  }
+}
+
 /**
  * Check if migration is needed and execute it
  */
 export async function initializeAccountMigration(): Promise<void> {
-  const currentVersion = localStorage.getItem(MIGRATION_KEY);
+  const currentVersion = safeGetItem(MIGRATION_KEY);
 
   if (currentVersion === MIGRATION_VERSION) {
     console.info('[MIGRATION] Account migration already completed for version', MIGRATION_VERSION);
@@ -34,7 +61,7 @@ export async function initializeAccountMigration(): Promise<void> {
         console.info('[MIGRATION] No accounts needed migration');
       }
 
-      localStorage.setItem(MIGRATION_KEY, MIGRATION_VERSION);
+      safeSetItem(MIGRATION_KEY, MIGRATION_VERSION);
       console.info('[MIGRATION] Account migration completed successfully');
 
     } catch (error) {
@@ -51,7 +78,7 @@ export async function initializeAccountMigration(): Promise<void> {
  * ejerciciosFiscalesCoord and write them to accounts if missing.
  */
 async function backfillIbanFromDeclaraciones(): Promise<void> {
-  const done = localStorage.getItem(IBAN_BACKFILL_KEY);
+  const done = safeGetItem(IBAN_BACKFILL_KEY);
   if (done === IBAN_BACKFILL_VERSION) {
     return;
   }
@@ -64,7 +91,7 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
     let added = 0;
 
     for (const ej of ejercicios) {
-      const decl = (ej as any).aeat?.declaracionCompleta;
+      const decl = ej.aeat?.declaracionCompleta;
       if (!decl) continue;
 
       const iban: string | undefined =
@@ -86,7 +113,7 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
       console.info('[MIGRATION] IBAN backfill: no new IBANs to add');
     }
 
-    localStorage.setItem(IBAN_BACKFILL_KEY, IBAN_BACKFILL_VERSION);
+    safeSetItem(IBAN_BACKFILL_KEY, IBAN_BACKFILL_VERSION);
   } catch (error) {
     console.error('[MIGRATION] IBAN backfill failed:', error);
   }
@@ -96,7 +123,7 @@ async function backfillIbanFromDeclaraciones(): Promise<void> {
  * Force re-run migration (for development/testing)
  */
 export async function forceMigration(): Promise<void> {
-  localStorage.removeItem(MIGRATION_KEY);
-  localStorage.removeItem(IBAN_BACKFILL_KEY);
+  safeRemoveItem(MIGRATION_KEY);
+  safeRemoveItem(IBAN_BACKFILL_KEY);
   await initializeAccountMigration();
 }

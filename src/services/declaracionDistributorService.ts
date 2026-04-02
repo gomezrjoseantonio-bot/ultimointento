@@ -180,9 +180,8 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
     },
     fechaImportacion: ahora,
     fuenteImportacion: decl.meta.fuenteImportacion,
+    declaracionCompleta: decl,
   };
-
-  (ej.aeat as EjercicioFiscalCoord['aeat'] & { declaracionCompleta?: DeclaracionCompleta }).declaracionCompleta = decl;
 
   const fechaPrescripcion = new Date(año + 5, 5, 30);
   ej.estado = new Date() > fechaPrescripcion ? 'prescrito' : 'declarado';
