@@ -1,11 +1,15 @@
-import React from 'react';
-import { CheckCircle2, ScanLine } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
+import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
+import { initDB, Property } from '../../services/db';
+import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
   document: any;
   onConfirm: () => void;
   onProcessOCR: () => void;
   processingOCR: boolean;
+  onDocumentUpdated?: (updatedDoc: any) => void;
 }
 
 const pickSnakeField = (document: any, key: string): string => {
@@ -41,6 +45,16 @@ const TIPO_GASTO_LABELS: Record<string, string> = {
   otros:                   'Otros',
 };
 
+const TIPO_LABELS: Record<string, string> = {
+  mejora: 'Mejora',
+  ampliacion: 'Ampliación',
+  reparacion: 'Reparación',
+  mobiliario: 'Mobiliario',
+};
+
+const formatCurrency = (amount: number) =>
+  amount.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+
 // ── skeleton row ─────────────────────────────────────────────────────────────
 
 const SkeletonRow: React.FC<{ wide?: boolean }> = ({ wide }) => (
@@ -50,6 +64,209 @@ const SkeletonRow: React.FC<{ wide?: boolean }> = ({ wide }) => (
   </div>
 );
 
+// ── Matching card for pendiente_vinculacion ──────────────────────────────────
+
+const MatchCandidateCard: React.FC<{
+  candidate: CandidatoMatch;
+  onVincular: (c: CandidatoMatch) => void;
+  onDescartar: (c: CandidatoMatch) => void;
+  linking: boolean;
+}> = ({ candidate, onVincular, onDescartar, linking }) => (
+  <div
+    className="border p-3"
+    style={{
+      borderRadius: 'var(--r-md)',
+      borderColor: 'var(--teal-200, var(--n-200))',
+      background: 'var(--teal-50, var(--n-50))',
+    }}
+  >
+    <div className="flex items-center gap-2 mb-2">
+      <Link2 size={14} style={{ color: 'var(--teal-700, var(--blue))' }} />
+      <span className="text-xs font-semibold" style={{ color: 'var(--teal-700, var(--blue))' }}>
+        Posible coincidencia encontrada
+      </span>
+    </div>
+
+    <div className="text-sm font-medium" style={{ color: 'var(--n-900)' }}>
+      {TIPO_LABELS[candidate.tipoGasto] || candidate.tipoGasto}
+      {' · '}
+      {candidate.inmuebleAlias}
+      {' · '}
+      {candidate.ejercicio}
+    </div>
+    <div className="text-sm mt-0.5" style={{ color: 'var(--n-600)' }}>
+      {formatCurrency(candidate.importe)}
+    </div>
+
+    <div className="flex items-center gap-2 mt-3">
+      <button
+        type="button"
+        onClick={() => onVincular(candidate)}
+        disabled={linking}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium"
+        style={{
+          borderRadius: 'var(--r-sm)',
+          background: 'var(--teal-700, var(--blue))',
+          color: 'var(--white)',
+          opacity: linking ? 0.5 : 1,
+        }}
+      >
+        <CheckCircle size={12} />
+        Vincular
+      </button>
+      <button
+        type="button"
+        onClick={() => onDescartar(candidate)}
+        disabled={linking}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border"
+        style={{
+          borderRadius: 'var(--r-sm)',
+          borderColor: 'var(--n-300)',
+          background: 'var(--white)',
+          color: 'var(--n-700)',
+          opacity: linking ? 0.5 : 1,
+        }}
+      >
+        <X size={12} />
+        Descartar
+      </button>
+    </div>
+  </div>
+);
+
+// ── Manual assignment form for pendiente_asignacion ──────────────────────────
+
+const ManualAssignmentForm: React.FC<{
+  documentId: number;
+  onAssigned: () => void;
+}> = ({ documentId, onAssigned }) => {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [inmuebleId, setInmuebleId] = useState<number | ''>('');
+  const [tipo, setTipo] = useState<'mejora' | 'reparacion' | 'mobiliario'>('mejora');
+  const [ejercicio, setEjercicio] = useState(new Date().getFullYear());
+  const [assigning, setAssigning] = useState(false);
+
+  useEffect(() => {
+    initDB().then(db => db.getAll('properties')).then(setProperties);
+  }, []);
+
+  const handleAssign = async () => {
+    if (!inmuebleId) { toast.error('Selecciona un inmueble'); return; }
+    setAssigning(true);
+    try {
+      const db = await initDB();
+      const now = new Date().toISOString();
+
+      if (tipo === 'mobiliario') {
+        await db.add('mobiliarioActivo', {
+          inmuebleId: inmuebleId as number,
+          ejercicio,
+          descripcion: 'Asignado desde factura',
+          fechaAlta: `${ejercicio}-01-01`,
+          importe: 0,
+          vidaUtil: 10,
+          activo: true,
+          proveedorNIF: '',
+          documentId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      } else {
+        await db.add('mejorasActivo', {
+          inmuebleId: inmuebleId as number,
+          ejercicio,
+          descripcion: 'Asignado desde factura',
+          tipo,
+          importe: 0,
+          proveedorNIF: '',
+          documentId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+
+      // Mark document as Asignado
+      const doc = await db.get('documents', documentId);
+      if (doc) {
+        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
+        await db.put('documents', doc);
+      }
+
+      toast.success('Documento asignado correctamente');
+      onAssigned();
+    } catch (e: any) {
+      toast.error(e.message || 'Error al asignar');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  return (
+    <div
+      className="border p-3"
+      style={{ borderRadius: 'var(--r-md)', borderColor: 'var(--n-200)', background: 'var(--n-50)' }}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <Building size={14} style={{ color: 'var(--n-600)' }} />
+        <span className="text-xs font-semibold" style={{ color: 'var(--n-700)' }}>
+          Asignación manual
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        <select
+          value={inmuebleId}
+          onChange={(e) => setInmuebleId(e.target.value ? Number(e.target.value) : '')}
+          className="w-full px-2 py-1.5 border text-xs"
+          style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
+        >
+          <option value="">Seleccionar inmueble...</option>
+          {properties.map((p) => (
+            <option key={p.id} value={p.id}>{p.alias || p.address}</option>
+          ))}
+        </select>
+
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as any)}
+          className="w-full px-2 py-1.5 border text-xs"
+          style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
+        >
+          <option value="mejora">Mejora</option>
+          <option value="reparacion">Reparación</option>
+          <option value="mobiliario">Mobiliario</option>
+        </select>
+
+        <input
+          type="number"
+          value={ejercicio}
+          onChange={(e) => setEjercicio(Number(e.target.value))}
+          min={2015}
+          max={2030}
+          className="w-full px-2 py-1.5 border text-xs"
+          placeholder="Ejercicio fiscal"
+          style={{ borderColor: 'var(--n-300)', borderRadius: 'var(--r-sm)', background: 'var(--white)' }}
+        />
+
+        <button
+          type="button"
+          onClick={handleAssign}
+          disabled={assigning || !inmuebleId}
+          className="w-full px-3 py-1.5 text-xs font-medium"
+          style={{
+            borderRadius: 'var(--r-sm)',
+            background: 'var(--blue)',
+            color: 'var(--white)',
+            opacity: (assigning || !inmuebleId) ? 0.5 : 1,
+          }}
+        >
+          Asignar
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ── main component ────────────────────────────────────────────────────────────
 
 const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
@@ -57,13 +274,77 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
   onConfirm,
   onProcessOCR,
   processingOCR,
+  onDocumentUpdated,
 }) => {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [linking, setLinking] = useState(false);
+
   const ocr = document?.metadata?.ocr;
   const ocrStatus = ocr?.status;
   const hasCompletedOCR = ocrStatus === 'completed';
   const hasErroredOCR = ocrStatus === 'error';
   const hasOCR = !!ocr;
   const hasAnyExtractedValue = hasCompletedOCR && rowsHaveValues(document);
+
+  const docStatus = document?.metadata?.status;
+  const matchCandidates: CandidatoMatch[] = document?.metadata?.matchCandidates || [];
+  const isPendienteVinculacion = docStatus === 'pendiente_vinculacion' && matchCandidates.length > 0;
+  const isPendienteAsignacion = docStatus === 'pendiente_asignacion';
+
+  // Reset candidate index when document changes
+  useEffect(() => {
+    setCandidateIndex(0);
+  }, [document?.id]);
+
+  const currentCandidate = matchCandidates[candidateIndex] || null;
+
+  const handleVincular = async (candidate: CandidatoMatch) => {
+    if (!document?.id) return;
+    setLinking(true);
+    try {
+      // Support both new shape (tipo = store name) and old shape (store field)
+      const store =
+        (candidate as any).store ??
+        (candidate.tipo === 'mobiliarioActivo' ? 'mobiliarioActivo' : 'mejorasActivo');
+      await confirmLink(store as 'mejorasActivo' | 'mobiliarioActivo', candidate.id, document.id);
+
+      // Update document status
+      const db = await initDB();
+      const doc = await db.get('documents', document.id);
+      if (doc) {
+        doc.metadata = { ...doc.metadata, status: 'Asignado', matchCandidates: undefined };
+        await db.put('documents', doc);
+      }
+
+      toast.success('Documento vinculado correctamente');
+      onDocumentUpdated?.(doc || { ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
+    } catch (e: any) {
+      toast.error(e.message || 'Error al vincular');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleDescartar = (candidate: CandidatoMatch) => {
+    const nextIndex = candidateIndex + 1;
+    if (nextIndex < matchCandidates.length) {
+      // Show next candidate
+      setCandidateIndex(nextIndex);
+    } else {
+      // No more candidates → switch to pendiente_asignacion
+      const updateDoc = async () => {
+        if (!document?.id) return;
+        const db = await initDB();
+        const doc = await db.get('documents', document.id);
+        if (doc) {
+          doc.metadata = { ...doc.metadata, status: 'pendiente_asignacion', matchCandidates: undefined };
+          await db.put('documents', doc);
+          onDocumentUpdated?.(doc);
+        }
+      };
+      updateDoc();
+    }
+  };
 
   const tipoRaw = pickSnakeField(document, 'tipo_gasto');
   const tipoLabel = tipoRaw !== '—' ? (TIPO_GASTO_LABELS[tipoRaw] ?? tipoRaw) : '—';
@@ -78,7 +359,6 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
     { label: 'IVA',            value: pickSnakeField(document, 'iva')            !== '—' ? pickSnakeField(document, 'iva')            : pickField(document, ['tax_amount']) },
     { label: 'Importe total',  value: pickSnakeField(document, 'importe_total')  !== '—' ? pickSnakeField(document, 'importe_total')  : pickField(document, ['total_amount']) },
     { label: 'Moneda',         value: pickSnakeField(document, 'moneda')         !== '—' ? pickSnakeField(document, 'moneda')         : pickField(document, ['currency']) },
-    // Confianza se muestra como badge en el header — no se repite aquí
     { label: 'Notas',          value: pickSnakeField(document, 'notas') },
   ];
 
@@ -187,7 +467,7 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
         </div>
       )}
 
-      {/* ── datos extraídos ── */}
+      {/* ── datos extraídos + matching ── */}
       {!processingOCR && hasCompletedOCR && hasAnyExtractedValue && (
         <div className="h-full p-5 flex flex-col overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="mb-4 flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--s-pos)' }}>
@@ -213,6 +493,35 @@ const InboxV3ExtractedPanel: React.FC<InboxV3ExtractedPanelProps> = ({
                 </div>
               </div>
             ))}
+
+            {/* ── Matching: pendiente_vinculacion ── */}
+            {isPendienteVinculacion && currentCandidate && (
+              <div className="mt-2">
+                <MatchCandidateCard
+                  candidate={currentCandidate}
+                  onVincular={handleVincular}
+                  onDescartar={handleDescartar}
+                  linking={linking}
+                />
+                {matchCandidates.length > 1 && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--n-400)' }}>
+                    Candidato {candidateIndex + 1} de {matchCandidates.length}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ── Matching: pendiente_asignacion ── */}
+            {isPendienteAsignacion && document?.id && (
+              <div className="mt-2">
+                <ManualAssignmentForm
+                  documentId={document.id}
+                  onAssigned={() => {
+                    onDocumentUpdated?.({ ...document, metadata: { ...document.metadata, status: 'Asignado', matchCandidates: undefined } });
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           <button type="button" className="atlas-btn-primary w-full mt-5" onClick={onConfirm}>

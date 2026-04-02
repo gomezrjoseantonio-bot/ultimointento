@@ -12,6 +12,12 @@ import {
 import { deleteDocumentAndBlob, getDocumentBlob, initDB, saveDocumentWithBlob } from '../services/db';
 import { processDocumentOCR } from '../services/documentAIService';
 import { getCachedStoreRecords, invalidateCachedStores } from '../services/indexedDbCacheService';
+import {
+  findCandidates,
+  extractNifFromDocument,
+  extractDireccionFromDocument,
+  extractFechaFromDocument,
+} from '../services/documentMatchingService';
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
@@ -161,10 +167,61 @@ const InboxPage: React.FC = () => {
       if (!blob) throw new Error('No se encontró el archivo para OCR');
 
       const ocr = await processDocumentOCR(blob, selectedDocument.filename);
-      const updated = {
+
+      // Build base updated document with OCR
+      let updated = {
         ...selectedDocument,
         metadata: { ...selectedDocument.metadata, ocr, queueStatus: ocr.status === 'error' ? 'error' : 'procesado' }
       };
+
+      // --- Post-OCR matching (Pieza 8) ---
+      if (ocr.status !== 'error') {
+        const nif = extractNifFromDocument(updated);
+        const direccion = extractDireccionFromDocument(updated);
+        const fecha = extractFechaFromDocument(updated);
+
+        // Persist financial data extracted from OCR
+        updated.metadata = {
+          ...updated.metadata,
+          financialData: {
+            ...updated.metadata.financialData,
+            ...(nif ? { nifProveedor: nif } : {}),
+            ...(direccion ? { direccionInmueble: direccion, serviceAddress: direccion } : {}),
+            ...(fecha ? { fechaDocumento: fecha, issueDate: fecha } : {}),
+          },
+        };
+
+        // Run multicriteria matching
+        if (nif || direccion || fecha) {
+          try {
+            const candidates = await findCandidates({ nif, direccion, fecha });
+            if (candidates.length > 0) {
+              updated.metadata = {
+                ...updated.metadata,
+                status: 'pendiente_vinculacion',
+                matchCandidates: candidates,
+              };
+            } else {
+              updated.metadata = {
+                ...updated.metadata,
+                status: 'pendiente_asignacion',
+              };
+            }
+          } catch (_matchErr) {
+            // Matching failure is non-blocking — keep document as processed
+            updated.metadata = {
+              ...updated.metadata,
+              status: 'pendiente_asignacion',
+            };
+          }
+        } else {
+          updated.metadata = {
+            ...updated.metadata,
+            status: 'pendiente_asignacion',
+          };
+        }
+      }
+
       const updatedDocs = documents.map((doc) => (doc.id === updated.id ? updated : doc));
       await persistDocuments(updatedDocs);
       setSelectedDocument(updated);
@@ -397,6 +454,12 @@ const InboxPage: React.FC = () => {
                 onConfirm={() => toast.success('Datos confirmados y guardados')}
                 onProcessOCR={handleProcessOCR}
                 processingOCR={processingOCR}
+                onDocumentUpdated={(updatedDoc) => {
+                  const updatedDocs = documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d));
+                  setDocuments(updatedDocs);
+                  setSelectedDocument(updatedDoc);
+                  invalidateCachedStores(['documents']);
+                }}
               />
             </div>
           </div>
