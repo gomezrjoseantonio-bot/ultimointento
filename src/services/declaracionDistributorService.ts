@@ -649,7 +649,15 @@ async function persistirVinculosAccesorio(
       createdAt: ahora,
       updatedAt: ahora,
     };
-    await db.add('vinculosAccesorio', vinculo);
+    try {
+      await db.add('vinculosAccesorio', vinculo);
+    } catch (error) {
+      // Si otra ejecución concurrente ya insertó este vínculo y existe un índice único,
+      // ignoramos el ConstraintError para que la importación no falle por un duplicado benigno.
+      if (!(error && (error as any).name === 'ConstraintError')) {
+        throw error;
+      }
+    }
   }
 }
 
