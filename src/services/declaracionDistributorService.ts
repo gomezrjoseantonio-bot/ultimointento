@@ -121,6 +121,22 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Escribir mejoras y reparaciones en mejorasActivo
   await escribirMejoras(db, decl, porRefCatastral);
 
+  // Persist IBAN to accounts store with deduplication
+  const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
+  if (iban) {
+    const existingAccounts = await db.getAll('accounts');
+    const exists = existingAccounts.some((a: any) => a.iban === iban);
+    if (!exists) {
+      await db.add('accounts', {
+        iban,
+        ibanMasked: iban.slice(0, 4) + '****' + iban.slice(-4),
+        entity: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   return construirInforme(decl, resultadoInmuebles);
 }
 
@@ -538,6 +554,8 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
   const perdidasTotal = decl.arrastres.perdidasPatrimoniales.reduce((s, p) => s + p.importePendiente, 0);
   const gastosTotal = decl.arrastres.gastosPendientes.reduce((s, g) => s + g.importePendiente, 0);
 
+  const iban = decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban;
+
   return {
     ejercicio: decl.meta.ejercicio,
     fuente: decl.meta.fuenteImportacion,
@@ -574,7 +592,7 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
         importe: g.importePendiente,
       })),
     },
-    cuentaBancaria: decl.cuentaDevolucion?.iban || decl.cuentaIngreso?.iban,
+    cuentaBancaria: iban,
     trabajo: decl.trabajo ? {
       ingresoBruto: decl.trabajo.totalIngresosIntegros,
       retenciones: decl.trabajo.retenciones,
