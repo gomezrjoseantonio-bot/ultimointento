@@ -5,15 +5,13 @@ import {
   ChevronRight, Search, ArrowUpDown, RefreshCw
 } from 'lucide-react';
 import DocumentLinkingPanel from './DocumentLinkingPanel';
-import { rematchPendingDocuments } from '../../services/documentMatchingService';
+import { rematchPendingDocuments, CandidatoMatch as MatchCandidate } from '../../services/documentMatchingService';
 
 interface BlockingReason {
   type: 'error' | 'warning' | 'info';
   message: string;
   action?: string;
 }
-
-import { CandidatoMatch as MatchCandidate } from '../../services/documentMatchingService';
 
 interface PendingDocument {
   id: number;
