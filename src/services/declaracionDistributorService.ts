@@ -127,8 +127,17 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   if (iban) {
     try {
       await cuentasService.create({ iban });
-    } catch {
-      // Already exists or validation error — ignore
+    } catch (error) {
+      // Ignorar errores esperados de duplicado/validación, pero avisar ante otros
+      if (
+        error instanceof Error &&
+        /already exists|duplicate|duplicado|validation|validación/i.test(error.message)
+      ) {
+        // Already exists or validation error — ignore
+      } else {
+        // Loguear errores inesperados para facilitar el diagnóstico
+        console.warn('Error inesperado al crear cuenta con IBAN en cuentasService.create:', error);
+      }
     }
   }
 
