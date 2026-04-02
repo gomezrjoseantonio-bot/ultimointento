@@ -88,6 +88,7 @@ export function extraerDatosPersonales(
     const mapped = mapearEstadoCivil(p.estadoCivil);
     if (mapped) result.estadoCivil = mapped;
   }
+  if (p.tributacion) result.tributacion = p.tributacion;
 
   return result;
 }

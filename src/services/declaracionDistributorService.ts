@@ -28,6 +28,7 @@ import type {
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
 import { crearOActualizarContrato } from './declaracionOnboardingService';
+import { ejecutarOnboardingPersonal } from './personalOnboardingService';
 import { cuentasService } from './cuentasService';
 import { prestamosService } from './prestamosService';
 import type { Prestamo } from '../types/prestamos';
@@ -154,6 +155,30 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
 
   // Persistir vínculos accesorio (parking/trastero) al store vinculosAccesorio
   await persistirVinculosAccesorio(db, decl, porRefCatastral);
+
+  // Rellenar perfil personal desde los datos del declarante
+  try {
+    const d = decl.declarante;
+    await ejecutarOnboardingPersonal({
+      personal: {
+        nif: d.nif,
+        nombre: d.nombreCompleto,
+        fechaNacimiento: d.fechaNacimiento,
+        estadoCivil: d.estadoCivil,
+        comunidadAutonoma: d.codigoCCAA || d.nombreCCAA,
+        tributacion: d.tributacion,
+      },
+      trabajo: {} as any,
+      inmuebles: [],
+      actividades: [],
+      capitalMobiliario: {} as any,
+      gananciasPerdidas: {} as any,
+      planPensiones: {} as any,
+      basesYCuotas: {} as any,
+    });
+  } catch (err) {
+    console.warn('Error al aplicar datos personales desde declaración:', err);
+  }
 
   return construirInforme(decl, resultadoInmuebles);
 }
