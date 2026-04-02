@@ -320,8 +320,8 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
     const improvementRows: BudgetExpenseRow[] = improvements.map((mejora) => ({
       id: mejora.id || 0,
       source: 'mejoraActivo',
-      businessType: 'mejora',
-      categoryLabel: CATEGORY_LABELS.mejora,
+      businessType: mejora.tipo === 'reparacion' ? 'reparacion' : 'mejora',
+      categoryLabel: mejora.tipo === 'reparacion' ? CATEGORY_LABELS.reparacion : CATEGORY_LABELS.mejora,
       concept: mejora.descripcion,
       amount: mejora.importe,
       frequencyLabel: FREQUENCY_LABELS.puntual,
