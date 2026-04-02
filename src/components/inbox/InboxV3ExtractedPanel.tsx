@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X, ChevronDown } from 'lucide-react';
+import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
 import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
 import toast from 'react-hot-toast';

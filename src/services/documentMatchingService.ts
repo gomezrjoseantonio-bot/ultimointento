@@ -89,7 +89,7 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
   if (!nif && !direccion && !fecha) return [];
 
   const db = await initDB();
-  const normalizedNif = nif ? nif.trim().toUpperCase().replace(/[\s.\-]/g, '') : '';
+  const normalizedNif = nif ? nif.trim().toUpperCase().replace(/[\s.-]/g, '') : '';
   const invoiceYear = fecha ? new Date(fecha).getFullYear() : undefined;
 
   const [mejoras, mobiliarios, properties] = await Promise.all([
@@ -120,7 +120,7 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
 
     // NIF exacto → +3
     if (normalizedNif) {
-      const recNif = recordNif.trim().toUpperCase().replace(/[\s.\-]/g, '');
+      const recNif = recordNif.trim().toUpperCase().replace(/[\s.-]/g, '');
       if (recNif && recNif === normalizedNif) score += 3;
     }
 
