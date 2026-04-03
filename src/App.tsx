@@ -71,7 +71,7 @@ const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/su
 // Inversiones Module
 const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
-const InmueblesAnalisis = lazyWithPreload(() => import('./pages/inmuebles/InmueblesAnalisis'));
+
 const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/InversionesAnalisis'));
 
 // Financing Module - New standalone financing module
