@@ -132,14 +132,14 @@ export const updateTreasuryEventFromIngreso = async (ingresoId: number): Promise
  */
 export const createTreasuryEventFromGasto = async (gastoId: number): Promise<void> => {
   const db = await initDB();
-  const gasto = await db.get('gastos', gastoId);
-  if (!gasto || gasto.total <= 0) return;
+  const gasto = await db.get('gastosInmueble', gastoId) as any;
+  if (!gasto || gasto.importe <= 0) return;
 
   const event: TreasuryEvent = {
     type: 'expense',
-    amount: gasto.total,
-    predictedDate: gasto.fecha_pago_prevista,
-    description: `Gasto: ${gasto.contraparte_nombre}`,
+    amount: gasto.importe || gasto.total || 0,
+    predictedDate: gasto.fecha || gasto.fecha_pago_prevista,
+    description: `Gasto: ${gasto.proveedorNombre || gasto.contraparte_nombre || ''}`,
     sourceType: 'gasto',
     sourceId: gastoId,
     status: 'predicted',
@@ -155,7 +155,7 @@ export const createTreasuryEventFromGasto = async (gastoId: number): Promise<voi
  */
 export const updateTreasuryEventFromGasto = async (gastoId: number): Promise<void> => {
   const db = await initDB();
-  const gasto = await db.get('gastos', gastoId);
+  const gasto = await db.get('gastosInmueble', gastoId) as any;
   if (!gasto) return;
 
   const events = await db.getAllFromIndex('treasuryEvents', 'sourceId', gastoId);

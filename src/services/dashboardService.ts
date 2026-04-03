@@ -950,7 +950,7 @@ class DashboardService {
       };
 
       const ingresos = await getCachedStoreRecords<any>('ingresos');
-      const gastos = await getCachedStoreRecords<any>('gastos');
+      const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
       const expenses = await getCachedStoreRecords<any>('expenses');
       const rentPayments = await getCachedStoreRecords<any>('rentPayments');
       const contracts = await getCachedStoreRecords<any>('contracts');
@@ -1562,7 +1562,7 @@ class DashboardService {
       
       // Calculate average monthly expenses from last 3 months
       const now = new Date();
-      const gastos = await getCachedStoreRecords<any>('gastos');
+      const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
       const expenses = await getCachedStoreRecords<any>('expenses');
       const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
       

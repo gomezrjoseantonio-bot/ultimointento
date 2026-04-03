@@ -11,6 +11,7 @@
 import { initDB, Movement, Account, Ingreso, Gasto, CAPEX } from './db';
 import { DocumentType } from './unicornioDocumentDetection';
 import { safeMatch } from '../utils/safe';
+import { gastosInmuebleService } from './gastosInmuebleService';
 
 export type TreasuryOrigin = 'ocr_document' | 'bank_extract' | 'manual_entry';
 
@@ -310,8 +311,25 @@ async function createGastoFromOCR(
     updatedAt: new Date().toISOString()
   };
   
-  const gastoId = await db.add('gastos', gasto);
-  
+  // Only create GastoInmueble if there's a propertyId — personal expenses don't go to this store
+  let gastoId: number = 0;
+  if (gasto.destino_id) {
+    gastoId = await gastosInmuebleService.add({
+      inmuebleId: gasto.destino_id,
+      ejercicio: new Date(gasto.fecha_emision).getFullYear(),
+      fecha: gasto.fecha_emision,
+      concepto: gasto.contraparte_nombre || 'Gasto OCR',
+      categoria: 'suministro',
+      casillaAEAT: '0113',
+      importe: gasto.total,
+      origen: 'tesoreria',
+      origenId: gasto.source_doc_id ? `doc-${gasto.source_doc_id}` : undefined,
+      estado: 'previsto',
+      proveedorNombre: gasto.contraparte_nombre,
+      documentId: gasto.source_doc_id,
+    });
+  }
+
   return {
     success: true,
     recordId: gastoId as number,

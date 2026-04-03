@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart3, FileText, Calculator, TrendingDown, Search, ExternalLink, Info, CheckCircle, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Ingreso, Gasto, Contract, Property, IngresoEstado, GastoEstado } from '../../../../services/db';
+import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import AmortizationDetail from '../../../../components/fiscalidad/AmortizationDetail';
 import { getAEATBoxDisplayName, AEAT_CLASSIFICATION_MAP } from '../../../../services/aeatClassificationService';
 import { findIncomeReconciliationMatches, updateIncomeReconciliationStatus } from '../../../../services/incomeReconciliationService';
@@ -47,12 +48,22 @@ const Detalle: React.FC = () => {
     setLoading(true);
     try {
       const db = await initDB();
-      const [contractsData, ingresosData, gastosData, propertiesData] = await Promise.all([
+      const [contractsData, ingresosData, allGastosInm, propertiesData] = await Promise.all([
         db.getAll('contracts'),
         db.getAll('ingresos'),
-        db.getAll('gastos'),
+        gastosInmuebleService.getAll(),
         db.getAll('properties')
       ]);
+      // Map to Gasto shape for display compatibility
+      const gastosData = allGastosInm.map((g: any) => ({
+        id: g.id, contraparte_nombre: g.proveedorNombre || '', contraparte_nif: g.proveedorNIF,
+        total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+        categoria_AEAT: g.casillaAEAT, destino: g.inmuebleId ? 'inmueble_id' : 'personal',
+        destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente',
+        movement_id: g.movimientoId ? Number(g.movimientoId) : undefined,
+        ejercicioFiscal: g.ejercicio, source_doc_id: g.documentId,
+        createdAt: g.createdAt, updatedAt: g.updatedAt,
+      })) as Gasto[];
       
       setContracts(contractsData);
       setIngresos(ingresosData);
