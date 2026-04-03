@@ -168,7 +168,6 @@ export const calculateAEATAmortization = async (
 
   // Add historical improvements with new-store fallback
   let historicalImprovements = 0;
-  let allImprovements: PropertyImprovement[] = [];
 
   try {
     const mejorasNuevo = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', propertyId) as any[];
@@ -177,20 +176,6 @@ export const calculateAEATAmortization = async (
     historicalImprovements = mejorasCapitalizables
       .filter((mejora: any) => toNumber(mejora?.ejercicio) <= exerciseYear)
       .reduce((total: number, mejora: any) => total + toNumber(mejora?.importe), 0);
-
-    allImprovements = mejorasCapitalizables
-      .map((mejora: any) => ({
-        propertyId,
-        year: toNumber(mejora?.ejercicio),
-        amount: toNumber(mejora?.importe),
-        date: mejora?.fecha,
-        daysInYear: toNumber(mejora?.diasEnEjercicio) || undefined,
-        counterpartyNIF: mejora?.proveedorNIF,
-        description: mejora?.descripcion ?? 'Mejora',
-        createdAt: mejora?.createdAt ?? '',
-        updatedAt: mejora?.updatedAt ?? '',
-      }))
-      .filter((mejora) => mejora.year > 0 && mejora.amount > 0);
   } catch {
     // Fallback: read from mejorasInmueble (unified store)
     try {
@@ -199,22 +184,8 @@ export const calculateAEATAmortization = async (
       historicalImprovements = capitalizables
         .filter(m => m.ejercicio <= exerciseYear)
         .reduce((total, m) => total + m.importe, 0);
-      allImprovements = capitalizables
-        .map(m => ({
-          propertyId,
-          year: m.ejercicio,
-          amount: m.importe,
-          date: m.fecha,
-          daysInYear: undefined,
-          counterpartyNIF: m.proveedorNIF,
-          description: m.descripcion ?? 'Mejora',
-          createdAt: m.createdAt ?? '',
-          updatedAt: m.updatedAt ?? '',
-        }))
-        .filter(m => m.year > 0 && m.amount > 0);
     } catch {
       historicalImprovements = 0;
-      allImprovements = [];
     }
   }
 

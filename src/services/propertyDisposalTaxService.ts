@@ -125,12 +125,16 @@ async function getTotalMejorasConFallback(propertyId: number, ejercicio: number)
     return round2(await getTotalMejorasHastaEjercicio(propertyId, ejercicio));
   } catch {
     // Fallback: read from mejorasInmueble (unified store)
-    const mejoras = await mejorasInmuebleService.getHastaEjercicio(propertyId, ejercicio);
-    return round2(
-      mejoras
-        .filter(m => m.tipo === 'mejora' || m.tipo === 'ampliacion')
-        .reduce((sum, m) => sum + m.importe, 0)
-    );
+    try {
+      const mejoras = await mejorasInmuebleService.getHastaEjercicio(propertyId, ejercicio);
+      return round2(
+        mejoras
+          .filter(m => m.tipo === 'mejora' || m.tipo === 'ampliacion')
+          .reduce((sum, m) => sum + m.importe, 0)
+      );
+    } catch {
+      return 0;
+    }
   }
 }
 

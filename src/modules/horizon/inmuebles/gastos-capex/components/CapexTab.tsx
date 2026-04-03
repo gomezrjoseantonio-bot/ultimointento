@@ -35,16 +35,14 @@ const CapexTab: React.FC = () => {
     try {
       setLoading(true);
       const db = await initDB();
-      const propertiesData = await db.getAll('properties');
+      const [propertiesData, allMejorasRaw] = await Promise.all([
+        db.getAll('properties'),
+        db.getAll('mejorasInmueble') as Promise<MejoraInmueble[]>,
+      ]);
       setProperties(propertiesData);
 
-      // Load mejoras from all properties (tipo mejora/ampliacion only — CAPEX)
-      const allMejoras: MejoraInmueble[] = [];
-      for (const p of propertiesData) {
-        if (!p.id) continue;
-        const m = await mejorasInmuebleService.getPorInmueble(p.id);
-        allMejoras.push(...m.filter(x => x.tipo === 'mejora' || x.tipo === 'ampliacion'));
-      }
+      // Filter to CAPEX only (mejora/ampliacion)
+      const allMejoras = allMejorasRaw.filter(x => x.tipo === 'mejora' || x.tipo === 'ampliacion');
       setMejoras(allMejoras);
     } catch (error) {
       console.error('Error loading CAPEX data:', error);

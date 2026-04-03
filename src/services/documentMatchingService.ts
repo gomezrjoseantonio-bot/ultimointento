@@ -13,8 +13,6 @@
  */
 
 import { initDB, MejoraActivo, MobiliarioActivo, Property } from './db';
-import { mejorasInmuebleService } from './mejorasInmuebleService';
-import { mueblesInmuebleService } from './mueblesInmuebleService';
 
 export interface CandidatoMatch {
   id: number;
@@ -184,15 +182,15 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
   }
 
   // --- Also read from unified stores (mejorasInmueble / mueblesInmueble) ---
-  // Dedup by checking if a candidate with same inmuebleId+ejercicio+descripcion+importe already exists
-  const existingKeys = new Set(candidates.map(c => `${c.inmuebleId}-${c.ejercicio}-${c.importe}`));
+  const buildKey = (tipo: string, inmId: number, ej: number, desc: string, imp: number) =>
+    `${tipo}-${inmId}-${ej}-${(desc || '').trim()}-${imp}`;
+  const existingKeys = new Set(candidates.map(c => buildKey(c.tipo, c.inmuebleId, c.ejercicio, c.descripcion || '', c.importe)));
 
   try {
-    const mejorasUnif = await mejorasInmuebleService.getPorInmueble(0).catch(() => []);
-    // getPorInmueble(0) won't match — load all via db
-    const allMejorasUnif = await (async () => { const d = await initDB(); return d.getAll('mejorasInmueble'); })().catch(() => []);
+    const dbUnif = await initDB();
+    const allMejorasUnif = await dbUnif.getAll('mejorasInmueble').catch(() => [] as any[]);
     for (const m of allMejorasUnif) {
-      const key = `${m.inmuebleId}-${m.ejercicio}-${m.importe}`;
+      const key = buildKey('mejoraActivo', m.inmuebleId, m.ejercicio, m.descripcion || '', m.importe);
       if (existingKeys.has(key)) continue;
       const score = scoreRecord(m.proveedorNIF || '', m.inmuebleId, m.ejercicio);
       if (score < 2) continue;
@@ -213,9 +211,9 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
       });
     }
 
-    const allMueblesUnif = await (async () => { const d = await initDB(); return d.getAll('mueblesInmueble'); })().catch(() => []);
+    const allMueblesUnif = await dbUnif.getAll('mueblesInmueble').catch(() => [] as any[]);
     for (const mb of allMueblesUnif) {
-      const key = `${mb.inmuebleId}-${mb.ejercicio}-${mb.importe}`;
+      const key = buildKey('mobiliarioActivo', mb.inmuebleId, mb.ejercicio, mb.descripcion || '', mb.importe);
       if (existingKeys.has(key)) continue;
       const score = scoreRecord(mb.proveedorNIF || '', mb.inmuebleId, mb.ejercicio);
       if (score < 2) continue;
