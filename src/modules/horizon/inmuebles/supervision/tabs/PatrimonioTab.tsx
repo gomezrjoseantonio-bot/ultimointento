@@ -19,6 +19,12 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
+const cssVar = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable);
+  return value?.trim() || fallback;
+};
+
 const fmt = (n: number): string =>
   n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
@@ -90,8 +96,8 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
             const idx = realLabels.indexOf(l);
             return idx >= 0 ? realValues[idx] : null;
           }),
-          borderColor: '#042C5E',
-          backgroundColor: '#042C5E',
+          borderColor: cssVar('--navy-900', '#042C5E'),
+          backgroundColor: cssVar('--navy-900', '#042C5E'),
           pointRadius: 4,
           pointHoverRadius: 6,
           tension: 0.3,
@@ -103,7 +109,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
             const idx = projLabels.indexOf(l);
             return idx >= 0 ? projValues[idx] : null;
           }),
-          borderColor: '#1DA0BA',
+          borderColor: cssVar('--teal-600', '#1DA0BA'),
           backgroundColor: 'rgba(29, 160, 186, 0.08)',
           borderDash: [6, 4],
           pointRadius: 0,
