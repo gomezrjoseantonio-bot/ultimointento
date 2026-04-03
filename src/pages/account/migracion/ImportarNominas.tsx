@@ -56,10 +56,14 @@ const parseNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const uid = (): string => Math.random().toString(36).slice(2, 10);
+type BeneficioTipo = 'seguro-vida' | 'seguro-medico' | 'cheque-guarderia'
+  | 'gasolina' | 'vehiculo-empresa' | 'telefono' | 'formacion'
+  | 'conciliacion' | 'otro';
 
-const mapBeneficioTipo = (raw: string): string => {
-  const map: Record<string, string> = {
+const uid = (): string => crypto.randomUUID();
+
+const mapBeneficioTipo = (raw: string): BeneficioTipo => {
+  const map: Record<string, BeneficioTipo> = {
     seguro_medico: 'seguro-medico',
     guarderia: 'cheque-guarderia',
     vehiculo: 'vehiculo-empresa',
@@ -76,10 +80,12 @@ const buildNominaFromRow = (byKey: Record<string, unknown>) => {
     const nombre = String(byKey[`variable_${n}_nombre`] || '').trim();
     const importe = parseNumber(byKey[`variable_${n}_importe`]);
     if (!nombre || !importe) return [];
-    const mesesRaw = String(byKey[`variable_${n}_meses`] || 'todos');
+    const mesesRaw = String(byKey[`variable_${n}_meses`] || 'todos').trim().toLowerCase();
+    const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     const meses = mesesRaw === 'todos'
-      ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-      : mesesRaw.split(',').map(Number).filter(Boolean);
+      ? ALL_MONTHS
+      : [...new Set(mesesRaw.split(',').map(Number).filter(m => m >= 1 && m <= 12))];
+    if (!meses.length) return [];
     return [{
       id: uid(),
       nombre,
@@ -101,12 +107,13 @@ const buildNominaFromRow = (byKey: Record<string, unknown>) => {
     const tipo = String(byKey[`beneficio_${n}_tipo`] || '').trim();
     const importe = parseNumber(byKey[`beneficio_${n}_importe`]);
     if (!tipo || !importe) return [];
+    const tipoMapped = mapBeneficioTipo(tipo);
     return [{
       id: uid(),
       concepto: tipo.replace(/_/g, ' '),
-      tipo: mapBeneficioTipo(tipo) as any,
+      tipo: tipoMapped,
       importeMensual: importe,
-      incrementaBaseIRPF: false,
+      incrementaBaseIRPF: tipoMapped !== 'cheque-guarderia',
     }];
   });
 
@@ -122,19 +129,21 @@ const buildNominaFromRow = (byKey: Record<string, unknown>) => {
     }];
   });
 
-  const hasPensiones = byKey.plan_pensiones_empresa_importe || byKey.plan_pensiones_empleado_importe;
-  const planPensiones = hasPensiones ? {
+  const pensionesEmpresa = parseNumber(byKey.plan_pensiones_empresa_importe);
+  const pensionesEmpleado = parseNumber(byKey.plan_pensiones_empleado_importe);
+  const planPensiones = (pensionesEmpresa !== 0 || pensionesEmpleado !== 0) ? {
     aportacionEmpresa: {
       tipo: 'importe' as const,
-      valor: parseNumber(byKey.plan_pensiones_empresa_importe),
+      valor: pensionesEmpresa,
     },
     aportacionEmpleado: {
       tipo: 'importe' as const,
-      valor: parseNumber(byKey.plan_pensiones_empleado_importe),
+      valor: pensionesEmpleado,
     },
   } : undefined;
 
-  const distPagas = Number(byKey.distribucion_pagas) || 12;
+  const distPagasRaw = Number(byKey.distribucion_pagas) || 12;
+  const distPagas = distPagasRaw === 14 ? 14 : 12;
 
   return {
     personalDataId: 1,
