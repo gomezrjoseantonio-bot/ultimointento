@@ -57,6 +57,7 @@ export async function actualizarMobiliario(
       importe: mueble.importe,
       vidaUtil: mueble.vidaUtil || 10,
       activo: mueble.activo,
+      fechaBaja: mueble.fechaBaja || undefined,
       proveedorNIF: mueble.proveedorNIF || undefined,
       proveedorNombre: mueble.proveedorNombre || undefined,
       documentId: mueble.documentId || undefined,

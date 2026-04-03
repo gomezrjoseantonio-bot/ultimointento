@@ -133,9 +133,11 @@ const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'))
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
-    void initDB().catch((error) => {
-      console.error('[ATLAS] Error inicializando IndexedDB:', error);
-    });
+    void initDB()
+      .then(() => ejecutarMigracionGastos())
+      .catch((error) => {
+        console.error('[ATLAS] Error inicializando IndexedDB o migración gastos:', error);
+      });
 
     const cleanupTasks = [
       runWhenIdle(() => {
@@ -158,11 +160,6 @@ function App() {
       runWhenIdle(() => {
         bankProfilesService.loadProfiles().catch(console.error);
       }, 1800),
-      runWhenIdle(() => {
-        ejecutarMigracionGastos().catch((error) => {
-          console.error('[ATLAS] Error migración gastos:', error);
-        });
-      }, 3000),
     ];
 
     // Performance monitoring setup

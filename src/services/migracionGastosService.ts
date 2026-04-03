@@ -91,6 +91,7 @@ export async function ejecutarMigracion(): Promise<void> {
         importe: m.importe || 0,
         vidaUtil: m.vidaUtil || 10,
         activo: m.activo ?? true,
+        fechaBaja: (m as any).fechaBaja || undefined,
         proveedorNIF: m.proveedorNIF || undefined,
         proveedorNombre: m.proveedorNombre || undefined,
         documentId: m.documentId || undefined,

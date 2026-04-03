@@ -53,8 +53,11 @@ export const mueblesInmuebleService = {
 
     for (const mueble of muebles) {
       const fechaAlta = new Date(mueble.fechaAlta);
+      const fechaBaja = mueble.fechaBaja ? new Date(mueble.fechaBaja) : null;
+
       if (fechaAlta > finEjercicio) continue;
-      if (!mueble.activo) continue;
+      if (fechaBaja && fechaBaja < inicioEjercicio) continue;
+      if (!mueble.activo && !fechaBaja) continue;
 
       const vidaUtil = mueble.vidaUtil || 10;
       const amortizacionAnual = mueble.importe / vidaUtil;
@@ -66,7 +69,7 @@ export const mueblesInmuebleService = {
       if (amortizacionAcumuladaPrevia >= mueble.importe) continue;
 
       const desde = fechaAlta > inicioEjercicio ? fechaAlta : inicioEjercicio;
-      const hasta = finEjercicio;
+      const hasta = fechaBaja && fechaBaja < finEjercicio ? fechaBaja : finEjercicio;
       const diasActivo = Math.max(0, Math.ceil((hasta.getTime() - desde.getTime()) / DAY_MS) + 1);
       if (diasActivo === 0) continue;
 
@@ -79,8 +82,8 @@ export const mueblesInmuebleService = {
     return Math.round(total * 100) / 100;
   },
 
-  async darDeBaja(id: number): Promise<void> {
-    await this.actualizar(id, { activo: false });
+  async darDeBaja(id: number, fechaBaja?: string): Promise<void> {
+    await this.actualizar(id, { activo: false, fechaBaja: fechaBaja || new Date().toISOString().slice(0, 10) });
   },
 
   async eliminar(id: number): Promise<void> {

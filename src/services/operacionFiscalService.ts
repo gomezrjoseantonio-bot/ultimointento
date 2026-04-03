@@ -220,7 +220,7 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
         createdAt: now,
         updatedAt: now,
       } as OperacionFiscal);
-      // Dual write: gastosInmueble
+      // Dual write: gastosInmueble (best-effort — don't block primary flow)
       await gastosInmuebleService.add({
         inmuebleId,
         ejercicio,
@@ -234,7 +234,7 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
         estado: 'previsto',
         proveedorNIF: rule.proveedorNIF || undefined,
         proveedorNombre: rule.proveedorNombre || undefined,
-      });
+      }).catch(() => { /* best-effort dual write */ });
       creadas += 1;
     }
   }
@@ -354,7 +354,7 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
         createdAt: now,
         updatedAt: now,
       } as OperacionFiscal);
-      // Dual write: gastosInmueble
+      // Dual write: gastosInmueble (best-effort — don't block primary flow)
       await gastosInmuebleService.add({
         inmuebleId,
         ejercicio,
@@ -367,7 +367,7 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
         origenId: `prestamo-${prestamo.id}-${ejercicio}-${mes}`,
         estado: 'previsto',
         proveedorNombre: prestamo.nombre || undefined,
-      });
+      }).catch(() => { /* best-effort dual write */ });
       creadas += 1;
     }
   }

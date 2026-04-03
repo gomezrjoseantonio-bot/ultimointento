@@ -344,6 +344,7 @@ export interface MuebleInmueble {
   importe: number;
   vidaUtil: number;
   activo: boolean;
+  fechaBaja?: string;
   proveedorNIF?: string;
   proveedorNombre?: string;
   documentId?: number;
@@ -2226,17 +2227,13 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
         }
 
-        // V4.1: Cleanup obsolete stores (data migrated to gastosInmueble/mejorasInmueble/mueblesInmueble)
-        // Only run on upgrade from v40+ (after migration has had chance to run)
-        if (oldVersion >= 40) {
-          if (db.objectStoreNames.contains('fiscalSummaries')) db.deleteObjectStore('fiscalSummaries');
-          if (db.objectStoreNames.contains('operacionesFiscales')) db.deleteObjectStore('operacionesFiscales');
-          if (db.objectStoreNames.contains('expensesH5')) db.deleteObjectStore('expensesH5');
-          if (db.objectStoreNames.contains('gastos')) db.deleteObjectStore('gastos');
-          if (db.objectStoreNames.contains('reforms')) db.deleteObjectStore('reforms');
-          if (db.objectStoreNames.contains('reformLineItems')) db.deleteObjectStore('reformLineItems');
-          if (db.objectStoreNames.contains('propertyImprovements')) db.deleteObjectStore('propertyImprovements');
-        }
+        // V4.1: Do not cleanup legacy stores yet.
+        // Some of these stores are still referenced by the current runtime, so deleting them
+        // during upgrade would cause runtime failures for users coming from v40+ databases.
+        // Keep them until all application code has stopped referencing them, then remove them
+        // in a dedicated future migration/version.
+        // Stores to clean up in the future: fiscalSummaries, operacionesFiscales, expensesH5,
+        // gastos, reforms, reformLineItems, propertyImprovements
 
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {

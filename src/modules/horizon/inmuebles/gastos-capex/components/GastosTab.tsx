@@ -226,18 +226,19 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     try {
       const db = await initDB();
 
-      if (expense.id) {
+      let expenseId = expense.id;
+      if (expenseId) {
         // Update existing expense
         await db.put('expensesH5', expense);
         toast.success('Gasto actualizado correctamente');
       } else {
-        // Create new expense
-        await db.add('expensesH5', expense);
+        // Create new expense — capture the auto-generated id
+        expenseId = await db.add('expensesH5', expense) as unknown as number;
         toast.success('Gasto creado correctamente');
       }
 
-      // Dual write: gastosInmueble
-      if (expense.aeatBox && expense.propertyId && expense.amount > 0) {
+      // Dual write: gastosInmueble (always has a valid expenseId now)
+      if (expense.aeatBox && expense.propertyId && expense.amount > 0 && expenseId) {
         await gastosInmuebleService.add({
           inmuebleId: expense.propertyId,
           ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
@@ -247,7 +248,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
           casillaAEAT: expense.aeatBox as any,
           importe: expense.amount,
           origen: 'manual',
-          origenId: expense.id ? `expensesH5-${expense.id}` : undefined,
+          origenId: `expensesH5-${expenseId}`,
           estado: 'confirmado',
           proveedorNIF: expense.counterpartyNIF || undefined,
           proveedorNombre: expense.counterparty || undefined,
