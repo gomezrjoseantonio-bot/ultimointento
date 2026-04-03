@@ -309,11 +309,7 @@ function App() {
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InmueblesAnalisis />
-                </React.Suspense>
-              } />
+              <Route index element={<Navigate to="/inmuebles/supervision" replace />} />
               <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Cartera />

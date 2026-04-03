@@ -11,7 +11,7 @@ import type { InmuebleSupervision, TotalesCartera } from '../hooks/useSupervisio
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 const fmtPct = (n: number): string =>
   (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const fmtX = (n: number): string => n.toFixed(2) + 'x';
@@ -140,17 +140,17 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
 
       {/* ── 6.2 — 4 Hero cards ────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap' }}>
-        <SupervisionCard title="Inversi\u00F3n total" value={fmt(inm.inversionTotal)}
+        <SupervisionCard title="Inversión total" value={fmt(inm.inversionTotal)}
           detail={`Adq. ${fmt(inm.costeAdquisicion)} + Rep. ${fmt(inm.reparaciones)} + Mob. ${fmt(inm.mobiliario)}`} />
         <SupervisionCard title="Valor actual" value={fmt(inm.valorActual)}
           detail={`Plusv. ${fmt(inm.plusvaliaLatente)} (${fmtPct(safeDiv(inm.plusvaliaLatente, inm.costeAdquisicion) * 100)})`} />
         <SupervisionCard title="Cashflow acumulado" value={fmt(inm.cashflowAcumulado)}
           detail={`Yield s/adq. ${fmtPct(inm.yieldCosteAdquisicion)}`} />
-        <SupervisionCard title="M\u00FAltiplo total" value={fmtX(inm.multiplo)}
+        <SupervisionCard title="Múltiplo total" value={fmtX(inm.multiplo)}
           detail={`Ganancia ${fmt(ganancia)}`} />
       </div>
 
-      {/* ── 6.3 — Gr\u00E1fico 360 ──────────────────────────────────────── */}
+      {/* ── 6.3 — Gráfico 360 ──────────────────────────────────────── */}
       <div style={{
         background: 'var(--white)',
         border: '1px solid var(--grey-200)',
@@ -162,7 +162,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 8,
         }}>
           <h3 style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
-            Visi\u00F3n 360
+            Visión 360
           </h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             {/* Slider revalorización */}
@@ -171,7 +171,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
               <input type="range" min={1} max={8} step={0.5} value={tasaRev}
                 onChange={(e) => setTasaRev(Number(e.target.value))}
                 style={{ width: 60, accentColor: 'var(--teal-600)' }}
-                aria-label="Tasa revalorizaci\u00F3n" />
+                aria-label="Tasa revalorización" />
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--t-xs)', color: 'var(--grey-500)', minWidth: 28 }}>
                 {tasaRev}%
               </span>
@@ -228,7 +228,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
 
       {/* ── 6.5 — Layout crow2 (1fr 1fr) ──────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-        {/* Izquierda: Ingresos y gastos por a\u00F1o */}
+        {/* Izquierda: Ingresos y gastos por año */}
         <div style={{
           background: 'var(--white)',
           border: '1px solid var(--grey-200)',
@@ -314,13 +314,13 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              { label: 'Coste de adquisici\u00F3n', value: fmt(inm.costeAdquisicion) },
-              { label: 'Inversi\u00F3n total', value: fmt(inm.inversionTotal) },
+              { label: 'Coste de adquisición', value: fmt(inm.costeAdquisicion) },
+              { label: 'Inversión total', value: fmt(inm.inversionTotal) },
               { label: 'Valor actual', value: fmt(inm.valorActual), highlight: false },
               { label: 'Cashflow acumulado', value: fmt(inm.cashflowAcumulado) },
-              { label: 'Plusval\u00EDa latente', value: fmt(inm.plusvaliaLatente), highlight: true },
+              { label: 'Plusvalía latente', value: fmt(inm.plusvaliaLatente), highlight: true },
               { label: 'Yield s/adq.', value: fmtPct(inm.yieldCosteAdquisicion) },
-              { label: 'M\u00FAltiplo', value: fmtX(inm.multiplo), highlight: true },
+              { label: 'Múltiplo', value: fmtX(inm.multiplo), highlight: true },
             ].map((row) => (
               <div key={row.label} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',

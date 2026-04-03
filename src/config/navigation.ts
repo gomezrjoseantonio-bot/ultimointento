@@ -46,7 +46,7 @@ export const navigationConfig: NavigationItem[] = [
   },
   {
     name: 'Inmuebles',
-    href: '/inmuebles',
+    href: '/inmuebles/supervision',
     icon: Building2,
     module: 'shared',
     section: 'horizon',
