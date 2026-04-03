@@ -74,7 +74,7 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
     db.getAll('rentaMensual').catch(() => [] as any[]),
     db.getAll('rentPayments').catch(() => [] as any[]),
     db.getAll('movements').catch(() => [] as any[]),
-    db.getAll('gastos').catch(() => [] as any[]),
+    (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().catch(() => [] as any[]),
   ]);
 
   const extractMonths = (records: any[], fechaKeys: string[]) => {

@@ -1,6 +1,15 @@
-import { initDB, Contract, Ingreso, Gasto, CAPEX, Document } from './db';
-import { isCapexType } from './aeatClassificationService';
+import { initDB, Contract, Ingreso, Gasto, CAPEX, Document, type GastoCategoria } from './db';
+import { isCapexType, AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
+import { gastosInmuebleService } from './gastosInmuebleService';
 import toast from 'react-hot-toast';
+
+function mapFiscalTypeToBox(ft: string): string {
+  return (AEAT_CLASSIFICATION_MAP as any)[ft] || '0106';
+}
+function mapBoxToCategoria(box: string): GastoCategoria {
+  const m: Record<string, GastoCategoria> = { '0105': 'intereses', '0106': 'reparacion', '0109': 'comunidad', '0112': 'gestion', '0113': 'suministro', '0114': 'seguro', '0115': 'ibi', '0117': 'otro' };
+  return m[box] || 'otro';
+}
 
 /**
  * Treasury Creation Service
@@ -253,7 +262,22 @@ const createGastoFromDocument = async (document: Document): Promise<number> => {
     updatedAt: new Date().toISOString()
   };
 
-  const gastoId = await db.add('gastos', gasto);
+  const box = mapFiscalTypeToBox(gasto.categoria_AEAT);
+  const gastoId = await gastosInmuebleService.add({
+    inmuebleId: gasto.destino_id || 0,
+    ejercicio: new Date(gasto.fecha_emision).getFullYear(),
+    fecha: gasto.fecha_emision,
+    concepto: gasto.contraparte_nombre || 'Gasto tesorería',
+    categoria: mapBoxToCategoria(box),
+    casillaAEAT: box as any,
+    importe: gasto.total,
+    origen: 'tesoreria',
+    origenId: gasto.source_doc_id ? `doc-${gasto.source_doc_id}` : undefined,
+    estado: 'confirmado',
+    proveedorNombre: gasto.contraparte_nombre,
+    proveedorNIF: gasto.contraparte_nif,
+    documentId: gasto.source_doc_id,
+  });
   return gastoId as number;
 };
 
@@ -312,13 +336,10 @@ export const reconcileTreasuryRecord = async (
         await db.put('ingresos', ingreso);
       }
     } else if (recordType === 'gasto') {
-      const gasto = await db.get('gastos', recordId);
-      if (gasto) {
-        gasto.movement_id = movementId;
-        gasto.estado = 'pagado';
-        gasto.updatedAt = new Date().toISOString();
-        await db.put('gastos', gasto);
-      }
+      await gastosInmuebleService.update(recordId, {
+        movimientoId: String(movementId),
+        estado: 'confirmado',
+      });
     } else if (recordType === 'capex') {
       const capex = await db.get('capex', recordId);
       if (capex) {
@@ -369,11 +390,18 @@ export const findReconciliationMatches = async (): Promise<{
     );
 
     // Get unreconciled treasury records
-    const [ingresos, gastos, capex] = await Promise.all([
+    const [ingresos, allGastosInmueble, capex] = await Promise.all([
       db.getAll('ingresos'),
-      db.getAll('gastos'),
+      gastosInmuebleService.getAll(),
       db.getAll('capex')
     ]);
+    // Map gastosInmueble to Gasto-like shape for reconciliation
+    const gastos = allGastosInmueble.map(g => ({
+      id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
+      fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+      movement_id: g.movimientoId ? Number(g.movimientoId) : undefined,
+      estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente',
+    }));
 
     const unreconciledIngresos = ingresos.filter(i => !i.movement_id);
     const unreconciledGastos = gastos.filter(g => !g.movement_id);
@@ -709,16 +737,10 @@ export const markAsPaidWithoutStatement = async (
         await db.put('ingresos', ingreso);
       }
     } else if (recordType === 'gasto') {
-      const gasto = await db.get('gastos', recordId);
-      if (gasto) {
-        gasto.estado = 'pagado';
-        gasto.movement_id = -1; // Special ID to indicate paid without statement
-        gasto.metodo_pago = paymentMethod;
-        gasto.fecha_pago_efectivo = paymentDate;
-        gasto.notas_pago = notes;
-        gasto.updatedAt = new Date().toISOString();
-        await db.put('gastos', gasto);
-      }
+      await gastosInmuebleService.update(recordId, {
+        estado: 'confirmado',
+        movimientoId: '-1', // Special ID to indicate paid without statement
+      });
     } else if (recordType === 'capex') {
       const capex = await db.get('capex', recordId);
       if (capex) {

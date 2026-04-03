@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
-import { formatEuro } from '../../../../services/aeatClassificationService';
+import { formatEuro, AEAT_CLASSIFICATION_MAP } from '../../../../services/aeatClassificationService';
 import { createTreasuryEventFromGasto } from '../../../../services/treasuryForecastService';
+import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import toast from 'react-hot-toast';
 import { confirmAction } from '../../../../services/confirmationService';
 
@@ -46,10 +47,19 @@ const GastosPanel: React.FC = () => {
     setLoading(true);
     try {
       const db = await initDB();
-      const [gastosData, propertiesData] = await Promise.all([
-        db.getAll('gastos'),
+      const [allGastosInm, propertiesData] = await Promise.all([
+        gastosInmuebleService.getAll(),
         db.getAll('properties')
       ]);
+      // Map to Gasto shape
+      const gastosData = allGastosInm.map((g: any) => ({
+        id: g.id, contraparte_nombre: g.proveedorNombre || '', contraparte_nif: g.proveedorNIF,
+        total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+        categoria_AEAT: g.casillaAEAT, destino: g.inmuebleId ? 'inmueble_id' : 'personal',
+        destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente',
+        movement_id: g.movimientoId ? Number(g.movimientoId) : undefined,
+        createdAt: g.createdAt, updatedAt: g.updatedAt,
+      })) as Gasto[];
 
       setGastos(gastosData);
       setProperties(propertiesData);
@@ -112,7 +122,21 @@ const GastosPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      const newGastoId = await db.add('gastos', newGasto);
+      const box = (AEAT_CLASSIFICATION_MAP as any)[newGasto.categoria_AEAT] || '0106';
+      const catMap: Record<string, string> = { '0105': 'intereses', '0106': 'reparacion', '0109': 'comunidad', '0112': 'gestion', '0113': 'suministro', '0114': 'seguro', '0115': 'ibi', '0117': 'otro' };
+      const newGastoId = await gastosInmuebleService.add({
+        inmuebleId: newGasto.destino_id || 0,
+        ejercicio: new Date(newGasto.fecha_emision).getFullYear(),
+        fecha: newGasto.fecha_emision,
+        concepto: newGasto.contraparte_nombre || 'Gasto tesorería',
+        categoria: (catMap[box] || 'otro') as any,
+        casillaAEAT: box as any,
+        importe: newGasto.total,
+        origen: 'tesoreria',
+        estado: 'confirmado',
+        proveedorNombre: newGasto.contraparte_nombre,
+        proveedorNIF: newGasto.contraparte_nif,
+      });
       await createTreasuryEventFromGasto(newGastoId as number);
       
       // Create toast message following the requirement

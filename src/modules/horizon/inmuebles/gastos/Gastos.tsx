@@ -3,7 +3,8 @@ import { Search, X, CreditCard, Calendar, User, FileText } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../../../../components/common/PageLayout';
 import { initDB, Gasto, Property, AEATFiscalType, GastoEstado, GastoDestino } from '../../../../services/db';
-import { formatEuro } from '../../../../services/aeatClassificationService';
+import { formatEuro, AEAT_CLASSIFICATION_MAP } from '../../../../services/aeatClassificationService';
+import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import toast from 'react-hot-toast';
 import { getAnnualOpexForProperty, getExpenseDiagnosticsForProperty } from '../../../../services/propertyExpenses';
 
@@ -51,10 +52,18 @@ const Gastos: React.FC = () => {
     setLoading(true);
     try {
       const db = await initDB();
-      const [gastosData, propertiesData] = await Promise.all([
-        db.getAll('gastos'),
+      const [allGastosInm, propertiesData] = await Promise.all([
+        gastosInmuebleService.getAll(),
         db.getAll('properties')
       ]);
+      const gastosData = allGastosInm.map((g: any) => ({
+        id: g.id, contraparte_nombre: g.proveedorNombre || '', contraparte_nif: g.proveedorNIF,
+        total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+        categoria_AEAT: g.casillaAEAT, destino: g.inmuebleId ? 'inmueble_id' : 'personal',
+        destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente',
+        movement_id: g.movimientoId ? Number(g.movimientoId) : undefined,
+        createdAt: g.createdAt, updatedAt: g.updatedAt,
+      })) as Gasto[];
 
       setGastos(gastosData);
       setProperties(propertiesData);
@@ -96,7 +105,6 @@ const Gastos: React.FC = () => {
     }
 
     try {
-      const db = await initDB();
       const newGasto: Gasto = {
         contraparte_nombre: formData.proveedor_nombre, // Map proveedor_nombre to contraparte_nombre
         contraparte_nif: formData.proveedor_nif, // Map proveedor_nif to contraparte_nif
@@ -113,7 +121,21 @@ const Gastos: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      await db.add('gastos', newGasto);
+      const box = (AEAT_CLASSIFICATION_MAP as any)[newGasto.categoria_AEAT] || '0106';
+      const catMap: Record<string, string> = { '0105': 'intereses', '0106': 'reparacion', '0109': 'comunidad', '0112': 'gestion', '0113': 'suministro', '0114': 'seguro', '0115': 'ibi', '0117': 'otro' };
+      await gastosInmuebleService.add({
+        inmuebleId: newGasto.destino_id || 0,
+        ejercicio: new Date(newGasto.fecha_emision).getFullYear(),
+        fecha: newGasto.fecha_emision,
+        concepto: newGasto.contraparte_nombre || 'Gasto',
+        categoria: (catMap[box] || 'otro') as any,
+        casillaAEAT: box as any,
+        importe: newGasto.total,
+        origen: 'tesoreria',
+        estado: 'confirmado',
+        proveedorNombre: newGasto.contraparte_nombre,
+        proveedorNIF: newGasto.contraparte_nif,
+      });
       
       // Create toast message following the requirement
       const categoryName = formData.categoria_AEAT.charAt(0).toUpperCase() + formData.categoria_AEAT.slice(1);

@@ -438,13 +438,24 @@ export async function conciliarEjercicioFiscal(
 ): Promise<FiscalConciliationResult> {
   const db = await initDB();
 
-  const [properties, contracts, ingresos, gastos, treasuryEvents] = await Promise.all([
+  const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+  const [properties, contracts, ingresos, allGastosInmueble, treasuryEvents] = await Promise.all([
     db.getAll('properties'),
     db.getAll('contracts'),
     db.getAll('ingresos'),
-    db.getAll('gastos'),
+    gastosInmuebleService.getAll(),
     db.getAll('treasuryEvents'),
   ]);
+  // Map to Gasto-like shape for downstream compatibility
+  const gastos = allGastosInmueble.map((g: any) => ({
+    id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
+    fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+    categoria_AEAT: g.casillaAEAT, destino: g.inmuebleId ? 'inmueble_id' : 'personal',
+    destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente',
+    movement_id: g.movimientoId ? Number(g.movimientoId) : undefined,
+    ejercicioFiscal: g.ejercicio, source_doc_id: g.documentId,
+    createdAt: g.createdAt, updatedAt: g.updatedAt,
+  }));
 
   const activeProperties = (properties as any[]).filter((p: any) => p.state === 'activo');
 

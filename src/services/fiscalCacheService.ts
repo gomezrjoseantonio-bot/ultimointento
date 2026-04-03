@@ -33,7 +33,7 @@ async function calcularHashInputs(ejercicio: number): Promise<string> {
     db.count('autonomos').catch(() => 0),
     db.count('inversiones').catch(() => 0),
     db.count('rentaMensual').catch(() => 0),
-    db.count('gastos').catch(() => 0),
+    db.count('gastosInmueble').catch(() => 0),
   ]);
 
   return `${ejercicio}-${counts.join('-')}`;

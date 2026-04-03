@@ -125,18 +125,28 @@ const mapCapex = (capex: CAPEX): PropertyExpense => ({
 
 const getPropertyExpensesSnapshot = async (propertyId: number): Promise<PropertyExpense[]> => {
   const db = await initDB();
-  const [opexRules, gastos, expenses, capex] = await Promise.all([
+  const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+  const [opexRules, gastosInm, expenses, capex] = await Promise.all([
     db.getAllFromIndex('opexRules', 'propertyId', propertyId),
-    db.getAll('gastos'),
+    gastosInmuebleService.getByInmueble(propertyId),
     db.getAllFromIndex('expenses', 'propertyId', propertyId),
     db.getAll('capex'),
   ]);
 
-  const mappedGastos = gastos.map(mapGasto).filter(Boolean) as PropertyExpense[];
+  // Map gastosInmueble to Gasto-like shape for mapGasto compatibility
+  const gastosMapped = gastosInm.map((g: any) => ({
+    id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
+    fecha_emision: g.fecha, fecha_pago_prevista: g.fecha,
+    categoria_AEAT: g.casillaAEAT,
+    destino: 'inmueble_id' as const, destino_id: g.inmuebleId,
+    estado: (g.estado === 'confirmado' ? 'pagado' : 'pendiente') as any,
+    createdAt: g.createdAt, updatedAt: g.updatedAt,
+  } as Gasto));
+  const mappedGastos = gastosMapped.map(mapGasto).filter(Boolean) as PropertyExpense[];
 
   return [
     ...opexRules.map(mapOpexRule),
-    ...mappedGastos.filter((expense) => expense.propertyId === propertyId),
+    ...mappedGastos,
     ...expenses.map(mapLegacyExpense),
     ...capex.filter((item) => item.inmueble_id === propertyId).map(mapCapex),
   ];

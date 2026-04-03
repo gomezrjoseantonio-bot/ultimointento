@@ -9,6 +9,8 @@
  */
 
 import { initDB, Document, Gasto, AEATFiscalType } from './db';
+import { gastosInmuebleService } from './gastosInmuebleService';
+import { AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
 import { telemetry } from './telemetryService';
 import { isAutoRouteEnabled, isAutoOCREnabled, isBankImportEnabled } from '../config/envFlags';
 import { FLAGS } from '../config/flags';
@@ -161,7 +163,22 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
     updatedAt: new Date().toISOString()
   };
 
-  const gastoId = await db.add('gastos', gasto);
+  const box = (AEAT_CLASSIFICATION_MAP as any)[gasto.categoria_AEAT] || '0106';
+  const gastoId = await gastosInmuebleService.add({
+    inmuebleId: gasto.destino_id || 0,
+    ejercicio: new Date(gasto.fecha_emision).getFullYear(),
+    fecha: gasto.fecha_emision,
+    concepto: gasto.contraparte_nombre || 'Documento ingresado',
+    categoria: ({'0105':'intereses','0106':'reparacion','0109':'comunidad','0112':'gestion','0113':'suministro','0114':'seguro','0115':'ibi','0117':'otro'} as any)[box] || 'otro',
+    casillaAEAT: box,
+    importe: gasto.total,
+    origen: 'tesoreria',
+    origenId: `doc-${gasto.source_doc_id}`,
+    estado: 'confirmado',
+    proveedorNombre: gasto.contraparte_nombre,
+    proveedorNIF: gasto.contraparte_nif,
+    documentId: gasto.source_doc_id,
+  });
 
   // Create treasury forecast if IBAN is present
   let treasuryForecastCreated = false;
@@ -393,7 +410,21 @@ async function processTaxOrOtherDocumentation(document: Document): Promise<Docum
         updatedAt: new Date().toISOString()
       };
 
-      const gastoId = await db.add('gastos', gasto);
+      const box2 = (AEAT_CLASSIFICATION_MAP as any)[gasto.categoria_AEAT] || '0106';
+      const gastoId = await gastosInmuebleService.add({
+        inmuebleId: gasto.destino_id || 0,
+        ejercicio: new Date(gasto.fecha_emision).getFullYear(),
+        fecha: gasto.fecha_emision,
+        concepto: gasto.contraparte_nombre || 'Documentación fiscal',
+        categoria: ({'0105':'intereses','0106':'reparacion','0109':'comunidad','0112':'gestion','0113':'suministro','0114':'seguro','0115':'ibi','0117':'otro'} as any)[box2] || 'otro',
+        casillaAEAT: box2,
+        importe: gasto.total,
+        origen: 'tesoreria',
+        origenId: `doc-${gasto.source_doc_id}`,
+        estado: 'confirmado',
+        proveedorNombre: gasto.contraparte_nombre,
+        documentId: gasto.source_doc_id,
+      });
 
       return {
         success: true,

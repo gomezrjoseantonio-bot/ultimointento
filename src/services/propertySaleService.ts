@@ -578,11 +578,13 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   );
   const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
 
-  const [allOpexRules, allIngresos, allGastos] = await Promise.all([
+  const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+  const [allOpexRules, allIngresos, allGastosRaw] = await Promise.all([
     db.getAll('opexRules').catch(() => []),
     db.getAll('ingresos').catch(() => []),
-    db.getAll('gastos').catch(() => []),
+    gastosInmuebleService.getAll().catch(() => []),
   ]);
+  const allGastos = allGastosRaw.map((g: any) => ({ id: g.id, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', fecha_pago_prevista: g.fecha }));
 
   const activeOpexRulesCount = allOpexRules.filter(
     (rule: any) => rule.propertyId === propertyId && rule.activo !== false
@@ -623,7 +625,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents', 'keyval'], 'readwrite');
+  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -867,14 +869,13 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
 
-  const gastoStore = tx.objectStore('gastos');
-  const allGastos = await gastoStore.getAll();
-  for (const gasto of allGastos as any[]) {
+  const gastoStore = tx.objectStore('gastosInmueble');
+  const allGastosInm = await gastoStore.getAll();
+  for (const gasto of allGastosInm as any[]) {
     if (
-      gasto?.destino !== 'inmueble_id' ||
-      gasto?.destino_id !== input.propertyId ||
-      gasto?.estado === 'pagado' ||
-      gasto?.fecha_pago_prevista < input.saleDate ||
+      gasto?.inmuebleId !== input.propertyId ||
+      gasto?.estado === 'confirmado' ||
+      gasto?.fecha < input.saleDate ||
       typeof gasto.id !== 'number'
     ) {
       continue;
@@ -882,7 +883,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     executionJournal.updatedGastos.push({ id: gasto.id, previous: gasto });
     await gastoStore.put({
       ...gasto,
-      estado: 'incompleto',
+      estado: 'previsto',
       updatedAt: new Date().toISOString(),
     });
   }
@@ -1014,7 +1015,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastos', 'treasuryEvents', 'keyval'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -1117,7 +1118,7 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
 
   if (journal?.updatedGastos?.length) {
     for (const snapshot of journal.updatedGastos) {
-      await tx.objectStore('gastos').put(snapshot.previous as any);
+      await tx.objectStore('gastosInmueble').put(snapshot.previous as any);
     }
   }
 
