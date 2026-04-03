@@ -60,7 +60,7 @@ const PersonalSupervisionPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
-  const [config, setConfig] = useState<PersonalModuleConfig | null>(null);
+  const [, setConfig] = useState<PersonalModuleConfig | null>(null);
   const [datosAnuales, setDatosAnuales] = useState<AñoData[]>([]);
   const [vista, setVista] = useState<Vista>({ tipo: 'anual' });
   const [gastoVidaAnual, setGastoVidaAnual] = useState<number>(0);
@@ -144,14 +144,12 @@ const PersonalSupervisionPage: React.FC = () => {
 
       // Get resumen for current year (monthly data)
       let nominaAnual = 0;
-      let retencionesAnual = 0;
       try {
         const resumenAnual = await personalResumenService.getResumenAnual(
           moduleConfig.personalDataId,
           AÑO_ACTUAL
         );
         nominaAnual = resumenAnual.reduce((s, r) => s + r.ingresos.nomina, 0);
-        retencionesAnual = 0; // Retenciones come from fiscal data, not resumen
       } catch {
         // No resumen data
       }
