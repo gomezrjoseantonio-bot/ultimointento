@@ -53,6 +53,7 @@ export const navigationConfig: NavigationItem[] = [
     subTabs: [
       { name: 'Resumen', href: '/inmuebles/resumen' },
       { name: 'Cartera', href: '/inmuebles/cartera' },
+      { name: 'Supervisión', href: '/inmuebles/supervision' },
       { name: 'Evolución', href: '/inmuebles/evolucion' },
       { name: 'Individual', href: '/inmuebles/individual' },
     ]
