@@ -8,6 +8,7 @@ import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
+import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
@@ -157,6 +158,11 @@ function App() {
       runWhenIdle(() => {
         bankProfilesService.loadProfiles().catch(console.error);
       }, 1800),
+      runWhenIdle(() => {
+        ejecutarMigracionGastos().catch((error) => {
+          console.error('[ATLAS] Error migración gastos:', error);
+        });
+      }, 3000),
     ];
 
     // Performance monitoring setup

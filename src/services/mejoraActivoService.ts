@@ -1,4 +1,5 @@
 import { initDB, MejoraActivo } from './db';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
 
 const sortByDateDesc = (a: MejoraActivo, b: MejoraActivo) => {
   const aDate = a.fecha ?? `${a.ejercicio}-01-01`;
@@ -13,6 +14,19 @@ export async function crearMejora(
   const now = new Date().toISOString();
   const mejora: Omit<MejoraActivo, 'id'> = { ...input, createdAt: now, updatedAt: now };
   const id = await db.add('mejorasActivo', mejora);
+  // Dual write: mejorasInmueble
+  await mejorasInmuebleService.crear({
+    inmuebleId: input.inmuebleId,
+    ejercicio: input.ejercicio,
+    descripcion: input.descripcion || '',
+    tipo: input.tipo || 'mejora',
+    importe: input.importe || 0,
+    fecha: input.fecha || `${input.ejercicio}-12-31`,
+    proveedorNIF: input.proveedorNIF || undefined,
+    proveedorNombre: input.proveedorNombre || undefined,
+    documentId: input.documentId || undefined,
+    movimientoId: input.movementId != null ? String(input.movementId) : undefined,
+  }).catch(() => { /* silent — best effort dual write */ });
   return { ...mejora, id: id as number };
 }
 
@@ -30,6 +44,21 @@ export async function actualizarMejora(
     updatedAt: new Date().toISOString(),
   };
   await db.put('mejorasActivo', mejora);
+  // Dual write: update mirror in mejorasInmueble (best-effort)
+  const mirrored = await mejorasInmuebleService.getPorInmueble(mejora.inmuebleId);
+  const match = mirrored.find(m => m.descripcion === actual.descripcion && m.ejercicio === actual.ejercicio && Math.abs(m.importe - actual.importe) < 0.01);
+  if (match?.id) {
+    await mejorasInmuebleService.actualizar(match.id, {
+      descripcion: mejora.descripcion,
+      tipo: mejora.tipo,
+      importe: mejora.importe,
+      fecha: mejora.fecha || `${mejora.ejercicio}-12-31`,
+      proveedorNIF: mejora.proveedorNIF || undefined,
+      proveedorNombre: mejora.proveedorNombre || undefined,
+      documentId: mejora.documentId || undefined,
+      movimientoId: mejora.movementId != null ? String(mejora.movementId) : undefined,
+    }).catch(() => {});
+  }
   return mejora;
 }
 
@@ -84,5 +113,12 @@ export async function getTotalReparacionesEjercicio(
 
 export async function eliminarMejora(id: number): Promise<void> {
   const db = await initDB();
+  // Best-effort dual delete from mejorasInmueble
+  const actual = await db.get('mejorasActivo', id);
+  if (actual) {
+    const mirrored = await mejorasInmuebleService.getPorInmueble(actual.inmuebleId);
+    const match = mirrored.find(m => m.descripcion === actual.descripcion && m.ejercicio === actual.ejercicio && Math.abs(m.importe - actual.importe) < 0.01);
+    if (match?.id) await mejorasInmuebleService.eliminar(match.id).catch(() => {});
+  }
   await db.delete('mejorasActivo', id);
 }

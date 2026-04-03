@@ -11,7 +11,8 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo, VinculoAccesorio as VinculoAccesorioDB } from './db';
+import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
+import { gastosInmuebleService } from './gastosInmuebleService';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
   InformeDistribucion,
@@ -887,6 +888,36 @@ async function escribirFiscalSummaries(
         updatedAt: ahora,
       };
       await db.add('fiscalSummaries', nuevoSummary);
+    }
+
+    // ── Dual write: gastosInmueble con origen xml_aeat ──
+    const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string; categoria: GastoCategoria }[] = [
+      { campo: 'interesesFinanciacion', casilla: '0105', categoria: 'intereses' },
+      { campo: 'reparacionConservacion', casilla: '0106', categoria: 'reparacion' },
+      { campo: 'comunidad', casilla: '0109', categoria: 'comunidad' },
+      { campo: 'serviciosTerceros', casilla: '0112', categoria: 'gestion' },
+      { campo: 'suministros', casilla: '0113', categoria: 'suministro' },
+      { campo: 'seguros', casilla: '0114', categoria: 'seguro' },
+      { campo: 'ibiTasas', casilla: '0115', categoria: 'ibi' },
+      { campo: 'amortizacionMobiliario', casilla: '0117', categoria: 'otro' },
+    ];
+    for (const { campo, casilla, categoria } of GASTOS_DECL) {
+      const importe = (inm.gastos as any)[campo] || 0;
+      if (importe <= 0) continue;
+      await gastosInmuebleService.add({
+        inmuebleId: property.id,
+        ejercicio: decl.meta.ejercicio,
+        fecha: `${decl.meta.ejercicio}-12-31`,
+        concepto: `Declaración AEAT ${decl.meta.ejercicio}`,
+        categoria,
+        casillaAEAT: casilla as any,
+        importe,
+        origen: 'xml_aeat',
+        origenId: `${property.id}-${decl.meta.ejercicio}-${casilla}`,
+        estado: 'declarado',
+        proveedorNIF: 'AEAT',
+        proveedorNombre: 'Declaración AEAT',
+      });
     }
   }
   invalidateCachedStores(['fiscalSummaries']);

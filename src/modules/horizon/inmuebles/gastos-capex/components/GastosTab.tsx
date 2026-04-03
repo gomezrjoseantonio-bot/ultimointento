@@ -1,9 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
+import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion, type AEATFiscalType, type GastoCategoria } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
+import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
+
+function mapFiscalTypeToCategoria(ft?: AEATFiscalType): GastoCategoria {
+  const map: Partial<Record<AEATFiscalType, GastoCategoria>> = {
+    'financiacion': 'intereses',
+    'reparacion-conservacion': 'reparacion',
+    'comunidad': 'comunidad',
+    'suministros': 'suministro',
+    'seguros': 'seguro',
+    'tributos-locales': 'ibi',
+    'servicios-personales': 'servicio',
+    'amortizacion-muebles': 'otro',
+    'capex-mejora-ampliacion': 'otro',
+  };
+  return (ft && map[ft]) || 'otro';
+}
 
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
@@ -197,6 +213,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     try {
       const db = await initDB();
       await db.delete('expensesH5', expenseId);
+      // Dual delete: remove corresponding gastosInmueble by origenId
+      await gastosInmuebleService.deleteByOrigenId('manual', `expensesH5-${expenseId}`).catch(() => {});
       await loadData();
       toast.success('Gasto eliminado correctamente');
     } catch (error) {
@@ -208,7 +226,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const handleSaveExpense = async (expense: ExpenseH5) => {
     try {
       const db = await initDB();
-      
+
       if (expense.id) {
         // Update existing expense
         await db.put('expensesH5', expense);
@@ -218,7 +236,26 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         await db.add('expensesH5', expense);
         toast.success('Gasto creado correctamente');
       }
-      
+
+      // Dual write: gastosInmueble
+      if (expense.aeatBox && expense.propertyId && expense.amount > 0) {
+        await gastosInmuebleService.add({
+          inmuebleId: expense.propertyId,
+          ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
+          fecha: expense.date,
+          concepto: expense.concept || expense.fiscalType || 'Gasto manual',
+          categoria: mapFiscalTypeToCategoria(expense.fiscalType),
+          casillaAEAT: expense.aeatBox as any,
+          importe: expense.amount,
+          origen: 'manual',
+          origenId: expense.id ? `expensesH5-${expense.id}` : undefined,
+          estado: 'confirmado',
+          proveedorNIF: expense.counterpartyNIF || undefined,
+          proveedorNombre: expense.counterparty || undefined,
+          documentId: expense.documentId || undefined,
+        }).catch(() => { /* silent dual write */ });
+      }
+
       await loadData();
       setShowExpenseModal(false);
     } catch (error) {

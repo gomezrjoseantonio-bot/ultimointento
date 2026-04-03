@@ -1,7 +1,17 @@
-import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type OpexRule } from './db';
+import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type OpexRule, type GastoCategoria } from './db';
 import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
 import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
+import { gastosInmuebleService } from './gastosInmuebleService';
+
+function mapBoxToCategoria(box: string): GastoCategoria {
+  const map: Record<string, GastoCategoria> = {
+    '0105': 'intereses', '0106': 'reparacion', '0109': 'comunidad',
+    '0112': 'gestion', '0113': 'suministro', '0114': 'seguro',
+    '0115': 'ibi', '0117': 'otro',
+  };
+  return map[box] || 'otro';
+}
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
@@ -189,10 +199,12 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
       if (duplicadoPorMes) continue;
 
       const now = new Date().toISOString();
+      const fechaOp = `${ejercicio}-${String(mes).padStart(2, '0')}-${String(rule.diaCobro || 1).padStart(2, '0')}`;
+      const conceptoOp = `${rule.concepto} — ${MESES[mes - 1]}`;
       await db.add('operacionesFiscales', {
         ejercicio,
-        fecha: `${ejercicio}-${String(mes).padStart(2, '0')}-${String(rule.diaCobro || 1).padStart(2, '0')}`,
-        concepto: `${rule.concepto} — ${MESES[mes - 1]}`,
+        fecha: fechaOp,
+        concepto: conceptoOp,
         casillaAEAT,
         categoriaFiscal: mapBoxToFiscalType(casillaAEAT),
         total,
@@ -208,6 +220,21 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
         createdAt: now,
         updatedAt: now,
       } as OperacionFiscal);
+      // Dual write: gastosInmueble
+      await gastosInmuebleService.add({
+        inmuebleId,
+        ejercicio,
+        fecha: fechaOp,
+        concepto: conceptoOp,
+        categoria: mapBoxToCategoria(casillaAEAT),
+        casillaAEAT: casillaAEAT as any,
+        importe: total,
+        origen: 'recurrente',
+        origenId: `recurrente-${rule.id}-${ejercicio}-${mes}`,
+        estado: 'previsto',
+        proveedorNIF: rule.proveedorNIF || undefined,
+        proveedorNombre: rule.proveedorNombre || undefined,
+      });
       creadas += 1;
     }
   }
@@ -308,10 +335,11 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
       if (interesProporcion <= 0) continue;
 
       const now = new Date().toISOString();
+      const conceptoInt = `Intereses ${prestamo.nombre} — ${MESES[mes - 1]}${factor < 1 ? ` (${porcentaje}%)` : ''}`;
       await db.add('operacionesFiscales', {
         ejercicio,
         fecha: periodo.fechaCargo,
-        concepto: `Intereses ${prestamo.nombre} — ${MESES[mes - 1]}${factor < 1 ? ` (${porcentaje}%)` : ''}`,
+        concepto: conceptoInt,
         casillaAEAT: '0105',
         categoriaFiscal: 'financiacion',
         total: interesProporcion,
@@ -326,6 +354,20 @@ export async function generarOperacionesDesdeIntereses(inmuebleId: number, ejerc
         createdAt: now,
         updatedAt: now,
       } as OperacionFiscal);
+      // Dual write: gastosInmueble
+      await gastosInmuebleService.add({
+        inmuebleId,
+        ejercicio,
+        fecha: periodo.fechaCargo,
+        concepto: conceptoInt,
+        categoria: 'intereses',
+        casillaAEAT: '0105',
+        importe: interesProporcion,
+        origen: 'prestamo',
+        origenId: `prestamo-${prestamo.id}-${ejercicio}-${mes}`,
+        estado: 'previsto',
+        proveedorNombre: prestamo.nombre || undefined,
+      });
       creadas += 1;
     }
   }
