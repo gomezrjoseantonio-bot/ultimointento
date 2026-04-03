@@ -163,9 +163,10 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
     updatedAt: new Date().toISOString()
   };
 
+  // Only create GastoInmueble if there's a propertyId
   const box = (AEAT_CLASSIFICATION_MAP as any)[gasto.categoria_AEAT] || '0106';
-  const gastoId = await gastosInmuebleService.add({
-    inmuebleId: gasto.destino_id || 0,
+  const gastoId = !gasto.destino_id ? 0 : await gastosInmuebleService.add({
+    inmuebleId: gasto.destino_id,
     ejercicio: new Date(gasto.fecha_emision).getFullYear(),
     fecha: gasto.fecha_emision,
     concepto: gasto.contraparte_nombre || 'Documento ingresado',

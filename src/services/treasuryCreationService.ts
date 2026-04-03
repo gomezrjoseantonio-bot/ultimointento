@@ -262,9 +262,12 @@ const createGastoFromDocument = async (document: Document): Promise<number> => {
     updatedAt: new Date().toISOString()
   };
 
+  // Only create GastoInmueble if there's a propertyId — personal expenses don't go to this store
+  if (!gasto.destino_id) return 0;
+
   const box = mapFiscalTypeToBox(gasto.categoria_AEAT);
   const gastoId = await gastosInmuebleService.add({
-    inmuebleId: gasto.destino_id || 0,
+    inmuebleId: gasto.destino_id,
     ejercicio: new Date(gasto.fecha_emision).getFullYear(),
     fecha: gasto.fecha_emision,
     concepto: gasto.contraparte_nombre || 'Gasto tesorería',
