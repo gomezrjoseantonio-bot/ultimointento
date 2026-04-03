@@ -312,6 +312,8 @@ function App() {
               <Route index element={<Navigate to="/inmuebles/supervision" replace />} />
               <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
               <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
               <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Cartera />
