@@ -17,11 +17,10 @@ const SUBTABS: SubTabsConfig = {
     { label: 'Ingresos', path: '/personal/ingresos' },
   ],
   inmuebles: [
-    { label: 'Resumen', path: '/inmuebles/resumen' },
+    { label: 'Supervisión', path: '/inmuebles/supervision' },
     { label: 'Cartera', path: '/inmuebles/cartera' },
-    { label: 'Evoluci\u00F3n', path: '/inmuebles/evolucion' },
-    { label: 'Individual', path: '/inmuebles/individual' },
-    { label: 'Supervisi\u00F3n', path: '/inmuebles/supervision' },
+    { label: 'Contratos', path: '/inmuebles/contratos' },
+    { label: 'Gastos/CAPEX', path: '/inmuebles/gastos-capex' },
   ],
   inversiones: [
     { label: 'Resumen', path: '/inversiones/resumen' },

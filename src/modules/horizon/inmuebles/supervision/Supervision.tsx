@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Building2 } from 'lucide-react';
 import PageHeader from '../../../../components/shared/PageHeader';
 import { useSupervisionData } from './hooks/useSupervisionData';
@@ -7,83 +6,34 @@ import PatrimonioTab from './tabs/PatrimonioTab';
 import RendimientoTab from './tabs/RendimientoTab';
 import InmuebleTab from './tabs/InmuebleTab';
 
-// Navigation-level tabs shared with InmueblesAnalisis
-const NAV_TABS = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'evolucion', label: 'Evoluci\u00F3n' },
-  { id: 'individual', label: 'Individual' },
-  { id: 'supervision', label: 'Supervisi\u00F3n' },
-];
-
-// Internal sub-tabs within Supervisión
 type SubTabKey = 'patrimonio' | 'rendimiento' | 'inmueble';
 
-const SUB_TABS: { key: SubTabKey; label: string }[] = [
-  { key: 'patrimonio', label: 'Patrimonio' },
-  { key: 'rendimiento', label: 'Rendimiento' },
-  { key: 'inmueble', label: 'Inmueble' },
+const SUB_TABS: { id: SubTabKey; label: string }[] = [
+  { id: 'patrimonio', label: 'Patrimonio' },
+  { id: 'rendimiento', label: 'Rendimiento' },
+  { id: 'inmueble', label: 'Inmueble' },
 ];
 
 const Supervision: React.FC = () => {
-  const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState<SubTabKey>('patrimonio');
   const { inmuebles, totales, loading, error } = useSupervisionData();
-
-  const handleNavTabChange = (tabId: string) => {
-    if (tabId === 'supervision') return; // Already here
-    // Navigate back to InmueblesAnalisis with the selected tab
-    navigate(`/inmuebles?tab=${tabId}`);
-  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--grey-50)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       <div style={{ padding: 24 }}>
-        {/* Shared PageHeader with navigation tabs */}
+        {/* Header */}
         <PageHeader
           icon={Building2}
           title="Cartera inmobiliaria"
           subtitle={
             loading
               ? 'Cargando...'
-              : `${totales.numInmuebles} inmueble${totales.numInmuebles !== 1 ? 's' : ''} \u00B7 supervisi\u00F3n`
+              : `${totales.numInmuebles} inmueble${totales.numInmuebles !== 1 ? 's' : ''} · supervisión`
           }
-          tabs={NAV_TABS}
-          activeTab="supervision"
-          onTabChange={handleNavTabChange}
+          tabs={SUB_TABS.map((t) => ({ id: t.id, label: t.label }))}
+          activeTab={activeSubTab}
+          onTabChange={(id) => setActiveSubTab(id as SubTabKey)}
         />
-
-        {/* Internal sub-tabs: Patrimonio / Rendimiento / Inmueble */}
-        <div style={{
-          display: 'flex',
-          gap: 4,
-          marginBottom: 24,
-          paddingLeft: 30,
-        }}>
-          {SUB_TABS.map((tab) => {
-            const isActive = activeSubTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setActiveSubTab(tab.key)}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: 'var(--r-md)',
-                  border: '1px solid',
-                  borderColor: isActive ? 'var(--navy-900)' : 'var(--grey-300)',
-                  background: isActive ? 'var(--navy-900)' : 'var(--white)',
-                  color: isActive ? 'var(--white)' : 'var(--grey-700)',
-                  fontSize: 'var(--t-sm)',
-                  fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease',
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
 
         {/* Content */}
         {loading ? (

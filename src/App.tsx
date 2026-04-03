@@ -71,7 +71,7 @@ const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/su
 // Inversiones Module
 const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
-const InmueblesAnalisis = lazyWithPreload(() => import('./pages/inmuebles/InmueblesAnalisis'));
+
 const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/InversionesAnalisis'));
 
 // Financing Module - New standalone financing module
@@ -309,11 +309,11 @@ function App() {
             
             {/* Horizon (Investment) Routes */}
             <Route path="inmuebles">
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InmueblesAnalisis />
-                </React.Suspense>
-              } />
+              <Route index element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
+              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
               <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Cartera />

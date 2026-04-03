@@ -15,7 +15,7 @@ import type { InmuebleSupervision } from '../hooks/useSupervisionData';
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
 interface Chart360Props {
   inmueble: InmuebleSupervision;
@@ -146,7 +146,7 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
         y: {
           stacked: true,
           position: 'left' as const,
-          title: { display: true, text: 'Cashflow \u20AC', font: { size: 11 }, color: 'var(--grey-500)' },
+          title: { display: true, text: 'Cashflow €', font: { size: 11 }, color: 'var(--grey-500)' },
           grid: { color: 'var(--grey-100)' },
           ticks: {
             font: { family: 'var(--font-mono)', size: 10 },
@@ -156,7 +156,7 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
         },
         y2: {
           position: 'right' as const,
-          title: { display: true, text: 'Valor \u20AC', font: { size: 11 }, color: 'var(--grey-500)' },
+          title: { display: true, text: 'Valor €', font: { size: 11 }, color: 'var(--grey-500)' },
           grid: { drawOnChartArea: false },
           ticks: {
             font: { family: 'var(--font-mono)', size: 10 },

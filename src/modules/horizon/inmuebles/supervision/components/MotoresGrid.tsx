@@ -3,7 +3,7 @@ import { TrendingUp, Banknote, Target } from 'lucide-react';
 import type { InmuebleSupervision } from '../hooks/useSupervisionData';
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 const fmtPct = (n: number): string =>
   (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
 const fmtX = (n: number): string => n.toFixed(2) + 'x';
@@ -48,12 +48,12 @@ const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas
   const motors = [
     {
       icon: TrendingUp,
-      title: 'Revalorizaci\u00F3n',
+      title: 'Revalorización',
       rows: [
-        { label: 'Coste de adquisici\u00F3n', value: fmt(inmueble.costeAdquisicion) },
+        { label: 'Coste de adquisición', value: fmt(inmueble.costeAdquisicion) },
         { label: 'Valor actual', value: fmt(inmueble.valorActual) },
-        { label: 'Plusval\u00EDa latente', value: fmt(inmueble.plusvaliaLatente), highlight: true },
-        { label: `Proyecci\u00F3n ${horizonte}a`, value: fmt(valorProy) },
+        { label: 'Plusvalía latente', value: fmt(inmueble.plusvaliaLatente), highlight: true },
+        { label: `Proyección ${horizonte}a`, value: fmt(valorProy) },
         { label: `Plusv. proyectada ${horizonte}a`, value: fmt(plusvaliaProyectada) },
       ],
     },
@@ -72,10 +72,10 @@ const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas
       icon: Target,
       title: `Resultado total ${horizonte}a`,
       rows: [
-        { label: 'Inversi\u00F3n total', value: fmt(inmueble.inversionTotal) },
+        { label: 'Inversión total', value: fmt(inmueble.inversionTotal) },
         { label: `Valor proy. + CF`, value: fmt(valorProy + inmueble.cashflowAcumulado + cfProy) },
         { label: 'Ganancia estimada', value: fmt(gananciaEst), highlight: true },
-        { label: 'M\u00FAltiplo proyectado', value: fmtX(multiploProyectado) },
+        { label: 'Múltiplo proyectado', value: fmtX(multiploProyectado) },
       ],
     },
   ];
