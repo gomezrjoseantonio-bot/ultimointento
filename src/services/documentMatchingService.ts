@@ -181,6 +181,62 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
     });
   }
 
+  // --- Also read from unified stores (mejorasInmueble / mueblesInmueble) ---
+  const buildKey = (tipo: string, inmId: number, ej: number, desc: string, imp: number) =>
+    `${tipo}-${inmId}-${ej}-${(desc || '').trim()}-${imp}`;
+  const existingKeys = new Set(candidates.map(c => buildKey(c.tipo, c.inmuebleId, c.ejercicio, c.descripcion || '', c.importe)));
+
+  try {
+    const dbUnif = await initDB();
+    const allMejorasUnif = await dbUnif.getAll('mejorasInmueble').catch(() => [] as any[]);
+    for (const m of allMejorasUnif) {
+      const key = buildKey('mejoraActivo', m.inmuebleId, m.ejercicio, m.descripcion || '', m.importe);
+      if (existingKeys.has(key)) continue;
+      const score = scoreRecord(m.proveedorNIF || '', m.inmuebleId, m.ejercicio);
+      if (score < 2) continue;
+      existingKeys.add(key);
+      candidates.push({
+        id: m.id!,
+        tipo: 'mejoraActivo',
+        inmuebleId: m.inmuebleId,
+        inmuebleAlias: aliasMap.get(m.inmuebleId) || `Inmueble #${m.inmuebleId}`,
+        ejercicio: m.ejercicio,
+        importe: m.importe,
+        tipoGasto: m.tipo,
+        descripcion: m.descripcion,
+        proveedorNIF: m.proveedorNIF,
+        proveedorNombre: m.proveedorNombre,
+        alreadyLinked: m.documentId != null && m.documentId > 0,
+        score,
+      });
+    }
+
+    const allMueblesUnif = await dbUnif.getAll('mueblesInmueble').catch(() => [] as any[]);
+    for (const mb of allMueblesUnif) {
+      const key = buildKey('mobiliarioActivo', mb.inmuebleId, mb.ejercicio, mb.descripcion || '', mb.importe);
+      if (existingKeys.has(key)) continue;
+      const score = scoreRecord(mb.proveedorNIF || '', mb.inmuebleId, mb.ejercicio);
+      if (score < 2) continue;
+      existingKeys.add(key);
+      candidates.push({
+        id: mb.id!,
+        tipo: 'mobiliarioActivo',
+        inmuebleId: mb.inmuebleId,
+        inmuebleAlias: aliasMap.get(mb.inmuebleId) || `Inmueble #${mb.inmuebleId}`,
+        ejercicio: mb.ejercicio,
+        importe: mb.importe,
+        tipoGasto: 'mobiliario',
+        descripcion: mb.descripcion,
+        proveedorNIF: mb.proveedorNIF,
+        proveedorNombre: mb.proveedorNombre,
+        alreadyLinked: mb.documentId != null && mb.documentId > 0,
+        score,
+      });
+    }
+  } catch {
+    // Unified stores may not exist yet — ignore
+  }
+
   // Sort by score desc (unlinked first within same score)
   candidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;

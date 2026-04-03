@@ -1,6 +1,7 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
 
 export interface UnifiedPropertyFiscalData {
   acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
@@ -167,7 +168,6 @@ export const calculateAEATAmortization = async (
 
   // Add historical improvements with new-store fallback
   let historicalImprovements = 0;
-  let allImprovements: PropertyImprovement[] = [];
 
   try {
     const mejorasNuevo = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', propertyId) as any[];
@@ -176,29 +176,16 @@ export const calculateAEATAmortization = async (
     historicalImprovements = mejorasCapitalizables
       .filter((mejora: any) => toNumber(mejora?.ejercicio) <= exerciseYear)
       .reduce((total: number, mejora: any) => total + toNumber(mejora?.importe), 0);
-
-    allImprovements = mejorasCapitalizables
-      .map((mejora: any) => ({
-        propertyId,
-        year: toNumber(mejora?.ejercicio),
-        amount: toNumber(mejora?.importe),
-        date: mejora?.fecha,
-        daysInYear: toNumber(mejora?.diasEnEjercicio) || undefined,
-        counterpartyNIF: mejora?.proveedorNIF,
-        description: mejora?.descripcion ?? 'Mejora',
-        createdAt: mejora?.createdAt ?? '',
-        updatedAt: mejora?.updatedAt ?? '',
-      }))
-      .filter((mejora) => mejora.year > 0 && mejora.amount > 0);
   } catch {
+    // Fallback: read from mejorasInmueble (unified store)
     try {
-      allImprovements = await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId);
-      historicalImprovements = allImprovements
-        .filter(imp => imp.year <= exerciseYear)
-        .reduce((total, imp) => total + imp.amount, 0);
+      const mejorasUnificadas = await mejorasInmuebleService.getPorInmueble(propertyId);
+      const capitalizables = mejorasUnificadas.filter(m => m.tipo !== 'reparacion');
+      historicalImprovements = capitalizables
+        .filter(m => m.ejercicio <= exerciseYear)
+        .reduce((total, m) => total + m.importe, 0);
     } catch {
       historicalImprovements = 0;
-      allImprovements = [];
     }
   }
 

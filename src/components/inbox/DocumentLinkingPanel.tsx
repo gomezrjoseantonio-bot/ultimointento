@@ -10,6 +10,8 @@ import React, { useState, useEffect } from 'react';
 import { Link2, Building, CheckCircle, XCircle, Search, ChevronDown } from 'lucide-react';
 import { confirmLink, rematchPendingDocuments, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
+import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
+import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
 
 type MatchCandidate = CandidatoMatch;
 
@@ -102,6 +104,17 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
           updatedAt: now,
         });
         void id;
+        // Dual write: mueblesInmueble
+        await mueblesInmuebleService.crear({
+          inmuebleId: manualInmuebleId as number,
+          ejercicio: manualEjercicio,
+          descripcion: 'Asignado desde factura',
+          fechaAlta: `${manualEjercicio}-01-01`,
+          importe: 0,
+          vidaUtil: 10,
+          activo: true,
+          documentId,
+        }).catch(() => {});
       } else {
         const id = await db.add('mejorasActivo', {
           inmuebleId: manualInmuebleId as number,
@@ -115,6 +128,16 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
           updatedAt: now,
         });
         void id;
+        // Dual write: mejorasInmueble
+        await mejorasInmuebleService.crear({
+          inmuebleId: manualInmuebleId as number,
+          ejercicio: manualEjercicio,
+          descripcion: 'Asignado desde factura',
+          tipo: manualTipo as 'mejora' | 'ampliacion' | 'reparacion',
+          importe: 0,
+          fecha: `${manualEjercicio}-01-01`,
+          documentId,
+        }).catch(() => {});
       }
 
       // Mark document as assigned

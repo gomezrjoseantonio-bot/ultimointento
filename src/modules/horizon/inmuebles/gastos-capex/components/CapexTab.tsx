@@ -1,19 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { PlusIcon, CogIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { PlusIcon, PencilIcon, TrashIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Reform, initDB, Property } from '../../../../../services/db';
+import { initDB, Property, type MejoraInmueble } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
-import ReformFormModal from './ReformFormModal';
+import { mejorasInmuebleService } from '../../../../../services/mejorasInmuebleService';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
 
 const CapexTab: React.FC = () => {
   const navigate = useNavigate();
-  const [reforms, setReforms] = useState<Reform[]>([]);
+  const [mejoras, setMejoras] = useState<MejoraInmueble[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showReformModal, setShowReformModal] = useState(false);
-  const [editingReform, setEditingReform] = useState<Reform | undefined>(undefined);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<MejoraInmueble | undefined>(undefined);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    inmuebleId: 0,
+    ejercicio: new Date().getFullYear(),
+    descripcion: '',
+    tipo: 'mejora' as 'mejora' | 'ampliacion' | 'reparacion',
+    importe: 0,
+    fecha: new Date().toISOString().split('T')[0],
+    proveedorNIF: '',
+    proveedorNombre: '',
+  });
 
   useEffect(() => {
     loadData();
@@ -23,17 +35,18 @@ const CapexTab: React.FC = () => {
     try {
       setLoading(true);
       const db = await initDB();
-      
-      const [reformsData, propertiesData] = await Promise.all([
-        db.getAll('reforms'),
-        db.getAll('properties')
+      const [propertiesData, allMejorasRaw] = await Promise.all([
+        db.getAll('properties'),
+        db.getAll('mejorasInmueble') as Promise<MejoraInmueble[]>,
       ]);
-
-      setReforms(reformsData);
       setProperties(propertiesData);
+
+      // Filter to CAPEX only (mejora/ampliacion)
+      const allMejoras = allMejorasRaw.filter(x => x.tipo === 'mejora' || x.tipo === 'ampliacion');
+      setMejoras(allMejoras);
     } catch (error) {
-      console.error('Error loading reforms:', error);
-      toast.error('Error al cargar las reformas');
+      console.error('Error loading CAPEX data:', error);
+      toast.error('Error al cargar las mejoras');
     } finally {
       setLoading(false);
     }
@@ -41,150 +54,103 @@ const CapexTab: React.FC = () => {
 
   const getPropertyName = (propertyId: number): string => {
     const property = properties.find(p => p.id === propertyId);
-    return property?.alias || 'Inmueble no encontrado';
+    return property?.alias || `Inmueble #${propertyId}`;
   };
 
-  const handleAddReform = () => {
-    // Check if there are properties available
+  const resetForm = (mejora?: MejoraInmueble) => {
+    if (mejora) {
+      setFormData({
+        inmuebleId: mejora.inmuebleId,
+        ejercicio: mejora.ejercicio,
+        descripcion: mejora.descripcion,
+        tipo: mejora.tipo,
+        importe: mejora.importe,
+        fecha: mejora.fecha,
+        proveedorNIF: mejora.proveedorNIF || '',
+        proveedorNombre: mejora.proveedorNombre || '',
+      });
+    } else {
+      setFormData({
+        inmuebleId: properties[0]?.id || 0,
+        ejercicio: new Date().getFullYear(),
+        descripcion: '',
+        tipo: 'mejora',
+        importe: 0,
+        fecha: new Date().toISOString().split('T')[0],
+        proveedorNIF: '',
+        proveedorNombre: '',
+      });
+    }
+  };
+
+  const handleAdd = () => {
     if (properties.length === 0) {
-      toast.error('Primero debes crear un inmueble antes de añadir reformas');
+      toast.error('Primero debes crear un inmueble antes de añadir mejoras');
       return;
     }
-    
-    setEditingReform(undefined);
-    setShowReformModal(true);
+    setEditing(undefined);
+    resetForm();
+    setShowForm(true);
   };
 
-  const handleEditReform = async (reform: Reform) => {
-    setEditingReform(reform);
-    setShowReformModal(true);
+  const handleEdit = (mejora: MejoraInmueble) => {
+    setEditing(mejora);
+    resetForm(mejora);
+    setShowForm(true);
   };
 
-  const handleDeleteReform = async (reformId: number) => {
-    const confirmed = await confirmDelete('Estás seguro de que deseas eliminar esta reforma');
-    if (!confirmed) {
-      return;
-    }
+  const handleDelete = async (id: number) => {
+    const confirmed = await confirmDelete('¿Estás seguro de que deseas eliminar esta mejora?');
+    if (!confirmed) return;
 
     try {
-      const db = await initDB();
-      
-      // Delete reform line items first
-      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reformId);
-      for (const item of lineItems) {
-        await db.delete('reformLineItems', item.id!);
-      }
-      
-      // Delete reform
-      await db.delete('reforms', reformId);
+      await mejorasInmuebleService.eliminar(id);
       await loadData();
-      toast.success('Reforma eliminada correctamente');
+      toast.success('Mejora eliminada correctamente');
     } catch (error) {
-      console.error('Error deleting reform:', error);
-      toast.error('Error al eliminar la reforma');
+      console.error('Error deleting mejora:', error);
+      toast.error('Error al eliminar la mejora');
     }
   };
 
-  const handleSaveReform = async (reform: Reform) => {
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.descripcion || !formData.inmuebleId || formData.importe <= 0) {
+      toast.error('Completa descripción, inmueble e importe');
+      return;
+    }
+
     try {
-      const db = await initDB();
-      
-      if (reform.id) {
-        // Update existing reform
-        await db.put('reforms', reform);
-        toast.success('Reforma actualizada correctamente');
+      if (editing?.id) {
+        await mejorasInmuebleService.actualizar(editing.id, {
+          inmuebleId: formData.inmuebleId,
+          ejercicio: formData.ejercicio,
+          descripcion: formData.descripcion,
+          tipo: formData.tipo,
+          importe: formData.importe,
+          fecha: formData.fecha,
+          proveedorNIF: formData.proveedorNIF || undefined,
+          proveedorNombre: formData.proveedorNombre || undefined,
+        });
+        toast.success('Mejora actualizada correctamente');
       } else {
-        // Create new reform
-        await db.add('reforms', reform);
-        toast.success('Reforma creada correctamente');
+        await mejorasInmuebleService.crear({
+          inmuebleId: formData.inmuebleId,
+          ejercicio: formData.ejercicio,
+          descripcion: formData.descripcion,
+          tipo: formData.tipo,
+          importe: formData.importe,
+          fecha: formData.fecha,
+          proveedorNIF: formData.proveedorNIF || undefined,
+          proveedorNombre: formData.proveedorNombre || undefined,
+        });
+        toast.success('Mejora creada correctamente');
       }
-      
+      setShowForm(false);
       await loadData();
-      setShowReformModal(false);
     } catch (error) {
-      console.error('Error saving reform:', error);
-      toast.error('Error al guardar la reforma');
-    }
-  };
-
-  // Mock function to calculate reform totals
-  const calculateReformTotals = async (reformId: number) => {
-    try {
-      const db = await initDB();
-      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reformId);
-      
-      const totals = lineItems.reduce((acc, item) => {
-        switch (item.treatment) {
-          case 'capex-mejora':
-            acc.capexMejora += item.amount;
-            break;
-          case 'mobiliario-10-años':
-            acc.mobiliario += item.amount;
-            break;
-          case 'reparacion-conservacion':
-            acc.reparacion += item.amount;
-            break;
-        }
-        acc.total += item.amount;
-        return acc;
-      }, {
-        capexMejora: 0,
-        mobiliario: 0,
-        reparacion: 0,
-        total: 0,
-        partidas: lineItems.length
-      });
-
-      return totals;
-    } catch (error) {
-      console.error('Error calculating reform totals:', error);
-      return {
-        capexMejora: 0,
-        mobiliario: 0,
-        reparacion: 0,
-        total: 0,
-        partidas: 0
-      };
-    }
-  };
-
-  const handleCloseReform = async (reformId: number) => {
-    try {
-      const db = await initDB();
-      const reform = await db.get('reforms', reformId);
-      
-      if (!reform) {
-        toast.error('Reforma no encontrada');
-        return;
-      }
-
-      // Update reform status
-      await db.put('reforms', {
-        ...reform,
-        status: 'cerrada',
-        endDate: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString()
-      });
-
-      // Calculate totals and update property CAPEX
-      const totals = await calculateReformTotals(reformId);
-      const capexIncrease = totals.capexMejora + totals.mobiliario;
-
-      if (capexIncrease > 0) {
-        const property = await db.get('properties', reform.propertyId);
-        if (property) {
-          // Note: This would need to be implemented in the property interface
-          // For now, we'll just show a toast
-          toast.success(`Reforma cerrada. CAPEX actualizado: ${formatEuro(capexIncrease)}`);
-        }
-      }
-
-      // Reload data
-      await loadData();
-      toast.success('Reforma cerrada correctamente');
-    } catch (error) {
-      console.error('Error closing reform:', error);
-      toast.error('Error al cerrar la reforma');
+      console.error('Error saving mejora:', error);
+      toast.error('Error al guardar la mejora');
     }
   };
 
@@ -196,7 +162,6 @@ const CapexTab: React.FC = () => {
     );
   }
 
-  // Show message when no properties exist
   if (properties.length === 0) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
@@ -207,12 +172,8 @@ const CapexTab: React.FC = () => {
             </svg>
           </div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900">
-              No tienes inmuebles registrados
-            </h3>
-            <p className="text-gray-600 mt-1">
-              Para gestionar reformas (CAPEX), primero necesitas registrar al menos un inmueble.
-            </p>
+            <h3 className="text-lg font-medium text-gray-900">No tienes inmuebles registrados</h3>
+            <p className="text-gray-600 mt-1">Para gestionar mejoras (CAPEX), primero necesitas registrar al menos un inmueble.</p>
           </div>
           <button
             onClick={() => navigate('/inmuebles/cartera')}
@@ -228,37 +189,79 @@ const CapexTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Reformas (CAPEX)</h2>
-          <p className="text-sm text-gray-600">
-            Agrupa mejoras/ampliaciones y mobiliario (no gasto del año)
-          </p>
+          <h2 className="text-lg font-semibold text-gray-900">Mejoras y ampliaciones (CAPEX)</h2>
+          <p className="text-sm text-gray-600">Inversiones que incrementan el valor del inmueble</p>
         </div>
         <button
-          onClick={handleAddReform}
+          onClick={handleAdd}
           className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Nueva reforma
+          Nueva mejora
         </button>
       </div>
 
-      {/* Reforms List */}
+      {/* Inline Form */}
+      {showForm && (
+        <form onSubmit={handleSave} className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+          <h3 className="text-md font-medium text-gray-900">{editing ? 'Editar mejora' : 'Nueva mejora'}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Inmueble *</label>
+              <select value={formData.inmuebleId} onChange={e => setFormData(f => ({ ...f, inmuebleId: Number(e.target.value) }))} className="w-full border rounded-md px-3 py-2 text-sm">
+                {properties.map(p => <option key={p.id} value={p.id}>{p.alias || `Inmueble #${p.id}`}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
+              <select value={formData.tipo} onChange={e => setFormData(f => ({ ...f, tipo: e.target.value as any }))} className="w-full border rounded-md px-3 py-2 text-sm">
+                <option value="mejora">Mejora</option>
+                <option value="ampliacion">Ampliación</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ejercicio *</label>
+              <input type="number" value={formData.ejercicio} onChange={e => setFormData(f => ({ ...f, ejercicio: Number(e.target.value) }))} className="w-full border rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descripción *</label>
+              <input type="text" value={formData.descripcion} onChange={e => setFormData(f => ({ ...f, descripcion: e.target.value }))} className="w-full border rounded-md px-3 py-2 text-sm" placeholder="Ej: Reforma cocina" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Importe (€) *</label>
+              <input type="number" step="0.01" value={formData.importe} onChange={e => setFormData(f => ({ ...f, importe: Number(e.target.value) }))} className="w-full border rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+              <input type="date" value={formData.fecha} onChange={e => setFormData(f => ({ ...f, fecha: e.target.value }))} className="w-full border rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">NIF proveedor</label>
+              <input type="text" value={formData.proveedorNIF} onChange={e => setFormData(f => ({ ...f, proveedorNIF: e.target.value }))} className="w-full border rounded-md px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre proveedor</label>
+              <input type="text" value={formData.proveedorNombre} onChange={e => setFormData(f => ({ ...f, proveedorNombre: e.target.value }))} className="w-full border rounded-md px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded-md text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
+            <button type="submit" className="px-4 py-2 bg-brand-navy text-white rounded-md text-sm hover:bg-navy-800">Guardar</button>
+          </div>
+        </form>
+      )}
+
+      {/* Table */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        {reforms.length === 0 ? (
+        {mejoras.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-lg mb-2">No hay reformas registradas</div>
-            <p className="text-gray-500 mb-4">
-              Comienza creando tu primera reforma para agrupar mejoras y ampliaciones.
-            </p>
-            <button 
-              onClick={handleAddReform}
-              className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors"
-            >
+            <div className="text-gray-400 text-lg mb-2">No hay mejoras registradas</div>
+            <p className="text-gray-500 mb-4">Comienza registrando tu primera mejora o ampliación.</p>
+            <button onClick={handleAdd} className="inline-flex items-center px-4 py-2 bg-brand-navy text-white rounded-lg hover:bg-navy-800 transition-colors">
               <PlusIcon className="h-5 w-5 mr-2" />
-              Crear primera reforma
+              Crear primera mejora
             </button>
           </div>
         ) : (
@@ -266,200 +269,48 @@ const CapexTab: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Título</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Inmueble</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe total</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Partidas</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ejercicio</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Importe</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {reforms.map((reform) => (
-                  <ReformRow
-                    key={reform.id}
-                    reform={reform}
-                    propertyName={getPropertyName(reform.propertyId)}
-                    onClose={() => handleCloseReform(reform.id!)}
-                    onEdit={() => handleEditReform(reform)}
-                    onDelete={() => handleDeleteReform(reform.id!)}
-                  />
+                {mejoras.map((m) => (
+                  <tr key={m.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{m.descripcion}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getPropertyName(m.inmuebleId)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        m.tipo === 'mejora' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {m.tipo === 'mejora' ? 'Mejora' : 'Ampliación'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{m.ejercicio}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(m.fecha)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">{formatEuro(m.importe)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button onClick={() => handleEdit(m)} className="text-brand-navy hover:text-navy-800 p-1" title="Editar">
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDelete(m.id!)} className="text-error-600 hover:text-error-800 p-1" title="Eliminar">
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-
-      {/* Reform Form Modal */}
-      <ReformFormModal
-        isOpen={showReformModal}
-        onClose={() => setShowReformModal(false)}
-        onSave={handleSaveReform}
-        reform={editingReform}
-        properties={properties}
-      />
     </div>
-  );
-};
-
-// Individual Reform Row Component
-interface ReformRowProps {
-  reform: Reform;
-  propertyName: string;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-
-const ReformRow: React.FC<ReformRowProps> = ({ reform, propertyName, onClose, onEdit, onDelete }) => {
-  const [totals, setTotals] = useState({
-    capexMejora: 0,
-    mobiliario: 0,
-    reparacion: 0,
-    total: 0,
-    partidas: 0
-  });
-
-  const calculateTotals = useCallback(async () => {
-    try {
-      const db = await initDB();
-      const lineItems = await db.getAllFromIndex('reformLineItems', 'reformId', reform.id!);
-      
-      const calculated = lineItems.reduce((acc, item) => {
-        switch (item.treatment) {
-          case 'capex-mejora':
-            acc.capexMejora += item.amount;
-            break;
-          case 'mobiliario-10-años':
-            acc.mobiliario += item.amount;
-            break;
-          case 'reparacion-conservacion':
-            acc.reparacion += item.amount;
-            break;
-        }
-        acc.total += item.amount;
-        return acc;
-      }, {
-        capexMejora: 0,
-        mobiliario: 0,
-        reparacion: 0,
-        total: 0,
-        partidas: lineItems.length
-      });
-
-      setTotals(calculated);
-    } catch (error) {
-      console.error('Error calculating totals:', error);
-    }
-  }, [reform.id]);
-
-  useEffect(() => {
-    if (reform.id) {
-      calculateTotals();
-    }
-  }, [reform.id, calculateTotals]);
-
-  const getPeriodText = () => {
-    const start = formatDate(reform.startDate);
-    const end = reform.endDate ? formatDate(reform.endDate) : 'En curso';
-    return `${start} - ${end}`;
-  };
-
-  const getStatusIcon = () => {
-    return reform.status === 'cerrada' ? (
-      <CheckCircleIcon className="h-5 w-5 text-success-500" />
-    ) : (
-      <CogIcon className="h-5 w-5 text-orange-500" />
-    );
-  };
-
-  const getStatusBadge = () => {
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-        reform.status === 'cerrada' 
-          ? 'bg-success-100 text-success-800' 
-          : 'bg-warning-100 text-orange-800'
-      }`}>
-        {reform.status === 'cerrada' ? 'Cerrada' : 'Abierta'}
-      </span>
-    );
-  };
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        <div className="flex items-center">
-          {getStatusIcon()}
-          <div className="ml-3">
-            <div className="font-medium">{reform.title}</div>
-            {reform.notes && (
-              <div className="text-gray-500 text-xs truncate max-w-xs">{reform.notes}</div>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {propertyName}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {getPeriodText()}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-mono">
-        <div>
-          <div className="font-medium">{formatEuro(totals.total)}</div>
-          {totals.total > 0 && (
-            <div className="text-xs text-gray-500">
-              M: {formatEuro(totals.capexMejora)} | 
-              Mob: {formatEuro(totals.mobiliario)} | 
-              R&C: {formatEuro(totals.reparacion)}
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-        <span className="font-medium">{totals.partidas}</span>
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm">
-        {getStatusBadge()}
-      </td>
-      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        <div className="flex items-center justify-end space-x-2">
-          <button
-            className="text-brand-navy hover:text-navy-800 p-1"
-            title="Ver detalles"
-          >
-            <EyeIcon className="h-4 w-4" />
-          </button>
-          {reform.status === 'abierta' && (
-            <>
-              <button
-                onClick={onEdit}
-                className="text-brand-navy hover:text-navy-800 p-1"
-                title="Editar"
-              >
-                <PencilIcon className="h-4 w-4" />
-              </button>
-              <button
-                onClick={onClose}
-                className="text-success-600 hover:text-success-800 p-1"
-                title="Cerrar reforma"
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-              </button>
-            </>
-          )}
-          <button
-            onClick={onDelete}
-            className="text-error-600 hover:text-error-800 p-1"
-            title="Eliminar"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
-        </div>
-      </td>
-    </tr>
   );
 };
 

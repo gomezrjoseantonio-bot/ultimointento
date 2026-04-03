@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, ScanLine, Link2, Building, CheckCircle, X } from 'lucide-react';
 import { confirmLink, CandidatoMatch } from '../../services/documentMatchingService';
 import { initDB, Property } from '../../services/db';
+import { mejorasInmuebleService } from '../../services/mejorasInmuebleService';
+import { mueblesInmuebleService } from '../../services/mueblesInmuebleService';
 import toast from 'react-hot-toast';
 
 interface InboxV3ExtractedPanelProps {
@@ -171,6 +173,17 @@ const ManualAssignmentForm: React.FC<{
           createdAt: now,
           updatedAt: now,
         });
+        // Dual write: mueblesInmueble
+        await mueblesInmuebleService.crear({
+          inmuebleId: inmuebleId as number,
+          ejercicio,
+          descripcion: 'Asignado desde factura',
+          fechaAlta: `${ejercicio}-01-01`,
+          importe: 0,
+          vidaUtil: 10,
+          activo: true,
+          documentId,
+        }).catch(() => {});
       } else {
         await db.add('mejorasActivo', {
           inmuebleId: inmuebleId as number,
@@ -183,6 +196,16 @@ const ManualAssignmentForm: React.FC<{
           createdAt: now,
           updatedAt: now,
         });
+        // Dual write: mejorasInmueble
+        await mejorasInmuebleService.crear({
+          inmuebleId: inmuebleId as number,
+          ejercicio,
+          descripcion: 'Asignado desde factura',
+          tipo: tipo as 'mejora' | 'ampliacion' | 'reparacion',
+          importe: 0,
+          fecha: `${ejercicio}-01-01`,
+          documentId,
+        }).catch(() => {});
       }
 
       // Mark document as Asignado
