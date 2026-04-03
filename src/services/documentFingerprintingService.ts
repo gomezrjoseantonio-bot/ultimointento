@@ -158,12 +158,9 @@ export async function findExistingDocumentByFingerprint(
   db: any // IDBPDatabase
 ): Promise<any | null> {
   try {
-    // Search in expensesH5 table for existing document with same fingerprint
-    const tx = db.transaction(['expensesH5'], 'readonly');
-    const store = tx.objectStore('expensesH5');
-    const expenses = await store.getAll();
-    
-    return expenses.find((expense: any) => expense.doc_fingerprint === fingerprint) || null;
+    // Search in gastosInmueble for existing document with same fingerprint
+    const gastos = await db.getAll('gastosInmueble');
+    return gastos.find((g: any) => g.origenId === fingerprint || g.concepto?.includes(fingerprint)) || null;
   } catch (error) {
     console.error('Error finding existing document by fingerprint:', error);
     return null;

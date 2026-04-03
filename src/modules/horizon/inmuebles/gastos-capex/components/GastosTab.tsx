@@ -8,6 +8,29 @@ import { gastosInmuebleService } from '../../../../../services/gastosInmuebleSer
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
 
+function mapBoxToFiscalType(box: string): AEATFiscalType {
+  const map: Record<string, AEATFiscalType> = {
+    '0105': 'financiacion', '0106': 'reparacion-conservacion', '0109': 'comunidad',
+    '0112': 'servicios-personales', '0113': 'suministros', '0114': 'seguros',
+    '0115': 'tributos-locales', '0117': 'amortizacion-muebles',
+  };
+  return map[box] || 'suministros';
+}
+
+function mapCategoriaToTipoGasto(cat: GastoCategoria): TipoGasto {
+  const map: Partial<Record<GastoCategoria, TipoGasto>> = {
+    'suministro': 'suministro_electricidad',
+    'reparacion': 'reparacion_conservacion',
+    'comunidad': 'comunidad',
+    'seguro': 'seguro',
+    'ibi': 'ibi',
+    'gestion': 'otros',
+    'servicio': 'otros',
+    'intereses': 'intereses',
+  };
+  return map[cat] || 'otros';
+}
+
 function mapFiscalTypeToCategoria(ft?: AEATFiscalType): GastoCategoria {
   const map: Partial<Record<AEATFiscalType, GastoCategoria>> = {
     'financiacion': 'intereses',
@@ -85,29 +108,41 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
       setLoading(true);
       const db = await initDB();
       
-      // Load expenses and properties
-      const [expensesData, propertiesData] = await Promise.all([
-        db.getAll('expensesH5'),
+      // Load expenses from gastosInmueble (unified store) and properties
+      const [gastosData, propertiesData] = await Promise.all([
+        gastosInmuebleService.getAll(),
         db.getAll('properties')
       ]);
 
-      // UNICORNIO REFACTOR: Migrate legacy expenses to unified structure
-      const migratedExpenses = expensesData.map(expense => {
-        if (!expense.tipo_gasto) {
-          // Auto-migrate legacy expenses
-          return {
-            ...expense,
-            tipo_gasto: 'otros' as TipoGasto,
-            destino: 'inmueble' as const,
-            destino_id: expense.propertyId,
-            estado_conciliacion: 'pendiente' as EstadoConciliacion,
-            currency: expense.currency || 'EUR'
-          };
-        }
-        return expense;
-      });
+      // Map GastoInmueble → ExpenseH5 shape for display compatibility
+      const mappedExpenses: ExpenseH5[] = gastosData.map(g => ({
+        id: g.id,
+        date: g.fecha,
+        counterparty: g.proveedorNombre || '',
+        counterpartyNIF: g.proveedorNIF,
+        concept: g.concepto,
+        amount: g.importe,
+        currency: 'EUR',
+        fiscalType: mapBoxToFiscalType(g.casillaAEAT),
+        aeatBox: g.casillaAEAT,
+        taxYear: g.ejercicio,
+        taxIncluded: true,
+        propertyId: g.inmuebleId,
+        unit: 'completo',
+        prorationMethod: 'ninguno' as any,
+        prorationDetail: '',
+        status: g.estado === 'confirmado' ? 'confirmado' : 'previsto' as any,
+        origin: g.origen === 'manual' ? 'manual' : g.origen as any,
+        tipo_gasto: mapCategoriaToTipoGasto(g.categoria),
+        destino: 'inmueble' as const,
+        destino_id: g.inmuebleId,
+        estado_conciliacion: (g.movimientoId ? 'conciliado' : 'pendiente') as EstadoConciliacion,
+        documentId: g.documentId,
+        createdAt: g.createdAt,
+        updatedAt: g.updatedAt,
+      } as ExpenseH5));
 
-      setExpenses(migratedExpenses);
+      setExpenses(mappedExpenses);
       setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading expenses:', error);
@@ -210,10 +245,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     }
 
     try {
-      const db = await initDB();
-      await db.delete('expensesH5', expenseId);
-      // Dual delete: remove corresponding gastosInmueble by origenId
-      await gastosInmuebleService.deleteByOrigenId('manual', `expensesH5-${expenseId}`).catch(() => {});
+      await gastosInmuebleService.delete(expenseId);
       await loadData();
       toast.success('Gasto eliminado correctamente');
     } catch (error) {
@@ -224,36 +256,38 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
 
   const handleSaveExpense = async (expense: ExpenseH5) => {
     try {
-      const db = await initDB();
-
-      let expenseId = expense.id;
-      if (expenseId) {
-        // Update existing expense
-        await db.put('expensesH5', expense);
-        toast.success('Gasto actualizado correctamente');
-      } else {
-        // Create new expense — capture the auto-generated id
-        expenseId = await db.add('expensesH5', expense) as unknown as number;
-        toast.success('Gasto creado correctamente');
-      }
-
-      // Dual write: gastosInmueble (always has a valid expenseId now)
-      if (expense.aeatBox && expense.propertyId && expense.amount > 0 && expenseId) {
-        await gastosInmuebleService.add({
+      if (expense.id) {
+        // Update existing in gastosInmueble
+        await gastosInmuebleService.update(expense.id, {
           inmuebleId: expense.propertyId,
           ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
           fecha: expense.date,
           concepto: expense.concept || expense.fiscalType || 'Gasto manual',
           categoria: mapFiscalTypeToCategoria(expense.fiscalType),
-          casillaAEAT: expense.aeatBox as any,
+          casillaAEAT: (expense.aeatBox || '0106') as any,
+          importe: expense.amount,
+          proveedorNIF: expense.counterpartyNIF || undefined,
+          proveedorNombre: expense.counterparty || undefined,
+          documentId: expense.documentId || undefined,
+        });
+        toast.success('Gasto actualizado correctamente');
+      } else {
+        // Create new in gastosInmueble
+        await gastosInmuebleService.add({
+          inmuebleId: expense.propertyId!,
+          ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
+          fecha: expense.date,
+          concepto: expense.concept || expense.fiscalType || 'Gasto manual',
+          categoria: mapFiscalTypeToCategoria(expense.fiscalType),
+          casillaAEAT: (expense.aeatBox || '0106') as any,
           importe: expense.amount,
           origen: 'manual',
-          origenId: `expensesH5-${expenseId}`,
           estado: 'confirmado',
           proveedorNIF: expense.counterpartyNIF || undefined,
           proveedorNombre: expense.counterparty || undefined,
           documentId: expense.documentId || undefined,
-        }).catch(() => { /* silent dual write */ });
+        });
+        toast.success('Gasto creado correctamente');
       }
 
       await loadData();

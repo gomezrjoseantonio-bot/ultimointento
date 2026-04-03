@@ -1,5 +1,5 @@
 import { initDB } from './db';
-import type { CAPEX, Expense, ExpenseH5, Gasto, OpexRule } from './db';
+import type { CAPEX, Expense, Gasto, OpexRule } from './db';
 import type {
   PropertyExpense,
   PropertyExpenseDiagnostics,
@@ -95,29 +95,6 @@ const mapGasto = (gasto: Gasto): PropertyExpense | null => {
   };
 };
 
-const mapExpenseH5 = (expense: ExpenseH5): PropertyExpense | null => {
-  if (!expense.propertyId) return null;
-
-  const isCapex =
-    expense.fiscalType === 'capex-mejora-ampliacion' ||
-    expense.tipo_gasto === 'mejora' ||
-    expense.tipo_gasto === 'mobiliario';
-
-  return {
-    id: `expense_h5:${expense.id}`,
-    propertyId: expense.propertyId,
-    category: expense.fiscalType,
-    concept: expense.concept,
-    amount: expense.amount,
-    frequency: 'unico',
-    startDate: expense.date,
-    source: 'expense_h5',
-    expenseClass: isCapex ? 'capex' : 'opex',
-    isLegacy: true,
-    isActive: true,
-  };
-};
-
 const mapLegacyExpense = (expense: Expense): PropertyExpense => ({
   id: `legacy_expense:${expense.id}`,
   propertyId: expense.propertyId,
@@ -148,10 +125,9 @@ const mapCapex = (capex: CAPEX): PropertyExpense => ({
 
 const getPropertyExpensesSnapshot = async (propertyId: number): Promise<PropertyExpense[]> => {
   const db = await initDB();
-  const [opexRules, gastos, expensesH5, expenses, capex] = await Promise.all([
+  const [opexRules, gastos, expenses, capex] = await Promise.all([
     db.getAllFromIndex('opexRules', 'propertyId', propertyId),
     db.getAll('gastos'),
-    db.getAllFromIndex('expensesH5', 'propertyId', propertyId),
     db.getAllFromIndex('expenses', 'propertyId', propertyId),
     db.getAll('capex'),
   ]);
@@ -161,7 +137,6 @@ const getPropertyExpensesSnapshot = async (propertyId: number): Promise<Property
   return [
     ...opexRules.map(mapOpexRule),
     ...mappedGastos.filter((expense) => expense.propertyId === propertyId),
-    ...expensesH5.map(mapExpenseH5).filter(Boolean) as PropertyExpense[],
     ...expenses.map(mapLegacyExpense),
     ...capex.filter((item) => item.inmueble_id === propertyId).map(mapCapex),
   ];
