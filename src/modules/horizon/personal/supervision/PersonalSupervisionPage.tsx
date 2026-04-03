@@ -105,17 +105,25 @@ const PersonalSupervisionPage: React.FC = () => {
       try {
         const allPrestamos = await prestamosService.getAllPrestamos();
         const personales = allPrestamos.filter(
-          (p) => p.ambito === 'PERSONAL' || p.finalidad === 'PERSONAL'
+          (p) => (p.ambito === 'PERSONAL' || p.finalidad === 'PERSONAL') && p.activo !== false
         );
-        // Sum monthly payments × 12
+        // Estimate annual payments from payment plan periods
         for (const p of personales) {
           try {
             const plan = await prestamosService.getPaymentPlan(p.id);
-            if (plan?.resumen?.cuotaMedia) {
-              financiacionAnual += Math.round(plan.resumen.cuotaMedia * 12);
+            const periodos = plan?.periodos;
+            const cuotas = Array.isArray(periodos)
+              ? periodos
+                  .map((periodo) => Number(periodo?.cuota ?? 0))
+                  .filter((cuota) => Number.isFinite(cuota) && cuota > 0)
+              : [];
+            if (cuotas.length > 0) {
+              const cuotaMensualMedia =
+                cuotas.reduce((total, cuota) => total + cuota, 0) / cuotas.length;
+              financiacionAnual += Math.round(cuotaMensualMedia * 12);
             }
           } catch {
-            // Fallback: estimate from principal
+            // Fallback: no plan available
           }
         }
       } catch {
@@ -243,7 +251,7 @@ const PersonalSupervisionPage: React.FC = () => {
         año: d.año,
         gastoVida: d.gastoVida,
         financiacion: d.financiacion,
-        excedente: Math.max(0, calcExcedente(neto, d.gastoVida, d.financiacion)),
+        excedente: calcExcedente(neto, d.gastoVida, d.financiacion),
       };
     });
 
@@ -254,15 +262,17 @@ const PersonalSupervisionPage: React.FC = () => {
     const excedente = calcExcedente(neto, d.gastoVida, d.financiacion);
     const tasa = calcTasaAhorro(excedente, neto);
 
+    const tieneNeto = neto !== null && neto !== undefined;
+
     return {
       año: d.año,
-      bruto: bruto || null,
-      retenciones: d.retenciones || null,
-      neto: neto || null,
-      gastoVida: d.gastoVida || null,
-      financiacion: d.financiacion || null,
-      excedente: neto ? excedente : null,
-      tasaAhorro: neto ? tasa : null,
+      bruto: bruto ?? null,
+      retenciones: d.retenciones ?? null,
+      neto: neto ?? null,
+      gastoVida: d.gastoVida ?? null,
+      financiacion: d.financiacion ?? null,
+      excedente: tieneNeto ? excedente : null,
+      tasaAhorro: tieneNeto ? tasa : null,
       fuente: d.fuente,
       gastoVidaEstimado: d.gastoVidaEstimado,
     };

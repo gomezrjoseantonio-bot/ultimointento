@@ -27,13 +27,13 @@ interface LateralDesgloseProps {
   onConfigurarConyuge?: () => void;
 }
 
-const ICONS_FUENTE: Record<string, React.FC<{ size: number; style?: React.CSSProperties }>> = {
+const ICONS_FUENTE: Record<string, React.ElementType> = {
   nomina: Banknote,
   autonomo: Briefcase,
   conyuge: UserPlus,
 };
 
-const ICONS_COSTE: Record<string, React.FC<{ size: number; style?: React.CSSProperties }>> = {
+const ICONS_COSTE: Record<string, React.ElementType> = {
   alquiler: Home,
   alimentacion: UtensilsCrossed,
   seguros: Shield,

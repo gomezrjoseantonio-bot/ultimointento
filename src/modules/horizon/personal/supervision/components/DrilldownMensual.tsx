@@ -180,7 +180,7 @@ const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack
           tasaAhorro={tasaAhorroMes}
           delta={deltaMes}
           deltaPct={deltaPctMes}
-          añoAnterior={mesActivo > 0 ? mesActivo : año - 1}
+          añoAnterior={año - 1}
         />
       </div>
 

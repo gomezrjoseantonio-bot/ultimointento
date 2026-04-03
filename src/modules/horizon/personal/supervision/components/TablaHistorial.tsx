@@ -116,16 +116,32 @@ const TablaHistorial: React.FC<TablaHistorialProps> = ({
                 <tr
                   key={f.año}
                   onClick={() => onClickFila(f.año)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onClickFila(f.año);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Ver detalle mensual de ${f.año}`}
                   style={{
                     background: isActual ? 'var(--navy-50, #F0F4FA)' : 'transparent',
                     cursor: 'pointer',
                     transition: 'background 150ms ease',
+                    outline: 'none',
                   }}
                   onMouseEnter={(e) => {
                     if (!isActual) e.currentTarget.style.background = 'var(--grey-50)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = isActual ? 'var(--navy-50)' : 'transparent';
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.boxShadow = 'inset 0 0 0 2px var(--navy-900)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   {/* Año + badge fuente */}

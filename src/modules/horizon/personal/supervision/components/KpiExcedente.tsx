@@ -65,7 +65,7 @@ const KpiExcedente: React.FC<KpiExcedenteProps> = ({
               fontVariantNumeric: 'tabular-nums',
               lineHeight: 1.2,
             }}>
-              {hasData ? `+${fmt(excedente)} €` : '—'}
+              {hasData ? `${excedente >= 0 ? '+' : ''}${fmt(excedente)} €` : '—'}
             </div>
             <div style={{
               fontSize: 11,
