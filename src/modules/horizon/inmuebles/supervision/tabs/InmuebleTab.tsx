@@ -335,6 +335,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
         property={inm ? { id: inm.id, alias: inm.alias } as any : null}
         source="analisis"
         onClose={() => setShowSaleModal(false)}
+        onConfirmed={() => setShowSaleModal(false)}
       />
     </div>
   );
