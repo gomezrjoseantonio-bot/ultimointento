@@ -2,13 +2,16 @@
 // ATLAS HORIZON: Migration Data tab for Account page
 
 import React, { useState } from 'react';
-import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon } from 'lucide-react';
+import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt } from 'lucide-react';
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
 import ImportarAportaciones from './migracion/ImportarAportaciones';
+import ImportarPrestamos from './migracion/ImportarPrestamos';
+import ImportarInmuebles from './migracion/ImportarInmuebles';
+import ImportarNominas from './migracion/ImportarNominas';
 
-type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos';
+type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas';
 
 const MigracionTab: React.FC = () => {
   const [view, setView] = useState<MigracionView>('menu');
@@ -52,6 +55,30 @@ const MigracionTab: React.FC = () => {
     return (
       <ImportarContratos
         onComplete={() => markCompleted('contratos')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'prestamos') {
+    return (
+      <ImportarPrestamos
+        onComplete={() => markCompleted('prestamos')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'inmuebles') {
+    return (
+      <ImportarInmuebles
+        onComplete={() => markCompleted('inmuebles')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'nominas') {
+    return (
+      <ImportarNominas
+        onComplete={() => markCompleted('nominas')}
         onBack={() => setView('menu')}
       />
     );
@@ -118,6 +145,30 @@ const MigracionTab: React.FC = () => {
           color="var(--warning)"
           completed={completados.has('contratos')}
           onClick={() => setView('contratos')}
+        />
+        <MigracionCard
+          icon={Landmark}
+          title="Préstamos e hipotecas"
+          description="Importa tus préstamos e hipotecas históricas desde Excel."
+          color="var(--navy-700)"
+          completed={completados.has('prestamos')}
+          onClick={() => setView('prestamos')}
+        />
+        <MigracionCard
+          icon={Home}
+          title="Inmuebles"
+          description="Importa tu cartera de inmuebles con sus datos de adquisición desde Excel."
+          color="var(--navy-700)"
+          completed={completados.has('inmuebles')}
+          onClick={() => setView('inmuebles')}
+        />
+        <MigracionCard
+          icon={Receipt}
+          title="Nóminas"
+          description="Importa el histórico de nóminas desde Excel."
+          color="var(--navy-700)"
+          completed={completados.has('nominas')}
+          onClick={() => setView('nominas')}
         />
       </div>
     </div>
