@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 39; // V3.9: store vinculosAccesorio (vínculo temporal parking/trastero por ejercicio)
+const DB_VERSION = 41; // V4.1: stores gastosInmueble, mejorasInmueble, mueblesInmueble + cleanup obsolete stores
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -283,6 +283,72 @@ export interface MobiliarioActivo {
   documentId?: number;
   movementId?: number | string;
   cuentaBancaria?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ── Nuevos tipos unificados para capa de gastos ──
+
+export type GastoCategoria =
+  'ibi' | 'comunidad' | 'seguro' | 'suministro' |
+  'reparacion' | 'gestion' | 'servicio' | 'intereses' | 'otro';
+
+export type GastoOrigen =
+  'xml_aeat' | 'prestamo' | 'recurrente' | 'tesoreria' | 'manual';
+
+export type GastoEstadoNuevo =
+  'previsto' | 'confirmado' | 'declarado';
+
+export interface GastoInmueble {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  fecha: string;
+  concepto: string;
+  categoria: GastoCategoria;
+  casillaAEAT: '0105'|'0106'|'0109'|'0112'|'0113'|'0114'|'0115'|'0117';
+  importe: number;
+  origen: GastoOrigen;
+  origenId?: string;
+  estado: GastoEstadoNuevo;
+  proveedorNombre?: string;
+  proveedorNIF?: string;
+  documentId?: number;
+  movimientoId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MejoraInmueble {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  descripcion: string;
+  tipo: 'mejora' | 'ampliacion' | 'reparacion';
+  importe: number;
+  fecha: string;
+  proveedorNIF?: string;
+  proveedorNombre?: string;
+  documentId?: number;
+  movimientoId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MuebleInmueble {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  descripcion: string;
+  fechaAlta: string;
+  importe: number;
+  vidaUtil: number;
+  activo: boolean;
+  fechaBaja?: string;
+  proveedorNIF?: string;
+  proveedorNombre?: string;
+  documentId?: number;
+  movimientoId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -2132,6 +2198,42 @@ export const initDB = async () => {
           opProvStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           opProvStore.createIndex('prov-inmueble-ejercicio-tipo', ['proveedorNif', 'inmuebleId', 'ejercicio', 'tipo'], { unique: true });
         }
+
+        // V4.0: gastosInmueble — store unificado de gastos por inmueble
+        if (!db.objectStoreNames.contains('gastosInmueble')) {
+          const gastosStore = db.createObjectStore('gastosInmueble', { keyPath: 'id', autoIncrement: true });
+          gastosStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          gastosStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          gastosStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+          gastosStore.createIndex('casillaAEAT', 'casillaAEAT', { unique: false });
+          gastosStore.createIndex('origen', 'origen', { unique: false });
+          gastosStore.createIndex('estado', 'estado', { unique: false });
+          gastosStore.createIndex('origen-origenId', ['origen', 'origenId'], { unique: false });
+        }
+
+        // V4.0: mejorasInmueble — mejoras/ampliaciones/reparaciones por inmueble
+        if (!db.objectStoreNames.contains('mejorasInmueble')) {
+          const mejorasStore = db.createObjectStore('mejorasInmueble', { keyPath: 'id', autoIncrement: true });
+          mejorasStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          mejorasStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          mejorasStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+        }
+
+        // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
+        if (!db.objectStoreNames.contains('mueblesInmueble')) {
+          const mueblesStore = db.createObjectStore('mueblesInmueble', { keyPath: 'id', autoIncrement: true });
+          mueblesStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
+          mueblesStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+        }
+
+        // V4.1: Do not cleanup legacy stores yet.
+        // Some of these stores are still referenced by the current runtime, so deleting them
+        // during upgrade would cause runtime failures for users coming from v40+ databases.
+        // Keep them until all application code has stopped referencing them, then remove them
+        // in a dedicated future migration/version.
+        // Stores to clean up in the future: fiscalSummaries, operacionesFiscales, expensesH5,
+        // gastos, reforms, reformLineItems, propertyImprovements
 
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {

@@ -8,6 +8,7 @@ import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
+import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
@@ -132,9 +133,11 @@ const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'))
 function App() {
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
-    void initDB().catch((error) => {
-      console.error('[ATLAS] Error inicializando IndexedDB:', error);
-    });
+    void initDB()
+      .then(() => ejecutarMigracionGastos())
+      .catch((error) => {
+        console.error('[ATLAS] Error inicializando IndexedDB o migración gastos:', error);
+      });
 
     const cleanupTasks = [
       runWhenIdle(() => {

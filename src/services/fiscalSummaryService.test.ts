@@ -3,8 +3,8 @@ import { initDB } from './db';
 import {
   generarOperacionesDesdeIntereses,
   generarOperacionesDesdeRecurrentes,
-  getResumenCasillasAEAT,
 } from './operacionFiscalService';
+import { gastosInmuebleService } from './gastosInmuebleService';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from './mobiliarioActivoService';
 import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
@@ -17,7 +17,12 @@ jest.mock('./db', () => ({
 jest.mock('./operacionFiscalService', () => ({
   generarOperacionesDesdeIntereses: jest.fn(),
   generarOperacionesDesdeRecurrentes: jest.fn(),
-  getResumenCasillasAEAT: jest.fn(),
+}));
+
+jest.mock('./gastosInmuebleService', () => ({
+  gastosInmuebleService: {
+    getSumaPorCasilla: jest.fn(),
+  },
 }));
 
 jest.mock('./aeatAmortizationService', () => ({
@@ -40,7 +45,7 @@ jest.mock('./aeatClassificationService', () => ({
 const mockedInitDB = initDB as jest.MockedFunction<typeof initDB>;
 const mockedGenerarOperacionesDesdeIntereses = generarOperacionesDesdeIntereses as jest.MockedFunction<typeof generarOperacionesDesdeIntereses>;
 const mockedGenerarOperacionesDesdeRecurrentes = generarOperacionesDesdeRecurrentes as jest.MockedFunction<typeof generarOperacionesDesdeRecurrentes>;
-const mockedGetResumenCasillasAEAT = getResumenCasillasAEAT as jest.MockedFunction<typeof getResumenCasillasAEAT>;
+const mockedGetSumaPorCasilla = gastosInmuebleService.getSumaPorCasilla as jest.MockedFunction<typeof gastosInmuebleService.getSumaPorCasilla>;
 const mockedGetRentalDaysForYear = getRentalDaysForYear as jest.MockedFunction<typeof getRentalDaysForYear>;
 const mockedUpdateFiscalSummaryWithAEAT = updateFiscalSummaryWithAEAT as jest.MockedFunction<typeof updateFiscalSummaryWithAEAT>;
 const mockedCalcularAmortizacionMobiliarioAnual = calcularAmortizacionMobiliarioAnual as jest.MockedFunction<typeof calcularAmortizacionMobiliarioAnual>;
@@ -53,7 +58,7 @@ describe('fiscalSummaryService', () => {
 
     mockedGenerarOperacionesDesdeRecurrentes.mockResolvedValue(12);
     mockedGenerarOperacionesDesdeIntereses.mockResolvedValue(0);
-    mockedGetResumenCasillasAEAT.mockResolvedValue({
+    mockedGetSumaPorCasilla.mockResolvedValue({
       '0109': 1176,
       '0114': 250,
     });
@@ -93,7 +98,7 @@ describe('fiscalSummaryService', () => {
     const summary = await calculateFiscalSummary(1, 2025);
 
     expect(mockedGenerarOperacionesDesdeRecurrentes).toHaveBeenCalledWith(1, 2025);
-    expect(mockedGetResumenCasillasAEAT).toHaveBeenCalledWith(1, 2025);
+    expect(mockedGetSumaPorCasilla).toHaveBeenCalledWith(1, 2025);
     expect(summary.box0109).toBe(1176);
     expect(summary.box0114).toBe(250);
   });

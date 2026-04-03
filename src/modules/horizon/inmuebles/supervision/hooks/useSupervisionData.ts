@@ -5,13 +5,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { initDB, type Property, type Contract, type RentaMensual } from '../../../../../services/db';
 import type { ValoracionHistorica } from '../../../../../types/valoraciones';
-import type { AEATFiscalType } from '../../../../../services/db';
 import { getMejorasPorInmueble } from '../../../../../services/mejoraActivoService';
 import { getMobiliarioPorInmueble } from '../../../../../services/mobiliarioActivoService';
 import { getInteresesHipotecaByPropertyAndYear } from '../../../../../services/loanInterestService';
-import {
-  getOperacionesPorInmuebleYEjercicio,
-} from '../../../../../services/operacionFiscalService';
+import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -106,12 +103,6 @@ const buildYearRange = (anoCompra: number): number[] => {
 // AEAT boxes for operational expenses (excluding 0105=intereses and 0117=amortización muebles)
 const GASTOS_OP_BOXES = new Set(['0106', '0109', '0112', '0113', '0114', '0115']);
 
-// categoriaFiscal fallback — operations may not have casillaAEAT set
-const GASTOS_OP_CATEGORIES: Set<AEATFiscalType> = new Set([
-  'reparacion-conservacion', 'comunidad', 'servicios-personales',
-  'suministros', 'seguros', 'tributos-locales',
-]);
-const INTERESES_CATEGORIES: Set<AEATFiscalType> = new Set(['financiacion']);
 
 // ── Hook ─────────────────────────────────────────────────────────────────
 
@@ -229,22 +220,21 @@ export function useSupervisionData(): SupervisionData {
             .filter((r) => r.periodo.startsWith(String(ano)))
             .reduce((s, r) => s + r.importePrevisto, 0);
 
-          // Gastos operativos via operaciones fiscales
+          // Gastos operativos via gastosInmueble (nuevo store unificado)
           let gastosOp = 0;
           let intereses = 0;
           try {
-            const ops = await getOperacionesPorInmuebleYEjercicio(propId, ano);
-            for (const op of ops) {
-              const box = op.casillaAEAT;
-              const cat = op.categoriaFiscal;
-              if (box === '0105' || INTERESES_CATEGORIES.has(cat)) {
-                intereses += op.total;
-              } else if (GASTOS_OP_BOXES.has(box) || GASTOS_OP_CATEGORIES.has(cat)) {
-                gastosOp += op.total;
+            const gastos = await gastosInmuebleService.getByInmuebleYEjercicio(propId, ano);
+            for (const g of gastos) {
+              const box = g.casillaAEAT;
+              if (box === '0105') {
+                intereses += g.importe;
+              } else if (GASTOS_OP_BOXES.has(box)) {
+                gastosOp += g.importe;
               }
             }
           } catch {
-            // If no operations for this year, try loanInterestService for interest
+            // If no gastos for this year, try loanInterestService for interest
           }
 
           // If no interest from operaciones, try loanInterestService

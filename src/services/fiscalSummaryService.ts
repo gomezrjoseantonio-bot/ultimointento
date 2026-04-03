@@ -6,9 +6,9 @@ import { getTotalMejorasHastaEjercicio, getTotalReparacionesEjercicio } from './
 import {
   generarOperacionesDesdeIntereses,
   generarOperacionesDesdeRecurrentes,
-  getResumenCasillasAEAT,
   getOperacionesPorInmuebleYEjercicio,
 } from './operacionFiscalService';
+import { gastosInmuebleService } from './gastosInmuebleService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
 import { getEjercicio, guardarCalculoATLAS } from './ejercicioResolverService';
 import { invalidateCachedStores } from './indexedDbCacheService';
@@ -141,7 +141,7 @@ export const calculateFiscalSummary = async (
   await generarOperacionesDesdeRecurrentes(propertyId, exerciseYear);
   await generarOperacionesDesdeIntereses(propertyId, exerciseYear);
 
-  const casillas = await getResumenCasillasAEAT(propertyId, exerciseYear);
+  const casillas = await gastosInmuebleService.getSumaPorCasilla(propertyId, exerciseYear);
   const diasArrendados = await getRentalDaysForYear(propertyId, exerciseYear);
   const diasDisponibles = isLeapYear(exerciseYear) ? 366 : 365;
   const box0117 = await calcularAmortizacionMobiliarioAnual(propertyId, exerciseYear, diasArrendados, diasDisponibles);
