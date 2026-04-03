@@ -1,9 +1,9 @@
 // src/pages/account/migracion/ImportarNominas.tsx
-// ATLAS HORIZON: Excel importer for payroll records
+// ATLAS HORIZON: Excel importer for payroll engine configuration
 
 import React, { useCallback, useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, Download, X, Receipt, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Upload, Download, X, Receipt, ArrowLeft, AlertCircle, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { nominaService } from '../../../services/nominaService';
 import { initDB } from '../../../services/db';
@@ -15,17 +15,14 @@ interface ImportarNominasProps {
 }
 
 interface PreviewRow {
-  ano: number;
-  mes: number;
-  empresa: string;
-  nif_empresa: string;
-  salario_bruto: number;
-  complementos: number;
-  horas_extra: number;
-  retencion_irpf: number;
-  cotizacion_ss_trabajador: number;
-  cotizacion_ss_empresa: number;
-  salario_neto: number;
+  nombre: string;
+  titular: string;
+  salario_bruto_anual: number;
+  irpf_porcentaje: number;
+  distribucion_pagas: number;
+  activa: boolean;
+  // Keep raw row for import
+  _raw: Record<string, unknown>;
 }
 
 const PREVIEW_ROW_LIMIT = 10;
@@ -59,10 +56,116 @@ const parseNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const MESES: Record<number, string> = {
-  1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
-  5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
-  9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre',
+const uid = (): string => Math.random().toString(36).slice(2, 10);
+
+const mapBeneficioTipo = (raw: string): string => {
+  const map: Record<string, string> = {
+    seguro_medico: 'seguro-medico',
+    guarderia: 'cheque-guarderia',
+    vehiculo: 'vehiculo-empresa',
+    otros: 'otro',
+  };
+  return map[raw] || 'otro';
+};
+
+const buildNominaFromRow = (byKey: Record<string, unknown>) => {
+  const currentYear = new Date().getFullYear();
+  const ssConfig = getSSDefaults(currentYear);
+
+  const variables = [1, 2, 3].flatMap(n => {
+    const nombre = String(byKey[`variable_${n}_nombre`] || '').trim();
+    const importe = parseNumber(byKey[`variable_${n}_importe`]);
+    if (!nombre || !importe) return [];
+    const mesesRaw = String(byKey[`variable_${n}_meses`] || 'todos');
+    const meses = mesesRaw === 'todos'
+      ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+      : mesesRaw.split(',').map(Number).filter(Boolean);
+    return [{
+      id: uid(),
+      nombre,
+      tipo: 'importe' as const,
+      valor: importe,
+      distribucionMeses: meses.map(mes => ({ mes, porcentaje: 100 / meses.length })),
+    }];
+  });
+
+  const bonus = [1, 2].flatMap(n => {
+    const descripcion = String(byKey[`bonus_${n}_descripcion`] || '').trim();
+    const importe = parseNumber(byKey[`bonus_${n}_importe`]);
+    const mes = Number(byKey[`bonus_${n}_mes`]) || 0;
+    if (!descripcion || !importe || !mes) return [];
+    return [{ id: uid(), descripcion, importe, mes }];
+  });
+
+  const beneficiosSociales = [1, 2].flatMap(n => {
+    const tipo = String(byKey[`beneficio_${n}_tipo`] || '').trim();
+    const importe = parseNumber(byKey[`beneficio_${n}_importe`]);
+    if (!tipo || !importe) return [];
+    return [{
+      id: uid(),
+      concepto: tipo.replace(/_/g, ' '),
+      tipo: mapBeneficioTipo(tipo) as any,
+      importeMensual: importe,
+      incrementaBaseIRPF: false,
+    }];
+  });
+
+  const deduccionesAdicionales = [1, 2].flatMap(n => {
+    const concepto = String(byKey[`deduccion_${n}_concepto`] || '').trim();
+    const importe = parseNumber(byKey[`deduccion_${n}_importe`]);
+    if (!concepto || !importe) return [];
+    return [{
+      id: uid(),
+      concepto,
+      importeMensual: importe,
+      esRecurrente: String(byKey[`deduccion_${n}_recurrente`] || 'TRUE').toUpperCase() !== 'FALSE',
+    }];
+  });
+
+  const hasPensiones = byKey.plan_pensiones_empresa_importe || byKey.plan_pensiones_empleado_importe;
+  const planPensiones = hasPensiones ? {
+    aportacionEmpresa: {
+      tipo: 'importe' as const,
+      valor: parseNumber(byKey.plan_pensiones_empresa_importe),
+    },
+    aportacionEmpleado: {
+      tipo: 'importe' as const,
+      valor: parseNumber(byKey.plan_pensiones_empleado_importe),
+    },
+  } : undefined;
+
+  const distPagas = Number(byKey.distribucion_pagas) || 12;
+
+  return {
+    personalDataId: 1,
+    nombre: String(byKey.nombre || '').trim(),
+    titular: (String(byKey.titular || 'yo').trim().toLowerCase() === 'pareja' ? 'pareja' : 'yo') as 'yo' | 'pareja',
+    salarioBrutoAnual: parseNumber(byKey.salario_bruto_anual),
+    distribucion: {
+      tipo: (distPagas === 14 ? 'catorce' : 'doce') as 'doce' | 'catorce',
+      meses: distPagas,
+    },
+    fechaAntiguedad: String(byKey.fecha_antiguedad || new Date().toISOString().split('T')[0]).trim(),
+    retencion: {
+      irpfPorcentaje: parseNumber(byKey.irpf_porcentaje),
+      ss: {
+        baseCotizacionMensual: getBaseMaxima(currentYear),
+        contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
+        desempleo: ssConfig.desempleo.trabajador,
+        formacionProfesional: ssConfig.formacionProfesional.trabajador,
+        mei: ssConfig.mei.trabajador,
+        overrideManual: false,
+      },
+    },
+    variables,
+    bonus,
+    beneficiosSociales,
+    planPensiones,
+    deduccionesAdicionales,
+    cuentaAbono: 0,
+    reglaCobroDia: { tipo: 'ultimo-habil' as const },
+    activa: String(byKey.activa || 'TRUE').toUpperCase() !== 'FALSE',
+  };
 };
 
 const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack }) => {
@@ -76,43 +179,40 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
   const handleDescargarPlantilla = () => {
     const datos = [
       {
-        año: 2024,
-        mes: 1,
-        empresa: 'Empresa ABC S.L.',
-        nif_empresa: 'B12345678',
-        salario_bruto: 2800,
-        complementos: 200,
-        horas_extra: 0,
-        retencion_irpf: 15,
-        cotizacion_ss_trabajador: 178.50,
-        cotizacion_ss_empresa: 850,
-        salario_neto: 2201.50,
-      },
-      {
-        año: 2024,
-        mes: 2,
-        empresa: 'Empresa ABC S.L.',
-        nif_empresa: 'B12345678',
-        salario_bruto: 2800,
-        complementos: 200,
-        horas_extra: 150,
-        retencion_irpf: 15,
-        cotizacion_ss_trabajador: 178.50,
-        cotizacion_ss_empresa: 850,
-        salario_neto: 2328.50,
-      },
-      {
-        año: 2024,
-        mes: 3,
-        empresa: 'Empresa ABC S.L.',
-        nif_empresa: 'B12345678',
-        salario_bruto: 2800,
-        complementos: 200,
-        horas_extra: 0,
-        retencion_irpf: 15,
-        cotizacion_ss_trabajador: 178.50,
-        cotizacion_ss_empresa: 850,
-        salario_neto: 2201.50,
+        nombre: 'Orange España',
+        titular: 'yo',
+        salario_bruto_anual: 42000,
+        distribucion_pagas: 14,
+        fecha_antiguedad: '2018-03-01',
+        variable_1_nombre: 'Comisiones',
+        variable_1_importe: 3000,
+        variable_1_meses: 'todos',
+        variable_2_nombre: '',
+        variable_2_importe: '',
+        variable_2_meses: '',
+        variable_3_nombre: '',
+        variable_3_importe: '',
+        variable_3_meses: '',
+        bonus_1_descripcion: 'Paga extra navidad',
+        bonus_1_importe: 1500,
+        bonus_1_mes: 12,
+        bonus_2_descripcion: '',
+        bonus_2_importe: '',
+        bonus_2_mes: '',
+        beneficio_1_tipo: 'seguro_medico',
+        beneficio_1_importe: 600,
+        beneficio_2_tipo: '',
+        beneficio_2_importe: '',
+        irpf_porcentaje: 18,
+        plan_pensiones_empresa_importe: 1200,
+        plan_pensiones_empleado_importe: 600,
+        deduccion_1_concepto: '',
+        deduccion_1_importe: '',
+        deduccion_1_recurrente: '',
+        deduccion_2_concepto: '',
+        deduccion_2_importe: '',
+        deduccion_2_recurrente: '',
+        activa: 'TRUE',
       },
     ];
     const ws = XLSX.utils.json_to_sheet(datos);
@@ -144,8 +244,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
         }
 
         const keys = Object.keys(rows[0]).map(normalizeHeader);
-        const required = ['ano', 'mes', 'salario_bruto'];
-        // Also accept "año" → normalized to "ano"
+        const required = ['nombre', 'salario_bruto_anual', 'titular'];
         const missing = required.filter((r) => !keys.includes(r));
         if (missing.length) {
           toast.error(`Columnas requeridas: ${missing.join(', ')}`);
@@ -157,17 +256,13 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             Object.entries(row).map(([k, v]) => [normalizeHeader(k), v])
           );
           return {
-            ano: Number(byKey.ano) || 0,
-            mes: Number(byKey.mes) || 0,
-            empresa: String(byKey.empresa || '').trim(),
-            nif_empresa: String(byKey.nif_empresa || '').trim(),
-            salario_bruto: parseNumber(byKey.salario_bruto),
-            complementos: parseNumber(byKey.complementos),
-            horas_extra: parseNumber(byKey.horas_extra),
-            retencion_irpf: parseNumber(byKey.retencion_irpf),
-            cotizacion_ss_trabajador: parseNumber(byKey.cotizacion_ss_trabajador),
-            cotizacion_ss_empresa: parseNumber(byKey.cotizacion_ss_empresa),
-            salario_neto: parseNumber(byKey.salario_neto),
+            nombre: String(byKey.nombre || '').trim(),
+            titular: String(byKey.titular || 'yo').trim().toLowerCase(),
+            salario_bruto_anual: parseNumber(byKey.salario_bruto_anual),
+            irpf_porcentaje: parseNumber(byKey.irpf_porcentaje),
+            distribucion_pagas: Number(byKey.distribucion_pagas) || 12,
+            activa: String(byKey.activa || 'TRUE').toUpperCase() !== 'FALSE',
+            _raw: byKey,
           };
         });
 
@@ -205,7 +300,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
     setImporting(true);
     try {
       const validRows = preview.filter(
-        (r) => r.ano > 0 && r.mes >= 1 && r.mes <= 12 && r.salario_bruto > 0
+        (r) => r.nombre && r.salario_bruto_anual > 0
       );
 
       if (!validRows.length) {
@@ -218,60 +313,16 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
       const allAccounts = await db.getAll('accounts');
       const defaultCuentaAbono = allAccounts[0]?.id ? Number(allAccounts[0].id) : 0;
 
-      // Group by empresa+nif+año to create one Nomina per employer-year combination
-      const groups = new Map<string, PreviewRow[]>();
-      for (const row of validRows) {
-        const empresaKey = row.empresa || 'Sin empresa';
-        const nifKey = row.nif_empresa || 'Sin NIF';
-        const key = `${empresaKey}__${nifKey}__${row.ano}`;
-        const existing = groups.get(key) || [];
-        existing.push(row);
-        groups.set(key, existing);
-      }
-
       let importados = 0;
 
-      for (const [, rows] of groups) {
-        const first = rows[0];
-        // Include complementos + horas_extra in the total bruto calculation
-        const avgBrutoMensual = rows.reduce((sum, r) => sum + r.salario_bruto + r.complementos + r.horas_extra, 0) / rows.length;
-        const salarioBrutoAnual = avgBrutoMensual * 12;
-        const irpfPct = rows.reduce((sum, r) => sum + r.retencion_irpf, 0) / rows.length;
-
-        const currentYear = first.ano || new Date().getFullYear();
-        const ssConfig = getSSDefaults(currentYear);
-
-        await nominaService.saveNomina({
-          personalDataId: 1,
-          titular: 'yo',
-          nombre: first.empresa || 'Empresa importada',
-          fechaAntiguedad: `${first.ano}-01-01`,
-          salarioBrutoAnual,
-          distribucion: { tipo: 'doce', meses: 12 },
-          variables: [],
-          bonus: [],
-          beneficiosSociales: [],
-          retencion: {
-            irpfPorcentaje: Number.isFinite(irpfPct) ? irpfPct : 15,
-            ss: {
-              baseCotizacionMensual: getBaseMaxima(currentYear),
-              contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
-              desempleo: ssConfig.desempleo.trabajador,
-              formacionProfesional: ssConfig.formacionProfesional.trabajador,
-              mei: ssConfig.mei.trabajador,
-              overrideManual: false,
-            },
-          },
-          deduccionesAdicionales: [],
-          cuentaAbono: defaultCuentaAbono,
-          reglaCobroDia: { tipo: 'ultimo-habil' },
-          activa: true,
-        });
-
+      for (const row of validRows) {
+        const nomina = buildNominaFromRow(row._raw);
+        nomina.cuentaAbono = defaultCuentaAbono;
+        await nominaService.saveNomina(nomina);
         importados++;
       }
 
-      toast.success(`${importados} nóminas importadas correctamente`);
+      toast.success(`${importados} nómina${importados !== 1 ? 's' : ''} importada${importados !== 1 ? 's' : ''} correctamente`);
       setPreview(null);
       onComplete();
     } catch (err) {
@@ -326,7 +377,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             Importar nóminas
           </h2>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-gray)' }}>
-            Importa el histórico de nóminas desde Excel
+            Importa la configuración de tu nómina para el motor de cálculo. Incluye salario, variables, bonus y retenciones.
           </p>
         </div>
       </div>
@@ -344,7 +395,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
           1. Descarga la plantilla
         </h3>
         <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-gray)' }}>
-          Usa nuestra plantilla con el formato correcto: año, mes, salario_bruto y campos opcionales de retenciones.
+          Usa nuestra plantilla con el formato correcto: nombre, salario_bruto_anual, titular y campos opcionales de configuración.
         </p>
         <button
           onClick={handleDescargarPlantilla}
@@ -435,7 +486,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-              3. Vista previa ({preview.length} filas)
+              3. Vista previa ({preview.length} {preview.length === 1 ? 'nómina' : 'nóminas'})
             </h3>
             <button
               onClick={() => setPreview(null)}
@@ -457,7 +508,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             </button>
           </div>
 
-          {/* Validation warning */}
+          {/* Validation info */}
           <div
             style={{
               display: 'flex',
@@ -470,7 +521,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
           >
             <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>
-              Las filas se agruparán por empresa y año. Se creará una configuración de nómina por cada combinación empresa-año.
+              Se creará una configuración de nómina por cada fila. Los campos opcionales no rellenados se ignorarán.
             </p>
           </div>
 
@@ -479,7 +530,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--hz-neutral-300)' }}>
-                  {['Año', 'Mes', 'Empresa', 'Bruto', 'IRPF', 'Neto'].map((col) => (
+                  {['Nombre', 'Titular', 'Salario bruto anual', 'IRPF %', 'Pagas', 'Activa'].map((col) => (
                     <th
                       key={col}
                       style={{
@@ -506,23 +557,38 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
                       backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
                     }}
                   >
-                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
-                      {row.ano}
-                    </td>
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
-                      {MESES[row.mes] || row.mes}
+                      {row.nombre}
                     </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
-                      {row.empresa || '-'}
+                    <td style={{ padding: '8px 12px' }}>
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+                          color: 'var(--atlas-navy-1)',
+                        }}
+                      >
+                        {row.titular === 'pareja' ? 'Pareja' : 'Yo'}
+                      </span>
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                      {formatCurrency(row.salario_bruto)}
+                      {formatCurrency(row.salario_bruto_anual)}
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                      {row.retencion_irpf}%
+                      {row.irpf_porcentaje ? `${row.irpf_porcentaje}%` : '-'}
                     </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)', fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
-                      {formatCurrency(row.salario_neto)}
+                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums', textAlign: 'center' }}>
+                      {row.distribucion_pagas}
+                    </td>
+                    <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                      {row.activa ? (
+                        <Check size={16} strokeWidth={2} style={{ color: 'var(--atlas-blue)' }} aria-label="Activa" />
+                      ) : (
+                        <X size={16} strokeWidth={2} style={{ color: 'var(--text-gray)' }} aria-label="Inactiva" />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -552,7 +618,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
                 fontFamily: 'var(--font-inter)',
               }}
             >
-              {importing ? 'Importando...' : `Importar ${preview.length} nóminas`}
+              {importing ? 'Importando...' : `Importar ${preview.length} nómina${preview.length !== 1 ? 's' : ''}`}
             </button>
           </div>
         </div>
