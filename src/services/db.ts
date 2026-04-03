@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 41; // V4.1: stores gastosInmueble, mejorasInmueble, mueblesInmueble + cleanup obsolete stores
+const DB_VERSION = 42; // V4.2: delete obsolete stores (fiscalSummaries, operacionesFiscales, expensesH5, etc.)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2227,13 +2227,23 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
         }
 
-        // V4.1: Do not cleanup legacy stores yet.
-        // Some of these stores are still referenced by the current runtime, so deleting them
-        // during upgrade would cause runtime failures for users coming from v40+ databases.
-        // Keep them until all application code has stopped referencing them, then remove them
-        // in a dedicated future migration/version.
-        // Stores to clean up in the future: fiscalSummaries, operacionesFiscales, expensesH5,
-        // gastos, reforms, reformLineItems, propertyImprovements
+        // V4.2: Delete obsolete stores — data fully migrated to gastosInmueble/mejorasInmueble/mueblesInmueble
+        if (oldVersion < 42) {
+          const storesToDelete = [
+            'fiscalSummaries',
+            'operacionesFiscales',
+            'expensesH5',
+            'gastos',
+            'reforms',
+            'reformLineItems',
+            'propertyImprovements',
+          ];
+          for (const store of storesToDelete) {
+            if (db.objectStoreNames.contains(store)) {
+              db.deleteObjectStore(store);
+            }
+          }
+        }
 
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {
