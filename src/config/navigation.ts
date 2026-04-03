@@ -39,6 +39,7 @@ export const navigationConfig: NavigationItem[] = [
     module: 'shared',
     section: 'horizon',
     subTabs: [
+      { name: 'Supervisión', href: '/personal/supervision' },
       { name: 'Resumen', href: '/personal/resumen' },
       { name: 'Gastos', href: '/personal/gastos' },
       { name: 'Ingresos', href: '/personal/ingresos' },

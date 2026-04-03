@@ -96,6 +96,7 @@ const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles
 
 // Personal section (within Horizon)
 const Personal = lazyWithPreload(() => import('./modules/horizon/personal/Personal'));
+const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
 
 // Pulse (Management) Module Components
 const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
@@ -510,6 +511,11 @@ function App() {
             {/* Personal section (within Horizon) */}
             <Route path="personal">
               <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route path="supervision" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalSupervision />
+                </React.Suspense>
+              } />
               <Route path="resumen" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Personal />
