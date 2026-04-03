@@ -34,16 +34,10 @@ export const navigationConfig: NavigationItem[] = [
   },
   {
     name: 'Personal',
-    href: '/personal',
+    href: '/personal/supervision',
     icon: User,
     module: 'shared',
     section: 'horizon',
-    subTabs: [
-      { name: 'Supervisión', href: '/personal/supervision' },
-      { name: 'Resumen', href: '/personal/resumen' },
-      { name: 'Gastos', href: '/personal/gastos' },
-      { name: 'Ingresos', href: '/personal/ingresos' },
-    ]
   },
   {
     name: 'Inmuebles',
