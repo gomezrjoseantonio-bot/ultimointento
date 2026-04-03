@@ -22,7 +22,7 @@ export const gastosInmuebleService = {
       const existentes = await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [gasto.origen, gasto.origenId]);
       if (existentes.length > 0) return existentes[0].id!;
     }
-    return db.add('gastosInmueble', { ...gasto, createdAt: now, updatedAt: now });
+    return db.add('gastosInmueble', { ...gasto, createdAt: now, updatedAt: now } as any) as unknown as number;
   },
 
   async update(id: number, updates: Partial<GastoInmueble>): Promise<void> {

@@ -5,6 +5,8 @@ import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion, type AEATFi
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import ExpenseFormModal from './ExpenseFormModal';
 import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
+import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 function mapFiscalTypeToCategoria(ft?: AEATFiscalType): GastoCategoria {
   const map: Partial<Record<AEATFiscalType, GastoCategoria>> = {
@@ -20,9 +22,6 @@ function mapFiscalTypeToCategoria(ft?: AEATFiscalType): GastoCategoria {
   };
   return (ft && map[ft]) || 'otro';
 }
-
-import toast from 'react-hot-toast';
-import { confirmDelete } from '../../../../../services/confirmationService';
 
 interface GastosTabProps {
   triggerAddExpense?: boolean;
