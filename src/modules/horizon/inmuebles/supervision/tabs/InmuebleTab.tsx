@@ -40,14 +40,15 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   );
 
   // Load full Property from IndexedDB for the sale modal
+  const inmId = inm?.id;
   useEffect(() => {
-    if (!inm) return;
+    if (inmId == null) return;
     let cancelled = false;
-    initDB().then((db) => db.get('properties', inm.id)).then((p) => {
+    initDB().then((db) => db.get('properties', inmId)).then((p) => {
       if (!cancelled) setFullProperty(p ?? null);
     });
     return () => { cancelled = true; };
-  }, [inm?.id]);
+  }, [inmId]);
 
   // Available years for detail panel
   const availableYears = useMemo(

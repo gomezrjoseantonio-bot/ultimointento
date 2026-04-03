@@ -36,7 +36,10 @@ const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas
     cfProy += rentasY - baseGastos - baseIntereses;
   }
 
-  const yieldProy = safeDiv(baseRentas * Math.pow(1 + crecRentas / 100, horizonte), inmueble.costeAdquisicion) * 100;
+  const yieldProy = safeDiv(
+    baseRentas * Math.pow(1 + crecRentas / 100, horizonte),
+    inmueble.costeAdquisicion,
+  ) * 100;
 
   // Resultado total
   const gananciaEst = (valorProy + inmueble.cashflowAcumulado + cfProy) - inmueble.inversionTotal;
@@ -51,6 +54,7 @@ const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas
         { label: 'Valor actual', value: fmt(inmueble.valorActual) },
         { label: 'Plusval\u00EDa latente', value: fmt(inmueble.plusvaliaLatente), highlight: true },
         { label: `Proyecci\u00F3n ${horizonte}a`, value: fmt(valorProy) },
+        { label: `Plusv. proyectada ${horizonte}a`, value: fmt(plusvaliaProyectada) },
       ],
     },
     {
@@ -60,6 +64,7 @@ const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas
         { label: 'Cashflow acumulado', value: fmt(inmueble.cashflowAcumulado) },
         { label: 'Yield s/adq.', value: fmtPct(inmueble.yieldCosteAdquisicion) },
         { label: `CF proyectado ${horizonte}a`, value: fmt(cfProy), highlight: true },
+        { label: `Yield proy. ${horizonte}a`, value: fmtPct(yieldProy) },
         { label: `Rentas est. ${horizonte}a`, value: fmt(rentasEstTotal) },
       ],
     },
