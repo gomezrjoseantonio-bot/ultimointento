@@ -51,11 +51,10 @@ export const navigationConfig: NavigationItem[] = [
     module: 'shared',
     section: 'horizon',
     subTabs: [
-      { name: 'Resumen', href: '/inmuebles/resumen' },
-      { name: 'Cartera', href: '/inmuebles/cartera' },
       { name: 'Supervisión', href: '/inmuebles/supervision' },
-      { name: 'Evolución', href: '/inmuebles/evolucion' },
-      { name: 'Individual', href: '/inmuebles/individual' },
+      { name: 'Cartera', href: '/inmuebles/cartera' },
+      { name: 'Contratos', href: '/inmuebles/contratos' },
+      { name: 'Gastos/CAPEX', href: '/inmuebles/gastos-capex' },
     ]
   },
   {
