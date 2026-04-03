@@ -1,6 +1,7 @@
 // H9-FISCAL: AEAT Amortization Service
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
 
 export interface UnifiedPropertyFiscalData {
   acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
@@ -191,11 +192,26 @@ export const calculateAEATAmortization = async (
       }))
       .filter((mejora) => mejora.year > 0 && mejora.amount > 0);
   } catch {
+    // Fallback: read from mejorasInmueble (unified store)
     try {
-      allImprovements = await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId);
-      historicalImprovements = allImprovements
-        .filter(imp => imp.year <= exerciseYear)
-        .reduce((total, imp) => total + imp.amount, 0);
+      const mejorasUnificadas = await mejorasInmuebleService.getPorInmueble(propertyId);
+      const capitalizables = mejorasUnificadas.filter(m => m.tipo !== 'reparacion');
+      historicalImprovements = capitalizables
+        .filter(m => m.ejercicio <= exerciseYear)
+        .reduce((total, m) => total + m.importe, 0);
+      allImprovements = capitalizables
+        .map(m => ({
+          propertyId,
+          year: m.ejercicio,
+          amount: m.importe,
+          date: m.fecha,
+          daysInYear: undefined,
+          counterpartyNIF: m.proveedorNIF,
+          description: m.descripcion ?? 'Mejora',
+          createdAt: m.createdAt ?? '',
+          updatedAt: m.updatedAt ?? '',
+        }))
+        .filter(m => m.year > 0 && m.amount > 0);
     } catch {
       historicalImprovements = 0;
       allImprovements = [];

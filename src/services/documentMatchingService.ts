@@ -13,6 +13,8 @@
  */
 
 import { initDB, MejoraActivo, MobiliarioActivo, Property } from './db';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
+import { mueblesInmuebleService } from './mueblesInmuebleService';
 
 export interface CandidatoMatch {
   id: number;
@@ -179,6 +181,62 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
       alreadyLinked: mb.documentId != null && mb.documentId > 0,
       score,
     });
+  }
+
+  // --- Also read from unified stores (mejorasInmueble / mueblesInmueble) ---
+  // Dedup by checking if a candidate with same inmuebleId+ejercicio+descripcion+importe already exists
+  const existingKeys = new Set(candidates.map(c => `${c.inmuebleId}-${c.ejercicio}-${c.importe}`));
+
+  try {
+    const mejorasUnif = await mejorasInmuebleService.getPorInmueble(0).catch(() => []);
+    // getPorInmueble(0) won't match — load all via db
+    const allMejorasUnif = await (async () => { const d = await initDB(); return d.getAll('mejorasInmueble'); })().catch(() => []);
+    for (const m of allMejorasUnif) {
+      const key = `${m.inmuebleId}-${m.ejercicio}-${m.importe}`;
+      if (existingKeys.has(key)) continue;
+      const score = scoreRecord(m.proveedorNIF || '', m.inmuebleId, m.ejercicio);
+      if (score < 2) continue;
+      existingKeys.add(key);
+      candidates.push({
+        id: m.id!,
+        tipo: 'mejoraActivo',
+        inmuebleId: m.inmuebleId,
+        inmuebleAlias: aliasMap.get(m.inmuebleId) || `Inmueble #${m.inmuebleId}`,
+        ejercicio: m.ejercicio,
+        importe: m.importe,
+        tipoGasto: m.tipo,
+        descripcion: m.descripcion,
+        proveedorNIF: m.proveedorNIF,
+        proveedorNombre: m.proveedorNombre,
+        alreadyLinked: m.documentId != null && m.documentId > 0,
+        score,
+      });
+    }
+
+    const allMueblesUnif = await (async () => { const d = await initDB(); return d.getAll('mueblesInmueble'); })().catch(() => []);
+    for (const mb of allMueblesUnif) {
+      const key = `${mb.inmuebleId}-${mb.ejercicio}-${mb.importe}`;
+      if (existingKeys.has(key)) continue;
+      const score = scoreRecord(mb.proveedorNIF || '', mb.inmuebleId, mb.ejercicio);
+      if (score < 2) continue;
+      existingKeys.add(key);
+      candidates.push({
+        id: mb.id!,
+        tipo: 'mobiliarioActivo',
+        inmuebleId: mb.inmuebleId,
+        inmuebleAlias: aliasMap.get(mb.inmuebleId) || `Inmueble #${mb.inmuebleId}`,
+        ejercicio: mb.ejercicio,
+        importe: mb.importe,
+        tipoGasto: 'mobiliario',
+        descripcion: mb.descripcion,
+        proveedorNIF: mb.proveedorNIF,
+        proveedorNombre: mb.proveedorNombre,
+        alreadyLinked: mb.documentId != null && mb.documentId > 0,
+        score,
+      });
+    }
+  } catch {
+    // Unified stores may not exist yet — ignore
   }
 
   // Sort by score desc (unlinked first within same score)

@@ -1,6 +1,7 @@
 import { initDB, Property } from './db';
 import { calculateAEATAmortization, getRentalDaysForYear } from './aeatAmortizationService';
 import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
 import { getLatestConfirmedSaleForProperty } from './propertySaleService';
 
 export interface PropertyDisposalTaxResult {
@@ -123,12 +124,12 @@ async function getTotalMejorasConFallback(propertyId: number, ejercicio: number)
   try {
     return round2(await getTotalMejorasHastaEjercicio(propertyId, ejercicio));
   } catch {
-    const db = await initDB();
-    const legacy = await db.getAllFromIndex('propertyImprovements', 'propertyId', propertyId).catch(() => [] as any[]);
+    // Fallback: read from mejorasInmueble (unified store)
+    const mejoras = await mejorasInmuebleService.getHastaEjercicio(propertyId, ejercicio);
     return round2(
-      legacy
-        .filter((item: any) => Number(item?.year) <= ejercicio)
-        .reduce((sum: number, item: any) => sum + Number(item?.amount || 0), 0)
+      mejoras
+        .filter(m => m.tipo === 'mejora' || m.tipo === 'ampliacion')
+        .reduce((sum, m) => sum + m.importe, 0)
     );
   }
 }
