@@ -75,13 +75,14 @@ describe('Complete Data Cleanup', () => {
     it('should define expected object stores to clear', () => {
       // Define the object stores that should exist in the database
       const expectedStores = [
-        'properties', 'documents', 'contracts', 'expenses', 'expensesH5',
+        'properties', 'documents', 'contracts', 'expenses',
         'rentCalendar', 'rentPayments', 'accounts', 'movements', 'importBatches',
-        'treasuryEvents', 'treasuryRecommendations', 'fiscalSummaries',
-        'ingresos', 'gastos', 'capex', 'budgets', 'budgetLines',
+        'treasuryEvents', 'treasuryRecommendations',
+        'ingresos', 'capex', 'budgets', 'budgetLines',
         'presupuestos', 'presupuestoLineas', 'importLogs', 'matchingConfiguration',
-        'reforms', 'reformLineItems', 'aeatCarryForwards', 'propertyDays',
-        'propertyImprovements', 'kpiConfigurations', 'keyval'
+        'aeatCarryForwards', 'propertyDays',
+        'kpiConfigurations', 'keyval',
+        'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
       // Verify we have a comprehensive list of stores
@@ -95,7 +96,7 @@ describe('Complete Data Cleanup', () => {
       expect(expectedStores).toContain('treasuryEvents');
       expect(expectedStores).toContain('treasuryRecommendations');
       expect(expectedStores).toContain('ingresos');
-      expect(expectedStores).toContain('gastos');
+      expect(expectedStores).toContain('gastosInmueble');
       expect(expectedStores).toContain('capex');
     });
   });

@@ -21,7 +21,7 @@ async function clearStores() {
     db.clear('properties'),
     db.clear('contracts'),
     db.clear('ingresos'),
-    db.clear('gastos'),
+    db.clear('gastosInmueble'),
     db.clear('treasuryEvents'),
     db.clear('nominas'),
     db.clear('autonomos'),
@@ -72,7 +72,7 @@ function makeIngreso(
 }
 
 function makeGasto(
-  id: number,
+  _id: number,
   propertyId: number,
   total: number,
   mes: number,
@@ -80,16 +80,17 @@ function makeGasto(
   movementId: number | null = 1
 ) {
   return {
-    id,
-    contraparte_nombre: 'Proveedor',
-    fecha_emision: `${EJERCICIO}-${String(mes).padStart(2, '0')}-01`,
-    fecha_pago_prevista: `${EJERCICIO}-${String(mes).padStart(2, '0')}-05`,
-    total,
-    categoria_AEAT: '0109' as const,
-    destino: 'inmueble_id' as const,
-    destino_id: propertyId,
-    estado,
-    movement_id: movementId ?? undefined,
+    inmuebleId: propertyId,
+    ejercicio: EJERCICIO,
+    fecha: `${EJERCICIO}-${String(mes).padStart(2, '0')}-01`,
+    concepto: 'Proveedor',
+    categoria: 'comunidad',
+    casillaAEAT: '0109',
+    importe: total,
+    origen: 'tesoreria',
+    estado: estado === 'pagado' ? 'confirmado' : 'previsto',
+    movimientoId: movementId ? String(movementId) : undefined,
+    proveedorNombre: 'Proveedor',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -264,7 +265,7 @@ describe('conciliarEjercicioFiscal', () => {
       updatedAt: new Date().toISOString(),
     });
     // Gasto pagado en mes 2
-    await db.add('gastos', makeGasto(1, 2, 48, 2, 'pagado', 77));
+    await db.add('gastosInmueble', makeGasto(1, 2, 48, 2, 'pagado', 77));
 
     const result = await conciliarEjercicioFiscal(EJERCICIO);
 

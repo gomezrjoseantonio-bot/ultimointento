@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 41; // V4.1: stores gastosInmueble, mejorasInmueble, mueblesInmueble + cleanup obsolete stores
+const DB_VERSION = 42; // V4.2: delete legacy stores (all refs removed in phases A-E)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2085,31 +2085,7 @@ export const initDB = async () => {
           expenseStore.createIndex('isCapex', 'isCapex', { unique: false });
         }
 
-        // H5: Enhanced Expenses store
-        if (!db.objectStoreNames.contains('expensesH5')) {
-          const expenseH5Store = db.createObjectStore('expensesH5', { keyPath: 'id', autoIncrement: true });
-          expenseH5Store.createIndex('propertyId', 'propertyId', { unique: false });
-          expenseH5Store.createIndex('fiscalType', 'fiscalType', { unique: false });
-          expenseH5Store.createIndex('taxYear', 'taxYear', { unique: false });
-          expenseH5Store.createIndex('status', 'status', { unique: false });
-          expenseH5Store.createIndex('origin', 'origin', { unique: false });
-          expenseH5Store.createIndex('date', 'date', { unique: false });
-        }
-
-        // H5: Reforms store
-        if (!db.objectStoreNames.contains('reforms')) {
-          const reformStore = db.createObjectStore('reforms', { keyPath: 'id', autoIncrement: true });
-          reformStore.createIndex('propertyId', 'propertyId', { unique: false });
-          reformStore.createIndex('status', 'status', { unique: false });
-        }
-
-        // H5: Reform Line Items store
-        if (!db.objectStoreNames.contains('reformLineItems')) {
-          const reformLineItemStore = db.createObjectStore('reformLineItems', { keyPath: 'id', autoIncrement: true });
-          reformLineItemStore.createIndex('reformId', 'reformId', { unique: false });
-          reformLineItemStore.createIndex('treatment', 'treatment', { unique: false });
-          reformLineItemStore.createIndex('source', 'source', { unique: false });
-        }
+        // H5: expensesH5, reforms, reformLineItems — DELETED in V4.2
 
         // H5: AEAT Carry Forwards store
         if (!db.objectStoreNames.contains('aeatCarryForwards')) {
@@ -2127,25 +2103,7 @@ export const initDB = async () => {
           propertyDaysStore.createIndex('property-year', ['propertyId', 'taxYear'], { unique: true });
         }
 
-        // H9-FISCAL: Property Improvements store
-        if (!db.objectStoreNames.contains('propertyImprovements')) {
-          const propertyImprovementsStore = db.createObjectStore('propertyImprovements', { keyPath: 'id', autoIncrement: true });
-          propertyImprovementsStore.createIndex('propertyId', 'propertyId', { unique: false });
-          propertyImprovementsStore.createIndex('year', 'year', { unique: false });
-          propertyImprovementsStore.createIndex('property-year', ['propertyId', 'year'], { unique: false });
-        }
-
-        if (!db.objectStoreNames.contains('operacionesFiscales')) {
-          const operacionesFiscalesStore = db.createObjectStore('operacionesFiscales', { keyPath: 'id', autoIncrement: true });
-          operacionesFiscalesStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          operacionesFiscalesStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          operacionesFiscalesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
-          operacionesFiscalesStore.createIndex('casillaAEAT', 'casillaAEAT', { unique: false });
-          operacionesFiscalesStore.createIndex('estado', 'estado', { unique: false });
-          operacionesFiscalesStore.createIndex('movementId', 'movementId', { unique: false });
-          operacionesFiscalesStore.createIndex('documentId', 'documentId', { unique: false });
-          operacionesFiscalesStore.createIndex('origen-origenId', ['origen', 'origenId'], { unique: false });
-        }
+        // propertyImprovements, operacionesFiscales — DELETED in V4.2
 
         if (!db.objectStoreNames.contains('mejorasActivo')) {
           const mejorasActivoStore = db.createObjectStore('mejorasActivo', { keyPath: 'id', autoIncrement: true });
@@ -2227,13 +2185,23 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
         }
 
-        // V4.1: Do not cleanup legacy stores yet.
-        // Some of these stores are still referenced by the current runtime, so deleting them
-        // during upgrade would cause runtime failures for users coming from v40+ databases.
-        // Keep them until all application code has stopped referencing them, then remove them
-        // in a dedicated future migration/version.
-        // Stores to clean up in the future: fiscalSummaries, operacionesFiscales, expensesH5,
-        // gastos, reforms, reformLineItems, propertyImprovements
+        // V4.2: Delete legacy stores — all runtime references removed in phases A-E
+        if (oldVersion < 42) {
+          const storesToDelete = [
+            'fiscalSummaries',
+            'operacionesFiscales',
+            'expensesH5',
+            'gastos',
+            'reforms',
+            'reformLineItems',
+            'propertyImprovements',
+          ];
+          for (const store of storesToDelete) {
+            if (db.objectStoreNames.contains(store)) {
+              db.deleteObjectStore(store);
+            }
+          }
+        }
 
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {
@@ -2309,14 +2277,7 @@ export const initDB = async () => {
           treasuryRecommendationsStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
 
-        // H9: Fiscal Summaries store
-        if (!db.objectStoreNames.contains('fiscalSummaries')) {
-          const fiscalSummariesStore = db.createObjectStore('fiscalSummaries', { keyPath: 'id', autoIncrement: true });
-          fiscalSummariesStore.createIndex('propertyId', 'propertyId', { unique: false });
-          fiscalSummariesStore.createIndex('exerciseYear', 'exerciseYear', { unique: false });
-          fiscalSummariesStore.createIndex('status', 'status', { unique: false });
-          fiscalSummariesStore.createIndex('property-year', ['propertyId', 'exerciseYear'], { unique: true });
-        }
+        // fiscalSummaries — DELETED in V4.2
 
         // H10: Treasury Ingresos store
         if (!db.objectStoreNames.contains('ingresos')) {
@@ -2328,16 +2289,7 @@ export const initDB = async () => {
           ingresosStore.createIndex('movement_id', 'movement_id', { unique: false });
         }
 
-        // H10: Treasury Gastos store
-        if (!db.objectStoreNames.contains('gastos')) {
-          const gastosStore = db.createObjectStore('gastos', { keyPath: 'id', autoIncrement: true });
-          gastosStore.createIndex('categoria_AEAT', 'categoria_AEAT', { unique: false });
-          gastosStore.createIndex('estado', 'estado', { unique: false });
-          gastosStore.createIndex('fecha_pago_prevista', 'fecha_pago_prevista', { unique: false });
-          gastosStore.createIndex('destino', 'destino', { unique: false });
-          gastosStore.createIndex('movement_id', 'movement_id', { unique: false });
-          gastosStore.createIndex('source_doc_id', 'source_doc_id', { unique: false });
-        }
+        // gastos (treasury) — DELETED in V4.2
 
         // H10: Treasury CAPEX store
         if (!db.objectStoreNames.contains('capex')) {

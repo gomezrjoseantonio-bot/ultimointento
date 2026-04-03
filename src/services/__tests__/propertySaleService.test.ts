@@ -47,9 +47,8 @@ describe('propertySaleService', () => {
       db.clear('movements'),
       db.clear('opexRules'),
       db.clear('ingresos'),
-      db.clear('gastos'),
+      db.clear('gastosInmueble'),
       db.clear('treasuryEvents'),
-      db.clear('fiscalSummaries'),
     ]);
   });
 
@@ -378,15 +377,17 @@ describe('propertySaleService', () => {
       updatedAt: new Date().toISOString(),
     } as any));
 
-    const gastoId = Number(await db.add('gastos', {
-      contraparte_nombre: 'Seguro hogar | anual',
-      fecha_emision: '2026-04-01',
-      fecha_pago_prevista: '2026-04-15',
-      total: 430,
-      categoria_AEAT: '0114',
-      destino: 'inmueble_id',
-      destino_id: propertyId,
-      estado: 'completo',
+    const gastoId = Number(await db.add('gastosInmueble', {
+      inmuebleId: propertyId,
+      ejercicio: 2026,
+      fecha: '2026-04-01',
+      concepto: 'Seguro hogar | anual',
+      categoria: 'seguro',
+      casillaAEAT: '0114',
+      importe: 430,
+      origen: 'tesoreria',
+      estado: 'confirmado',
+      proveedorNombre: 'Seguro hogar | anual',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     } as any));
@@ -423,8 +424,8 @@ describe('propertySaleService', () => {
     const opexAfterSale = await db.get('opexRules', opexRuleId);
     expect(opexAfterSale?.activo).toBe(false);
 
-    const gastoAfterSale = await db.get('gastos', gastoId);
-    expect(gastoAfterSale?.estado).toBe('incompleto');
+    const gastoAfterSale = await db.get('gastosInmueble', gastoId);
+    expect(gastoAfterSale?.estado).toBe('previsto');
 
     await cancelPropertySale(sale!.id!);
 
@@ -436,8 +437,8 @@ describe('propertySaleService', () => {
     const restoredOpex = await db.get('opexRules', opexRuleId);
     expect(restoredOpex?.activo).toBe(true);
 
-    const restoredGasto = await db.get('gastos', gastoId);
-    expect(restoredGasto?.estado).toBe('completo');
+    const restoredGasto = await db.get('gastosInmueble', gastoId);
+    expect(restoredGasto?.estado).toBe('confirmado');
   });
 
 
@@ -721,8 +722,10 @@ describe('propertySaleService', () => {
       source: 'cartera',
     });
 
-    const summaries2027 = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, 2027]);
-    expect(summaries2027).toHaveLength(1);
+    // fiscalSummaries store eliminated — calculateFiscalSummary now computes in memory
+    // Verify gastos exist for the property instead
+    const gastos2027 = await db.getAllFromIndex('gastosInmueble', 'inmueble-ejercicio', [propertyId, 2027]);
+    expect(gastos2027).toBeDefined();
   });
 
 

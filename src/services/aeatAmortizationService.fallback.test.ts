@@ -72,9 +72,9 @@ describe('aeatAmortizationService unified fallback', () => {
       }),
       getAllFromIndex: jest.fn(async (store: string) => {
         if (store === 'mejorasActivo') throw new Error('missing mejorasActivo');
-        if (store === 'propertyImprovements') {
+        if (store === 'mejorasInmueble') {
           return [
-            { propertyId: 7, year: 2024, amount: 3545.3, description: 'Reforma', createdAt: '', updatedAt: '' },
+            { inmuebleId: 7, ejercicio: 2024, importe: 3545.3, descripcion: 'Reforma', tipo: 'mejora', fecha: '2024-12-31', createdAt: '', updatedAt: '' },
           ];
         }
         return [];
