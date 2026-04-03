@@ -37,17 +37,22 @@ const formatCurrency = (value: number): string =>
 
 const normalizeHeader = (header: string): string =>
   header
+    .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_')
-    .trim();
+    .replace(/^_+|_+$/g, '');
+
+const isValidISODate = (value: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime());
 
 const parseDate = (value: unknown): string => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (parsed?.y && parsed?.m && parsed?.d) {
-      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      const result = `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      return isValidISODate(result) ? result : '';
     }
     return '';
   }
@@ -59,11 +64,13 @@ const parseDate = (value: unknown): string => {
   const parts = normalized.split('/');
   if (parts.length === 3) {
     const [d, m, y] = parts;
-    if (y.length === 4) return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    if (d.length === 4) return `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+    let result = '';
+    if (y.length === 4) result = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    else if (d.length === 4) result = `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+    if (result && isValidISODate(result)) return result;
   }
 
-  return raw;
+  return '';
 };
 
 const parseNumber = (value: unknown): number => {

@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { Upload, Download, X, Receipt, ArrowLeft, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { nominaService } from '../../../services/nominaService';
+import { initDB } from '../../../services/db';
 import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
 
 interface ImportarNominasProps {
@@ -39,11 +40,12 @@ const formatCurrency = (value: number): string =>
 
 const normalizeHeader = (header: string): string =>
   header
+    .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_')
-    .trim();
+    .replace(/^_+|_+$/g, '');
 
 const parseNumber = (value: unknown): number => {
   if (typeof value === 'number') return value;
@@ -211,10 +213,17 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
         return;
       }
 
-      // Group by empresa+año to create one Nomina per employer-year combination
+      // Resolve default account for cuentaAbono
+      const db = await initDB();
+      const allAccounts = await db.getAll('accounts');
+      const defaultCuentaAbono = allAccounts[0]?.id ? Number(allAccounts[0].id) : 0;
+
+      // Group by empresa+nif+año to create one Nomina per employer-year combination
       const groups = new Map<string, PreviewRow[]>();
       for (const row of validRows) {
-        const key = `${row.empresa || 'Sin empresa'}__${row.ano}`;
+        const empresaKey = row.empresa || 'Sin empresa';
+        const nifKey = row.nif_empresa || 'Sin NIF';
+        const key = `${empresaKey}__${nifKey}__${row.ano}`;
         const existing = groups.get(key) || [];
         existing.push(row);
         groups.set(key, existing);
@@ -224,7 +233,8 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
 
       for (const [, rows] of groups) {
         const first = rows[0];
-        const avgBrutoMensual = rows.reduce((sum, r) => sum + r.salario_bruto, 0) / rows.length;
+        // Include complementos + horas_extra in the total bruto calculation
+        const avgBrutoMensual = rows.reduce((sum, r) => sum + r.salario_bruto + r.complementos + r.horas_extra, 0) / rows.length;
         const salarioBrutoAnual = avgBrutoMensual * 12;
         const irpfPct = rows.reduce((sum, r) => sum + r.retencion_irpf, 0) / rows.length;
 
@@ -242,7 +252,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
           bonus: [],
           beneficiosSociales: [],
           retencion: {
-            irpfPorcentaje: irpfPct || 15,
+            irpfPorcentaje: Number.isFinite(irpfPct) ? irpfPct : 15,
             ss: {
               baseCotizacionMensual: getBaseMaxima(currentYear),
               contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
@@ -253,7 +263,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             },
           },
           deduccionesAdicionales: [],
-          cuentaAbono: 0,
+          cuentaAbono: defaultCuentaAbono,
           reglaCobroDia: { tipo: 'ultimo-habil' },
           activa: true,
         });

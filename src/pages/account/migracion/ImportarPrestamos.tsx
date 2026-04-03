@@ -20,7 +20,6 @@ interface PreviewRow {
   fecha_inicio: string;
   plazo_meses: number;
   interes_anual: number;
-  cuota_mensual: number;
   entidad: string;
   referencia: string;
 }
@@ -37,17 +36,22 @@ const formatCurrency = (value: number): string =>
 
 const normalizeHeader = (header: string): string =>
   header
+    .trim()
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_')
-    .trim();
+    .replace(/^_+|_+$/g, '');
+
+const isValidISODate = (value: string): boolean =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime());
 
 const parseDate = (value: unknown): string => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (parsed?.y && parsed?.m && parsed?.d) {
-      return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      const result = `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      return isValidISODate(result) ? result : '';
     }
     return '';
   }
@@ -59,11 +63,13 @@ const parseDate = (value: unknown): string => {
   const parts = normalized.split('/');
   if (parts.length === 3) {
     const [d, m, y] = parts;
-    if (y.length === 4) return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-    if (d.length === 4) return `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+    let result = '';
+    if (y.length === 4) result = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    else if (d.length === 4) result = `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`;
+    if (result && isValidISODate(result)) return result;
   }
 
-  return raw;
+  return '';
 };
 
 const parseNumber = (value: unknown): number => {
@@ -94,7 +100,6 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
         fecha_inicio: '2022-03-15',
         plazo_meses: 300,
         interes_anual: 2.5,
-        cuota_mensual: 720,
         entidad: 'CaixaBank',
         referencia: 'HIP-2022-001',
       },
@@ -105,7 +110,6 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
         fecha_inicio: '2023-06-01',
         plazo_meses: 60,
         interes_anual: 6.9,
-        cuota_mensual: 297,
         entidad: 'BBVA',
         referencia: 'PRES-2023-045',
       },
@@ -157,7 +161,6 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
             fecha_inicio: parseDate(byKey.fecha_inicio),
             plazo_meses: Number(byKey.plazo_meses) || 0,
             interes_anual: parseNumber(byKey.interes_anual),
-            cuota_mensual: parseNumber(byKey.cuota_mensual),
             entidad: String(byKey.entidad || '').trim(),
             referencia: String(byKey.referencia || '').trim(),
           };
@@ -205,9 +208,16 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
         return;
       }
 
-      // Look up properties for matching
+      // Look up properties and accounts once before the loop
       const db = await initDB();
       const allProperties = await db.getAll('properties');
+      const allAccounts = await db.getAll('accounts');
+      const defaultAccountId = allAccounts[0]?.id ? String(allAccounts[0].id) : '';
+
+      if (!defaultAccountId) {
+        toast.error('No hay cuentas bancarias registradas. Crea una cuenta antes de importar préstamos.');
+        return;
+      }
 
       let importados = 0;
 
@@ -225,11 +235,9 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
           if (matched?.id) matchedPropertyId = String(matched.id);
         }
 
-        // Get default account for cuentaCargoId
-        const allAccounts = await db.getAll('accounts');
-        const defaultAccountId = allAccounts[0]?.id ? String(allAccounts[0].id) : '';
-
-        const now = new Date().toISOString();
+        // Derive diaCargoMes from fecha_inicio
+        const fechaParts = row.fecha_inicio.split('-');
+        const diaCargoMes = Math.min(Number(fechaParts[2]) || 1, 28);
 
         await prestamosService.createPrestamo({
           ambito: ambitoValue as 'PERSONAL' | 'INMUEBLE',
@@ -240,7 +248,7 @@ const ImportarPrestamos: React.FC<ImportarPrestamosProps> = ({ onComplete, onBac
           fechaFirma: row.fecha_inicio,
           fechaPrimerCargo: row.fecha_inicio,
           plazoMesesTotal: row.plazo_meses,
-          diaCargoMes: 1,
+          diaCargoMes,
           esquemaPrimerRecibo: 'NORMAL',
           tipo: 'FIJO',
           sistema: 'FRANCES',
