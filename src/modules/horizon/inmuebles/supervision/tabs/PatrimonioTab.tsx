@@ -20,7 +20,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
 const fmtPct = (n: number): string =>
   (n >= 0 ? '+' : '') + n.toFixed(1) + '%';
@@ -90,20 +90,20 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
             const idx = realLabels.indexOf(l);
             return idx >= 0 ? realValues[idx] : null;
           }),
-          borderColor: 'var(--navy-900)',
-          backgroundColor: 'var(--navy-900)',
+          borderColor: '#042C5E',
+          backgroundColor: '#042C5E',
           pointRadius: 4,
           pointHoverRadius: 6,
           tension: 0.3,
           spanGaps: true,
         },
         {
-          label: 'Proyecci\u00F3n',
+          label: 'Proyección',
           data: allLabels.map((l) => {
             const idx = projLabels.indexOf(l);
             return idx >= 0 ? projValues[idx] : null;
           }),
-          borderColor: 'var(--teal-600)',
+          borderColor: '#1DA0BA',
           backgroundColor: 'rgba(29, 160, 186, 0.08)',
           borderDash: [6, 4],
           pointRadius: 0,
@@ -123,7 +123,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx: any) => (ctx.parsed?.y != null ? fmt(ctx.parsed.y) : '\u2014'),
+            label: (ctx: any) => (ctx.parsed?.y != null ? fmt(ctx.parsed.y) : '—'),
           },
         },
       },
@@ -155,17 +155,17 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
           detail={`Coste adq. ${fmt(totales.costeAdquisicion)} | Plusv. ${fmt(totales.plusvaliaLatente)}`}
         />
         <SupervisionCard
-          title="Plusval\u00EDa latente"
+          title="Plusvalía latente"
           value={fmt(totales.plusvaliaLatente)}
           detail={`${fmtPct(totales.revalorizacionPct)} | ${fmtMultiplo(totales.multiplo)}`}
         />
         <SupervisionCard
-          title="Inversi\u00F3n total"
+          title="Inversión total"
           value={fmt(totales.inversionTotal)}
           detail={`Adq. ${fmt(totales.costeAdquisicion)} | Rep+Mob ${fmt(totales.reparaciones + totales.mobiliario)}`}
         />
         <SupervisionCard
-          title="Proyecci\u00F3n valor"
+          title="Proyección valor"
           value={fmt(proyeccionValor)}
         >
           {/* Slider tasa */}
@@ -179,7 +179,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
                 value={tasaPct}
                 onChange={(e) => setTasaPct(Number(e.target.value))}
                 style={{ flex: 1, accentColor: 'var(--teal-600)' }}
-                aria-label="Tasa de revalorizaci\u00F3n anual"
+                aria-label="Tasa de revalorización anual"
               />
               <span style={{
                 fontFamily: 'var(--font-mono)',
@@ -237,7 +237,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
               color: 'var(--grey-900)',
               margin: 0,
             }}>
-              Evoluci\u00F3n patrimonial
+              Evolución patrimonial
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
@@ -248,7 +248,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
                 value={tasaPct}
                 onChange={(e) => setTasaPct(Number(e.target.value))}
                 style={{ width: 80, accentColor: 'var(--teal-600)' }}
-                aria-label="Tasa revalorizaci\u00F3n chart"
+                aria-label="Tasa revalorización chart"
               />
               <span style={{
                 fontFamily: 'var(--font-mono)',
@@ -319,7 +319,7 @@ const PatrimonioTab: React.FC<PatrimonioTabProps> = ({ inmuebles, totales }) => 
           }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--grey-200)' }}>
-                {['Inmueble', 'A\u00F1o', 'Coste de adquisici\u00F3n', 'Reparaciones / Mobiliario', 'Inversi\u00F3n total', 'Valor hoy', 'Plusval\u00EDa latente'].map((h) => (
+                {['Inmueble', 'Año', 'Coste de adquisición', 'Reparaciones / Mobiliario', 'Inversión total', 'Valor hoy', 'Plusvalía latente'].map((h) => (
                   <th
                     key={h}
                     style={{

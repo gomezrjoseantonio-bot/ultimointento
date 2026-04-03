@@ -15,7 +15,7 @@ const COLORS = [
 ];
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
 const EvoBarList: React.FC<EvoBarListProps> = ({ inmuebles }) => {
   if (inmuebles.length === 0) return null;

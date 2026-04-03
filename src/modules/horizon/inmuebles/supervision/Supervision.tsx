@@ -10,9 +10,9 @@ import InmuebleTab from './tabs/InmuebleTab';
 // Navigation-level tabs shared with InmueblesAnalisis
 const NAV_TABS = [
   { id: 'resumen', label: 'Resumen' },
-  { id: 'evolucion', label: 'Evoluci\u00F3n' },
+  { id: 'evolucion', label: 'Evolución' },
   { id: 'individual', label: 'Individual' },
-  { id: 'supervision', label: 'Supervisi\u00F3n' },
+  { id: 'supervision', label: 'Supervisión' },
 ];
 
 // Internal sub-tabs within Supervisión
@@ -45,7 +45,7 @@ const Supervision: React.FC = () => {
           subtitle={
             loading
               ? 'Cargando...'
-              : `${totales.numInmuebles} inmueble${totales.numInmuebles !== 1 ? 's' : ''} \u00B7 supervisi\u00F3n`
+              : `${totales.numInmuebles} inmueble${totales.numInmuebles !== 1 ? 's' : ''} · supervisión`
           }
           tabs={NAV_TABS}
           activeTab="supervision"

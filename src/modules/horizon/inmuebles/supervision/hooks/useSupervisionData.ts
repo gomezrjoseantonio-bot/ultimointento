@@ -105,6 +105,13 @@ const buildYearRange = (anoCompra: number): number[] => {
 // AEAT boxes for operational expenses (excluding 0105=intereses and 0117=amortización muebles)
 const GASTOS_OP_BOXES = new Set(['0106', '0109', '0112', '0113', '0114', '0115']);
 
+// categoriaFiscal fallback — operations may not have casillaAEAT set
+const GASTOS_OP_CATEGORIES = new Set([
+  'reparacion-conservacion', 'comunidad', 'servicios-personales',
+  'suministros', 'seguros', 'tributos-locales',
+]);
+const INTERESES_CATEGORIES = new Set(['intereses-financiacion']);
+
 // ── Hook ─────────────────────────────────────────────────────────────────
 
 export function useSupervisionData(): SupervisionData {
@@ -227,9 +234,11 @@ export function useSupervisionData(): SupervisionData {
           try {
             const ops = await getOperacionesPorInmuebleYEjercicio(propId, ano);
             for (const op of ops) {
-              if (op.casillaAEAT === '0105') {
+              const box = op.casillaAEAT;
+              const cat = (op as any).categoriaFiscal as string | undefined;
+              if (box === '0105' || INTERESES_CATEGORIES.has(cat ?? '')) {
                 intereses += op.total;
-              } else if (GASTOS_OP_BOXES.has(op.casillaAEAT)) {
+              } else if (GASTOS_OP_BOXES.has(box) || GASTOS_OP_CATEGORIES.has(cat ?? '')) {
                 gastosOp += op.total;
               }
             }
@@ -251,7 +260,7 @@ export function useSupervisionData(): SupervisionData {
             .filter((m) => m.tipo === 'reparacion' && m.ejercicio === ano)
             .reduce((s, m) => s + m.importe, 0);
 
-          const cashflow = rentasAno - gastosOp - intereses - reparacionesAno;
+          const cashflow = rentasAno - gastosOp - intereses;
 
           datosPorAno.push({
             ano,

@@ -18,7 +18,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineEleme
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const fmt = (n: number): string =>
-  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' \u20AC';
+  n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
 const fmtPct = (n: number): string =>
   (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
@@ -54,7 +54,12 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
   const [crecimientoPct, setCrecimientoPct] = useState(3);
   const [horizonte, setHorizonte] = useState(10);
 
-  const datosAnuales = useMemo(() => aggregateByYear(inmuebles), [inmuebles]);
+  const datosAnualesRaw = useMemo(() => aggregateByYear(inmuebles), [inmuebles]);
+  // Filter out years with no data at all
+  const datosAnuales = useMemo(
+    () => datosAnualesRaw.filter((d) => d.rentas > 0 || d.gastosOp > 0 || d.intereses > 0 || d.reparaciones > 0),
+    [datosAnualesRaw],
+  );
   const currentYear = new Date().getFullYear();
 
   // Current year data
@@ -126,7 +131,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
         {
           label: 'Gastos op.',
           data: realGastos,
-          backgroundColor: 'var(--grey-300)',
+          backgroundColor: '#C8D0DC',
           stack: 'real',
         },
         {
@@ -138,7 +143,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
         {
           label: 'Cashflow',
           data: realCashflow,
-          backgroundColor: 'var(--teal-600)',
+          backgroundColor: '#1DA0BA',
           stack: 'real',
         },
         {
@@ -224,8 +229,8 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
               ? (d.rentas / totales.costeAdquisicion) * 100
               : null;
           }),
-          borderColor: 'var(--navy-900)',
-          backgroundColor: 'var(--navy-900)',
+          borderColor: '#042C5E',
+          backgroundColor: '#042C5E',
           pointRadius: 3,
           tension: 0.3,
           spanGaps: true,
@@ -243,7 +248,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
             }
             return d ? d.yield : null;
           }),
-          borderColor: 'var(--teal-600)',
+          borderColor: '#1DA0BA',
           borderDash: [6, 4],
           pointRadius: 0,
           tension: 0.3,
@@ -293,7 +298,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
           detail={`Rentas ${fmt(datosAnuales.reduce((s, d) => s + d.rentas, 0))} | Gastos+Int ${fmt(datosAnuales.reduce((s, d) => s + d.gastosOp + d.intereses, 0))} | Yield ${fmtPct(yieldMedio)}`}
         />
         <SupervisionCard
-          title="Cashflow a\u00F1o en curso"
+          title="Cashflow año en curso"
           value={fmt(cfAnoActual)}
           detail={`Rentas ${fmt(datoAnoActual?.rentas ?? 0)} | Gastos ${fmt((datoAnoActual?.gastosOp ?? 0) + (datoAnoActual?.intereses ?? 0))} | Yield ${fmtPct(totales.yieldCosteAdquisicion)}`}
         />
@@ -400,7 +405,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
                 <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)' }}>{item.label}</span>
               </div>
             ))}
-            <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>| semitransparente = proyecci\u00F3n</span>
+            <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>| semitransparente = proyección</span>
           </div>
         </div>
 
@@ -412,7 +417,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
           padding: 'var(--space-6)',
         }}>
           <h3 style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: '0 0 var(--space-4)' }}>
-            Yield bruto s/adquisici\u00F3n
+            Yield bruto s/adquisición
           </h3>
           <div style={{ height: 280 }}>
             <Line data={yieldChartData} options={yieldChartOptions as any} />
@@ -424,13 +429,13 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 16, height: 2, background: 'var(--teal-600)', borderTop: '2px dashed var(--teal-600)' }} />
-              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)' }}>Proyecci\u00F3n</span>
+              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)' }}>Proyección</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── 5.3 — Tabla "Ingresos y gastos por a\u00F1o" ──────────────────── */}
+      {/* ── 5.3 — Tabla "Ingresos y gastos por año" ──────────────────── */}
       <div style={{
         background: 'var(--white)',
         border: '1px solid var(--grey-200)',
@@ -439,7 +444,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
       }}>
         <div style={{ padding: '16px 16px 0' }}>
           <h3 style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
-            Ingresos y gastos por a\u00F1o
+            Ingresos y gastos por año
           </h3>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -452,12 +457,12 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
           }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--grey-200)' }}>
-                {['A\u00F1o', 'Rentas', 'Gastos op.', 'Intereses', 'Reparaciones', 'Cashflow neto'].map((h) => (
+                {['Año', 'Rentas', 'Gastos op.', 'Intereses', 'Reparaciones', 'Cashflow neto'].map((h) => (
                   <th
                     key={h}
                     style={{
                       padding: '10px 16px',
-                      textAlign: h === 'A\u00F1o' ? 'left' : 'right',
+                      textAlign: h === 'Año' ? 'left' : 'right',
                       fontWeight: 600,
                       color: 'var(--grey-500)',
                       fontSize: 'var(--t-xs)',
