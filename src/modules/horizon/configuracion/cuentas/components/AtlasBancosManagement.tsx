@@ -573,7 +573,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
             </div>
           </div>
         ) : (
-          accounts.map((account) => {
+          <>
+          {accounts.map((account) => {
             const isActive = account.status === 'ACTIVE' || (!account.status && account.activa);
             const isInactive = account.status === 'INACTIVE' || (!account.status && !account.activa);
             
@@ -626,7 +627,16 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
                 </div>
               </div>
             );
-          })
+          })}
+          {/* Add new account card */}
+          <button
+            onClick={handleNewAccount}
+            className="border-2 border-dashed border-gray-300 hover:border-atlas-blue hover:bg-blue-50/50 p-4 h-full flex items-center justify-center gap-2 text-gray-500 hover:text-atlas-blue transition-colors duration-200 cursor-pointer min-h-[88px]"
+          >
+            <Banknote className="w-5 h-5" />
+            <span className="text-sm font-medium">Nueva cuenta</span>
+          </button>
+          </>
         )}
       </div>
 
