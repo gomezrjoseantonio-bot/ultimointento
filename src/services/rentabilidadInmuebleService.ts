@@ -80,12 +80,12 @@ export async function calcularRentabilidadInmueble(
       interesesReales += loan.interesesAnuales ?? (cuotaMensual * 12 * 0.3); // Approx if not available
     }
   } catch {
-    // Try fiscalSummary for interest data
+    // Try gastosInmueble for interest data
     try {
-      const summaries = await db.getAllFromIndex('fiscalSummaries', 'property-year', [inmueble.inmuebleId, declaracion.ejercicio]);
-      const summary = summaries?.[0] as any;
-      if (summary?.box0105) {
-        interesesReales = summary.box0105;
+      const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+      const casillas = await gastosInmuebleService.getSumaPorCasilla(inmueble.inmuebleId, declaracion.ejercicio);
+      if (casillas['0105']) {
+        interesesReales = casillas['0105'];
       }
     } catch { /* ignore */ }
   }

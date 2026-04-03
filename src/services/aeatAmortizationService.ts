@@ -353,69 +353,45 @@ export const updateFiscalSummaryWithAEAT = async (
   propertyId: number,
   exerciseYear: number
 ): Promise<FiscalSummary> => {
-  const db = await initDB();
-  
   // Get rental days
   const daysRented = await getRentalDaysForYear(propertyId, exerciseYear);
-  
+
   // Calculate AEAT amortization
   const aeatCalc = await calculateAEATAmortization(propertyId, exerciseYear, daysRented);
-  
-  // Get existing fiscal summary
-  const existingSummaries = await db.getAllFromIndex('fiscalSummaries', 'property-year', [propertyId, exerciseYear]);
-  
-  let fiscalSummary: FiscalSummary;
-  
-  if (existingSummaries.length > 0) {
-    fiscalSummary = existingSummaries[0];
-  } else {
-    // Create new fiscal summary
-    fiscalSummary = {
-      propertyId,
-      exerciseYear,
-      box0105: 0,
-      box0106: 0,
-      box0109: 0,
-      box0112: 0,
-      box0113: 0,
-      box0114: 0,
-      box0115: 0,
-      box0117: 0,
-      capexTotal: 0,
-      constructionValue: aeatCalc.baseAmount,
-      annualDepreciation: aeatCalc.totalAmortization,
-      status: exerciseYear < new Date().getFullYear() ? 'Prescrito' : 'Vivo',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-  }
 
-  // Update with AEAT calculation
-  fiscalSummary.annualDepreciation = aeatCalc.totalAmortization;
-  fiscalSummary.constructionValue = aeatCalc.baseAmount;
-  fiscalSummary.aeatAmortization = {
-    daysRented: aeatCalc.daysRented,
-    daysAvailable: aeatCalc.daysAvailable,
-    calculationMethod: aeatCalc.calculationMethod,
-    baseAmount: aeatCalc.baseAmount,
-    percentageApplied: aeatCalc.percentageApplied,
-    propertyAmortization: aeatCalc.propertyAmortization,
-    improvementsAmortization: aeatCalc.improvementsAmortization,
-    furnitureAmortization: aeatCalc.furnitureAmortization,
-    totalAmortization: aeatCalc.totalAmortization,
-    specialCaseJustification: aeatCalc.specialCaseJustification,
-    accumulatedStandard: aeatCalc.accumulatedStandard,
-    accumulatedActual: aeatCalc.accumulatedActual
+  // Return computed values in memory — no persistence to fiscalSummaries
+  const fiscalSummary: FiscalSummary = {
+    propertyId,
+    exerciseYear,
+    box0105: 0,
+    box0106: 0,
+    box0109: 0,
+    box0112: 0,
+    box0113: 0,
+    box0114: 0,
+    box0115: 0,
+    box0117: 0,
+    capexTotal: 0,
+    constructionValue: aeatCalc.baseAmount,
+    annualDepreciation: aeatCalc.totalAmortization,
+    aeatAmortization: {
+      daysRented: aeatCalc.daysRented,
+      daysAvailable: aeatCalc.daysAvailable,
+      calculationMethod: aeatCalc.calculationMethod,
+      baseAmount: aeatCalc.baseAmount,
+      percentageApplied: aeatCalc.percentageApplied,
+      propertyAmortization: aeatCalc.propertyAmortization,
+      improvementsAmortization: aeatCalc.improvementsAmortization,
+      furnitureAmortization: aeatCalc.furnitureAmortization,
+      totalAmortization: aeatCalc.totalAmortization,
+      specialCaseJustification: aeatCalc.specialCaseJustification,
+      accumulatedStandard: aeatCalc.accumulatedStandard,
+      accumulatedActual: aeatCalc.accumulatedActual,
+    },
+    status: exerciseYear < new Date().getFullYear() ? 'Prescrito' : 'Vivo',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
-  fiscalSummary.updatedAt = new Date().toISOString();
-
-  // Save the updated summary
-  if (fiscalSummary.id) {
-    await db.put('fiscalSummaries', fiscalSummary);
-  } else {
-    const id = await db.add('fiscalSummaries', fiscalSummary) as number;
-    fiscalSummary.id = id;
-  }
 
   return fiscalSummary;
 };

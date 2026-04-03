@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, FiscalSummary, initDB } from '../../../../services/db';
+import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
@@ -188,18 +189,32 @@ const Cartera: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [allProperties, allValuations, allContracts, allFiscalSummaries] = await Promise.all([
+      const [allProperties, allValuations, allContracts, allGastos] = await Promise.all([
         getCachedStoreRecords<Property>('properties'),
         getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
         getCachedStoreRecords<Contract>('contracts'),
-        getCachedStoreRecords<FiscalSummary>('fiscalSummaries', { forceRefresh: true }),
+        gastosInmuebleService.getAll(),
       ]);
       setProperties(allProperties);
       setValuations(allValuations);
+      // Build FiscalSummary[] from gastosInmueble for display compatibility
+      const summaryMap = new Map<string, FiscalSummary>();
+      for (const g of allGastos) {
+        const key = `${g.inmuebleId}-${g.ejercicio}`;
+        if (!summaryMap.has(key)) {
+          summaryMap.set(key, {
+            propertyId: g.inmuebleId, exerciseYear: g.ejercicio,
+            box0105: 0, box0106: 0, box0109: 0, box0112: 0, box0113: 0, box0114: 0, box0115: 0, box0117: 0,
+            capexTotal: 0, deductibleExcess: 0, constructionValue: 0, annualDepreciation: 0,
+            status: 'Vivo', createdAt: g.createdAt, updatedAt: g.updatedAt,
+          });
+        }
+        const s = summaryMap.get(key)!;
+        const boxKey = `box${g.casillaAEAT}` as keyof FiscalSummary;
+        if (boxKey in s) (s as any)[boxKey] = ((s as any)[boxKey] || 0) + g.importe;
+      }
+      const allFiscalSummaries = Array.from(summaryMap.values());
       setFiscalSummaries(allFiscalSummaries);
-      // DIAG: T48 debug — verificar qué fiscalSummaries llegan a la cartera
-      console.log('[Cartera] fiscalSummaries loaded:', allFiscalSummaries.length, 'records');
-      console.log('[Cartera] fiscalSummaries with box0102 > 0:', allFiscalSummaries.filter((fs: any) => fs.box0102 && fs.box0102 > 0).map((fs: any) => ({ id: fs.id, propertyId: fs.propertyId, year: fs.exerciseYear, box0102: fs.box0102 })));
 
       const latestSalesEntries = await Promise.all(
         allProperties
