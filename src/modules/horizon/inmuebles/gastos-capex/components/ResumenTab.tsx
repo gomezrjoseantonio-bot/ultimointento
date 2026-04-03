@@ -3,6 +3,7 @@ import { CalendarIcon, TrendingUpIcon, AlertTriangleIcon, Download } from 'lucid
 import { AEATCarryForward, PropertyDays, initDB, Property } from '../../../../../services/db';
 import { calculateAEATLimits } from '../../../../../utils/aeatUtils';
 import { formatEuro } from '../../../../../utils/formatUtils';
+import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
 import toast from 'react-hot-toast';
 
 interface PropertySummary {
@@ -38,44 +39,29 @@ const ResumenTab: React.FC = () => {
       setLoading(true);
       const db = await initDB();
       
-      const [propertiesData, expensesData, carryForwardsData, propertyDaysData] = await Promise.all([
+      const [propertiesData, gastosData, carryForwardsData, propertyDaysData] = await Promise.all([
         db.getAll('properties'),
-        db.getAll('expensesH5'),
+        gastosInmuebleService.getByEjercicio(selectedYear),
         db.getAll('aeatCarryForwards'),
         db.getAll('propertyDays')
       ]);
 
       // Group data by property
       const summariesData: PropertySummary[] = propertiesData.map(property => {
-        // Filter expenses for current year and property
-        const propertyExpenses = expensesData.filter(
-          exp => exp.propertyId === property.id && exp.taxYear === selectedYear
-        );
+        // Filter gastos for this property
+        const propertyGastos = gastosData.filter(g => g.inmuebleId === property.id);
 
-        // Calculate expense totals by category
-        const expenses = propertyExpenses.reduce((acc, exp) => {
-          switch (exp.fiscalType) {
-            case 'financiacion':
-              acc.financiacion += exp.amount;
-              break;
-            case 'reparacion-conservacion':
-              acc.reparacionConservacion += exp.amount;
-              break;
-            case 'tributos-locales':
-              acc.tributos += exp.amount;
-              break;
-            case 'seguros':
-              acc.seguros += exp.amount;
-              break;
-            case 'servicios-personales':
-              acc.serviciosPersonales += exp.amount;
-              break;
-            case 'capex-mejora-ampliacion':
-              acc.capexMejora += exp.amount;
-              break;
-            case 'amortizacion-muebles':
-              acc.mobiliario += exp.amount;
-              break;
+        // Calculate expense totals by casillaAEAT
+        const expenses = propertyGastos.reduce((acc, g) => {
+          switch (g.casillaAEAT) {
+            case '0105': acc.financiacion += g.importe; break;
+            case '0106': acc.reparacionConservacion += g.importe; break;
+            case '0115': acc.tributos += g.importe; break;
+            case '0114': acc.seguros += g.importe; break;
+            case '0112': acc.serviciosPersonales += g.importe; break;
+            case '0117': acc.mobiliario += g.importe; break;
+            case '0109': acc.serviciosPersonales += g.importe; break; // comunidad → servicios
+            case '0113': acc.reparacionConservacion += g.importe; break; // suministros → reparacion bucket
           }
           return acc;
         }, {
