@@ -19,8 +19,9 @@ const SUBTABS: SubTabsConfig = {
   inmuebles: [
     { label: 'Resumen', path: '/inmuebles/resumen' },
     { label: 'Cartera', path: '/inmuebles/cartera' },
-    { label: 'Evolución', path: '/inmuebles/evolucion' },
+    { label: 'Evoluci\u00F3n', path: '/inmuebles/evolucion' },
     { label: 'Individual', path: '/inmuebles/individual' },
+    { label: 'Supervisi\u00F3n', path: '/inmuebles/supervision' },
   ],
   inversiones: [
     { label: 'Resumen', path: '/inversiones/resumen' },

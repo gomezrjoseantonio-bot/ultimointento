@@ -1158,12 +1158,13 @@ function TabIndividual({ selectedId, properties, fiscalSummaries, loansCapitalAm
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'resumen' | 'evolucion' | 'individual';
+type Tab = 'resumen' | 'evolucion' | 'individual' | 'supervision';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'resumen',    label: 'Resumen',    icon: LayoutDashboard },
   { id: 'evolucion',  label: 'Evolución',  icon: Activity },
   { id: 'individual', label: 'Individual', icon: Home },
+  { id: 'supervision', label: 'Supervisión', icon: Building2 },
 ];
 
 export default function InmueblesAnalisis() {
@@ -1257,8 +1258,13 @@ export default function InmueblesAnalisis() {
     };
   }, [refreshFlag, reloadCounter]);
 
-  const handleTabChange = (tabId: Tab) => {
-    setActiveTab(tabId);
+  const handleTabChange = (tabId: string) => {
+    // Supervisión lives on its own route
+    if (tabId === 'supervision') {
+      navigate('/inmuebles/supervision');
+      return;
+    }
+    setActiveTab(tabId as Tab);
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('tab', tabId);
     nextParams.delete('refresh');
