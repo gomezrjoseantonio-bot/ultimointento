@@ -46,16 +46,15 @@ export const navigationConfig: NavigationItem[] = [
   },
   {
     name: 'Inmuebles',
-    href: '/inmuebles',
+    href: '/inmuebles/supervision',
     icon: Building2,
     module: 'shared',
     section: 'horizon',
     subTabs: [
-      { name: 'Resumen', href: '/inmuebles/resumen' },
-      { name: 'Cartera', href: '/inmuebles/cartera' },
       { name: 'Supervisión', href: '/inmuebles/supervision' },
-      { name: 'Evolución', href: '/inmuebles/evolucion' },
-      { name: 'Individual', href: '/inmuebles/individual' },
+      { name: 'Cartera', href: '/inmuebles/cartera' },
+      { name: 'Contratos', href: '/inmuebles/contratos' },
+      { name: 'Gastos/CAPEX', href: '/inmuebles/gastos-capex' },
     ]
   },
   {
