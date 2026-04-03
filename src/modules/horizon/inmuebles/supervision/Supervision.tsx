@@ -6,14 +6,6 @@ import PatrimonioTab from './tabs/PatrimonioTab';
 import RendimientoTab from './tabs/RendimientoTab';
 import InmuebleTab from './tabs/InmuebleTab';
 
-// Navigation-level tabs shared with InmueblesAnalisis
-const NAV_TABS = [
-  { id: 'resumen', label: 'Resumen' },
-  { id: 'evolucion', label: 'Evolución' },
-  { id: 'individual', label: 'Individual' },
-  { id: 'supervision', label: 'Supervisión' },
-];
-
 // Internal sub-tabs within Supervisión
 type SubTabKey = 'patrimonio' | 'rendimiento' | 'inmueble';
 
