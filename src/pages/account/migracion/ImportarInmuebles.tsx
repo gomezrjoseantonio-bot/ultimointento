@@ -1,5 +1,5 @@
 // src/pages/account/migracion/ImportarInmuebles.tsx
-// ATLAS HORIZON: Excel importer for properties
+// ATLAS HORIZON: Excel importer for properties with merge support
 
 import React, { useCallback, useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
@@ -13,16 +13,25 @@ interface ImportarInmueblesProps {
 }
 
 interface PreviewRow {
+  alias: string;
+  codigo_postal: string;
   direccion: string;
-  ciudad: string;
-  provincia: string;
-  tipo: string;
+  referencia_catastral: string;
   fecha_compra: string;
   precio_compra: number;
-  gastos_compra: number;
-  superficie: number;
+  tipo_transmision: string;
+  notaria: number;
+  registro: number;
+  gestoria: number;
+  otros_gastos: number;
+  superficie_m2: number;
   habitaciones: number;
-  referencia_catastral: string;
+  banos: number;
+  valor_catastral: number;
+  valor_catastral_construccion: number;
+  _accion: 'crear' | 'completar';
+  _matchId?: number;
+  _matchAlias?: string;
 }
 
 const PREVIEW_ROW_LIMIT = 10;
@@ -84,6 +93,9 @@ const parseNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const normalizeForMatch = (s: string): string =>
+  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+
 const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -95,28 +107,40 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
   const handleDescargarPlantilla = () => {
     const datos = [
       {
-        direccion: 'Calle Uría 15, 3ºA',
-        ciudad: 'Oviedo',
-        provincia: 'Asturias',
-        tipo: 'piso',
+        alias: 'Piso Oviedo Centro',
+        codigo_postal: '33003',
+        direccion: 'Calle Uria 15, 3A',
+        referencia_catastral: '7949807TP6074N0006YM',
         fecha_compra: '2019-06-15',
         precio_compra: 185000,
-        gastos_compra: 18500,
-        superficie: 92,
+        tipo_transmision: 'usada',
+        notaria: 850,
+        registro: 450,
+        gestoria: 350,
+        otros_gastos: 0,
+        superficie_m2: 92,
         habitaciones: 3,
-        referencia_catastral: '1234567AB1234C0001XY',
+        banos: 2,
+        valor_catastral: 75285,
+        valor_catastral_construccion: 20776,
       },
       {
-        direccion: 'Av. Diagonal 450, 7º2ª',
-        ciudad: 'Barcelona',
-        provincia: 'Barcelona',
-        tipo: 'piso',
+        alias: 'Estudio Barcelona',
+        codigo_postal: '08029',
+        direccion: 'Av. Diagonal 450, 7-2',
+        referencia_catastral: '',
         fecha_compra: '2021-11-20',
         precio_compra: 320000,
-        gastos_compra: 38000,
-        superficie: 78,
+        tipo_transmision: 'nueva',
+        notaria: 1100,
+        registro: 600,
+        gestoria: 400,
+        otros_gastos: 500,
+        superficie_m2: 78,
         habitaciones: 2,
-        referencia_catastral: '9876543CD5678E0002ZW',
+        banos: 1,
+        valor_catastral: 0,
+        valor_catastral_construccion: 0,
       },
     ];
     const ws = XLSX.utils.json_to_sheet(datos);
@@ -128,14 +152,14 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
 
   // ── File parsing ────────────────────────────────────────────────────────────
 
-  const parseFile = useCallback((file: File) => {
+  const parseFile = useCallback(async (file: File) => {
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      toast.error('Formato no válido. Usa .xlsx o .xls');
+      toast.error('Formato no valido. Usa .xlsx o .xls');
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'array' });
@@ -143,33 +167,68 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
         const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(sheet);
 
         if (!rows.length) {
-          toast.error('El archivo está vacío');
+          toast.error('El archivo esta vacio');
           return;
         }
 
         const keys = Object.keys(rows[0]).map(normalizeHeader);
-        const required = ['direccion', 'fecha_compra', 'precio_compra'];
+        const required = ['alias', 'codigo_postal', 'fecha_compra', 'precio_compra', 'tipo_transmision'];
         const missing = required.filter((r) => !keys.includes(r));
         if (missing.length) {
           toast.error(`Columnas requeridas: ${missing.join(', ')}`);
           return;
         }
 
+        // Load existing properties for merge detection
+        const db = await initDB();
+        const existingProperties = await db.getAll('properties');
+
         const parsed: PreviewRow[] = rows.map((row) => {
           const byKey = Object.fromEntries(
             Object.entries(row).map(([k, v]) => [normalizeHeader(k), v])
           );
+
+          const refCatastral = String(byKey.referencia_catastral || '').trim();
+          const direccion = String(byKey.direccion || '').trim();
+
+          // Match logic: 1) ref catastral exact, 2) address contains
+          let match: (typeof existingProperties)[number] | undefined;
+
+          if (refCatastral) {
+            const refNorm = refCatastral.toLowerCase();
+            match = existingProperties.find(
+              (p) => p.cadastralReference && p.cadastralReference.toLowerCase() === refNorm
+            );
+          }
+
+          if (!match && direccion) {
+            const dirNorm = normalizeForMatch(direccion);
+            match = existingProperties.find((p) => {
+              const pAddr = normalizeForMatch(p.address || '');
+              return pAddr && (pAddr.includes(dirNorm) || dirNorm.includes(pAddr));
+            });
+          }
+
           return {
-            direccion: String(byKey.direccion || '').trim(),
-            ciudad: String(byKey.ciudad || byKey.municipio || '').trim(),
-            provincia: String(byKey.provincia || '').trim(),
-            tipo: String(byKey.tipo || 'piso').trim().toLowerCase(),
+            alias: String(byKey.alias || '').trim(),
+            codigo_postal: String(byKey.codigo_postal || '').trim(),
+            direccion,
+            referencia_catastral: refCatastral,
             fecha_compra: parseDate(byKey.fecha_compra),
             precio_compra: parseNumber(byKey.precio_compra),
-            gastos_compra: parseNumber(byKey.gastos_compra),
-            superficie: parseNumber(byKey.superficie || byKey.m2),
+            tipo_transmision: String(byKey.tipo_transmision || 'usada').trim().toLowerCase(),
+            notaria: parseNumber(byKey.notaria),
+            registro: parseNumber(byKey.registro),
+            gestoria: parseNumber(byKey.gestoria),
+            otros_gastos: parseNumber(byKey.otros_gastos),
+            superficie_m2: parseNumber(byKey.superficie_m2),
             habitaciones: Number(byKey.habitaciones) || 0,
-            referencia_catastral: String(byKey.referencia_catastral || '').trim(),
+            banos: Number(byKey.banos) || 0,
+            valor_catastral: parseNumber(byKey.valor_catastral),
+            valor_catastral_construccion: parseNumber(byKey.valor_catastral_construccion),
+            _accion: match ? 'completar' : 'crear',
+            _matchId: match?.id as number | undefined,
+            _matchAlias: match ? (match.alias || match.address) : undefined,
           };
         });
 
@@ -207,53 +266,110 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
     setImporting(true);
     try {
       const validRows = preview.filter(
-        (r) => r.direccion && r.fecha_compra && r.precio_compra > 0
+        (r) => r.alias && r.codigo_postal && r.fecha_compra && r.precio_compra > 0
       );
 
       if (!validRows.length) {
-        toast.error('No hay filas válidas para importar');
+        toast.error('No hay filas validas para importar');
         return;
       }
 
       const db = await initDB();
-      let importados = 0;
+      let nuevos = 0;
+      let completados = 0;
 
       for (const row of validRows) {
-        const now = new Date().toISOString();
+        try {
+          const regimen = row.tipo_transmision === 'nueva' ? 'obra-nueva' as const : 'usada' as const;
 
-        await db.add('properties', {
-          alias: row.tipo ? `${row.tipo.charAt(0).toUpperCase() + row.tipo.slice(1)} ${row.ciudad || ''}`.trim() : row.direccion.substring(0, 30),
-          address: row.direccion,
-          postalCode: '',
-          province: row.provincia,
-          municipality: row.ciudad,
-          ccaa: '',
-          purchaseDate: row.fecha_compra,
-          cadastralReference: row.referencia_catastral || undefined,
-          squareMeters: row.superficie || 0,
-          bedrooms: row.habitaciones || 0,
-          bathrooms: 0,
-          transmissionRegime: 'usada' as const,
-          state: 'activo' as const,
-          notes: '',
-          acquisitionCosts: {
-            price: row.precio_compra,
-            notary: 0,
-            registry: 0,
-            management: 0,
-            psi: 0,
-            realEstate: 0,
-            other: row.gastos_compra > 0 ? [{ concept: 'Gastos importados', amount: row.gastos_compra }] : [],
-          },
-          documents: [],
-          createdAt: now,
-          updatedAt: now,
-        });
+          if (row._accion === 'completar' && row._matchId != null) {
+            // ── Merge: fill empty fields without overwriting ──
+            const existing = await db.get('properties', row._matchId);
+            if (!existing) continue;
 
-        importados++;
+            const updated = {
+              ...existing,
+              alias: existing.alias || row.alias,
+              postalCode: existing.postalCode || row.codigo_postal,
+              address: existing.address || row.direccion,
+              cadastralReference: existing.cadastralReference || row.referencia_catastral || undefined,
+              purchaseDate: existing.purchaseDate || row.fecha_compra,
+              transmissionRegime: existing.transmissionRegime || regimen,
+              squareMeters: existing.squareMeters || row.superficie_m2,
+              bedrooms: existing.bedrooms || row.habitaciones,
+              bathrooms: existing.bathrooms || row.banos,
+              acquisitionCosts: {
+                ...existing.acquisitionCosts,
+                price: existing.acquisitionCosts?.price || row.precio_compra,
+                notary: existing.acquisitionCosts?.notary || row.notaria || 0,
+                registry: existing.acquisitionCosts?.registry || row.registro || 0,
+                management: existing.acquisitionCosts?.management || row.gestoria || 0,
+                psi: existing.acquisitionCosts?.psi || 0,
+                realEstate: existing.acquisitionCosts?.realEstate || 0,
+                other: existing.acquisitionCosts?.other?.length
+                  ? existing.acquisitionCosts.other
+                  : (row.otros_gastos > 0 ? [{ concept: 'Gastos importados', amount: row.otros_gastos }] : []),
+              },
+              fiscalData: {
+                ...existing.fiscalData,
+                cadastralValue: existing.fiscalData?.cadastralValue || row.valor_catastral || undefined,
+                constructionCadastralValue: existing.fiscalData?.constructionCadastralValue || row.valor_catastral_construccion || undefined,
+                constructionPercentage: existing.fiscalData?.constructionPercentage ||
+                  (row.valor_catastral && row.valor_catastral_construccion
+                    ? Math.round((row.valor_catastral_construccion / row.valor_catastral) * 10000) / 100
+                    : undefined),
+              },
+            };
+
+            await db.put('properties', updated);
+            completados++;
+          } else {
+            // ── Create new property ──
+            await db.add('properties', {
+              alias: row.alias,
+              address: row.direccion,
+              postalCode: row.codigo_postal,
+              province: '',
+              municipality: '',
+              ccaa: '',
+              purchaseDate: row.fecha_compra,
+              cadastralReference: row.referencia_catastral || undefined,
+              squareMeters: row.superficie_m2 || 0,
+              bedrooms: row.habitaciones || 0,
+              bathrooms: row.banos || 0,
+              transmissionRegime: regimen,
+              state: 'activo' as const,
+              notes: '',
+              acquisitionCosts: {
+                price: row.precio_compra,
+                notary: row.notaria || 0,
+                registry: row.registro || 0,
+                management: row.gestoria || 0,
+                psi: 0,
+                realEstate: 0,
+                other: row.otros_gastos > 0 ? [{ concept: 'Gastos importados', amount: row.otros_gastos }] : [],
+              },
+              fiscalData: row.valor_catastral ? {
+                cadastralValue: row.valor_catastral,
+                constructionCadastralValue: row.valor_catastral_construccion || undefined,
+                constructionPercentage: row.valor_catastral && row.valor_catastral_construccion
+                  ? Math.round((row.valor_catastral_construccion / row.valor_catastral) * 10000) / 100
+                  : undefined,
+              } : undefined,
+              documents: [],
+            });
+            nuevos++;
+          }
+        } catch (rowErr) {
+          console.error('Error importing row:', row.alias, rowErr);
+        }
       }
 
-      toast.success(`${importados} inmuebles importados correctamente`);
+      const parts: string[] = [];
+      if (nuevos) parts.push(`${nuevos} inmuebles creados`);
+      if (completados) parts.push(`${completados} completados`);
+      toast.success(parts.join(' · ') || 'Importacion completada');
+
       setPreview(null);
       onComplete();
     } catch (err) {
@@ -263,6 +379,9 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
       setImporting(false);
     }
   };
+
+  const totalCrear = preview?.filter((r) => r._accion === 'crear').length || 0;
+  const totalCompletar = preview?.filter((r) => r._accion === 'completar').length || 0;
 
   return (
     <div style={{ fontFamily: 'var(--font-inter)' }}>
@@ -285,7 +404,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
         }}
       >
         <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
-        Volver a Migración de Datos
+        Volver a Migracion de Datos
       </button>
 
       {/* Header */}
@@ -295,20 +414,20 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--navy-700-light, #E8EAF0)',
+            backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Home size={20} strokeWidth={1.5} style={{ color: 'var(--navy-700, var(--atlas-navy-1))' }} aria-hidden="true" />
+          <Home size={20} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} aria-hidden="true" />
         </div>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
             Importar inmuebles
           </h2>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-gray)' }}>
-            Importa tu cartera de inmuebles con sus datos de adquisición desde Excel
+            Importa tu cartera de inmuebles desde Excel o completa los que ya existen
           </p>
         </div>
       </div>
@@ -326,7 +445,8 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
           1. Descarga la plantilla
         </h3>
         <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-gray)' }}>
-          Usa nuestra plantilla con el formato correcto: direccion, fecha_compra, precio_compra y campos opcionales.
+          Columnas obligatorias: alias, codigo_postal, fecha_compra, precio_compra, tipo_transmision.
+          Opcionales: direccion, referencia_catastral, notaria, registro, gestoria, otros_gastos, superficie_m2, habitaciones, banos, valor_catastral, valor_catastral_construccion.
         </p>
         <button
           onClick={handleDescargarPlantilla}
@@ -387,7 +507,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
           >
             <Upload size={32} strokeWidth={1.5} style={{ color: dragging ? 'var(--atlas-blue)' : 'var(--text-gray)' }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 500, color: 'var(--atlas-navy-1)' }}>
-              Arrastra tu archivo aquí o{' '}
+              Arrastra tu archivo aqui o{' '}
               <span style={{ color: 'var(--atlas-blue)', textDecoration: 'underline' }}>haz clic para seleccionar</span>
             </p>
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-gray)' }}>
@@ -421,7 +541,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
             </h3>
             <button
               onClick={() => setPreview(null)}
-              aria-label="Cancelar importación"
+              aria-label="Cancelar importacion"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -439,7 +559,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
             </button>
           </div>
 
-          {/* Validation warning */}
+          {/* Info banner */}
           <div
             style={{
               display: 'flex',
@@ -452,7 +572,9 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
           >
             <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>
-              Se crearán nuevos inmuebles en tu cartera. Podrás completar datos fiscales y catastrales después desde la ficha del inmueble.
+              {totalCompletar > 0
+                ? `${totalCrear} nuevos y ${totalCompletar} existentes detectados (por ref. catastral o direccion). Los existentes se completaran sin machacar datos.`
+                : 'Se crearan nuevos inmuebles en tu cartera. Si ya tienes inmuebles del XML, incluye la referencia catastral para completarlos.'}
             </p>
           </div>
 
@@ -461,7 +583,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--hz-neutral-300)' }}>
-                  {['Dirección', 'Ciudad', 'Tipo', 'Fecha compra', 'Precio compra'].map((col) => (
+                  {['Accion', 'Alias', 'Direccion', 'Fecha compra', 'Precio compra'].map((col) => (
                     <th
                       key={col}
                       style={{
@@ -488,12 +610,6 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
                       backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
                     }}
                   >
-                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
-                      {row.direccion}
-                    </td>
-                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
-                      {row.ciudad || '-'}
-                    </td>
                     <td style={{ padding: '8px 12px' }}>
                       <span
                         style={{
@@ -501,12 +617,27 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
-                          color: 'var(--atlas-navy-1)',
+                          backgroundColor: row._accion === 'completar'
+                            ? 'var(--ok-light, #E8F5E9)'
+                            : 'var(--atlas-blue-light, #EBF3FF)',
+                          color: row._accion === 'completar'
+                            ? 'var(--ok, #2E7D32)'
+                            : 'var(--atlas-blue)',
                         }}
                       >
-                        {row.tipo}
+                        {row._accion === 'completar' ? 'completar' : 'crear'}
                       </span>
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
+                      {row.alias}
+                      {row._matchAlias && (
+                        <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-gray)' }}>
+                          → {row._matchAlias}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
+                      {row.direccion || '-'}
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
                       {row.fecha_compra}
@@ -520,7 +651,7 @@ const ImportarInmuebles: React.FC<ImportarInmueblesProps> = ({ onComplete, onBac
             </table>
             {preview.length > PREVIEW_ROW_LIMIT && (
               <p style={{ padding: '8px 12px', margin: 0, fontSize: '0.75rem', color: 'var(--text-gray)' }}>
-                ... y {preview.length - PREVIEW_ROW_LIMIT} filas más
+                ... y {preview.length - PREVIEW_ROW_LIMIT} filas mas
               </p>
             )}
           </div>
