@@ -46,8 +46,7 @@ describe('propertyDisposalTaxService', () => {
     await Promise.all([
       db.clear('properties'),
       db.clear('property_sales'),
-      db.clear('propertyImprovements'),
-      db.clear('mejorasActivo'),
+      db.clear('mejorasInmueble'),
     ]);
   });
 
@@ -136,11 +135,13 @@ describe('propertyDisposalTaxService', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
-    await db.add('propertyImprovements', {
-      propertyId,
-      year: 2024,
-      amount: 2500,
-      description: 'Cocina',
+    await db.add('mejorasInmueble', {
+      inmuebleId: propertyId,
+      ejercicio: 2024,
+      importe: 2500,
+      descripcion: 'Cocina',
+      tipo: 'mejora',
+      fecha: '2024-12-31',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

@@ -14,8 +14,7 @@ describe('propertyExpenses service', () => {
     const db = await initDB();
     await Promise.all([
       db.clear('opexRules'),
-      db.clear('gastos'),
-      db.clear('expensesH5'),
+      db.clear('gastosInmueble'),
       db.clear('expenses'),
       db.clear('capex'),
     ]);
@@ -68,7 +67,12 @@ describe('propertyExpenses service', () => {
     };
 
     await db.add('opexRules', opexRule);
-    await db.add('gastos', legacyGasto);
+    await db.add('gastosInmueble', {
+      inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
+      fecha: now, concepto: 'Proveedor test', categoria: 'suministro',
+      casillaAEAT: '0113', importe: 300, origen: 'tesoreria', estado: 'confirmado',
+      createdAt: now, updatedAt: now,
+    });
 
     const annual = await getAnnualOpexForProperty(PROPERTY_ID);
     expect(annual).toBe(1440);
@@ -78,20 +82,12 @@ describe('propertyExpenses service', () => {
     const db = await initDB();
     const now = new Date().toISOString();
 
-    const legacyGasto: Gasto = {
-      contraparte_nombre: 'Proveedor legacy',
-      fecha_emision: now,
-      fecha_pago_prevista: now,
-      total: 500,
-      categoria_AEAT: 'comunidad',
-      destino: 'inmueble_id',
-      destino_id: PROPERTY_ID,
-      estado: 'pagado',
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.add('gastos', legacyGasto);
+    await db.add('gastosInmueble', {
+      inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
+      fecha: now, concepto: 'Proveedor legacy', categoria: 'comunidad',
+      casillaAEAT: '0109', importe: 500, origen: 'tesoreria', estado: 'confirmado',
+      createdAt: now, updatedAt: now,
+    });
 
     const annual = await getAnnualOpexForProperty(PROPERTY_ID);
     expect(annual).toBe(500);
@@ -127,7 +123,12 @@ describe('propertyExpenses service', () => {
       updatedAt: now,
     };
 
-    await db.add('expensesH5', expenseH5);
+    await db.add('gastosInmueble', {
+      inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
+      fecha: now, concepto: 'Seguro hogar', categoria: 'seguro',
+      casillaAEAT: '0114', importe: 250, origen: 'manual', estado: 'confirmado',
+      proveedorNombre: 'Proveedor H5', createdAt: now, updatedAt: now,
+    });
 
     const all = await getAllExpensesForProperty(PROPERTY_ID);
     expect(all.length).toBe(1);
