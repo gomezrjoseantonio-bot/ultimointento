@@ -52,7 +52,9 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
 
   // Available years for detail panel
   const availableYears = useMemo(
-    () => (inm?.datosPorAno ?? []).map((d) => d.ano),
+    () => (inm?.datosPorAno ?? [])
+      .filter((d) => d.rentas !== 0 || d.gastosOp !== 0 || d.intereses !== 0 || d.reparaciones !== 0)
+      .map((d) => d.ano),
     [inm],
   );
 

@@ -6,6 +6,7 @@ import PatrimonioTab from './tabs/PatrimonioTab';
 import RendimientoTab from './tabs/RendimientoTab';
 import InmuebleTab from './tabs/InmuebleTab';
 
+// Internal sub-tabs within Supervisión
 type SubTabKey = 'patrimonio' | 'rendimiento' | 'inmueble';
 
 const SUB_TABS: { id: SubTabKey; label: string }[] = [

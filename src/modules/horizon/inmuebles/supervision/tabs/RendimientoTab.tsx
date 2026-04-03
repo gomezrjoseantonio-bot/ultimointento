@@ -17,6 +17,12 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineEleme
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
+const cssVar = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable);
+  return value?.trim() || fallback;
+};
+
 const fmt = (n: number): string =>
   n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
@@ -54,7 +60,12 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
   const [crecimientoPct, setCrecimientoPct] = useState(3);
   const [horizonte, setHorizonte] = useState(10);
 
-  const datosAnuales = useMemo(() => aggregateByYear(inmuebles), [inmuebles]);
+  const datosAnualesRaw = useMemo(() => aggregateByYear(inmuebles), [inmuebles]);
+  // Filter out years with no data at all
+  const datosAnuales = useMemo(
+    () => datosAnualesRaw.filter((d) => d.rentas !== 0 || d.gastosOp !== 0 || d.intereses !== 0 || d.reparaciones !== 0),
+    [datosAnualesRaw],
+  );
   const currentYear = new Date().getFullYear();
 
   // Current year data
@@ -126,19 +137,19 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
         {
           label: 'Gastos op.',
           data: realGastos,
-          backgroundColor: 'var(--grey-300)',
+          backgroundColor: cssVar('--grey-300', '#C8D0DC'),
           stack: 'real',
         },
         {
           label: 'Intereses',
           data: realIntereses,
-          backgroundColor: '#5B8DB8',
+          backgroundColor: cssVar('--c3', '#5B8DB8'),
           stack: 'real',
         },
         {
           label: 'Cashflow',
           data: realCashflow,
-          backgroundColor: 'var(--teal-600)',
+          backgroundColor: cssVar('--teal-600', '#1DA0BA'),
           stack: 'real',
         },
         {
@@ -224,8 +235,8 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
               ? (d.rentas / totales.costeAdquisicion) * 100
               : null;
           }),
-          borderColor: 'var(--navy-900)',
-          backgroundColor: 'var(--navy-900)',
+          borderColor: cssVar('--navy-900', '#042C5E'),
+          backgroundColor: cssVar('--navy-900', '#042C5E'),
           pointRadius: 3,
           tension: 0.3,
           spanGaps: true,
@@ -243,7 +254,7 @@ const RendimientoTab: React.FC<RendimientoTabProps> = ({ inmuebles, totales }) =
             }
             return d ? d.yield : null;
           }),
-          borderColor: 'var(--teal-600)',
+          borderColor: cssVar('--teal-600', '#1DA0BA'),
           borderDash: [6, 4],
           pointRadius: 0,
           tension: 0.3,

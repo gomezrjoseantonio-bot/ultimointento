@@ -14,6 +14,12 @@ import type { InmuebleSupervision } from '../hooks/useSupervisionData';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, LineElement, Tooltip, Legend);
 
+const cssVar = (variable: string, fallback: string): string => {
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(variable);
+  return value?.trim() || fallback;
+};
+
 const fmt = (n: number): string =>
   n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
 
@@ -28,7 +34,9 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
   const currentYear = new Date().getFullYear();
 
   const chartData = useMemo(() => {
-    const realYears = inmueble.datosPorAno.map((d) => d.ano);
+    const realYears = inmueble.datosPorAno
+      .filter((d) => d.rentas !== 0 || d.gastosOp !== 0 || d.intereses !== 0 || d.reparaciones !== 0)
+      .map((d) => d.ano);
     const projYears: number[] = [];
     for (let y = 1; y <= horizonte; y++) projYears.push(currentYear + y);
 
@@ -89,9 +97,9 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
       labels,
       datasets: [
         // Bars - real
-        { label: 'Gastos op.', data: realGastos, backgroundColor: 'var(--grey-300)', stack: 'real', yAxisID: 'y', order: 2 },
-        { label: 'Intereses', data: realIntereses, backgroundColor: '#5B8DB8', stack: 'real', yAxisID: 'y', order: 2 },
-        { label: 'Cashflow', data: realCf, backgroundColor: 'var(--teal-600)', stack: 'real', yAxisID: 'y', order: 2 },
+        { label: 'Gastos op.', data: realGastos, backgroundColor: cssVar('--grey-300', '#C8D0DC'), stack: 'real', yAxisID: 'y', order: 2 },
+        { label: 'Intereses', data: realIntereses, backgroundColor: cssVar('--c3', '#5B8DB8'), stack: 'real', yAxisID: 'y', order: 2 },
+        { label: 'Cashflow', data: realCf, backgroundColor: cssVar('--teal-600', '#1DA0BA'), stack: 'real', yAxisID: 'y', order: 2 },
         // Bars - proj
         { label: 'Gastos op. proy.', data: projGastos, backgroundColor: 'rgba(200, 208, 220, 0.35)', stack: 'proj', yAxisID: 'y', order: 2 },
         { label: 'Intereses proy.', data: projIntereses, backgroundColor: 'rgba(91, 141, 184, 0.40)', stack: 'proj', yAxisID: 'y', order: 2 },
@@ -101,8 +109,8 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
           label: 'Valor real',
           data: valorReal,
           type: 'line' as const,
-          borderColor: 'var(--navy-900)',
-          backgroundColor: 'var(--navy-900)',
+          borderColor: cssVar('--navy-900', '#042C5E'),
+          backgroundColor: cssVar('--navy-900', '#042C5E'),
           pointRadius: 3,
           tension: 0.3,
           yAxisID: 'y2',
@@ -113,7 +121,7 @@ const Chart360: React.FC<Chart360Props> = ({ inmueble, tasaRev, crecRentas, hori
           label: 'Valor proy.',
           data: valorProj,
           type: 'line' as const,
-          borderColor: 'var(--teal-600)',
+          borderColor: cssVar('--teal-600', '#1DA0BA'),
           borderDash: [6, 4],
           pointRadius: 0,
           tension: 0.3,
