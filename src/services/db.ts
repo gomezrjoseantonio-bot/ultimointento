@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 42; // V4.2: delete obsolete stores (fiscalSummaries, operacionesFiscales, expensesH5, etc.)
+const DB_VERSION = 42; // V4.2: reserved — legacy store cleanup deferred until all read references are removed
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2227,23 +2227,13 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
         }
 
-        // V4.2: Delete obsolete stores — data fully migrated to gastosInmueble/mejorasInmueble/mueblesInmueble
-        if (oldVersion < 42) {
-          const storesToDelete = [
-            'fiscalSummaries',
-            'operacionesFiscales',
-            'expensesH5',
-            'gastos',
-            'reforms',
-            'reformLineItems',
-            'propertyImprovements',
-          ];
-          for (const store of storesToDelete) {
-            if (db.objectStoreNames.contains(store)) {
-              db.deleteObjectStore(store);
-            }
-          }
-        }
+        // V4.2: Legacy store cleanup — DEFERRED
+        // These stores have data migrated to gastosInmueble/mejorasInmueble/mueblesInmueble
+        // but ~50 runtime references still read from them. Deleting now would cause
+        // NotFoundError at runtime. See LEGACY_STORE_CLEANUP.md for the full list of
+        // references that must be removed before this cleanup can be activated.
+        // Stores pending deletion: fiscalSummaries, operacionesFiscales, expensesH5,
+        // gastos, reforms, reformLineItems, propertyImprovements
 
         // H6: KPI Configurations store
         if (!db.objectStoreNames.contains('kpiConfigurations')) {
