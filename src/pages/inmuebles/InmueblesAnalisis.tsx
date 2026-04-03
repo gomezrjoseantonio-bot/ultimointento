@@ -36,6 +36,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Contract, Expense, FiscalSummary, initDB, OpexRule, Property, EjercicioFiscalCoord } from '../../services/db';
+import { gastosInmuebleService } from '../../services/gastosInmuebleService';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
 import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
@@ -1192,7 +1193,7 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, dbFiscalSummaries, dbEjercicios] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, allGastos, dbEjercicios] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
@@ -1200,9 +1201,27 @@ export default function InmueblesAnalisis() {
           getCachedStoreRecords<OpexRule>('opexRules'),
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
-          getCachedStoreRecords<FiscalSummary>('fiscalSummaries', { forceRefresh: true }),
+          gastosInmuebleService.getAll(),
           getCachedStoreRecords<EjercicioFiscalCoord>('ejerciciosFiscalesCoord', { forceRefresh: true }),
         ]);
+        // Build FiscalSummary[] from gastosInmueble for display compatibility
+        const summaryMap = new Map<string, FiscalSummary>();
+        for (const g of allGastos) {
+          const key = `${g.inmuebleId}-${g.ejercicio}`;
+          if (!summaryMap.has(key)) {
+            summaryMap.set(key, {
+              propertyId: g.inmuebleId, exerciseYear: g.ejercicio,
+              box0105: 0, box0106: 0, box0109: 0, box0112: 0, box0113: 0, box0114: 0, box0115: 0, box0117: 0,
+              capexTotal: 0, deductibleExcess: 0, constructionValue: 0, annualDepreciation: 0,
+              status: 'Vivo', createdAt: g.createdAt, updatedAt: g.updatedAt,
+            });
+          }
+          const s = summaryMap.get(key)!;
+          const box = g.casillaAEAT as keyof Pick<FiscalSummary, 'box0105'|'box0106'|'box0109'|'box0112'|'box0113'|'box0114'|'box0115'|'box0117'>;
+          const boxKey = `box${box}` as keyof FiscalSummary;
+          if (boxKey in s) (s as any)[boxKey] = ((s as any)[boxKey] || 0) + g.importe;
+        }
+        const dbFiscalSummaries = Array.from(summaryMap.values());
 
         if (!mounted) return;
         const paymentPlanKeys = keyvalKeys

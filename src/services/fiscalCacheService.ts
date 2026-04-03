@@ -29,7 +29,7 @@ async function calcularHashInputs(ejercicio: number): Promise<string> {
     db.count('contracts').catch(() => 0),
     db.count('opexRules').catch(() => 0),
     db.count('prestamos').catch(() => 0),
-    db.count('fiscalSummaries').catch(() => 0),
+    db.count('gastosInmueble').catch(() => 0),
     db.count('autonomos').catch(() => 0),
     db.count('inversiones').catch(() => 0),
     db.count('rentaMensual').catch(() => 0),

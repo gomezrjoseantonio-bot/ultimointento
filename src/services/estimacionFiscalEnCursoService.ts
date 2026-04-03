@@ -133,38 +133,24 @@ async function calcularIngresosProyectadosInmuebles(ejercicio: number): Promise<
 
 async function calcularInmueblesConGastos(ejercicio: number): Promise<number> {
   const db = await initDB();
-  const [properties, allSummaries] = await Promise.all([
+  const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+  const [properties, allGastos] = await Promise.all([
     db.getAll('properties'),
-    db.getAllFromIndex('fiscalSummaries', 'exerciseYear', ejercicio).catch(() => [] as any[]),
+    gastosInmuebleService.getByEjercicio(ejercicio),
   ]);
 
   const activas = properties.filter((p: any) => p.state === 'activo');
 
-  // Index summaries by propertyId for O(1) lookup
-  const summaryByProp = new Map<number, any>();
-  for (const s of allSummaries) {
-    const pid = (s as any).propertyId;
-    if (pid != null && !summaryByProp.has(pid)) {
-      summaryByProp.set(pid, s);
-    }
+  // Sum gastos by propertyId
+  const gastosByProp = new Map<number, number>();
+  for (const g of allGastos) {
+    gastosByProp.set(g.inmuebleId, (gastosByProp.get(g.inmuebleId) || 0) + g.importe);
   }
 
   let count = 0;
   for (const prop of activas) {
-    const summary = summaryByProp.get(prop.id!);
-    if (summary) {
-      const totalGastos = (
-        ((summary as any).box0105 ?? 0) +
-        ((summary as any).box0106 ?? 0) +
-        ((summary as any).box0109 ?? 0) +
-        ((summary as any).box0112 ?? 0) +
-        ((summary as any).box0113 ?? 0) +
-        ((summary as any).box0114 ?? 0) +
-        ((summary as any).box0115 ?? 0) +
-        ((summary as any).box0117 ?? 0)
-      );
-      if (totalGastos > 0) count++;
-    }
+    const totalGastos = gastosByProp.get(prop.id!) || 0;
+    if (totalGastos > 0) count++;
   }
 
   return count;

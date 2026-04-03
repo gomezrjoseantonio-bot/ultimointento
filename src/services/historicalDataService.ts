@@ -354,13 +354,13 @@ export const getHistoricalDataStats = async (propertyId: number): Promise<{
   const db = await initDB();
   
   // Use indices to avoid full table scans
-  const [propertyContracts, allPropertyDocs, fiscalSummaries] = await Promise.all([
+  const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+  const [propertyContracts, allPropertyDocs, propertyGastos] = await Promise.all([
     db.getAllFromIndex('contracts', 'propertyId', propertyId),
     db.getAllFromIndex('documents', 'entityId', propertyId),
-    db.getAll('fiscalSummaries')
+    gastosInmuebleService.getByInmueble(propertyId),
   ]);
   const propertyDocuments = allPropertyDocs.filter(d => d.metadata.entityType === 'property');
-  const propertySummaries = (fiscalSummaries as Array<Record<string, any>>).filter(s => s.propertyId === propertyId);
 
   // Find oldest dates
   const contractDates = propertyContracts.map(c => c.fechaInicio || c.startDate).filter(Boolean);
@@ -401,9 +401,9 @@ export const getHistoricalDataStats = async (propertyId: number): Promise<{
   );
   const totalHistoricalYears = currentYear - oldestYear + 1;
 
-  // Available fiscal summaries
-  const fiscalSummariesAvailable = propertySummaries
-    .map(s => s.exerciseYear.toString())
+  // Available fiscal data (distinct ejercicios with gastos)
+  const fiscalSummariesAvailable = [...new Set(propertyGastos.map(g => g.ejercicio))]
+    .map(y => y.toString())
     .sort();
 
   return {

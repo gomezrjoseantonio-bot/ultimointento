@@ -93,17 +93,17 @@ async function alertaGastosFaltantes(declaracion: DeclaracionIRPF): Promise<Aler
       const prop = properties.find((p: any) => p.id === inmueble.inmuebleId);
       if (!prop) continue;
 
-      // Check if key expenses are missing from fiscalSummary
-      let summaryData: any = null;
+      // Check if key expenses are missing from gastosInmueble
+      let casillas: Record<string, number> = {};
       try {
-        const summaries = await db.getAllFromIndex('fiscalSummaries', 'property-year', [inmueble.inmuebleId, declaracion.ejercicio]);
-        summaryData = summaries?.[0];
+        const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+        casillas = await gastosInmuebleService.getSumaPorCasilla(inmueble.inmuebleId, declaracion.ejercicio);
       } catch { /* ignore */ }
 
       const faltantes: string[] = [];
-      if (!summaryData || (summaryData.box0112 ?? 0) === 0) faltantes.push('comunidad');
-      if (!summaryData || (summaryData.box0115 ?? 0) === 0) faltantes.push('IBI');
-      if (!summaryData || (summaryData.box0113 ?? 0) === 0) faltantes.push('seguro');
+      if ((casillas['0109'] ?? 0) === 0) faltantes.push('comunidad');
+      if ((casillas['0115'] ?? 0) === 0) faltantes.push('IBI');
+      if ((casillas['0114'] ?? 0) === 0) faltantes.push('seguro');
 
       if (faltantes.length > 0) {
         // Estimate tax savings: average costs × marginal rate
