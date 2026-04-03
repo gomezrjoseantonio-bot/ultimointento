@@ -95,7 +95,6 @@ const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/c
 const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
 // Personal section (within Horizon)
-const Personal = lazyWithPreload(() => import('./modules/horizon/personal/Personal'));
 const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
 
 // Pulse (Management) Module Components
@@ -510,57 +509,22 @@ function App() {
             
             {/* Personal section (within Horizon) */}
             <Route path="personal">
-              <Route index element={<Navigate to="/personal/resumen" replace />} />
+              <Route index element={<Navigate to="/personal/supervision" replace />} />
               <Route path="supervision" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PersonalSupervision />
                 </React.Suspense>
               } />
-              <Route path="resumen" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="estado" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="nomina" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="autonomo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="pension" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="gastos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="pensiones-inversiones" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
-              <Route path="otros-ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Personal />
-                </React.Suspense>
-              } />
+              {/* Legacy routes — redirect to supervision */}
+              <Route path="resumen" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="estado" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="ingresos" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="gastos" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="nomina" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="autonomo" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="pension" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="pensiones-inversiones" element={<Navigate to="/personal/supervision" replace />} />
+              <Route path="otros-ingresos" element={<Navigate to="/personal/supervision" replace />} />
             </Route>
             
             {/* Pulse (Management) Routes */}
