@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Receipt, Calculator } from 'lucide-react';
 import SupervisionCard from '../components/SupervisionCards';
 import Chart360 from '../components/Chart360';
 import MotoresGrid from '../components/MotoresGrid';
 import PropertySaleModal from '../../components/PropertySaleModal';
+import { initDB, type Property } from '../../../../../services/db';
 import type { InmuebleSupervision, TotalesCartera } from '../hooks/useSupervisionData';
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -31,11 +32,22 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   const [horizonte, setHorizonte] = useState(10);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [fullProperty, setFullProperty] = useState<Property | null>(null);
 
   const inm = useMemo(
     () => inmuebles.find((i) => i.id === selectedId) ?? inmuebles[0],
     [inmuebles, selectedId],
   );
+
+  // Load full Property from IndexedDB for the sale modal
+  useEffect(() => {
+    if (!inm) return;
+    let cancelled = false;
+    initDB().then((db) => db.get('properties', inm.id)).then((p) => {
+      if (!cancelled) setFullProperty(p ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [inm?.id]);
 
   // Available years for detail panel
   const availableYears = useMemo(
@@ -332,7 +344,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
       {/* Property Sale Modal */}
       <PropertySaleModal
         open={showSaleModal}
-        property={inm ? { id: inm.id, alias: inm.alias } as any : null}
+        property={fullProperty}
         source="analisis"
         onClose={() => setShowSaleModal(false)}
         onConfirmed={() => setShowSaleModal(false)}

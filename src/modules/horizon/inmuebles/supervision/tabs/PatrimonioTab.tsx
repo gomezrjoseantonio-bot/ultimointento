@@ -27,11 +27,6 @@ const fmtPct = (n: number): string =>
 
 const fmtMultiplo = (n: number): string => n.toFixed(2) + 'x';
 
-const TIPO_ICON: Record<string, React.FC<{ size?: number; style?: React.CSSProperties }>> = {
-  parking: Car,
-  trastero: Warehouse,
-};
-
 const getIcon = (_alias: string) => {
   const lower = _alias.toLowerCase();
   if (lower.includes('parking') || lower.includes('garaje') || lower.includes('plaza')) return Car;

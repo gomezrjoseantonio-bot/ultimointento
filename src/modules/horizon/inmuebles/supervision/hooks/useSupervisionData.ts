@@ -3,8 +3,8 @@
 // Solo lectura — agrega datos de múltiples servicios existentes.
 
 import { useState, useEffect, useCallback } from 'react';
-import { initDB, type Property, type RentaMensual } from '../../../../../services/db';
-import { valoracionesService } from '../../../../../services/valoracionesService';
+import { initDB, type Property, type Contract, type RentaMensual } from '../../../../../services/db';
+import type { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { getMejorasPorInmueble } from '../../../../../services/mejoraActivoService';
 import { getMobiliarioPorInmueble } from '../../../../../services/mobiliarioActivoService';
 import { getInteresesHipotecaByPropertyAndYear } from '../../../../../services/loanInterestService';
@@ -129,6 +129,41 @@ export function useSupervisionData(): SupervisionData {
         return;
       }
 
+      // --- Batch-load shared tables once (performance) ---
+      const [allContracts, allRentaRecords, allValoraciones] = await Promise.all([
+        db.getAll('contracts') as Promise<Contract[]>,
+        db.getAll('rentaMensual') as Promise<RentaMensual[]>,
+        db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
+      ]);
+
+      // Pre-index contracts by property (support legacy propertyId field)
+      const contractsByProp = new Map<number, Contract[]>();
+      for (const c of allContracts) {
+        const pid = (c as any).inmuebleId ?? (c as any).propertyId;
+        if (pid == null) continue;
+        const list = contractsByProp.get(pid) ?? [];
+        list.push(c);
+        contractsByProp.set(pid, list);
+      }
+
+      // Pre-index rentas by contratoId
+      const rentasByContrato = new Map<number, RentaMensual[]>();
+      for (const r of allRentaRecords) {
+        const list = rentasByContrato.get(r.contratoId) ?? [];
+        list.push(r);
+        rentasByContrato.set(r.contratoId, list);
+      }
+
+      // Pre-index valoraciones: latest per inmueble
+      const latestValByProp = new Map<number, ValoracionHistorica>();
+      for (const v of allValoraciones) {
+        if (v.tipo_activo !== 'inmueble') continue;
+        const prev = latestValByProp.get(v.activo_id);
+        if (!prev || v.fecha_valoracion > prev.fecha_valoracion) {
+          latestValByProp.set(v.activo_id, v);
+        }
+      }
+
       const results: InmuebleSupervision[] = [];
 
       for (const prop of activos) {
@@ -139,10 +174,9 @@ export function useSupervisionData(): SupervisionData {
         const years = buildYearRange(anoCompra);
 
         // --- Parallel data fetching per property ---
-        const [mejoras, muebles, ultimaValoracion] = await Promise.all([
+        const [mejoras, muebles] = await Promise.all([
           getMejorasPorInmueble(propId),
           getMobiliarioPorInmueble(propId),
-          valoracionesService.getUltimaValoracion('inmueble', propId),
         ]);
 
         // Mejoras / CAPEX / Reparaciones
@@ -163,27 +197,27 @@ export function useSupervisionData(): SupervisionData {
         const costeAdquisicion = precioCompra + impuestosCompra + gastosCompra + mejorasCapex;
         const inversionTotal = costeAdquisicion + reparaciones + mobiliarioTotal;
 
-        // Valoración actual
+        // Valoración actual (from pre-loaded batch)
+        const ultimaValoracion = latestValByProp.get(propId);
         const valorActual = ultimaValoracion?.valor ?? precioCompra;
         const plusvaliaLatente = valorActual - costeAdquisicion;
 
         // --- Year-by-year data ---
-        // Fetch contracts & rentas for this property
-        const allContracts = await db.getAll('contracts');
-        const propertyContracts = allContracts.filter((c: any) => c.inmuebleId === propId);
+        // Contracts & rentas from pre-loaded data
+        const propertyContracts = contractsByProp.get(propId) ?? [];
         const contractIds = propertyContracts.map((c: any) => c.id).filter(Boolean) as number[];
 
-        let allRentas: RentaMensual[] = [];
-        if (contractIds.length > 0) {
-          const allRentaRecords: RentaMensual[] = await db.getAll('rentaMensual');
-          allRentas = allRentaRecords.filter((r) => contractIds.includes(r.contratoId));
+        let propRentas: RentaMensual[] = [];
+        for (const cid of contractIds) {
+          const rentas = rentasByContrato.get(cid);
+          if (rentas) propRentas = propRentas.concat(rentas);
         }
 
         const datosPorAno: DatosAnuales[] = [];
 
         for (const ano of years) {
           // Rentas: sum importePrevisto for each month of this year
-          const rentasAno = allRentas
+          const rentasAno = propRentas
             .filter((r) => r.periodo.startsWith(String(ano)))
             .reduce((s, r) => s + r.importePrevisto, 0);
 
@@ -217,7 +251,7 @@ export function useSupervisionData(): SupervisionData {
             .filter((m) => m.tipo === 'reparacion' && m.ejercicio === ano)
             .reduce((s, m) => s + m.importe, 0);
 
-          const cashflow = rentasAno - gastosOp - intereses;
+          const cashflow = rentasAno - gastosOp - intereses - reparacionesAno;
 
           datosPorAno.push({
             ano,

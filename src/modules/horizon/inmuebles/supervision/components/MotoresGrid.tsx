@@ -16,7 +16,6 @@ interface MotoresGridProps {
 }
 
 const MotoresGrid: React.FC<MotoresGridProps> = ({ inmueble, tasaRev, crecRentas, horizonte }) => {
-  const currentYear = new Date().getFullYear();
   const safeDiv = (a: number, b: number) => (b !== 0 ? a / b : 0);
 
   // Proyección valor
