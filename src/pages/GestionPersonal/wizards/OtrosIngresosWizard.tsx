@@ -184,19 +184,13 @@ const OtrosIngresosWizard: React.FC = () => {
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Otros ingresos</div>
           <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => navigate('/gestion/personal')}
-            style={{ padding: '8px 20px', borderRadius: 8, background: 'var(--navy-900, #042C5E)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer' }}>
-            Listo
-          </button>
-          <button onClick={() => navigate('/gestion/personal')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
-            <X size={20} />
-          </button>
-        </div>
+        <button onClick={() => navigate('/gestion/personal')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
+          <X size={20} />
+        </button>
       </div>
 
       {/* Content */}
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px 100px' }}>
         {/* Type grid */}
         <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT, marginBottom: 16 }}>
           Añadir ingreso
@@ -352,6 +346,15 @@ const OtrosIngresosWizard: React.FC = () => {
           </div>
         );
       })()}
+      {/* Footer */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', justifyContent: 'flex-end', zIndex: 10 }}>
+        <button
+          onClick={() => navigate('/gestion/personal')}
+          style={{ padding: '10px 24px', borderRadius: 10, background: 'var(--navy-900, #042C5E)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: 'pointer' }}
+        >
+          Guardar
+        </button>
+      </div>
     </div>
   );
 };

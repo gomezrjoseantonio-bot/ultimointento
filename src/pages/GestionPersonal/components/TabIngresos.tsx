@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Heart, PlusCircle, Wallet } from 'lucide-react';
-import SourceCard, { BadgeATLAS, BadgeEmpty, BadgePareja } from './SourceCard';
+import SourceCard, { BadgeEmpty, BadgePareja } from './SourceCard';
 import { autonomoService } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { pensionService } from '../../../services/pensionService';
@@ -117,24 +117,24 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   // Nomina card builder
   const buildNominaCard = (nom: Nomina, isPareja: boolean) => {
     const calc = nom.id != null ? nominaCalcs.get(nom.id) : undefined;
+    const isExtraPagas = nom.distribucion.tipo !== 'doce';
     return (
       <SourceCard
         key={nom.id}
         bandColor={isPareja ? 'navy' : 'teal'}
-        icon={<Briefcase size={16} color="var(--white)" />}
-        iconBg="var(--navy-900, #042C5E)"
+        icon={<Briefcase size={16} color="var(--grey-400, #9CA3AF)" />}
         name={nom.nombre}
         description={`${nom.distribucion.tipo === 'catorce' ? '14 pagas' : '12 pagas'} \u00B7 IRPF ${nom.retencion.irpfPorcentaje}%`}
         kpis={[
           { label: 'Bruto anual', value: calc ? fmtValue(calc.totalAnualBruto) : '\u2014' },
           { label: 'Neto anual', value: calc ? fmtValue(calc.totalAnualNeto) : '\u2014' },
           {
-            label: 'Neto mensual',
+            label: isExtraPagas ? 'Neto mensual promedio' : 'Neto mensual',
             value: calc ? fmtValue(Math.round(calc.netoMensual)) : '\u2014',
             color: 'var(--teal-600, #1DA0BA)',
           },
         ]}
-        badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
+        badge={isPareja ? <BadgePareja /> : null}
         action={<ActionBtn label="Editar nómina" onClick={() => openNominaEdit(nom)} />}
       />
     );
@@ -147,20 +147,21 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
       <SourceCard
         key={auto.id}
         bandColor={isPareja ? 'navy' : 'teal'}
-        icon={<Building2 size={16} color="var(--white)" />}
-        iconBg="var(--teal-600, #1DA0BA)"
+        icon={<Building2 size={16} color="var(--grey-400, #9CA3AF)" />}
         name={auto.nombre}
         description={`IAE ${auto.epigrafeIAE || '\u2014'} \u00B7 IRPF ${auto.irpfRetencionPorcentaje || 0}%`}
         kpis={[
-          { label: 'Facturaci\u00F3n bruta', value: fmtValue(est.facturacionBruta) },
+          { label: 'Facturación bruta', value: fmtValue(est.facturacionBruta) },
           { label: 'Gastos', value: fmtValue(est.totalGastos) },
           {
             label: 'Rendimiento neto',
             value: fmtValue(est.rendimientoNeto),
-            color: 'var(--teal-600, #1DA0BA)',
+            color: est.rendimientoNeto >= 0
+              ? 'var(--navy-900, #042C5E)'
+              : 'var(--grey-700, #303A4C)',
           },
         ]}
-        badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
+        badge={isPareja ? <BadgePareja /> : null}
         action={<ActionBtn label="Gestionar actividad" onClick={() => navigate('/personal/supervision')} />}
       />
     );
@@ -179,20 +180,19 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
       <SourceCard
         key={pen.id}
         bandColor={isPareja ? 'navy' : 'teal'}
-        icon={<Heart size={16} color="var(--white)" />}
-        iconBg="var(--navy-700, #142C50)"
-        name={`Pensi\u00F3n ${tipoPensionLabel[pen.tipoPension] || pen.tipoPension}`}
+        icon={<Heart size={16} color="var(--grey-400, #9CA3AF)" />}
+        name={`Pensión ${tipoPensionLabel[pen.tipoPension] || pen.tipoPension}`}
         description={`${pen.numeroPagas} pagas \u00B7 IRPF ${pen.irpfPorcentaje}%`}
         kpis={[
           { label: 'Bruta anual', value: fmtValue(pen.pensionBrutaAnual) },
-          { label: 'Retenci\u00F3n', value: fmtValue(calc.retencionAnual) },
+          { label: 'Retención', value: fmtValue(calc.retencionAnual) },
           {
             label: 'Neto mensual',
             value: fmtValue(Math.round(calc.netoMensual)),
             color: 'var(--teal-600, #1DA0BA)',
           },
         ]}
-        badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
+        badge={isPareja ? <BadgePareja /> : null}
         action={<ActionBtn label="Editar pensión" onClick={() => navigate('/personal/supervision')} />}
       />
     );
@@ -207,7 +207,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
         <SourceCard
           bandColor="grey"
           icon={<PlusCircle size={16} color="var(--grey-400)" />}
-          iconBg="var(--grey-100, #EEF1F5)"
           name="Otros ingresos"
           description="Sin ingresos adicionales configurados"
           kpis={[]}
@@ -219,8 +218,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
     return (
       <SourceCard
         bandColor={isPareja ? 'navy' : 'teal'}
-        icon={<Wallet size={16} color="var(--white)" />}
-        iconBg="var(--navy-800, #0A3A72)"
+        icon={<Wallet size={16} color="var(--grey-400, #9CA3AF)" />}
         name="Otros ingresos"
         description={`${activos.length} fuente${activos.length > 1 ? 's' : ''} activa${activos.length > 1 ? 's' : ''}`}
         kpis={[
@@ -231,7 +229,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
             color: 'var(--teal-600, #1DA0BA)',
           },
         ]}
-        badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
+        badge={isPareja ? <BadgePareja /> : null}
         action={<ActionBtn label="Gestionar" onClick={() => navigate(`/gestion/personal/otros-ingresos?titular=${isPareja ? 'pareja' : 'yo'}`)} />}
         detail={
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -265,7 +263,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
     <SourceCard
       bandColor="grey"
       icon={<Briefcase size={16} color="var(--grey-400)" />}
-      iconBg="var(--grey-100, #EEF1F5)"
       name="Nómina pareja"
       description="Sin configurar"
       kpis={[]}
@@ -320,7 +317,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                 <SourceCard
                   bandColor="grey"
                   icon={<Building2 size={16} color="var(--grey-400)" />}
-                  iconBg="var(--grey-100, #EEF1F5)"
                   name="Actividad autónoma"
                   description="Sin configurar"
                   kpis={[]}
@@ -361,7 +357,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                       <SourceCard
                         bandColor="grey"
                         icon={<Building2 size={16} color="var(--grey-400)" />}
-                        iconBg="var(--grey-100, #EEF1F5)"
                         name="Actividad autónoma pareja"
                         description="Sin configurar"
                         kpis={[]}
