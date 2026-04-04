@@ -124,6 +124,13 @@ export const navigationConfig: NavigationItem[] = [
     section: 'pulse'
   },
   {
+    name: 'Gestión Personal',
+    href: '/gestion/personal',
+    icon: User,
+    module: 'shared',
+    section: 'pulse'
+  },
+  {
     name: 'Documentación',
     href: '/inbox',
     icon: FolderOpen,

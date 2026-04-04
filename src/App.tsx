@@ -97,6 +97,9 @@ const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles
 // Personal section (within Horizon)
 const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
 
+// Gestión Personal hub
+const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
+
 // Pulse (Management) Module Components
 const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
 const ContratosNuevoPage = lazyWithPreload(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
@@ -527,6 +530,15 @@ function App() {
               <Route path="otros-ingresos" element={<Navigate to="/personal/supervision" replace />} />
             </Route>
             
+            {/* Gestión Personal */}
+            <Route path="gestion">
+              <Route path="personal" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <GestionPersonalPage />
+                </React.Suspense>
+              } />
+            </Route>
+
             {/* Pulse (Management) Routes */}
             <Route path="contratos">
               <Route index element={<Navigate to="/contratos/lista" replace />} />
