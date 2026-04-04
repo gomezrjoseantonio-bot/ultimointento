@@ -99,6 +99,9 @@ const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/pers
 
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
+const NominaWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/NominaWizard'));
+const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/AutonomoWizard'));
+const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
 
 // Pulse (Management) Module Components
 const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
@@ -535,6 +538,21 @@ function App() {
               <Route path="personal" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <GestionPersonalPage />
+                </React.Suspense>
+              } />
+              <Route path="personal/nueva-nomina" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <NominaWizardPage />
+                </React.Suspense>
+              } />
+              <Route path="personal/nuevo-autonomo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AutonomoWizardPage />
+                </React.Suspense>
+              } />
+              <Route path="personal/otros-ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <OtrosIngresosWizardPage />
                 </React.Suspense>
               } />
             </Route>
