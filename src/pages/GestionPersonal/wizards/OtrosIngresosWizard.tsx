@@ -323,7 +323,7 @@ const OtrosIngresosWizard: React.FC = () => {
 
                 {cfg.hasIRPF && (
                   <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, padding: '8px 12px', background: 'var(--grey-100, #EEF1F5)', borderRadius: 8 }}>
-                    Si este ingreso tiene retenci\u00f3n IRPF, el pagador la retiene directamente. El importe registrado aqu\u00ed es el bruto; la retenci\u00f3n se reflejar\u00e1 en tu declaraci\u00f3n.
+                    Si este ingreso tiene retención IRPF, el pagador la retiene directamente. El importe registrado aquí es el bruto; la retención se reflejará en tu declaración.
                   </div>
                 )}
 

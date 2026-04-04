@@ -325,7 +325,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                   description="Sin configurar"
                   kpis={[]}
                   badge={<BadgeEmpty />}
-                  action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=yo')} />}
+                  action={<ActionBtn label="Añadir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=yo')} />}
                 />
               );
           })())}
@@ -366,7 +366,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                         description="Sin configurar"
                         kpis={[]}
                         badge={<BadgeEmpty />}
-                        action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=pareja')} />}
+                        action={<ActionBtn label="Añadir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=pareja')} />}
                       />
                     );
               })())}
