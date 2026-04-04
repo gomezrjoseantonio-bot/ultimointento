@@ -106,10 +106,10 @@ const DeleteModal: React.FC<{
       }}
     >
       <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--grey-900)' }}>
-        \u00BFEliminar &ldquo;{concepto}&rdquo;?
+        ¿Eliminar &ldquo;{concepto}&rdquo;?
       </p>
       <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--grey-500)' }}>
-        Esta acci\u00F3n no se puede deshacer.
+        Esta acción no se puede deshacer.
       </p>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
@@ -247,7 +247,7 @@ const ExpenseDrawer: React.FC<{
               cursor: 'pointer',
             }}
           >
-            \u2715
+            ×
           </button>
         </div>
 
@@ -265,7 +265,7 @@ const ExpenseDrawer: React.FC<{
 
           {/* Categoria */}
           <div>
-            <label style={labelStyle}>Categor\u00EDa</label>
+            <label style={labelStyle}>Categoría</label>
             <select
               value={form.categoria}
               onChange={(e) => setForm({ ...form, categoria: e.target.value as PersonalExpenseCategory })}
@@ -281,7 +281,7 @@ const ExpenseDrawer: React.FC<{
 
           {/* Importe */}
           <div>
-            <label style={labelStyle}>Importe (\u20AC)</label>
+            <label style={labelStyle}>Importe (€)</label>
             <input
               type="number"
               min={0}
@@ -311,7 +311,7 @@ const ExpenseDrawer: React.FC<{
 
           {/* Dia de pago */}
           <div>
-            <label style={labelStyle}>D\u00EDa de pago (opcional)</label>
+            <label style={labelStyle}>Día de pago (opcional)</label>
             <input
               type="number"
               min={1}
@@ -612,7 +612,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
             }}
           >
             <Plus size={16} />
-            A\u00F1adir gasto
+            Añadir gasto
           </button>
         </div>
 
@@ -628,7 +628,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
         >
           {normalExpenses.length === 0 ? (
             <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>
-              Sin gastos configurados. A\u00F1ade tu primer gasto.
+              Sin gastos configurados. Añade tu primer gasto.
             </div>
           ) : (
             normalExpenses.map((e) => (
@@ -651,7 +651,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
             >
               <Shield size={14} color="var(--navy-700, #142C50)" />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--grey-900)' }}>
-                Gastos de hijos \u00B7 {perfil.descendientes!.length} descendiente{perfil.descendientes!.length > 1 ? 's' : ''}
+                Gastos de hijos · {perfil.descendientes!.length} descendiente{perfil.descendientes!.length > 1 ? 's' : ''}
               </span>
               <span
                 style={{
@@ -681,7 +681,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
                   fontFamily: FONT,
                 }}
               >
-                A\u00F1adir
+                Añadir
               </button>
             </div>
             <div
@@ -748,7 +748,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
                       fontFamily: FONT,
                     }}
                   >
-                    + A\u00F1adir
+                    + Añadir
                   </button>
                 </div>
               ))}
@@ -770,7 +770,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
           }}
         >
           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Por categor\u00EDa
+            Por categoría
           </div>
           {catBreakdown.map((c) => (
             <div key={c.cat} style={{ marginBottom: 10 }}>
@@ -788,7 +788,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
                   {CATEGORIA_LABEL[c.cat as PersonalExpenseCategory] || c.cat}
                 </span>
                 <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--grey-900)' }}>
-                  {fmt(c.val)} \u20AC
+                  {fmt(c.val)} €
                 </span>
               </div>
               <div
@@ -823,7 +823,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
           >
             <span style={{ color: 'var(--grey-700)' }}>Total / mes</span>
             <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--grey-900)' }}>
-              {fmt(totalMensual)} \u20AC
+              {fmt(totalMensual)} €
             </span>
           </div>
         </div>
