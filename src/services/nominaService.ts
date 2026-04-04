@@ -1,13 +1,14 @@
 import { initDB } from './db';
-import { 
-  Nomina, 
-  Variable, 
-  ReglaDia, 
+import {
+  Nomina,
+  Variable,
+  ReglaDia,
   RetencionNomina,
   CalculoNominaResult,
   DistribucionMensualResult
 } from '../types/personal';
 import { getBaseMaxima, getSSDefaults } from '../constants/cotizacionSS';
+import { invalidateCachedStores } from './indexedDbCacheService';
 
 class NominaService {
   private db: any = null;
@@ -134,8 +135,10 @@ class NominaService {
 
       const result = await store.add(newNomina);
       newNomina.id = result as number;
-      
+
       await tx.done;
+      // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
+      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
       return newNomina;
     } catch (error) {
       this.db = null;
@@ -152,7 +155,7 @@ class NominaService {
       const db = await this.getDB();
       const tx = db.transaction(['nominas'], 'readwrite');
       const store = tx.objectStore('nominas');
-      
+
       const existing = await store.get(id);
       if (!existing) {
         throw new Error('Nomina not found');
@@ -168,7 +171,9 @@ class NominaService {
 
       await store.put(updated);
       await tx.done;
-      
+
+      // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
+      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
       return updated;
     } catch (error) {
       this.db = null;
@@ -185,9 +190,11 @@ class NominaService {
       const db = await this.getDB();
       const tx = db.transaction(['nominas'], 'readwrite');
       const store = tx.objectStore('nominas');
-      
+
       await store.delete(id);
       await tx.done;
+      // V4.3: Invalidate fiscal/treasury caches
+      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
     } catch (error) {
       this.db = null;
       console.error('Error deleting nomina:', error);

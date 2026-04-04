@@ -2,7 +2,7 @@ import React from 'react';
 import { Shield } from 'lucide-react';
 import { autonomoService } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
 
 /* ── Navy header tokens ── */
@@ -260,7 +260,7 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   // Gastos de vida
   const gastosMensual = expenses
     .filter((e) => e.activo && e.importe > 0)
-    .reduce((s, e) => s + personalExpensesService.calcularImporteMensual(e), 0);
+    .reduce((s, e) => s + patronGastosPersonalesService.calcularImporteMensual(e), 0);
   const gastosAnual = Math.round(gastosMensual * 12);
 
   // Financiacion personal

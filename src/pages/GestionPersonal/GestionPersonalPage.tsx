@@ -7,7 +7,7 @@ import { nominaService } from '../../services/nominaService';
 import { autonomoService } from '../../services/autonomoService';
 import { pensionService } from '../../services/pensionService';
 import { otrosIngresosService } from '../../services/otrosIngresosService';
-import { personalExpensesService } from '../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../services/patronGastosPersonalesService';
 import { prestamosService } from '../../services/prestamosService';
 import type {
   PersonalData,
@@ -54,7 +54,7 @@ const GestionPersonalPage: React.FC = () => {
           autonomoService.getAutonomosActivos(pid),
           pensionService.getPensiones(pid),
           otrosIngresosService.getOtrosIngresos(pid),
-          personalExpensesService.getExpenses(pid),
+          patronGastosPersonalesService.getPatrones(pid),
           prestamosService.getAllPrestamos(),
         ]);
 

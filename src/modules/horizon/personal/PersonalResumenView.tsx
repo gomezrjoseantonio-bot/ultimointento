@@ -22,7 +22,7 @@ import { ResumenPersonalMensual, PersonalModuleConfig } from '../../../types/per
 import { generateProyeccionMensual } from '../proyeccion/mensual/services/proyeccionMensualService';
 import { ProyeccionAnual, MonthlyProjectionRow } from '../proyeccion/mensual/types/proyeccionMensual';
 import { personalDataService } from '../../../services/personalDataService';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import { autonomoService } from '../../../services/autonomoService';
 import { prestamosService } from '../../../services/prestamosService';
 import {
@@ -470,7 +470,7 @@ const PersonalResumenView: React.FC<PersonalResumenViewProps> = ({ resumen, hasP
       try {
         const personalData = await personalDataService.getPersonalData();
         const personalDataId = personalData?.id ?? 1;
-        const personalExpenses = await personalExpensesService.getExpenses(personalDataId);
+        const personalExpenses = await patronGastosPersonalesService.getPatrones(personalDataId);
         const activeExpenses = personalExpenses.filter(e => e.activo && e.importe > 0);
 
         // Compute annual total per category (frequency-aware) — only from personalExpenses

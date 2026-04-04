@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Home, FileText, Info } from 'lucide-react';
 import { PersonalData, SituacionLaboral, MaritalStatus, HousingType, NivelDiscapacidad, TipoTributacion, Descendiente, Ascendiente } from '../../../types/personal';
 import { personalDataService } from '../../../services/personalDataService';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import toast from 'react-hot-toast';
 
 interface ProfileViewProps {
@@ -243,7 +243,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onDataSaved }) => {
       const savedData = await personalDataService.savePersonalData(dataToSave);
       if (savedData.id) {
         try {
-          await personalExpensesService.smartSyncTemplateExpenses(savedData.id, savedData);
+          await patronGastosPersonalesService.smartSyncTemplatePatrones(savedData.id, savedData);
         } catch (mergeError) {
           console.error('Error merging expense template:', mergeError);
         }

@@ -10,8 +10,7 @@
 
 import { initDB } from '../../../../services/db';
 import { personalDataService } from '../../../../services/personalDataService';
-import { gastosPersonalesService } from '../../../../services/gastosPersonalesService';
-import { personalExpensesService } from '../../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { nominaService } from '../../../../services/nominaService';
 import { getAllContracts } from '../../../../services/contractService';
 import { prestamosService } from '../../../../services/prestamosService';
@@ -279,44 +278,14 @@ export async function generateMonthlyForecasts(
     console.error('[TreasurySyncService] Error processing opex rules:', err);
   }
 
-  // ── 2. GASTOS RECURRENTES (personal recurring expenses) ───────────────────
-  try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
-    const gastos = await gastosPersonalesService.getGastosRecurrentesActivos(personalDataId);
-
-    for (const gasto of gastos) {
-      if (!gastoRecurrenteAppliesToMonth(gasto, month)) continue;
-      if (gasto.id == null) continue;
-
-      if (await isDuplicate('gasto_recurrente', gasto.id)) {
-        skipped++;
-        continue;
-      }
-
-      await insertEvent({
-        type: 'expense' as const,
-        amount: gasto.importe,
-        predictedDate: buildDate(year, month, gasto.diaCobro),
-        description: gasto.nombre,
-        sourceType: 'gasto_recurrente' as const,
-        sourceId: gasto.id,
-        accountId: gasto.cuentaPago,
-        status: 'predicted' as const,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-  } catch (err) {
-    console.error('[TreasurySyncService] Error processing gastos recurrentes:', err);
-  }
-
-  // ── 2b. PERSONAL EXPENSES (OPEX-style, new model) ────────────────────────
+  // ── 2. PATRON GASTOS PERSONALES (spending patterns → forecast events) ─────
+  // NOTE: gastosRecurrentes (legacy store) is deprecated. All personal spending
+  // patterns now come from patronGastosPersonales (was personalExpenses).
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
     const personalHousingAddress = personalData?.direccion?.trim() || '';
-    const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
+    const allPersonalExpenses = await patronGastosPersonalesService.getPatrones(personalDataId);
     const activePersonalExpenses = allPersonalExpenses.filter(e => e.activo);
     const accounts = await db.getAll('accounts');
     const accountsById = new Map(accounts.map((acc) => [acc.id, acc]));

@@ -9,7 +9,7 @@ import {
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
 } from '../../../types/personal';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import { personalDataService } from '../../../services/personalDataService';
 import GastosManagerDrawer from './GastosManagerDrawer';
 
@@ -125,7 +125,7 @@ const GastosManager: React.FC = () => {
     if (!personalDataId) return;
     setLoading(true);
     try {
-      const data = await personalExpensesService.getExpenses(personalDataId);
+      const data = await patronGastosPersonalesService.getPatrones(personalDataId);
       data.sort((a, b) => a.categoria.localeCompare(b.categoria, 'es'));
       setGastos(data);
     } catch {
@@ -143,14 +143,14 @@ const GastosManager: React.FC = () => {
   const gastosActivos = useMemo(() => gastos.filter((g) => g.activo), [gastos]);
   // Only count expenses with importe > 0 in totals
   const gastosConImporte = useMemo(() => gastosActivos.filter((g) => g.importe > 0), [gastosActivos]);
-  const totalMensual = useMemo(() => gastosConImporte.reduce((sum, g) => sum + personalExpensesService.calcularImporteMensual(g), 0), [gastosConImporte]);
+  const totalMensual = useMemo(() => gastosConImporte.reduce((sum, g) => sum + patronGastosPersonalesService.calcularImporteMensual(g), 0), [gastosConImporte]);
 
   const byCategory = useMemo(() => {
     const sums = new Map<PersonalExpenseCategory, number>();
     // Only count expenses with importe > 0 in category breakdown
     for (const g of gastosConImporte) {
       const prev = sums.get(g.categoria) ?? 0;
-      sums.set(g.categoria, prev + personalExpensesService.calcularImporteMensual(g));
+      sums.set(g.categoria, prev + patronGastosPersonalesService.calcularImporteMensual(g));
     }
     return Array.from(sums.entries())
       .filter(([, amount]) => amount > 0)
@@ -167,7 +167,7 @@ const GastosManager: React.FC = () => {
   const handleDeleteConfirm = async () => {
     if (!deleteTarget?.id) return;
     try {
-      await personalExpensesService.deleteExpense(deleteTarget.id);
+      await patronGastosPersonalesService.deletePatron(deleteTarget.id);
       toast.success('Gasto eliminado');
       setDeleteTarget(null);
       loadGastos();
@@ -179,7 +179,7 @@ const GastosManager: React.FC = () => {
   const handleLoadTemplate = async () => {
     if (!personalDataId) return;
     try {
-      await personalExpensesService.smartMergeTemplateExpenses(personalDataId, personalData);
+      await patronGastosPersonalesService.smartMergeTemplatePatrones(personalDataId, personalData);
       toast.success('Plantilla cargada correctamente');
       loadGastos();
     } catch {
@@ -262,7 +262,7 @@ const GastosManager: React.FC = () => {
             )}
             {loading && <p style={{ color: N500 }}>Cargando...</p>}
             {!loading && filtered.map((g) => {
-              const mensual = personalExpensesService.calcularImporteMensual(g);
+              const mensual = patronGastosPersonalesService.calcularImporteMensual(g);
               return (
                 <article key={g.id} style={{ border: `1px solid ${N300}`, borderRadius: 12, background: '#fff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, opacity: g.activo ? 1 : 0.55 }}>
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: BLUE }} />

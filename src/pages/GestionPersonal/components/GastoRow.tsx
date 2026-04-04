@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { PersonalExpense } from '../../../types/personal';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const FONT = "'IBM Plex Sans', system-ui, sans-serif";
@@ -28,7 +28,7 @@ interface GastoRowProps {
 }
 
 const GastoRow: React.FC<GastoRowProps> = ({ expense, onEdit, onDelete, isSuggested }) => {
-  const mensual = personalExpensesService.calcularImporteMensual(expense);
+  const mensual = patronGastosPersonalesService.calcularImporteMensual(expense);
   const hasValue = expense.importe > 0;
 
   return (

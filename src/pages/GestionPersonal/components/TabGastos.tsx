@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Shield } from 'lucide-react';
 import GastoRow from './GastoRow';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
+import { gastosPersonalesRealService } from '../../../services/gastosPersonalesRealService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
@@ -9,6 +10,7 @@ import type {
   PersonalExpense,
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
+  DesviacionResumen,
 } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
@@ -423,11 +425,19 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [deletingExpense, setDeletingExpense] = useState<PersonalExpense | null>(null);
   const [localExpenses, setLocalExpenses] = useState(expenses);
+  const [desviaciones, setDesviaciones] = useState<DesviacionResumen[]>([]);
 
   // Keep local expenses in sync
   useEffect(() => {
     setLocalExpenses(expenses);
   }, [expenses]);
+
+  // Fetch desviaciones (real vs estimated) for current year
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    if (perfil.id == null) return;
+    gastosPersonalesRealService.getDesviaciones(perfil.id, year).then(setDesviaciones).catch(() => setDesviaciones([]));
+  }, [perfil.id, expenses]);
 
   const hasHijos = (perfil.descendientes?.length ?? 0) > 0;
 
@@ -478,7 +488,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
     const map = new Map<string, number>();
     for (const e of localExpenses) {
       if (!e.activo || e.importe <= 0) continue;
-      const m = personalExpensesService.calcularImporteMensual(e);
+      const m = patronGastosPersonalesService.calcularImporteMensual(e);
       map.set(e.categoria, (map.get(e.categoria) || 0) + m);
     }
     return Array.from(map.entries())
@@ -540,7 +550,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const confirmDelete = async () => {
     if (deletingExpense?.id) {
-      await personalExpensesService.deleteExpense(deletingExpense.id);
+      await patronGastosPersonalesService.deletePatron(deletingExpense.id);
       setDeletingExpense(null);
       onDataChange();
     }
@@ -551,9 +561,9 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   ) => {
     const { id, ...rest } = formData;
     if (id) {
-      await personalExpensesService.updateExpense(id, rest);
+      await patronGastosPersonalesService.updatePatron(id, rest);
     } else {
-      await personalExpensesService.saveExpense(rest);
+      await patronGastosPersonalesService.savePatron(rest);
     }
     setShowDrawer(false);
     setEditingExpense(null);
@@ -584,7 +594,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
     (e) => e.activo && e.categoria === 'educacion',
   );
   const totalHijos = hijosExpenses.reduce(
-    (s, e) => s + personalExpensesService.calcularImporteMensual(e),
+    (s, e) => s + patronGastosPersonalesService.calcularImporteMensual(e),
     0,
   );
 
@@ -827,6 +837,46 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
             </span>
           </div>
         </div>
+
+        {/* Real vs Presupuesto panel */}
+        {desviaciones.length > 0 && (
+          <div
+            style={{
+              background: 'var(--white)',
+              borderRadius: 10,
+              border: '1px solid var(--grey-200)',
+              padding: 20,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Real vs Presupuesto
+            </div>
+            {desviaciones.map((d) => {
+              const isOver = d.desviacion > 0;
+              return (
+                <div key={d.patronId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
+                  <span style={{ color: 'var(--grey-700)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {d.concepto}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: MONO,
+                      fontVariantNumeric: 'tabular-nums',
+                      color: isOver ? '#DC2626' : '#16A34A',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {isOver ? '+' : ''}{fmt(Math.round(d.desviacion))} {'\u20AC'}
+                  </span>
+                </div>
+              );
+            })}
+            <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 4 }}>
+              Datos confirmados en Tesorería · {new Date().getFullYear()}
+            </div>
+          </div>
+        )}
 
         {/* Excedente panel */}
         <div

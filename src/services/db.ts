@@ -3,17 +3,19 @@ import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
-import type { 
-  PersonalData, 
-  PersonalModuleConfig, 
-  Nomina, 
-  Autonomo, 
-  PlanPensionInversion, 
+import type {
+  PersonalData,
+  PersonalModuleConfig,
+  Nomina,
+  Autonomo,
+  PlanPensionInversion,
   OtrosIngresos,
   MovimientoPersonal,
   GastoRecurrente,
   GastoPuntual,
   PersonalExpense,
+  PatronGastoPersonal,
+  GastoPersonalReal,
   PensionIngreso
 } from '../types/personal';
 import type {
@@ -26,7 +28,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 42; // V4.2: delete legacy stores (all refs removed in phases A-E)
+const DB_VERSION = 43; // V4.3: Personal module architecture — rename personalExpenses → patronGastosPersonales, create gastosPersonalesReal, deprecate legacy stores
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1996,11 +1998,13 @@ interface AtlasHorizonDB {
   autonomos: Autonomo; // V1.2: Self-employed data
   planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
   otrosIngresos: OtrosIngresos; // V1.2: Other income
-  movimientosPersonales: MovimientoPersonal; // V1.2: Personal movements
-  gastosRecurrentes: GastoRecurrente; // V1.4: Recurring expenses
-  gastosPuntuales: GastoPuntual; // V1.4: One-time expenses
+  movimientosPersonales: MovimientoPersonal; // DEPRECATED V4.3: redundant — Tesorería owns facts
+  gastosRecurrentes: GastoRecurrente; // DEPRECATED V4.3: duplicates patronGastosPersonales
+  gastosPuntuales: GastoPuntual; // DEPRECATED V4.3: one-off expenses go to Tesorería directly
   pensiones: PensionIngreso; // V2.5: Pension income records
-  personalExpenses: PersonalExpense; // V2.3: OPEX-style personal expenses
+  personalExpenses: PersonalExpense; // DEPRECATED V4.3: renamed to patronGastosPersonales
+  patronGastosPersonales: PatronGastoPersonal; // V4.3: spending pattern (was personalExpenses)
+  gastosPersonalesReal: GastoPersonalReal; // V4.3: confirmed facts from Tesorería punteo
   prestamos: any; // Financiacion: Loan records
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
@@ -2627,6 +2631,50 @@ export const initDB = async () => {
             snapshotsStore.deleteIndex('ejercicio');
           }
           snapshotsStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+        }
+
+        // ── V4.3: Personal Module Architecture ─────────────────────────────────
+        // 1. Create patronGastosPersonales (renamed from personalExpenses)
+        if (!db.objectStoreNames.contains('patronGastosPersonales')) {
+          const patronStore = db.createObjectStore('patronGastosPersonales', { keyPath: 'id', autoIncrement: true });
+          patronStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          patronStore.createIndex('categoria', 'categoria', { unique: false });
+          patronStore.createIndex('origen', 'origen', { unique: false });
+        }
+
+        // 2. Create gastosPersonalesReal (new — confirmed facts from Tesorería)
+        if (!db.objectStoreNames.contains('gastosPersonalesReal')) {
+          const realStore = db.createObjectStore('gastosPersonalesReal', { keyPath: 'id', autoIncrement: true });
+          realStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          realStore.createIndex('patronId', 'patronId', { unique: false });
+          realStore.createIndex('ejercicio', 'ejercicio', { unique: false });
+          realStore.createIndex('mes', 'mes', { unique: false });
+          realStore.createIndex('ejercicio-mes', ['ejercicio', 'mes'], { unique: false });
+          realStore.createIndex('tesoreriaEventoId', 'tesoreriaEventoId', { unique: false });
+        }
+
+        // 3. Migrate data from personalExpenses → patronGastosPersonales
+        //    Data is copied during upgrade; personalExpenses store is kept for
+        //    backward compat but will no longer be written to by new code.
+        if (db.objectStoreNames.contains('personalExpenses') && db.objectStoreNames.contains('patronGastosPersonales')) {
+          try {
+            const srcStore = transaction.objectStore('personalExpenses');
+            const dstStore = transaction.objectStore('patronGastosPersonales');
+            const cursor = srcStore.openCursor();
+            cursor.then(async function migrate(cur) {
+              if (!cur) return;
+              const record = cur.value;
+              // Add 'origen' field (existing records come from manual or profile templates)
+              const migrated = { ...record, origen: record.origen ?? 'manual' };
+              // Remove the old auto-increment id so the new store generates fresh IDs
+              delete migrated.id;
+              await dstStore.add(migrated);
+              const next = await cur.continue();
+              await migrate(next);
+            });
+          } catch (migrationErr) {
+            console.warn('[DB V4.3] Migration personalExpenses → patronGastosPersonales skipped:', migrationErr);
+          }
         }
       },
       blocked() {
