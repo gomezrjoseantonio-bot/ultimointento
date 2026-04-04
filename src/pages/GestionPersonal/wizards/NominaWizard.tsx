@@ -176,10 +176,8 @@ const NominaWizard: React.FC = () => {
 
   // Step 1 state
   const [empresa, setEmpresa] = useState('');
-  const [nif, setNif] = useState('');
   const [pagas, setPagas] = useState<12 | 14 | 15 | 16>(12);
   const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
   const [diaCobro, setDiaCobro] = useState(31);
   const [cuentaId, setCuentaId] = useState(0);
   const [brutoAnual, setBrutoAnual] = useState(0);

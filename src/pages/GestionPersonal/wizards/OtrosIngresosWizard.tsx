@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Monitor, FileText, Users, AlertCircle, Home, TrendingUp, Heart, PlusCircle, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { Monitor, FileText, Users, AlertCircle, Home, TrendingUp, Heart, PlusCircle, X, Pencil, Trash2 } from 'lucide-react';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
@@ -9,8 +9,6 @@ import type { Account } from '../../../services/db';
 
 const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 type TipoIngreso = 'pension' | 'prestacion' | 'alimenticia' | 'indemnizacion' | 'alquiler' | 'dividendo' | 'subsidio' | 'otro';
 
