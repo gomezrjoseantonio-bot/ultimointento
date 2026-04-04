@@ -1,12 +1,13 @@
 import { initDB } from './db';
-import { 
-  Autonomo, 
-  IngresosAutonomo, 
-  GastoDeducible, 
+import {
+  Autonomo,
+  IngresosAutonomo,
+  GastoDeducible,
   FuenteIngreso,
   GastoRecurrenteActividad,
-  CalculoAutonomoResult 
+  CalculoAutonomoResult
 } from '../types/personal';
+import { invalidateCachedStores } from './indexedDbCacheService';
 
 class AutonomoService {
   private db: any = null;
@@ -97,8 +98,10 @@ class AutonomoService {
 
       const result = await store.add(newAutonomo);
       newAutonomo.id = result as number;
-      
+
       await tx.done;
+      // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
+      invalidateCachedStores(['autonomos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
       return newAutonomo;
     } catch (error) {
       this.db = null;
@@ -115,7 +118,7 @@ class AutonomoService {
       const db = await this.getDB();
       const tx = db.transaction(['autonomos'], 'readwrite');
       const store = tx.objectStore('autonomos');
-      
+
       const existing = await store.get(id);
       if (!existing) {
         throw new Error('Autonomo not found');
@@ -144,7 +147,9 @@ class AutonomoService {
 
       await store.put(updated);
       await tx.done;
-      
+
+      // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
+      invalidateCachedStores(['autonomos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
       return updated;
     } catch (error) {
       this.db = null;
@@ -161,9 +166,11 @@ class AutonomoService {
       const db = await this.getDB();
       const tx = db.transaction(['autonomos'], 'readwrite');
       const store = tx.objectStore('autonomos');
-      
+
       await store.delete(id);
       await tx.done;
+      // V4.3: Invalidate fiscal/treasury caches
+      invalidateCachedStores(['autonomos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
     } catch (error) {
       this.db = null;
       console.error('Error deleting autonomo:', error);

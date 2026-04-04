@@ -492,3 +492,63 @@ export interface PersonalExpense {
   createdAt: string;
   updatedAt: string;
 }
+
+// ============================================================================
+// PatronGastoPersonal — Renamed from PersonalExpense
+// Defines the expected spending pattern. Source for forecastEngine.
+// Does NOT contain real/confirmed data — only the pattern.
+// ============================================================================
+
+export interface PatronGastoPersonal {
+  id?: number;
+  personalDataId: number;
+  concepto: string;
+  categoria: PersonalExpenseCategory;
+  importe: number;                    // importeEstimado — expected amount per occurrence
+  frecuencia: PersonalExpenseFrequency;
+  diaPago?: number;
+  mesesCobro?: number[];
+  diaDeLaSemana?: number;
+  mesInicio?: number;
+  asymmetricPayments?: AsymmetricPaymentPersonal[];
+  estacionalidad?: PersonalExpenseEstacionalidad;
+  accountId?: number;                 // cuentaCargoId — expected account
+  origen: 'perfil' | 'manual';       // suggested by profile or created by user
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
+// GastoPersonalReal — NEW store
+// Confirmed facts written by Tesorería after punteo.
+// Mirror pattern of gastosInmueble (Inmuebles module).
+// ============================================================================
+
+export interface GastoPersonalReal {
+  id?: number;
+  personalDataId: number;
+  patronId?: number;                  // FK to patronGastosPersonales (null if one-off)
+  concepto: string;
+  categoria: PersonalExpenseCategory;
+  importeReal: number;                // actual amount paid
+  fechaReal: string;                  // actual payment date (ISO)
+  cuentaCargoId?: number;             // account where payment occurred
+  importeEstimado?: number;           // snapshot from pattern at confirmation time
+  desviacion?: number;                // importeReal - importeEstimado
+  tesoreriaEventoId: string;          // FK to confirmed treasury event
+  ejercicio: number;                  // fiscal year
+  mes: number;                        // month (1-12)
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DesviacionResumen {
+  patronId: number;
+  concepto: string;
+  categoria: PersonalExpenseCategory;
+  estimadoTotal: number;
+  realTotal: number;
+  desviacion: number;
+  meses: number[];
+}

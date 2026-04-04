@@ -972,7 +972,7 @@ class DashboardService {
         .reduce((sum: number, gasto: any) => sum + getImporte(gasto), 0);
 
       const personalDataId = 1;
-      const personalExpenses = await getCachedStoreRecords<any>('personalExpenses').catch(() => []);
+      const personalExpenses = await getCachedStoreRecords<any>('patronGastosPersonales').catch(() => []);
       const gastosRecurrentes = await getCachedStoreRecords<any>('gastosRecurrentes').catch(() => []);
       const gastosPuntuales = await getCachedStoreRecords<any>('gastosPuntuales').catch(() => []);
 

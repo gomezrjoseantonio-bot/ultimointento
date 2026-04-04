@@ -11,7 +11,7 @@ import DrilldownMensual, { type DatoMensual } from './components/DrilldownMensua
 import { personalDataService } from '../../../../services/personalDataService';
 import { personalResumenService } from '../../../../services/personalResumenService';
 import { autonomoService } from '../../../../services/autonomoService';
-import { personalExpensesService } from '../../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { ejercicioFiscalService } from '../../../../services/ejercicioFiscalService';
 import { prestamosService } from '../../../../services/prestamosService';
 import type { PersonalData, PersonalModuleConfig } from '../../../../types/personal';
@@ -92,7 +92,7 @@ const PersonalSupervisionPage: React.FC = () => {
       // Get personal expenses (monthly total × 12 = annual)
       let gastoMensual = 0;
       try {
-        gastoMensual = await personalExpensesService.calcularTotalMensual(moduleConfig.personalDataId);
+        gastoMensual = await patronGastosPersonalesService.calcularTotalMensual(moduleConfig.personalDataId);
       } catch {
         // No expense data
       }

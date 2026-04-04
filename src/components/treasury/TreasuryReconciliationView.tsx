@@ -28,6 +28,9 @@ import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
 import { calculateTreasuryMonthOpeningBalance } from './treasuryMonthOpeningBalance';
 import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
+import { gastosPersonalesRealService } from '../../services/gastosPersonalesRealService';
+import { patronGastosPersonalesService } from '../../services/patronGastosPersonalesService';
+import type { PersonalExpenseCategory } from '../../types/personal';
 import './treasury-reconciliation.css';
 
 export interface TreasuryEvent {
@@ -335,6 +338,48 @@ const TreasuryReconciliationView: React.FC = () => {
 
           if (newStatus === 'confirmado') {
             await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
+
+            // V4.3: Write confirmed personal expense to gastosPersonalesReal (idempotent)
+            if (dbEvent?.sourceType === 'personal_expense') {
+              try {
+                const tesoreriaEventoId = String(ev.dbId);
+                // Idempotency: skip if already registered for this treasury event
+                const existingReal = await db.getAllFromIndex(
+                  'gastosPersonalesReal',
+                  'tesoreriaEventoId',
+                  tesoreriaEventoId,
+                );
+                if (existingReal.length === 0) {
+                  const fechaConf = dbEvent.actualDate || new Date().toISOString().substring(0, 10);
+                  const patronId = typeof dbEvent.sourceId === 'number' ? dbEvent.sourceId : undefined;
+                  let importeEstimado: number | undefined;
+                  let categoria: PersonalExpenseCategory = 'otros';
+                  if (patronId) {
+                    const patrones = await patronGastosPersonalesService.getPatrones(dbEvent.personalDataId ?? 1);
+                    const patron = patrones.find(p => p.id === patronId);
+                    if (patron) {
+                      importeEstimado = patron.importe;
+                      categoria = patron.categoria;
+                    }
+                  }
+                  await gastosPersonalesRealService.registrarGastoReal({
+                    personalDataId: dbEvent.personalDataId ?? 1,
+                    patronId,
+                    concepto: dbEvent.description ?? ev.concept,
+                    categoria,
+                    importeReal: ev.amount,
+                    importeEstimado,
+                    fechaReal: fechaConf,
+                    cuentaCargoId: typeof dbEvent.accountId === 'number' ? dbEvent.accountId : undefined,
+                    tesoreriaEventoId,
+                    ejercicio: new Date(fechaConf).getFullYear(),
+                    mes: new Date(fechaConf).getMonth() + 1,
+                  });
+                }
+              } catch (realErr) {
+                console.warn('[Treasury] Error writing gastosPersonalesReal:', realErr);
+              }
+            }
           }
         }
       }

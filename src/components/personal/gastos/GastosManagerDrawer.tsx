@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { PersonalExpense } from '../../../types/personal';
-import { personalExpensesService } from '../../../services/personalExpensesService';
+import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import PersonalExpenseForm from './PersonalExpenseForm';
 
 export interface GastosManagerDrawerProps {
@@ -32,9 +32,9 @@ const GastosManagerDrawer: React.FC<GastosManagerDrawerProps> = ({
     formData: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'> & { id?: number },
   ) => {
     if (formData.id != null) {
-      await personalExpensesService.updateExpense(formData.id, formData);
+      await patronGastosPersonalesService.updatePatron(formData.id, formData);
     } else {
-      await personalExpensesService.saveExpense(formData);
+      await patronGastosPersonalesService.savePatron(formData);
     }
     onSuccess();
     onClose();

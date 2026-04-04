@@ -1,6 +1,6 @@
 import { nominaService } from './nominaService';
 import { autonomoService } from './autonomoService';
-import { personalExpensesService } from './personalExpensesService';
+import { patronGastosPersonalesService } from './patronGastosPersonalesService';
 import { ResumenPersonalMensual, OtrosIngresos } from '../types/personal';
 import { initDB } from './db';
 
@@ -92,7 +92,7 @@ class PersonalResumenService {
         .reduce((sum, o) => sum + this.calcularIngresoMensual(o), 0);
 
       // Calculate expenses from personal expenses store
-      const totalGastos = await personalExpensesService.calcularTotalMensual(personalDataId);
+      const totalGastos = await patronGastosPersonalesService.calcularTotalMensual(personalDataId);
 
       // Calculate totals
       const totalIngresos = ingresoNomina + ingresoAutonomo + ingresoOtros;
