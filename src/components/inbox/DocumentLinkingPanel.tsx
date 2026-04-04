@@ -90,53 +90,17 @@ const DocumentLinkingPanel: React.FC<DocumentLinkingPanelProps> = ({
       const now = new Date().toISOString();
 
       if (manualTipo === 'mobiliario') {
-        const id = await db.add('mobiliarioActivo', {
-          inmuebleId: manualInmuebleId as number,
-          ejercicio: manualEjercicio,
-          descripcion: 'Asignado desde factura',
-          fechaAlta: `${manualEjercicio}-01-01`,
-          importe: 0,
-          vidaUtil: 10,
-          activo: true,
-          proveedorNIF: '',
-          documentId,
-          createdAt: now,
-          updatedAt: now,
-        });
-        void id;
-        // Dual write: mueblesInmueble
         await mueblesInmuebleService.crear({
-          inmuebleId: manualInmuebleId as number,
-          ejercicio: manualEjercicio,
-          descripcion: 'Asignado desde factura',
-          fechaAlta: `${manualEjercicio}-01-01`,
-          importe: 0,
-          vidaUtil: 10,
-          activo: true,
-          documentId,
-        }).catch(() => {});
-      } else {
-        const id = await db.add('mejorasActivo', {
-          inmuebleId: manualInmuebleId as number,
-          ejercicio: manualEjercicio,
-          descripcion: 'Asignado desde factura',
-          tipo: manualTipo,
-          importe: 0,
-          proveedorNIF: '',
-          documentId,
-          createdAt: now,
-          updatedAt: now,
+          inmuebleId: manualInmuebleId as number, ejercicio: manualEjercicio,
+          descripcion: 'Asignado desde factura', fechaAlta: `${manualEjercicio}-01-01`,
+          importe: 0, vidaUtil: 10, activo: true, documentId,
         });
-        void id;
-        // Dual write: mejorasInmueble
+      } else {
         await mejorasInmuebleService.crear({
-          inmuebleId: manualInmuebleId as number,
-          ejercicio: manualEjercicio,
+          inmuebleId: manualInmuebleId as number, ejercicio: manualEjercicio,
           descripcion: 'Asignado desde factura',
           tipo: manualTipo as 'mejora' | 'ampliacion' | 'reparacion',
-          importe: 0,
-          fecha: `${manualEjercicio}-01-01`,
-          documentId,
+          importe: 0, fecha: `${manualEjercicio}-01-01`, documentId,
         }).catch(() => {});
       }
 

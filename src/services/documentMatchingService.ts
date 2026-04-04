@@ -92,11 +92,22 @@ export async function findCandidates(params: FindCandidatesParams): Promise<Cand
   const normalizedNif = nif ? nif.trim().toUpperCase().replace(/[\s.-]/g, '') : '';
   const invoiceYear = fecha ? new Date(fecha).getFullYear() : undefined;
 
-  const [mejoras, mobiliarios, properties] = await Promise.all([
-    db.getAll('mejorasActivo') as Promise<MejoraActivo[]>,
-    db.getAll('mobiliarioActivo') as Promise<MobiliarioActivo[]>,
+  const [mejorasInm, mueblesInm, properties] = await Promise.all([
+    db.getAll('mejorasInmueble') as Promise<any[]>,
+    db.getAll('mueblesInmueble') as Promise<any[]>,
     db.getAll('properties') as Promise<Property[]>,
   ]);
+  // Map to legacy shape for scoring
+  const mejoras = mejorasInm.map((m: any) => ({
+    id: m.id, inmuebleId: m.inmuebleId, ejercicio: m.ejercicio, importe: m.importe,
+    tipo: m.tipo, descripcion: m.descripcion, proveedorNIF: m.proveedorNIF,
+    proveedorNombre: m.proveedorNombre, documentId: m.documentId,
+  })) as MejoraActivo[];
+  const mobiliarios = mueblesInm.map((m: any) => ({
+    id: m.id, inmuebleId: m.inmuebleId, ejercicio: m.ejercicio, importe: m.importe,
+    descripcion: m.descripcion, proveedorNIF: m.proveedorNIF,
+    proveedorNombre: m.proveedorNombre, documentId: m.documentId, fechaAlta: m.fechaAlta,
+  })) as MobiliarioActivo[];
 
   // Build property lookup maps
   const aliasMap = new Map<number, string>();

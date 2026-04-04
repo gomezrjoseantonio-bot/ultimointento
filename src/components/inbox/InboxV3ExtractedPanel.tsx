@@ -157,55 +157,20 @@ const ManualAssignmentForm: React.FC<{
     setAssigning(true);
     try {
       const db = await initDB();
-      const now = new Date().toISOString();
 
       if (tipo === 'mobiliario') {
-        await db.add('mobiliarioActivo', {
-          inmuebleId: inmuebleId as number,
-          ejercicio,
-          descripcion: 'Asignado desde factura',
-          fechaAlta: `${ejercicio}-01-01`,
-          importe: 0,
-          vidaUtil: 10,
-          activo: true,
-          proveedorNIF: '',
-          documentId,
-          createdAt: now,
-          updatedAt: now,
-        });
-        // Dual write: mueblesInmueble
         await mueblesInmuebleService.crear({
-          inmuebleId: inmuebleId as number,
-          ejercicio,
-          descripcion: 'Asignado desde factura',
-          fechaAlta: `${ejercicio}-01-01`,
-          importe: 0,
-          vidaUtil: 10,
-          activo: true,
-          documentId,
-        }).catch(() => {});
-      } else {
-        await db.add('mejorasActivo', {
-          inmuebleId: inmuebleId as number,
-          ejercicio,
-          descripcion: 'Asignado desde factura',
-          tipo,
-          importe: 0,
-          proveedorNIF: '',
-          documentId,
-          createdAt: now,
-          updatedAt: now,
+          inmuebleId: inmuebleId as number, ejercicio,
+          descripcion: 'Asignado desde factura', fechaAlta: `${ejercicio}-01-01`,
+          importe: 0, vidaUtil: 10, activo: true, documentId,
         });
-        // Dual write: mejorasInmueble
+      } else {
         await mejorasInmuebleService.crear({
-          inmuebleId: inmuebleId as number,
-          ejercicio,
+          inmuebleId: inmuebleId as number, ejercicio,
           descripcion: 'Asignado desde factura',
           tipo: tipo as 'mejora' | 'ampliacion' | 'reparacion',
-          importe: 0,
-          fecha: `${ejercicio}-01-01`,
-          documentId,
-        }).catch(() => {});
+          importe: 0, fecha: `${ejercicio}-01-01`, documentId,
+        });
       }
 
       // Mark document as Asignado

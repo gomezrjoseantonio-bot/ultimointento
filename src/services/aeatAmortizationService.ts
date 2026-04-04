@@ -170,23 +170,13 @@ export const calculateAEATAmortization = async (
   let historicalImprovements = 0;
 
   try {
-    const mejorasNuevo = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', propertyId) as any[];
-    // Only 'mejora' and 'ampliacion' increase amortization base; 'reparacion' goes to box 0106
-    const mejorasCapitalizables = mejorasNuevo.filter((m: any) => m?.tipo !== 'reparacion');
-    historicalImprovements = mejorasCapitalizables
-      .filter((mejora: any) => toNumber(mejora?.ejercicio) <= exerciseYear)
-      .reduce((total: number, mejora: any) => total + toNumber(mejora?.importe), 0);
+    const mejorasUnificadas = await mejorasInmuebleService.getPorInmueble(propertyId);
+    const capitalizables = mejorasUnificadas.filter(m => m.tipo !== 'reparacion');
+    historicalImprovements = capitalizables
+      .filter(m => m.ejercicio <= exerciseYear)
+      .reduce((total, m) => total + m.importe, 0);
   } catch {
-    // Fallback: read from mejorasInmueble (unified store)
-    try {
-      const mejorasUnificadas = await mejorasInmuebleService.getPorInmueble(propertyId);
-      const capitalizables = mejorasUnificadas.filter(m => m.tipo !== 'reparacion');
-      historicalImprovements = capitalizables
-        .filter(m => m.ejercicio <= exerciseYear)
-        .reduce((total, m) => total + m.importe, 0);
-    } catch {
-      historicalImprovements = 0;
-    }
+    historicalImprovements = 0;
   }
 
   // Calculate base amount - Rule: max(construction cost, cadastral construction value)
