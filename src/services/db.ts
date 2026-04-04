@@ -2664,10 +2664,9 @@ export const initDB = async () => {
             cursor.then(async function migrate(cur) {
               if (!cur) return;
               const record = cur.value;
-              // Add 'origen' field (existing records come from manual or profile templates)
+              // Add 'origen' field and preserve the legacy id so dependent records
+              // (for example treasury events keyed by sourceId) keep referential integrity.
               const migrated = { ...record, origen: record.origen ?? 'manual' };
-              // Remove the old auto-increment id so the new store generates fresh IDs
-              delete migrated.id;
               await dstStore.add(migrated);
               const next = await cur.continue();
               await migrate(next);

@@ -20,7 +20,7 @@ class PatronGastosPersonalesService {
     }
   }
 
-  async savePatron(patron: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt'>): Promise<PatronGastoPersonal> {
+  async savePatron(patron: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt' | 'origen'> & { origen?: 'perfil' | 'manual' }): Promise<PatronGastoPersonal> {
     const db = await initDB();
     const now = new Date().toISOString();
     const newPatron: PatronGastoPersonal = { ...patron, origen: patron.origen ?? 'manual', createdAt: now, updatedAt: now };
@@ -28,11 +28,11 @@ class PatronGastosPersonalesService {
     return { ...newPatron, id: id as number };
   }
 
-  async updatePatron(id: number, data: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt'>): Promise<PatronGastoPersonal> {
+  async updatePatron(id: number, data: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt' | 'origen'> & { origen?: 'perfil' | 'manual' }): Promise<PatronGastoPersonal> {
     const db = await initDB();
     const existing = await db.get('patronGastosPersonales', id);
     if (!existing) throw new Error('PatronGastoPersonal not found');
-    const updated: PatronGastoPersonal = { ...existing, ...data, id, updatedAt: new Date().toISOString() };
+    const updated: PatronGastoPersonal = { ...existing, ...data, origen: data.origen ?? existing.origen ?? 'manual', id, updatedAt: new Date().toISOString() };
     await db.put('patronGastosPersonales', updated);
     return updated;
   }
@@ -213,9 +213,9 @@ class PatronGastosPersonalesService {
     }
   }
 
-  // ── Legacy compatibility: delegate to old store if new store is empty ──────
-  // This allows a smooth transition during the migration period.
-  // The old personalExpensesService methods are preserved but route through here.
+  // ── Legacy compatibility: preserve the previous service API names ───────────
+  // Deprecated personalExpensesService methods are kept as wrappers around the
+  // renamed PatronGastosPersonales methods during the migration period.
 
   /** @deprecated Use getPatrones */
   async getExpenses(personalDataId: number): Promise<PatronGastoPersonal[]> {
@@ -223,13 +223,13 @@ class PatronGastosPersonalesService {
   }
 
   /** @deprecated Use savePatron */
-  async saveExpense(expense: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt'>): Promise<PatronGastoPersonal> {
-    return this.savePatron({ ...expense, origen: expense.origen ?? 'manual' });
+  async saveExpense(expense: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt' | 'origen'> & { origen?: 'perfil' | 'manual' }): Promise<PatronGastoPersonal> {
+    return this.savePatron(expense);
   }
 
   /** @deprecated Use updatePatron */
-  async updateExpense(id: number, data: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt'>): Promise<PatronGastoPersonal> {
-    return this.updatePatron(id, { ...data, origen: data.origen ?? 'manual' });
+  async updateExpense(id: number, data: Omit<PatronGastoPersonal, 'id' | 'createdAt' | 'updatedAt' | 'origen'> & { origen?: 'perfil' | 'manual' }): Promise<PatronGastoPersonal> {
+    return this.updatePatron(id, data);
   }
 
   /** @deprecated Use deletePatron */
