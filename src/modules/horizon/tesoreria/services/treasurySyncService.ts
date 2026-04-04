@@ -21,7 +21,6 @@ import { otrosIngresosService } from '../../../../services/otrosIngresosService'
 import { rollForwardAccountBalancesToMonth } from '../../../../services/accountBalanceService';
 import {
   calculateOpexBreakdownForMonth,
-  gastoRecurrenteAppliesToMonth,
   personalExpenseAppliesToMonth,
   getPersonalExpenseAmountForMonth,
 } from '../../../horizon/proyeccion/mensual/services/forecastEngine';
