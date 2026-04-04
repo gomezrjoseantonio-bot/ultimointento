@@ -29,7 +29,7 @@ const fmtEur = (v: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v) + '\u00A0\u20AC';
 
 function calcAnual(item: OtrosIngresos): number {
-  const mults: Record<string, number> = { mensual: 12, trimestral: 4, semestral: 2, anual: 1, unico: 0 };
+  const mults: Record<string, number> = { mensual: 12, trimestral: 4, semestral: 2, anual: 1, unico: 1 };
   return item.importe * (mults[item.frecuencia] ?? 0);
 }
 
@@ -52,7 +52,7 @@ interface ModalState {
   cuentaId: number;
   fechaInicio: string;
   fechaFin: string;
-  frecuencia: 'mensual' | 'meses-concretos';
+  frecuencia: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'unico' | 'meses-concretos';
   mesesActivos: boolean[];
   tieneIRPF: boolean;
   irpfPct: number;
@@ -110,7 +110,7 @@ const OtrosIngresosWizard: React.FC = () => {
         nombre: modal.pagador || modal.descripcion || cfg.label,
         tipo: cfg.existingTipo,
         importe: modal.importe,
-        frecuencia: modal.frecuencia === 'mensual' ? 'mensual' : 'mensual',
+        frecuencia: modal.frecuencia === 'meses-concretos' ? 'mensual' : modal.frecuencia,
         titularidad: titularParam,
         cuentaCobro: modal.cuentaId || defaultCuentaId,
         reglasDia: { tipo: 'fijo', dia: 1 },
@@ -144,11 +144,24 @@ const OtrosIngresosWizard: React.FC = () => {
 
   const handleEdit = (item: OtrosIngresos) => {
     const cfg = TIPOS.find(t => t.existingTipo === item.tipo) || TIPOS[TIPOS.length - 1];
+    const frecModal: ModalState['frecuencia'] =
+      item.frecuencia === 'mensual' || item.frecuencia === 'trimestral' ||
+      item.frecuencia === 'semestral' || item.frecuencia === 'anual' || item.frecuencia === 'unico'
+        ? item.frecuencia
+        : 'mensual';
     setModal({
-      tipo: cfg.tipo, pagador: item.nombre, descripcion: '', importe: item.importe,
-      cuentaId: item.cuentaCobro || defaultCuentaId, fechaInicio: item.fechaInicio || '',
-      fechaFin: item.fechaFin || '', frecuencia: 'mensual', mesesActivos: Array(12).fill(true),
-      tieneIRPF: false, irpfPct: 15, editingId: item.id,
+      tipo: cfg.tipo,
+      pagador: item.nombre,
+      descripcion: '',
+      importe: item.importe,
+      cuentaId: item.cuentaCobro || defaultCuentaId,
+      fechaInicio: item.fechaInicio || '',
+      fechaFin: item.fechaFin || '',
+      frecuencia: frecModal,
+      mesesActivos: Array(12).fill(true),
+      tieneIRPF: false,
+      irpfPct: 15,
+      editingId: item.id,
     });
   };
 
@@ -160,10 +173,9 @@ const OtrosIngresosWizard: React.FC = () => {
     const mesInicio = modal.fechaInicio ? new Date(modal.fechaInicio + '-01') : ahora;
     const mesFin = modal.fechaFin ? new Date(modal.fechaFin + '-01') : new Date(ahora.getFullYear(), 11, 1);
     const meses = Math.max(1, Math.round((mesFin.getTime() - mesInicio.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-    const brutoAnual = modal.importe * 12;
-    const retencionAnual = modal.tieneIRPF ? brutoAnual * modal.irpfPct / 100 : 0;
-    const netoAnual = brutoAnual - retencionAnual;
-    return { meses, brutoAnual, retencionAnual, netoAnual, porCobro: netoAnual / 12 };
+    const mults: Record<string, number> = { mensual: 12, trimestral: 4, semestral: 2, anual: 1, unico: 1, 'meses-concretos': 12 };
+    const brutoAnual = modal.importe * (mults[modal.frecuencia] ?? 12);
+    return { meses, brutoAnual, porCobro: modal.importe };
   }, [modal]);
 
   return (
@@ -299,47 +311,21 @@ const OtrosIngresosWizard: React.FC = () => {
                 {cfg.hasFrecuencia && (
                   <div>
                     <label style={labelSt}>Frecuencia</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {(['mensual', 'meses-concretos'] as const).map(f => (
-                        <button key={f} onClick={() => setModal(m => m ? { ...m, frecuencia: f } : m)}
-                          style={{ flex: 1, padding: '8px', borderRadius: 8, border: '1.5px solid var(--grey-300)', background: modal.frecuencia === f ? 'var(--navy-900, #042C5E)' : '#fff', color: modal.frecuencia === f ? '#fff' : 'var(--navy-900)', fontSize: 13, fontFamily: FONT, cursor: 'pointer' }}>
-                          {f === 'mensual' ? 'Mensual' : 'Meses concretos'}
-                        </button>
-                      ))}
-                    </div>
-                    {modal.frecuencia === 'meses-concretos' && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginTop: 10 }}>
-                        {MESES.map((m, i) => (
-                          <button key={m} onClick={() => {
-                            const arr = [...modal.mesesActivos];
-                            arr[i] = !arr[i];
-                            setModal(prev => prev ? { ...prev, mesesActivos: arr } : prev);
-                          }}
-                            style={{ padding: '4px 10px', borderRadius: 20, border: '1.5px solid', fontSize: 12, fontFamily: FONT, cursor: 'pointer',
-                              borderColor: modal.mesesActivos[i] ? 'var(--navy-900)' : 'var(--grey-300)',
-                              background: modal.mesesActivos[i] ? 'var(--navy-900)' : '#fff',
-                              color: modal.mesesActivos[i] ? '#fff' : 'var(--grey-500)' }}>
-                            {m}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <select value={modal.frecuencia}
+                      onChange={e => setModal(m => m ? { ...m, frecuencia: e.target.value as ModalState['frecuencia'] } : m)}
+                      style={inputSt}>
+                      <option value="mensual">Mensual</option>
+                      <option value="trimestral">Trimestral</option>
+                      <option value="semestral">Semestral</option>
+                      <option value="anual">Anual</option>
+                      <option value="unico">Pago único</option>
+                    </select>
                   </div>
                 )}
 
                 {cfg.hasIRPF && (
-                  <div>
-                    <label style={{ ...labelSt, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <input type="checkbox" checked={modal.tieneIRPF} onChange={e => setModal(m => m ? { ...m, tieneIRPF: e.target.checked } : m)} />
-                      Sujeto a retención IRPF
-                    </label>
-                    {modal.tieneIRPF && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                        <input type="number" value={modal.irpfPct} onChange={e => setModal(m => m ? { ...m, irpfPct: Number(e.target.value) } : m)}
-                          style={{ ...inputSt, width: 80, fontFamily: MONO }} />
-                        <span style={{ fontSize: 12, color: 'var(--grey-400)', fontFamily: FONT }}>% retención</span>
-                      </div>
-                    )}
+                  <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, padding: '8px 12px', background: 'var(--grey-100, #EEF1F5)', borderRadius: 8 }}>
+                    Si este ingreso tiene retenci\u00f3n IRPF, el pagador la retiene directamente. El importe registrado aqu\u00ed es el bruto; la retenci\u00f3n se reflejar\u00e1 en tu declaraci\u00f3n.
                   </div>
                 )}
 
@@ -348,20 +334,12 @@ const OtrosIngresosWizard: React.FC = () => {
                   <div style={{ background: 'var(--navy-900, #042C5E)', borderRadius: 10, padding: '16px', marginTop: 4 }}>
                     <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 10, fontWeight: 700 }}>ESTIMACIÓN CON ESTOS DATOS</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
-                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>Importe bruto anual</span>
+                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>Total estimado / año</span>
                       <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: '#fff' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.brutoAnual)} €</span>
                     </div>
-                    {modal.tieneIRPF && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
-                        <span style={{ color: 'rgba(255,255,255,0.7)' }}>\u2212 Retención IRPF ({modal.irpfPct}%)</span>
-                        <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'rgba(255,255,255,0.7)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.retencionAnual)} €</span>
-                      </div>
-                    )}
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 8, paddingTop: 8 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
-                        <span style={{ fontWeight: 700, color: '#fff' }}>Neto en cuenta</span>
-                        <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: 'var(--teal-400, #4AC8E0)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.netoAnual)} €</span>
-                      </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontFamily: FONT, marginBottom: 4 }}>
+                      <span style={{ color: 'rgba(255,255,255,0.7)' }}>Por cobro</span>
+                      <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--teal-400, #4AC8E0)' }}>{new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(modalPreview.porCobro)} €</span>
                     </div>
                   </div>
                 )}

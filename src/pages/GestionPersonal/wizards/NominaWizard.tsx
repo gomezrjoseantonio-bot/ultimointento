@@ -5,6 +5,7 @@ import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
 import { planesInversionService } from '../../../services/planesInversionService';
+import { getBaseMaxima } from '../../../constants/cotizacionSS';
 import type { Account } from '../../../services/db';
 import type { PlanPensionInversion } from '../../../types/personal';
 
@@ -12,7 +13,7 @@ const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const MESES_CORTO = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-const SS_TOPE = 5101.20;
+const SS_TOPE = getBaseMaxima(new Date().getFullYear());
 
 // ── Tipos internos del wizard ────────────────────────────────────────────────
 interface WizardVariable {
@@ -30,6 +31,18 @@ interface WizardEspecie {
   nombre: string;
   tributacion: 'Computa en IRPF' | 'Exento IRPF';
   importeMensual: number;
+}
+
+// ── Tipo para los items del calendario ──────────────────────────────────────
+interface CalendarioItem {
+  mes: string;
+  idx: number;
+  brutoMes: number;
+  brutoVar: number;
+  liq: number;
+  esExtra: boolean;
+  hasVar: boolean;
+  varTipos: ('variable' | 'bonus')[];
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -224,8 +237,8 @@ const NominaWizard: React.FC = () => {
   const liquidoMes = pagaNormal - irpfMes - ssMes - solidaridadMes - ppMes;
 
   // Calendar calc (step 3)
-  const calendario = useMemo(() => {
-    if (brutoAnual <= 0) return MESES.map((mes, i) => ({ mes, idx: i, brutoMes: 0, brutoVar: 0, liq: 0, esExtra: false, hasVar: false }));
+  const calendario = useMemo((): CalendarioItem[] => {
+    if (brutoAnual <= 0) return MESES.map((mes, i) => ({ mes, idx: i, brutoMes: 0, brutoVar: 0, liq: 0, esExtra: false, hasVar: false, varTipos: [] }));
     const mesesExtra: number[] = pagas === 14 ? [5, 11] : pagas === 15 ? [2, 5, 11] : pagas === 16 ? [2, 5, 8, 11] : [];
     return MESES.map((mes, i) => {
       const esExtra = mesesExtra.includes(i);
@@ -238,12 +251,16 @@ const NominaWizard: React.FC = () => {
       const irpfM = (brutoMes + brutoVar) * irpf / 100;
       const ppM = tienePP ? ppEmpleado : 0;
       const liq = brutoMes + brutoVar - irpfM - ssM - solM - ppM;
-      return { mes, idx: i, brutoMes, brutoVar, liq, esExtra, hasVar: varsEste.length > 0, varTipos: varsEste.map(v => v.tipo) };
+      return { mes, idx: i, brutoMes, brutoVar, liq, esExtra, hasVar: varsEste.length > 0, varTipos: varsEste.map(v => v.tipo) } satisfies CalendarioItem;
     });
   }, [brutoAnual, pagas, pagaNormal, irpf, ssPct, solidaridadAnual, variables, tienePP, ppEmpleado]);
 
   const handleSave = useCallback(async () => {
     if (!pid) return;
+    if (!Number.isFinite(brutoAnual) || brutoAnual <= 0) {
+      alert('El salario bruto anual debe ser mayor que 0.');
+      return;
+    }
     setSaving(true);
     try {
       const vars = variables.filter(v => v.tipo === 'variable').map(v => ({
@@ -320,21 +337,13 @@ const NominaWizard: React.FC = () => {
           Datos del empleador
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
+          <div style={{ gridColumn: '1 / -1' }}>
             <label style={labelSt}>Empresa / pagador</label>
             <input style={inputSt} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Nombre del empleador" />
           </div>
           <div>
-            <label style={labelSt}>NIF del pagador</label>
-            <input style={inputSt} value={nif} onChange={e => setNif(e.target.value)} placeholder="A00000000" />
-          </div>
-          <div>
             <label style={labelSt}>Fecha inicio</label>
             <input style={inputSt} type="month" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
-          </div>
-          <div>
-            <label style={labelSt}>Fecha fin <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— vac\u00edo = indefinido</span></label>
-            <input style={inputSt} type="month" value={fechaFin} onChange={e => setFechaFin(e.target.value)} />
           </div>
           <div>
             <label style={labelSt}>D\u00eda de cobro <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— 31 = \u00faltimo h\u00e1bil</span></label>
@@ -654,7 +663,7 @@ const NominaWizard: React.FC = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 4 }}>
                 {m.esExtra && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(4,44,94,0.08)', color: 'var(--navy-900)', fontFamily: FONT }}>Paga extra</span>}
                 {m.hasVar && <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(4,44,94,0.08)', color: 'var(--navy-900)', fontFamily: FONT }}>
-                  {(m as any).varTipos?.includes('bonus') ? 'Bonus' : 'Variable'}
+                  {m.varTipos.includes('bonus') ? 'Bonus' : 'Variable'}
                 </span>}
                 {tienePP && <div style={{ fontSize: 10, color: 'var(--grey-400)', fontFamily: FONT, width: '100%', marginTop: 2 }}>PP +{fmtEur(ppEmpleado)}</div>}
               </div>

@@ -312,9 +312,11 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
         {/* Autonomo titular */}
         {showAutonomo &&
-          (autonomos.filter((a) => !a.titular || a.titular === perfil.nombre).length > 0
-            ? autonomos.filter((a) => !a.titular || a.titular === perfil.nombre).map((a) => buildAutoCard(a, false))
-            : (
+          ((() => {
+            const autosTitular = autonomos.filter((a) => !a.titular || a.titular === perfil.nombre);
+            return autosTitular.length > 0
+              ? autosTitular.map((a) => buildAutoCard(a, false))
+              : (
                 <SourceCard
                   bandColor="grey"
                   icon={<Building2 size={16} color="var(--grey-400)" />}
@@ -325,7 +327,8 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                   badge={<BadgeEmpty />}
                   action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=yo')} />}
                 />
-              ))}
+              );
+          })())}
 
         {/* Pension titular */}
         {showPension &&
@@ -350,20 +353,23 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
             {/* Autonomo pareja */}
             {showAutoPareja &&
-              (autonomos.filter((a) => a.titular === perfil.spouseName).length > 0
-                ? autonomos.filter((a) => a.titular === perfil.spouseName).map((a) => buildAutoCard(a, true))
-                : (
-                    <SourceCard
-                      bandColor="grey"
-                      icon={<Building2 size={16} color="var(--grey-400)" />}
-                      iconBg="var(--grey-100, #EEF1F5)"
-                      name="Actividad autónoma pareja"
-                      description="Sin configurar"
-                      kpis={[]}
-                      badge={<BadgeEmpty />}
-                      action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=pareja')} />}
-                    />
-                  ))}
+              ((() => {
+                const autosPareja = autonomos.filter((a) => a.titular === perfil.spouseName);
+                return autosPareja.length > 0
+                  ? autosPareja.map((a) => buildAutoCard(a, true))
+                  : (
+                      <SourceCard
+                        bandColor="grey"
+                        icon={<Building2 size={16} color="var(--grey-400)" />}
+                        iconBg="var(--grey-100, #EEF1F5)"
+                        name="Actividad autónoma pareja"
+                        description="Sin configurar"
+                        kpis={[]}
+                        badge={<BadgeEmpty />}
+                        action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=pareja')} />}
+                      />
+                    );
+              })())}
 
             {/* Pension pareja */}
             {showPensionPareja &&

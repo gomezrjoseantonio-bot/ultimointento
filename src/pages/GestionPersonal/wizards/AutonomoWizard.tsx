@@ -131,7 +131,7 @@ const AutonomoWizard: React.FC = () => {
   // Step 1
   const [actividad, setActividad] = useState('');
   const [iae, setIae] = useState('');
-  const [modalidad, setModalidad] = useState<'simplificada' | 'normal' | 'objetiva'>('simplificada');
+  const [modalidad, setModalidad] = useState<'simplificada' | 'normal'>('simplificada');
   const [cuentaId, setCuentaId] = useState(0);
   const [clientes, setClientes] = useState<WizardCliente[]>([]);
 
@@ -236,9 +236,9 @@ const AutonomoWizard: React.FC = () => {
         titular: titularParam === 'pareja' ? titularNombre : undefined,
         epigrafeIAE: iae,
         descripcionActividad: actividad,
-        modalidad: modalidad === 'objetiva' ? 'simplificada' : modalidad,
+        modalidad: modalidad,
         cuotaAutonomos: TRAMOS_SS_2026[tramoSS].cuotaMin,
-        cuotaAutonomosCompartida: true,
+        cuotaAutonomosCompartida: false,
         irpfRetencionPorcentaje: Math.round(avgRetencion),
         cuentaCobro: cuentaId || 0,
         cuentaPago: cuentaId || 0,
@@ -276,7 +276,6 @@ const AutonomoWizard: React.FC = () => {
             <select style={inputSt} value={modalidad} onChange={e => setModalidad(e.target.value as typeof modalidad)}>
               <option value="simplificada">Estimación directa simplificada</option>
               <option value="normal">Estimación directa normal</option>
-              <option value="objetiva">Estimación objetiva (módulos)</option>
             </select>
           </div>
           <div>
