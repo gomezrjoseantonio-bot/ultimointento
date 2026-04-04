@@ -99,7 +99,6 @@ interface SourceCardProps {
   badge: React.ReactNode;
   action: React.ReactNode;
   detail?: React.ReactNode;
-  onHeaderClick?: () => void;
 }
 
 const SourceCard: React.FC<SourceCardProps> = ({

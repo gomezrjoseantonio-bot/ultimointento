@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Heart, PlusCircle, Wallet } from 'lucide-react';
 import SourceCard, { BadgeATLAS, BadgeEmpty, BadgePareja } from './SourceCard';
 import { autonomoService } from '../../../services/autonomoService';
@@ -75,10 +76,10 @@ interface Props {
 
 const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   const { perfil, nominas, autonomos, pensiones, otrosIngresos, nominaCalcs } = data;
+  const navigate = useNavigate();
 
   const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
   const [showNominaForm, setShowNominaForm] = useState(false);
-  const [nominaTitular, setNominaTitular] = useState<'yo' | 'pareja'>('yo');
   const [showOtros, setShowOtros] = useState(false);
 
   const hasPareja =
@@ -101,13 +102,11 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const openNominaEdit = (nom: Nomina) => {
     setEditingNomina(nom);
-    setNominaTitular(nom.titular);
     setShowNominaForm(true);
   };
 
-  const openNominaNew = (titular: 'yo' | 'pareja') => {
+  const openNominaNew = (_titular: 'yo' | 'pareja') => {
     setEditingNomina(null);
-    setNominaTitular(titular);
     setShowNominaForm(true);
   };
 
@@ -164,7 +163,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
-        action={<ActionBtn label="Gestionar actividad" onClick={() => {}} />}
+        action={<ActionBtn label="Gestionar actividad" onClick={() => navigate('/personal/supervision')} />}
       />
     );
   };
@@ -196,7 +195,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
-        action={<ActionBtn label="Editar pensi\u00F3n" onClick={() => {}} />}
+        action={<ActionBtn label="Editar pensi\u00F3n" onClick={() => navigate('/personal/supervision')} />}
       />
     );
   };
@@ -352,9 +351,9 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
         {/* Autonomo titular */}
         {showAutonomo &&
-          (autonomos.filter(a => !a.titular || a.titular === perfil.nombre).length > 0
-            ? autonomos.filter(a => !a.titular || a.titular === perfil.nombre).map((a) => buildAutoCard(a, false))
-            : autonomos.map((a) => buildAutoCard(a, false)))}
+          autonomos
+            .filter((a) => !a.titular || a.titular === perfil.nombre)
+            .map((a) => buildAutoCard(a, false))}
 
         {/* Pension titular */}
         {showPension &&

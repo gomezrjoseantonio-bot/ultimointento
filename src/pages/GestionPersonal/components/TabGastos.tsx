@@ -3,6 +3,7 @@ import { Plus, Shield } from 'lucide-react';
 import GastoRow from './GastoRow';
 import { personalExpensesService } from '../../../services/personalExpensesService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
+import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
 import type {
   PersonalExpense,
@@ -43,11 +44,13 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 const FRECUENCIA_OPTS: { value: PersonalExpenseFrequency; label: string }[] = [
+  { value: 'semanal', label: 'Semanal' },
   { value: 'mensual', label: 'Mensual' },
   { value: 'bimestral', label: 'Bimestral' },
   { value: 'trimestral', label: 'Trimestral' },
   { value: 'semestral', label: 'Semestral' },
   { value: 'anual', label: 'Anual' },
+  { value: 'meses_especificos', label: 'Meses espec\u00EDficos' },
 ];
 
 const CATEGORIAS_OPTS: { value: PersonalExpenseCategory; label: string }[] = [
@@ -175,7 +178,9 @@ const ExpenseDrawer: React.FC<{
   const canSubmit = form.concepto.trim().length > 0 && form.importe > 0;
 
   const categories = hasHijos
-    ? [...CATEGORIAS_OPTS, { value: 'educacion' as PersonalExpenseCategory, label: 'Hijos' }]
+    ? CATEGORIAS_OPTS.map((opt) =>
+        opt.value === 'educacion' ? { ...opt, label: 'Hijos / Educaci\u00F3n' } : opt,
+      )
     : CATEGORIAS_OPTS;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -484,23 +489,30 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const totalMensual = catBreakdown.reduce((s, c) => s + c.val, 0);
   const maxCat = catBreakdown.length > 0 ? catBreakdown[0].val : 1;
 
-  // Neto anual for excedente panel
+  // Neto anual for excedente panel — includes all income sources minus retenciones
   const calcNeto = useCallback(() => {
-    let bruto = 0;
-    let ret = 0;
+    let neto = 0;
+    // Nominas: bruto - retenciones
     for (const n of nominas) {
       const c = n.id != null ? nominaCalcs.get(n.id) : undefined;
       if (c) {
-        bruto += c.totalAnualBruto;
-        ret += c.distribucionMensual.reduce((s, m) => s + m.ssTotal + m.irpfImporte, 0);
+        neto += c.totalAnualNeto;
       }
     }
+    // Autonomos: use rendimientoNeto (facturación - gastos - cuotas)
     if (autonomos.length > 0) {
-      const { facturacionBruta } = autonomoService_calc(autonomos);
-      bruto += facturacionBruta;
+      const { rendimientoNeto } = autonomoService_calc(autonomos);
+      neto += rendimientoNeto;
     }
-    return bruto - ret;
-  }, [nominas, autonomos, nominaCalcs]);
+    // Pensiones
+    for (const p of data.pensiones) {
+      neto += p.pensionBrutaAnual * (1 - p.irpfPorcentaje / 100);
+    }
+    // Otros ingresos
+    const otrosActivos = data.otrosIngresos.filter((o) => o.activo);
+    neto += otrosIngresosService.calculateAnnualIncome(otrosActivos);
+    return neto;
+  }, [nominas, autonomos, nominaCalcs, data.pensiones, data.otrosIngresos]);
 
   const netoAnual = calcNeto();
   const gastosAnual = totalMensual * 12;
