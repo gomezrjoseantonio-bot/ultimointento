@@ -137,7 +137,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
-        action={<ActionBtn label="Editar n\u00F3mina" onClick={() => openNominaEdit(nom)} />}
+        action={<ActionBtn label="Editar nómina" onClick={() => openNominaEdit(nom)} />}
       />
     );
   };
@@ -195,7 +195,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
-        action={<ActionBtn label="Editar pensi\u00F3n" onClick={() => navigate('/personal/supervision')} />}
+        action={<ActionBtn label="Editar pensión" onClick={() => navigate('/personal/supervision')} />}
       />
     );
   };
@@ -214,7 +214,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           description="Sin ingresos adicionales configurados"
           kpis={[]}
           badge={<BadgeEmpty />}
-          action={<ActionBtn label="+ A\u00F1adir" onClick={() => setShowOtros(true)} />}
+          action={<ActionBtn label="+ Añadir" onClick={() => setShowOtros(true)} />}
         />
       );
     }
@@ -268,11 +268,11 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
       bandColor="grey"
       icon={<Briefcase size={16} color="var(--grey-400)" />}
       iconBg="var(--grey-100, #EEF1F5)"
-      name="N\u00F3mina pareja"
+      name="Nómina pareja"
       description="Sin configurar"
       kpis={[]}
       badge={<BadgeEmpty />}
-      action={<ActionBtn label="Configurar n\u00F3mina" onClick={() => openNominaNew('pareja')} />}
+      action={<ActionBtn label="Configurar nómina" onClick={() => openNominaNew('pareja')} />}
     />
   );
 
@@ -289,7 +289,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
         onSaved={() => handleNominaSaved()}
       />
 
-      {/* ── OtrosIngresosManager modal ── */}
+      {/* ── OtrosIngresosManager drawer (lateral) ── */}
       {showOtros && (
         <div
           style={{
@@ -297,8 +297,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
             inset: 0,
             zIndex: 60,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
           }}
         >
           <div
@@ -313,12 +312,11 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
             style={{
               position: 'relative',
               background: '#fff',
-              borderRadius: 12,
-              width: '90vw',
-              maxWidth: 700,
-              maxHeight: '90vh',
+              width: 420,
+              maxWidth: '95vw',
+              height: '100%',
               overflow: 'auto',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+              boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
             }}
           >
             <OtrosIngresosManager />
@@ -341,11 +339,11 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                   bandColor="grey"
                   icon={<Briefcase size={16} color="var(--grey-400)" />}
                   iconBg="var(--grey-100, #EEF1F5)"
-                  name="N\u00F3mina"
+                  name="Nómina"
                   description="Sin configurar"
                   kpis={[]}
                   badge={<BadgeEmpty />}
-                  action={<ActionBtn label="Configurar n\u00F3mina" onClick={() => openNominaNew('yo')} />}
+                  action={<ActionBtn label="Configurar nómina" onClick={() => openNominaNew('yo')} />}
                 />
               ))}
 

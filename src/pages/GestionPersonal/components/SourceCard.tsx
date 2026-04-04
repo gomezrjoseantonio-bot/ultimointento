@@ -77,7 +77,7 @@ export const BadgeEmpty: React.FC = () => (
       fontFamily: FONT,
     }}
   >
-    Vac\u00EDo
+    Vacío
   </span>
 );
 
