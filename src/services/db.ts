@@ -2103,45 +2103,7 @@ export const initDB = async () => {
           propertyDaysStore.createIndex('property-year', ['propertyId', 'taxYear'], { unique: true });
         }
 
-        // propertyImprovements, operacionesFiscales — DELETED in V4.2
-
-        if (!db.objectStoreNames.contains('mejorasActivo')) {
-          const mejorasActivoStore = db.createObjectStore('mejorasActivo', { keyPath: 'id', autoIncrement: true });
-          mejorasActivoStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          mejorasActivoStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          mejorasActivoStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
-        }
-
-        if (!db.objectStoreNames.contains('mobiliarioActivo')) {
-          const mobiliarioActivoStore = db.createObjectStore('mobiliarioActivo', { keyPath: 'id', autoIncrement: true });
-          mobiliarioActivoStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-        }
-
-        // V3.8: Add ejercicio index + backfill to mobiliarioActivo
-        if (db.objectStoreNames.contains('mobiliarioActivo')) {
-          const mobStore = transaction.objectStore('mobiliarioActivo');
-          ensureIndex(mobStore, 'ejercicio', 'ejercicio', { unique: false });
-          ensureIndex(mobStore, 'inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
-
-          // Backfill ejercicio from fechaAlta for legacy records (sync IDB cursor)
-          if (oldVersion < 38) {
-            const rawStore = transaction.objectStore('mobiliarioActivo') as unknown as IDBObjectStore;
-            const cursorReq = rawStore.openCursor();
-            cursorReq.onsuccess = function () {
-              const cursor = cursorReq.result;
-              if (!cursor) return;
-              const record = cursor.value;
-              if (record.ejercicio == null && record.fechaAlta) {
-                const year = new Date(record.fechaAlta).getFullYear();
-                if (!isNaN(year)) {
-                  record.ejercicio = year;
-                  cursor.update(record);
-                }
-              }
-              cursor.continue();
-            };
-          }
-        }
+        // propertyImprovements, operacionesFiscales, mejorasActivo, mobiliarioActivo — DELETED in V4.2
 
         // V3.8: Proveedores store (unique entity per NIF)
         if (!db.objectStoreNames.contains('proveedores')) {
@@ -2195,6 +2157,8 @@ export const initDB = async () => {
             'reforms',
             'reformLineItems',
             'propertyImprovements',
+            'mejorasActivo',
+            'mobiliarioActivo',
           ];
           for (const store of storesToDelete) {
             if (db.objectStoreNames.contains(store)) {

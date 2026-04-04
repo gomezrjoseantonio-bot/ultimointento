@@ -11,7 +11,7 @@
  */
 
 import { initDB } from './db';
-import type { Property, EjercicioFiscalCoord, Document, MejoraActivo, MobiliarioActivo, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
+import type { Property, EjercicioFiscalCoord, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { invalidateCachedStores } from './indexedDbCacheService';
 import type {
@@ -875,8 +875,6 @@ async function escribirMejoras(
   decl: DeclaracionCompleta,
   porRefCatastral: Map<string, Property>,
 ): Promise<void> {
-  const ahora = new Date().toISOString();
-
   for (const inm of decl.inmuebles) {
     if (inm.esAccesorioDe) continue;
 
@@ -884,80 +882,56 @@ async function escribirMejoras(
     const property = porRefCatastral.get(rc);
     if (!property?.id) continue;
 
-    const existentes: MejoraActivo[] = await db.getAllFromIndex('mejorasActivo', 'inmuebleId', property.id);
+    const { mejorasInmuebleService } = await import('./mejorasInmuebleService');
+    const existentes = await mejorasInmuebleService.getPorInmueble(property.id);
 
-    // 1. Mejoras del ejercicio (mejorasEjercicio del parser)
+    // 1. Mejoras del ejercicio
     for (const mejora of inm.mejorasEjercicio) {
       if (mejora.importe <= 0) continue;
-
       const nifProv = mejora.nifProveedor || '';
-      const duplicada = existentes.find((m: MejoraActivo) =>
-        m.ejercicio === decl.meta.ejercicio &&
-        m.tipo === 'mejora' &&
-        Math.abs(m.importe - mejora.importe) < 1 &&
-        (m.proveedorNIF || '') === nifProv
+      const duplicada = existentes.find(m =>
+        m.ejercicio === decl.meta.ejercicio && m.tipo === 'mejora' &&
+        Math.abs(m.importe - mejora.importe) < 1 && (m.proveedorNIF || '') === nifProv
       );
       if (duplicada) continue;
-
-      await db.add('mejorasActivo', {
-        inmuebleId: property.id,
-        ejercicio: decl.meta.ejercicio,
-        tipo: 'mejora' as const,
-        importe: mejora.importe,
-        descripcion: `Mejora declarada IRPF ${decl.meta.ejercicio}`,
-        fecha: mejora.fecha ? toISODate(mejora.fecha) : undefined,
+      await mejorasInmuebleService.crear({
+        inmuebleId: property.id, ejercicio: decl.meta.ejercicio, tipo: 'mejora',
+        importe: mejora.importe, descripcion: `Mejora declarada IRPF ${decl.meta.ejercicio}`,
+        fecha: mejora.fecha ? toISODate(mejora.fecha) : `${decl.meta.ejercicio}-12-31`,
         proveedorNIF: nifProv,
-        createdAt: ahora,
-        updatedAt: ahora,
       });
     }
 
-    // 2. Reparaciones del ejercicio (gastos.reparacionConservacion > 0)
+    // 2. Reparaciones del ejercicio
     if (inm.gastos.reparacionConservacion > 0) {
-      const duplicada = existentes.find((m: MejoraActivo) =>
-        m.ejercicio === decl.meta.ejercicio &&
-        m.tipo === 'reparacion' &&
+      const duplicada = existentes.find(m =>
+        m.ejercicio === decl.meta.ejercicio && m.tipo === 'reparacion' &&
         Math.abs(m.importe - inm.gastos.reparacionConservacion) < 1
       );
       if (!duplicada) {
         const provRep = inm.proveedores.find(p => p.concepto === 'reparacion');
-
-        await db.add('mejorasActivo', {
-          inmuebleId: property.id,
-          ejercicio: decl.meta.ejercicio,
-          tipo: 'reparacion' as const,
+        await mejorasInmuebleService.crear({
+          inmuebleId: property.id, ejercicio: decl.meta.ejercicio, tipo: 'reparacion',
           importe: inm.gastos.reparacionConservacion,
           descripcion: `Reparación/conservación declarada IRPF ${decl.meta.ejercicio}`,
-          fecha: undefined,
-          proveedorNIF: provRep?.nif || '',
-          createdAt: ahora,
-          updatedAt: ahora,
+          fecha: `${decl.meta.ejercicio}-12-31`, proveedorNIF: provRep?.nif || '',
         });
       }
     }
 
-    // 3. Mejoras anteriores acumuladas (solo si no hay mejoras previas registradas)
+    // 3. Mejoras anteriores acumuladas
     if (inm.mejorasAnteriores && inm.mejorasAnteriores > 0) {
-      const tieneAnteriores = existentes.some((m: MejoraActivo) =>
-        m.tipo !== 'reparacion' && m.ejercicio < decl.meta.ejercicio
-      );
-
+      const tieneAnteriores = existentes.some(m => m.tipo !== 'reparacion' && m.ejercicio < decl.meta.ejercicio);
       if (!tieneAnteriores) {
-        await db.add('mejorasActivo', {
-          inmuebleId: property.id,
-          ejercicio: decl.meta.ejercicio - 1,
-          tipo: 'mejora' as const,
+        await mejorasInmuebleService.crear({
+          inmuebleId: property.id, ejercicio: decl.meta.ejercicio - 1, tipo: 'mejora',
           importe: inm.mejorasAnteriores,
           descripcion: `Mejoras anteriores acumuladas declaradas en IRPF ${decl.meta.ejercicio}`,
-          fecha: undefined,
-          proveedorNIF: '',
-          createdAt: ahora,
-          updatedAt: ahora,
+          fecha: `${decl.meta.ejercicio - 1}-12-31`, proveedorNIF: '',
         });
       }
     }
   }
-  invalidateCachedStores(['mejorasActivo']);
 }
 
 function normalizeNif(nif: string): string {
@@ -1056,11 +1030,10 @@ async function escribirProveedores(
 }
 
 async function escribirMobiliario(
-  db: DB,
+  _db: DB,
   decl: DeclaracionCompleta,
   porRefCatastral: Map<string, Property>,
 ): Promise<void> {
-  const ahora = new Date().toISOString();
   const ejercicio = decl.meta.ejercicio;
 
   for (const inm of decl.inmuebles) {
@@ -1074,41 +1047,31 @@ async function escribirMobiliario(
     const property = porRefCatastral.get(rc);
     if (!property?.id) continue;
 
-    // Get existing mobiliario records for this property
-    const existentes: MobiliarioActivo[] = await db.getAllFromIndex('mobiliarioActivo', 'inmuebleId', property.id);
+    // Get existing mobiliario from unified store
+    const { mueblesInmuebleService } = await import('./mueblesInmuebleService');
+    const existentes = await mueblesInmuebleService.getPorInmueble(property.id);
 
-    // Sum annual amortization from all active partidas (including same ejercicio)
-    // to detect whether V02MUEB implies new furniture beyond what's already tracked.
-    // Tolerate missing ejercicio on legacy records by deriving from fechaAlta.
-    const getEjercicio = (m: MobiliarioActivo) => m.ejercicio ?? new Date(m.fechaAlta).getFullYear();
     const amortExistente = existentes
-      .filter((m: MobiliarioActivo) => m.activo)
-      .reduce((sum: number, m: MobiliarioActivo) => sum + (m.importe / (m.vidaUtil || 10)), 0);
+      .filter(m => m.activo)
+      .reduce((sum, m) => sum + (m.importe / (m.vidaUtil || 10)), 0);
 
     const delta = amortMob - amortExistente;
 
-    if (delta > 0.5) { // tolerance for rounding
-      // New furniture detected — create partida
-      const duplicada = existentes.find((m: MobiliarioActivo) =>
-        getEjercicio(m) === ejercicio && Math.abs(m.importe - delta * 10) < 1
+    if (delta > 0.5) {
+      const duplicada = existentes.find(m =>
+        m.ejercicio === ejercicio && Math.abs(m.importe - delta * 10) < 1
       );
       if (!duplicada) {
-        await db.add('mobiliarioActivo', {
-          inmuebleId: property.id,
-          ejercicio,
+        await mueblesInmuebleService.crear({
+          inmuebleId: property.id, ejercicio,
           descripcion: `Mobiliario detectado IRPF ${ejercicio}`,
           fechaAlta: `${ejercicio}-01-01`,
-          importe: Math.round(delta * 10 * 100) / 100, // coste = amortAnual × 10
-          vidaUtil: 10,
-          activo: true,
-          proveedorNIF: '', // Sin NIF hasta factura
-          createdAt: ahora,
-          updatedAt: ahora,
+          importe: Math.round(delta * 10 * 100) / 100,
+          vidaUtil: 10, activo: true,
         });
       }
     }
   }
-  invalidateCachedStores(['mobiliarioActivo']);
 }
 
 export function acortarDireccion(dir: string): string {
