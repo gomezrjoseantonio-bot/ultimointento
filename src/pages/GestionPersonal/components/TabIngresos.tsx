@@ -6,7 +6,7 @@ import { autonomoService } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { pensionService } from '../../../services/pensionService';
 import NominaForm from '../../../components/personal/nomina/NominaForm';
-import OtrosIngresosManager from '../../../components/personal/otros/OtrosIngresosManager';
+
 import type { GestionPersonalData } from '../GestionPersonalPage';
 import type { Nomina } from '../../../types/personal';
 
@@ -80,7 +80,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
   const [showNominaForm, setShowNominaForm] = useState(false);
-  const [showOtros, setShowOtros] = useState(false);
 
   const hasPareja =
     perfil.situacionPersonal === 'casado' || perfil.situacionPersonal === 'pareja-hecho';
@@ -105,9 +104,8 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
     setShowNominaForm(true);
   };
 
-  const openNominaNew = (_titular: 'yo' | 'pareja') => {
-    setEditingNomina(null);
-    setShowNominaForm(true);
+  const openNominaNew = (titular: 'yo' | 'pareja') => {
+    navigate(`/gestion/personal/nueva-nomina?titular=${titular}`);
   };
 
   const handleNominaSaved = (_nomina?: Nomina) => {
@@ -214,7 +212,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           description="Sin ingresos adicionales configurados"
           kpis={[]}
           badge={<BadgeEmpty />}
-          action={<ActionBtn label="+ Añadir" onClick={() => setShowOtros(true)} />}
+          action={<ActionBtn label="+ Añadir" onClick={() => navigate(`/gestion/personal/otros-ingresos?titular=${isPareja ? 'pareja' : 'yo'}`)} />}
         />
       );
     }
@@ -234,7 +232,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : <BadgeATLAS />}
-        action={<ActionBtn label="Gestionar" onClick={() => setShowOtros(true)} />}
+        action={<ActionBtn label="Gestionar" onClick={() => navigate(`/gestion/personal/otros-ingresos?titular=${isPareja ? 'pareja' : 'yo'}`)} />}
         detail={
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {activos.map((o) => (
@@ -278,7 +276,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
   return (
     <div style={{ fontFamily: FONT }}>
-      {/* ── NominaForm modal ── */}
+      {/* ── NominaForm modal (edit only) ── */}
       <NominaForm
         isOpen={showNominaForm}
         onClose={() => {
@@ -288,41 +286,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
         nomina={editingNomina}
         onSaved={() => handleNominaSaved()}
       />
-
-      {/* ── OtrosIngresosManager drawer (lateral) ── */}
-      {showOtros && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 60,
-            display: 'flex',
-            justifyContent: 'flex-end',
-          }}
-        >
-          <div
-            aria-hidden
-            onClick={() => {
-              setShowOtros(false);
-              onDataChange();
-            }}
-            style={{ position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.45)' }}
-          />
-          <div
-            style={{
-              position: 'relative',
-              background: '#fff',
-              width: 420,
-              maxWidth: '95vw',
-              height: '100%',
-              overflow: 'auto',
-              boxShadow: '-4px 0 20px rgba(0,0,0,0.1)',
-            }}
-          >
-            <OtrosIngresosManager />
-          </div>
-        </div>
-      )}
 
       {/* ── Titular sections ── */}
       {hasPareja && (
@@ -349,9 +312,20 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
         {/* Autonomo titular */}
         {showAutonomo &&
-          autonomos
-            .filter((a) => !a.titular || a.titular === perfil.nombre)
-            .map((a) => buildAutoCard(a, false))}
+          (autonomos.filter((a) => !a.titular || a.titular === perfil.nombre).length > 0
+            ? autonomos.filter((a) => !a.titular || a.titular === perfil.nombre).map((a) => buildAutoCard(a, false))
+            : (
+                <SourceCard
+                  bandColor="grey"
+                  icon={<Building2 size={16} color="var(--grey-400)" />}
+                  iconBg="var(--grey-100, #EEF1F5)"
+                  name="Actividad autónoma"
+                  description="Sin configurar"
+                  kpis={[]}
+                  badge={<BadgeEmpty />}
+                  action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=yo')} />}
+                />
+              ))}
 
         {/* Pension titular */}
         {showPension &&
@@ -376,9 +350,20 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
             {/* Autonomo pareja */}
             {showAutoPareja &&
-              autonomos
-                .filter((a) => a.titular === perfil.spouseName)
-                .map((a) => buildAutoCard(a, true))}
+              (autonomos.filter((a) => a.titular === perfil.spouseName).length > 0
+                ? autonomos.filter((a) => a.titular === perfil.spouseName).map((a) => buildAutoCard(a, true))
+                : (
+                    <SourceCard
+                      bandColor="grey"
+                      icon={<Building2 size={16} color="var(--grey-400)" />}
+                      iconBg="var(--grey-100, #EEF1F5)"
+                      name="Actividad autónoma pareja"
+                      description="Sin configurar"
+                      kpis={[]}
+                      badge={<BadgeEmpty />}
+                      action={<ActionBtn label="A\u00F1adir actividad" onClick={() => navigate('/gestion/personal/nuevo-autonomo?titular=pareja')} />}
+                    />
+                  ))}
 
             {/* Pension pareja */}
             {showPensionPareja &&
