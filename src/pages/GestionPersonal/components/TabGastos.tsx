@@ -379,7 +379,7 @@ const ExpenseDrawer: React.FC<{
                 fontFamily: FONT,
               }}
             >
-              {expense ? 'Guardar' : 'A\u00F1adir'}
+              {expense ? 'Guardar' : 'Añadir'}
             </button>
           </div>
         </form>

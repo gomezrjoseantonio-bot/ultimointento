@@ -344,7 +344,7 @@ const NominaWizard: React.FC = () => {
             <input style={inputSt} type="month" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
           </div>
           <div>
-            <label style={labelSt}>D\u00eda de cobro <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— 31 = \u00faltimo h\u00e1bil</span></label>
+            <label style={labelSt}>Día de cobro <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— 31 = último hábil</span></label>
             <input style={inputSt} type="number" min={1} max={31} value={diaCobro} onChange={e => setDiaCobro(Number(e.target.value))} />
           </div>
           <div>
@@ -378,12 +378,12 @@ const NominaWizard: React.FC = () => {
                   fontVariantNumeric: 'tabular-nums', width: 200,
                 }}
               />
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>\u20AC / a\u00F1o</span>
+              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>€ / año</span>
             </div>
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, letterSpacing: '0.05em', marginBottom: 6 }}>
-              N\u00BA PAGAS
+              Nº PAGAS
             </div>
             <select
               value={pagas}
@@ -395,7 +395,7 @@ const NominaWizard: React.FC = () => {
           </div>
         </div>
         <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 12, fontFamily: FONT }}>
-          Orange 2026: 12 pagas \u2014 extras prorrateadas
+          Orange 2026: 12 pagas — extras prorrateadas
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {[
@@ -443,7 +443,7 @@ const NominaWizard: React.FC = () => {
             </div>
           </div>
           <div>
-            <label style={labelSt}>Cuota solidaridad anual (\u20AC)</label>
+            <label style={labelSt}>Cuota solidaridad anual (€)</label>
             <input
               style={{ ...inputSt, fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}
               type="number"
@@ -458,7 +458,7 @@ const NominaWizard: React.FC = () => {
       {pagaNormal > 0 && (
         <div style={navyCard}>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: FONT, marginBottom: 12 }}>
-            Mes normal sin variables \u00B7 lo que llega a tu cuenta
+            Mes normal sin variables · lo que llega a tu cuenta
           </div>
           {[
             { label: 'Bruto mes normal', val: pagaNormal, neg: false },
@@ -547,12 +547,31 @@ const NominaWizard: React.FC = () => {
 
       {/* Plan pensiones */}
       <div style={cardSt}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tienePP ? 16 : 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Aportación a plan de pensiones</span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" checked={tienePP} onChange={e => setTienePP(e.target.checked)} />
-            <span style={{ fontSize: 13, fontFamily: FONT }}>{tienePP ? 'Activado' : 'Desactivado'}</span>
-          </label>
+        <div
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tienePP ? 16 : 0, cursor: 'pointer' }}
+          onClick={() => setTienePP(!tienePP)}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Aportación a plan de pensiones</div>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', fontFamily: FONT, marginTop: 2 }}>
+              Tu aportación y la de la empresa van al mismo plan al confirmar en Tesorería
+            </div>
+          </div>
+          <button
+            style={{
+              width: 36, height: 20, borderRadius: 10,
+              background: tienePP ? 'var(--teal-600, #1DA0BA)' : 'var(--grey-300, #C8D0DC)',
+              position: 'relative', border: 'none', cursor: 'pointer',
+              transition: 'background 150ms ease', flexShrink: 0, padding: 0, marginLeft: 16,
+            }}
+            onClick={(e) => { e.stopPropagation(); setTienePP(!tienePP); }}
+          >
+            <div style={{
+              position: 'absolute', top: 2, left: tienePP ? 18 : 2,
+              width: 16, height: 16, background: 'white', borderRadius: '50%',
+              transition: 'left 150ms ease',
+            }} />
+          </button>
         </div>
         {tienePP && (
           <div>
@@ -587,12 +606,31 @@ const NominaWizard: React.FC = () => {
 
       {/* Especie */}
       <div style={cardSt}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tieneEspecie ? 16 : 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Beneficios en especie</span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" checked={tieneEspecie} onChange={e => setTieneEspecie(e.target.checked)} />
-            <span style={{ fontSize: 13, fontFamily: FONT }}>{tieneEspecie ? 'Activado' : 'Desactivado'}</span>
-          </label>
+        <div
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tieneEspecie ? 16 : 0, cursor: 'pointer' }}
+          onClick={() => setTieneEspecie(!tieneEspecie)}
+        >
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Beneficios en especie</div>
+            <div style={{ fontSize: 12, color: 'var(--grey-500, #6C757D)', fontFamily: FONT, marginTop: 2 }}>
+              Retribución no dineraria que puede incrementar tu base IRPF
+            </div>
+          </div>
+          <button
+            style={{
+              width: 36, height: 20, borderRadius: 10,
+              background: tieneEspecie ? 'var(--teal-600, #1DA0BA)' : 'var(--grey-300, #C8D0DC)',
+              position: 'relative', border: 'none', cursor: 'pointer',
+              transition: 'background 150ms ease', flexShrink: 0, padding: 0, marginLeft: 16,
+            }}
+            onClick={(e) => { e.stopPropagation(); setTieneEspecie(!tieneEspecie); }}
+          >
+            <div style={{
+              position: 'absolute', top: 2, left: tieneEspecie ? 18 : 2,
+              width: 16, height: 16, background: 'white', borderRadius: '50%',
+              transition: 'left 150ms ease',
+            }} />
+          </button>
         </div>
         {tieneEspecie && (
           <div>
@@ -640,7 +678,7 @@ const NominaWizard: React.FC = () => {
           <CheckCircle size={28} color="var(--teal-600, #1DA0BA)" />
           <div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
-              Nómina configurada · {empresa || '—'}
+              Nómina configurada · {empresa ? empresa.charAt(0).toUpperCase() + empresa.slice(1) : '—'}
             </div>
             <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>
               Lo que recibirás en tu cuenta cada mes

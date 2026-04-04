@@ -92,7 +92,7 @@ interface KpiItem {
 interface SourceCardProps {
   bandColor: 'teal' | 'navy' | 'grey';
   icon: React.ReactNode;
-  iconBg: string;
+  iconBg?: string;
   name: string;
   description: string;
   kpis: KpiItem[];
@@ -148,8 +148,6 @@ const SourceCard: React.FC<SourceCardProps> = ({
             style={{
               width: 36,
               height: 36,
-              borderRadius: 8,
-              background: iconBg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

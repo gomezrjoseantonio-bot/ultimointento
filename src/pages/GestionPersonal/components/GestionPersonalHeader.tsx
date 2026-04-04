@@ -275,10 +275,15 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   const excedente = totalNeto - gastosAnual - financiacionAnual;
   const tasaAhorro = totalNeto > 0 ? Math.round((excedente / totalNeto) * 100) : 0;
 
-  // KPI sub texts
-  const kpi1Sub = buildDesgloseIngresos(brutNomTit + brutNomPar, autoEstimated.facturacionBruta, pensionBruta, otrosAnual);
-  const kpi2Sub = buildDesgloseRetenciones(retNomTit + retNomPar, autoIrpfRet, pensionRet);
   const anoActual = new Date().getFullYear();
+
+  // Individual net contributions (for matrimonio display)
+  const netoTitular = brutNomTit - retNomTit;
+  const netoPareja = brutNomPar - retNomPar;
+  const iniTitular = perfil.nombre.split(' ').filter(Boolean).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+  const iniPareja = perfil.spouseName
+    ? perfil.spouseName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+    : 'P';
 
   return (
     <div style={{ background: NAVY_BG, padding: '28px 32px 0', fontFamily: FONT }}>
@@ -295,19 +300,34 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
           <Avatar name={nombreCompleto} />
         )}
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 20,
-              fontWeight: 700,
-              color: CLR_TITLE,
-              lineHeight: 1.3,
-              fontFamily: FONT,
-            }}
-          >
-            {displayName}
-          </h1>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
+            <h1
+              style={{
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 700,
+                color: CLR_TITLE,
+                lineHeight: 1.3,
+                fontFamily: FONT,
+              }}
+            >
+              {displayName}
+            </h1>
+            {hasPareja && (
+              <>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: FONT }}>{iniTitular}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, fontFamily: MONO, color: netoTitular > 0 ? CLR_TITLE : 'rgba(255,255,255,0.45)', fontVariantNumeric: 'tabular-nums' }}>
+                  {netoTitular > 0 ? `${fmt(netoTitular)} €` : 'Sin configurar'}
+                </span>
+                <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', fontFamily: FONT }}>{iniPareja}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, fontFamily: MONO, color: netoPareja > 0 ? CLR_TITLE : 'rgba(255,255,255,0.45)', fontVariantNumeric: 'tabular-nums' }}>
+                  {netoPareja > 0 ? `${fmt(netoPareja)} €` : 'Sin configurar'}
+                </span>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {chips.map((c) => (
               <Chip key={c.key} icon={c.icon}>
                 {c.label}
@@ -329,29 +349,19 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
         }}
       >
         <KpiCard
-          label="Ingresos brutos"
-          value={fmtValue(totalBruto)}
-          sub={kpi1Sub || `Estimado ${anoActual}`}
-        />
-        <KpiCard
-          label="Retenciones pagadas"
-          value={fmtValue(totalRetenciones)}
-          sub={kpi2Sub || `Estimado ${anoActual}`}
-        />
-        <KpiCard
-          label="Neto anual estimado"
+          label="Ingresos netos"
           value={fmtValue(totalNeto)}
-          sub={`Estimado ${anoActual}`}
-          subColor={CLR_DELTA_POS}
+          sub=""
         />
         <KpiCard
-          label="Excedente estimado"
-          value={fmtValue(totalNeto > 0 ? excedente : null)}
-          sub={
-            totalNeto > 0
-              ? `Tras gastos \u00B7 ${tasaAhorro}% tasa ahorro`
-              : `Estimado ${anoActual}`
-          }
+          label="Gastos estimados"
+          value={fmtValue(gastosAnual + financiacionAnual)}
+          sub=""
+        />
+        <KpiCard
+          label="Ahorro estimado"
+          value={fmtValue(totalNeto > 0 && excedente > 0 ? excedente : null)}
+          sub={totalNeto > 0 ? `${tasaAhorro}% tasa de ahorro` : `Estimado ${anoActual}`}
           subColor={CLR_DELTA_POS}
         />
       </div>
@@ -398,21 +408,5 @@ function calcEdad(fechaNac: string): number {
   return age;
 }
 
-function buildDesgloseIngresos(nomina: number, autonomo: number, pension: number, otros: number): string {
-  const parts: string[] = [];
-  if (nomina > 0) parts.push(`N\u00F3mina ${fmt(nomina)} \u20AC`);
-  if (autonomo > 0) parts.push(`Aut\u00F3nomo ${fmt(autonomo)} \u20AC`);
-  if (pension > 0) parts.push(`Pensi\u00F3n ${fmt(pension)} \u20AC`);
-  if (otros > 0) parts.push(`Otros ${fmt(otros)} \u20AC`);
-  return parts.join(' + ');
-}
-
-function buildDesgloseRetenciones(trabajo: number, autonomo: number, pension: number): string {
-  const parts: string[] = [];
-  if (trabajo > 0) parts.push(`Trabajo ${fmt(trabajo)} \u20AC`);
-  if (autonomo > 0) parts.push(`Aut\u00F3nomo ${fmt(autonomo)} \u20AC`);
-  if (pension > 0) parts.push(`Pensi\u00F3n ${fmt(pension)} \u20AC`);
-  return parts.join(' + ');
-}
 
 export default GestionPersonalHeader;
