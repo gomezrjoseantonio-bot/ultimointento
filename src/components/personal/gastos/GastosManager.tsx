@@ -233,7 +233,7 @@ const GastosManager: React.FC = () => {
 
         <section style={{ border: `1px solid ${N300}`, borderRadius: 14, background: '#fff' }}>
           <div style={{ padding: '16px 18px', borderBottom: `1px solid ${N300}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0 }}>{filtered.length} gastos · <span style={{ color: '#C1121F', fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/mes` : '—'}</span></h3>
+            <h3 style={{ margin: 0 }}>{filtered.length} gastos · <span style={{ color: N700, fontFamily: MONO }}>{totalMensual > 0 ? `${totalMensual.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €/mes` : '—'}</span></h3>
           </div>
 
           <div style={{ padding: 14, display: 'flex', gap: 8, overflowX: 'auto' }}>

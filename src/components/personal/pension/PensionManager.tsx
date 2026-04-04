@@ -149,9 +149,9 @@ const PensionManager: React.FC = () => {
               <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Bruto Anual</p>
               <p className="text-2xl font-bold text-primary-900 mt-1">{formatCurrency(totals.brutoAnual)}</p>
             </div>
-            <div className="rounded-md bg-white p-4 shadow-sm border-2 border-green-400">
+            <div className="rounded-md bg-white p-4 shadow-sm" style={{ border: '2px solid var(--teal-600, #1DA0BA)' }}>
               <p className="text-xs uppercase text-atlas-blue font-medium tracking-wide">Neto Mensual Promedio</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">{formatCurrency(totals.netoMensual)}</p>
+              <p className="text-2xl font-bold mt-1" style={{ color: 'var(--teal-600, #1DA0BA)' }}>{formatCurrency(totals.netoMensual)}</p>
               <p className="text-xs text-neutral-500 mt-1">Total anual neto / 12</p>
             </div>
             <div className="rounded-md bg-white p-4 shadow-sm border border-neutral-100">
