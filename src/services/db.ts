@@ -9,8 +9,6 @@ import type {
   Autonomo,
   PlanPensionInversion,
   OtrosIngresos,
-  MovimientoPersonal,
-  PersonalExpense,
   PatronGastoPersonal,
   GastoPersonalReal,
   PensionIngreso
@@ -25,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 43; // V4.3: Personal module architecture — rename personalExpenses → patronGastosPersonales, create gastosPersonalesReal, deprecate legacy stores
+const DB_VERSION = 44; // V4.4: Eliminación física de 11 stores obsoletos de IndexedDB
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1844,13 +1842,10 @@ interface AtlasHorizonDB {
   rentCalendar: RentCalendar; // H7: Rent calendar entries
   rentPayments: RentPayment; // H7: Rent payment tracking
   rentaMensual: RentaMensual; // CONTRATOS: Monthly rent tracking for treasury integration
-  expenses: Expense; // Legacy
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
   operacionesFiscales: OperacionFiscal; // Flujo fiscal unificado: operaciones deducibles por casilla
-  mejorasActivo: MejoraActivo; // Flujo fiscal unificado: mejoras que incrementan base de amortización
-  mobiliarioActivo: MobiliarioActivo; // Flujo fiscal unificado: mobiliario amortizable al 10%
   proveedores: Proveedor; // V3.8: entidad única proveedor por NIF
   operacionesProveedor: OperacionProveedor; // V3.8: operaciones vinculadas proveedor-inmueble
   kpiConfigurations: any; // H6: KPI configurations
@@ -1860,10 +1855,7 @@ interface AtlasHorizonDB {
   treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
   treasuryRecommendations: TreasuryRecommendation; // H9: Treasury recommendations
   fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
-  ingresos: Ingreso; // H10: Treasury income records
   gastos: Gasto; // H10: Treasury expense records
-  budgets: Budget; // H9: Annual budget wizard (legacy)
-  budgetLines: BudgetLine; // H9: Budget line items (legacy)
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   importLogs: ImportLog; // ATLAS HORIZON: Import logging for banking movements pipeline
@@ -1879,9 +1871,7 @@ interface AtlasHorizonDB {
   autonomos: Autonomo; // V1.2: Self-employed data
   planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
   otrosIngresos: OtrosIngresos; // V1.2: Other income
-  movimientosPersonales: MovimientoPersonal; // DEPRECATED V4.3: redundant — Tesorería owns facts
   pensiones: PensionIngreso; // V2.5: Pension income records
-  personalExpenses: PersonalExpense; // DEPRECATED V4.3: renamed to patronGastosPersonales
   patronGastosPersonales: PatronGastoPersonal; // V4.3: spending pattern (was personalExpenses)
   gastosPersonalesReal: GastoPersonalReal; // V4.3: confirmed facts from Tesorería punteo
   prestamos: any; // Financiacion: Loan records
@@ -1960,15 +1950,7 @@ export const initDB = async () => {
           contractStore.createIndex('propertyId', 'propertyId', { unique: false });
         }
 
-        // Legacy Expenses store (keep for backward compatibility)
-        if (!db.objectStoreNames.contains('expenses')) {
-          const expenseStore = db.createObjectStore('expenses', { keyPath: 'id', autoIncrement: true });
-          expenseStore.createIndex('propertyId', 'propertyId', { unique: false });
-          expenseStore.createIndex('category', 'category', { unique: false });
-          expenseStore.createIndex('isMejora', 'isMejora', { unique: false });
-        }
-
-        // H5: legacy expense/reform stores — removed
+        // H5: expensesH5, reforms, reformLineItems — DELETED in V4.2
 
         // H5: AEAT Carry Forwards store
         if (!db.objectStoreNames.contains('aeatCarryForwards')) {
@@ -2129,39 +2111,7 @@ export const initDB = async () => {
 
         // fiscalSummaries — DELETED in V4.2
 
-        // H10: Treasury Ingresos store
-        if (!db.objectStoreNames.contains('ingresos')) {
-          const ingresosStore = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
-          ingresosStore.createIndex('origen', 'origen', { unique: false });
-          ingresosStore.createIndex('estado', 'estado', { unique: false });
-          ingresosStore.createIndex('fecha_prevista_cobro', 'fecha_prevista_cobro', { unique: false });
-          ingresosStore.createIndex('destino', 'destino', { unique: false });
-          ingresosStore.createIndex('movement_id', 'movement_id', { unique: false });
-        }
-
         // gastos (treasury) — DELETED in V4.2
-
-        // mejora store — DELETED in cleanup V4.3 (replaced by mejorasInmueble)
-
-        // H9: Budget Wizard - Budgets store
-        if (!db.objectStoreNames.contains('budgets')) {
-          const budgetsStore = db.createObjectStore('budgets', { keyPath: 'id', autoIncrement: true });
-          budgetsStore.createIndex('year', 'year', { unique: false });
-          budgetsStore.createIndex('version', 'version', { unique: false });
-          budgetsStore.createIndex('status', 'status', { unique: false });
-          budgetsStore.createIndex('year-version', ['year', 'version'], { unique: true });
-        }
-
-        // H9: Budget Wizard - Budget Lines store
-        if (!db.objectStoreNames.contains('budgetLines')) {
-          const budgetLinesStore = db.createObjectStore('budgetLines', { keyPath: 'id', autoIncrement: true });
-          budgetLinesStore.createIndex('budgetId', 'budgetId', { unique: false });
-          budgetLinesStore.createIndex('propertyId', 'propertyId', { unique: false });
-          budgetLinesStore.createIndex('category', 'category', { unique: false });
-          budgetLinesStore.createIndex('frequency', 'frequency', { unique: false });
-          budgetLinesStore.createIndex('sourceType', 'sourceType', { unique: false });
-          budgetLinesStore.createIndex('sourceId', 'sourceId', { unique: false });
-        }
 
         // H9: New Budget System - Presupuestos store (per specification)
         if (!db.objectStoreNames.contains('presupuestos')) {
@@ -2273,15 +2223,6 @@ export const initDB = async () => {
           otrosIngresosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
         }
 
-        if (!db.objectStoreNames.contains('movimientosPersonales')) {
-          const movimientosPersonalesStore = db.createObjectStore('movimientosPersonales', { keyPath: 'id' });
-          movimientosPersonalesStore.createIndex('tipo', 'tipo', { unique: false });
-          movimientosPersonalesStore.createIndex('origenId', 'origenId', { unique: false });
-          movimientosPersonalesStore.createIndex('fecha', 'fecha', { unique: false });
-          movimientosPersonalesStore.createIndex('cuenta', 'cuenta', { unique: false });
-          movimientosPersonalesStore.createIndex('esRecurrente', 'esRecurrente', { unique: false });
-        }
-
         // V1.3: Inversiones (Investment positions) store
         if (!db.objectStoreNames.contains('inversiones')) {
           const inversionesStore = db.createObjectStore('inversiones', { keyPath: 'id', autoIncrement: true });
@@ -2330,14 +2271,6 @@ export const initDB = async () => {
           const opexStore = db.createObjectStore('opexRules', { keyPath: 'id', autoIncrement: true });
           opexStore.createIndex('propertyId', 'propertyId', { unique: false });
         }
-
-        // V2.3: Personal Expenses store (OPEX-style recurring expenses for personal finance)
-        if (!db.objectStoreNames.contains('personalExpenses')) {
-          const personalExpensesStore = db.createObjectStore('personalExpenses', { keyPath: 'id', autoIncrement: true });
-          personalExpensesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-        }
-
-        // legacy personal expense stores — DELETED in cleanup V4.3
 
         // V2.5: Pensiones store (pension income records)
         if (!db.objectStoreNames.contains('pensiones')) {
@@ -2480,26 +2413,29 @@ export const initDB = async () => {
           realStore.createIndex('tesoreriaEventoId', 'tesoreriaEventoId', { unique: false });
         }
 
-        // 3. Migrate data from personalExpenses → patronGastosPersonales
-        //    Data is copied during upgrade; personalExpenses store is kept for
-        //    backward compat but will no longer be written to by new code.
-        if (db.objectStoreNames.contains('personalExpenses') && db.objectStoreNames.contains('patronGastosPersonales')) {
-          try {
-            const srcStore = transaction.objectStore('personalExpenses');
-            const dstStore = transaction.objectStore('patronGastosPersonales');
-            const cursor = srcStore.openCursor();
-            cursor.then(async function migrate(cur) {
-              if (!cur) return;
-              const record = cur.value;
-              // Add 'origen' field and preserve the legacy id so dependent records
-              // (for example treasury events keyed by sourceId) keep referential integrity.
-              const migrated = { ...record, origen: record.origen ?? 'manual' };
-              await dstStore.add(migrated);
-              const next = await cur.continue();
-              await migrate(next);
-            });
-          } catch (migrationErr) {
-            console.warn('[DB V4.3] Migration personalExpenses → patronGastosPersonales skipped:', migrationErr);
+        // 3. V4.3 migration personalExpenses → patronGastosPersonales — REMOVED in V4.4
+        //    personalExpenses store is deleted in LIMPIEZA V44 below.
+
+        // ═══════════════════════════════════════════════════
+        // LIMPIEZA V44 — Eliminación de stores obsoletos
+        // ═══════════════════════════════════════════════════
+        const STORES_OBSOLETOS = [
+          'capex',
+          'gastosRecurrentes',
+          'gastosPuntuales',
+          'expenses',
+          'mejorasActivo',
+          'mobiliarioActivo',
+          'personalExpenses',
+          'movimientosPersonales',
+          'ingresos',
+          'budgetLines',
+          'budgets',
+        ];
+
+        for (const store of STORES_OBSOLETOS) {
+          if (db.objectStoreNames.contains(store)) {
+            db.deleteObjectStore(store);
           }
         }
       },
@@ -2622,11 +2558,10 @@ export const exportSnapshot = async (): Promise<void> => {
     const db = await initDB();
     
     // Get all data from the database
-    const [properties, documents, contracts, expenses] = await Promise.all([
+    const [properties, documents, contracts] = await Promise.all([
       db.getAll('properties'),
       db.getAll('documents'),
       db.getAll('contracts'),
-      db.getAll('expenses'),
     ]);
 
     // Dynamic import of JSZip to reduce main bundle size
@@ -2639,7 +2574,6 @@ export const exportSnapshot = async (): Promise<void> => {
     const dataObj = {
       properties,
       contracts,
-      expenses,
       documents: documents.map(doc => ({
         ...doc,
         content: null, // We'll store files separately
@@ -2715,12 +2649,12 @@ export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 're
     const data = JSON.parse(dataJson);
     
     // Validate the data structure
-    if (!data.properties || !data.documents || !data.contracts || !data.expenses) {
+    if (!data.properties || !data.documents || !data.contracts) {
       throw new Error('Archivo de snapshot inválido: estructura de datos incorrecta');
     }
     
     // Start transaction
-    const tx = db.transaction(['properties', 'documents', 'contracts', 'expenses'], 'readwrite');
+    const tx = db.transaction(['properties', 'documents', 'contracts'], 'readwrite');
     
     // Clear existing data if replace mode
     if (mode === 'replace') {
@@ -2728,7 +2662,6 @@ export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 're
         tx.objectStore('properties').clear(),
         tx.objectStore('documents').clear(),
         tx.objectStore('contracts').clear(),
-        tx.objectStore('expenses').clear(),
       ]);
     }
     
@@ -2749,16 +2682,6 @@ export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 're
       } else {
         const { id, ...contractWithoutId } = contract;
         await tx.objectStore('contracts').add(contractWithoutId);
-      }
-    }
-    
-    // Import expenses
-    for (const expense of data.expenses) {
-      if (mode === 'merge' && expense.id) {
-        await tx.objectStore('expenses').put(expense);
-      } else {
-        const { id, ...expenseWithoutId } = expense;
-        await tx.objectStore('expenses').add(expenseWithoutId);
       }
     }
     
