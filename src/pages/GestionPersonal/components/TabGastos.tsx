@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Shield, X } from 'lucide-react';
 import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
+import { gastosPersonalesRealService } from '../../../services/gastosPersonalesRealService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
@@ -8,6 +9,7 @@ import type {
   PersonalExpense,
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
+  DesviacionResumen,
 } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
@@ -459,7 +461,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [deletingExpense, setDeletingExpense] = useState<PersonalExpense | null>(null);
   const [localExpenses, setLocalExpenses] = useState(expenses);
-  const [desviaciones, setDesviaciones] = useState<DesviacionResumen[]>([]);
+  const [, setDesviaciones] = useState<DesviacionResumen[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [descartados, setDescartados] = useState<Set<string>>(new Set());
 
