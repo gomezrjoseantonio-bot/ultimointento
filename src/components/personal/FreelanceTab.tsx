@@ -1,8 +1,14 @@
-import React from 'react';
-import AutonomoManager from './autonomo/AutonomoManager';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const FreelanceTab: React.FC = () => {
-  return <AutonomoManager />;
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    navigate('/gestion/personal/nueva-actividad');
+  }, [navigate]);
+
+  return null;
 };
 
 export default FreelanceTab;

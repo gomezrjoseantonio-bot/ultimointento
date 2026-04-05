@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Banknote, Briefcase, PiggyBank, Coins, Plus, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { personalDataService } from '../../../services/personalDataService';
@@ -18,7 +19,6 @@ import {
 import NominaManager from '../nomina/NominaManager';
 import AutonomoView from '../../../modules/personal/components/AutonomoView';
 import PensionTab from '../PensionTab';
-import OtrosIngresosManager from '../otros/OtrosIngresosManager';
 
 const fmt = (value: number) =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value);
@@ -74,6 +74,7 @@ const getFrequencyFactor = (freq: string): number => {
 };
 
 const IngresosUnifiedManager: React.FC = () => {
+  const navigate = useNavigate();
   const [personalData, setPersonalData] = useState<PersonalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [nominas, setNominas] = useState<Nomina[]>([]);
@@ -234,8 +235,19 @@ const IngresosUnifiedManager: React.FC = () => {
     loadData();
   };
 
+  // Handle navigation to otros wizard
+  useEffect(() => {
+    if (detailView?.type === 'otros') {
+      navigate('/gestion/personal/otros-ingresos');
+    }
+  }, [detailView, navigate]);
+
   // Render detail views (full existing managers)
   if (detailView) {
+    // 'otros' type navigates away, handled by useEffect above
+    if (detailView.type === 'otros') {
+      return null;
+    }
     return (
       <div>
         <button
@@ -247,7 +259,6 @@ const IngresosUnifiedManager: React.FC = () => {
         {detailView.type === 'nomina' && <NominaManager />}
         {detailView.type === 'autonomo' && <AutonomoView />}
         {detailView.type === 'pension' && <PensionTab />}
-        {detailView.type === 'otros' && <OtrosIngresosManager />}
       </div>
     );
   }
