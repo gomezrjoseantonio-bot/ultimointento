@@ -111,6 +111,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
       }
       handleAddExpense();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerAddExpense, properties.length]);
 
   const loadData = async () => {

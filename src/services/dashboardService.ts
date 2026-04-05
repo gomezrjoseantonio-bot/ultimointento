@@ -922,33 +922,6 @@ class DashboardService {
         return frequency === 'semanal' ? amount * (52 / 12) : amount;
       };
 
-      const getRecurringPersonalExpenseAmountForMonth = (expense: any, month1to12: number): number => {
-        if (!expense?.activo) return 0;
-
-        const frequency = String(expense?.frecuencia ?? '').toLowerCase();
-        const startRaw = expense?.fechaInicio;
-        const startDate = startRaw ? new Date(startRaw) : null;
-        const startMonth = startDate && !Number.isNaN(startDate.getTime()) ? startDate.getMonth() + 1 : 1;
-        const specificMonths = Array.isArray(expense?.mesesCobro) ? expense.mesesCobro.map((value: unknown) => toNumber(value)) : [];
-
-        switch (frequency) {
-          case 'mensual':
-            return toNumber(expense?.importe);
-          case 'bimestral':
-            return month1to12 >= startMonth && (month1to12 - startMonth) % 2 === 0 ? toNumber(expense?.importe) : 0;
-          case 'trimestral':
-            return month1to12 >= startMonth && (month1to12 - startMonth) % 3 === 0 ? toNumber(expense?.importe) : 0;
-          case 'semestral':
-            return month1to12 >= startMonth && (month1to12 - startMonth) % 6 === 0 ? toNumber(expense?.importe) : 0;
-          case 'anual':
-            return month1to12 === startMonth ? toNumber(expense?.importe) : 0;
-          case 'meses_especificos':
-            return specificMonths.includes(month1to12) ? toNumber(expense?.importe) : 0;
-          default:
-            return 0;
-        }
-      };
-
       const ingresos = await getCachedStoreRecords<any>('ingresos');
       const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
       const expenses = await getCachedStoreRecords<any>('expenses');

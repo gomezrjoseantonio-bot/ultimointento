@@ -1,7 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
-import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
@@ -11,8 +10,6 @@ import type {
   PlanPensionInversion,
   OtrosIngresos,
   MovimientoPersonal,
-  GastoRecurrente,
-  GastoPuntual,
   PersonalExpense,
   PatronGastoPersonal,
   GastoPersonalReal,
