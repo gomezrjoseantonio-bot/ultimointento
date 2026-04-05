@@ -45,8 +45,8 @@ describe('dashboardService financial metrics', () => {
         { type: 'expense', status: 'executed', amount: '777', predictedDate: '2026-03-20' },
         { type: 'income', status: 'pending', amount: '50', predictedDate: '2026-03-14' }
       ],
-      rentPayments: [
-        { fecha: '2026-03-18', importe: '400,00' }
+      rentaMensual: [
+        { periodo: '2026-03', importePrevisto: 400, estado: 'pendiente' }
       ],
       ingresos: [
         { fecha: '2026-03-12', importe: '200,00' }
@@ -90,8 +90,8 @@ describe('dashboardService financial metrics', () => {
       expenses: [
         { date: '2026-03-08', amount: 320, propertyId: 1, destino: 'inmueble' }
       ],
-      rentPayments: [
-        { period: '2026-03', expectedAmount: 1000, status: 'pendiente' }
+      rentaMensual: [
+        { periodo: '2026-03', importePrevisto: 1000, estado: 'pendiente' }
       ],
       contracts: [
         {
@@ -129,7 +129,7 @@ describe('dashboardService financial metrics', () => {
       ],
       gastos: [],
       expenses: [],
-      rentPayments: [],
+      rentaMensual: [],
       contracts: [],
       prestamos: [],
       properties: [],
@@ -159,8 +159,8 @@ describe('dashboardService financial metrics', () => {
       ],
       gastos: [],
       expenses: [],
-      rentPayments: [
-        { period: '2026-03', expectedAmount: 4720, status: 'pendiente' }
+      rentaMensual: [
+        { periodo: '2026-03', importePrevisto: 4720, estado: 'pendiente' }
       ],
       contracts: [],
       prestamos: [],
@@ -226,7 +226,7 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inversiones.dividendosMes).toBeCloseTo(608, 2);
   });
 
-  it('usa renta mensual de contratos activos cuando no hay pagos generados en rentPayments', async () => {
+  it('usa renta mensual de contratos activos cuando no hay pagos generados en rentaMensual', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
       gastos: [
@@ -235,7 +235,7 @@ describe('dashboardService financial metrics', () => {
       expenses: [
         { fecha: '2026-03-08', importe: 50, propertyId: 1 }
       ],
-      rentPayments: [],
+      rentaMensual: [],
       contratos: [],
       contracts: [
         {
@@ -269,20 +269,20 @@ describe('dashboardService financial metrics', () => {
     expect(flujos.inmuebles.ocupacion).toBeCloseTo(100, 2);
   });
 
-  it('proyecta el mes completo de inmuebles con expectedAmount aunque el cobro vaya parcial a mitad de mes', async () => {
+  it('proyecta el mes completo de inmuebles con importePrevisto aunque el cobro vaya parcial a mitad de mes', async () => {
     const datasets: Record<string, any[]> = {
       ingresos: [],
       gastos: [
         { fecha: '2026-03-05', importe: 200, esPersonal: false, destino: 'inmueble_id', destino_id: 1 }
       ],
       expenses: [],
-      rentPayments: [
+      rentaMensual: [
         {
-          contractId: 1,
-          period: '2026-03',
-          expectedAmount: 1000,
-          status: 'partial',
-          paidAmount: 100
+          contratoId: 1,
+          periodo: '2026-03',
+          importePrevisto: 1000,
+          estado: 'parcial',
+          importeCobradoAcum: 100
         }
       ],
       contracts: [
@@ -323,9 +323,9 @@ describe('dashboardService financial metrics', () => {
       ingresos: [],
       gastos: [],
       expenses: [],
-      rentPayments: [
-        { fecha: '2026-03-10', importe: 700, estado: 'confirmado' },
-        { fecha: '2026-03-20', importe: 300, estado: 'pendiente' }
+      rentaMensual: [
+        { periodo: '2026-03', importePrevisto: 700, estado: 'cobrada' },
+        { periodo: '2026-03', importePrevisto: 300, estado: 'pendiente' }
       ],
       contracts: [
         {
@@ -358,7 +358,7 @@ describe('dashboardService financial metrics', () => {
 
   it('genera una alerta cuando la ocupación está por debajo del objetivo y hay inmuebles activos', async () => {
     const datasets: Record<string, any[]> = {
-      rentPayments: [],
+      rentaMensual: [],
       documents: [],
       expenses: [],
       gastos: [],

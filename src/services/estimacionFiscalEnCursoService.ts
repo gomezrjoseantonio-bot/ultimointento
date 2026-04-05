@@ -70,12 +70,25 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
   const mesesConDatos = new Set<number>();
 
   // Load all data sources in parallel
-  const [rentas, payments, movements, gastos] = await Promise.all([
+  const [rentas, movements, gastos] = await Promise.all([
     db.getAll('rentaMensual').catch(() => [] as any[]),
-    db.getAll('rentPayments').catch(() => [] as any[]),
     db.getAll('movements').catch(() => [] as any[]),
     (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().catch(() => [] as any[]),
   ]);
+
+  // For rentaMensual: months with confirmed data are those with estado 'cobrada' or 'parcial'
+  for (const renta of rentas as any[]) {
+    const estado = String(renta?.estado ?? '').toLowerCase();
+    if (estado === 'cobrada' || estado === 'parcial') {
+      const periodo = String(renta?.periodo ?? '');
+      if (/^\d{4}-\d{2}$/.test(periodo)) {
+        const [year, month] = periodo.split('-').map(Number);
+        if (year === ejercicio) {
+          mesesConDatos.add(month - 1); // month is 1-indexed in periodo
+        }
+      }
+    }
+  }
 
   const extractMonths = (records: any[], fechaKeys: string[]) => {
     for (const r of records) {
@@ -87,8 +100,6 @@ async function calcularMesesConDatos(ejercicio: number): Promise<number> {
     }
   };
 
-  extractMonths(rentas, ['fecha', 'mes']);
-  extractMonths(payments, ['fecha', 'date']);
   extractMonths(movements, ['fecha', 'date']);
   extractMonths(gastos, ['fecha', 'date']);
 

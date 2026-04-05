@@ -759,36 +759,43 @@ class DashboardService {
       };
 
       const getImporte = (item: any): number => toNumber(item?.importe ?? item?.total ?? item?.amount);
-      const getRentPaymentAmount = (payment: any): number => {
+      // Helper for rentaMensual: get the expected amount for a rent record
+      const getRentaAmount = (renta: any): number => {
         const candidates = [
-          payment?.expectedAmount,
-          payment?.paidAmount,
-          payment?.importe,
-          payment?.amount,
-          payment?.total
+          renta?.importePrevisto,  // rentaMensual field
+          renta?.expectedAmount,   // legacy rentPayments field
+          renta?.paidAmount,
+          renta?.importe,
+          renta?.amount,
+          renta?.total
         ];
         const firstDefined = candidates.find((value) => value !== undefined && value !== null);
         return toNumber(firstDefined);
       };
-      const getRentPaymentDate = (payment: any): Date | null => {
-        const period = String(payment?.period ?? '').trim();
+      // Helper for rentaMensual: get the collected amount for a rent record
+      const getRentaCollectedAmount = (renta: any): number => {
+        return toNumber(renta?.importeCobradoAcum ?? renta?.paidAmount ?? 0);
+      };
+      // Helper for rentaMensual: get date from period (YYYY-MM format)
+      const getRentaDate = (renta: any): Date | null => {
+        const period = String(renta?.periodo ?? renta?.period ?? '').trim();
         if (/^\d{4}-\d{2}$/.test(period)) {
           const [year, month] = period.split('-').map(Number);
           const d = new Date(year, month - 1, 1);
           return Number.isNaN(d.getTime()) ? null : d;
         }
 
-        const raw = payment?.fecha ?? payment?.paymentDate ?? payment?.fecha_prevista_cobro ?? payment?.fechaPago;
+        const raw = renta?.fecha ?? renta?.paymentDate ?? renta?.fecha_prevista_cobro ?? renta?.fechaPago;
         if (!raw) return null;
         const d = new Date(raw);
         return Number.isNaN(d.getTime()) ? null : d;
       };
-      const rentPaymentInMonth = (payment: any, month: number, year: number): boolean => {
-        const d = getRentPaymentDate(payment);
+      const rentaInMonth = (renta: any, month: number, year: number): boolean => {
+        const d = getRentaDate(renta);
         return !!d && d.getMonth() === month && d.getFullYear() === year;
       };
-      const rentPaymentThroughToday = (payment: any, month: number, year: number): boolean => {
-        const d = getRentPaymentDate(payment);
+      const rentaThroughToday = (renta: any, month: number, year: number): boolean => {
+        const d = getRentaDate(renta);
         return !!d && d.getMonth() === month && d.getFullYear() === year && d <= todayDate;
       };
       const inMonthThroughToday = (item: any, month: number, year: number): boolean => {
@@ -823,12 +830,14 @@ class DashboardService {
       const getContractMonthlyRent = (contract: any): number =>
         toNumber(contract?.rentaMensual ?? contract?.renta_mensual ?? contract?.monthlyRent ?? contract?.importeMensual);
 
-      const isCancelledRentPayment = (payment: any): boolean => {
-        const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+      // Helper for rentaMensual: check if cancelled
+      const isCancelledRenta = (renta: any): boolean => {
+        const status = String(renta?.estado ?? renta?.status ?? '').toLowerCase().trim();
         return ['cancelado', 'cancelada', 'cancelled', 'anulado', 'anulada', 'void'].includes(status);
       };
-      const isCollectedRentPayment = (payment: any): boolean => {
-        const status = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
+      // Helper for rentaMensual: check if collected (cobrada, parcial)
+      const isCollectedRenta = (renta: any): boolean => {
+        const status = String(renta?.estado ?? renta?.status ?? '').toLowerCase().trim();
         if (!status) return true;
         return [
           'pagada',
@@ -846,28 +855,29 @@ class DashboardService {
           'parcial'
         ].includes(status);
       };
-      const getCollectedRentIncomeThroughToday = (month: number, year: number, rentPaymentsData: any[]): number => {
-        return rentPaymentsData
-          .filter((payment: any) => rentPaymentThroughToday(payment, month, year) && !isCancelledRentPayment(payment) && isCollectedRentPayment(payment))
-          .reduce((sum: number, payment: any) => {
-            const partialStatus = String(payment?.estado ?? payment?.status ?? '').toLowerCase().trim();
-            const amount = partialStatus === 'partial' || partialStatus === 'parcial'
-              ? toNumber(payment?.paidAmount ?? payment?.importe ?? payment?.amount)
-              : getRentPaymentAmount(payment);
+      const getCollectedRentIncomeThroughToday = (month: number, year: number, rentasData: any[]): number => {
+        return rentasData
+          .filter((renta: any) => rentaThroughToday(renta, month, year) && !isCancelledRenta(renta) && isCollectedRenta(renta))
+          .reduce((sum: number, renta: any) => {
+            const status = String(renta?.estado ?? renta?.status ?? '').toLowerCase().trim();
+            // For parcial status, use collected amount; otherwise use expected amount
+            const amount = status === 'partial' || status === 'parcial'
+              ? getRentaCollectedAmount(renta)
+              : getRentaAmount(renta);
             return sum + amount;
           }, 0);
       };
 
-      const getRentalIncomeForMonth = (month: number, year: number, rentPaymentsData: any[], contractsData: any[]): number => {
-        const scheduledPayments = rentPaymentsData
-          .filter((payment: any) => rentPaymentInMonth(payment, month, year) && !isCancelledRentPayment(payment));
+      const getRentalIncomeForMonth = (month: number, year: number, rentasData: any[], contractsData: any[]): number => {
+        const scheduledRentas = rentasData
+          .filter((renta: any) => rentaInMonth(renta, month, year) && !isCancelledRenta(renta));
 
         // En el dashboard mensual mostramos el flujo previsto del mes completo.
         // Si existen pagos planificados/generados para ese mes, se suman todos sus
         // importes esperados (o el mejor fallback disponible), no solo lo cobrado
         // hasta hoy. La foto "a día de hoy" ya vive en tesorería/liquidez.
-        if (scheduledPayments.length > 0) {
-          return scheduledPayments.reduce((sum: number, payment: any) => sum + getRentPaymentAmount(payment), 0);
+        if (scheduledRentas.length > 0) {
+          return scheduledRentas.reduce((sum: number, renta: any) => sum + getRentaAmount(renta), 0);
         }
 
         return contractsData
@@ -925,7 +935,7 @@ class DashboardService {
       const ingresos = await getCachedStoreRecords<any>('ingresos');
       const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
       const expenses = await getCachedStoreRecords<any>('expenses');
-      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
+      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
       const contracts = await getCachedStoreRecords<any>('contracts');
       const inversiones = await getCachedStoreRecords<any>('inversiones');
 
@@ -979,8 +989,8 @@ class DashboardService {
       const trabajoHoy = trabajoBaseHoy + autonomoHoy;
 
       // INMUEBLES (rentas cobradas - gastos - cuotas de préstamos de inmueble)
-      const rentasMes = getRentalIncomeForMonth(currentMonth, currentYear, rentPayments, contracts);
-      const rentasHoy = getCollectedRentIncomeThroughToday(currentMonth, currentYear, rentPayments);
+      const rentasMes = getRentalIncomeForMonth(currentMonth, currentYear, rentasMensuales, contracts);
+      const rentasHoy = getCollectedRentIncomeThroughToday(currentMonth, currentYear, rentasMensuales);
 
       const gastosInmueblesMes = [
         ...expenses.filter((expense: any) => inMonth(expense, currentMonth, currentYear) && isInmuebleExpense(expense)),
@@ -1138,7 +1148,7 @@ class DashboardService {
       });
 
       const cashflowLast3 = last3Months.map(({ month, year }) => {
-        const rentas = getRentalIncomeForMonth(month, year, rentPayments, contracts);
+        const rentas = getRentalIncomeForMonth(month, year, rentasMensuales, contracts);
         const gastosMes = [
           ...expenses.filter((expense: any) => inMonth(expense, month, year) && isInmuebleExpense(expense)),
           ...gastos.filter((gasto: any) => inMonth(gasto, month, year) && !isPersonalGasto(gasto) && (gasto.destino === 'inmueble_id' || gasto.destino_id != null))
@@ -1340,12 +1350,23 @@ class DashboardService {
       
       // Calculate expected income in next 30 days
       // Include rent payments, salaries, etc.
-      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
+      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
       const ingresos = await getCachedStoreRecords<any>('ingresos');
       
-      const rentasEsperadas = rentPayments
-        .filter((payment: any) => isDateWithinRange(payment.fecha, now, next30Days))
-        .reduce((sum: number, payment: any) => sum + parseNumericValue(payment.importe), 0);
+      // Filter rentaMensual by period falling within next 30 days
+      const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Calculate next month correctly handling year rollover
+      const nextMonth1 = now.getMonth() === 11 ? 1 : now.getMonth() + 2; // getMonth() is 0-indexed
+      const nextYear1 = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+      const mesSiguiente = `${nextYear1}-${String(nextMonth1).padStart(2, '0')}`;
+      const rentasEsperadas = rentasMensuales
+        .filter((renta: any) => {
+          const periodo = renta?.periodo ?? '';
+          const estado = String(renta?.estado ?? '').toLowerCase();
+          // Include current and next month, exclude already collected
+          return (periodo === mesActual || periodo === mesSiguiente) && estado !== 'cobrada';
+        })
+        .reduce((sum: number, renta: any) => sum + parseNumericValue(renta.importePrevisto ?? renta.expectedAmount ?? 0), 0);
       
       const ingresosEsperados = ingresos
         .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
@@ -1604,15 +1625,26 @@ class DashboardService {
       
       // Expected income in next 30 days
       const ingresos = await getCachedStoreRecords<any>('ingresos');
-      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
+      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
       
       const ingresosEsperados = ingresos
         .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
         .reduce((sum: number, ing: any) => sum + parseNumericValue(ing.importe), 0);
       
-      const rentasEsperadas = rentPayments
-        .filter((payment: any) => isDateWithinRange(payment.fecha, now, next30Days))
-        .reduce((sum: number, payment: any) => sum + parseNumericValue(payment.importe), 0);
+      // Filter rentaMensual by period falling within next 30 days
+      const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      // Calculate next month correctly handling year rollover
+      const nextMonth2 = now.getMonth() === 11 ? 1 : now.getMonth() + 2; // getMonth() is 0-indexed
+      const nextYear2 = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+      const mesSiguiente = `${nextYear2}-${String(nextMonth2).padStart(2, '0')}`;
+      const rentasEsperadas = rentasMensuales
+        .filter((renta: any) => {
+          const periodo = renta?.periodo ?? '';
+          const estado = String(renta?.estado ?? '').toLowerCase();
+          // Include current and next month, exclude already collected
+          return (periodo === mesActual || periodo === mesSiguiente) && estado !== 'cobrada';
+        })
+        .reduce((sum: number, renta: any) => sum + parseNumericValue(renta.importePrevisto ?? renta.expectedAmount ?? 0), 0);
 
       const ingresosEventosTesoreria = (treasuryEvents as any[])
         .filter((event) => event.type === 'income' && isForecastTreasuryEvent(event))
@@ -1686,26 +1718,29 @@ class DashboardService {
       }> = [];
       
       const now = new Date();
+      const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       
-      // Check for unpaid rent (cobro type)
-      const rentPayments = await getCachedStoreRecords<any>('rentPayments');
-      const unpaidRents = rentPayments.filter((payment: any) => {
-        const fechaVencimiento = new Date(payment.fecha ?? payment.paymentDate ?? `${payment.period}-01`);
-        const status = String(payment.estado ?? payment.status ?? '').toLowerCase();
-        return status !== 'pagada' && status !== 'paid' && fechaVencimiento < now;
+      // Check for unpaid rent (cobro type) using rentaMensual
+      // impago or pendiente with periodo anterior al mes actual
+      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
+      const unpaidRents = rentasMensuales.filter((renta: any) => {
+        const estado = String(renta?.estado ?? '').toLowerCase();
+        const periodo = renta?.periodo ?? '';
+        // Impagos or pendientes with past period
+        return estado === 'impago' || (estado === 'pendiente' && periodo < mesActual);
       });
       
-      unpaidRents.forEach((payment: any, index: number) => {
-        const fechaReferencia = new Date(payment.fecha ?? payment.paymentDate ?? `${payment.period}-01`);
+      unpaidRents.forEach((renta: any, index: number) => {
+        const fechaReferencia = new Date(`${renta.periodo}-01`);
         const diasVencido = Math.floor((now.getTime() - fechaReferencia.getTime()) / (1000 * 60 * 60 * 24));
         alerts.push({
-          id: `rent-${payment.id || index}`,
+          id: `rent-${renta.id || index}`,
           tipo: 'cobro',
           titulo: 'Alquiler impagado',
           descripcion: `Renta vencida hace ${diasVencido} días`,
           urgencia: diasVencido > 7 ? 'alta' : 'media',
           diasVencimiento: -diasVencido,
-          importe: payment.importe || undefined,
+          importe: renta.importePrevisto || undefined,
           link: '/tesoreria'
         });
       });

@@ -58,7 +58,7 @@ await resetAllData();
 - ✅ `documents` - Document storage
 - ✅ `contracts` - Rental contracts
 - ✅ `expenses` & `expensesH5` - Expense records
-- ✅ `rentCalendar` & `rentPayments` - Rental data
+- ✅ `rentaMensual` - Rental data (monthly rent tracking)
 - ✅ `treasuryEvents` & `treasuryRecommendations` - Treasury data
 - ✅ `ingresos`, `gastos`, `capex` - Financial categories
 - ✅ `budgets`, `budgetLines` - Budget planning

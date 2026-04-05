@@ -74,9 +74,10 @@ describe('Complete Data Cleanup', () => {
   describe('cleanup safety checks', () => {
     it('should define expected object stores to clear', () => {
       // Define the object stores that should exist in the database
+      // NOTE: rentCalendar, rentPayments removed in V4.5 — migrated to rentaMensual
       const expectedStores = [
         'properties', 'documents', 'contracts', 'expenses',
-        'rentCalendar', 'rentPayments', 'accounts', 'movements', 'importBatches',
+        'rentaMensual', 'accounts', 'movements', 'importBatches',
         'treasuryEvents', 'treasuryRecommendations',
         'ingresos', 'budgets', 'budgetLines',
         'presupuestos', 'presupuestoLineas', 'importLogs', 'matchingConfiguration',
@@ -85,12 +86,13 @@ describe('Complete Data Cleanup', () => {
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
-      // Verify we have a comprehensive list of stores
-      expect(expectedStores.length).toBeGreaterThan(20);
+      // Verify we have a comprehensive list of stores (currently 23 stores)
+      expect(expectedStores.length).toBe(23);
       expect(expectedStores).toContain('accounts');
       expect(expectedStores).toContain('movements');
       expect(expectedStores).toContain('properties');
       expect(expectedStores).toContain('documents');
+      expect(expectedStores).toContain('rentaMensual');
       
       // Verify we include all the treasury-related stores
       expect(expectedStores).toContain('treasuryEvents');

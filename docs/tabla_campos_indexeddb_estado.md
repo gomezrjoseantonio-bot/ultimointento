@@ -42,7 +42,7 @@
 | `patrimonioSnapshot.fecha` | (mes snapshot) | Clave mensual `YYYY-MM` para comparar variaciones. | `2026-03` |
 | `liquidez.disponibleHoy` | Disponible hoy | `sum(balance de cuentas activas)` en fecha actual. | `1500.5` |
 | `liquidez.comprometido30d` | Comprometido 30d | `expenses(30d) + treasuryEvents(expense/financing forecast 30d)`. | `615` |
-| `liquidez.ingresos30d` | Ingresos 30d | `rentPayments(30d) + ingresos(30d) + treasuryEvents(income forecast 30d)`. | `650` |
+| `liquidez.ingresos30d` | Ingresos 30d | `rentaMensual(30d) + ingresos(30d) + treasuryEvents(income forecast 30d)`. | `650` |
 | `liquidez.proyeccion30d` | Proyección 30d | `disponibleHoy + ingresos30d - comprometido30d`. | `1535.5` |
 | `tesoreriaFila.inicioMes` | INICIO MES | `balance actual - delta de movements del mes hasta hoy`. | `1000` |
 | `tesoreriaFila.hoy` | HOY | `balance actual + delta de treasuryEvents reales del mes`. | `600` |

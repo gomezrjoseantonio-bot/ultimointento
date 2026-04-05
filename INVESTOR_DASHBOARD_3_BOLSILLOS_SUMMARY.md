@@ -137,7 +137,7 @@ Returns: Array of alerts sorted by urgency and due date (max 5)
 Connected to real IndexedDB data:
 - `properties` - For real estate values
 - `accounts` - For account balances
-- `rentPayments` - For rent income
+- `rentaMensual` - For rent income
 - `expenses` - For property and personal expenses
 - `ingresos` - For personal income
 - `contracts` - For contract renewals
