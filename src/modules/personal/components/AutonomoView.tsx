@@ -1,8 +1,14 @@
-import React from 'react';
-import AutonomoManager from '../../../components/personal/autonomo/AutonomoManager';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const AutonomoView: React.FC = () => {
-  return <AutonomoManager />;
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    navigate('/gestion/personal/nueva-actividad');
+  }, [navigate]);
+
+  return null;
 };
 
 export default AutonomoView;
