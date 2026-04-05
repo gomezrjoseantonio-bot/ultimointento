@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { pensionService } from '../../../services/pensionService';
 import { personalDataService } from '../../../services/personalDataService';
 import { PensionIngreso, CalculoPensionResult } from '../../../types/personal';
-import PensionForm from './PensionForm';
 import { Plus, Edit2, Trash2, PiggyBank } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
@@ -255,16 +254,7 @@ const PensionManager: React.FC = () => {
         )}
       </div>
 
-      {/* Form modal */}
-      <PensionForm
-        isOpen={showForm}
-        onClose={() => {
-          setShowForm(false);
-          setEditingPension(null);
-        }}
-        pension={editingPension}
-        onSaved={handleSaved}
-      />
+      {/* TODO: PensionForm eliminado — pendiente de wizard */}
     </div>
   );
 };

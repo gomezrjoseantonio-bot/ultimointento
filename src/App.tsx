@@ -106,7 +106,6 @@ const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPer
 const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
 const ContratosNuevoPage = lazyWithPreload(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
 const FirmasPendientes = lazyWithPreload(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
-const CobrosPendientes = lazyWithPreload(() => import('./modules/pulse/cobros/pendientes/CobrosPendientes'));
 const AutomatizacionesReglas = lazyWithPreload(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
 const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
 
@@ -587,24 +586,6 @@ function App() {
               <Route path="plantillas" element={<Navigate to="/cuenta/configuracion" replace />} />
             </Route>
             
-            <Route path="cobros">
-              <Route index element={<Navigate to="/cobros/pendientes" replace />} />
-              <Route path="pendientes" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <CobrosPendientes />
-                </React.Suspense>
-              } />
-              <Route path="conciliacion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <CobrosPendientes />
-                </React.Suspense>
-              } />
-              <Route path="historico" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <CobrosPendientes />
-                </React.Suspense>
-              } />
-            </Route>
             
             <Route path="automatizaciones">
               <Route index element={<Navigate to="/automatizaciones/reglas" replace />} />
