@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield } from 'lucide-react';
+import { Briefcase, Globe, Home, Shield, User, Users } from 'lucide-react';
 import { autonomoService } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
@@ -149,7 +149,10 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
     divorciado: 'Divorciado',
   };
   const edadStr = edad != null ? ` \u00B7 ${edad} a\u00F1os` : '';
-  chips.push({ key: 'sp', label: `${spLabel[perfil.situacionPersonal] || perfil.situacionPersonal}${edadStr}` });
+  const spIcon = (perfil.situacionPersonal === 'casado' || perfil.situacionPersonal === 'pareja-hecho')
+    ? <Users size={12} />
+    : <User size={12} />;
+  chips.push({ key: 'sp', label: `${spLabel[perfil.situacionPersonal] || perfil.situacionPersonal}${edadStr}`, icon: spIcon });
 
   // Situación laboral
   const labLabels: Record<string, string> = {
@@ -162,9 +165,9 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   if (laboral) {
     if (hasPareja) {
       const iniciales = perfil.nombre.split(' ').map(w => w[0]).join('').toUpperCase();
-      chips.push({ key: 'lab', label: `${iniciales}: ${laboral}` });
+      chips.push({ key: 'lab', label: `${iniciales}: ${laboral}`, icon: <Briefcase size={12} /> });
     } else {
-      chips.push({ key: 'lab', label: laboral });
+      chips.push({ key: 'lab', label: laboral, icon: <Briefcase size={12} /> });
     }
   }
 
@@ -174,7 +177,7 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
       ? perfil.spouseName.split(' ').map(w => w[0]).join('').toUpperCase()
       : 'P';
     const spLab = perfil.situacionLaboralConyugue.map((s) => labLabels[s] || s).join(' + ');
-    chips.push({ key: 'splab', label: `${spIni}: ${spLab}` });
+    chips.push({ key: 'splab', label: `${spIni}: ${spLab}`, icon: <Briefcase size={12} /> });
   }
 
   // Housing
@@ -187,7 +190,7 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   if (perfil.housingType) {
     const hLabel = housingLabels[perfil.housingType] || perfil.housingType;
     const ciudad = perfil.comunidadAutonoma ? ` \u00B7 ${perfil.comunidadAutonoma}` : '';
-    chips.push({ key: 'housing', label: `${hLabel}${ciudad}` });
+    chips.push({ key: 'housing', label: `${hLabel}${ciudad}`, icon: <Home size={12} /> });
   }
 
   // Tributación / Pareja marital
@@ -195,11 +198,11 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
     const tribLabel = perfil.tributacion === 'conjunta' ? 'IRPF conjunta' : 'IRPF individual';
     if (hasPareja) {
       const parejaTipo = perfil.situacionPersonal === 'casado' ? 'Casados' : 'Pareja de hecho';
-      chips.push({ key: 'trib', label: `${parejaTipo} \u00B7 ${tribLabel}` });
+      chips.push({ key: 'trib', label: `${parejaTipo} \u00B7 ${tribLabel}`, icon: <Globe size={12} /> });
     } else if (perfil.comunidadAutonoma && !perfil.housingType) {
-      chips.push({ key: 'trib', label: `${perfil.comunidadAutonoma} \u00B7 ${tribLabel}` });
+      chips.push({ key: 'trib', label: `${perfil.comunidadAutonoma} \u00B7 ${tribLabel}`, icon: <Globe size={12} /> });
     } else {
-      chips.push({ key: 'trib', label: tribLabel });
+      chips.push({ key: 'trib', label: tribLabel, icon: <Globe size={12} /> });
     }
   }
 
@@ -208,7 +211,7 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
     chips.push({
       key: 'hijos',
       label: `${perfil.descendientes.length} hijo${perfil.descendientes.length > 1 ? 's' : ''}`,
-      icon: <Shield size={13} />,
+      icon: <Shield size={12} />,
     });
   }
 
