@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Shield, Home, Car, Package, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+import { Scale, Home, Car, Package, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   resolverTodosLosEjercicios,
@@ -129,7 +129,7 @@ const SupervisionHeader: React.FC = () => (
     padding: '18px 32px',
   }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-      <Shield size={20} color="var(--grey-500)" strokeWidth={1.5} />
+      <Scale size={20} color="var(--grey-500)" strokeWidth={1.5} />
       <div>
         <h1 style={{
           fontSize: 22,
@@ -836,11 +836,19 @@ function mapEstado(estado: string): EstadoEjercicio {
 // ══════════════════════════════════════════════════════════════
 
 function buildFuentes(datos: DatosFiscalesEjercicio): FuenteRenta[] {
+  const trabajoDeclaracion = datos.declaracionCompleta?.baseGeneral?.rendimientosTrabajo?.rendimientoNeto ?? null;
+  const inmueblesDeclaracion = datos.declaracionCompleta?.baseGeneral?.rendimientosInmuebles?.reduce(
+    (sum, inm) => sum + (inm.rendimientoNetoReducido ?? inm.rendimientoNeto ?? 0),
+    0,
+  ) ?? null;
+  const autonomoDeclaracion = datos.declaracionCompleta?.baseGeneral?.rendimientosAutonomo?.rendimientoNeto ?? null;
+  const ahorroDeclaracion = datos.declaracionCompleta?.baseAhorro?.total ?? null;
+
   return [
-    { nombre: 'Trabajo', importe: datos.rendimientosTrabajo ?? 0 },
-    { nombre: 'Autónomo', importe: datos.rendimientosActividades ?? 0 },
-    { nombre: 'Inmuebles', importe: datos.rendimientosInmuebles ?? 0 },
-    { nombre: 'Capital', importe: datos.rendimientosAhorro ?? 0 },
+    { nombre: 'Trabajo', importe: datos.rendimientosTrabajo ?? trabajoDeclaracion ?? 0 },
+    { nombre: 'Autónomo', importe: datos.rendimientosActividades ?? autonomoDeclaracion ?? 0 },
+    { nombre: 'Inmuebles', importe: datos.rendimientosInmuebles ?? inmueblesDeclaracion ?? 0 },
+    { nombre: 'Capital', importe: datos.rendimientosAhorro ?? ahorroDeclaracion ?? 0 },
   ];
 }
 
@@ -964,7 +972,14 @@ const ImpuestosSupervisionPage: React.FC = () => {
   // Calculate KPI values
   const ingresos = useMemo(() => {
     if (!datosActivo) return 0;
-    return (datosActivo.baseImponibleGeneral ?? 0) + (datosActivo.baseImponibleAhorro ?? 0);
+    return (datosActivo.baseImponibleGeneral
+      ?? datosActivo.resumen.baseLiquidableGeneral
+      ?? datosActivo.declaracionCompleta?.liquidacion?.baseImponibleGeneral
+      ?? 0)
+      + (datosActivo.baseImponibleAhorro
+      ?? datosActivo.resumen.baseLiquidableAhorro
+      ?? datosActivo.declaracionCompleta?.liquidacion?.baseImponibleAhorro
+      ?? 0);
   }, [datosActivo]);
 
   const gastos = useMemo(() => {
@@ -980,7 +995,14 @@ const ImpuestosSupervisionPage: React.FC = () => {
 
   const base = useMemo(() => {
     if (!datosActivo) return 0;
-    return (datosActivo.baseImponibleGeneral ?? 0) + (datosActivo.baseImponibleAhorro ?? 0);
+    return (datosActivo.baseImponibleGeneral
+      ?? datosActivo.resumen.baseLiquidableGeneral
+      ?? datosActivo.declaracionCompleta?.liquidacion?.baseImponibleGeneral
+      ?? 0)
+      + (datosActivo.baseImponibleAhorro
+      ?? datosActivo.resumen.baseLiquidableAhorro
+      ?? datosActivo.declaracionCompleta?.liquidacion?.baseImponibleAhorro
+      ?? 0);
   }, [datosActivo]);
 
   const handleSelectAño = useCallback((año: number) => {

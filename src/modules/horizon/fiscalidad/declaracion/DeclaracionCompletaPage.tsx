@@ -2,7 +2,7 @@
  * DeclaracionCompletaPage.tsx
  * 
  * Vista de declaración completa para un año fiscal específico.
- * Ruta: /fiscalidad/declaracion/:año
+ * Ruta: /fiscalidad/declaracion/:anio
  * Se accede desde el link "Ver declaración completa" en la tarjeta Resultado.
  */
 
@@ -433,8 +433,8 @@ function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracion[] {
 
 const DeclaracionCompletaPage: React.FC = () => {
   const navigate = useNavigate();
-  const { año } = useParams<{ año: string }>();
-  const añoNum = año ? parseInt(año, 10) : new Date().getFullYear() - 1;
+  const { anio } = useParams<{ anio: string }>();
+  const añoNum = anio ? parseInt(anio, 10) : new Date().getFullYear() - 1;
 
   const [datos, setDatos] = useState<DatosFiscalesEjercicio | null>(null);
   const [loading, setLoading] = useState(true);
