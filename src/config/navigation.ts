@@ -128,7 +128,7 @@ export const navigationConfig: NavigationItem[] = [
     href: '/tesoreria',
     icon: Landmark,
     module: 'shared',
-    section: 'pulse'
+    section: 'horizon'
   },
   {
     name: 'Documentación',

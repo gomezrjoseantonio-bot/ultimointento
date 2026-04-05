@@ -5,6 +5,7 @@ import {
   AlertCircle, TrendingUp, TrendingDown, CreditCard,
   X, MoreHorizontal, Home, Calendar,
 } from 'lucide-react';
+import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../shared/PageHeader';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
 import { initDB } from '../../services/db';
@@ -89,52 +90,6 @@ const DEFAULT_FORM: NewMovForm = {
   concept: '', amount: '', accountId: '', targetAccountId: '',
   date: new Date().toISOString().substring(0, 10), type: 'expense',
 };
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const TabNavy: React.FC<{ label: string; active: boolean; onClick: () => void }> = ({ label, active, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      padding: '12px 0',
-      marginRight: 32,
-      fontSize: 14,
-      fontWeight: active ? 500 : 400,
-      color: active ? '#fff' : 'rgba(255,255,255,0.45)',
-      background: 'transparent',
-      border: 'none',
-      borderBottom: active ? '2px solid var(--teal-600)' : '2px solid transparent',
-      cursor: 'pointer',
-      fontFamily: "'IBM Plex Sans', sans-serif",
-      transition: 'all 150ms',
-    }}
-  >
-    {label}
-  </button>
-);
-
-const KpiCell: React.FC<{
-  label: string; valor: string; sub: string; dim?: boolean;
-  borderRight?: boolean; paddingLeft?: boolean; paddingRight?: boolean;
-}> = ({ label, valor, sub, dim, borderRight, paddingLeft, paddingRight }) => (
-  <div style={{
-    padding: '12px 0',
-    paddingLeft: paddingLeft ? 20 : 0,
-    paddingRight: paddingRight ? 20 : 0,
-    borderRight: borderRight ? '1px solid rgba(255,255,255,0.08)' : 'none',
-  }}>
-    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 4 }}>
-      {label}
-    </div>
-    <div style={{ fontSize: 19, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: dim ? 'rgba(255,255,255,0.55)' : '#fff', lineHeight: 1 }}>
-      {valor}
-    </div>
-    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 3 }}>
-      {sub}
-    </div>
-  </div>
-);
-
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -588,6 +543,7 @@ const TesoreriaV4: React.FC = () => {
       if (accountId === targetAccountId) { toast.error('La cuenta origen y destino deben ser diferentes'); return; }
     } else {
       if (!newMovForm.concept.trim()) { toast.error('Completa todos los campos'); return; }
+      if (!accountId) { toast.error('Selecciona una cuenta'); return; }
     }
 
     setSavingMovement(true);
@@ -754,51 +710,46 @@ const TesoreriaV4: React.FC = () => {
   return (
     <div className="tv4-page">
 
-      {/* ══ NAVY HEADER ══ */}
-      <div style={{ background: '#042C5E', padding: '20px 28px 0', flexShrink: 0 }}>
+      {/* ══ PAGE HEADER ══ */}
+      <PageHeader
+        icon={BarChart3}
+        title="Tesorería"
+        subtitle="Conciliación y flujo de caja"
+        tabs={[
+          { id: 'flujo', label: 'Flujo de caja' },
+          { id: 'cuentas', label: 'Cuentas bancarias' },
+        ]}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as 'flujo' | 'cuentas')}
+        actions={
+          <>
+            <HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />
+            <HeaderPrimaryButton icon={Plus} label="Añadir movimiento" onClick={() => setShowAddModal(true)} />
+          </>
+        }
+      />
 
-        {/* Top row: icon + title + buttons */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <BarChart3 size={20} color="rgba(255,255,255,0.45)" />
-            <div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#fff', lineHeight: 1, margin: 0 }}>Tesorería</h1>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2, marginBottom: 0 }}>
-                Conciliación y flujo de caja
-              </p>
+      {/* ══ KPI GRID ══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 0, marginBottom: 20, border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+        {kpis.map((k, i) => (
+          <div
+            key={i}
+            style={{
+              padding: '12px 16px',
+              borderRight: i < 3 ? '1px solid var(--grey-200)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--grey-400)', marginBottom: 4 }}>
+              {k.label}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: ('dim' in k && (k as any).dim) ? 'var(--grey-500)' : 'var(--grey-900)', lineHeight: 1 }}>
+              {k.valor}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 3 }}>
+              {k.sub}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-navy-ghost" onClick={handleGenerateForecasts}>
-              <RefreshCw size={13} /> Generar previsiones
-            </button>
-            <button className="btn-navy-primary" onClick={() => setShowAddModal(true)}>
-              <Plus size={13} /> Añadir movimiento
-            </button>
-          </div>
-        </div>
-
-        {/* KPI grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          {kpis.map((k, i) => (
-            <KpiCell
-              key={i}
-              label={k.label}
-              valor={k.valor}
-              sub={k.sub}
-              dim={'dim' in k ? !!(k as any).dim : false}
-              borderRight={i < 3}
-              paddingLeft={i > 0}
-              paddingRight={i < 3}
-            />
-          ))}
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', marginTop: 2 }}>
-          <TabNavy label="Flujo de caja" active={tab === 'flujo'} onClick={() => setTab('flujo')} />
-          <TabNavy label="Cuentas bancarias" active={tab === 'cuentas'} onClick={() => setTab('cuentas')} />
-        </div>
+        ))}
       </div>
 
       {/* ══ TAB CONTENT ══ */}
