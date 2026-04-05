@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, Shield } from 'lucide-react';
-import GastoRow from './GastoRow';
+import { Plus, Pencil, Trash2, Shield, X } from 'lucide-react';
 import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
 import { gastosPersonalesRealService } from '../../../services/gastosPersonalesRealService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
@@ -20,29 +19,44 @@ const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(v);
 
-const fmtValue = (v: number | null | undefined): string =>
-  v != null && v !== 0 ? `${fmt(v)} \u20AC` : '\u2014';
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const CATEGORIA_LABEL: Record<PersonalExpenseCategory, string> = {
+const CATEGORIA_LABEL: Record<string, string> = {
   vivienda: 'Vivienda',
-  alimentacion: 'Alimentaci\u00F3n',
+  alimentacion: 'Alimentación',
   transporte: 'Transporte',
   ocio: 'Ocio',
   salud: 'Salud',
   seguros: 'Seguros',
-  educacion: 'Educaci\u00F3n',
+  educacion: 'Educación',
+  suministros: 'Suministros',
   otros: 'Otros',
 };
 
-const CAT_COLORS: Record<string, string> = {
-  vivienda: 'var(--navy-900, #042C5E)',
-  alimentacion: 'var(--navy-800, #0A3A72)',
-  transporte: 'var(--navy-700, #142C50)',
-  seguros: 'var(--teal-600, #1DA0BA)',
-  salud: 'var(--grey-700, #303A4C)',
-  ocio: 'var(--grey-500, #6C757D)',
-  educacion: 'var(--grey-400, #9CA3AF)',
-  otros: 'var(--grey-300, #C8D0DC)',
+function colorCategoria(cat: string): string {
+  const mapa: Record<string, string> = {
+    vivienda:    '#042C5E',
+    suministros: '#1A4A8A',
+    alimentacion:'#1DA0BA',
+    salud:       '#303A4C',
+    transporte:  '#6C757D',
+    ocio:        '#9CA3AF',
+    seguros:     '#303A4C',
+    hijos:       '#042C5E',
+    educacion:   '#1A4A8A',
+    otros:       '#9CA3AF',
+  };
+  return mapa[cat.toLowerCase()] ?? '#9CA3AF';
+}
+
+const FREQ_LABEL: Record<string, string> = {
+  semanal: 'Semanal',
+  mensual: 'Mensual',
+  bimestral: 'Bimestral',
+  trimestral: 'Trimestral',
+  semestral: 'Semestral',
+  anual: 'Anual',
+  meses_especificos: 'Meses específicos',
 };
 
 const FRECUENCIA_OPTS: { value: PersonalExpenseFrequency; label: string }[] = [
@@ -52,29 +66,52 @@ const FRECUENCIA_OPTS: { value: PersonalExpenseFrequency; label: string }[] = [
   { value: 'trimestral', label: 'Trimestral' },
   { value: 'semestral', label: 'Semestral' },
   { value: 'anual', label: 'Anual' },
-  { value: 'meses_especificos', label: 'Meses espec\u00EDficos' },
+  { value: 'meses_especificos', label: 'Meses específicos' },
 ];
 
 const CATEGORIAS_OPTS: { value: PersonalExpenseCategory; label: string }[] = [
   { value: 'vivienda', label: 'Vivienda' },
-  { value: 'alimentacion', label: 'Alimentaci\u00F3n' },
+  { value: 'alimentacion', label: 'Alimentación' },
   { value: 'transporte', label: 'Transporte' },
   { value: 'ocio', label: 'Ocio' },
   { value: 'salud', label: 'Salud' },
   { value: 'seguros', label: 'Seguros' },
-  { value: 'educacion', label: 'Educaci\u00F3n' },
+  { value: 'educacion', label: 'Educación' },
   { value: 'otros', label: 'Otros' },
 ];
 
-/* ── Suministros siempre presentes ── */
 const SUMINISTROS_BASE = [
   { concepto: 'Luz', categoria: 'suministros' as const },
   { concepto: 'Gas', categoria: 'suministros' as const },
   { concepto: 'Agua', categoria: 'suministros' as const },
-  { concepto: 'Internet + tel\u00E9fono', categoria: 'suministros' as const },
+  { concepto: 'Internet + teléfono', categoria: 'suministros' as const },
 ];
 
-/* ── Delete confirmation modal ── */
+/* ─── FilaImpacto ─── */
+const FilaImpacto: React.FC<{
+  label: string;
+  valor: number;
+  negativo?: boolean;
+  teal?: boolean;
+}> = ({ label, valor, negativo = false, teal = false }) => {
+  if (!valor)
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+        <span style={{ color: 'var(--grey-700)' }}>{label}</span>
+        <span style={{ fontFamily: MONO, color: 'var(--grey-400)' }}>—</span>
+      </div>
+    );
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+      <span style={{ color: teal ? 'var(--teal-600)' : 'var(--grey-700)' }}>{label}</span>
+      <span style={{ fontFamily: MONO, color: teal ? 'var(--teal-600)' : 'var(--grey-700)' }}>
+        {negativo ? '−' : ''}{fmt(Math.abs(valor))} €
+      </span>
+    </div>
+  );
+};
+
+/* ─── DeleteModal ─── */
 const DeleteModal: React.FC<{
   concepto: string;
   onConfirm: () => void;
@@ -84,41 +121,36 @@ const DeleteModal: React.FC<{
     style={{
       position: 'fixed',
       inset: 0,
-      zIndex: 70,
+      background: 'rgba(255,255,255,0.85)',
+      backdropFilter: 'blur(2px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      zIndex: 50,
+      fontFamily: FONT,
     }}
   >
     <div
-      aria-hidden
-      onClick={onCancel}
-      style={{ position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.45)' }}
-    />
-    <div
       style={{
-        position: 'relative',
-        background: '#fff',
+        background: 'var(--white, #fff)',
+        border: '1px solid var(--grey-200)',
         borderRadius: 12,
         padding: 24,
-        width: 360,
-        border: '1px solid var(--grey-200, #DDE3EC)',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-        fontFamily: FONT,
+        maxWidth: 400,
+        width: '100%',
       }}
     >
-      <p style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: 'var(--grey-900)' }}>
-        ¿Eliminar &ldquo;{concepto}&rdquo;?
+      <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--grey-900)', marginBottom: 8, marginTop: 0 }}>
+        Eliminar gasto
+      </h3>
+      <p style={{ fontSize: 14, color: 'var(--grey-500)', marginBottom: 20 }}>
+        ¿Eliminar &ldquo;{concepto}&rdquo;? Esta acción no se puede deshacer.
       </p>
-      <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--grey-500)' }}>
-        Esta acción no se puede deshacer.
-      </p>
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button
           onClick={onCancel}
           style={{
-            flex: 1,
-            padding: '8px 12px',
+            padding: '8px 16px',
             borderRadius: 8,
             border: '1.5px solid var(--grey-300)',
             background: '#fff',
@@ -134,8 +166,7 @@ const DeleteModal: React.FC<{
         <button
           onClick={onConfirm}
           style={{
-            flex: 1,
-            padding: '8px 12px',
+            padding: '8px 16px',
             borderRadius: 8,
             border: 'none',
             background: 'var(--navy-900, #042C5E)',
@@ -146,14 +177,34 @@ const DeleteModal: React.FC<{
             fontFamily: FONT,
           }}
         >
-          Eliminar
+          Eliminar gasto
         </button>
       </div>
     </div>
   </div>
 );
 
-/* ── Expense drawer/form ── */
+/* ─── ExpenseDrawer ─── */
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 12,
+  fontWeight: 500,
+  color: 'var(--grey-700)',
+  marginBottom: 4,
+  fontFamily: FONT,
+};
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 12px',
+  borderRadius: 8,
+  border: '1.5px solid var(--grey-300)',
+  fontSize: 13,
+  color: 'var(--grey-900)',
+  fontFamily: FONT,
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
 const ExpenseDrawer: React.FC<{
   personalDataId: number;
   expense?: PersonalExpense;
@@ -166,8 +217,8 @@ const ExpenseDrawer: React.FC<{
     categoria: expense?.categoria || ('vivienda' as PersonalExpenseCategory),
     importe: expense?.importe || 0,
     frecuencia: expense?.frecuencia || ('mensual' as PersonalExpenseFrequency),
-    diaPago: expense?.diaPago || undefined as number | undefined,
-    accountId: expense?.accountId || undefined as number | undefined,
+    diaPago: expense?.diaPago as number | undefined,
+    accountId: expense?.accountId as number | undefined,
   });
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -181,7 +232,7 @@ const ExpenseDrawer: React.FC<{
 
   const categories = hasHijos
     ? CATEGORIAS_OPTS.map((opt) =>
-        opt.value === 'educacion' ? { ...opt, label: 'Hijos / Educaci\u00F3n' } : opt,
+        opt.value === 'educacion' ? { ...opt, label: 'Hijos / Educación' } : opt,
       )
     : CATEGORIAS_OPTS;
 
@@ -201,20 +252,8 @@ const ExpenseDrawer: React.FC<{
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        display: 'flex',
-        justifyContent: 'flex-end',
-      }}
-    >
-      <div
-        aria-hidden
-        onClick={onCancel}
-        style={{ position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.45)' }}
-      />
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+      <div aria-hidden onClick={onCancel} style={{ position: 'absolute', inset: 0, background: 'rgba(2,6,23,0.45)' }} />
       <div
         style={{
           position: 'relative',
@@ -239,146 +278,49 @@ const ExpenseDrawer: React.FC<{
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--grey-900)' }}>
             {expense ? 'Editar gasto' : 'Nuevo gasto'}
           </h3>
-          <button
-            onClick={onCancel}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 18,
-              color: 'var(--grey-400)',
-              cursor: 'pointer',
-            }}
-          >
+          <button onClick={onCancel} style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--grey-400)', cursor: 'pointer' }}>
             ×
           </button>
         </div>
-
         <form onSubmit={handleSubmit} style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Concepto */}
           <div>
             <label style={labelStyle}>Concepto</label>
-            <input
-              value={form.concepto}
-              onChange={(e) => setForm({ ...form, concepto: e.target.value })}
-              required
-              style={inputStyle}
-            />
+            <input value={form.concepto} onChange={(e) => setForm({ ...form, concepto: e.target.value })} required style={inputStyle} />
           </div>
-
-          {/* Categoria */}
           <div>
             <label style={labelStyle}>Categoría</label>
-            <select
-              value={form.categoria}
-              onChange={(e) => setForm({ ...form, categoria: e.target.value as PersonalExpenseCategory })}
-              style={inputStyle}
-            >
-              {categories.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
+            <select value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value as PersonalExpenseCategory })} style={inputStyle}>
+              {categories.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
-
-          {/* Importe */}
           <div>
             <label style={labelStyle}>Importe (€)</label>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              value={form.importe || ''}
-              onChange={(e) => setForm({ ...form, importe: parseFloat(e.target.value) || 0 })}
-              required
-              style={{ ...inputStyle, fontFamily: MONO, fontVariantNumeric: 'tabular-nums' }}
-            />
+            <input type="number" min={0} step={0.01} value={form.importe || ''} onChange={(e) => setForm({ ...form, importe: parseFloat(e.target.value) || 0 })} required style={{ ...inputStyle, fontFamily: MONO }} />
           </div>
-
-          {/* Frecuencia */}
           <div>
             <label style={labelStyle}>Frecuencia</label>
-            <select
-              value={form.frecuencia}
-              onChange={(e) => setForm({ ...form, frecuencia: e.target.value as PersonalExpenseFrequency })}
-              style={inputStyle}
-            >
-              {FRECUENCIA_OPTS.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
+            <select value={form.frecuencia} onChange={(e) => setForm({ ...form, frecuencia: e.target.value as PersonalExpenseFrequency })} style={inputStyle}>
+              {FRECUENCIA_OPTS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
             </select>
           </div>
-
-          {/* Dia de pago */}
           <div>
             <label style={labelStyle}>Día de pago (opcional)</label>
-            <input
-              type="number"
-              min={1}
-              max={31}
-              value={form.diaPago || ''}
-              onChange={(e) => setForm({ ...form, diaPago: parseInt(e.target.value) || undefined })}
-              style={inputStyle}
-            />
+            <input type="number" min={1} max={31} value={form.diaPago || ''} onChange={(e) => setForm({ ...form, diaPago: parseInt(e.target.value) || undefined })} style={inputStyle} />
           </div>
-
-          {/* Cuenta de cargo */}
           {accounts.length > 0 && (
             <div>
               <label style={labelStyle}>Cuenta de cargo</label>
-              <select
-                value={form.accountId || ''}
-                onChange={(e) => setForm({ ...form, accountId: e.target.value ? parseInt(e.target.value) : undefined })}
-                style={inputStyle}
-              >
+              <select value={form.accountId || ''} onChange={(e) => setForm({ ...form, accountId: e.target.value ? parseInt(e.target.value) : undefined })} style={inputStyle}>
                 <option value="">Sin asignar</option>
-                {accounts.map((a: any) => (
-                  <option key={a.id} value={a.id}>
-                    {a.alias || a.nombre || `Cuenta ${a.id}`}
-                  </option>
-                ))}
+                {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.alias || a.nombre || `Cuenta ${a.id}`}</option>)}
               </select>
             </div>
           )}
-
-          {/* Submit */}
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: '1.5px solid var(--grey-300)',
-                background: '#fff',
-                color: 'var(--grey-700)',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: FONT,
-              }}
-            >
+            <button type="button" onClick={onCancel} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid var(--grey-300)', background: '#fff', color: 'var(--grey-700)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT }}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                borderRadius: 8,
-                border: 'none',
-                background: canSubmit ? 'var(--navy-900, #042C5E)' : 'var(--grey-300)',
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: canSubmit ? 'pointer' : 'not-allowed',
-                fontFamily: FONT,
-              }}
-            >
+            <button type="submit" disabled={!canSubmit} style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: 'none', background: canSubmit ? 'var(--navy-900, #042C5E)' : 'var(--grey-300)', color: '#fff', fontSize: 13, fontWeight: 500, cursor: canSubmit ? 'pointer' : 'not-allowed', fontFamily: FONT }}>
               {expense ? 'Guardar' : 'Añadir'}
             </button>
           </div>
@@ -388,30 +330,123 @@ const ExpenseDrawer: React.FC<{
   );
 };
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 12,
-  fontWeight: 500,
-  color: 'var(--grey-700, #303A4C)',
+/* ─── Shared row button style ─── */
+const rbStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 30,
+  height: 30,
+  borderRadius: 7,
+  border: '1px solid var(--grey-200)',
+  background: 'var(--white, #fff)',
+  cursor: 'pointer',
+  color: 'var(--grey-400)',
+};
+
+/* ─── GastoRow inline component ─── */
+const GrowRow: React.FC<{
+  gasto: PersonalExpense;
+  accounts: Account[];
+  onEdit: (e: PersonalExpense) => void;
+  onDelete: (e: PersonalExpense) => void;
+}> = ({ gasto, accounts, onEdit, onDelete }) => {
+  const mensual = patronGastosPersonalesService.calcularImporteMensual(gasto);
+  const origen = (gasto as any).origen as string | undefined;
+
+  const cuentaNombre = (id: number) => {
+    const acc = accounts.find((a: any) => a.id === id);
+    return acc ? ((acc as any).alias || (acc as any).nombre || `Cuenta ${id}`) : `Cuenta ${id}`;
+  };
+
+  let metaParts: string[] = [CATEGORIA_LABEL[gasto.categoria] || capitalizar(gasto.categoria)];
+  if (gasto.frecuencia !== 'mensual') metaParts.push(FREQ_LABEL[gasto.frecuencia] || gasto.frecuencia);
+  if (gasto.diaPago) metaParts.push(`día ${gasto.diaPago}`);
+  if (gasto.accountId) metaParts.push(cuentaNombre(gasto.accountId));
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '11px 16px',
+        borderBottom: '1px solid var(--grey-50, #F8F9FA)',
+        fontFamily: FONT,
+      }}
+    >
+      {/* Color dot — 9×9px square */}
+      <div
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 2,
+          background: colorCategoria(gasto.categoria),
+          flexShrink: 0,
+        }}
+      />
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--grey-900)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {gasto.concepto}
+          {origen === 'perfil' && (
+            <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--teal-600)', background: 'var(--teal-100, #E6F7FA)', padding: '1px 5px', borderRadius: 3, marginLeft: 4 }}>
+              Perfil
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 1 }}>
+          {metaParts.join(' · ')}
+        </div>
+      </div>
+
+      {/* Importes */}
+      <div style={{ textAlign: 'right', marginRight: 4 }}>
+        <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600, color: 'var(--grey-900)' }}>
+          {fmt(Math.round(mensual))} €
+          <span style={{ fontSize: 10, color: 'var(--grey-400)', fontWeight: 400, marginLeft: 2 }}>/mes</span>
+        </div>
+        <div style={{ fontFamily: MONO, fontSize: 11, color: 'var(--grey-400)' }}>
+          {fmt(Math.round(mensual * 12))} € / año
+        </div>
+      </div>
+
+      {/* Botones siempre visibles */}
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
+        <button style={rbStyle} onClick={() => onEdit(gasto)}>
+          <Pencil size={13} />
+        </button>
+        <button style={rbStyle} onClick={() => onDelete(gasto)}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ─── Card container ─── */
+const cardStyle: React.CSSProperties = {
+  background: 'var(--white, #fff)',
+  borderRadius: 10,
+  border: '1px solid var(--grey-200)',
+  overflow: 'hidden',
   marginBottom: 4,
-  fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
 };
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 12px',
-  borderRadius: 8,
-  border: '1.5px solid var(--grey-300, #C8D0DC)',
-  fontSize: 13,
-  color: 'var(--grey-900, #1A2332)',
-  fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
-  outline: 'none',
-  boxSizing: 'border-box',
-};
+/* ─── Section header ─── */
+const SecHeader: React.FC<{ label: React.ReactNode; right?: React.ReactNode }> = ({ label, right }) => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, marginTop: 20 }}>
+    <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--grey-400)', display: 'flex', alignItems: 'center', gap: 6 }}>
+      {label}
+    </span>
+    {right}
+  </div>
+);
 
-/* ──────────────────────────────────────────────────────────── */
-/*  TabGastos — main component                                 */
-/* ──────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════ */
+/*  TabGastos                                                     */
+/* ══════════════════════════════════════════════════════════════ */
 
 interface Props {
   data: GestionPersonalData;
@@ -426,64 +461,57 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const [deletingExpense, setDeletingExpense] = useState<PersonalExpense | null>(null);
   const [localExpenses, setLocalExpenses] = useState(expenses);
   const [desviaciones, setDesviaciones] = useState<DesviacionResumen[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [descartados, setDescartados] = useState<Set<string>>(new Set());
 
-  // Keep local expenses in sync
-  useEffect(() => {
-    setLocalExpenses(expenses);
-  }, [expenses]);
+  useEffect(() => { setLocalExpenses(expenses); }, [expenses]);
 
-  // Fetch desviaciones (real vs estimated) for current year
   useEffect(() => {
     const year = new Date().getFullYear();
     if (perfil.id == null) return;
     gastosPersonalesRealService.getDesviaciones(perfil.id, year).then(setDesviaciones).catch(() => setDesviaciones([]));
   }, [perfil.id, expenses]);
 
+  useEffect(() => {
+    initDB().then((db) => db.getAll('accounts')).then((all) => {
+      setAccounts(all.filter((a: any) => a.activa && a.status !== 'DELETED'));
+    });
+  }, []);
+
   const hasHijos = (perfil.descendientes?.length ?? 0) > 0;
 
-  // Build suggested expenses
   const sugeridos = useMemo(() => {
     const result: Array<{ concepto: string; categoria: string; motivo: string }> = [];
     const existingLower = new Set(localExpenses.map((e) => e.concepto.toLowerCase()));
 
-    // Suministros base
     for (const s of SUMINISTROS_BASE) {
-      if (!existingLower.has(s.concepto.toLowerCase())) {
-        result.push({ concepto: s.concepto, categoria: 'vivienda', motivo: 'Suministro b\u00E1sico' });
-      }
+      if (!existingLower.has(s.concepto.toLowerCase()))
+        result.push({ concepto: s.concepto, categoria: 'vivienda', motivo: 'Suministro básico' });
     }
-
-    // Housing
     if (perfil.housingType === 'rent') {
       if (!existingLower.has('alquiler'))
         result.push({ concepto: 'Alquiler', categoria: 'vivienda', motivo: 'Perfil: vivienda en alquiler' });
       if (!existingLower.has('seguro hogar inquilino'))
         result.push({ concepto: 'Seguro hogar inquilino', categoria: 'seguros', motivo: 'Perfil: vivienda en alquiler' });
     }
-
-    // Vehicle
     if (!perfil.hasVehicle) {
       if (!existingLower.has('abono transporte'))
-        result.push({ concepto: 'Abono transporte', categoria: 'transporte', motivo: 'Perfil: sin veh\u00EDculo propio' });
+        result.push({ concepto: 'Abono transporte', categoria: 'transporte', motivo: 'Perfil: sin vehículo propio' });
     } else {
       if (!existingLower.has('gasolina'))
-        result.push({ concepto: 'Gasolina', categoria: 'transporte', motivo: 'Perfil: veh\u00EDculo propio' });
-      if (!existingLower.has('seguro veh\u00EDculo'))
-        result.push({ concepto: 'Seguro veh\u00EDculo', categoria: 'seguros', motivo: 'Perfil: veh\u00EDculo propio' });
+        result.push({ concepto: 'Gasolina', categoria: 'transporte', motivo: 'Perfil: vehículo propio' });
+      if (!existingLower.has('seguro vehículo'))
+        result.push({ concepto: 'Seguro vehículo', categoria: 'seguros', motivo: 'Perfil: vehículo propio' });
     }
-
-    // Hijos
     if (hasHijos) {
-      if (!existingLower.has('colegio / guarder\u00EDa') && !existingLower.has('colegio'))
-        result.push({ concepto: 'Colegio / guarder\u00EDa', categoria: 'educacion', motivo: `Perfil: ${perfil.descendientes!.length} hijos` });
+      if (!existingLower.has('colegio / guardería') && !existingLower.has('colegio'))
+        result.push({ concepto: 'Colegio / guardería', categoria: 'educacion', motivo: `Perfil: ${perfil.descendientes!.length} hijos` });
       if (!existingLower.has('actividades extraescolares'))
         result.push({ concepto: 'Actividades extraescolares', categoria: 'educacion', motivo: 'Perfil: hijos' });
     }
+    return result.filter((s) => !descartados.has(s.concepto));
+  }, [localExpenses, perfil, hasHijos, descartados]);
 
-    return result;
-  }, [localExpenses, perfil, hasHijos]);
-
-  // Category breakdown
   const catBreakdown = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of localExpenses) {
@@ -497,28 +525,20 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   }, [localExpenses]);
 
   const totalMensual = catBreakdown.reduce((s, c) => s + c.val, 0);
-  const maxCat = catBreakdown.length > 0 ? catBreakdown[0].val : 1;
 
-  // Neto anual for excedente panel — includes all income sources minus retenciones
   const calcNeto = useCallback(() => {
     let neto = 0;
-    // Nominas: bruto - retenciones
     for (const n of nominas) {
       const c = n.id != null ? nominaCalcs.get(n.id) : undefined;
-      if (c) {
-        neto += c.totalAnualNeto;
-      }
+      if (c) neto += c.totalAnualNeto;
     }
-    // Autonomos: use rendimientoNeto (facturación - gastos - cuotas)
     if (autonomos.length > 0) {
       const { rendimientoNeto } = autonomoService_calc(autonomos);
       neto += rendimientoNeto;
     }
-    // Pensiones
     for (const p of data.pensiones) {
       neto += p.pensionBrutaAnual * (1 - p.irpfPorcentaje / 100);
     }
-    // Otros ingresos
     const otrosActivos = data.otrosIngresos.filter((o) => o.activo);
     neto += otrosIngresosService.calculateAnnualIncome(otrosActivos);
     return neto;
@@ -533,20 +553,9 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const excedente = netoAnual - gastosAnual - financiacionAnual;
   const tasaAhorro = netoAnual > 0 ? Math.round((excedente / netoAnual) * 100) : 0;
 
-  // Handlers
-  const handleOpenNew = () => {
-    setEditingExpense(null);
-    setShowDrawer(true);
-  };
-
-  const handleEdit = (e: PersonalExpense) => {
-    setEditingExpense(e);
-    setShowDrawer(true);
-  };
-
-  const handleDelete = (e: PersonalExpense) => {
-    setDeletingExpense(e);
-  };
+  const handleOpenNew = () => { setEditingExpense(null); setShowDrawer(true); };
+  const handleEdit = (e: PersonalExpense) => { setEditingExpense(e); setShowDrawer(true); };
+  const handleDelete = (e: PersonalExpense) => { setDeletingExpense(e); };
 
   const confirmDelete = async () => {
     if (deletingExpense?.id) {
@@ -556,9 +565,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
     }
   };
 
-  const handleSave = async (
-    formData: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'> & { id?: number },
-  ) => {
+  const handleSave = async (formData: Omit<PersonalExpense, 'id' | 'createdAt' | 'updatedAt'> & { id?: number }) => {
     const { id, ...rest } = formData;
     if (id) {
       await patronGastosPersonalesService.updatePatron(id, rest);
@@ -573,7 +580,6 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const handleAddSuggested = (concepto: string, categoria: string) => {
     setEditingExpense(null);
     setShowDrawer(true);
-    // Pre-fill via the drawer — we use a workaround by setting a pseudo expense
     setEditingExpense({
       personalDataId: perfil.id!,
       concepto,
@@ -586,374 +592,187 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
     } as PersonalExpense);
   };
 
-  // Group: normal expenses, hijos expenses
-  const normalExpenses = localExpenses.filter(
-    (e) => e.activo && e.categoria !== 'educacion',
-  );
-  const hijosExpenses = localExpenses.filter(
-    (e) => e.activo && e.categoria === 'educacion',
-  );
-  const totalHijos = hijosExpenses.reduce(
-    (s, e) => s + patronGastosPersonalesService.calcularImporteMensual(e),
-    0,
-  );
+  const normalExpenses = localExpenses.filter((e) => e.activo && (hasHijos ? e.categoria !== 'educacion' : true));
+  const hijosExpenses = localExpenses.filter((e) => e.activo && e.categoria === 'educacion');
+  const totalHijos = hijosExpenses.reduce((s, e) => s + patronGastosPersonalesService.calcularImporteMensual(e), 0);
 
   return (
-    <div style={{ display: 'flex', gap: 32, fontFamily: FONT }}>
-      {/* ── Main content ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Add button */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <button
-            onClick={handleOpenNew}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: 'none',
-              background: 'var(--navy-900, #042C5E)',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontFamily: FONT,
-            }}
-          >
-            <Plus size={16} />
-            Añadir gasto
-          </button>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 16, fontFamily: FONT }}>
+
+      {/* ── Columna izquierda ── */}
+      <div>
+        {/* Gastos del hogar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--grey-400)' }}>
+            Gastos del hogar
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: 'var(--grey-500)' }}>
+              Total:{' '}
+              <strong style={{ fontFamily: MONO, color: 'var(--grey-900)' }}>
+                {fmt(totalMensual)} €/mes
+              </strong>
+            </span>
+            <button
+              onClick={handleOpenNew}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 8, border: 'none',
+                background: 'var(--navy-900, #042C5E)', color: '#fff',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+              }}
+            >
+              <Plus size={12} /> Añadir gasto
+            </button>
+          </div>
         </div>
 
-        {/* Normal expenses */}
-        <div
-          style={{
-            background: 'var(--white)',
-            borderRadius: 10,
-            border: '1px solid var(--grey-200, #DDE3EC)',
-            padding: '4px 20px',
-            marginBottom: 16,
-          }}
-        >
+        <div style={cardStyle}>
           {normalExpenses.length === 0 ? (
-            <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>
               Sin gastos configurados. Añade tu primer gasto.
             </div>
           ) : (
             normalExpenses.map((e) => (
-              <GastoRow key={e.id || e.concepto} expense={e} onEdit={handleEdit} onDelete={handleDelete} />
+              <GrowRow key={e.id || e.concepto} gasto={e} accounts={accounts} onEdit={handleEdit} onDelete={handleDelete} />
             ))
           )}
         </div>
 
-        {/* Hijos section */}
+        {/* Gastos de hijos */}
         {hasHijos && (
-          <div style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 0',
-                borderBottom: '1px solid var(--grey-200)',
-              }}
-            >
-              <Shield size={14} color="var(--navy-700, #142C50)" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--grey-900)' }}>
-                Gastos de hijos · {perfil.descendientes!.length} descendiente{perfil.descendientes!.length > 1 ? 's' : ''}
-              </span>
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  fontFamily: MONO,
-                  fontVariantNumeric: 'tabular-nums',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--grey-900)',
-                }}
-              >
-                {fmtValue(Math.round(totalHijos))}/mes
-              </span>
-              <button
-                onClick={() => handleAddSuggested('', 'educacion')}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '4px 10px',
-                  borderRadius: 6,
-                  border: '1px solid var(--grey-300)',
-                  background: '#fff',
-                  fontSize: 12,
-                  color: 'var(--grey-700)',
-                  cursor: 'pointer',
-                  fontFamily: FONT,
-                }}
-              >
-                Añadir
-              </button>
-            </div>
-            <div
-              style={{
-                background: 'var(--white)',
-                borderRadius: 10,
-                border: '1px solid var(--grey-200)',
-                padding: '4px 20px',
-                marginTop: 8,
-              }}
-            >
+          <>
+            <SecHeader
+              label={<><Shield size={14} /> Gastos de hijos · {perfil.descendientes!.length} descendiente{perfil.descendientes!.length > 1 ? 's' : ''}</>}
+              right={
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <strong style={{ fontFamily: MONO, fontSize: 12, color: 'var(--grey-900)' }}>
+                    {fmt(Math.round(totalHijos))} €/mes
+                  </strong>
+                  <button
+                    onClick={() => handleAddSuggested('', 'educacion')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px', borderRadius: 7, border: 'none', background: 'var(--navy-900, #042C5E)', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: FONT }}
+                  >
+                    <Plus size={12} /> Añadir
+                  </button>
+                </div>
+              }
+            />
+            <div style={cardStyle}>
               {hijosExpenses.length === 0 ? (
-                <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>
+                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>
                   Sin gastos de hijos configurados.
                 </div>
               ) : (
                 hijosExpenses.map((e) => (
-                  <GastoRow key={e.id || e.concepto} expense={e} onEdit={handleEdit} onDelete={handleDelete} />
+                  <GrowRow key={e.id || e.concepto} gasto={e} accounts={accounts} onEdit={handleEdit} onDelete={handleDelete} />
                 ))
               )}
             </div>
-          </div>
+          </>
         )}
 
-        {/* Suggested by profile */}
+        {/* Sugeridos por perfil */}
         {sugeridos.length > 0 && (
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Sugeridos por perfil
-            </div>
-            <div
-              style={{
-                background: 'var(--grey-50, #F8F9FA)',
-                borderRadius: 10,
-                border: '1px dashed var(--grey-300, #C8D0DC)',
-                padding: '8px 20px',
-              }}
-            >
+          <>
+            <SecHeader label="Sugeridos por perfil" />
+            <div style={{ ...cardStyle, background: 'var(--navy-50, #EEF3FA)' }}>
               {sugeridos.map((s) => (
                 <div
                   key={s.concepto}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '8px 0',
-                    borderBottom: '1px solid var(--grey-100)',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '11px 16px',
+                    borderBottom: '1px solid var(--grey-50, #F8F9FA)',
+                    background: 'var(--navy-50, #EEF3FA)',
                   }}
                 >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: 'var(--grey-700)' }}>{s.concepto}</div>
+                  {/* Dashed dot */}
+                  <div style={{ width: 9, height: 9, borderRadius: 2, border: '1.5px dashed var(--grey-300)', flexShrink: 0 }} />
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--grey-500)' }}>{s.concepto}</div>
                     <div style={{ fontSize: 11, color: 'var(--grey-400)' }}>{s.motivo}</div>
                   </div>
-                  <button
-                    onClick={() => handleAddSuggested(s.concepto, s.categoria)}
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: 6,
-                      border: '1px solid var(--teal-600)',
-                      background: 'var(--teal-100, #E6F7FA)',
-                      color: 'var(--teal-600)',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      fontFamily: FONT,
-                    }}
-                  >
-                    + Añadir
-                  </button>
+
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
+                    <button
+                      onClick={() => handleAddSuggested(s.concepto, s.categoria)}
+                      style={{ ...rbStyle, width: 'auto', padding: '0 10px', gap: 4, fontSize: 12, fontWeight: 500, color: 'var(--navy-900, #042C5E)', borderColor: 'var(--navy-900, #042C5E)' }}
+                    >
+                      <Plus size={12} /> Añadir
+                    </button>
+                    <button style={rbStyle} onClick={() => setDescartados((prev) => new Set([...prev, s.concepto]))}>
+                      <X size={13} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
       </div>
 
-      {/* ── Panel lateral ── */}
-      <div style={{ width: 280, flexShrink: 0 }}>
-        {/* Categories breakdown */}
-        <div
-          style={{
-            background: 'var(--white)',
-            borderRadius: 10,
-            border: '1px solid var(--grey-200)',
-            padding: 20,
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      {/* ── Panel derecho ── */}
+      <div>
+        {/* Por categoría */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--grey-400)' }}>
             Por categoría
-          </div>
-          {catBreakdown.map((c) => (
-            <div key={c.cat} style={{ marginBottom: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--grey-700)' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: CAT_COLORS[c.cat] || 'var(--grey-400)',
-                    }}
-                  />
-                  {CATEGORIA_LABEL[c.cat as PersonalExpenseCategory] || c.cat}
+          </span>
+        </div>
+
+        <div style={{ ...cardStyle, padding: '14px 16px', marginBottom: 14 }}>
+          {catBreakdown.map(({ cat, val }) => (
+            <div key={cat} style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: colorCategoria(cat), display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ color: 'var(--grey-700)' }}>{CATEGORIA_LABEL[cat] || capitalizar(cat)}</span>
                 </span>
-                <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--grey-900)' }}>
-                  {fmt(c.val)} €
+                <span style={{ fontFamily: MONO, fontWeight: 600, color: 'var(--grey-900)' }}>
+                  {fmt(val)} €
                 </span>
               </div>
-              <div
-                style={{
-                  height: 4,
-                  borderRadius: 2,
-                  background: 'var(--grey-100)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    borderRadius: 2,
-                    width: `${Math.round((c.val / maxCat) * 100)}%`,
-                    background: CAT_COLORS[c.cat] || 'var(--grey-400)',
-                  }}
-                />
+              <div style={{ height: 3, background: 'var(--grey-100)', borderRadius: 2 }}>
+                <div style={{ height: 3, background: colorCategoria(cat), borderRadius: 2, width: `${totalMensual > 0 ? Math.round((val / totalMensual) * 100) : 0}%` }} />
               </div>
             </div>
           ))}
-          <div
-            style={{
-              borderTop: '1px solid var(--grey-200)',
-              paddingTop: 10,
-              marginTop: 10,
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
-            <span style={{ color: 'var(--grey-700)' }}>Total / mes</span>
-            <span style={{ fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--grey-900)' }}>
+
+          <div style={{ borderTop: '1px solid var(--grey-100)', paddingTop: 10, display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-900)' }}>Total / mes</span>
+            <span style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, color: 'var(--navy-900, #042C5E)' }}>
               {fmt(totalMensual)} €
             </span>
           </div>
         </div>
 
-        {/* Real vs Presupuesto panel */}
-        {desviaciones.length > 0 && (
-          <div
-            style={{
-              background: 'var(--white)',
-              borderRadius: 10,
-              border: '1px solid var(--grey-200)',
-              padding: 20,
-              marginBottom: 16,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Real vs Presupuesto
-            </div>
-            {desviaciones.map((d) => {
-              const isOver = d.desviacion > 0;
-              return (
-                <div key={d.patronId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
-                  <span style={{ color: 'var(--grey-700)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {d.concepto}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: MONO,
-                      fontVariantNumeric: 'tabular-nums',
-                      color: isOver ? '#DC2626' : '#16A34A',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {isOver ? '+' : ''}{fmt(Math.round(d.desviacion))} {'\u20AC'}
-                  </span>
-                </div>
-              );
-            })}
-            <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 4 }}>
-              Datos confirmados en Tesorería · {new Date().getFullYear()}
-            </div>
-          </div>
-        )}
-
-        {/* Excedente panel */}
-        <div
-          style={{
-            background: 'var(--white)',
-            borderRadius: 10,
-            border: '1px solid var(--grey-200)',
-            padding: 20,
-          }}
-        >
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {/* Impacto en excedente */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--grey-400)' }}>
             Impacto en excedente
+          </span>
+        </div>
+
+        <div style={{ ...cardStyle, padding: '14px 16px' }}>
+          <FilaImpacto label="Ingresos netos" valor={netoAnual} />
+          <FilaImpacto label="Gastos de vida" valor={gastosAnual} negativo />
+          <FilaImpacto label="Financiación personal" valor={financiacionAnual} negativo teal />
+
+          <div style={{ height: 1, background: 'var(--grey-200)', margin: '8px 0' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, marginBottom: 4 }}>
+            <span style={{ fontWeight: 600, color: 'var(--grey-900)' }}>Excedente</span>
+            <span style={{ fontFamily: MONO, fontWeight: 700, color: 'var(--navy-900, #042C5E)' }}>
+              {excedente !== 0 ? `${excedente > 0 ? '+' : '−'}${fmt(Math.abs(excedente))} €` : '—'}
+            </span>
           </div>
-          {[
-            { label: 'Ingresos netos', value: netoAnual, color: 'var(--grey-900)' },
-            { label: 'Gastos de vida', value: -gastosAnual, color: 'var(--grey-900)' },
-            {
-              label: 'Financiaci\u00F3n personal',
-              value: -financiacionAnual,
-              color: 'var(--teal-600, #1DA0BA)',
-            },
-          ].map((row) => (
-            <div
-              key={row.label}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: 12,
-                marginBottom: 6,
-              }}
-            >
-              <span style={{ color: 'var(--grey-700)' }}>{row.label}</span>
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontVariantNumeric: 'tabular-nums',
-                  color: row.color,
-                }}
-              >
-                {row.value !== 0
-                  ? `${row.value < 0 ? '\u2212' : ''}${fmt(Math.abs(row.value))} \u20AC`
-                  : '\u2014'}
-              </span>
-            </div>
-          ))}
-          <div
-            style={{
-              borderTop: '1px solid var(--grey-200)',
-              paddingTop: 10,
-              marginTop: 8,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
-              <span style={{ color: 'var(--grey-700)' }}>Excedente</span>
-              <span
-                style={{
-                  fontFamily: MONO,
-                  fontVariantNumeric: 'tabular-nums',
-                  color: 'var(--grey-900)',
-                }}
-              >
-                {excedente !== 0
-                  ? `${excedente > 0 ? '+' : '\u2212'}${fmt(Math.abs(excedente))} \u20AC`
-                  : '\u2014'}
-              </span>
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'var(--teal-600, #1DA0BA)',
-                marginTop: 4,
-                fontWeight: 500,
-              }}
-            >
+          {netoAnual > 0 && (
+            <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--teal-600)' }}>
               {tasaAhorro}% tasa de ahorro
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -964,10 +783,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
           expense={editingExpense || undefined}
           hasHijos={hasHijos}
           onSave={handleSave}
-          onCancel={() => {
-            setShowDrawer(false);
-            setEditingExpense(null);
-          }}
+          onCancel={() => { setShowDrawer(false); setEditingExpense(null); }}
         />
       )}
 
@@ -983,7 +799,6 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   );
 };
 
-/* Helper re-export for autonomo calculations */
 function autonomoService_calc(autonomos: GestionPersonalData['autonomos']) {
   return autonomoServiceInstance.calculateEstimatedAnnualForAutonomos(autonomos);
 }
