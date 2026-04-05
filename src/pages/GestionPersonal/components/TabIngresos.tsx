@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Heart, PlusCircle, Wallet } from 'lucide-react';
 import SourceCard, { BadgeEmpty, BadgePareja } from './SourceCard';
 import { autonomoService } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { pensionService } from '../../../services/pensionService';
-import NominaForm from '../../../components/personal/nomina/NominaForm';
 
 import type { GestionPersonalData } from '../GestionPersonalPage';
 import type { Nomina } from '../../../types/personal';
@@ -78,9 +77,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   const { perfil, nominas, autonomos, pensiones, otrosIngresos, nominaCalcs } = data;
   const navigate = useNavigate();
 
-  const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
-  const [showNominaForm, setShowNominaForm] = useState(false);
-
   const hasPareja =
     perfil.situacionPersonal === 'casado' || perfil.situacionPersonal === 'pareja-hecho';
 
@@ -99,19 +95,8 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   const otrosTitular = otrosIngresos.filter((o) => o.titularidad === 'yo' || o.titularidad === 'ambos');
   const otrosPareja = otrosIngresos.filter((o) => o.titularidad === 'pareja' || o.titularidad === 'ambos');
 
-  const openNominaEdit = (nom: Nomina) => {
-    setEditingNomina(nom);
-    setShowNominaForm(true);
-  };
-
   const openNominaNew = (titular: 'yo' | 'pareja') => {
     navigate(`/gestion/personal/nueva-nomina?titular=${titular}`);
-  };
-
-  const handleNominaSaved = (_nomina?: Nomina) => {
-    setShowNominaForm(false);
-    setEditingNomina(null);
-    onDataChange();
   };
 
   // Nomina card builder
@@ -135,7 +120,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : null}
-        action={<ActionBtn label="Editar nómina" onClick={() => openNominaEdit(nom)} />}
+        action={<ActionBtn label="Editar nómina" onClick={() => navigate(`/gestion/personal/nueva-nomina?id=${nom.id}&titular=${nom.titular}`)} />}
       />
     );
   };
@@ -162,7 +147,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : null}
-        action={<ActionBtn label="Gestionar actividad" onClick={() => navigate('/personal/supervision')} />}
+        action={<ActionBtn label="Gestionar actividad" onClick={() => navigate(`/gestion/personal/nuevo-autonomo?id=${auto.id}&titular=${isPareja ? 'pareja' : 'yo'}`)} />}
       />
     );
   };
@@ -273,17 +258,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
   return (
     <div style={{ fontFamily: FONT }}>
-      {/* ── NominaForm modal (edit only) ── */}
-      <NominaForm
-        isOpen={showNominaForm}
-        onClose={() => {
-          setShowNominaForm(false);
-          setEditingNomina(null);
-        }}
-        nomina={editingNomina}
-        onSaved={() => handleNominaSaved()}
-      />
-
       {/* ── Titular sections ── */}
       {hasPareja && (
         <TitularLabel label={`${perfil.nombre} ${perfil.apellidos} \u00B7 Titular`} />
@@ -298,7 +272,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                 <SourceCard
                   bandColor="grey"
                   icon={<Briefcase size={16} color="var(--grey-400)" />}
-                  iconBg="var(--grey-100, #EEF1F5)"
                   name="Nómina"
                   description="Sin configurar"
                   kpis={[]}

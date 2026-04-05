@@ -303,15 +303,36 @@ const OtrosIngresosWizard: React.FC = () => {
                 {cfg.hasFrecuencia && (
                   <div>
                     <label style={labelSt}>Frecuencia</label>
-                    <select value={modal.frecuencia}
-                      onChange={e => setModal(m => m ? { ...m, frecuencia: e.target.value as ModalState['frecuencia'] } : m)}
-                      style={inputSt}>
-                      <option value="mensual">Mensual</option>
-                      <option value="trimestral">Trimestral</option>
-                      <option value="semestral">Semestral</option>
-                      <option value="anual">Anual</option>
-                      <option value="unico">Pago único</option>
-                    </select>
+                    <div style={{ display: 'flex', gap: 0, borderRadius: 8, overflow: 'hidden', border: '1.5px solid var(--grey-300, #C8D0DC)' }}>
+                      {([
+                        { value: 'mensual', label: 'Mensual' },
+                        { value: 'trimestral', label: 'Trimestral' },
+                        { value: 'semestral', label: 'Semestral' },
+                        { value: 'anual', label: 'Anual' },
+                        { value: 'unico', label: 'Único' },
+                      ] as const).map(({ value, label }, i, arr) => (
+                        <button
+                          key={value}
+                          onClick={() => setModal(m => m ? { ...m, frecuencia: value } : m)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            border: 'none',
+                            borderLeft: i > 0 ? '1px solid var(--grey-300, #C8D0DC)' : 'none',
+                            background: modal.frecuencia === value ? 'var(--navy-900, #042C5E)' : '#fff',
+                            color: modal.frecuencia === value ? '#fff' : 'var(--grey-700, #303A4C)',
+                            fontSize: 12,
+                            fontWeight: modal.frecuencia === value ? 600 : 400,
+                            fontFamily: FONT,
+                            cursor: 'pointer',
+                            transition: 'background 100ms ease, color 100ms ease',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
