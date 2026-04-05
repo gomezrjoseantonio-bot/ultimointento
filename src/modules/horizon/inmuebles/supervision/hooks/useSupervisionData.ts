@@ -29,11 +29,11 @@ export interface InmuebleSupervision {
   precioCompra: number;
   gastosCompra: number;       // notaría + registro + gestoría + inmobiliaria + PSI + otros
   impuestosCompra: number;    // ITP o IVA+AJD
-  mejorasCapex: number;       // tipo='mejora' | 'ampliacion'
+  mejoras: number;             // tipo='mejora' | 'ampliacion'
   reparaciones: number;       // tipo='reparacion'
   mobiliario: number;         // coste total mobiliario
 
-  costeAdquisicion: number;   // precioCompra + impuestos + gastos + mejoras CAPEX
+  costeAdquisicion: number;   // precioCompra + impuestos + gastos + mejoras
   inversionTotal: number;     // costeAdquisicion + reparaciones + mobiliario
 
   valorActual: number;        // última valoración
@@ -178,7 +178,7 @@ export function useSupervisionData(): SupervisionData {
           getMobiliarioPorInmueble(propId),
         ]);
 
-        // Mejoras / CAPEX / Reparaciones
+        // Mejoras / Reparaciones
         const mejorasCapex = mejoras
           .filter((m) => m.tipo !== 'reparacion')
           .reduce((s, m) => s + m.importe, 0);
@@ -283,7 +283,7 @@ export function useSupervisionData(): SupervisionData {
           precioCompra,
           gastosCompra: Math.round(gastosCompra * 100) / 100,
           impuestosCompra: Math.round(impuestosCompra * 100) / 100,
-          mejorasCapex: Math.round(mejorasCapex * 100) / 100,
+          mejoras: Math.round(mejorasCapex * 100) / 100,
           reparaciones: Math.round(reparaciones * 100) / 100,
           mobiliario: Math.round(mobiliarioTotal * 100) / 100,
           costeAdquisicion: Math.round(costeAdquisicion * 100) / 100,

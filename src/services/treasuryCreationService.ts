@@ -1,4 +1,4 @@
-import { initDB, Contract, Ingreso, Gasto, CAPEX, Document, type GastoCategoria } from './db';
+import { initDB, Contract, Ingreso, Gasto, Document, type GastoCategoria } from './db';
 import { isCapexType, AEAT_CLASSIFICATION_MAP } from './aeatClassificationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ function mapBoxToCategoria(box: string): GastoCategoria {
  * Handles automatic creation of Treasury records from various sources:
  * - Contracts → Income (Ingresos)
  * - Payroll → Income (Ingresos)  
- * - OCR Documents → Expenses/CAPEX/Income routing
+ * - OCR Documents → Expenses/Mejoras/Income routing
  */
 
 // Utility function to get counterparty from document metadata with backward compatibility
@@ -130,7 +130,7 @@ export const generateIncomeFromPayroll = async (
 
 // OCR Document Routing to Treasury
 export const routeOCRDocumentToTreasury = async (document: Document): Promise<{
-  type: 'ingreso' | 'gasto' | 'capex' | 'none';
+  type: 'ingreso' | 'gasto' | 'mejora' | 'none';
   recordId?: number;
   reason: string;
 }> => {
@@ -147,13 +147,13 @@ export const routeOCRDocumentToTreasury = async (document: Document): Promise<{
     }
 
     // Route based on document type and AEAT classification
-    if (tipo === 'CAPEX' || (aeatClassification?.fiscalType && isCapexType(aeatClassification.fiscalType))) {
-      // Route to CAPEX
-      const recordId = await createCAPEXFromDocument(document);
+    if (tipo === 'Mejora' || (aeatClassification?.fiscalType && isCapexType(aeatClassification.fiscalType))) {
+      // Route to mejora — treat as gasto via mejorasInmueble
+      const recordId = await createGastoFromDocument(document);
       return {
-        type: 'capex',
+        type: 'mejora',
         recordId,
-        reason: 'Document classified as CAPEX based on type or AEAT classification'
+        reason: 'Document classified as mejora based on type or AEAT classification'
       };
     }
 
@@ -284,45 +284,9 @@ const createGastoFromDocument = async (document: Document): Promise<number> => {
   return gastoId as number;
 };
 
-// Create CAPEX from Document
-const createCAPEXFromDocument = async (document: Document): Promise<number> => {
-  const db = await initDB();
-  const { metadata } = document;
-  const { financialData, aeatClassification } = metadata;
-
-  // CAPEX must be associated with a property
-  if (!metadata.entityId || metadata.entityType !== 'property') {
-    throw new Error('CAPEX documents must be associated with a property');
-  }
-
-  // Determine CAPEX type based on classification
-  let tipo: 'mejora' | 'ampliacion' | 'mobiliario' = 'mejora';
-  if (aeatClassification?.fiscalType === 'amortizacion-muebles') {
-    tipo = 'mobiliario';
-  } else if (aeatClassification?.fiscalType === 'capex-mejora-ampliacion') {
-    tipo = 'ampliacion';
-  }
-
-  const capex: Omit<CAPEX, 'id'> = {
-    inmueble_id: metadata.entityId,
-    contraparte: getCounterpartyFromMetadata(metadata),
-    fecha_emision: financialData?.issueDate || new Date().toISOString().split('T')[0],
-    total: financialData?.amount || 0,
-    tipo,
-    anos_amortizacion: tipo === 'mobiliario' ? 10 : 15, // Default amortization years
-    estado: 'completo',
-    source_doc_id: document.id!,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  const capexId = await db.add('capex', capex);
-  return capexId as number;
-};
-
 // Reconciliation with Movements
 export const reconcileTreasuryRecord = async (
-  recordType: 'ingreso' | 'gasto' | 'capex',
+  recordType: 'ingreso' | 'gasto' | 'mejora',
   recordId: number,
   movementId: number
 ): Promise<void> => {
@@ -343,15 +307,8 @@ export const reconcileTreasuryRecord = async (
         movimientoId: String(movementId),
         estado: 'confirmado',
       });
-    } else if (recordType === 'capex') {
-      const capex = await db.get('capex', recordId);
-      if (capex) {
-        capex.movement_id = movementId;
-        capex.estado = 'pagado';
-        capex.updatedAt = new Date().toISOString();
-        await db.put('capex', capex);
-      }
     }
+    // mejora reconciliation is handled via mejorasInmueble service
 
     // Update the Movement with reconciliation info
     const movement = await db.get('movements', movementId);
@@ -376,7 +333,7 @@ export const reconcileTreasuryRecord = async (
 export const findReconciliationMatches = async (): Promise<{
   movementId: number;
   potentialMatches: Array<{
-    type: 'ingreso' | 'gasto' | 'capex';
+    type: 'ingreso' | 'gasto' | 'mejora';
     id: number;
     confidence: number;
     reason: string;
@@ -393,11 +350,11 @@ export const findReconciliationMatches = async (): Promise<{
     );
 
     // Get unreconciled treasury records
-    const [ingresos, allGastosInmueble, capex] = await Promise.all([
+    const [ingresos, allGastosInmueble] = await Promise.all([
       db.getAll('ingresos'),
       gastosInmuebleService.getAll(),
-      db.getAll('capex')
     ]);
+    const mejoras: any[] = []; // mejoras loaded from mejorasInmueble if needed
     // Map gastosInmueble to Gasto-like shape for reconciliation
     const gastos = allGastosInmueble.map(g => ({
       id: g.id, contraparte_nombre: g.proveedorNombre || '', total: g.importe,
@@ -408,7 +365,7 @@ export const findReconciliationMatches = async (): Promise<{
 
     const unreconciledIngresos = ingresos.filter(i => !i.movement_id);
     const unreconciledGastos = gastos.filter(g => !g.movement_id);
-    const unreconciledCapex = capex.filter(c => !c.movement_id);
+    const unreconciledMejoras = mejoras.filter(c => !c.movement_id);
 
     // For each unreconciled movement, find potential matches
     for (const movement of unreconciledMovements) {
@@ -443,17 +400,7 @@ export const findReconciliationMatches = async (): Promise<{
           }
         }
 
-        for (const capexRecord of unreconciledCapex) {
-          const confidence = calculateMatchConfidence(movement, capexRecord, 'capex');
-          if (confidence > 0.5) {
-            potentialMatches.push({
-              type: 'capex',
-              id: capexRecord.id!,
-              confidence,
-              reason: getMatchReason(movement, capexRecord, 'capex')
-            });
-          }
-        }
+        // mejoras reconciliation handled via mejorasInmueble service
       }
 
       if (potentialMatches.length > 0) {
@@ -473,7 +420,7 @@ export const findReconciliationMatches = async (): Promise<{
 
 // Calculate match confidence between movement and treasury record
 // Enhanced with AEAT criteria: ±0.50€, -10/+45 days, provider≈match
-const calculateMatchConfidence = (movement: any, record: any, type: 'ingreso' | 'gasto' | 'capex'): number => {
+const calculateMatchConfidence = (movement: any, record: any, type: string): number => {
   let confidence = 0;
   let autoReconcile = true; // Track if meets auto-reconciliation criteria
 
@@ -617,7 +564,7 @@ const levenshteinDistance = (str1: string, str2: string): number => {
 };
 
 // Generate match reason description with AEAT criteria details
-const getMatchReason = (movement: any, record: any, type: 'ingreso' | 'gasto' | 'capex'): string => {
+const getMatchReason = (movement: any, record: any, type: string): string => {
   const reasons: string[] = [];
   
   const movementAmount = Math.abs(movement.amount);
@@ -681,7 +628,7 @@ export const performAutoReconciliation = async (): Promise<{
   reconciled: number;
   details: Array<{
     movementId: number;
-    recordType: 'ingreso' | 'gasto' | 'capex';
+    recordType: 'ingreso' | 'gasto' | 'mejora';
     recordId: number;
     confidence: number;
     reason: string;
@@ -722,7 +669,7 @@ export const performAutoReconciliation = async (): Promise<{
  * Mark treasury record as paid without bank statement (cash/card payment)
  */
 export const markAsPaidWithoutStatement = async (
-  recordType: 'ingreso' | 'gasto' | 'capex',
+  recordType: 'ingreso' | 'gasto' | 'mejora',
   recordId: number,
   paymentMethod: 'Efectivo' | 'Tarjeta' | 'Otros',
   paymentDate: string,
@@ -744,17 +691,9 @@ export const markAsPaidWithoutStatement = async (
         estado: 'confirmado',
         movimientoId: '-1', // Special ID to indicate paid without statement
       });
-    } else if (recordType === 'capex') {
-      const capex = await db.get('capex', recordId);
-      if (capex) {
-        capex.estado = 'completo';
-        capex.movement_id = -1; // Special ID to indicate paid without statement
-        capex.metodo_pago = paymentMethod;
-        capex.fecha_pago_efectivo = paymentDate;
-        capex.notas_pago = notes;
-        capex.updatedAt = new Date().toISOString();
-        await db.put('capex', capex);
-      }
+    } else if (recordType === 'mejora') {
+      // mejora payment is handled via mejorasInmueble service
+      console.warn('[Treasury] markAsPaidWithoutStatement: mejora payment handled via mejorasInmueble, skipping', recordId);
     }
 
     toast.success(`Marcado como pagado ${paymentMethod.toLowerCase()}`);

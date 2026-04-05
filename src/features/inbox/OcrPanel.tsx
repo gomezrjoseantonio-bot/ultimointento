@@ -33,7 +33,7 @@ import toast from 'react-hot-toast';
 interface OcrPanelProps {
   document: any; // Document with OCR result
   onApplyToExpense?: (ocrData: any) => void;
-  onApplyToCAPEX?: (ocrData: any) => void;
+  onApplyToMejora?: (ocrData: any) => void;
   onUpdate?: (documentId: number, updates: any) => void;
   setShowInvoiceBreakdown?: (show: boolean) => void; // H-OCR-REFORM: For invoice breakdown modal
 }
@@ -164,7 +164,7 @@ const selectBestPage = (ocrResult: OCRResult): number => {
   return bestPageIndex + 1; // Convert to 1-based indexing for UI
 };
 
-const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToCAPEX, onUpdate, setShowInvoiceBreakdown }) => {
+const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApplyToMejora, onUpdate, setShowInvoiceBreakdown }) => {
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [editableFields, setEditableFields] = useState<Record<string, string>>({});
   const [editableServiceFields, setEditableServiceFields] = useState<Record<string, string>>({});
@@ -908,7 +908,7 @@ const OcrPanel: React.FC<OcrPanelProps> = ({ document, onApplyToExpense, onApply
                     <span>Aplicando...</span>
                   </div>
                 ) : (
-                  'Aplicar a gasto/CAPEX'
+                  'Aplicar a gasto/mejora'
                 )}
               </button>
             </div>

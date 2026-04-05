@@ -32,7 +32,7 @@ const ResumenTab: React.FC = () => {
   const [summaries, setSummaries] = useState<PropertySummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const availableYears = [2023, 2024, 2025]; // Available years for CAPEX summary
+  const availableYears = [2023, 2024, 2025]; // Available years for summary
 
   const loadData = useCallback(async () => {
     try {
@@ -130,7 +130,7 @@ const ResumenTab: React.FC = () => {
         'Tributos',
         'Seguros',
         'Servicios Personales',
-        'CAPEX Mejora',
+        'Mejora',
         'Mobiliario (10a)',
         'Total Gastos',
         'Ingresos Íntegros',
@@ -260,7 +260,7 @@ const PropertySummaryCard: React.FC<PropertySummaryCardProps> = ({ summary, sele
     { label: 'Tributos', amount: expenses.tributos, color: 'bg-warning-100 border-yellow-200' },
     { label: 'Seguros', amount: expenses.seguros, color: 'bg-primary-100 border-primary-200' },
     { label: 'Servicios personales', amount: expenses.serviciosPersonales, color: 'bg-teal-100 border-teal-200' },
-    { label: 'CAPEX Mejora', amount: expenses.capexMejora, color: 'bg-warning-100 border-orange-200' },
+    { label: 'Mejora', amount: expenses.capexMejora, color: 'bg-warning-100 border-orange-200' },
     { label: 'Mobiliario (10a)', amount: expenses.mobiliario, color: 'bg-pink-100 border-pink-200' }
   ];
 

@@ -2,7 +2,7 @@
 export interface AutoSaveConfig {
   enabled: boolean;
   destinations: {
-    facturas: 'tesoreria-gastos' | 'tesoreria-capex';
+    facturas: 'tesoreria-gastos' | 'tesoreria-mejoras';
     extractos: 'tesoreria-movimientos';
     contratos: 'horizon-contratos';
     otros: 'archivo-general';
@@ -33,7 +33,7 @@ export interface AutoSaveConfig {
   };
   // H8: New settings for auto-OCR behavior
   autoOcrEnabled: boolean;
-  capexThresholdAmount: number; // Amount threshold for CAPEX detection (e.g., 300€)
+  mejoraThresholdAmount: number; // Amount threshold for mejora detection (e.g., 300€)
   showWarningOnLowConfidence: boolean; // Show "Revisar: confianza baja" warning
 }
 
@@ -71,7 +71,7 @@ export const DEFAULT_AUTOSAVE_CONFIG: AutoSaveConfig = {
   },
   // H8: New auto-OCR settings
   autoOcrEnabled: true, // H8: Auto-OCR enabled by default
-  capexThresholdAmount: 300, // H8: 300€ threshold for CAPEX detection
+  mejoraThresholdAmount: 300, // H8: 300€ threshold for mejora detection
   showWarningOnLowConfidence: true // H8: Show warnings for low confidence
 };
 
@@ -126,7 +126,7 @@ export interface ClassificationResult {
     entityType?: 'personal' | 'inmueble';
     duplicateDetected?: boolean;
     suggestedDestination?: string; // H8: Enhanced metadata
-    isCapex?: boolean; // H8: CAPEX detection
+    isMejora?: boolean; // H8: Mejora detection
     warningMessage?: string; // H8: Low confidence warning
     // FIX-DOCS: Document type flags for enhanced processing
     isReform?: boolean; // Reform invoice (multiple entries)
@@ -345,7 +345,7 @@ export const classifyDocument = async (document: any, existingDocuments: any[] =
     }
   }
 
-  // H8: Enhanced destination classification with CAPEX detection
+  // H8: Enhanced destination classification with mejora detection
   const enhancedClassification = classifyDestination(ocrData, metadata, type, confidence, config);
   type = enhancedClassification.type as ClassificationResult['type'];
   confidence = enhancedClassification.confidence;
@@ -573,7 +573,7 @@ export const autoSaveDocument = async (document: any, classification: Classifica
   }
 };
 
-// H8: Enhanced destination classification with CAPEX and contract detection
+// H8: Enhanced destination classification with mejora and contract detection
 const classifyDestination = (
   ocrData: any,
   metadata: any,
@@ -591,33 +591,33 @@ const classifyDestination = (
   let confidence = currentConfidence;
   let suggestedDestination: string | undefined;
 
-  // H8: CAPEX detection based on keywords and amount
+  // H8: mejora detection based on keywords and amount
   if (type === 'factura' && ocrData?.status === 'completed') {
     const textContent = ocrData.fields
       ?.map((field: any) => field.value?.toLowerCase() || '')
       .join(' ') || '';
     
-    const capexKeywords = [
+    const mejoraKeywords = [
       'obra', 'reforma', 'proyecto', 'presupuesto', 'carpintería',
       'instalación', 'climatización', 'construcción', 'reparación',
       'mejora', 'renovación', 'ampliación'
     ];
     
-    const hasCapexKeywords = capexKeywords.some(keyword => 
+    const hasMejoraKeywords = mejoraKeywords.some(keyword => 
       textContent.includes(keyword)
     );
     
     const amount = metadata.totalAmount || metadata.amount || 0;
-    const isHighAmount = amount > config.capexThresholdAmount;
+    const isHighAmount = amount > config.mejoraThresholdAmount;
     
-    if (hasCapexKeywords && isHighAmount) {
-      // Suggest CAPEX instead of regular expense
-      suggestedDestination = 'tesoreria-capex';
+    if (hasMejoraKeywords && isHighAmount) {
+      // Suggest mejora instead of regular expense
+      suggestedDestination = 'tesoreria-mejoras';
       metadata.isCapex = true;
       confidence = Math.min(confidence + 0.10, 1.0);
       
       if (process.env.NODE_ENV === 'development') {
-        console.info('CAPEX detected:', { keywords: hasCapexKeywords, amount, threshold: config.capexThresholdAmount });
+        console.info('mejora detected:', { keywords: hasMejoraKeywords, amount, threshold: config.mejoraThresholdAmount });
       }
     }
   }
@@ -645,7 +645,7 @@ const classifyDestination = (
     }
   }
 
-  // H8: Apply preference hierarchy (Contratos > Extractos > CAPEX > Facturas > Otros)
+  // H8: Apply preference hierarchy (Contratos > Extractos > mejora > Facturas > Otros)
   if (!suggestedDestination) {
     switch (type) {
       case 'contrato':
@@ -656,7 +656,7 @@ const classifyDestination = (
         break;
       case 'factura':
         suggestedDestination = metadata.isCapex 
-          ? 'tesoreria-capex' 
+          ? 'tesoreria-mejoras' 
           : config.destinations.facturas;
         break;
       default:

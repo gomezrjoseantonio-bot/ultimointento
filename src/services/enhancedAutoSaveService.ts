@@ -17,7 +17,7 @@ export interface AutoSaveDocument {
   savedAt: string;
   expiresAt: string;
   treasuryRecordId?: number;
-  treasuryRecordType?: 'ingreso' | 'gasto' | 'capex' | 'movement';
+  treasuryRecordType?: 'ingreso' | 'gasto' | 'mejora' | 'movement';
   autoSaveComplete: boolean;
 }
 

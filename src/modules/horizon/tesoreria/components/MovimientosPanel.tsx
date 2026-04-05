@@ -87,7 +87,7 @@ const MovimientosPanel: React.FC = () => {
     }
   };
 
-  const handleReconcile = async (movementId: number, recordType: 'ingreso' | 'gasto' | 'capex', recordId: number) => {
+  const handleReconcile = async (movementId: number, recordType: 'ingreso' | 'gasto' | 'mejora', recordId: number) => {
     try {
       await reconcileTreasuryRecord(recordType, recordId, movementId);
       await loadData();

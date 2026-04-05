@@ -387,18 +387,18 @@ const KpiBuilder: React.FC = () => {
             </div>
           </div>
 
-          {/* CAPEX Amortization */}
+          {/* Mejoras Amortization */}
           <div className="space-y-3">
             <label className="flex items-center">
               <input
                 type="checkbox"
-                checked={config.parameters.capexAmortizable}
-                onChange={(e) => handleParameterChange('capexAmortizable', e.target.checked)}
+                checked={config.parameters.mejoraAmortizable}
+                onChange={(e) => handleParameterChange('mejoraAmortizable', e.target.checked)}
                 className={`mr-2 rounded text-${accentColor} focus:ring-${accentColor}`}
               />
-              <span className="text-sm font-medium text-neutral-700">CAPEX amortizable en KPIs</span>
+              <span className="text-sm font-medium text-neutral-700">Mejoras amortizables en KPIs</span>
             </label>
-            {config.parameters.capexAmortizable && (
+            {config.parameters.mejoraAmortizable && (
               <div className="ml-6">
                 <label className="block text-sm text-neutral-600 mb-1">
                   Ventana de amortización (años)
@@ -407,8 +407,8 @@ const KpiBuilder: React.FC = () => {
                   type="number"
                   min="1"
                   max="50"
-                  value={config.parameters.capexYears}
-                  onChange={(e) => handleParameterChange('capexYears', parseInt(e.target.value) || 10)}
+                  value={config.parameters.mejoraYears}
+                  onChange={(e) => handleParameterChange('mejoraYears', parseInt(e.target.value) || 10)}
                   className="block w-20 rounded-md border-neutral-300 text-sm focus:border-brand-navy focus:ring-brand-navy"
                 />
               </div>

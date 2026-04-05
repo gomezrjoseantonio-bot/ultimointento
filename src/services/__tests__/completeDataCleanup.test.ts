@@ -78,7 +78,7 @@ describe('Complete Data Cleanup', () => {
         'properties', 'documents', 'contracts', 'expenses',
         'rentCalendar', 'rentPayments', 'accounts', 'movements', 'importBatches',
         'treasuryEvents', 'treasuryRecommendations',
-        'ingresos', 'capex', 'budgets', 'budgetLines',
+        'ingresos', 'budgets', 'budgetLines',
         'presupuestos', 'presupuestoLineas', 'importLogs', 'matchingConfiguration',
         'aeatCarryForwards', 'propertyDays',
         'kpiConfigurations', 'keyval',
@@ -97,7 +97,7 @@ describe('Complete Data Cleanup', () => {
       expect(expectedStores).toContain('treasuryRecommendations');
       expect(expectedStores).toContain('ingresos');
       expect(expectedStores).toContain('gastosInmueble');
-      expect(expectedStores).toContain('capex');
+      expect(expectedStores).toContain('mejorasInmueble');
     });
   });
 });

@@ -294,7 +294,7 @@ export const shouldSuggestExpense = (ocrResult: OCRResult): boolean => {
   return hasRequiredFields && ocrResult.status === 'completed';
 };
 
-export const shouldSuggestCAPEX = (ocrResult: OCRResult): boolean =>
+export const shouldSuggestMejora = (ocrResult: OCRResult): boolean =>
   shouldSuggestExpense(ocrResult) && ocrResult.confidenceGlobal >= 0.60;
 
 export const getCriticalFieldsStatus = (ocrResult: OCRResult): {

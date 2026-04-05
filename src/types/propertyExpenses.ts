@@ -6,10 +6,9 @@ export type PropertyExpenseSource =
   | 'opex_rule'
   | 'gasto'
   | 'expense_h5'
-  | 'legacy_expense'
-  | 'capex';
+  | 'legacy_expense';
 
-export type PropertyExpenseClass = 'opex' | 'capex';
+export type PropertyExpenseClass = 'opex' | 'mejora';
 
 export interface PropertyExpense {
   id: string;

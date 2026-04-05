@@ -34,13 +34,13 @@ const createMockDocument = (filename: string, tipo: string, metadata: any = {}):
 
 describe('FIX-DOCS Document Ingestion System', () => {
   
-  test('1. Facturas de gasto corriente → Inmuebles › Gastos & CAPEX › Gastos', async () => {
+  test('1. Facturas de gasto corriente → Inmuebles › Gastos › Gastos', async () => {
     const invoice = createMockDocument('factura-comunidad-enero.pdf', 'Factura');
     
     const result = await processDocumentIngestion(invoice);
     
     expect(result.success).toBe(true);
-    expect(result.destination).toBe('Inmuebles › Gastos & CAPEX › Gastos');
+    expect(result.destination).toBe('Inmuebles › Gastos › Gastos');
     expect(result.createdEntries).toHaveLength(1);
     expect(result.createdEntries[0].type).toBe('gasto');
     expect(result.attachedDocumentId).toBe(invoice.id);
@@ -97,7 +97,7 @@ describe('FIX-DOCS Document Ingestion System', () => {
     const result = await processDocumentIngestion(taxDoc);
     
     expect(result.success).toBe(true);
-    expect(result.destination).toBe('Inmuebles › Gastos & CAPEX › Gastos');
+    expect(result.destination).toBe('Inmuebles › Gastos › Gastos');
     expect(result.createdEntries).toHaveLength(1);
     expect(result.createdEntries[0].type).toBe('tax-expense');
   });

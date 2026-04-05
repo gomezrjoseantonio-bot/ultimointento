@@ -539,14 +539,14 @@ const PropertyDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* CAPEX (placeholder for H5) */}
+      {/* Mejoras (placeholder for H5) */}
       <div className="bg-white border border-neutral-200 p-6">
-        <h3 className="text-lg font-semibold text-neutral-900 mb-4">CAPEX</h3>
+        <h3 className="text-lg font-semibold text-neutral-900 mb-4">Mejoras</h3>
         <div className="flex justify-between py-2">
-          <span className="text-sm text-neutral-600">CAPEX (acumulado)</span>
+          <span className="text-sm text-neutral-600">Mejoras (acumulado)</span>
           <span className="text-sm text-neutral-500">—</span>
         </div>
-        <p className="text-xs text-neutral-500 mt-2">El cálculo de CAPEX se implementará en H5</p>
+        <p className="text-xs text-neutral-500 mt-2">El cálculo de mejoras se implementará en H5</p>
       </div>
       </>
       )}
