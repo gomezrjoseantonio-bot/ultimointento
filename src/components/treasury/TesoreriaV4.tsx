@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   BarChart3, RefreshCw, Plus, Check, CheckCircle2,
-  ChevronLeft, ChevronRight, ChevronDown,
+  ChevronLeft, ChevronRight,
   AlertCircle, TrendingUp, TrendingDown, CreditCard,
-  X, MoreHorizontal, Home, Calendar,
+  X,
 } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../shared/PageHeader';
 import toast from 'react-hot-toast';
