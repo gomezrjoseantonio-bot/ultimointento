@@ -429,7 +429,7 @@ function App() {
                 </React.Suspense>
               } />
               {/* Full declaration view for a specific year */}
-              <Route path="declaracion/:año" element={
+              <Route path="declaracion/:anio" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <DeclaracionCompletaPage />
                 </React.Suspense>
