@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { pensionService } from '../../../services/pensionService';
 import { personalDataService } from '../../../services/personalDataService';
 import { PensionIngreso, CalculoPensionResult } from '../../../types/personal';
-import { Plus, Edit2, Trash2, PiggyBank } from 'lucide-react';
+import { Trash2, PiggyBank } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
@@ -17,8 +17,6 @@ const PensionManager: React.FC = () => {
   const [pensiones, setPensiones] = useState<PensionIngreso[]>([]);
   const [calculos, setCalculos] = useState<Map<number, CalculoPensionResult>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingPension, setEditingPension] = useState<PensionIngreso | null>(null);
   const [userName, setUserName] = useState<string>('Yo');
   const [spouseName, setSpouseName] = useState<string | null>(null);
 
@@ -55,16 +53,6 @@ const PensionManager: React.FC = () => {
     }
   };
 
-  const handleCreate = () => {
-    setEditingPension(null);
-    setShowForm(true);
-  };
-
-  const handleEdit = (pension: PensionIngreso) => {
-    setEditingPension(pension);
-    setShowForm(true);
-  };
-
   const handleDelete = async (id: number) => {
     const confirmed = await confirmDelete('esta pensión');
     if (!confirmed) return;
@@ -77,12 +65,6 @@ const PensionManager: React.FC = () => {
       console.error('Error deleting pension:', error);
       toast.error('Error al eliminar la pensión');
     }
-  };
-
-  const handleSaved = () => {
-    setShowForm(false);
-    setEditingPension(null);
-    loadData();
   };
 
   const getTitularLabel = (titular: 'yo' | 'pareja') => {
@@ -127,13 +109,7 @@ const PensionManager: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900">Gestión de Pensiones</h3>
           <p className="text-gray-500">Configura y gestiona tus ingresos por pensiones</p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva Pensión
-        </button>
+        {/* TODO: botón "Nueva Pensión" pendiente de wizard */}
       </div>
 
       {/* Summary for active pensions */}
@@ -170,17 +146,9 @@ const PensionManager: React.FC = () => {
             <PiggyBank className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No hay pensiones configuradas</h3>
             <p className="mt-1 text-sm text-gray-500">
-              Crea tu primera pensión para registrar tus ingresos de pensión.
+              La gestión de pensiones estará disponible próximamente.
             </p>
-            <div className="mt-6">
-              <button
-                onClick={handleCreate}
-                className="inline-flex items-center px-4 py-2 btn-primary text-white text-sm font-medium rounded-md shadow-sm hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Crear Primera Pensión
-              </button>
-            </div>
+            {/* TODO: botón "Crear Primera Pensión" pendiente de wizard */}
           </div>
         ) : (
           <div className="space-y-3">
@@ -231,13 +199,7 @@ const PensionManager: React.FC = () => {
 
                     {/* Actions */}
                     <div className="flex-shrink-0 flex items-center space-x-2">
-                      <button
-                        onClick={() => handleEdit(pension)}
-                        className="p-2 text-gray-400 hover:text-atlas-blue"
-                        title="Editar"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      {/* TODO: botón editar pendiente de wizard */}
                       <button
                         onClick={() => handleDelete(pension.id!)}
                         className="p-2 text-gray-400 hover:text-error-600"
