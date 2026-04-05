@@ -1355,7 +1355,10 @@ class DashboardService {
       
       // Filter rentaMensual by period falling within next 30 days
       const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const mesSiguiente = `${now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear()}-${String((now.getMonth() + 1) % 12 + 1).padStart(2, '0')}`;
+      // Calculate next month correctly handling year rollover
+      const nextMonth1 = now.getMonth() === 11 ? 1 : now.getMonth() + 2; // getMonth() is 0-indexed
+      const nextYear1 = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+      const mesSiguiente = `${nextYear1}-${String(nextMonth1).padStart(2, '0')}`;
       const rentasEsperadas = rentasMensuales
         .filter((renta: any) => {
           const periodo = renta?.periodo ?? '';
@@ -1630,7 +1633,10 @@ class DashboardService {
       
       // Filter rentaMensual by period falling within next 30 days
       const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const mesSiguiente = `${now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear()}-${String((now.getMonth() + 1) % 12 + 1).padStart(2, '0')}`;
+      // Calculate next month correctly handling year rollover
+      const nextMonth2 = now.getMonth() === 11 ? 1 : now.getMonth() + 2; // getMonth() is 0-indexed
+      const nextYear2 = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+      const mesSiguiente = `${nextYear2}-${String(nextMonth2).padStart(2, '0')}`;
       const rentasEsperadas = rentasMensuales
         .filter((renta: any) => {
           const periodo = renta?.periodo ?? '';

@@ -86,8 +86,8 @@ describe('Complete Data Cleanup', () => {
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
-      // Verify we have a comprehensive list of stores
-      expect(expectedStores.length).toBeGreaterThan(18);
+      // Verify we have a comprehensive list of stores (currently 23 stores)
+      expect(expectedStores.length).toBe(23);
       expect(expectedStores).toContain('accounts');
       expect(expectedStores).toContain('movements');
       expect(expectedStores).toContain('properties');
