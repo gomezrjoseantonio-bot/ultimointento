@@ -28,10 +28,7 @@ const SUBTABS: SubTabsConfig = {
     { label: 'Rendimientos', path: '/inversiones/rendimientos' },
     { label: 'Individual', path: '/inversiones/individual' },
   ],
-  fiscalidad: [
-    { label: 'Mi IRPF', path: '/fiscalidad/mi-irpf' },
-    { label: 'Historial', path: '/fiscalidad/historial' },
-  ],
+  // fiscalidad: No tabs - single supervision view with interactive chart
   proyeccion: [
     { label: 'Proyección', path: '/proyeccion/presupuesto' },
     { label: 'Presupuesto', path: '/proyeccion/comparativa' },

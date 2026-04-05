@@ -78,8 +78,8 @@ const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/In
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
-const MiIRPFPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/mi-irpf/MiIRPFPage'));
-const HistorialPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/historial/HistorialPage'));
+const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
+const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
 
 const ProyeccionComparativa = lazyWithPreload(() => import('./modules/horizon/proyeccion/comparativa/ProyeccionComparativa'));
 const ProyeccionEscenarios = lazyWithPreload(() => import('./modules/horizon/proyeccion/escenarios/ProyeccionEscenarios'));
@@ -422,30 +422,32 @@ function App() {
                 <FiscalLayout />
               </React.Suspense>
             }>
-              <Route index element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              {/* 2-tab fiscal module: Mi IRPF + Historial */}
-              <Route path="mi-irpf" element={
+              {/* New Supervision page is the main view (no tabs) */}
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <MiIRPFPage />
+                  <ImpuestosSupervisionPage />
                 </React.Suspense>
               } />
-              <Route path="historial" element={
+              {/* Full declaration view for a specific year */}
+              <Route path="declaracion/:año" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <HistorialPage />
+                  <DeclaracionCompletaPage />
                 </React.Suspense>
               } />
-              {/* Legacy routes — redirect to new equivalents */}
-              <Route path="estado" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="resumen" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="dashboard" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="simulador" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="declaracion" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="pre-declaracion" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="pagos" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="historico" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="entidades" element={<Navigate to="/fiscalidad/historial" replace />} />
-              <Route path="detalle" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
-              <Route path="declaraciones" element={<Navigate to="/fiscalidad/mi-irpf" replace />} />
+              {/* Legacy routes — redirect to new supervision view */}
+              <Route path="mi-irpf" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="historial" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="estado" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="resumen" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="dashboard" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="simulador" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="declaracion" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="pre-declaracion" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="pagos" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="historico" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="entidades" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="detalle" element={<Navigate to="/fiscalidad" replace />} />
+              <Route path="declaraciones" element={<Navigate to="/fiscalidad" replace />} />
             </Route>
             
             {/* Financing Module - Standalone loan management */}

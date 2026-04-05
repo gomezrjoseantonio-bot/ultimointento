@@ -1,25 +1,29 @@
 import React from 'react';
-import { Scale } from 'lucide-react';
-import SubTabs from '../../../../components/common/SubTabs';
-import PageHeader from '../../../../components/shared/PageHeader';
+import { Outlet } from 'react-router-dom';
 
 interface FiscalPageShellProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
+/**
+ * FiscalPageShell - Wrapper for fiscal pages
+ * 
+ * Note: The new supervision page (ImpuestosSupervisionPage) handles its own
+ * header and layout. This shell is now primarily used to wrap the Outlet
+ * in FiscalLayout. Individual pages should manage their own styling.
+ */
 const FiscalPageShell: React.FC<FiscalPageShellProps> = ({ children }) => {
-  return (
-    <div style={{ background: 'var(--white)', minHeight: '100%' }}>
-      <PageHeader
-        icon={Scale}
-        title="Impuestos"
-      />
-      <SubTabs />
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 24px 56px' }}>
+  // If children are provided (legacy usage), render them
+  // Otherwise this component acts as a simple pass-through
+  if (children) {
+    return (
+      <div style={{ background: 'var(--grey-50)', minHeight: '100%' }}>
         {children}
       </div>
-    </div>
-  );
+    );
+  }
+  
+  return <Outlet />;
 };
 
 export default FiscalPageShell;
