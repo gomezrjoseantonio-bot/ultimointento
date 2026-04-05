@@ -30,7 +30,7 @@ export interface InformeDistribucion {
 
   inmuebles: InmuebleDistribuido[];
   contratosDetectados: ContratoDetectado[];
-  gastosRecurrentesPropuestos: GastoRecurrentePropuesto[];
+  opexRecurrentesPropuestos: GastoRecurrentePropuesto[];
   prestamosDetectados: PrestamoDetectado[];
   proveedores: ProveedorDistribuido[];
   inversiones: InversionDetectada[];

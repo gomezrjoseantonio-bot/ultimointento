@@ -973,22 +973,12 @@ class DashboardService {
 
       const personalDataId = 1;
       const personalExpenses = await getCachedStoreRecords<any>('patronGastosPersonales').catch(() => []);
-      const gastosRecurrentes = await getCachedStoreRecords<any>('gastosRecurrentes').catch(() => []);
-      const gastosPuntuales = await getCachedStoreRecords<any>('gastosPuntuales').catch(() => []);
 
       const gastosPersonalesModeloMes = (personalExpenses as any[])
         .filter((expense: any) => toNumber(expense?.personalDataId) === personalDataId)
-        .reduce((sum: number, expense: any) => sum + getPersonalExpenseAmountForMonth(expense, currentMonth + 1), 0)
-        + (gastosRecurrentes as any[])
-          .filter((expense: any) => toNumber(expense?.personalDataId) === personalDataId)
-          .reduce((sum: number, expense: any) => sum + getRecurringPersonalExpenseAmountForMonth(expense, currentMonth + 1), 0)
-        + (gastosPuntuales as any[])
-          .filter((expense: any) => toNumber(expense?.personalDataId) === personalDataId && inMonth(expense, currentMonth, currentYear))
-          .reduce((sum: number, expense: any) => sum + toNumber(expense?.importe), 0);
+        .reduce((sum: number, expense: any) => sum + getPersonalExpenseAmountForMonth(expense, currentMonth + 1), 0);
 
-      const gastosPersonalesModeloHoy = (gastosPuntuales as any[])
-        .filter((expense: any) => toNumber(expense?.personalDataId) === personalDataId && inMonthThroughToday(expense, currentMonth, currentYear))
-        .reduce((sum: number, expense: any) => sum + toNumber(expense?.importe), 0);
+      const gastosPersonalesModeloHoy = 0;
 
       const gastosPersonalMes = gastosPersonalTesoreriaMes + gastosPersonalesModeloMes;
       const gastosPersonalHoy = gastosPersonalTesoreriaHoy + gastosPersonalesModeloHoy;

@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Pure frequency-aware calculation engine for automatic projections
 
 import { OpexRule } from '../../../../../services/db';
-import { GastoRecurrente, PersonalExpense } from '../../../../../types/personal';
+import { PersonalExpense } from '../../../../../types/personal';
 
 export interface OpexDetalleItem {
   propertyId: number;
@@ -108,61 +108,6 @@ export function calculateOpexBreakdownForMonth(
     }
   }
   return items;
-}
-
-/**
- * Determines whether a GastoRecurrente applies in a given calendar month (1–12).
- * The cycle start is derived from fechaInicio.
- */
-export function gastoRecurrenteAppliesToMonth(
-  gasto: GastoRecurrente,
-  month1to12: number,
-): boolean {
-  if (!gasto.activo) return false;
-
-  // Derive cycle-start month from fechaInicio (defaults to January)
-  const startMonth = gasto.fechaInicio
-    ? new Date(gasto.fechaInicio).getMonth() + 1
-    : 1;
-
-  switch (gasto.frecuencia) {
-    case 'mensual':
-      return true;
-
-    case 'bimestral':
-      if (month1to12 < startMonth) return false;
-      return (month1to12 - startMonth) % 2 === 0;
-
-    case 'trimestral':
-      if (month1to12 < startMonth) return false;
-      return (month1to12 - startMonth) % 3 === 0;
-
-    case 'semestral':
-      if (month1to12 < startMonth) return false;
-      return (month1to12 - startMonth) % 6 === 0;
-
-    case 'anual':
-      return month1to12 === startMonth;
-
-    case 'meses_especificos':
-      return (gasto.mesesCobro ?? []).includes(month1to12);
-
-    default:
-      return false;
-  }
-}
-
-/**
- * Calculates the total personal recurring expenses for a given calendar month.
- */
-export function calculateGastosPersonalesForMonth(
-  gastos: GastoRecurrente[],
-  month1to12: number,
-): number {
-  return gastos.reduce((sum, gasto) => {
-    if (!gastoRecurrenteAppliesToMonth(gasto, month1to12)) return sum;
-    return sum + gasto.importe;
-  }, 0);
 }
 
 /**

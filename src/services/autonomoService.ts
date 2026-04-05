@@ -542,11 +542,11 @@ class AutonomoService {
       return total + fuente.importeEstimado * occurrences;
     }, 0), 0);
 
-    const gastosRecurrentes = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
+    const gastosActividadAnual = sourceAutonomos.reduce((aggregate, autonomo) => aggregate + (autonomo.gastosRecurrentesActividad || []).reduce((total, gasto) => {
       const occurrences = gasto.meses?.length ? gasto.meses.length : 12;
       return total + gasto.importe * occurrences;
     }, 0), 0);
-    const totalGastos = (autonomoCuota?.cuotaAutonomos ?? 0) * 12 + gastosRecurrentes;
+    const totalGastos = (autonomoCuota?.cuotaAutonomos ?? 0) * 12 + gastosActividadAnual;
 
     return {
       facturacionBruta,

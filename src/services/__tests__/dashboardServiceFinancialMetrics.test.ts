@@ -137,12 +137,6 @@ describe('dashboardService financial metrics', () => {
       personalExpenses: [
         { personalDataId: 1, activo: true, frecuencia: 'mensual', importe: 900 }
       ],
-      gastosRecurrentes: [
-        { personalDataId: 1, activo: true, frecuencia: 'mensual', importe: 300 }
-      ],
-      gastosPuntuales: [
-        { personalDataId: 1, fecha: '2026-03-04', importe: 250 }
-      ]
     };
 
     (initDB as jest.Mock).mockResolvedValue({
