@@ -28,6 +28,7 @@ export interface GestionPersonalData {
   otrosIngresos: OtrosIngresos[];
   expenses: PersonalExpense[];
   prestamosPersonales: Prestamo[];
+  financiacionPersonalAnual: number;
   // Calculated
   nominaCalcs: Map<number, CalculoNominaResult>;
 }
@@ -62,6 +63,31 @@ const GestionPersonalPage: React.FC = () => {
         (p) => (p.ambito === 'PERSONAL' || p.finalidad === 'PERSONAL') && p.activo !== false,
       );
 
+      // Compute annual financing from payment plans — parallelized
+      const financiacionPersonalAnual = (
+        await Promise.all(
+          prestamosPersonales.map(async (p) => {
+            try {
+              const plan = await prestamosService.getPaymentPlan(p.id);
+              const periodos = plan?.periodos;
+              const cuotas = Array.isArray(periodos)
+                ? periodos
+                    .map((periodo) => Number(periodo?.cuota ?? 0))
+                    .filter((cuota) => Number.isFinite(cuota) && cuota > 0)
+                : [];
+              if (cuotas.length > 0) {
+                const cuotaMensualMedia =
+                  cuotas.reduce((total, cuota) => total + cuota, 0) / cuotas.length;
+                return Math.round(cuotaMensualMedia * 12);
+              }
+            } catch {
+              // No plan available for this loan
+            }
+            return 0;
+          }),
+        )
+      ).reduce((total, anual) => total + anual, 0);
+
       const nominaCalcs = new Map<number, CalculoNominaResult>();
       for (const n of nominas.filter((n) => n.activa)) {
         if (n.id != null) {
@@ -77,6 +103,7 @@ const GestionPersonalPage: React.FC = () => {
         otrosIngresos,
         expenses,
         prestamosPersonales,
+        financiacionPersonalAnual,
         nominaCalcs,
       });
     } catch {

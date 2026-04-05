@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Briefcase, Building2, Heart, PlusCircle, Wallet } from 'lucide-react';
 import SourceCard, { BadgeEmpty, BadgePareja } from './SourceCard';
 import { autonomoService } from '../../../services/autonomoService';
+import { nominaService } from '../../../services/nominaService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { pensionService } from '../../../services/pensionService';
-import NominaForm from '../../../components/personal/nomina/NominaForm';
 
 import type { GestionPersonalData } from '../GestionPersonalPage';
 import type { Nomina } from '../../../types/personal';
@@ -77,9 +77,7 @@ interface Props {
 const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   const { perfil, nominas, autonomos, pensiones, otrosIngresos, nominaCalcs } = data;
   const navigate = useNavigate();
-
-  const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
-  const [showNominaForm, setShowNominaForm] = useState(false);
+  const [nominaAEliminar, setNominaAEliminar] = useState<typeof nominas[number] | null>(null);
 
   const hasPareja =
     perfil.situacionPersonal === 'casado' || perfil.situacionPersonal === 'pareja-hecho';
@@ -99,19 +97,21 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   const otrosTitular = otrosIngresos.filter((o) => o.titularidad === 'yo' || o.titularidad === 'ambos');
   const otrosPareja = otrosIngresos.filter((o) => o.titularidad === 'pareja' || o.titularidad === 'ambos');
 
-  const openNominaEdit = (nom: Nomina) => {
-    setEditingNomina(nom);
-    setShowNominaForm(true);
-  };
-
   const openNominaNew = (titular: 'yo' | 'pareja') => {
     navigate(`/gestion/personal/nueva-nomina?titular=${titular}`);
   };
 
-  const handleNominaSaved = (_nomina?: Nomina) => {
-    setShowNominaForm(false);
-    setEditingNomina(null);
-    onDataChange();
+  const confirmarEliminarNomina = async () => {
+    if (nominaAEliminar?.id != null) {
+      try {
+        await nominaService.deleteNomina(nominaAEliminar.id);
+        setNominaAEliminar(null);
+        onDataChange();
+      } catch (error) {
+        console.error('Error al eliminar la nómina:', error);
+        window.alert('No se pudo eliminar la nómina. Inténtalo de nuevo.');
+      }
+    }
   };
 
   // Nomina card builder
@@ -135,7 +135,27 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : null}
-        action={<ActionBtn label="Editar nómina" onClick={() => openNominaEdit(nom)} />}
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <ActionBtn label="Editar nómina" onClick={() => navigate(`/gestion/personal/nueva-nomina?id=${nom.id}&titular=${nom.titular}`)} />
+            {nom.id != null && (
+              <button
+                onClick={() => setNominaAEliminar(nom)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: 'var(--grey-400)',
+                  fontFamily: FONT,
+                  padding: '6px 8px',
+                }}
+              >
+                Eliminar
+              </button>
+            )}
+          </div>
+        }
       />
     );
   };
@@ -162,7 +182,7 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
           },
         ]}
         badge={isPareja ? <BadgePareja /> : null}
-        action={<ActionBtn label="Gestionar actividad" onClick={() => navigate('/personal/supervision')} />}
+        action={<ActionBtn label="Gestionar actividad" onClick={() => navigate(`/gestion/personal/nuevo-autonomo?id=${auto.id}&titular=${isPareja ? 'pareja' : 'yo'}`)} />}
       />
     );
   };
@@ -272,18 +292,8 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
   );
 
   return (
+    <>
     <div style={{ fontFamily: FONT }}>
-      {/* ── NominaForm modal (edit only) ── */}
-      <NominaForm
-        isOpen={showNominaForm}
-        onClose={() => {
-          setShowNominaForm(false);
-          setEditingNomina(null);
-        }}
-        nomina={editingNomina}
-        onSaved={() => handleNominaSaved()}
-      />
-
       {/* ── Titular sections ── */}
       {hasPareja && (
         <TitularLabel label={`${perfil.nombre} ${perfil.apellidos} \u00B7 Titular`} />
@@ -298,7 +308,6 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                 <SourceCard
                   bandColor="grey"
                   icon={<Briefcase size={16} color="var(--grey-400)" />}
-                  iconBg="var(--grey-100, #EEF1F5)"
                   name="Nómina"
                   description="Sin configurar"
                   kpis={[]}
@@ -378,6 +387,92 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
         </>
       )}
     </div>
+
+      {/* Modal confirmación eliminar nómina */}
+
+      {nominaAEliminar && (
+        <div
+          role="presentation"
+          onKeyDown={(e) => { if (e.key === 'Escape') setNominaAEliminar(null); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dlg-eliminar-nomina-title"
+            aria-describedby="dlg-eliminar-nomina-desc"
+            style={{
+              background: 'var(--white, #FFFFFF)',
+              border: '1px solid var(--grey-200, #DDE3EC)',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 400,
+              width: '100%',
+              fontFamily: FONT,
+            }}
+          >
+            <h3
+              id="dlg-eliminar-nomina-title"
+              style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--grey-900)' }}
+            >
+              Eliminar nómina
+            </h3>
+            <p
+              id="dlg-eliminar-nomina-desc"
+              style={{ fontSize: 14, color: 'var(--grey-500)', marginBottom: 20 }}
+            >
+              ¿Eliminar la nómina de {nominaAEliminar.nombre}?
+              Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setNominaAEliminar(null)}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: '1.5px solid var(--grey-300, #C8D0DC)',
+                  background: 'var(--white)',
+                  color: 'var(--grey-700)',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: FONT,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
+                onClick={confirmarEliminarNomina}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'var(--navy-900, #042C5E)',
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  fontFamily: FONT,
+                }}
+              >
+                Eliminar nómina
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

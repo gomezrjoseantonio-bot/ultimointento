@@ -117,6 +117,22 @@ class NominaService {
   }
 
   /**
+   * Get a single nomina by its primary key id
+   */
+  async getNominaById(id: number): Promise<Nomina | null> {
+    try {
+      const db = await this.getDB();
+      const tx = db.transaction(['nominas'], 'readonly');
+      const store = tx.objectStore('nominas');
+      const nomina = await store.get(id);
+      return nomina ? this.applyDefaults(nomina) : null;
+    } catch (error) {
+      console.error('Error getting nomina by id:', error);
+      return null;
+    }
+  }
+
+  /**
    * Save or update a nomina
    */
   async saveNomina(nomina: Omit<Nomina, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): Promise<Nomina> {

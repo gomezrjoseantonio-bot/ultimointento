@@ -24,6 +24,8 @@ interface WizardVariable {
   importe: number;
   pct: number;
   mes: string;
+  /** Preserved from original nomina for multi-month distribution (edit mode). */
+  _originalDistribucionMeses?: { mes: number; porcentaje: number }[];
 }
 
 interface WizardEspecie {
@@ -165,7 +167,11 @@ const Stepper: React.FC<{ step: number; steps: string[] }> = ({ step, steps }) =
 const NominaWizard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const idParam = searchParams.get('id');
+  const parsedNominaId = idParam !== null ? Number(idParam) : null;
+  const nominaId = parsedNominaId !== null && Number.isFinite(parsedNominaId) ? parsedNominaId : null;
   const titularParam = (searchParams.get('titular') || 'yo') as 'yo' | 'pareja';
+  const isEditing = nominaId !== null;
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -173,6 +179,8 @@ const NominaWizard: React.FC = () => {
   const [planes, setPlanes] = useState<PlanPensionInversion[]>([]);
   const [pid, setPid] = useState<number | null>(null);
   const [titularNombre, setTitularNombre] = useState('');
+  const [editingTitular, setEditingTitular] = useState<'yo' | 'pareja'>(titularParam);
+  const [originalNomina, setOriginalNomina] = useState<import('../../../types/personal').Nomina | null>(null);
 
   // Step 1 state
   const [empresa, setEmpresa] = useState('');
@@ -200,19 +208,84 @@ const NominaWizard: React.FC = () => {
       const perfil = await personalDataService.getPersonalData();
       if (perfil?.id) {
         setPid(perfil.id);
-        setTitularNombre(
-          titularParam === 'pareja' ? (perfil.spouseName || 'Pareja') : `${perfil.nombre} ${perfil.apellidos}`.trim()
-        );
         const [accs, pls] = await Promise.all([
           cuentasService.list(),
           planesInversionService.getPlanes(perfil.id),
         ]);
         setAccounts(accs.filter(a => !a.deleted_at && a.activa));
         setPlanes(pls);
-        if (accs.length > 0 && accs[0].id) setCuentaId(accs[0].id);
+
+        if (isEditing && nominaId) {
+          // Edit mode: load existing nomina and populate all fields
+          const nom = await nominaService.getNominaById(nominaId);
+          if (nom) {
+            setOriginalNomina(nom);
+            setEditingTitular(nom.titular);
+            setTitularNombre(
+              nom.titular === 'pareja' ? (perfil.spouseName || 'Pareja') : `${perfil.nombre} ${perfil.apellidos}`.trim()
+            );
+            setEmpresa(nom.nombre);
+            const pagasFromTipo: Record<string, 12 | 14 | 15 | 16> = { doce: 12, catorce: 14, quince: 15, dieciseis: 16 };
+            setPagas(pagasFromTipo[nom.distribucion.tipo] ?? 12);
+            setFechaInicio(nom.fechaAntiguedad ? nom.fechaAntiguedad.slice(0, 7) : '');
+            setDiaCobro(nom.reglaCobroDia.tipo === 'ultimo-habil' ? 31 : (nom.reglaCobroDia as { tipo: 'fijo'; dia: number }).dia);
+            setCuentaId(nom.cuentaAbono || (accs.length > 0 && accs[0].id ? accs[0].id : 0));
+            setBrutoAnual(nom.salarioBrutoAnual);
+            setIrpf(nom.retencion.irpfPorcentaje);
+            setIrpfAuto(false);
+            if (nom.retencion.cuotaSolidaridadMensual != null) {
+              setSolidaridadAnual(nom.retencion.cuotaSolidaridadMensual * 12);
+            }
+            // Step 2: variables + bonus → WizardVariable[]
+            const vars: WizardVariable[] = [
+              ...nom.variables.map(v => ({
+                id: v.id || uid(),
+                nombre: v.nombre,
+                tipo: 'variable' as const,
+                base: v.tipo === 'porcentaje' ? 'pct' as const : 'importe' as const,
+                importe: v.tipo === 'importe' ? v.valor : 0,
+                pct: v.tipo === 'porcentaje' ? v.valor : 0,
+                mes: MESES[(v.distribucionMeses?.[0]?.mes ?? 1) - 1] || 'Enero',
+                _originalDistribucionMeses: v.distribucionMeses,
+              })),
+              ...nom.bonus.map(b => ({
+                id: b.id || uid(),
+                nombre: b.descripcion,
+                tipo: 'bonus' as const,
+                base: 'importe' as const,
+                importe: b.importe,
+                pct: 0,
+                mes: MESES[(b.mes ?? 1) - 1] || 'Enero',
+              })),
+            ];
+            setVariables(vars);
+            // PP
+            if (nom.planPensiones) {
+              setTienePP(true);
+              setPpEmpleado(nom.planPensiones.aportacionEmpleado.valor);
+              setPpEmpresa(nom.planPensiones.aportacionEmpresa.valor);
+              setPpPlanId(nom.planPensiones.productoDestinoId ?? null);
+            }
+            // Especie
+            if (nom.beneficiosSociales?.length) {
+              setTieneEspecie(true);
+              setEspecie(nom.beneficiosSociales.map(b => ({
+                id: b.id || uid(),
+                nombre: b.concepto,
+                tributacion: b.incrementaBaseIRPF ? 'Computa en IRPF' as const : 'Exento IRPF' as const,
+                importeMensual: b.importeMensual,
+              })));
+            }
+          }
+        } else {
+          setTitularNombre(
+            titularParam === 'pareja' ? (perfil.spouseName || 'Pareja') : `${perfil.nombre} ${perfil.apellidos}`.trim()
+          );
+          if (accs.length > 0 && accs[0].id) setCuentaId(accs[0].id);
+        }
       }
     })();
-  }, [titularParam]);
+  }, [isEditing, nominaId, titularParam]);
 
   // IRPF auto-calc
   const varTotal = useMemo(() =>
@@ -266,7 +339,7 @@ const NominaWizard: React.FC = () => {
         nombre: v.nombre,
         tipo: v.base === 'pct' ? 'porcentaje' as const : 'importe' as const,
         valor: v.base === 'pct' ? v.pct : v.importe,
-        distribucionMeses: [{ mes: MESES.indexOf(v.mes) + 1, porcentaje: 100 }],
+        distribucionMeses: v._originalDistribucionMeses ?? [{ mes: MESES.indexOf(v.mes) + 1, porcentaje: 100 }],
       }));
       const bonos = variables.filter(v => v.tipo === 'bonus').map(v => ({
         id: v.id,
@@ -288,44 +361,51 @@ const NominaWizard: React.FC = () => {
         productoDestinoNombre: ppPlanId ? planes.find(p => p.id === ppPlanId)?.nombre : undefined,
       } : undefined;
 
-      await nominaService.saveNomina({
+      const nominaData = {
         personalDataId: pid,
-        titular: titularParam,
+        titular: isEditing ? editingTitular : titularParam,
         nombre: empresa,
         fechaAntiguedad: fechaInicio ? `${fechaInicio}-01` : new Date().toISOString(),
         salarioBrutoAnual: brutoAnual,
         distribucion: {
           tipo: pagas === 12 ? 'doce' : pagas === 14 ? 'catorce' : 'personalizado',
           meses: pagas,
-        },
+        } as { tipo: 'doce' | 'catorce' | 'personalizado'; meses: number },
         variables: vars,
         bonus: bonos,
         beneficiosSociales: beneficios,
         retencion: {
           irpfPorcentaje: irpf,
-          ss: {
-            baseCotizacionMensual: SS_TOPE,
-            contingenciasComunes: 4.70,
-            desempleo: 1.55,
-            formacionProfesional: 0.10,
-            mei: 0.15,
-            overrideManual: false,
-          },
+          ss: isEditing && originalNomina
+            ? originalNomina.retencion.ss
+            : {
+                baseCotizacionMensual: SS_TOPE,
+                contingenciasComunes: 4.70,
+                desempleo: 1.55,
+                formacionProfesional: 0.10,
+                mei: 0.15,
+                overrideManual: false,
+              },
           cuotaSolidaridadMensual: solidaridadAnual / 12,
         },
         planPensiones: pp,
-        deduccionesAdicionales: [],
+        deduccionesAdicionales: isEditing && originalNomina ? originalNomina.deduccionesAdicionales : [],
         cuentaAbono: cuentaId || 0,
-        reglaCobroDia: diaCobro === 31 ? { tipo: 'ultimo-habil' } : { tipo: 'fijo', dia: diaCobro },
+        reglaCobroDia: diaCobro === 31 ? { tipo: 'ultimo-habil' as const } : { tipo: 'fijo' as const, dia: diaCobro },
         activa: true,
-      });
+      };
+      if (isEditing && nominaId) {
+        await nominaService.updateNomina(nominaId, nominaData);
+      } else {
+        await nominaService.saveNomina(nominaData);
+      }
       navigate('/gestion/personal');
     } catch (e) {
       console.error(e);
     } finally {
       setSaving(false);
     }
-  }, [pid, titularParam, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate]);
+  }, [pid, titularParam, editingTitular, isEditing, nominaId, originalNomina, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate]);
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -340,7 +420,7 @@ const NominaWizard: React.FC = () => {
             <input style={inputSt} value={empresa} onChange={e => setEmpresa(e.target.value)} placeholder="Nombre del empleador" />
           </div>
           <div>
-            <label style={labelSt}>Fecha inicio</label>
+            <label style={labelSt}>Esta configuración aplica desde <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>Normalmente el mes en que empezaste o cambió tu salario</span></label>
             <input style={inputSt} type="month" value={fechaInicio} onChange={e => setFechaInicio(e.target.value)} />
           </div>
           <div>
@@ -750,7 +830,7 @@ const NominaWizard: React.FC = () => {
       {/* Header */}
       <div style={{ background: '#fff', borderBottom: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>Nueva nómina</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>{isEditing ? 'Editar nómina' : 'Nueva nómina'}</div>
           <div style={{ fontSize: 13, color: 'var(--grey-500)', fontFamily: FONT }}>{titularNombre}</div>
         </div>
         <button onClick={() => navigate('/gestion/personal')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--grey-500)' }}>
@@ -767,22 +847,24 @@ const NominaWizard: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
-        <div>
-          {step > 0 && (
-            <button onClick={() => setStep(s => s - 1)} style={ghostBtn}>
-              <ChevronLeft size={14} /> Anterior
-            </button>
-          )}
-        </div>
-        <div>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid var(--grey-200, #DDE3EC)', padding: '16px 32px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', zIndex: 10 }}>
+        <button
+          onClick={() => setStep(s => s - 1)}
+          style={{ ...ghostBtn, visibility: step > 0 ? 'visible' : 'hidden', justifySelf: 'start' }}
+        >
+          <ChevronLeft size={14} /> Anterior
+        </button>
+        <span style={{ fontSize: 12, color: 'var(--grey-400, #9CA3AF)', fontFamily: FONT }}>
+          Paso {step + 1} de {STEPS.length}
+        </span>
+        <div style={{ justifySelf: 'end' }}>
           {step < 2 ? (
             <button onClick={() => setStep(s => s + 1)} style={primaryBtn} disabled={step === 0 && !empresa}>
               Siguiente →
             </button>
           ) : (
             <button onClick={handleSave} style={primaryBtn} disabled={saving}>
-              {saving ? 'Guardando...' : 'Guardar nómina'}
+              {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar nómina'}
             </button>
           )}
         </div>

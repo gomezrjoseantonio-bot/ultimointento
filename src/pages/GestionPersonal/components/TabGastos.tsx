@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, Shield, X } from 'lucide-react';
 import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
-import { gastosPersonalesRealService } from '../../../services/gastosPersonalesRealService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
@@ -9,7 +8,6 @@ import type {
   PersonalExpense,
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
-  DesviacionResumen,
 } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
@@ -455,7 +453,7 @@ interface Props {
 }
 
 const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
-  const { perfil, expenses, nominas, autonomos, prestamosPersonales, nominaCalcs } = data;
+  const { perfil, expenses, nominas, autonomos, nominaCalcs } = data;
 
   const [editingExpense, setEditingExpense] = useState<PersonalExpense | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
@@ -517,7 +515,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   }, [localExpenses, perfil, hasHijos, descartados]);
 
   const catBreakdown = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<PersonalExpenseCategory, number>();
     for (const e of localExpenses) {
       if (!e.activo || e.importe <= 0) continue;
       const m = patronGastosPersonalesService.calcularImporteMensual(e);
@@ -550,10 +548,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const netoAnual = calcNeto();
   const gastosAnual = totalMensual * 12;
-  const financiacionAnual = prestamosPersonales.reduce((s, p) => {
-    const cuota = (p as any).cuotaMensual || (p as any).cuota || 0;
-    return s + cuota * 12;
-  }, 0);
+  const financiacionAnual = data.financiacionPersonalAnual;
   const excedente = netoAnual - gastosAnual - financiacionAnual;
   const tasaAhorro = netoAnual > 0 ? Math.round((excedente / netoAnual) * 100) : 0;
 
