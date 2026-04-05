@@ -91,7 +91,7 @@ const TablaHistorial: React.FC<TablaHistorialProps> = ({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {['Año', 'Bruto', 'Retenciones', 'Neto anual', 'Gasto vida', 'Financiación', 'Excedente', 'Tasa', ''].map((h) => (
+              {['Año', 'Ingresos brutos', 'Ingresos netos', 'Gasto vida', 'Financiación', 'Excedente', 'Tasa', ''].map((h) => (
                 <th key={h} style={{
                   ...cellBase,
                   fontSize: 11,
@@ -163,28 +163,22 @@ const TablaHistorial: React.FC<TablaHistorialProps> = ({
                     </div>
                   </td>
 
-                  {/* Bruto */}
+                  {/* Ingresos brutos */}
                   <td style={{ ...monoCellBase, color: 'var(--grey-900)' }}>
-                    {f.bruto !== null ? `${fmt(f.bruto)} €` : '—'}
+                    {f.bruto !== null && f.bruto > 0 ? `${fmt(f.bruto)} €` : '—'}
                   </td>
 
-                  {/* Retenciones */}
-                  <td style={{ ...monoCellBase, color: 'var(--grey-700)' }}>
-                    {f.retenciones !== null ? `${fmt(f.retenciones)} €` : '—'}
-                  </td>
-
-                  {/* Neto */}
+                  {/* Ingresos netos */}
                   <td style={{ ...monoCellBase, fontWeight: 600, color: accentColor }}>
-                    {f.neto !== null ? `${fmt(f.neto)} €` : '—'}
+                    {f.neto !== null && f.neto > 0 ? `${fmt(f.neto)} €` : '—'}
                   </td>
 
                   {/* Gasto vida */}
                   <td style={{
                     ...monoCellBase,
                     color: 'var(--grey-400, #9CA3AF)',
-                    fontStyle: f.gastoVidaEstimado ? 'italic' : 'normal',
                   }}>
-                    {f.gastoVida !== null ? `~${fmt(f.gastoVida)} €` : '~—'}
+                    {f.gastoVida !== null && f.gastoVida > 0 ? `${fmt(f.gastoVida)} €` : '—'}
                   </td>
 
                   {/* Financiación */}

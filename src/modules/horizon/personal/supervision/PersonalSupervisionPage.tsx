@@ -11,6 +11,7 @@ import DrilldownMensual, { type DatoMensual } from './components/DrilldownMensua
 import { personalDataService } from '../../../../services/personalDataService';
 import { personalResumenService } from '../../../../services/personalResumenService';
 import { autonomoService } from '../../../../services/autonomoService';
+import { otrosIngresosService } from '../../../../services/otrosIngresosService';
 import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { ejercicioFiscalService } from '../../../../services/ejercicioFiscalService';
 import { prestamosService } from '../../../../services/prestamosService';
@@ -26,8 +27,8 @@ const fmt = (v: number) =>
 
 // ── Computation helpers ──
 
-const calcBruto = (nomina: number, autonom: number, conyuge: number) =>
-  nomina + autonom + conyuge;
+const calcBruto = (nomina: number, autonom: number, conyuge: number, otros: number = 0) =>
+  nomina + autonom + conyuge + otros;
 
 const calcNeto = (bruto: number, retenciones: number) =>
   bruto - retenciones;
@@ -45,6 +46,7 @@ interface AñoData {
   nomina: number;
   retenciones: number;
   autonom: number;
+  otros: number;
   conyuge: number;
   gastoVida: number;
   financiacion: number;
@@ -142,6 +144,16 @@ const PersonalSupervisionPage: React.FC = () => {
         // No autonomo data
       }
 
+      // Get otros ingresos annual income
+      let otrosAnual = 0;
+      try {
+        const otrosIngresos = await otrosIngresosService.getOtrosIngresos(moduleConfig.personalDataId);
+        const activos = otrosIngresos.filter((o) => o.activo);
+        otrosAnual = otrosIngresosService.calculateAnnualIncome(activos);
+      } catch {
+        // No otros ingresos
+      }
+
       // Get resumen for current year (monthly data)
       let nominaAnual = 0;
       try {
@@ -163,6 +175,7 @@ const PersonalSupervisionPage: React.FC = () => {
         nomina: nominaAnual,
         retenciones: 0,
         autonom: autonomoAnual,
+        otros: otrosAnual,
         conyuge: 0,
         gastoVida: gastoAnual,
         financiacion: financiacionAnual,
@@ -195,6 +208,7 @@ const PersonalSupervisionPage: React.FC = () => {
           nomina: decl.trabajo?.retribucionesDinerarias || 0,
           retenciones: decl.trabajo?.retencionesTrabajoTotal || 0,
           autonom: decl.actividades?.reduce((s, a) => s + (a.rendimientoNeto || 0), 0) || 0,
+          otros: 0,
           conyuge: 0,
           gastoVida: gastoAnual, // Same estimate for all years (no historical data)
           financiacion: financiacionAnual, // Same estimate
@@ -222,14 +236,14 @@ const PersonalSupervisionPage: React.FC = () => {
   const refData = datosAnuales.find((d) => d.año === AÑO_ACTUAL);
   const prevData = datosAnuales.find((d) => d.año === AÑO_ACTUAL - 1);
 
-  const refBruto = refData ? calcBruto(refData.nomina, refData.autonom, refData.conyuge) : null;
+  const refBruto = refData ? calcBruto(refData.nomina, refData.autonom, refData.conyuge, refData.otros) : null;
   const refNeto = refData && refBruto !== null ? calcNeto(refBruto, refData.retenciones) : null;
   const refExcedente = refData && refNeto !== null
     ? calcExcedente(refNeto, refData.gastoVida, refData.financiacion) : null;
   const refTasa = refExcedente !== null && refNeto !== null
     ? calcTasaAhorro(refExcedente, refNeto) : null;
 
-  const prevBruto = prevData ? calcBruto(prevData.nomina, prevData.autonom, prevData.conyuge) : null;
+  const prevBruto = prevData ? calcBruto(prevData.nomina, prevData.autonom, prevData.conyuge, prevData.otros) : null;
   const prevNeto = prevData && prevBruto !== null ? calcNeto(prevBruto, prevData.retenciones) : null;
   const prevExcedente = prevData && prevNeto !== null
     ? calcExcedente(prevNeto, prevData.gastoVida, prevData.financiacion) : null;
@@ -243,7 +257,7 @@ const PersonalSupervisionPage: React.FC = () => {
   const graficaData: DatoAnual[] = [...datosAnuales]
     .sort((a, b) => a.año - b.año)
     .map((d) => {
-      const bruto = calcBruto(d.nomina, d.autonom, d.conyuge);
+      const bruto = calcBruto(d.nomina, d.autonom, d.conyuge, d.otros);
       const neto = calcNeto(bruto, d.retenciones);
       return {
         año: d.año,
@@ -255,7 +269,7 @@ const PersonalSupervisionPage: React.FC = () => {
 
   // Table rows
   const filasHistorial: FilaHistorial[] = datosAnuales.map((d) => {
-    const bruto = calcBruto(d.nomina, d.autonom, d.conyuge);
+    const bruto = calcBruto(d.nomina, d.autonom, d.conyuge, d.otros);
     const neto = calcNeto(bruto, d.retenciones);
     const excedente = calcExcedente(neto, d.gastoVida, d.financiacion);
     const tasa = calcTasaAhorro(excedente, neto);
@@ -281,7 +295,8 @@ const PersonalSupervisionPage: React.FC = () => {
   // Lateral fuentes
   const nominaTotal = refData?.nomina || 0;
   const autonomTotal = refData?.autonom || 0;
-  const totalIngresos = nominaTotal + autonomTotal;
+  const otrosTotal = refData?.otros || 0;
+  const totalIngresos = nominaTotal + autonomTotal + otrosTotal;
 
   // ── Handlers ──
 
@@ -445,7 +460,6 @@ const PersonalSupervisionPage: React.FC = () => {
             barColor="var(--grey-300, #C8D0DC)"
             label={`GASTO DE VIDA ${AÑO_ACTUAL}`}
             value={gastoVidaAnual || null}
-            prefix="~"
             valueColor="var(--grey-900, #1A2332)"
             sub="Gastos personales · año"
             badgeLabel={gastoVidaConfigurado ? 'Estimación anual' : 'Sin configurar'}
@@ -504,13 +518,19 @@ const PersonalSupervisionPage: React.FC = () => {
                 porcentaje: totalIngresos > 0 ? Math.round((autonomTotal / totalIngresos) * 100) : 0,
                 iconKey: 'autonomo',
               },
-              {
+              ...(otrosTotal > 0 ? [{
+                nombre: 'Otros ingresos',
+                importe: otrosTotal,
+                porcentaje: totalIngresos > 0 ? Math.round((otrosTotal / totalIngresos) * 100) : 0,
+                iconKey: 'nomina' as const,
+              }] : []),
+              ...(personalData?.spouseName ? [{
                 nombre: 'Cónyuge / pareja',
-                meta: 'Sin datos · Configurar',
-                importe: null,
-                iconKey: 'conyuge',
+                meta: personalData.spouseName,
+                importe: null as null,
+                iconKey: 'conyuge' as const,
                 vacio: true,
-              },
+              }] : []),
             ]}
             costesVida={[
               {
