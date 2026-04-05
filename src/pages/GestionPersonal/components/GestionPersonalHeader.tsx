@@ -211,7 +211,7 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
     chips.push({
       key: 'hijos',
       label: `${perfil.descendientes.length} hijo${perfil.descendientes.length > 1 ? 's' : ''}`,
-      icon: <Shield size={13} />,
+      icon: <Shield size={12} />,
     });
   }
 
