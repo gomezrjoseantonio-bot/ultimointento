@@ -417,7 +417,7 @@ interface Props {
 }
 
 const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
-  const { perfil, expenses, nominas, autonomos, prestamosPersonales, nominaCalcs } = data;
+  const { perfil, expenses, nominas, autonomos, nominaCalcs } = data;
 
   const [editingExpense, setEditingExpense] = useState<PersonalExpense | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
