@@ -32,15 +32,13 @@ const CATEGORIA_LABEL: Record<PersonalExpenseCategory, string> = {
   otros: 'Otros',
 };
 
-const CAT_COLORS: Record<string, string> = {
+const CAT_COLORS: Record<PersonalExpenseCategory, string> = {
   vivienda: '#042C5E',
-  suministros: '#1A4A8A',
   alimentacion: '#1DA0BA',
   salud: '#303A4C',
   transporte: '#6C757D',
   ocio: '#9CA3AF',
   seguros: '#303A4C',
-  hijos: '#042C5E',
   educacion: '#1A4A8A',
   otros: '#9CA3AF',
 };

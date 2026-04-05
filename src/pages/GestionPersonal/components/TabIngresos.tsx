@@ -103,9 +103,14 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const confirmarEliminarNomina = async () => {
     if (nominaAEliminar?.id != null) {
-      await nominaService.deleteNomina(nominaAEliminar.id);
-      setNominaAEliminar(null);
-      onDataChange();
+      try {
+        await nominaService.deleteNomina(nominaAEliminar.id);
+        setNominaAEliminar(null);
+        onDataChange();
+      } catch (error) {
+        console.error('Error al eliminar la nómina:', error);
+        window.alert('No se pudo eliminar la nómina. Inténtalo de nuevo.');
+      }
     }
   };
 
@@ -133,20 +138,22 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
         action={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <ActionBtn label="Editar nómina" onClick={() => navigate(`/gestion/personal/nueva-nomina?id=${nom.id}&titular=${nom.titular}`)} />
-            <button
-              onClick={() => setNominaAEliminar(nom)}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 12,
-                color: 'var(--grey-400)',
-                fontFamily: FONT,
-                padding: '6px 8px',
-              }}
-            >
-              Eliminar
-            </button>
+            {nom.id != null && (
+              <button
+                onClick={() => setNominaAEliminar(nom)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  color: 'var(--grey-400)',
+                  fontFamily: FONT,
+                  padding: '6px 8px',
+                }}
+              >
+                Eliminar
+              </button>
+            )}
           </div>
         }
       />
@@ -384,29 +391,45 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
       {/* Modal confirmación eliminar nómina */}
 
       {nominaAEliminar && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(255,255,255,0.85)',
-          backdropFilter: 'blur(2px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-        }}>
-          <div style={{
-            background: 'var(--white, #FFFFFF)',
-            border: '1px solid var(--grey-200, #DDE3EC)',
-            borderRadius: 12,
-            padding: 24,
-            maxWidth: 400,
-            width: '100%',
-            fontFamily: FONT,
-          }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--grey-900)' }}>
+        <div
+          role="presentation"
+          onKeyDown={(e) => { if (e.key === 'Escape') setNominaAEliminar(null); }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(255,255,255,0.85)',
+            backdropFilter: 'blur(2px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dlg-eliminar-nomina-title"
+            aria-describedby="dlg-eliminar-nomina-desc"
+            style={{
+              background: 'var(--white, #FFFFFF)',
+              border: '1px solid var(--grey-200, #DDE3EC)',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 400,
+              width: '100%',
+              fontFamily: FONT,
+            }}
+          >
+            <h3
+              id="dlg-eliminar-nomina-title"
+              style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--grey-900)' }}
+            >
               Eliminar nómina
             </h3>
-            <p style={{ fontSize: 14, color: 'var(--grey-500)', marginBottom: 20 }}>
+            <p
+              id="dlg-eliminar-nomina-desc"
+              style={{ fontSize: 14, color: 'var(--grey-500)', marginBottom: 20 }}
+            >
               ¿Eliminar la nómina de {nominaAEliminar.nombre}?
               Esta acción no se puede deshacer.
             </p>
@@ -428,6 +451,8 @@ const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
                 Cancelar
               </button>
               <button
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus
                 onClick={confirmarEliminarNomina}
                 style={{
                   padding: '8px 16px',
