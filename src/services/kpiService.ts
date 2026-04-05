@@ -1,5 +1,8 @@
 import { openDB } from 'idb';
-import { Property, Contract, ExpenseH5 } from './db';
+import { Property, Contract } from './db';
+
+/** Local type for KPI expense calculations */
+type KpiExpense = { amount: number; propertyId?: number; fiscalType?: string; destino?: string; destino_id?: number; [key: string]: any };
 import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
 
 export type KPIMetricType = 
@@ -42,8 +45,8 @@ export interface KPIConfiguration {
     includePSI: boolean;
     includeRealEstate: boolean;
     includeOther: boolean;
-    capexAmortizable: boolean;
-    capexYears: number;
+    mejoraAmortizable: boolean;
+    mejoraYears: number;
     managementFee: boolean;
     managementFeePercent: number;
     vacancyPercent: number;
@@ -129,7 +132,7 @@ export const KPI_METRICS: Record<KPIMetricType, KPIMetric> = {
     unit: 'percentage',
     category: 'rentabilidad',
     dependsOn: ['ingresos-anuales', 'gastos-explotacion', 'vacancia-estimada', 'coste-adquisicion'],
-    formula: '((Ingresos - vacancia - gastos - CAPEX amort. - gestión) ÷ base coste) × 100'
+    formula: '((Ingresos - vacancia - gastos - mejora amort. - gestión) ÷ base coste) × 100'
   },
   'beneficio-neto-mes': {
     id: 'beneficio-neto-mes',
@@ -138,7 +141,7 @@ export const KPI_METRICS: Record<KPIMetricType, KPIMetric> = {
     unit: 'currency',
     category: 'rentabilidad',
     dependsOn: ['ingresos-anuales', 'gastos-explotacion', 'vacancia-estimada'],
-    formula: '(Ingresos - vacancia - gastos - deuda - CAPEX amort. - gestión) ÷ 12'
+    formula: '(Ingresos - vacancia - gastos - deuda - mejora amort. - gestión) ÷ 12'
   },
   'cash-on-cash': {
     id: 'cash-on-cash',
@@ -225,8 +228,8 @@ export const DEFAULT_KPI_CONFIG: KPIConfiguration = {
     includePSI: true,
     includeRealEstate: true,
     includeOther: true,
-    capexAmortizable: false,
-    capexYears: 10,
+    mejoraAmortizable: false,
+    mejoraYears: 10,
     managementFee: false,
     managementFeePercent: 5,
     vacancyPercent: 7.5,
@@ -310,7 +313,7 @@ export class KPIService {
     metricId: KPIMetricType,
     property: Property,
     contracts: Contract[],
-    expenses: ExpenseH5[],
+    expenses: KpiExpense[],
     config: KPIConfiguration
   ): Promise<KPIValue> {
     const metric = KPI_METRICS[metricId];
@@ -425,7 +428,7 @@ export class KPIService {
     return activeContracts.reduce((total, contract) => total + ((contract.rentaMensual || contract.monthlyRent || 0) * 12), 0);
   }
 
-  private calculateGastosExplotacion(expenses: ExpenseH5[]): number {
+  private calculateGastosExplotacion(expenses: KpiExpense[]): number {
     const currentYear = new Date().getFullYear();
     const operatingExpenses = expenses.filter(e => 
       e.taxYear === currentYear && 
@@ -457,7 +460,7 @@ export class KPIService {
     return total;
   }
 
-  private calculateNOI(contracts: Contract[], expenses: ExpenseH5[], config: KPIConfiguration): number {
+  private calculateNOI(contracts: Contract[], expenses: KpiExpense[], config: KPIConfiguration): number {
     const ingresos = this.calculateIngresosAnuales(contracts);
     const gastos = this.calculateGastosExplotacion(expenses);
     const vacancia = ingresos * (config.parameters.vacancyPercent / 100);
@@ -467,7 +470,7 @@ export class KPIService {
   private calculateRentabilidadNeta(
     property: Property, 
     contracts: Contract[], 
-    expenses: ExpenseH5[], 
+    expenses: KpiExpense[], 
     config: KPIConfiguration
   ): number {
     const noi = this.calculateNOI(contracts, expenses, config);
@@ -480,9 +483,9 @@ export class KPIService {
       adjustedNOI -= managementCost;
     }
 
-    // Apply CAPEX amortization if configured
-    if (config.parameters.capexAmortizable) {
-      // TODO: Calculate CAPEX amortization when CAPEX data is available
+    // Apply mejora amortization if configured
+    if (config.parameters.mejoraAmortizable) {
+      // TODO: Calculate mejora amortization when mejora data is available
     }
 
     const costeAdquisicion = this.calculateCosteAdquisicion(property, config);
@@ -492,7 +495,7 @@ export class KPIService {
   private calculateBeneficioNetoMes(
     property: Property, 
     contracts: Contract[], 
-    expenses: ExpenseH5[], 
+    expenses: KpiExpense[], 
     config: KPIConfiguration
   ): number {
     const noi = this.calculateNOI(contracts, expenses, config);
@@ -505,9 +508,9 @@ export class KPIService {
       monthlyBenefit -= managementCost;
     }
 
-    // Apply CAPEX amortization if configured
-    if (config.parameters.capexAmortizable) {
-      // TODO: Calculate monthly CAPEX amortization when CAPEX data is available
+    // Apply mejora amortization if configured
+    if (config.parameters.mejoraAmortizable) {
+      // TODO: Calculate monthly mejora amortization when mejora data is available
     }
 
     // TODO: Subtract debt service when loan data is available

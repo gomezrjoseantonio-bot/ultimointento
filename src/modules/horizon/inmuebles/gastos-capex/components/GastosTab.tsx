@@ -1,10 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { ExpenseH5, initDB, Property, TipoGasto, EstadoConciliacion, type AEATFiscalType, type GastoCategoria } from '../../../../../services/db';
+import { initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
-import ExpenseFormModal from './ExpenseFormModal';
 import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
+
+/** Local display type replacing legacy ExpenseDisplay */
+interface ExpenseDisplay {
+  id?: number;
+  date: string;
+  counterparty: string;
+  counterpartyNIF?: string;
+  concept: string;
+  amount: number;
+  currency: string;
+  fiscalType?: string;
+  aeatBox?: string;
+  taxYear: number;
+  propertyId?: number;
+  unit: string;
+  status: string;
+  origin: string;
+  tipo_gasto: TipoGasto;
+  destino: string;
+  destino_id?: number;
+  estado_conciliacion: EstadoConciliacion;
+  documentId?: number;
+  desglose_amortizable?: {
+    mejora_importe: number;
+    mobiliario_importe: number;
+    ficha_activo_id?: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
 
@@ -31,20 +60,6 @@ function mapCategoriaToTipoGasto(cat: GastoCategoria): TipoGasto {
   return map[cat] || 'otros';
 }
 
-function mapFiscalTypeToCategoria(ft?: AEATFiscalType): GastoCategoria {
-  const map: Partial<Record<AEATFiscalType, GastoCategoria>> = {
-    'financiacion': 'intereses',
-    'reparacion-conservacion': 'reparacion',
-    'comunidad': 'comunidad',
-    'suministros': 'suministro',
-    'seguros': 'seguro',
-    'tributos-locales': 'ibi',
-    'servicios-personales': 'servicio',
-    'amortizacion-muebles': 'otro',
-    'capex-mejora-ampliacion': 'otro',
-  };
-  return (ft && map[ft]) || 'otro';
-}
 
 interface GastosTabProps {
   triggerAddExpense?: boolean;
@@ -69,12 +84,10 @@ const TIPO_GASTO_OPTIONS: Array<{ value: TipoGasto; label: string }> = [
 
 const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   const navigate = useNavigate();
-  const [expenses, setExpenses] = useState<ExpenseH5[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseDisplay[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<ExpenseH5 | undefined>(undefined);
   const [filters, setFilters] = useState({
     tipo_gasto: '',
     origen: '',
@@ -92,14 +105,11 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   // Handle trigger from parent component
   useEffect(() => {
     if (triggerAddExpense) {
-      // Check if there are properties available
       if (properties.length === 0) {
         toast.error('Primero debes crear un inmueble antes de añadir gastos');
         return;
       }
-      
-      setEditingExpense(undefined);
-      setShowExpenseModal(true);
+      handleAddExpense();
     }
   }, [triggerAddExpense, properties.length]);
 
@@ -114,8 +124,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         db.getAll('properties')
       ]);
 
-      // Map GastoInmueble → ExpenseH5 shape for display compatibility
-      const mappedExpenses: ExpenseH5[] = gastosData.map(g => ({
+      // Map GastoInmueble → ExpenseDisplay shape for display compatibility
+      const mappedExpenses: ExpenseDisplay[] = gastosData.map(g => ({
         id: g.id,
         date: g.fecha,
         counterparty: g.proveedorNombre || '',
@@ -140,7 +150,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         documentId: g.documentId,
         createdAt: g.createdAt,
         updatedAt: g.updatedAt,
-      } as ExpenseH5));
+      } as ExpenseDisplay));
 
       setExpenses(mappedExpenses);
       setProperties(propertiesData);
@@ -185,7 +195,7 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
            matchesDestino && matchesProperty && matchesDateRange;
   });
 
-  const getPropertyName = (expense: ExpenseH5): string => {
+  const getPropertyName = (expense: ExpenseDisplay): string => {
     const propertyId = expense.destino === 'inmueble' ? expense.destino_id : expense.propertyId;
     const property = properties.find(p => p.id === propertyId);
     return property?.alias || (expense.destino === 'personal' ? 'Personal' : 'Inmueble no encontrado');
@@ -223,19 +233,11 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
   };
 
   const handleAddExpense = () => {
-    // Check if there are properties available
     if (properties.length === 0) {
       toast.error('Primero debes crear un inmueble antes de añadir gastos');
       return;
     }
-    
-    setEditingExpense(undefined);
-    setShowExpenseModal(true);
-  };
-
-  const handleEditExpense = async (expense: ExpenseH5) => {
-    setEditingExpense(expense);
-    setShowExpenseModal(true);
+    toast('Usa la bandeja de entrada para añadir gastos');
   };
 
   const handleDeleteExpense = async (expenseId: number) => {
@@ -254,49 +256,6 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
     }
   };
 
-  const handleSaveExpense = async (expense: ExpenseH5) => {
-    try {
-      if (expense.id) {
-        // Update existing in gastosInmueble
-        await gastosInmuebleService.update(expense.id, {
-          inmuebleId: expense.propertyId,
-          ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
-          fecha: expense.date,
-          concepto: expense.concept || expense.fiscalType || 'Gasto manual',
-          categoria: mapFiscalTypeToCategoria(expense.fiscalType),
-          casillaAEAT: (expense.aeatBox || '0106') as any,
-          importe: expense.amount,
-          proveedorNIF: expense.counterpartyNIF || undefined,
-          proveedorNombre: expense.counterparty || undefined,
-          documentId: expense.documentId || undefined,
-        });
-        toast.success('Gasto actualizado correctamente');
-      } else {
-        // Create new in gastosInmueble
-        await gastosInmuebleService.add({
-          inmuebleId: expense.propertyId!,
-          ejercicio: expense.taxYear || new Date(expense.date).getFullYear(),
-          fecha: expense.date,
-          concepto: expense.concept || expense.fiscalType || 'Gasto manual',
-          categoria: mapFiscalTypeToCategoria(expense.fiscalType),
-          casillaAEAT: (expense.aeatBox || '0106') as any,
-          importe: expense.amount,
-          origen: 'manual',
-          estado: 'confirmado',
-          proveedorNIF: expense.counterpartyNIF || undefined,
-          proveedorNombre: expense.counterparty || undefined,
-          documentId: expense.documentId || undefined,
-        });
-        toast.success('Gasto creado correctamente');
-      }
-
-      await loadData();
-      setShowExpenseModal(false);
-    } catch (error) {
-      console.error('Error saving expense:', error);
-      toast.error('Error al guardar el gasto');
-    }
-  };
 
   if (loading) {
     return (
@@ -571,9 +530,8 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
                           </button>
                         )}
                         <button
-                          onClick={() => handleEditExpense(expense)}
                           className="text-brand-navy hover:text-navy-800 p-1"
-                          title="Ver/Editar"
+                          title="Ver"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </button>
@@ -594,14 +552,6 @@ const GastosTab: React.FC<GastosTabProps> = ({ triggerAddExpense = false }) => {
         )}
       </div>
 
-      {/* Expense Form Modal */}
-      <ExpenseFormModal
-        isOpen={showExpenseModal}
-        onClose={() => setShowExpenseModal(false)}
-        onSave={handleSaveExpense}
-        expense={editingExpense}
-        properties={properties}
-      />
     </div>
   );
 };
