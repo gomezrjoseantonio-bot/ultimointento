@@ -73,7 +73,7 @@ interface Props {
   onDataChange: () => void;
 }
 
-const TabIngresos: React.FC<Props> = ({ data, onDataChange }) => {
+const TabIngresos: React.FC<Props> = ({ data }) => {
   const { perfil, nominas, autonomos, pensiones, otrosIngresos, nominaCalcs } = data;
   const navigate = useNavigate();
 

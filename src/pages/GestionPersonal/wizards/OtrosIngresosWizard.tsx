@@ -314,6 +314,7 @@ const OtrosIngresosWizard: React.FC = () => {
                         <button
                           key={value}
                           onClick={() => setModal(m => m ? { ...m, frecuencia: value } : m)}
+                          aria-pressed={modal.frecuencia === value}
                           style={{
                             flex: 1,
                             padding: '8px 4px',
