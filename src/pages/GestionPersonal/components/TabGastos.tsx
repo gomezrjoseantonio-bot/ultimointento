@@ -33,20 +33,21 @@ const CATEGORIA_LABEL: Record<string, string> = {
   otros: 'Otros',
 };
 
+const CATEGORIA_COLOR: Record<string, string> = {
+  vivienda:    '#042C5E',
+  suministros: '#1A4A8A',
+  alimentacion:'#1DA0BA',
+  salud:       '#303A4C',
+  transporte:  '#6C757D',
+  ocio:        '#9CA3AF',
+  seguros:     '#303A4C',
+  hijos:       '#042C5E',
+  educacion:   '#1A4A8A',
+  otros:       '#9CA3AF',
+};
+
 function colorCategoria(cat: string): string {
-  const mapa: Record<string, string> = {
-    vivienda:    '#042C5E',
-    suministros: '#1A4A8A',
-    alimentacion:'#1DA0BA',
-    salud:       '#303A4C',
-    transporte:  '#6C757D',
-    ocio:        '#9CA3AF',
-    seguros:     '#303A4C',
-    hijos:       '#042C5E',
-    educacion:   '#1A4A8A',
-    otros:       '#9CA3AF',
-  };
-  return mapa[cat.toLowerCase()] ?? '#9CA3AF';
+  return CATEGORIA_COLOR[cat.toLowerCase()] ?? '#9CA3AF';
 }
 
 const FREQ_LABEL: Record<string, string> = {
@@ -217,8 +218,8 @@ const ExpenseDrawer: React.FC<{
     categoria: expense?.categoria || ('vivienda' as PersonalExpenseCategory),
     importe: expense?.importe || 0,
     frecuencia: expense?.frecuencia || ('mensual' as PersonalExpenseFrequency),
-    diaPago: expense?.diaPago as number | undefined,
-    accountId: expense?.accountId as number | undefined,
+    diaPago: expense?.diaPago || undefined,
+    accountId: expense?.accountId || undefined,
   });
   const [accounts, setAccounts] = useState<Account[]>([]);
 
@@ -355,8 +356,8 @@ const GrowRow: React.FC<{
   const origen = (gasto as any).origen as string | undefined;
 
   const cuentaNombre = (id: number) => {
-    const acc = accounts.find((a: any) => a.id === id);
-    return acc ? ((acc as any).alias || (acc as any).nombre || `Cuenta ${id}`) : `Cuenta ${id}`;
+    const acc = accounts.find((a) => a.id === id);
+    return acc ? (acc.alias || acc.banco?.name || `Cuenta ${id}`) : `Cuenta ${id}`;
   };
 
   let metaParts: string[] = [CATEGORIA_LABEL[gasto.categoria] || capitalizar(gasto.categoria)];
@@ -414,10 +415,10 @@ const GrowRow: React.FC<{
 
       {/* Botones siempre visibles */}
       <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
-        <button style={rbStyle} onClick={() => onEdit(gasto)}>
+        <button type="button" aria-label="Editar gasto" style={rbStyle} onClick={() => onEdit(gasto)}>
           <Pencil size={13} />
         </button>
-        <button style={rbStyle} onClick={() => onDelete(gasto)}>
+        <button type="button" aria-label="Eliminar gasto" style={rbStyle} onClick={() => onDelete(gasto)}>
           <Trash2 size={13} />
         </button>
       </div>
@@ -473,9 +474,12 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   }, [perfil.id, expenses]);
 
   useEffect(() => {
-    initDB().then((db) => db.getAll('accounts')).then((all) => {
-      setAccounts(all.filter((a: any) => a.activa && a.status !== 'DELETED'));
-    });
+    initDB()
+      .then((db) => db.getAll('accounts'))
+      .then((all) => {
+        setAccounts(all.filter((a: any) => a.activa && a.status !== 'DELETED'));
+      })
+      .catch(() => setAccounts([]));
   }, []);
 
   const hasHijos = (perfil.descendientes?.length ?? 0) > 0;
@@ -486,7 +490,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
 
     for (const s of SUMINISTROS_BASE) {
       if (!existingLower.has(s.concepto.toLowerCase()))
-        result.push({ concepto: s.concepto, categoria: 'vivienda', motivo: 'Suministro básico' });
+        result.push({ concepto: s.concepto, categoria: s.categoria, motivo: 'Suministro básico' });
     }
     if (perfil.housingType === 'rent') {
       if (!existingLower.has('alquiler'))
@@ -702,7 +706,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
                     >
                       <Plus size={12} /> Añadir
                     </button>
-                    <button style={rbStyle} onClick={() => setDescartados((prev) => new Set([...prev, s.concepto]))}>
+                    <button type="button" aria-label="Descartar sugerencia" title="Descartar sugerencia" style={rbStyle} onClick={() => setDescartados((prev) => new Set([...prev, s.concepto]))}>
                       <X size={13} />
                     </button>
                   </div>
