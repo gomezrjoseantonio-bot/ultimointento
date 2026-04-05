@@ -392,7 +392,7 @@ const SettingsPage: React.FC = () => {
                   })}
                 >
                   <option value="tesoreria-gastos">Tesorería → Gastos</option>
-                  <option value="tesoreria-capex">Tesorería → CAPEX</option>
+                  <option value="tesoreria-mejoras">Tesorería → Mejoras</option>
                 </select>
               </div>
               <div>

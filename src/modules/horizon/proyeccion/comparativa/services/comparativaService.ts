@@ -180,7 +180,7 @@ class ComparativaService {
             (movement.amount > 0 && !movement.linked_registro)) {
           monthlyActual[monthIndex] += Math.abs(movement.amount);
         } else if (movement.linked_registro?.type === 'gasto' || 
-                   movement.linked_registro?.type === 'capex' ||
+                   movement.linked_registro?.type === 'mejora' ||
                    (movement.amount < 0 && !movement.linked_registro)) {
           monthlyActual[monthIndex] -= Math.abs(movement.amount);
         }

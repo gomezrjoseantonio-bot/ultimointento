@@ -12,7 +12,7 @@ import { ValidationResult } from '../../services/treasuryValidationService';
 // Status indicators for Treasury records
 export const TreasuryStatusBadge: React.FC<{
   status: 'previsto' | 'cobrado' | 'incompleto' | 'completo' | 'pagado' | 'amortizando';
-  type: 'ingreso' | 'gasto' | 'capex';
+  type: 'ingreso' | 'gasto' | 'mejora';
 }> = ({ status, type }) => {
   const getStatusConfig = () => {
     switch (status) {
@@ -50,7 +50,7 @@ export const TreasuryStatusBadge: React.FC<{
         return { 
           color: 'bg-purple-100 text-purple-800', 
           text: 'Amortizando',
-          microcopy: 'CAPEX en proceso de amortización'
+          microcopy: 'Mejora en proceso de amortización'
         };
       default:
         return { 
@@ -123,7 +123,7 @@ export const ValidationFeedback: React.FC<{
 // Treasury amount display with proper formatting and context
 export const TreasuryAmount: React.FC<{
   amount: number;
-  type: 'ingreso' | 'gasto' | 'capex';
+  type: 'ingreso' | 'gasto' | 'mejora';
   currency?: string;
   size?: 'sm' | 'md' | 'lg';
   showSign?: boolean;
@@ -140,7 +140,7 @@ export const TreasuryAmount: React.FC<{
   const getColorClass = () => {
     if (type === 'ingreso') return 'text-success-600';
     if (type === 'gasto') return 'text-error-600';
-    return 'text-purple-600'; // CAPEX
+    return 'text-purple-600'; // Mejora
   };
 
   const getSizeClass = () => {
@@ -154,7 +154,7 @@ export const TreasuryAmount: React.FC<{
   const getIcon = () => {
     if (type === 'ingreso') return <TrendingUp className="w-4 h-4" />;
     if (type === 'gasto') return <TrendingDown className="w-4 h-4" />;
-    return <Building className="w-4 h-4" />; // CAPEX
+    return <Building className="w-4 h-4" />; // Mejora
   };
 
   return (
@@ -171,7 +171,7 @@ export const TreasuryAmount: React.FC<{
 
 // Help tooltips and microcopys for Treasury fields
 export const TreasuryFieldHelp: React.FC<{
-  field: 'origen' | 'destino' | 'categoria_AEAT' | 'tipo_capex' | 'anos_amortizacion' | 'reconciliacion';
+  field: 'origen' | 'destino' | 'categoria_AEAT' | 'tipo_mejora' | 'anos_amortizacion' | 'reconciliacion';
   className?: string;
 }> = ({ field, className = '' }) => {
   const getHelpContent = () => {
@@ -191,15 +191,15 @@ export const TreasuryFieldHelp: React.FC<{
           title: 'Categoría AEAT',
           content: 'Clasificación fiscal según Hacienda para la declaración de la renta. Determina el tipo de deducción aplicable.'
         };
-      case 'tipo_capex':
+      case 'tipo_mejora':
         return {
-          title: 'Tipo de CAPEX',
+          title: 'Tipo de Mejora',
           content: 'Mejora: renovaciones que aumentan el valor. Ampliación: construcción nueva. Mobiliario: muebles y equipamiento.'
         };
       case 'anos_amortizacion':
         return {
           title: 'Años de Amortización',
-          content: 'Período durante el cual se distribuye el coste del CAPEX. Mobiliario: 10 años. Mejoras/Ampliaciones: 15-50 años.'
+          content: 'Período durante el cual se distribuye el coste de la mejora. Mobiliario: 10 años. Mejoras/Ampliaciones: 15-50 años.'
         };
       case 'reconciliacion':
         return {
@@ -317,7 +317,7 @@ export const TreasuryActionFeedback: React.FC<{
 
 // Empty state for Treasury containers
 export const TreasuryEmptyState: React.FC<{
-  type: 'ingreso' | 'gasto' | 'capex' | 'movement';
+  type: 'ingreso' | 'gasto' | 'mejora' | 'movement';
   onCreateNew: () => void;
 }> = ({ type, onCreateNew }) => {
   const getConfig = () => {
@@ -346,14 +346,14 @@ export const TreasuryEmptyState: React.FC<{
             'Asocia gastos a inmuebles específicos para un mejor control'
           ]
         };
-      case 'capex':
+      case 'mejora':
         return {
           icon: <Building className="w-12 h-12 text-purple-400" />,
-          title: 'No hay inversiones CAPEX registradas',
+          title: 'No hay mejoras registradas',
           description: 'Registra mejoras, ampliaciones o mobiliario que incrementen el valor de tus inmuebles.',
-          buttonText: 'Registrar primer CAPEX',
+          buttonText: 'Registrar primera mejora',
           tips: [
-            'CAPEX mejora el valor catastral de construcción de tus inmuebles',
+            'Las mejoras incrementan el valor catastral de construcción de tus inmuebles',
             'Las inversiones se amortizan durante varios años',
             'Mobiliario se amortiza en 10 años, mejoras en 15-50 años'
           ]
@@ -416,7 +416,7 @@ export const TreasuryQuickStats: React.FC<{
   stats: {
     totalIngresos: number;
     totalGastos: number;
-    totalCAPEX: number;
+    totalMejoras: number;
     pendingReconciliation: number;
   };
 }> = ({ stats }) => {
@@ -451,9 +451,9 @@ export const TreasuryQuickStats: React.FC<{
       <div className="bg-purple-50 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-purple-600">CAPEX</p>
+            <p className="text-sm font-medium text-purple-600">Mejoras</p>
             <p className="text-2xl font-semibold text-purple-900">
-              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalCAPEX)}
+              {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(stats.totalMejoras)}
             </p>
           </div>
           <Building className="w-8 h-8 text-purple-400" />

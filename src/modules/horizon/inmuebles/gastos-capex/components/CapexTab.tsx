@@ -41,11 +41,11 @@ const CapexTab: React.FC = () => {
       ]);
       setProperties(propertiesData);
 
-      // Filter to CAPEX only (mejora/ampliacion)
+      // Filter to mejoras only (mejora/ampliacion)
       const allMejoras = allMejorasRaw.filter(x => x.tipo === 'mejora' || x.tipo === 'ampliacion');
       setMejoras(allMejoras);
     } catch (error) {
-      console.error('Error loading CAPEX data:', error);
+      console.error('Error loading mejoras data:', error);
       toast.error('Error al cargar las mejoras');
     } finally {
       setLoading(false);
@@ -173,7 +173,7 @@ const CapexTab: React.FC = () => {
           </div>
           <div>
             <h3 className="text-lg font-medium text-gray-900">No tienes inmuebles registrados</h3>
-            <p className="text-gray-600 mt-1">Para gestionar mejoras (CAPEX), primero necesitas registrar al menos un inmueble.</p>
+            <p className="text-gray-600 mt-1">Para gestionar mejoras, primero necesitas registrar al menos un inmueble.</p>
           </div>
           <button
             onClick={() => navigate('/inmuebles/cartera')}
@@ -191,7 +191,7 @@ const CapexTab: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Mejoras y ampliaciones (CAPEX)</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Mejoras y ampliaciones</h2>
           <p className="text-sm text-gray-600">Inversiones que incrementan el valor del inmueble</p>
         </div>
         <button

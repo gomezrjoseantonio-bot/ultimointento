@@ -10,7 +10,7 @@ export const AEAT_CLASSIFICATION_MAP: Record<AEATFiscalType, AEATBox> = {
   'seguros': '0114',
   'tributos-locales': '0115',
   'amortizacion-muebles': '0117',
-  'capex-mejora-ampliacion': '0106' // CAPEX doesn't go to expense boxes, handled separately
+  'capex-mejora-ampliacion': '0106' // Mejora/ampliación: handled separately
 };
 
 // Category mapping to AEAT classification
@@ -23,7 +23,7 @@ export const CATEGORY_TO_AEAT: Record<string, AEATFiscalType> = {
   'Seguros': 'seguros',
   'Tributos locales': 'tributos-locales',
   'Amortización de muebles': 'amortizacion-muebles',
-  'Mejora (CAPEX)': 'capex-mejora-ampliacion'
+  'Mejora/Ampliación': 'capex-mejora-ampliacion'
 };
 
 // Provider-based classification hints
@@ -103,7 +103,7 @@ export const suggestAEATClassification = (
     return { fiscalType: 'tributos-locales', box: '0115', confidence: 0.8 };
   }
   
-  // CAPEX heuristic based on amount threshold
+  // Mejora heuristic based on amount threshold
   if (amount > 1000) {
     return { fiscalType: 'capex-mejora-ampliacion', box: '0106', confidence: 0.3 };
   }
@@ -178,7 +178,7 @@ export const getAEATBoxDisplayName = (box: AEATBox): string => {
 };
 
 /**
- * Check if a fiscal type represents CAPEX
+ * Check if a fiscal type represents mejora
  */
 export const isCapexType = (fiscalType: AEATFiscalType): boolean => {
   return fiscalType === 'capex-mejora-ampliacion';

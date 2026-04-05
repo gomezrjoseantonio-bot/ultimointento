@@ -1,4 +1,4 @@
-// H5: AEAT Utilities for Gastos & CAPEX
+// H5: AEAT Utilities for Gastos & Mejoras
 import { AEATFiscalType, AEATBox } from '../services/db';
 
 export interface AEATFiscalTypeOption {
@@ -66,7 +66,7 @@ export const AEAT_FISCAL_TYPES: AEATFiscalTypeOption[] = [
   },
   {
     value: 'capex-mejora-ampliacion',
-    label: 'CAPEX (Mejora/Ampliación)',
+    label: 'Mejora/Ampliación',
     description: 'No es gasto del ejercicio; va a mayor valor'
   }
 ];

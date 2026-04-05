@@ -1,11 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, X, Calculator, Calendar, Building, FileText } from 'lucide-react';
-import { initDB, CAPEX, Property, CAPEXTipo, CAPEXEstado } from '../../../../services/db';
+import { initDB, Property } from '../../../../services/db';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import toast from 'react-hot-toast';
 
-const CAPEXPanel: React.FC = () => {
-  const [capexRecords, setCapexRecords] = useState<CAPEX[]>([]);
+/** Local types — mejora store has been removed */
+type MejoraTipo = 'reparacion' | 'mejora' | 'ampliacion' | 'mobiliario';
+type MejoraEstado = 'completo' | 'incompleto' | 'pagado' | 'amortizando';
+type MejoraRecord = {
+  id?: number;
+  inmueble_id: number;
+  contraparte: string;
+  fecha_emision: string;
+  total: number;
+  tipo: MejoraTipo;
+  anos_amortizacion: number;
+  estado: MejoraEstado;
+  movement_id?: number;
+  source_doc_id?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const MejorasPanel: React.FC = () => {
+  const [mejoraRecords, setCapexRecords] = useState<MejoraRecord[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -17,21 +35,22 @@ const CAPEXPanel: React.FC = () => {
     contraparte: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     total: 0,
-    tipo: 'mejora' as CAPEXTipo,
+    tipo: 'mejora' as MejoraTipo,
     anos_amortizacion: 10,
-    estado: 'completo' as CAPEXEstado
+    estado: 'completo' as MejoraEstado
   });
 
   const loadData = async () => {
     setLoading(true);
     try {
       const db = await initDB();
-      const [capexData, propertiesData] = await Promise.all([
-        db.getAll('capex'),
+      const [propertiesData] = await Promise.all([
         db.getAll('properties')
       ]);
+      // mejora store removed — always empty
+      const mejoraData: MejoraRecord[] = [];
 
-      setCapexRecords(capexData);
+      setCapexRecords(mejoraData);
       setProperties(propertiesData);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -55,7 +74,7 @@ const CAPEXPanel: React.FC = () => {
 
     try {
       const db = await initDB();
-      const newCapex: CAPEX = {
+      const newMejora: MejoraRecord = {
         inmueble_id: formData.inmueble_id,
         contraparte: formData.contraparte, // Map proveedor to contraparte
         fecha_emision: formData.fecha_emision,
@@ -67,16 +86,17 @@ const CAPEXPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      await db.add('capex', newCapex);
-      
+      // TODO: implementar persistencia via mejorasInmuebleService
+      console.warn('[MejorasPanel] mejora store pendiente de integración con mejorasInmueble');
+
       const propertyName = properties.find(p => p.id === formData.inmueble_id)?.alias || 'Inmueble';
-      toast.success(`✓ Guardado en Tesorería > CAPEX: ${formatEuro(formData.total)} — ${formData.contraparte} / ${propertyName}`);
+      toast('Mejora registrada (pendiente de integración)', { icon: '⚠️' });
       
       setShowForm(false);
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error saving CAPEX:', error);
+      console.error('Error saving Mejora:', error);
       toast.error('Error al guardar la inversión');
     }
   };
@@ -120,17 +140,17 @@ const CAPEXPanel: React.FC = () => {
     return total / anos;
   };
 
-  const filteredCapex = capexRecords.filter(capex => {
-    const matchesStatus = statusFilter === 'all' || capex.estado === statusFilter;
+  const filteredMejoras = mejoraRecords.filter(mejora => {
+    const matchesStatus = statusFilter === 'all' || mejora.estado === statusFilter;
     const matchesSearch = searchTerm === '' || 
-      capex.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getPropertyName(capex.inmueble_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      capex.tipo.toLowerCase().includes(searchTerm.toLowerCase());
+      mejora.contraparte.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getPropertyName(mejora.inmueble_id).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mejora.tipo.toLowerCase().includes(searchTerm.toLowerCase());
     
     return matchesStatus && matchesSearch;
   });
 
-  const capexTypes: { value: CAPEXTipo; label: string; defaultYears: number }[] = [
+  const mejoraTypes: { value: MejoraTipo; label: string; defaultYears: number }[] = [
     { value: 'mejora', label: 'Mejora', defaultYears: 15 },
     { value: 'ampliacion', label: 'Ampliación', defaultYears: 15 },
     { value: 'mobiliario', label: 'Mobiliario', defaultYears: 10 },
@@ -199,7 +219,7 @@ const CAPEXPanel: React.FC = () => {
             <Calculator className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900">
-            {formatEuro(filteredCapex.reduce((sum, capex) => sum + capex.total, 0))}
+            {formatEuro(filteredMejoras.reduce((sum, mejora) => sum + mejora.total, 0))}
           </div>
         </div>
 
@@ -209,7 +229,7 @@ const CAPEXPanel: React.FC = () => {
             <Calendar className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900">
-            {formatEuro(filteredCapex.reduce((sum, capex) => sum + calculateAmortizationPerYear(capex.total, capex.anos_amortizacion), 0))}
+            {formatEuro(filteredMejoras.reduce((sum, mejora) => sum + calculateAmortizationPerYear(mejora.total, mejora.anos_amortizacion), 0))}
           </div>
         </div>
 
@@ -219,7 +239,7 @@ const CAPEXPanel: React.FC = () => {
             <Building className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-primary-600">
-            {filteredCapex.length}
+            {filteredMejoras.length}
           </div>
         </div>
 
@@ -229,12 +249,12 @@ const CAPEXPanel: React.FC = () => {
             <FileText className="w-5 h-5 text-gray-400" />
           </div>
           <div className="mt-2 text-2xl font-bold text-info-600">
-            {filteredCapex.filter(c => c.estado === 'amortizando').length}
+            {filteredMejoras.filter(c => c.estado === 'amortizando').length}
           </div>
         </div>
       </div>
 
-      {/* CAPEX Table */}
+      {/* Mejora Table */}
       <div className="bg-white border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -261,42 +281,42 @@ const CAPEXPanel: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCapex.map((capex) => (
-                <tr key={capex.id} className="hover:bg-gray-50">
+              {filteredMejoras.map((mejora) => (
+                <tr key={mejora.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Building className="w-4 h-4 text-gray-400 mr-2" />
                       <div className="text-sm font-medium text-gray-900">
-                        {getPropertyName(capex.inmueble_id)}
+                        {getPropertyName(mejora.inmueble_id)}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {capex.contraparte}
+                    {mejora.contraparte}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getTipoColor(capex.tipo)}`}>
-                      {capex.tipo}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getTipoColor(mejora.tipo)}`}>
+                      {mejora.tipo}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
                     <div className="text-sm font-medium text-error-600">
-                      {formatEuro(capex.total)}
+                      {formatEuro(mejora.total)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="text-sm text-gray-900">
-                      {capex.anos_amortizacion} años
+                      {mejora.anos_amortizacion} años
                     </div>
                     <div className="text-xs text-gray-500">
-                      {formatEuro(calculateAmortizationPerYear(capex.total, capex.anos_amortizacion))}/año
+                      {formatEuro(calculateAmortizationPerYear(mejora.total, mejora.anos_amortizacion))}/año
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(capex.estado)}`}>
-                      {capex.estado}
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold ${getStatusColor(mejora.estado)}`}>
+                      {mejora.estado}
                     </span>
-                    {capex.source_doc_id && (
+                    {mejora.source_doc_id && (
                       <div className="mt-1">
                         <span className="inline-flex items-center px-2 py-1 text-xs bg-success-100 text-success-800">
                           <FileText className="w-3 h-3 mr-1" />
@@ -304,7 +324,7 @@ const CAPEXPanel: React.FC = () => {
                         </span>
                       </div>
                     )}
-                    {capex.movement_id && (
+                    {mejora.movement_id && (
                       <div className="mt-1">
                         <span className="atlas-atlas-atlas-atlas-atlas-btn-primary inline-flex items-center px-2 py-1 text-xs text-primary-800">
                           Conciliado
@@ -318,11 +338,11 @@ const CAPEXPanel: React.FC = () => {
           </table>
         </div>
         
-        {filteredCapex.length === 0 && (
+        {filteredMejoras.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-gray-400 mb-2">No se encontraron inversiones CAPEX</div>
+            <div className="text-gray-400 mb-2">No se encontraron inversiones Mejora</div>
             <div className="text-sm text-gray-500">
-              {capexRecords.length === 0 
+              {mejoraRecords.length === 0 
                 ? 'Añade inversiones para gestionar la amortización'
                 : 'Intenta ajustar los filtros'
               }
@@ -336,7 +356,7 @@ const CAPEXPanel: React.FC = () => {
         <div className="fixed inset-0 bg-gray-200 flex items-center justify-center p-4 z-50">
           <div className="bg-white p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Nueva Inversión CAPEX</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Nueva Inversión Mejora</h3>
               <button
                 onClick={() => setShowForm(false)}
                 className="text-gray-400 hover:text-gray-600"
@@ -418,16 +438,16 @@ const CAPEXPanel: React.FC = () => {
                     required
                     value={formData.tipo}
                     onChange={(e) => {
-                      const selectedType = capexTypes.find(t => t.value === e.target.value);
+                      const selectedType = mejoraTypes.find(t => t.value === e.target.value);
                       setFormData({
                         ...formData, 
-                        tipo: e.target.value as CAPEXTipo,
+                        tipo: e.target.value as MejoraTipo,
                         anos_amortizacion: selectedType?.defaultYears || 10
                       });
                     }}
                     className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500"
                   >
-                    {capexTypes.map(type => (
+                    {mejoraTypes.map(type => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
@@ -474,4 +494,4 @@ const CAPEXPanel: React.FC = () => {
   );
 };
 
-export default CAPEXPanel;
+export default MejorasPanel;

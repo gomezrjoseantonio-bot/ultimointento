@@ -38,7 +38,7 @@ import type { Prestamo } from '../types/prestamos';
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
   contratos: ContratoDetectado[];
-  gastosRecurrentes: GastoRecurrentePropuesto[];
+  opexRecurrentes: GastoRecurrentePropuesto[];
   prestamos: PrestamoDetectado[];
   proveedores: ProveedorDistribuido[];
 }
@@ -302,7 +302,7 @@ async function archivarDocumentoImportado(db: DB, decl: DeclaracionCompleta): Pr
 async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<ResultadoInmuebles> {
   const distribuidos: InmuebleDistribuido[] = [];
   const contratos: ContratoDetectado[] = [];
-  const gastosRecurrentes: GastoRecurrentePropuesto[] = [];
+  const opexRecurrentes: GastoRecurrentePropuesto[] = [];
   const prestamos: PrestamoDetectado[] = [];
   const proveedores: ProveedorDistribuido[] = [];
 
@@ -469,11 +469,11 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       }
     }
 
-    pushGasto(gastosRecurrentes, rc, dirCorta, 'Comunidad', inm.gastos.comunidad);
-    pushGasto(gastosRecurrentes, rc, dirCorta, 'Seguros', inm.gastos.seguros);
-    pushGasto(gastosRecurrentes, rc, dirCorta, 'IBI y tasas', inm.gastos.ibiTasas);
-    pushGasto(gastosRecurrentes, rc, dirCorta, 'Suministros', inm.gastos.suministros);
-    pushGasto(gastosRecurrentes, rc, dirCorta, 'Gestión delegada', inm.gastos.serviciosTerceros);
+    pushGasto(opexRecurrentes, rc, dirCorta, 'Comunidad', inm.gastos.comunidad);
+    pushGasto(opexRecurrentes, rc, dirCorta, 'Seguros', inm.gastos.seguros);
+    pushGasto(opexRecurrentes, rc, dirCorta, 'IBI y tasas', inm.gastos.ibiTasas);
+    pushGasto(opexRecurrentes, rc, dirCorta, 'Suministros', inm.gastos.suministros);
+    pushGasto(opexRecurrentes, rc, dirCorta, 'Gestión delegada', inm.gastos.serviciosTerceros);
 
     if (inm.gastos.interesesFinanciacion > 0) {
       prestamos.push({ refCatastral: rc, direccionCorta: dirCorta, interesesAnuales: inm.gastos.interesesFinanciacion });
@@ -528,7 +528,7 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
     }
   }
 
-  return { distribuidos, contratos, gastosRecurrentes, prestamos, proveedores };
+  return { distribuidos, contratos, opexRecurrentes, prestamos, proveedores };
 }
 
 /**
@@ -750,7 +750,7 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
     },
     inmuebles: ri.distribuidos,
     contratosDetectados: ri.contratos,
-    gastosRecurrentesPropuestos: ri.gastosRecurrentes,
+    opexRecurrentesPropuestos: ri.opexRecurrentes,
     prestamosDetectados: ri.prestamos,
     proveedores: ri.proveedores,
     inversiones,
@@ -791,14 +791,14 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
 }
 
 function pushGasto(
-  gastosRecurrentes: GastoRecurrentePropuesto[],
+  opexRecurrentes: GastoRecurrentePropuesto[],
   refCatastral: string,
   direccionCorta: string,
   concepto: string,
   importeAnual: number,
 ): void {
   if (!importeAnual || importeAnual <= 0) return;
-  gastosRecurrentes.push({
+  opexRecurrentes.push({
     refCatastral,
     direccionCorta,
     concepto,

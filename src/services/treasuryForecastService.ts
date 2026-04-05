@@ -11,7 +11,7 @@ export const createTreasuryEventFromDocument = async (document: Document): Promi
 
   const { financialData, aeatClassification } = document.metadata;
   
-  // Skip CAPEX - it doesn't create treasury events, just updates property value
+  // Skip mejora - it doesn't create treasury events, just updates property value
   if (aeatClassification?.fiscalType && isCapexType(aeatClassification.fiscalType)) {
     return;
   }

@@ -97,7 +97,7 @@ export const processDocumentIngestion = async (document: Document): Promise<Docu
 
 /**
  * 1. Facturas de gasto corriente
- * Destino: Inmuebles › Gastos & CAPEX › Gastos
+ * Destino: Inmuebles › Gastos › Gastos
  * Enhanced with OCR completion events and auto-OCR flag checks
  */
 async function processRegularInvoice(document: Document): Promise<DocumentIngestionResult> {
@@ -263,19 +263,19 @@ async function processRegularInvoice(document: Document): Promise<DocumentIngest
 
 /*
  * 2. Facturas de reforma (con partidas)
- * Destino: Inmuebles › Gastos & CAPEX
+ * Destino: Inmuebles › Gastos
  */
 /*
 async function processReformInvoice(document: Document): Promise<DocumentIngestionResult> {
   // Implementation for reform invoices with line items
-  // This would create multiple entries (CAPEX/Gastos) for different categories
+  // This would create multiple entries (Gastos/Mejoras) for different categories
   return await processRegularInvoice(document);
 }
 */
 
 /*
  * 3. Recibos (domiciliaciones, TPV, etc.)
- * Destino: Tesorería › Movimientos + Inmuebles › Gastos & CAPEX › Gastos
+ * Destino: Tesorería › Movimientos + Inmuebles › Gastos › Gastos
  */
 /*
 async function processReceipt(document: Document): Promise<DocumentIngestionResult> {
@@ -430,7 +430,7 @@ async function processTaxOrOtherDocumentation(document: Document): Promise<Docum
       return {
         success: true,
         message: `✓ Documentación fiscal archivada como gasto`,
-        destination: 'Inmuebles › Gastos & CAPEX › Gastos',
+        destination: 'Inmuebles › Gastos › Gastos',
         createdEntries: [{
           module: 'inmuebles',
           section: 'gastos',

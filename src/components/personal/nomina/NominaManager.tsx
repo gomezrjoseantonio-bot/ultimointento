@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { Nomina, CalculoNominaResult } from '../../../types/personal';
-import NominaForm from './NominaForm';
 import { Plus, Pencil, Trash2, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
 
 const NominaManager: React.FC = () => {
+  const navigate = useNavigate();
   const [nominas, setNominas] = useState<Nomina[]>([]);
   const [calculos, setCalculos] = useState<Map<number, CalculoNominaResult>>(new Map());
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingNomina, setEditingNomina] = useState<Nomina | null>(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -37,9 +36,8 @@ const NominaManager: React.FC = () => {
     }
   };
 
-  const handleCreateNomina = () => { setEditingNomina(null); setShowForm(true); };
-  const handleEditNomina   = (nomina: Nomina) => { setEditingNomina(nomina); setShowForm(true); };
-  const handleNominaSaved  = () => { setShowForm(false); setEditingNomina(null); loadData(); };
+  const handleCreateNomina = () => { navigate('/gestion/personal/nueva-nomina'); };
+  const handleEditNomina   = (_nomina: Nomina) => { navigate('/gestion/personal/nueva-nomina'); };
 
   const handleDeleteNomina = async (id: number) => {
     const confirmed = await confirmDelete('esta nómina');
@@ -69,17 +67,6 @@ const NominaManager: React.FC = () => {
              style={{ borderColor: 'var(--blue-800)', borderTopColor: 'transparent' }} />
         <span className="ml-2 text-neutral-600">Cargando nóminas...</span>
       </div>
-    );
-  }
-
-  if (showForm) {
-    return (
-      <NominaForm
-        isOpen={true}
-        onClose={() => { setShowForm(false); setEditingNomina(null); }}
-        nomina={editingNomina}
-        onSaved={handleNominaSaved}
-      />
     );
   }
 

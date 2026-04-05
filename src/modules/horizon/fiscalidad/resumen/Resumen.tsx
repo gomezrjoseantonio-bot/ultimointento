@@ -5,7 +5,7 @@ import { initDB, Property, FiscalSummary } from '../../../../services/db';
 import { calculateCarryForwards, getFiscalSummary, exportFiscalData } from '../../../../services/fiscalSummaryService';
 import { formatEuro, getAEATBoxDisplayName } from '../../../../services/aeatClassificationService';
 import { calculateCurrentYearAccruedIncome } from '../../../../services/incomeReconciliationService';
-import { getCAPEXAmortizationSummary } from '../../../../services/capexClassificationService';
+import { getMejoraAmortizationSummary } from '../../../../services/capexClassificationService';
 
 interface PropertyFiscalData {
   property: Property;
@@ -70,7 +70,7 @@ const Resumen: React.FC = () => {
           const incomeBreakdown = await calculateCurrentYearAccruedIncome(property.id, selectedYear);
           
           // Calculate enhanced amortization breakdown  
-          const capexSummary = await getCAPEXAmortizationSummary(property.id, selectedYear);
+          const mejoraSummary = await getMejoraAmortizationSummary(property.id, selectedYear);
           
           // Calculate metrics for this property
           const gastos = (fiscalSummary.box0105 || 0) + (fiscalSummary.box0106 || 0) + 
@@ -97,9 +97,9 @@ const Resumen: React.FC = () => {
             parcialmenteCobrado: incomeBreakdown.parcialmenteCobrado,
             impagado: incomeBreakdown.impagado,
             // Enhanced amortization breakdown
-            amortizacionInmueble: capexSummary.propertyAmortization,
-            amortizacionMejoras: capexSummary.improvementAmortization,
-            amortizacionMobiliario: capexSummary.furnitureAmortization
+            amortizacionInmueble: mejoraSummary.propertyAmortization,
+            amortizacionMejoras: mejoraSummary.improvementAmortization,
+            amortizacionMobiliario: mejoraSummary.furnitureAmortization
           });
         } catch (error) {
           console.error(`Error loading data for property ${property.alias}:`, error);
@@ -142,7 +142,7 @@ const Resumen: React.FC = () => {
           (summary.box0113 || 0) + (summary.box0114 || 0) + 
           (summary.box0115 || 0) + (summary.box0117 || 0);
 
-        const capexSummary = await getCAPEXAmortizationSummary(selectedPropertyId, selectedYear);
+        const mejoraSummary = await getMejoraAmortizationSummary(selectedPropertyId, selectedYear);
         const property = properties.find((item) => item.id === selectedPropertyId);
 
         setFiscalSummary(summary);
@@ -159,9 +159,9 @@ const Resumen: React.FC = () => {
             pendiente: incomeBreakdown.previsto + incomeBreakdown.impagado,
             parcialmenteCobrado: incomeBreakdown.parcialmenteCobrado,
             impagado: incomeBreakdown.impagado,
-            amortizacionInmueble: capexSummary.propertyAmortization,
-            amortizacionMejoras: capexSummary.improvementAmortization,
-            amortizacionMobiliario: capexSummary.furnitureAmortization
+            amortizacionInmueble: mejoraSummary.propertyAmortization,
+            amortizacionMejoras: mejoraSummary.improvementAmortization,
+            amortizacionMobiliario: mejoraSummary.furnitureAmortization
           });
         } else {
           setSinglePropertyData(null);
@@ -214,7 +214,7 @@ const Resumen: React.FC = () => {
         `Casilla 0114 (Seguros): ${formatEuro(summary.box0114)}`,
         `Casilla 0115 (Tributos locales): ${formatEuro(summary.box0115)}`,
         `Casilla 0117 (Amortización muebles): ${formatEuro(summary.box0117)}`,
-        `CAPEX (Mejoras): ${formatEuro(summary.capexTotal)}`,
+        `Mejoras: ${formatEuro(summary.mejorasTotal)}`,
         ``,
         `Valor construcción: ${formatEuro(summary.constructionValue)}`,
         `Amortización anual: ${formatEuro(summary.annualDepreciation)}`,
@@ -261,7 +261,7 @@ const Resumen: React.FC = () => {
       { box: '0114', label: getAEATBoxDisplayName('0114'), amount: fiscalSummary.box0114, status: fiscalSummary.status },
       { box: '0115', label: getAEATBoxDisplayName('0115'), amount: fiscalSummary.box0115, status: fiscalSummary.status },
       { box: '0117', label: getAEATBoxDisplayName('0117'), amount: fiscalSummary.box0117, status: fiscalSummary.status },
-      { box: 'CAPEX', label: 'Mejoras (valor +)', amount: fiscalSummary.capexTotal, status: fiscalSummary.status }
+      { box: 'Mejoras', label: 'Mejoras (valor +)', amount: fiscalSummary.mejorasTotal, status: fiscalSummary.status }
     ].filter(item => statusFilter === 'all' || item.status === statusFilter);
   };
 
@@ -269,7 +269,7 @@ const Resumen: React.FC = () => {
     if (!fiscalSummary) return 0;
     return fiscalSummary.box0105 + fiscalSummary.box0106 + fiscalSummary.box0109 + 
            fiscalSummary.box0112 + fiscalSummary.box0113 + fiscalSummary.box0114 + 
-           fiscalSummary.box0115 + fiscalSummary.box0117 + fiscalSummary.capexTotal;
+           fiscalSummary.box0115 + fiscalSummary.box0117 + fiscalSummary.mejorasTotal;
   };
 
   // Helper functions for KPIs when "Todos" is selected
@@ -681,7 +681,7 @@ const Resumen: React.FC = () => {
                   {fiscalSummary.deductibleExcess && fiscalSummary.deductibleExcess > 0 && (
                     <p>• Exceso 0105+0106: {formatEuro(fiscalSummary.deductibleExcess)} → arrastre 4 años.</p>
                   )}
-                  <p>• Valor construcción: {formatEuro(fiscalSummary.constructionValue)} {fiscalSummary.capexTotal > 0 && `(incluye CAPEX ${formatEuro(fiscalSummary.capexTotal)})`}.</p>
+                  <p>• Valor construcción: {formatEuro(fiscalSummary.constructionValue)} {fiscalSummary.mejorasTotal > 0 && `(incluye mejoras ${formatEuro(fiscalSummary.mejorasTotal)})`}.</p>
                   <p>• Amortización anual: {formatEuro(fiscalSummary.annualDepreciation)} (3%).</p>
                 </div>
               </div>

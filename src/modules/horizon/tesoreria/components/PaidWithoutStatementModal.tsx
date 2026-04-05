@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 interface PaidWithoutStatementModalProps {
   isOpen: boolean;
   onClose: () => void;
-  recordType: 'ingreso' | 'gasto' | 'capex';
+  recordType: 'ingreso' | 'gasto' | 'mejora';
   recordId: number;
   recordDescription: string;
   recordAmount: number;
@@ -62,7 +62,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
     switch (recordType) {
       case 'ingreso': return 'Ingreso';
       case 'gasto': return 'Gasto';
-      case 'capex': return 'CAPEX';
+      case 'mejora': return 'Mejora';
       default: return 'Registro';
     }
   };
@@ -71,7 +71,7 @@ const PaidWithoutStatementModal: React.FC<PaidWithoutStatementModalProps> = ({
     switch (recordType) {
       case 'ingreso': return 'Marcar como cobrado';
       case 'gasto': return 'Marcar como pagado';
-      case 'capex': return 'Marcar como pagado';
+      case 'mejora': return 'Marcar como pagado';
       default: return 'Marcar como procesado';
     }
   };

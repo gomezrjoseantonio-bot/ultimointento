@@ -13,7 +13,7 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
-import { GastoRecurrente, PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
+import { PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
 import { InversionRendimientoPeriodico, PagoRendimiento } from '../../../../../types/inversiones-extended';
@@ -24,7 +24,6 @@ import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../s
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
-  calculateGastosPersonalesForMonth,
   calculatePersonalExpensesForMonth,
 } from './forecastEngine';
 
@@ -237,8 +236,6 @@ interface BaseData {
   opexRules: OpexRule[];
   /** Maps property numeric ID → alias for drill-down labels */
   propertyAliasMap: Map<number, string>;
-  /** Active personal recurring expenses */
-  gastosRecurrentes: GastoRecurrente[];
   /** Active OPEX-style personal expenses */
   personalExpenses: PersonalExpense[];
 
@@ -510,9 +507,8 @@ function buildMonthRow(
     baseData.propertyAliasMap,
   );
 
-  // E. Personal expenses: use forecastEngine for frequency-aware GastoRecurrente calculation — flat
+  // E. Personal expenses
   const gastosPersonales =
-    calculateGastosPersonalesForMonth(baseData.gastosRecurrentes, month1to12) +
     calculatePersonalExpensesForMonth(baseData.personalExpenses, month1to12);
 
   const irpf = baseData.irpfForecastByMonth.get(monthStr) ?? 0;
@@ -875,7 +871,7 @@ async function loadBaseData(): Promise<BaseData> {
 
   // ── E. GASTOS PERSONALES ─────────────────────────────────────────────────
   // Load PersonalExpense records (new model with advanced frequency fields)
-  // NOTE: Old gastosRecurrentes store is no longer used — all expenses come from personalExpenses
+  // All expenses come from personalExpenses (patronGastosPersonales)
   let personalExpenses: PersonalExpense[] = [];
   try {
     const allPersonalExpenses = await personalExpensesService.getExpenses(personalDataId);
@@ -895,7 +891,6 @@ async function loadBaseData(): Promise<BaseData> {
     pensionDrillDown,
     opexRules,
     propertyAliasMap,
-    gastosRecurrentes: [] as GastoRecurrente[],
     personalExpenses,
     valoracionIndex,
     inmuebleInitialValues,

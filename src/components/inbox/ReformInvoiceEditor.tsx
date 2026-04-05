@@ -179,8 +179,8 @@ const ReformInvoiceEditor: React.FC<ReformInvoiceEditorProps> = ({ isOpen, onClo
             <h4 className="font-medium mb-3 text-sm" style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}>Resumen</h4>
             <div className="grid grid-cols-4 gap-4 text-sm">
               {[
-                { label: 'Mejora (CAPEX)', amount: splitData.mejora.amount, color: sectionColors.mejora },
-                { label: 'Mobiliario (CAPEX)', amount: splitData.mobiliario.amount, color: sectionColors.mobiliario },
+                { label: 'Mejora', amount: splitData.mejora.amount, color: sectionColors.mejora },
+                { label: 'Mobiliario', amount: splitData.mobiliario.amount, color: sectionColors.mobiliario },
                 { label: 'R&C (Gastos)', amount: splitData.reparacionConservacion.amount, color: sectionColors.reparacion },
                 { label: 'Total', amount: splitData.mejora.amount + splitData.mobiliario.amount + splitData.reparacionConservacion.amount, color: 'var(--n-900)' },
               ].map(({ label, amount, color }) => (

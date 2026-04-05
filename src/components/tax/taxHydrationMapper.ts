@@ -218,7 +218,7 @@ export async function mapDeclaracionToTaxState(declaracion: DeclaracionIRPF): Pr
       pctPropiedad: 100,
       tipo: i.diasAlquilado > 0 && i.diasVacio > 0 ? 'mixto' : i.diasAlquilado > 0 ? 'arrendado' : 'disposicion',
       gastosTributos: propertyHints.get(i.inmuebleId)?.gastosTributos ?? 0,
-      mejoras: round2(summary?.capexTotal ?? 0),
+      mejoras: round2(summary?.mejorasTotal ?? 0),
       diasArrendados: i.diasAlquilado,
       diasDisposicion: i.diasVacio,
       valorCatastralRevisado: false,

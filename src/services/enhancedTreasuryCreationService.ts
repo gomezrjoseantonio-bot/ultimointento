@@ -8,7 +8,7 @@
  * - Document correction workflow support
  */
 
-import { initDB, Movement, Account, Ingreso, Gasto, CAPEX } from './db';
+import { initDB, Movement, Account, Ingreso, Gasto } from './db';
 import { DocumentType } from './unicornioDocumentDetection';
 import { safeMatch } from '../utils/safe';
 import { gastosInmuebleService } from './gastosInmuebleService';
@@ -19,7 +19,7 @@ export interface TreasuryMovementCreationResult {
   success: boolean;
   movementId?: number;
   recordId?: number;
-  recordType?: 'ingreso' | 'gasto' | 'capex' | 'movement';
+  recordType?: 'ingreso' | 'gasto' | 'mejora' | 'movement';
   origen: TreasuryOrigin;
   message: string;
   requiresAccountSelection?: boolean;
@@ -53,7 +53,7 @@ export interface DocumentOCRFields {
   
   // Additional classification
   expense_category?: string;
-  is_capex?: boolean;
+  is_mejora?: boolean;
   aeat_classification?: string;
   
   // Bank extract specific
@@ -91,9 +91,9 @@ export const createTreasuryMovementFromOCR = async (
       case 'gasto':
         return await createGastoFromOCR(documentId, extractedFields, filename);
         
-      case 'capex':
-        return await createCAPEXFromOCR(documentId, extractedFields, filename);
-        
+      case 'mejora':
+        return await createMejoraFromOCR(documentId, extractedFields, filename);
+
       default:
         return {
           success: false,
@@ -217,13 +217,13 @@ export const createTreasuryMovementFromBankExtract = async (
  * Determines the type of treasury record based on document type and extracted fields
  */
 function determineRecordType(
-  documentType: DocumentType, 
+  documentType: DocumentType,
   fields: DocumentOCRFields
-): 'ingreso' | 'gasto' | 'capex' {
-  
-  // Check if explicitly marked as CAPEX
-  if (fields.is_capex || fields.aeat_classification?.includes('capex')) {
-    return 'capex';
+): 'ingreso' | 'gasto' | 'mejora' {
+
+  // Check if explicitly marked as mejora
+  if (fields.is_mejora || fields.aeat_classification?.includes('mejora')) {
+    return 'mejora';
   }
   
   // Check for income indicators
@@ -235,11 +235,11 @@ function determineRecordType(
     return 'ingreso';
   }
   
-  // Check expense category for CAPEX classification
+  // Check expense category for mejora classification
   if (fields.expense_category) {
-    const capexCategories = ['reforma', 'mejora', 'mobiliario', 'instalacion', 'equipamiento'];
-    if (capexCategories.some(cat => fields.expense_category?.toLowerCase().includes(cat))) {
-      return 'capex';
+    const mejoraCategories = ['reforma', 'mejora', 'mobiliario', 'instalacion', 'equipamiento'];
+    if (mejoraCategories.some(cat => fields.expense_category?.toLowerCase().includes(cat))) {
+      return 'mejora';
     }
   }
   
@@ -340,36 +340,21 @@ async function createGastoFromOCR(
 }
 
 /**
- * Creates CAPEX record from OCR data
+ * Creates Mejora record from OCR data.
+ * NOTE: mejoras are stored in mejorasInmueble.
  */
-async function createCAPEXFromOCR(
-  documentId: string,
-  fields: DocumentOCRFields,
+async function createMejoraFromOCR(
+  _documentId: string,
+  _fields: DocumentOCRFields,
   filename: string
 ): Promise<TreasuryMovementCreationResult> {
-  const db = await initDB();
-  
-  const capex: Omit<CAPEX, 'id'> = {
-    inmueble_id: fields.property_id || 1, // Default to property 1 if not specified
-    contraparte: fields.proveedor_nombre || 'Proveedor no identificado',
-    fecha_emision: fields.invoice_date || new Date().toISOString().split('T')[0],
-    total: fields.total_amount!,
-    tipo: 'mejora', // Default CAPEX type
-    anos_amortizacion: 10, // Default amortization years
-    estado: 'incompleto',
-    source_doc_id: parseInt(documentId) || undefined,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  
-  const capexId = await db.add('capex', capex);
-  
+  // mejora creation is handled via mejorasInmueble service
+  console.warn('[Treasury] createMejoraFromOCR: use mejorasInmueble service for', filename);
   return {
-    success: true,
-    recordId: capexId as number,
-    recordType: 'capex',
+    success: false,
+    recordType: 'mejora',
     origen: 'ocr_document',
-    message: `CAPEX creado correctamente desde ${filename}`
+    message: `Mejora no creada desde ${filename}: usar mejorasInmueble`
   };
 }
 
@@ -420,7 +405,7 @@ export const enhanceOCRFieldExtraction = (
     
     // Category classification
     expense_category: classifyExpenseCategory(rawOCRData.full_text || '', filename),
-    is_capex: detectCAPEXIndicators(rawOCRData.full_text || '', filename),
+    is_mejora: detectMejoraIndicators(rawOCRData.full_text || '', filename),
     
     // Enhanced contract/tenant detection
     arrendatario_nombre: detectTenantName(rawOCRData.full_text || ''),
@@ -507,14 +492,14 @@ function classifyExpenseCategory(text: string, filename: string): string | undef
   return undefined;
 }
 
-function detectCAPEXIndicators(text: string, filename: string): boolean {
-  const capexKeywords = [
+function detectMejoraIndicators(text: string, filename: string): boolean {
+  const mejoraKeywords = [
     'reforma', 'mejora', 'instalacion', 'obra', 'construccion',
     'mobiliario', 'equipamiento', 'maquinaria', 'herramienta'
   ];
-  
+
   const searchText = (text + ' ' + filename).toLowerCase();
-  return capexKeywords.some(keyword => searchText.includes(keyword));
+  return mejoraKeywords.some(keyword => searchText.includes(keyword));
 }
 
 function detectTenantName(text: string): string | undefined {

@@ -137,7 +137,7 @@ const DocumentClassificationPanel: React.FC<DocumentClassificationPanelProps> = 
           const routingResult = await routeOCRDocumentToTreasury(updatedDocument);
           
           if (routingResult.type !== 'none' && routingResult.recordId) {
-            const message = `Documento enrutado a ${routingResult.type === 'ingreso' ? 'Ingresos' : routingResult.type === 'gasto' ? 'Gastos' : 'CAPEX'}: ${routingResult.reason}`;
+            const message = `Documento enrutado a ${routingResult.type === 'ingreso' ? 'Ingresos' : routingResult.type === 'gasto' ? 'Gastos' : 'Mejoras'}: ${routingResult.reason}`;
             toast.success(message);
             setStatusMessage(message);
           }

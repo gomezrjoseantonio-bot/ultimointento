@@ -137,8 +137,8 @@ const DocumentCorrectionWorkflow: React.FC<DocumentCorrectionWorkflowProps> = ({
       type: 'text'
     },
     {
-      field: 'is_capex',
-      label: '¿Es inversión (CAPEX)?',
+      field: 'is_mejora',
+      label: '¿Es mejora/inversión?',
       type: 'boolean'
     },
     {

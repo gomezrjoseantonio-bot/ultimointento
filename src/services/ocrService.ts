@@ -440,8 +440,8 @@ export const shouldSuggestExpense = (ocrResult: OCRResult): boolean => {
   return hasInvoiceFields && ocrResult.confidenceGlobal >= 0.7;
 };
 
-// H-OCR: Check if document suggests CAPEX creation
-export const shouldSuggestCAPEX = (ocrResult: OCRResult): boolean => {
+// H-OCR: Check if document suggests mejora creation
+export const shouldSuggestMejora = (ocrResult: OCRResult): boolean => {
   const hasConstructionIndicators = ocrResult.fields.some(field => 
     (field.name === 'categoria' && field.value.toLowerCase().includes('reforma')) ||
     (field.name === 'concepto' && (

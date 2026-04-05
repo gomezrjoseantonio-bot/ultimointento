@@ -93,17 +93,17 @@ describe('UI Contraparte Integration Tests', () => {
       contraparte_nombre: 'Utility Company'
     };
 
-    const capexRecord = {
+    const mejoraRecord = {
       contraparte: 'Construction Company'
     };
 
     expect(ingresoRecord.contraparte).toBe('Rental Income Provider');
     expect(gastoRecord.contraparte_nombre).toBe('Utility Company');
-    expect(capexRecord.contraparte).toBe('Construction Company');
+    expect(mejoraRecord.contraparte).toBe('Construction Company');
 
     // Ensure no proveedor fields exist
     expect(ingresoRecord).not.toHaveProperty('proveedor');
     expect(gastoRecord).not.toHaveProperty('proveedor_nombre');
-    expect(capexRecord).not.toHaveProperty('proveedor');
+    expect(mejoraRecord).not.toHaveProperty('proveedor');
   });
 });

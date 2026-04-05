@@ -1,7 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb';
 import type { DBSchema, IDBPObjectStore, IndexNames, StoreNames } from 'idb';
 import type { DeclaracionCompleta } from '../types/declaracionCompleta';
-import { UtilityType, ReformBreakdown } from '../types/inboxTypes';
 import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
@@ -443,12 +442,12 @@ export interface Document {
     contraparte?: string;
     counterpartyName?: string; // New counterparty field for enhanced classification
     proveedor?: string; // Backward compatibility
-    tipo?: 'Factura' | 'Contrato' | 'CAPEX' | 'Extracto bancario' | 'Otros';
+    tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros';
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
     notas?: string;
-    carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'capex' | 'otros';
+    carpeta?: 'todos' | 'facturas' | 'contratos' | 'extractos' | 'mejoras' | 'otros';
     // H9: Enhanced fiscal classification
     aeatClassification?: {
       fiscalType?: AEATFiscalType;
@@ -474,7 +473,7 @@ export interface Document {
       paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
       iban?: string;
       predictedPaymentDate?: string;
-      isCapex?: boolean;
+      isMejora?: boolean;
     };
     // H8: Bank extract specific metadata
     extractMetadata?: {
@@ -730,7 +729,7 @@ export type AEATFiscalType =
   | 'tributos-locales'       // Local taxes (IBI, waste, lighting; no fines)
   | 'servicios-personales'   // Personal services (cleaning, external maintenance, etc.)
   | 'amortizacion-muebles'   // Furniture amortization (10 years)
-  | 'capex-mejora-ampliacion'; // CAPEX (Improvement/Expansion)
+  | 'capex-mejora-ampliacion'; // Mejora/Ampliación (valor catastral)
 
 export type AEATBox = 
   | '0105' // Interests/financing
@@ -770,102 +769,7 @@ export type EstadoConciliacion = 'pendiente' | 'conciliado';
 // UNICORNIO REFACTOR: Expense destination
 export type DestinoGasto = 'personal' | 'inmueble';
 
-// H5: Enhanced Expense interface
-export interface ExpenseH5 {
-  id?: number;
-  date: string;
-  counterparty: string;
-  counterpartyNIF?: string;
-  concept: string;
-  amount: number;
-  currency: string;
-  fiscalType: AEATFiscalType;
-  aeatBox?: AEATBox;
-  taxYear: number; // Ejercicio de devengo
-  taxIncluded: boolean;
-  propertyId?: number; // Optional for personal expenses
-  unit: 'completo' | string; // 'completo' or 'habitacion-X'
-  prorationMethod: ProrationMethod;
-  prorationDetail: string; // % or other details based on method
-  status: ExpenseStatus;
-  origin: ExpenseOrigin;
-  documentId?: number;
-  
-  // UNICORNIO REFACTOR: Unified expense fields
-  tipo_gasto: TipoGasto; // Inferred type for classification and filtering
-  destino: DestinoGasto; // 'personal' or 'inmueble'
-  destino_id?: number; // propertyId when destino='inmueble'
-  estado_conciliacion: EstadoConciliacion;
-  
-  // H-HOTFIX: Utility-specific fields
-  utility_type?: UtilityType;
-  supply_address?: string;
-  expected_charge_date?: string;
-  iban_masked?: string;
-  
-  // H-HOTFIX: Reform breakdown for multi-category assignments
-  reform_breakdown?: ReformBreakdown;
-  
-  // UNICORNIO REFACTOR: Amortizable breakdown (for mejora/mobiliario)
-  desglose_amortizable?: {
-    mejora_importe: number;
-    mobiliario_importe: number;
-    ficha_activo_id?: number; // Link to asset record for amortization
-  };
-  
-  // H-HOTFIX: Document fingerprinting for idempotence
-  doc_fingerprint?: string;
-  revision?: number; // Incremented on each OCR reprocess
-  last_ocr_at?: string;
-  processor_version?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// H5: CAPEX Treatment Types
-export type CAPEXTreatment = 'capex-mejora' | 'mobiliario-10-años' | 'reparacion-conservacion';
-
-export type ReformStatus = 'abierta' | 'cerrada';
-
-// H5: Reform (CAPEX project)
-export interface Reform {
-  id?: number;
-  title: string;
-  propertyId: number;
-  startDate: string;
-  endDate?: string;
-  notes?: string;
-  status: ReformStatus;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// H5: Reform Line Item
-export interface ReformLineItem {
-  id?: number;
-  reformId: number;
-  source: 'documento' | 'manual';
-  documentId?: number;
-  counterparty: string;
-  counterpartyNIF?: string;
-  concept: string;
-  amount: number;
-  taxIncluded: boolean;
-  treatment: CAPEXTreatment;
-  aeatBoxSuggested?: AEATBox;
-  executionDate: string;
-  prorationMethod: ProrationMethod;
-  prorationDetail: string;
-  // H-OCR-REFORM: Enhanced breakdown fields
-  baseAmount?: number; // Base amount before tax
-  ivaRate?: number; // VAT rate (21, 10, 4, 0)
-  ivaAmount?: number; // VAT amount
-  categorizationConfidence?: number; // OCR categorization confidence (0-1)
-  fechaFinObra?: string; // For 'mejora' items - completion date
-  fechaAltaMobiliario?: string; // For 'mobiliario' items - installation date
-  createdAt: string;
-  updatedAt: string;
-}
+// H5: ExpenseH5, Reform, ReformLineItem — DELETED in cleanup V4.3
 
 // H5: AEAT Limit and Carryforward tracking
 export interface AEATCarryForward {
@@ -1017,9 +921,9 @@ export interface Movement {
   id_import?: string;
   estado_conciliacion?: ReconciliationStatus; // Default to 'sin_conciliar'
   linked_registro?: {
-    type: 'ingreso' | 'gasto' | 'capex';
+    type: 'ingreso' | 'gasto' | 'mejora';
     id: number;
-  }; // Link to Ingreso/Gasto/CAPEX record
+  }; // Link to Ingreso/Gasto/Mejora record
   // Legacy reconciliation links
   expenseIds?: number[]; // For movements linked to expenses
   documentIds?: number[]; // H9: Link to invoices/documents
@@ -1460,24 +1364,7 @@ export interface Gasto {
   updatedAt: string;
 }
 
-// H10: Treasury CAPEX types
-export type CAPEXTipo = 'mejora' | 'ampliacion' | 'mobiliario' | 'reparacion';
-export type CAPEXEstado = 'completo' | 'incompleto' | 'pagado' | 'amortizando';
-
-export interface CAPEX {
-  id?: number;
-  inmueble_id: number;
-  contraparte: string;
-  fecha_emision: string;
-  total: number;
-  tipo: CAPEXTipo;
-  anos_amortizacion: number; // Años de amortización
-  estado: CAPEXEstado;
-  movement_id?: number; // Link to reconciled movement
-  source_doc_id?: number; // Link to source document
-  createdAt: string;
-  updatedAt: string;
-}
+// H10: Mejora interface — DELETED in cleanup V4.3 (replaced by mejorasInmueble)
 
 // H9: Fiscal Summary by Property and Year
 export interface FiscalSummary {
@@ -1500,7 +1387,7 @@ export interface FiscalSummary {
   box0114: number; // Insurance
   box0115: number; // Local taxes
   box0117: number; // Furniture amortization
-  capexTotal: number; // Construction value increase
+  mejorasTotal: number; // Construction value increase
   // Calculated fields
   deductibleExcess?: number; // 0105+0106 excess over income
   constructionValue: number; // Current construction value
@@ -1573,9 +1460,9 @@ export interface Expense {
   date: string;
   amount: number;
   description: string;
-  category: 'repair' | 'capex' | 'furniture' | 'tax' | 'utility' | 'management' | 'other';
-  isCapex: boolean;
-  capexBreakdown?: {
+  category: 'repair' | 'mejora' | 'furniture' | 'tax' | 'utility' | 'management' | 'other';
+  isMejora: boolean;
+  mejoraBreakdown?: {
     construction: number;
     materials: number;
     labor: number;
@@ -1955,9 +1842,6 @@ interface AtlasHorizonDB {
   rentCalendar: RentCalendar; // H7: Rent calendar entries
   rentPayments: RentPayment; // H7: Rent payment tracking
   rentaMensual: RentaMensual; // CONTRATOS: Monthly rent tracking for treasury integration
-  expensesH5: ExpenseH5; // H5: New expense system
-  reforms: Reform; // H5: CAPEX reforms
-  reformLineItems: ReformLineItem; // H5: Reform line items
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
@@ -2128,18 +2012,21 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
         }
 
-        // V4.2: Delete legacy stores — all runtime references removed in phases A-E
-        if (oldVersion < 42) {
+        // V4.2+: Delete legacy stores — all runtime references removed
+        {
           const storesToDelete = [
             'fiscalSummaries',
             'operacionesFiscales',
-            'expensesH5',
             'gastos',
-            'reforms',
-            'reformLineItems',
             'propertyImprovements',
             'mejorasActivo',
             'mobiliarioActivo',
+            'expensesH5',
+            'reforms',
+            'reformLineItems',
+            'capex',
+            'gastosRecurrentes',
+            'gastosPuntuales',
           ];
           for (const store of storesToDelete) {
             if (db.objectStoreNames.contains(store)) {

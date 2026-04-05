@@ -1,4 +1,4 @@
-import { initDB, OpexRule, Gasto, ExpenseH5 } from '../db';
+import { initDB, OpexRule, Gasto } from '../db';
 import {
   getAllExpensesForProperty,
   getAnnualOpexForProperty,
@@ -16,7 +16,6 @@ describe('propertyExpenses service', () => {
       db.clear('opexRules'),
       db.clear('gastosInmueble'),
       db.clear('expenses'),
-      db.clear('capex'),
     ]);
   });
 
@@ -99,29 +98,6 @@ describe('propertyExpenses service', () => {
   it('mapea gastos H5 y legacy en listado unificado', async () => {
     const db = await initDB();
     const now = new Date().toISOString();
-
-    const expenseH5: ExpenseH5 = {
-      date: now,
-      counterparty: 'Proveedor H5',
-      concept: 'Seguro hogar',
-      amount: 250,
-      currency: 'EUR',
-      fiscalType: 'seguros',
-      taxYear: new Date().getFullYear(),
-      taxIncluded: true,
-      propertyId: PROPERTY_ID,
-      unit: 'completo',
-      prorationMethod: 'porcentaje-manual',
-      prorationDetail: '100',
-      status: 'validado',
-      origin: 'manual',
-      tipo_gasto: 'seguro',
-      destino: 'inmueble',
-      destino_id: PROPERTY_ID,
-      estado_conciliacion: 'pendiente',
-      createdAt: now,
-      updatedAt: now,
-    };
 
     await db.add('gastosInmueble', {
       inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),

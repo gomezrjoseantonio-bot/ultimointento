@@ -237,7 +237,7 @@ const Gastos: React.FC = () => {
           </div>
           {legacyWarningCount > 0 && (
             <div className="text-sm text-orange-700 mt-2">
-              {legacyWarningCount} inmuebles están usando fallback legacy. Migra sus reglas a Presupuesto OPEX/CAPEX.
+              {legacyWarningCount} inmuebles están usando fallback legacy. Migra sus reglas a Presupuesto OPEX.
             </div>
           )}
         </div>

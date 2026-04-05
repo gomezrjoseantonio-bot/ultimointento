@@ -35,7 +35,7 @@ function extraerSummaryDeSnapshot(
     box0114: snapshot[`${propertyId}_0114`] ?? snapshot['0114'] ?? 0,
     box0115: snapshot[`${propertyId}_0115`] ?? snapshot['0115'] ?? 0,
     box0117: snapshot[`${propertyId}_0117`] ?? snapshot['0117'] ?? 0,
-    capexTotal: 0,
+    mejorasTotal: 0,
     deductibleExcess: 0,
     constructionValue: 0,
     annualDepreciation: 0,
@@ -75,7 +75,7 @@ export const calculateFiscalSummary = async (
   const diasArrendados = await getRentalDaysForYear(propertyId, exerciseYear);
   const diasDisponibles = isLeapYear(exerciseYear) ? 366 : 365;
   const box0117 = await calcularAmortizacionMobiliarioAnual(propertyId, exerciseYear, diasArrendados, diasDisponibles);
-  const capexTotal = await getTotalMejorasHastaEjercicio(propertyId, exerciseYear);
+  const mejorasTotal = await getTotalMejorasHastaEjercicio(propertyId, exerciseYear);
   const reparacionesFromMejoras = await getTotalReparacionesEjercicio(propertyId, exerciseYear);
 
   const summary: FiscalSummary = {
@@ -89,7 +89,7 @@ export const calculateFiscalSummary = async (
     box0114: casillas['0114'] || 0,
     box0115: casillas['0115'] || 0,
     box0117: box0117 || 0,
-    capexTotal,
+    mejorasTotal,
     deductibleExcess: 0,
     constructionValue: 0,
     annualDepreciation: 0,
