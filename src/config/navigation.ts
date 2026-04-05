@@ -66,13 +66,6 @@ export const navigationConfig: NavigationItem[] = [
     ]
   },
   {
-    name: 'Tesorería',
-    href: '/tesoreria',
-    icon: Landmark,
-    module: 'shared',
-    section: 'horizon'
-  },
-  {
     name: 'Previsiones',
     href: '/proyeccion',
     icon: BarChart3,
@@ -127,6 +120,13 @@ export const navigationConfig: NavigationItem[] = [
     name: 'Gestión Personal',
     href: '/gestion/personal',
     icon: User,
+    module: 'shared',
+    section: 'pulse'
+  },
+  {
+    name: 'Tesorería',
+    href: '/tesoreria',
+    icon: Landmark,
     module: 'shared',
     section: 'pulse'
   },

@@ -1,0 +1,357 @@
+/* ═══════════════════════════════════════════════════════════════
+   ATLAS · Tesorería V4
+   Cabecera navy + tabs flujo/cuentas + grid 12 meses
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Page shell ── */
+.tv4-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 100%;
+  background: var(--grey-50);
+  font-family: 'IBM Plex Sans', sans-serif;
+  color: var(--grey-700);
+}
+
+.tv4-content {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Buttons in navy header ── */
+.btn-navy-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.75);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: background 0.15s;
+}
+.btn-navy-ghost:hover { background: rgba(255,255,255,0.12); }
+
+.btn-navy-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--white);
+  color: var(--navy-900);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: opacity 0.15s;
+}
+.btn-navy-primary:hover { opacity: 0.9; }
+
+/* ── Period selector (year) — rectangular, V4 ── */
+.period-btn {
+  padding: 7px 14px;
+  border: 1.5px solid var(--grey-300);
+  background: var(--white);
+  color: var(--grey-700);
+  font-size: 13px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.period-btn:hover { background: var(--grey-50); }
+.period-btn-left  { border-radius: 8px 0 0 8px; }
+.period-btn-right { border-radius: 0 8px 8px 0; }
+.period-btn-active {
+  border-top: 1.5px solid var(--navy-900);
+  border-bottom: 1.5px solid var(--navy-900);
+  border-left: none;
+  border-right: none;
+  background: var(--grey-100);
+  color: var(--grey-900);
+  font-weight: 700;
+}
+
+/* ── Vista toggle ── */
+.toggle-vista {
+  padding: 7px 14px;
+  border: 1.5px solid var(--grey-300);
+  background: var(--white);
+  color: var(--grey-500);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all 0.12s;
+}
+.toggle-vista:first-child { border-radius: 8px 0 0 8px; }
+.toggle-vista:last-child  { border-radius: 0 8px 8px 0; }
+.toggle-vista.on {
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+  color: #fff;
+}
+
+/* ── Filter buttons (movimiento list) ── */
+.filtro-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  border: 1.5px solid var(--grey-200);
+  background: var(--white);
+  color: var(--grey-500);
+  transition: all 0.12s;
+}
+.filtro-btn.on {
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+  color: #fff;
+}
+.filtro-btn-navy {
+  border-color: var(--navy-700);
+  background: var(--navy-50);
+  color: var(--navy-700);
+}
+.filtro-btn-navy.on {
+  border-color: var(--navy-900);
+  background: var(--navy-900);
+  color: #fff;
+}
+.filtro-btn-grey {
+  border-color: var(--grey-500);
+  background: var(--grey-100);
+  color: var(--grey-700);
+}
+.filtro-btn-grey.on {
+  border-color: var(--grey-700);
+  background: var(--grey-700);
+  color: #fff;
+}
+.filtro-btn-teal {
+  border-color: var(--teal-600);
+  background: var(--teal-100);
+  color: var(--teal-600);
+}
+.filtro-btn-teal.on {
+  border-color: var(--teal-600);
+  background: var(--teal-600);
+  color: #fff;
+}
+
+/* ── Small utility buttons ── */
+.btn-ghost-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  border: 1.5px solid var(--grey-200);
+  background: var(--white);
+  color: var(--grey-700);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: background 0.12s;
+}
+.btn-ghost-small:hover { background: var(--grey-50); }
+
+.btn-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1.5px solid var(--grey-200);
+  background: var(--white);
+  color: var(--grey-700);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.btn-icon-sm:hover { background: var(--grey-50); }
+
+/* ── Primary button (content area) ── */
+.btn-primary-v4 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: var(--navy-900);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: opacity 0.15s;
+}
+.btn-primary-v4:hover { opacity: 0.88; }
+
+/* ── Mini badge teal ── */
+.badge-teal-mini {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--teal-100);
+  color: var(--teal-600);
+}
+
+/* ── Month card grid ── */
+.tv4-month-card {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 11px 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.tv4-month-card:hover { box-shadow: 0 2px 8px rgba(4,44,94,0.08); }
+
+/* ── Bank account selector cards ── */
+.tv4-bank-card {
+  background: var(--white);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.tv4-bank-card:hover { box-shadow: 0 2px 8px rgba(4,44,94,0.08); }
+
+/* ── Movement list ── */
+.tv4-mov-panel {
+  background: var(--white);
+  border: 1px solid var(--grey-200);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tv4-mov-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--grey-50);
+  background: transparent;
+  transition: background 0.1s;
+}
+.tv4-mov-row:hover { background: var(--navy-50); }
+.tv4-mov-row:last-child { border-bottom: none; }
+
+.tv4-punteo-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--grey-300);
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tv4-punteo-btn--done {
+  border-color: var(--teal-600);
+  background: var(--teal-100);
+}
+
+.tv4-tipo-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.tv4-tipo-icon--income  { background: var(--navy-50);  }
+.tv4-tipo-icon--expense { background: var(--grey-100); }
+.tv4-tipo-icon--financing { background: var(--teal-100); }
+
+.tv4-amount-input {
+  width: 90px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  border: 1.5px solid var(--navy-900);
+  border-radius: 6px;
+  padding: 3px 7px;
+  color: var(--navy-900);
+  outline: none;
+}
+
+/* ── Cuentas bancarias grid ── */
+.tv4-cuenta-card {
+  background: var(--white);
+  border: 1.5px solid var(--grey-200);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.tv4-cuenta-dashed {
+  background: var(--white);
+  border: 1.5px dashed var(--grey-300);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 110px;
+  color: var(--grey-400);
+  transition: border-color 0.15s, color 0.15s;
+}
+.tv4-cuenta-dashed:hover {
+  border-color: var(--grey-400);
+  color: var(--grey-500);
+}
+
+/* ── Drawer (add movement) ── */
+.tv4-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.tv4-overlay--open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.tv4-drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 380px;
+  background: var(--white);
+  box-shadow: -8px 0 30px rgba(0,0,0,0.1);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.tv4-drawer--open { transform: translateX(0); }
+
+@media (max-width: 900px) {
+  .tv4-drawer { width: 100%; }
+}

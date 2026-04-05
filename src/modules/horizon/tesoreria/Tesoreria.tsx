@@ -1,17 +1,16 @@
 import React from 'react';
-import TreasuryReconciliationView from '../../../components/treasury/TreasuryReconciliationView';
+import TesoreriaV4 from '../../../components/treasury/TesoreriaV4';
 
 /**
- * ATLAS HORIZON - Treasury Router Component
- * 
- * New reconciliation-focused treasury view with:
- * - 0 scroll design
- * - 8 accounts in 4x2 grid
- * - Flip cards for summaries
- * - Modal-based reconciliation
+ * ATLAS HORIZON - Treasury Router Component (V4)
+ *
+ * Redesigned treasury view under GESTIÓN section:
+ * - Navy header with KPIs
+ * - Tabs: Flujo de caja / Cuentas bancarias
+ * - Annual 12-month grid + monthly reconciliation view
  */
 const Tesoreria: React.FC = () => {
-  return <TreasuryReconciliationView />;
+  return <TesoreriaV4 />;
 };
 
 export default Tesoreria;
