@@ -45,6 +45,12 @@ interface FuenteRenta {
 // CONSTANTS & HELPERS
 // ══════════════════════════════════════════════════════════════
 
+/** Maximum marginal tax rate in Spain (used for tipo efectivo scale bar) */
+const MAX_TAX_RATE_PERCENT = 47;
+
+/** Threshold for highlighting large repair/financing expenses (euros) */
+const HIGHLIGHT_EXPENSE_THRESHOLD = 5000;
+
 const ESTADO_BADGE: Record<EstadoEjercicio, { bg: string; color: string; texto: string }> = {
   en_curso: { bg: 'var(--teal-100)', color: 'var(--teal-600)', texto: 'En curso' },
   pendiente: { bg: 'var(--grey-100)', color: 'var(--grey-700)', texto: 'Pendiente' },
@@ -283,11 +289,11 @@ const TarjetaCuota: React.FC<TarjetaCuotaProps> = ({ cuota, tipoEfectivo }) => (
     <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--grey-700)', marginTop: 2, ...monoStyle }}>
       {tipoEfectivo.toFixed(2).replace('.', ',')}%
     </div>
-    {/* Mini scale bar 0–47% */}
+    {/* Mini scale bar showing tipo efectivo relative to max rate */}
     <div style={{ marginTop: 10, height: 4, background: 'var(--grey-100)', borderRadius: 2 }}>
       <div style={{
         height: 4,
-        width: `${Math.min(tipoEfectivo / 47 * 100, 100)}%`,
+        width: `${Math.min((tipoEfectivo / MAX_TAX_RATE_PERCENT) * 100, 100)}%`,
         background: 'var(--grey-300)',
         borderRadius: 2,
       }} />
@@ -858,8 +864,8 @@ function buildInmueblesFiscales(datos: DatosFiscalesEjercicio): InmuebleFiscal[]
       gastos.push({ concepto: 'Amortización', importe: inm.amortizacion });
     }
     if (inm.gastosFinanciacionYReparacion && inm.gastosFinanciacionYReparacion > 0) {
-      // Highlight large repair/financing costs (> 5000€)
-      const destacado = inm.gastosFinanciacionYReparacion > 5000;
+      // Highlight large repair/financing costs above threshold
+      const destacado = inm.gastosFinanciacionYReparacion > HIGHLIGHT_EXPENSE_THRESHOLD;
       gastos.push({ concepto: 'Gastos financieros y reparación', importe: inm.gastosFinanciacionYReparacion, destacado });
     }
 

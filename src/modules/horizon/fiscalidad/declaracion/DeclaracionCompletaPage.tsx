@@ -335,9 +335,11 @@ function buildSecciones(datos: DatosFiscalesEjercicio): SeccionDeclaracion[] {
     
     if (autonomo) {
       filas.push({ label: 'Facturación bruta', valor: autonomo.ingresos });
-      if (autonomo.pagosFraccionadosM130 > 0) {
+      if (autonomo.pagosFraccionadosM130 > 0 && autonomo.ingresos > 0) {
         const pct = Math.round((autonomo.pagosFraccionadosM130 / autonomo.ingresos) * 100);
         filas.push({ label: `Pagos fraccionados M130 (${pct}%)`, valor: -autonomo.pagosFraccionadosM130, esNegativo: true });
+      } else if (autonomo.pagosFraccionadosM130 > 0) {
+        filas.push({ label: 'Pagos fraccionados M130', valor: -autonomo.pagosFraccionadosM130, esNegativo: true });
       }
       if (autonomo.gastos) {
         filas.push({ label: 'Gastos deducibles', valor: -autonomo.gastos, esNegativo: true });
