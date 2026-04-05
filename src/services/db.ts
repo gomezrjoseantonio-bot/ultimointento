@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 44; // V4.4: Eliminación física de 11 stores obsoletos de IndexedDB
+const DB_VERSION = 45; // V4.5: Eliminar stores rentCalendar y rentPayments (migrados a rentaMensual)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -685,39 +685,7 @@ export interface RentaMensual {
   updatedAt: string;
 }
 
-// H7: Rent calendar entry
-export interface RentCalendar {
-  id?: number;
-  contractId: number;
-  period: string; // YYYY-MM format
-  expectedAmount: number;
-  isProrated: boolean;
-  proratedDays?: number;
-  totalDaysInMonth?: number;
-  notes?: string;
-  createdAt: string;
-}
-
-// H7: Rent payment tracking
-export interface RentPayment {
-  id?: number;
-  contractId: number;
-  period: string; // YYYY-MM format
-  expectedAmount: number;
-  status: 'pending' | 'paid' | 'partial';
-  
-  // Payment details
-  paidAmount?: number;
-  paymentDate?: string;
-  paymentNotes?: string;
-  
-  // Documents
-  receiptDocuments: number[];
-  
-  // Metadata
-  createdAt: string;
-  updatedAt: string;
-}
+// NOTE: RentCalendar and RentPayment interfaces removed in V4.5 — migrated to RentaMensual
 
 // H5: AEAT Tax Classification Types
 export type AEATFiscalType = 
@@ -1839,8 +1807,7 @@ interface AtlasHorizonDB {
   loan_settlements: LoanSettlement;
   documents: Document;
   contracts: Contract;
-  rentCalendar: RentCalendar; // H7: Rent calendar entries
-  rentPayments: RentPayment; // H7: Rent payment tracking
+  // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
   rentaMensual: RentaMensual; // CONTRATOS: Monthly rent tracking for treasury integration
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
@@ -2040,20 +2007,7 @@ export const initDB = async () => {
           db.createObjectStore('kpiConfigurations', { keyPath: 'id' }); // id will be 'horizon' or 'pulse'
         }
 
-        // H7: Rent Calendar store
-        if (!db.objectStoreNames.contains('rentCalendar')) {
-          const rentCalendarStore = db.createObjectStore('rentCalendar', { keyPath: 'id', autoIncrement: true });
-          rentCalendarStore.createIndex('contractId', 'contractId', { unique: false });
-          rentCalendarStore.createIndex('period', 'period', { unique: false });
-        }
-
-        // H7: Rent Payments store
-        if (!db.objectStoreNames.contains('rentPayments')) {
-          const rentPaymentsStore = db.createObjectStore('rentPayments', { keyPath: 'id', autoIncrement: true });
-          rentPaymentsStore.createIndex('contractId', 'contractId', { unique: false });
-          rentPaymentsStore.createIndex('period', 'period', { unique: false });
-          rentPaymentsStore.createIndex('status', 'status', { unique: false });
-        }
+        // NOTE: rentCalendar and rentPayments stores removed in V4.5 — migrated to rentaMensual
 
         // CONTRATOS: Monthly rent tracking for treasury integration
         if (!db.objectStoreNames.contains('rentaMensual')) {
@@ -2434,6 +2388,16 @@ export const initDB = async () => {
         ];
 
         for (const store of STORES_OBSOLETOS) {
+          if (db.objectStoreNames.contains(store)) {
+            db.deleteObjectStore(store);
+          }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // LIMPIEZA V45 — Eliminación de stores rentCalendar y rentPayments (migrados a rentaMensual)
+        // ═══════════════════════════════════════════════════
+        const STORES_LEGACY_RENTAS = ['rentCalendar', 'rentPayments'];
+        for (const store of STORES_LEGACY_RENTAS) {
           if (db.objectStoreNames.contains(store)) {
             db.deleteObjectStore(store);
           }
