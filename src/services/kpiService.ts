@@ -1,9 +1,9 @@
 import { openDB } from 'idb';
 import { Property, Contract } from './db';
+import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
 
 /** Local type for KPI expense calculations */
 type KpiExpense = { amount: number; propertyId?: number; fiscalType?: string; destino?: string; destino_id?: number; [key: string]: any };
-import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
 
 export type KPIMetricType = 
   | 'ingresos-anuales'

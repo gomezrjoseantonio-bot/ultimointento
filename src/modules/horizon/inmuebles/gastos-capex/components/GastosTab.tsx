@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { PlusIcon, SearchIcon, EyeIcon, PencilIcon, TrashIcon, CheckCircleIcon, ClockIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { initDB, Property, TipoGasto, EstadoConciliacion } from '../../../../../services/db';
+import { initDB, Property, TipoGasto, EstadoConciliacion, type AEATFiscalType, type GastoCategoria } from '../../../../../services/db';
 import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
+import toast from 'react-hot-toast';
+import { confirmDelete } from '../../../../../services/confirmationService';
 
 /** Local display type replacing legacy ExpenseDisplay */
 interface ExpenseDisplay {
@@ -34,8 +36,6 @@ interface ExpenseDisplay {
   createdAt: string;
   updatedAt: string;
 }
-import toast from 'react-hot-toast';
-import { confirmDelete } from '../../../../../services/confirmationService';
 
 function mapBoxToFiscalType(box: string): AEATFiscalType {
   const map: Record<string, AEATFiscalType> = {

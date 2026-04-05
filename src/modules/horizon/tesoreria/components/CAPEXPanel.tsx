@@ -74,7 +74,7 @@ const MejorasPanel: React.FC = () => {
 
     try {
       const db = await initDB();
-      const newMejora: Mejora = {
+      const newMejora: MejoraRecord = {
         inmueble_id: formData.inmueble_id,
         contraparte: formData.contraparte, // Map proveedor to contraparte
         fecha_emision: formData.fecha_emision,
