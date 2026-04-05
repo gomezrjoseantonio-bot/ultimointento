@@ -8,6 +8,7 @@ import type {
   PersonalExpense,
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
+  DesviacionResumen,
 } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
