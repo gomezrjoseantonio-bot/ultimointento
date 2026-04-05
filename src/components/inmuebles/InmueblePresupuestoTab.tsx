@@ -170,7 +170,7 @@ const detectExpenseBusinessType = (rule: OpexRule): ExpenseBusinessType => {
   if (rule.businessType) return rule.businessType;
   const concept = (rule.concepto || '').toLowerCase();
   if (/mobili|mueble|electro|equipamiento|menaje/.test(concept)) return 'mobiliario';
-  if (/mejora|reforma|mejora|obra/.test(concept)) return 'mejora';
+  if (/mejora|reforma|obra/.test(concept)) return 'mejora';
   if (/repar|conserv|manten|aver[ií]a|pintura|fontaner|electric/.test(concept)) return 'reparacion';
   return 'recurrente';
 };

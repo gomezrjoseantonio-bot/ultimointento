@@ -692,8 +692,10 @@ export const markAsPaidWithoutStatement = async (
         movimientoId: '-1', // Special ID to indicate paid without statement
       });
     } else if (recordType === 'mejora') {
-      // mejora payment is handled via mejorasInmueble service
-      console.warn('[Treasury] markAsPaidWithoutStatement: mejora payment handled via mejorasInmueble, skipping', recordId);
+      // TODO: implementar pago via mejorasInmuebleService
+      console.warn('[Treasury] markAsPaidWithoutStatement: mejora pendiente de integración', recordId);
+      toast('Pago de mejora pendiente de integración', { icon: '⚠️' });
+      return;
     }
 
     toast.success(`Marcado como pagado ${paymentMethod.toLowerCase()}`);

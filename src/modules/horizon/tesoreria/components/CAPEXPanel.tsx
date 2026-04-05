@@ -86,11 +86,11 @@ const MejorasPanel: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
 
-      // mejora store removed — no-op
-      console.warn('[MejorasPanel] mejora store removed, skipping add');
-      
+      // TODO: implementar persistencia via mejorasInmuebleService
+      console.warn('[MejorasPanel] mejora store pendiente de integración con mejorasInmueble');
+
       const propertyName = properties.find(p => p.id === formData.inmueble_id)?.alias || 'Inmueble';
-      toast.success(`✓ Guardado en Tesorería > Mejora: ${formatEuro(formData.total)} — ${formData.contraparte} / ${propertyName}`);
+      toast('Mejora registrada (pendiente de integración)', { icon: '⚠️' });
       
       setShowForm(false);
       resetForm();

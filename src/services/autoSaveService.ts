@@ -613,7 +613,7 @@ const classifyDestination = (
     if (hasMejoraKeywords && isHighAmount) {
       // Suggest mejora instead of regular expense
       suggestedDestination = 'tesoreria-mejoras';
-      metadata.isCapex = true;
+      metadata.isMejora = true;
       confidence = Math.min(confidence + 0.10, 1.0);
       
       if (process.env.NODE_ENV === 'development') {
@@ -655,8 +655,8 @@ const classifyDestination = (
         suggestedDestination = config.destinations.extractos;
         break;
       case 'factura':
-        suggestedDestination = metadata.isCapex 
-          ? 'tesoreria-mejoras' 
+        suggestedDestination = (metadata.isMejora || (metadata as any).isCapex)
+          ? 'tesoreria-mejoras'
           : config.destinations.facturas;
         break;
       default:

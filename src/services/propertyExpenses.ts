@@ -104,7 +104,7 @@ const mapLegacyExpense = (expense: Expense): PropertyExpense => ({
   frequency: 'unico',
   startDate: expense.date,
   source: 'legacy_expense',
-  expenseClass: expense.isMejora ? 'mejora' : 'opex',
+  expenseClass: (expense.isMejora || (expense as any).isCapex) ? 'mejora' : 'opex',
   isLegacy: true,
   isActive: true,
 });
