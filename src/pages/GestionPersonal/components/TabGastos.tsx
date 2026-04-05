@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, Shield } from 'lucide-react';
 import GastoRow from './GastoRow';
 import { patronGastosPersonalesService } from '../../../services/patronGastosPersonalesService';
-import { gastosPersonalesRealService } from '../../../services/gastosPersonalesRealService';
 import { autonomoService as autonomoServiceInstance } from '../../../services/autonomoService';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import type { GestionPersonalData } from '../GestionPersonalPage';
@@ -10,7 +9,6 @@ import type {
   PersonalExpense,
   PersonalExpenseCategory,
   PersonalExpenseFrequency,
-  DesviacionResumen,
 } from '../../../types/personal';
 import { Account, initDB } from '../../../services/db';
 
@@ -35,14 +33,16 @@ const CATEGORIA_LABEL: Record<PersonalExpenseCategory, string> = {
 };
 
 const CAT_COLORS: Record<string, string> = {
-  vivienda: 'var(--navy-900, #042C5E)',
-  alimentacion: 'var(--navy-800, #0A3A72)',
-  transporte: 'var(--navy-700, #142C50)',
-  seguros: 'var(--teal-600, #1DA0BA)',
-  salud: 'var(--grey-700, #303A4C)',
-  ocio: 'var(--grey-500, #6C757D)',
-  educacion: 'var(--grey-400, #9CA3AF)',
-  otros: 'var(--grey-300, #C8D0DC)',
+  vivienda: '#042C5E',
+  suministros: '#1A4A8A',
+  alimentacion: '#1DA0BA',
+  salud: '#303A4C',
+  transporte: '#6C757D',
+  ocio: '#9CA3AF',
+  seguros: '#303A4C',
+  hijos: '#042C5E',
+  educacion: '#1A4A8A',
+  otros: '#9CA3AF',
 };
 
 const FRECUENCIA_OPTS: { value: PersonalExpenseFrequency; label: string }[] = [
@@ -425,19 +425,11 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [deletingExpense, setDeletingExpense] = useState<PersonalExpense | null>(null);
   const [localExpenses, setLocalExpenses] = useState(expenses);
-  const [desviaciones, setDesviaciones] = useState<DesviacionResumen[]>([]);
 
   // Keep local expenses in sync
   useEffect(() => {
     setLocalExpenses(expenses);
   }, [expenses]);
-
-  // Fetch desviaciones (real vs estimated) for current year
-  useEffect(() => {
-    const year = new Date().getFullYear();
-    if (perfil.id == null) return;
-    gastosPersonalesRealService.getDesviaciones(perfil.id, year).then(setDesviaciones).catch(() => setDesviaciones([]));
-  }, [perfil.id, expenses]);
 
   const hasHijos = (perfil.descendientes?.length ?? 0) > 0;
 
@@ -526,10 +518,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
 
   const netoAnual = calcNeto();
   const gastosAnual = totalMensual * 12;
-  const financiacionAnual = prestamosPersonales.reduce((s, p) => {
-    const cuota = (p as any).cuotaMensual || (p as any).cuota || 0;
-    return s + cuota * 12;
-  }, 0);
+  const financiacionAnual = data.financiacionPersonalAnual;
   const excedente = netoAnual - gastosAnual - financiacionAnual;
   const tasaAhorro = netoAnual > 0 ? Math.round((excedente / netoAnual) * 100) : 0;
 
@@ -791,8 +780,9 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
                       display: 'inline-block',
                       width: 8,
                       height: 8,
-                      borderRadius: '50%',
-                      background: CAT_COLORS[c.cat] || 'var(--grey-400)',
+                      borderRadius: 2,
+                      background: CAT_COLORS[c.cat] || '#9CA3AF',
+                      flexShrink: 0,
                     }}
                   />
                   {CATEGORIA_LABEL[c.cat as PersonalExpenseCategory] || c.cat}
@@ -837,46 +827,6 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
             </span>
           </div>
         </div>
-
-        {/* Real vs Presupuesto panel */}
-        {desviaciones.length > 0 && (
-          <div
-            style={{
-              background: 'var(--white)',
-              borderRadius: 10,
-              border: '1px solid var(--grey-200)',
-              padding: 20,
-              marginBottom: 16,
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-500)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Real vs Presupuesto
-            </div>
-            {desviaciones.map((d) => {
-              const isOver = d.desviacion > 0;
-              return (
-                <div key={d.patronId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 8 }}>
-                  <span style={{ color: 'var(--grey-700)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {d.concepto}
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: MONO,
-                      fontVariantNumeric: 'tabular-nums',
-                      color: isOver ? '#DC2626' : '#16A34A',
-                      fontWeight: 500,
-                    }}
-                  >
-                    {isOver ? '+' : ''}{fmt(Math.round(d.desviacion))} {'\u20AC'}
-                  </span>
-                </div>
-              );
-            })}
-            <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 4 }}>
-              Datos confirmados en Tesorería · {new Date().getFullYear()}
-            </div>
-          </div>
-        )}
 
         {/* Excedente panel */}
         <div
