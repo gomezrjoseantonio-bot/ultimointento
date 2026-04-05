@@ -189,7 +189,7 @@ export async function generateMonthlyForecasts(
   }
 
   // ── ACCOUNT ID RESOLUTION ─────────────────────────────────────────────────
-  // NominaForm and ContractsNuevo use cuentasService (localStorage) which assigns
+  // NominaWizard and ContractsNuevo use cuentasService (localStorage) which assigns
   // timestamp-based IDs (e.g., 1708726312345), while TreasuryReconciliationView
   // displays accounts by their IndexedDB autoincrement IDs (1, 2, 3, …).
   // Build an IBAN-keyed lookup so that localStorage account IDs are resolved to
@@ -278,8 +278,7 @@ export async function generateMonthlyForecasts(
   }
 
   // ── 2. PATRON GASTOS PERSONALES (spending patterns → forecast events) ─────
-  // NOTE: gastosRecurrentes (legacy store) is deprecated. All personal spending
-  // patterns now come from patronGastosPersonales (was personalExpenses).
+  // All personal spending patterns come from patronGastosPersonales.
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
