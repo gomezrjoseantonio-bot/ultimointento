@@ -205,7 +205,7 @@ const Cartera: React.FC = () => {
           summaryMap.set(key, {
             propertyId: g.inmuebleId, exerciseYear: g.ejercicio,
             box0105: 0, box0106: 0, box0109: 0, box0112: 0, box0113: 0, box0114: 0, box0115: 0, box0117: 0,
-            capexTotal: 0, deductibleExcess: 0, constructionValue: 0, annualDepreciation: 0,
+            mejorasTotal: 0, deductibleExcess: 0, constructionValue: 0, annualDepreciation: 0,
             status: 'Vivo', createdAt: g.createdAt, updatedAt: g.updatedAt,
           });
         }

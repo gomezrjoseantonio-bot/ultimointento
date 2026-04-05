@@ -361,7 +361,7 @@ export const updateFiscalSummaryWithAEAT = async (
     box0114: 0,
     box0115: 0,
     box0117: 0,
-    capexTotal: 0,
+    mejorasTotal: 0,
     constructionValue: aeatCalc.baseAmount,
     annualDepreciation: aeatCalc.totalAmortization,
     aeatAmortization: {

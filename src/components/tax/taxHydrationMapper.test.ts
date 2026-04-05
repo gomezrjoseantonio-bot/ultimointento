@@ -103,7 +103,7 @@ describe('mapDeclaracionToTaxState', () => {
       box0114: 300,
       box0115: 400,
       box0117: 75,
-      capexTotal: 1500,
+      mejorasTotal: 1500,
     });
 
     initDB.mockResolvedValue({

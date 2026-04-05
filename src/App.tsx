@@ -66,7 +66,6 @@ const Contratos = lazyWithPreload(() => import('./modules/horizon/inmuebles/cont
 const Analisis = lazyWithPreload(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
 const Ingresos = lazyWithPreload(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
 const Gastos = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
-const Capex = lazyWithPreload(() => import('./modules/horizon/inmuebles/capex/CAPEX'));
 const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/supervision/Supervision'));
 
 // Inversiones Module
@@ -374,11 +373,7 @@ function App() {
                   <Gastos />
                 </React.Suspense>
               } />
-              <Route path="capex" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Capex />
-                </React.Suspense>
-              } />
+              {/* mejora route removed — store deleted */}
               <Route path="supervision" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Supervision />

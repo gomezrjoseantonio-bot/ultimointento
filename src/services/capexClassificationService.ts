@@ -1,15 +1,35 @@
-import { initDB, CAPEX, CAPEXTipo, Document } from './db';
+import { initDB, Document } from './db';
 import toast from 'react-hot-toast';
 
 /**
- * Enhanced CAPEX Classification Service
+ * Enhanced Mejora Classification Service
  * Handles classification between repairs, improvements, and furniture with proper amortization
+ * NOTE: The mejora IndexedDB store has been removed. Functions that read/write mejora now
+ * return empty results or no-op. Use mejorasInmueble for new mejora records.
  */
 
-export type CAPEXNature = CAPEXTipo; // Use the existing database type
+/** Local Mejora type kept for backward-compatible signatures */
+export type MejoraTipo = 'reparacion' | 'mejora' | 'ampliacion' | 'mobiliario';
 
-export interface CAPEXClassification {
-  nature: CAPEXNature;
+export type Mejora = {
+  id?: number;
+  inmueble_id: number;
+  contraparte: string;
+  fecha_emision: string;
+  total: number;
+  tipo: string;
+  anos_amortizacion: number;
+  estado: string;
+  movement_id?: number;
+  source_doc_id?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MejoraNature = MejoraTipo;
+
+export interface MejoraClassification {
+  nature: MejoraNature;
   description: string;
   amortizationYears: number;
   isDeductibleThisYear: boolean;
@@ -17,9 +37,9 @@ export interface CAPEXClassification {
 }
 
 /**
- * Classification rules for CAPEX
+ * Classification rules for Mejora
  */
-export const CAPEX_CLASSIFICATION_RULES: Record<CAPEXNature, CAPEXClassification> = {
+export const Mejora_CLASSIFICATION_RULES: Record<MejoraNature, MejoraClassification> = {
   reparacion: {
     nature: 'reparacion',
     description: 'Reparación y conservación - Gasto del año',
@@ -51,13 +71,13 @@ export const CAPEX_CLASSIFICATION_RULES: Record<CAPEXNature, CAPEXClassification
 };
 
 /**
- * Classify CAPEX based on description and amount
+ * Classify Mejora based on description and amount
  */
-export const classifyCAPEX = (
+export const classifyMejora = (
   description: string,
   amount: number,
-  existingClassification?: CAPEXNature
-): CAPEXNature => {
+  existingClassification?: MejoraNature
+): MejoraNature => {
   if (existingClassification) {
     return existingClassification;
   }
@@ -114,10 +134,10 @@ export const classifyCAPEX = (
 };
 
 /**
- * Calculate amortization for CAPEX based on its nature
+ * Calculate amortization for Mejora based on its nature
  */
-export const calculateCAPEXAmortization = (
-  capex: CAPEX,
+export const calculateMejoraAmortization = (
+  mejora: Mejora,
   exerciseYear: number
 ): {
   annualAmortization: number;
@@ -125,39 +145,39 @@ export const calculateCAPEXAmortization = (
   totalAmortized: number;
   remainingValue: number;
 } => {
-  const classification = CAPEX_CLASSIFICATION_RULES[capex.tipo as CAPEXNature] || 
-                        CAPEX_CLASSIFICATION_RULES.mejora;
+  const classification = Mejora_CLASSIFICATION_RULES[mejora.tipo as MejoraNature] || 
+                        Mejora_CLASSIFICATION_RULES.mejora;
 
-  const capexYear = new Date(capex.fecha_emision).getFullYear();
-  const yearsSinceAcquisition = exerciseYear - capexYear;
+  const mejoraYear = new Date(mejora.fecha_emision).getFullYear();
+  const yearsSinceAcquisition = exerciseYear - mejoraYear;
 
   if (yearsSinceAcquisition < 0) {
-    // Future CAPEX
+    // Future Mejora
     return {
       annualAmortization: 0,
       remainingYears: classification.amortizationYears,
       totalAmortized: 0,
-      remainingValue: capex.total
+      remainingValue: mejora.total
     };
   }
 
   if (classification.isDeductibleThisYear) {
     // Repairs are fully deductible in the year they occur
     return {
-      annualAmortization: yearsSinceAcquisition === 0 ? capex.total : 0,
+      annualAmortization: yearsSinceAcquisition === 0 ? mejora.total : 0,
       remainingYears: 0,
-      totalAmortized: capex.total,
+      totalAmortized: mejora.total,
       remainingValue: 0
     };
   }
 
   // Linear amortization for improvements and furniture
-  const annualAmortization = capex.total / classification.amortizationYears;
+  const annualAmortization = mejora.total / classification.amortizationYears;
   const totalAmortized = Math.min(
-    capex.total,
+    mejora.total,
     annualAmortization * (yearsSinceAcquisition + 1)
   );
-  const remainingValue = capex.total - totalAmortized;
+  const remainingValue = mejora.total - totalAmortized;
   const remainingYears = Math.max(
     0,
     classification.amortizationYears - yearsSinceAcquisition - 1
@@ -172,9 +192,9 @@ export const calculateCAPEXAmortization = (
 };
 
 /**
- * Get amortization summary for all CAPEX of a property
+ * Get amortization summary for all Mejora of a property
  */
-export const getCAPEXAmortizationSummary = async (
+export const getMejoraAmortizationSummary = async (
   propertyId: number,
   exerciseYear: number
 ): Promise<{
@@ -184,16 +204,15 @@ export const getCAPEXAmortizationSummary = async (
   repairExpenses: number;
   totalAmortization: number;
   details: Array<{
-    capex: CAPEX;
-    classification: CAPEXClassification;
-    amortization: ReturnType<typeof calculateCAPEXAmortization>;
+    mejora: Mejora;
+    classification: MejoraClassification;
+    amortization: ReturnType<typeof calculateMejoraAmortization>;
   }>;
 }> => {
   const db = await initDB();
-  
-  // Get all CAPEX for this property
-  const allCAPEX = await db.getAll('capex');
-  const propertyCAPEX = allCAPEX.filter(c => c.inmueble_id === propertyId);
+
+  // mejora store removed — return empty set
+  const propertyMejora: Mejora[] = [];
 
   const summary = {
     propertyAmortization: 0,
@@ -204,13 +223,13 @@ export const getCAPEXAmortizationSummary = async (
     details: [] as any[]
   };
 
-  for (const capex of propertyCAPEX) {
-    const nature = capex.tipo as CAPEXNature;
-    const classification = CAPEX_CLASSIFICATION_RULES[nature] || CAPEX_CLASSIFICATION_RULES.mejora;
-    const amortization = calculateCAPEXAmortization(capex, exerciseYear);
+  for (const mejora of propertyMejora) {
+    const nature = mejora.tipo as MejoraNature;
+    const classification = Mejora_CLASSIFICATION_RULES[nature] || Mejora_CLASSIFICATION_RULES.mejora;
+    const amortization = calculateMejoraAmortization(mejora, exerciseYear);
 
     summary.details.push({
-      capex,
+      mejora,
       classification,
       amortization
     });
@@ -244,103 +263,53 @@ export const getCAPEXAmortizationSummary = async (
 };
 
 /**
- * Create CAPEX from document with enhanced classification
+ * Create Mejora from document with enhanced classification
  */
-export const createCAPEXFromDocument = async (
+export const createMejoraFromDocument = async (
   document: Document,
-  nature?: CAPEXNature
+  nature?: MejoraNature
 ): Promise<number> => {
-  const db = await initDB();
-
-  if (!document.metadata.entityId || document.metadata.entityType !== 'property') {
-    throw new Error('Document must be assigned to a property');
-  }
-
-  const { financialData, proveedor } = document.metadata;
-  if (!financialData?.amount) {
-    throw new Error('Document must have financial data');
-  }
-
-  // Classify the CAPEX
-  const classification = nature || classifyCAPEX(
-    document.metadata.title || document.filename,
-    financialData.amount
-  );
-
-  const capexClassification = CAPEX_CLASSIFICATION_RULES[classification];
-
-  const capex: Omit<CAPEX, 'id'> = {
-    inmueble_id: document.metadata.entityId,
-    contraparte: proveedor || 'Proveedor no identificado',
-    fecha_emision: financialData.issueDate || new Date().toISOString().split('T')[0],
-    total: financialData.amount,
-    tipo: classification,
-    anos_amortizacion: capexClassification.amortizationYears,
-    estado: 'completo',
-    source_doc_id: document.id!,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  const capexId = await db.add('capex', capex);
-  
-  toast.success(
-    `CAPEX creado como ${capexClassification.description.toLowerCase()}`
-  );
-
-  return capexId as number;
+  // mejora store removed — no-op, return 0
+  console.warn('[Mejora] createMejoraFromDocument: mejora store removed, skipping write for', document.filename);
+  toast.success('Mejora clasificado (store mejora eliminado, usar mejorasInmueble)');
+  return 0;
 };
 
 /**
- * Update CAPEX classification
+ * Update Mejora classification
  */
-export const updateCAPEXClassification = async (
-  capexId: number,
-  newNature: CAPEXNature
+export const updateMejoraClassification = async (
+  mejoraId: number,
+  newNature: MejoraNature
 ): Promise<void> => {
-  const db = await initDB();
-
-  const capex = await db.get('capex', capexId);
-  if (!capex) {
-    throw new Error(`CAPEX ${capexId} not found`);
-  }
-
-  const newClassification = CAPEX_CLASSIFICATION_RULES[newNature];
-  
-  capex.tipo = newNature;
-  capex.anos_amortizacion = newClassification.amortizationYears;
-  capex.updatedAt = new Date().toISOString();
-
-  await db.put('capex', capex);
-
-  toast.success(`CAPEX reclasificado como ${newClassification.description.toLowerCase()}`);
+  // mejora store removed — no-op
+  console.warn('[Mejora] updateMejoraClassification: mejora store removed, skipping update for', mejoraId);
+  toast.success(`Mejora reclasificado (store mejora eliminado)`);
 };
 
 /**
- * Get CAPEX classification breakdown for export
+ * Get Mejora classification breakdown for export
  */
-export const getCAPEXClassificationBreakdown = async (
+export const getMejoraClassificationBreakdown = async (
   propertyId: number,
   exerciseYear: number
 ): Promise<{
-  repairs: CAPEX[];
-  improvements: CAPEX[];
-  furniture: CAPEX[];
+  repairs: Mejora[];
+  improvements: Mejora[];
+  furniture: Mejora[];
   totalByType: {
     repairs: number;
     improvements: number;
     furniture: number;
   };
 }> => {
-  const db = await initDB();
-  
-  const allCAPEX = await db.getAll('capex');
-  const propertyCAPEX = allCAPEX.filter(c => c.inmueble_id === propertyId);
+  // mejora store removed — return empty breakdown
+  const propertyMejora: Mejora[] = [];
 
   const breakdown = {
-    repairs: [] as CAPEX[],
-    improvements: [] as CAPEX[],
-    furniture: [] as CAPEX[],
+    repairs: [] as Mejora[],
+    improvements: [] as Mejora[],
+    furniture: [] as Mejora[],
     totalByType: {
       repairs: 0,
       improvements: 0,
@@ -348,20 +317,20 @@ export const getCAPEXClassificationBreakdown = async (
     }
   };
 
-  for (const capex of propertyCAPEX) {
-    switch (capex.tipo as CAPEXNature) {
+  for (const mejora of propertyMejora) {
+    switch (mejora.tipo as MejoraNature) {
       case 'reparacion':
-        breakdown.repairs.push(capex);
-        breakdown.totalByType.repairs += capex.total;
+        breakdown.repairs.push(mejora);
+        breakdown.totalByType.repairs += mejora.total;
         break;
       case 'mejora':
       case 'ampliacion':
-        breakdown.improvements.push(capex);
-        breakdown.totalByType.improvements += capex.total;
+        breakdown.improvements.push(mejora);
+        breakdown.totalByType.improvements += mejora.total;
         break;
       case 'mobiliario':
-        breakdown.furniture.push(capex);
-        breakdown.totalByType.furniture += capex.total;
+        breakdown.furniture.push(mejora);
+        breakdown.totalByType.furniture += mejora.total;
         break;
     }
   }

@@ -222,7 +222,7 @@ const initialDashboard: EscenariosDashboardData = {
       detail: {
         headline: 'Incrementa el cashflow a €5.925/mes manteniendo DSCR > 1,35x',
         description:
-          'Plan en cuatro fases combinando renegociación de rentas, capex ligero, amortización selectiva y reinversión en un activo prime. Prioriza liquidez y control de riesgos.',
+          'Plan en cuatro fases combinando renegociación de rentas, mejora ligera, amortización selectiva y reinversión en un activo prime. Prioriza liquidez y control de riesgos.',
         objective: 'Lograr +€2.100/mes netos adicionales y liberar capacidad para compra objetivo Q2 2026.',
         timeframe: '24 meses (4 fases trimestrales)',
         profile: 'Propietario con 12 activos residenciales, riesgo medio y acceso a financiación bancaria local.',
