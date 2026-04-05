@@ -24,6 +24,13 @@ import './treasury-v4.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface KpiItem {
+  label: string;
+  valor: string;
+  sub: string;
+  dim?: boolean;
+}
+
 interface TreasuryEventLocal {
   id: string;
   dbId?: number;
@@ -299,7 +306,7 @@ const TesoreriaV4: React.FC = () => {
   }, [rawAccounts, allDbEvents, allDbMovements, events, monthStr, resolveAccId, año, mesActivo]);
 
   // ── Computed: KPIs ──
-  const kpis = useMemo(() => {
+  const kpis = useMemo((): KpiItem[] => {
     const now = new Date();
     const mesLabel = `${MESES[mesActivo]} ${año}`;
     const mesActualLabel = MESES_CORTO[now.getMonth()];
@@ -742,7 +749,7 @@ const TesoreriaV4: React.FC = () => {
             <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--grey-400)', marginBottom: 4 }}>
               {k.label}
             </div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: ('dim' in k && (k as any).dim) ? 'var(--grey-500)' : 'var(--grey-900)', lineHeight: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono', color: k.dim ? 'var(--grey-500)' : 'var(--grey-900)', lineHeight: 1 }}>
               {k.valor}
             </div>
             <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 3 }}>
