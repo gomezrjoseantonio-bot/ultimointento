@@ -475,7 +475,7 @@ const TabGastos: React.FC<Props> = ({ data, onDataChange }) => {
 
   // Category breakdown
   const catBreakdown = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<PersonalExpenseCategory, number>();
     for (const e of localExpenses) {
       if (!e.activo || e.importe <= 0) continue;
       const m = patronGastosPersonalesService.calcularImporteMensual(e);
