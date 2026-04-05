@@ -149,7 +149,6 @@ const TesoreriaV4: React.FC = () => {
   const [cuentaSel, setCuentaSel] = useState<number>(-1);
   const [filtro, setFiltro] = useState<string>('pendiente');
   const [editState, setEditState] = useState<{ eventId: string; amount: string } | null>(null);
-  const [expandedRentalGroups, setExpandedRentalGroups] = useState<Record<string, boolean>>({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMovForm, setNewMovForm] = useState<NewMovForm>(DEFAULT_FORM);
   const [savingMovement, setSavingMovement] = useState(false);
@@ -194,9 +193,10 @@ const TesoreriaV4: React.FC = () => {
       const newContractMap = new Map<number, { unidadTipo: 'vivienda' | 'habitacion'; propertyAlias: string }>();
       for (const c of contracts) {
         if (c.id == null) continue;
+        const propertyId = c.inmuebleId ?? c.propertyId;
         newContractMap.set(c.id, {
           unidadTipo: c.unidadTipo,
-          propertyAlias: propAliasMap.get(c.inmuebleId) ?? `Inmueble ${c.inmuebleId}`,
+          propertyAlias: propAliasMap.get(propertyId) ?? `Inmueble ${propertyId}`,
         });
       }
 
@@ -370,7 +370,7 @@ const TesoreriaV4: React.FC = () => {
       const cfNeto = ing - gas - fin;
       const cfReal = ingReal - gasReal;
       return [
-        { label: `CF neto · ${mesLabel}`, valor: (cfNeto >= 0 ? '+' : '') + formatEur(cfNeto) + ' €', sub: `Real confirmado: ${cfReal >= 0 ? '+' : ''}${formatEur(Math.abs(cfReal))} €` },
+        { label: `CF neto · ${mesLabel}`, valor: (cfNeto >= 0 ? '+' : '') + formatEur(cfNeto) + ' €', sub: `Real confirmado: ${cfReal >= 0 ? '+' : '-'}${formatEur(Math.abs(cfReal))} €` },
         { label: `Ingresos · ${mesLabel}`, valor: formatEur(ing) + ' €', sub: `Real: ${formatEur(ingReal)} €` },
         { label: `Gastos · ${mesLabel}`, valor: formatEur(gas) + ' €', sub: `Real: ${formatEur(gasReal)} €`, dim: true },
         { label: `Financiación · ${mesLabel}`, valor: formatEur(fin) + ' €', sub: 'Cuotas del mes', dim: true },
@@ -650,14 +650,16 @@ const TesoreriaV4: React.FC = () => {
         style={{ opacity: isConfirmed ? 0.55 : 1 }}
       >
         {/* Punteo circle */}
-        <div
+        <button
+          type="button"
           className={`tv4-punteo-btn ${isConfirmed ? 'tv4-punteo-btn--done' : ''}`}
           onClick={() => handleToggleStatus(mov.id)}
           title={isConfirmed ? 'Quitar punteo' : 'Puntear'}
+          aria-pressed={isConfirmed}
           style={{ cursor: 'pointer' }}
         >
           {isConfirmed && <Check size={10} color="var(--teal-600)" strokeWidth={2.5} />}
-        </div>
+        </button>
 
         {/* Type icon */}
         <div className={`tv4-tipo-icon ${typeClass}`}>
@@ -745,7 +747,9 @@ const TesoreriaV4: React.FC = () => {
   const añoActualGlobal = hoy.getFullYear();
 
   const maxBarHeight = 52;
-  const maxIngAnual = yearMonthData.length > 0 ? Math.max(...yearMonthData.map(d => d.ing), 1) : 1;
+  const maxIngAnual = yearMonthData.length > 0
+    ? Math.max(...yearMonthData.map(d => Math.max(d.ing, d.gas, d.fin)), 1)
+    : 1;
 
   return (
     <div className="tv4-page">
@@ -858,7 +862,11 @@ const TesoreriaV4: React.FC = () => {
                     <div
                       key={i}
                       className="tv4-month-card"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Ir al mes de ${mes}`}
                       onClick={() => goToMonth(i)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToMonth(i); } }}
                       style={{ border: `1.5px solid ${esActivo ? 'var(--navy-900)' : 'var(--grey-200)'}` }}
                     >
                       {/* Month header */}
@@ -1149,7 +1157,7 @@ const TesoreriaV4: React.FC = () => {
               value={newMovForm.accountId}
               onChange={e => setNewMovForm(p => ({ ...p, accountId: e.target.value }))}
             >
-              <option value="">Sin cuenta específica</option>
+              <option value="">{newMovForm.type === 'transfer' ? 'Selecciona cuenta origen' : 'Selecciona cuenta'}</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
           </div>
