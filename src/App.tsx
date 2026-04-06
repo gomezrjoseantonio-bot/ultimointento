@@ -630,9 +630,9 @@ function App() {
             {/* Shared Configuration Routes */}
             <Route path="configuracion">
               <Route index element={<Navigate to="/configuracion/usuarios-roles" replace />} />
-              {/* ATLAS: Redirect old tesoreria cuentas to new location */}
-              <Route path="bancos-cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
-              <Route path="cuentas" element={<Navigate to="/cuenta/cuentas" replace />} />
+              {/* Redirect old tesoreria cuentas routes to Tesorería */}
+              <Route path="bancos-cuentas" element={<Navigate to="/tesoreria" replace />} />
+              <Route path="cuentas" element={<Navigate to="/tesoreria" replace />} />
               {/* Horizon configuration - available only for Horizon */}
               <Route path="usuarios-roles" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
@@ -682,12 +682,8 @@ function App() {
                   <AccountPage />
                 </React.Suspense>
               } />
-              {/* ATLAS: New Cuentas section under Cuenta ▸ Configuración ▸ Cuentas Bancarias */}
-              <Route path="cuentas" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Cuentas />
-                </React.Suspense>
-              } />
+              {/* Bank accounts are managed exclusively in Tesorería */}
+              <Route path="cuentas" element={<Navigate to="/tesoreria" replace />} />
             </Route>
             
             {/* Development only routes */}
