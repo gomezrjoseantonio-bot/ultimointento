@@ -397,7 +397,7 @@ export const getContractStatus = (contract: Contract): 'active' | 'upcoming' | '
   startDate.setHours(0, 0, 0, 0);
   endDate.setHours(0, 0, 0, 0);
   
-  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado') {
+  if (contract.estadoContrato === 'rescindido' || contract.estadoContrato === 'finalizado' || contract.estadoContrato === 'sin_identificar') {
     return 'terminated';
   }
 
@@ -529,7 +529,7 @@ export const validateOccupancy = async (contract: Partial<Contract>): Promise<st
     
     for (const existing of otherContracts) {
       // Skip terminated contracts
-      if (existing.estadoContrato === 'rescindido' || existing.estadoContrato === 'finalizado') continue;
+      if (existing.estadoContrato === 'rescindido' || existing.estadoContrato === 'finalizado' || existing.estadoContrato === 'sin_identificar') continue;
       
       const existingStart = new Date(existing.fechaInicio);
       const existingEnd = new Date(existing.fechaFin);

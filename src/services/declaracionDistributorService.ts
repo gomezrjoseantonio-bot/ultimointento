@@ -28,7 +28,7 @@ import type {
   DeclaracionCompleta,
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
-import { crearOActualizarContrato } from './declaracionOnboardingService';
+import { crearOActualizarContrato, crearContratoPendienteIdentificar } from './declaracionOnboardingService';
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
 import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
@@ -105,18 +105,32 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     if (!property?.id) continue;
 
     for (const arr of inm.arrendamientos) {
-      if (arr.nifArrendatarios.length === 0) continue;
-
-      await crearOActualizarContrato({
-        propertyId: property.id,
-        nifArrendatario: arr.nifArrendatarios[0],
-        nifArrendatario2: arr.nifArrendatarios[1],
-        fechaContrato: arr.fechaContrato,
-        ingresosAnuales: arr.ingresos,
-        tipoArrendamiento: arr.tipoArrendamiento,
-        tieneReduccion: inm.reduccionVivienda > 0,
-        ejercicio: decl.meta.ejercicio,
-      });
+      if (arr.nifArrendatarios.length > 0) {
+        // CON NIF: comportamiento actual + registrar ejercicio fiscal
+        await crearOActualizarContrato({
+          propertyId: property.id,
+          nifArrendatario: arr.nifArrendatarios[0],
+          nifArrendatario2: arr.nifArrendatarios[1],
+          fechaContrato: arr.fechaContrato,
+          ingresosAnuales: arr.ingresos,
+          tipoArrendamiento: arr.tipoArrendamiento,
+          tieneReduccion: inm.reduccionVivienda > 0,
+          ejercicio: decl.meta.ejercicio,
+          // NUEVO: datos para el ejercicio fiscal
+          importeDeclarado: arr.ingresos,
+          diasDeclarados: arr.diasArrendado,
+        });
+      } else {
+        // SIN NIF: crear contrato sin_identificar
+        await crearContratoPendienteIdentificar({
+          propertyId: property.id,
+          ejercicio: decl.meta.ejercicio,
+          importeDeclarado: arr.ingresos,
+          dias: arr.diasArrendado,
+          tipoArrendamiento: arr.tipoArrendamiento,
+          fechaContrato: arr.fechaContrato,
+        });
+      }
     }
   }
   invalidateCachedStores(['contracts']);

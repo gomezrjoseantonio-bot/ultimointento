@@ -511,6 +511,14 @@ export interface Document {
   uploadDate: string;
 }
 
+export interface EjercicioFiscalContrato {
+  estado: 'declarado' | 'pendiente' | 'en_curso';
+  importeDeclarado?: number;
+  dias?: number;
+  fuente?: 'xml_aeat' | 'atlas' | 'manual';
+  fechaImportacion?: string;
+}
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -570,7 +578,7 @@ export interface Contract {
   cuentaCobroId: number; // ID of bank account for collections
   
   // NEW FIELDS: Contract status
-  estadoContrato: 'activo' | 'rescindido' | 'finalizado';
+  estadoContrato: 'activo' | 'rescindido' | 'finalizado' | 'sin_identificar';
 
   // NEW FIELDS: Document preparation for PDF generation
   documentoContrato?: {
@@ -605,6 +613,9 @@ export interface Contract {
   rebajaRenta5pct?: boolean; // Rent reduced ≥5% vs previous contract
   inquilinoJoven?: boolean; // Tenant aged 18-35
   rehabilitacion?: boolean; // Rehabilitation works in last 2 years
+
+  // Historial fiscal por ejercicio — declarado/pendiente/en_curso
+  ejerciciosFiscales?: Record<number, EjercicioFiscalContrato>;
 
   // NEW FIELDS: Rescission information
   rescision?: {
