@@ -193,6 +193,12 @@ const TesoreriaV4: React.FC = () => {
     }
   }, []);
 
+  // ── Callback to reload accounts after account changes (invalidates cache first) ──
+  const reloadAfterAccountChange = useCallback(async () => {
+    invalidateCachedStores(['accounts', 'movements']);
+    await loadData();
+  }, [loadData]);
+
   useEffect(() => { loadData(); }, [loadData]);
 
   // ── Resolve card-settled account ──
@@ -1045,7 +1051,7 @@ const TesoreriaV4: React.FC = () => {
                         Editar
                       </button>
                       <button
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--red-600, #dc2626)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--error)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                         onClick={async () => {
                           if (!rawAccount) return;
                           try {
@@ -1080,7 +1086,7 @@ const TesoreriaV4: React.FC = () => {
       <AccountFormModal
         open={showAccountModal}
         onClose={() => { setShowAccountModal(false); setEditingAccount(null); }}
-        onSuccess={loadData}
+        onSuccess={reloadAfterAccountChange}
         editingAccount={editingAccount}
       />
 
@@ -1089,11 +1095,11 @@ const TesoreriaV4: React.FC = () => {
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <div style={{ background: 'var(--white)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              <AlertTriangle size={20} style={{ color: 'var(--red-600, #dc2626)', flexShrink: 0 }} />
+              <AlertTriangle size={20} style={{ color: 'var(--error)', flexShrink: 0 }} />
               <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--grey-900)' }}>Eliminar cuenta definitivamente</span>
             </div>
-            <div style={{ background: 'var(--red-50, #fef2f2)', border: '1px solid var(--red-200, #fecaca)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: 'var(--red-800, #991b1b)', margin: 0 }}>
+            <div style={{ background: 'rgba(220, 53, 69, 0.1)', border: '1px solid var(--error)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--error)', margin: 0 }}>
                 <strong>Acción irreversible:</strong> La cuenta <strong>{deleteConfirmation.account.alias || deleteConfirmation.account.iban}</strong> será eliminada permanentemente.
               </p>
             </div>
@@ -1119,7 +1125,7 @@ const TesoreriaV4: React.FC = () => {
               </button>
               <button
                 disabled={deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)}
-                style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: 'none', background: 'var(--red-600, #dc2626)', color: '#fff', cursor: 'pointer', opacity: (deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)) ? 0.5 : 1 }}
+                style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: 'none', background: 'var(--error)', color: '#fff', cursor: 'pointer', opacity: (deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)) ? 0.5 : 1 }}
                 onClick={async () => {
                   if (!deleteConfirmation) return;
                   const accountId = deleteConfirmation.account.id;
@@ -1135,7 +1141,7 @@ const TesoreriaV4: React.FC = () => {
                     });
                     toast.success('Cuenta eliminada definitivamente');
                     setDeleteConfirmation(null);
-                    await loadData();
+                    await reloadAfterAccountChange();
                   } catch (err) {
                     toast.error(err instanceof Error ? err.message : 'Error al eliminar la cuenta');
                   } finally {
