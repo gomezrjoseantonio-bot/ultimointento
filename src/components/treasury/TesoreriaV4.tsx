@@ -719,6 +719,35 @@ const TesoreriaV4: React.FC = () => {
   };
 
 
+  // ── Format date as Spanish header ──
+  const formatDateHeader = (dateStr: string): string => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const mesesEs = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${dias[d.getDay()]}, ${d.getDate()} de ${mesesEs[d.getMonth()]}`;
+  };
+
+  // ── Render movements grouped by date ──
+  const renderMovsByDate = (movs: TreasuryEventLocal[]) => {
+    if (movs.length === 0) {
+      return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>Sin movimientos para este filtro</div>;
+    }
+    const result: React.ReactNode[] = [];
+    let lastDate = '';
+    for (const mov of movs) {
+      if (mov.date !== lastDate) {
+        lastDate = mov.date;
+        result.push(
+          <div key={`date-${mov.date}`} className="tv4-date-header">
+            {formatDateHeader(mov.date)}
+          </div>
+        );
+      }
+      result.push(renderMovRow(mov));
+    }
+    return result;
+  };
+
   // ─── RENDER ─────────────────────────────────────────────────────────────────
 
   const hoy = new Date();
@@ -928,17 +957,26 @@ const TesoreriaV4: React.FC = () => {
                   </div>
                 )}
 
-                {/* Movement list — only if account selected */}
-                {cuentaSel >= 0 && (
+                {/* Movement list — always visible */}
+                {(() => {
+                  const selAccName = cuentaSel >= 0 ? accounts[cuentaSel]?.name : 'Todos los movimientos';
+                  const bd = cuentaSel >= 0 ? accountBreakdown.get(accounts[cuentaSel]?.id) : null;
+                  const punteadosCount = bd != null
+                    ? bd.punteados
+                    : events.filter(e => e.status === 'confirmado').length;
+                  const totalCount = bd != null
+                    ? bd.total
+                    : events.length;
+                  return (
                   <>
                     {/* List header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--grey-900)' }}>
-                          {accounts[cuentaSel]?.name} · {MESES[mesActivo]} {año}
+                          {selAccName} · {MESES[mesActivo]} {año}
                         </span>
                         <span style={{ fontSize: 11, color: 'var(--grey-400)' }}>
-                          {accountBreakdown.get(accounts[cuentaSel]?.id)?.punteados ?? 0}/{accountBreakdown.get(accounts[cuentaSel]?.id)?.total ?? 0} punteados
+                          {punteadosCount}/{totalCount} punteados
                         </span>
                       </div>
                       {/* Filter buttons */}
@@ -967,10 +1005,8 @@ const TesoreriaV4: React.FC = () => {
                       <div className="tv4-mov-panel">
                         {loading ? (
                           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>Cargando…</div>
-                        ) : filteredMovements.length === 0 ? (
-                          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>Sin movimientos para este filtro</div>
                         ) : (
-                          filteredMovements.map(mov => renderMovRow(mov))
+                          renderMovsByDate(filteredMovements)
                         )}
                       </div>
                       <div style={{
@@ -986,7 +1022,8 @@ const TesoreriaV4: React.FC = () => {
                       </div>
                     </div>
                   </>
-                )}
+                  );
+                })()}
               </>
             )}
           </>

@@ -239,6 +239,20 @@
   overflow: hidden;
 }
 
+.tv4-date-header {
+  padding: 7px 16px 5px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--grey-400);
+  text-transform: lowercase;
+  background: var(--grey-50);
+  border-bottom: 1px solid var(--grey-100);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .tv4-mov-row {
   display: flex;
   align-items: center;
