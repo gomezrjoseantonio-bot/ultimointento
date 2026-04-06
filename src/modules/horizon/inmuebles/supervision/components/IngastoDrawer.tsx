@@ -123,7 +123,7 @@ const getContractRangeForYear = (c: Contract, ano: number): { mesesTotales: numb
   if (overlapStart > overlapEnd) return { mesesTotales: 0, activo: false };
 
   const months = (overlapEnd.getFullYear() - overlapStart.getFullYear()) * 12 + (overlapEnd.getMonth() - overlapStart.getMonth()) + 1;
-  const estado = c.estadoContrato ?? c.status;
+  const estado = (c.estadoContrato ?? c.status) as string;
   const activo = estado === 'activo' || estado === 'active' || estado === 'upcoming';
 
   return { mesesTotales: Math.max(0, months), activo };
