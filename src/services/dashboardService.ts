@@ -932,9 +932,9 @@ class DashboardService {
         return frequency === 'semanal' ? amount * (52 / 12) : amount;
       };
 
-      const ingresos = await getCachedStoreRecords<any>('ingresos');
+      const ingresos: any[] = []; // store deleted in V44
       const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
-      const expenses = await getCachedStoreRecords<any>('expenses');
+      const expenses: any[] = []; // store deleted in V44
       const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
       const contracts = await getCachedStoreRecords<any>('contracts');
       const inversiones = await getCachedStoreRecords<any>('inversiones');
@@ -1336,7 +1336,7 @@ class DashboardService {
       
       // Calculate committed expenses in next 30 days
       // Include recurring expenses, mortgage payments, etc.
-      const expenses = await getCachedStoreRecords<any>('expenses');
+      const expenses: any[] = []; // store deleted in V44
       const gastosExpenses = expenses
         .filter((expense: any) => isDateWithinRange(expense.fecha, now, next30Days))
         .reduce((sum: number, expense: any) => sum + parseNumericValue(expense.importe), 0);
@@ -1351,7 +1351,7 @@ class DashboardService {
       // Calculate expected income in next 30 days
       // Include rent payments, salaries, etc.
       const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
-      const ingresos = await getCachedStoreRecords<any>('ingresos');
+      const ingresos: any[] = []; // store deleted in V44
       
       // Filter rentaMensual by period falling within next 30 days
       const mesActual = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -1547,7 +1547,7 @@ class DashboardService {
       // Calculate average monthly expenses from last 3 months
       const now = new Date();
       const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
-      const expenses = await getCachedStoreRecords<any>('expenses');
+      const expenses: any[] = []; // store deleted in V44
       const treasuryEvents = await getCachedStoreRecords<any>('treasuryEvents').catch(() => []);
       
       const last3MonthsExpenses: number[] = [];
@@ -1624,7 +1624,7 @@ class DashboardService {
         .reduce((sum, event) => sum + parseNumericValue(event.amount), 0);
       
       // Expected income in next 30 days
-      const ingresos = await getCachedStoreRecords<any>('ingresos');
+      const ingresos: any[] = []; // store deleted in V44
       const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
       
       const ingresosEsperados = ingresos
@@ -1787,7 +1787,7 @@ class DashboardService {
       });
       
       // Check for upcoming payments (pago type)
-      const expenses = await getCachedStoreRecords<any>('expenses');
+      const expenses: any[] = []; // store deleted in V44
       const upcomingExpenses = expenses.filter((expense: any) => {
         if (!expense.fecha) return false;
         const fecha = new Date(expense.fecha);
