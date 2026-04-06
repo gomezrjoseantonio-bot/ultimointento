@@ -10,7 +10,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { cuentasService, UpdateAccountData } from '../../../../../services/cuentasService';
+import { cuentasService } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
 import AccountFormModal from './AccountFormModal';
 import { 

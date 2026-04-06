@@ -89,7 +89,6 @@ const InformesPage = lazyWithPreload(() => import('./modules/horizon/informes/In
 const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
 const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
-const Cuentas = lazyWithPreload(() => import('./modules/horizon/configuracion/cuentas/CuentasContainer'));
 const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
 
