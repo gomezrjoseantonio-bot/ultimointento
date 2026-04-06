@@ -143,7 +143,7 @@ const TreasuryMainView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPeriod, showInactive, syncAccountsFromLocalStorage]);
+  }, [currentPeriod, showInactive]);
 
   useEffect(() => {
     loadTreasuryData();
