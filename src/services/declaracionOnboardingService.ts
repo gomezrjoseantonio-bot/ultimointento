@@ -1,4 +1,4 @@
-import type { Contract, Property } from './db';
+import type { Contract, Property, EjercicioFiscalContrato } from './db';
 import { initDB } from './db';
 import type {
   DeclaracionActividad,
@@ -9,7 +9,7 @@ import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import { prestamosService } from './prestamosService';
-import { saveContract, updateContract, getContractsByProperty } from './contractService';
+import { saveContract, updateContract, getContractsByProperty, getContract } from './contractService';
 import { declararEjercicio, ejercicioFiscalService } from './ejercicioFiscalService';
 import { ejecutarOnboardingPersonal, analizarDatosPersonales } from './personalOnboardingService';
 import type { AnalisisPersonal } from './personalOnboardingService';
@@ -936,10 +936,14 @@ export async function crearOActualizarContrato(params: {
   tipoArrendamiento?: string;
   tieneReduccion?: boolean;
   ejercicio: number;
+  // NUEVOS: datos para el ejercicio fiscal
+  importeDeclarado?: number;
+  diasDeclarados?: number;
 }): Promise<void> {
   const {
     propertyId, nifArrendatario, fechaContrato,
     ingresosAnuales, tipoArrendamiento, tieneReduccion, ejercicio,
+    importeDeclarado, diasDeclarados,
   } = params;
 
   if (!propertyId || !nifArrendatario) return;
@@ -952,65 +956,201 @@ export async function crearOActualizarContrato(params: {
     (c.inquilino?.dni && normalizeNif(c.inquilino.dni) === normalizeNif(nifArrendatario))
     || (c.tenant?.nif && normalizeNif(c.tenant.nif) === normalizeNif(nifArrendatario))
   );
+
+  // Variable para trackear el id del contrato (duplicado o nuevo)
+  let contratoId: number | undefined;
+
   if (duplicado) {
+    contratoId = duplicado.id;
     // Opcionalmente actualizar renta si cambió
     const nuevaRenta = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
     if (nuevaRenta > 0 && duplicado.rentaMensual !== nuevaRenta) {
       await updateContract(duplicado.id!, { rentaMensual: nuevaRenta, monthlyRent: nuevaRenta });
     }
-    return;
-  }
+  } else {
+    // 3. Detectar cambio de inquilino: cerrar contrato activo con otro NIF
+    const contratoActivoOtroNif = contractsExistentes.find(c =>
+      c.estadoContrato === 'activo'
+      && ((c.inquilino?.dni && normalizeNif(c.inquilino.dni) !== normalizeNif(nifArrendatario))
+        || (c.tenant?.nif && normalizeNif(c.tenant.nif) !== normalizeNif(nifArrendatario)))
+    );
+    if (contratoActivoOtroNif) {
+      await updateContract(contratoActivoOtroNif.id!, {
+        estadoContrato: 'finalizado',
+        fechaFin: `${ejercicio - 1}-12-31`,
+        status: 'terminated',
+        endDate: `${ejercicio - 1}-12-31`,
+      });
+    }
 
-  // 3. Detectar cambio de inquilino: cerrar contrato activo con otro NIF
-  const contratoActivoOtroNif = contractsExistentes.find(c =>
-    c.estadoContrato === 'activo'
-    && ((c.inquilino?.dni && normalizeNif(c.inquilino.dni) !== normalizeNif(nifArrendatario))
-      || (c.tenant?.nif && normalizeNif(c.tenant.nif) !== normalizeNif(nifArrendatario)))
-  );
-  if (contratoActivoOtroNif) {
-    await updateContract(contratoActivoOtroNif.id!, {
-      estadoContrato: 'finalizado',
-      fechaFin: `${ejercicio - 1}-12-31`,
-      status: 'terminated',
-      endDate: `${ejercicio - 1}-12-31`,
+    // 4. Crear nuevo contrato
+    const db = await initDB();
+    const accounts = await db.getAll('accounts');
+    const firstActiveAccount = accounts.find((account: any) => account.isActive ?? account.activa ?? true);
+
+    const fechaInicio = fechaContrato || `${ejercicio}-01-01`;
+    const rentaMensual = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
+    const esVivienda = !tipoArrendamiento || tipoArrendamiento === 'vivienda';
+
+    contratoId = await saveContract({
+      inmuebleId: propertyId,
+      unidadTipo: esVivienda ? 'vivienda' : 'habitacion',
+      modalidad: esVivienda ? 'habitual' : 'temporada',
+      inquilino: {
+        nombre: '',
+        apellidos: '',
+        dni: nifArrendatario,
+        telefono: '',
+        email: '',
+      },
+      fechaInicio,
+      fechaFin: '2099-12-31', // Fin desconocido - importación AEAT
+      rentaMensual,
+      diaPago: 1,
+      margenGraciaDias: 5,
+      indexacion: 'none',
+      historicoIndexaciones: [],
+      fianzaMeses: 1,
+      fianzaImporte: rentaMensual,
+      fianzaEstado: 'retenida',
+      cuentaCobroId: Number(firstActiveAccount?.id || 0),
+      estadoContrato: 'activo',
+      reduccion: tieneReduccion ? { activa: true, porcentaje: 60, motivo: 'general_post_2023' as const } : undefined,
+      documentoContrato: {
+        plantilla: esVivienda ? 'habitual' : 'temporada',
+        incluirInventario: false,
+        incluirCertificadoEnergetico: false,
+      },
+      firma: {
+        metodo: 'manual',
+        emails: [],
+        enviarCopiaPropietario: false,
+        estado: 'borrador',
+      },
+      propertyId,
+      tenant: {
+        name: nifArrendatario,
+        nif: nifArrendatario,
+        email: '',
+      },
+      startDate: fechaInicio,
+      endDate: '2099-12-31',
+      monthlyRent: rentaMensual,
+      paymentDay: 1,
+      periodicity: 'monthly',
+      status: 'active',
+      documents: [],
     });
   }
 
-  // 4. Crear nuevo contrato
+  // Registrar ejercicio fiscal en el contrato
+  if (contratoId && importeDeclarado !== undefined) {
+    const contrato = await getContract(contratoId);
+    if (contrato) {
+      const ejerciciosFiscales = contrato.ejerciciosFiscales ?? {};
+      ejerciciosFiscales[ejercicio] = {
+        estado: 'declarado',
+        importeDeclarado,
+        dias: diasDeclarados,
+        fuente: 'xml_aeat',
+        fechaImportacion: new Date().toISOString(),
+      };
+      await updateContract(contratoId, { ejerciciosFiscales });
+    }
+  }
+}
+
+/**
+ * Crea un contrato sin_identificar para arrendamientos del XML sin NIF de inquilino.
+ * Estos contratos representan ingresos declarados (vacacionales, corta estancia, etc.)
+ * que el usuario puede vincular posteriormente a un contrato gestionado.
+ */
+export async function crearContratoPendienteIdentificar(params: {
+  propertyId: number;
+  ejercicio: number;
+  importeDeclarado: number;
+  dias: number;
+  tipoArrendamiento?: 'vivienda' | 'no_vivienda';
+  fechaContrato?: string;
+}): Promise<void> {
+  const { propertyId, ejercicio, importeDeclarado, dias, tipoArrendamiento, fechaContrato } = params;
+
+  if (!propertyId || importeDeclarado <= 0) return;
+
+  // Buscar si ya existe un contrato sin_identificar para este inmueble y ejercicio
+  const existentes = await getContractsByProperty(propertyId);
+  const yaExiste = existentes.find(c =>
+    c.estadoContrato === 'sin_identificar' &&
+    c.ejerciciosFiscales?.[ejercicio] !== undefined
+  );
+
+  if (yaExiste) {
+    // Actualizar el existente con los nuevos datos (puede haber múltiples arrendamientos sin NIF)
+    const ejerciciosFiscales = yaExiste.ejerciciosFiscales ?? {};
+    // Si ya existe ese ejercicio, sumar el importe (pueden ser varios arrendamientos sin NIF)
+    const existenteEjercicio = ejerciciosFiscales[ejercicio];
+    ejerciciosFiscales[ejercicio] = {
+      estado: 'declarado',
+      importeDeclarado: (existenteEjercicio?.importeDeclarado ?? 0) + importeDeclarado,
+      dias: (existenteEjercicio?.dias ?? 0) + dias,
+      fuente: 'xml_aeat',
+      fechaImportacion: new Date().toISOString(),
+    };
+    await updateContract(yaExiste.id!, { ejerciciosFiscales });
+    return;
+  }
+
+  // Inferir fechas desde el ejercicio
+  // fechaInicio: usar fechaContrato del XML si existe, si no el 1 de enero del ejercicio
+  // fechaFin: 2099-12-31 — no sabemos cuándo termina, igual que contratos habituales activos
+  const fechaInicio = fechaContrato
+    ? fechaContrato
+    : `${ejercicio}-01-01`;
+  const fechaFin = '2099-12-31';
+
+  // Inferir modalidad desde tipoArrendamiento del XML
+  const modalidad = tipoArrendamiento === 'no_vivienda' ? 'vacacional' : 'habitual';
+
+  // Obtener cuenta bancaria por defecto
   const db = await initDB();
   const accounts = await db.getAll('accounts');
   const firstActiveAccount = accounts.find((account: any) => account.isActive ?? account.activa ?? true);
 
-  const fechaInicio = fechaContrato || `${ejercicio}-01-01`;
-  const rentaMensual = ingresosAnuales > 0 ? Math.round(ingresosAnuales / 12) : 0;
-  const esVivienda = !tipoArrendamiento || tipoArrendamiento === 'vivienda';
-
+  // Crear contrato sin_identificar
   await saveContract({
     inmuebleId: propertyId,
-    unidadTipo: esVivienda ? 'vivienda' : 'habitacion',
-    modalidad: esVivienda ? 'habitual' : 'temporada',
+    unidadTipo: 'vivienda',
+    modalidad,
+    estadoContrato: 'sin_identificar',
     inquilino: {
       nombre: '',
       apellidos: '',
-      dni: nifArrendatario,
+      dni: '',
       telefono: '',
       email: '',
     },
     fechaInicio,
-    fechaFin: '2099-12-31', // Fin desconocido - importación AEAT
-    rentaMensual,
+    fechaFin,
+    rentaMensual: Math.round(importeDeclarado / 12),
     diaPago: 1,
     margenGraciaDias: 5,
     indexacion: 'none',
     historicoIndexaciones: [],
-    fianzaMeses: 1,
-    fianzaImporte: rentaMensual,
+    fianzaMeses: 0,
+    fianzaImporte: 0,
     fianzaEstado: 'retenida',
     cuentaCobroId: Number(firstActiveAccount?.id || 0),
-    estadoContrato: 'activo',
-    reduccion: tieneReduccion ? { activa: true, porcentaje: 60, motivo: 'general_post_2023' as const } : undefined,
+    ejerciciosFiscales: {
+      [ejercicio]: {
+        estado: 'declarado',
+        importeDeclarado,
+        dias,
+        fuente: 'xml_aeat',
+        fechaImportacion: new Date().toISOString(),
+      },
+    },
     documentoContrato: {
-      plantilla: esVivienda ? 'habitual' : 'temporada',
+      plantilla: modalidad === 'vacacional' ? 'vacacional' : 'habitual',
       incluirInventario: false,
       incluirCertificadoEnergetico: false,
     },
@@ -1022,18 +1162,21 @@ export async function crearOActualizarContrato(params: {
     },
     propertyId,
     tenant: {
-      name: nifArrendatario,
-      nif: nifArrendatario,
+      name: '',
+      nif: '',
       email: '',
     },
     startDate: fechaInicio,
-    endDate: '2099-12-31',
-    monthlyRent: rentaMensual,
+    endDate: fechaFin,
+    monthlyRent: Math.round(importeDeclarado / 12),
     paymentDay: 1,
     periodicity: 'monthly',
     status: 'active',
     documents: [],
   });
+
+  // NO generar rentaMensual para contratos sin_identificar
+  // La mensualización solo se genera cuando el usuario vincula o crea el contrato real
 }
 
 async function importarArrastresDesdeDeclaracion(resultado: ResultadoAnalisis): Promise<number> {

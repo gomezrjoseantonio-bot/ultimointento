@@ -100,7 +100,10 @@ export const saveContract = async (contract: Omit<Contract, 'id' | 'createdAt' |
   const contractId = await db.add('contracts', enhancedContract);
   
   // Generate monthly rent forecasts (RentaMensual)
-  await generateRentaMensual(contractId as number, enhancedContract);
+  // Skip for sin_identificar contracts — they don't have sufficient data for monthly forecasts
+  if (enhancedContract.estadoContrato !== 'sin_identificar') {
+    await generateRentaMensual(contractId as number, enhancedContract);
+  }
   
   return contractId as number;
 };
@@ -501,13 +504,11 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
     errors.push('Debe seleccionar una cuenta bancaria de cobro');
   }
   
-  // Check for overlapping contracts on the same unit/room
-  if (contract.inmuebleId && contract.fechaInicio) {
-    const occupancyErrors = await validateOccupancy(contract);
-    errors.push(...occupancyErrors);
-  }
+  // NOTE: Ocupancy validation removed to allow historical onboarding
+  // with multiple tenants for the same property in the same year.
+  // Overlap management will be handled in a future task.
   
-  return errors;
+  return errors;;
 };
 
 // Occupancy validation to prevent double-booking
