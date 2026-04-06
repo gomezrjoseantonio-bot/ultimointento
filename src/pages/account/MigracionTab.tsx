@@ -2,7 +2,6 @@
 // ATLAS HORIZON: Migration Data tab for Account page
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText } from 'lucide-react';
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
@@ -11,11 +10,11 @@ import ImportarAportaciones from './migracion/ImportarAportaciones';
 import ImportarPrestamos from './migracion/ImportarPrestamos';
 import ImportarInmuebles from './migracion/ImportarInmuebles';
 import ImportarNominas from './migracion/ImportarNominas';
+import ImportarDeclaracionWizard from '../../modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard';
 
-type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas';
+type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf';
 
 const MigracionTab: React.FC = () => {
-  const navigate = useNavigate();
   const [view, setView] = useState<MigracionView>('menu');
   const [completados, setCompletados] = useState<Set<string>>(new Set());
 
@@ -82,6 +81,17 @@ const MigracionTab: React.FC = () => {
       <ImportarNominas
         onComplete={() => markCompleted('nominas')}
         onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'irpf') {
+    return (
+      <ImportarDeclaracionWizard
+        embedded
+        defaultMethod="xml"
+        onClose={() => setView('menu')}
+        onBack={() => setView('menu')}
+        onImported={() => markCompleted('irpf')}
       />
     );
   }
@@ -177,8 +187,8 @@ const MigracionTab: React.FC = () => {
           title="Declaración de la renta (IRPF)"
           description="Importa tus declaraciones históricas desde el fichero XML de la AEAT."
           color="var(--navy-700)"
-          completed={false}
-          onClick={() => navigate('/fiscalidad')}
+          completed={completados.has('irpf')}
+          onClick={() => setView('irpf')}
         />
       </div>
     </div>
