@@ -34,6 +34,7 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
   const navigate = useNavigate();
   const [propuesta, setPropuesta] = useState<PropuestaDistribucion | null>(null);
   const [asignaciones, setAsignaciones] = useState<Record<number, number>>({});
+  const [incluidos, setIncluidos] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,15 +44,19 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
     setLoading(true);
     setPropuesta(null);
     setAsignaciones({});
+    setIncluidos(new Set());
 
     calcularPropostaDistribucion(sinIdentificadorId, ejercicio)
       .then((p) => {
         setPropuesta(p);
-        const init: Record<number, number> = {};
+        const initAsig: Record<number, number> = {};
+        const initIncluidos = new Set<number>();
         p.contratos.forEach((c) => {
-          init[c.contratoId] = c.importeAsignado;
+          initAsig[c.contratoId] = c.importeAsignado;
+          initIncluidos.add(c.contratoId);
         });
-        setAsignaciones(init);
+        setAsignaciones(initAsig);
+        setIncluidos(initIncluidos);
       })
       .catch((err) => {
         console.error(err);
@@ -60,12 +65,36 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
       .finally(() => setLoading(false));
   }, [open, sinIdentificadorId, ejercicio]);
 
-  const totalAsignado = Object.values(asignaciones).reduce((s, v) => s + (v || 0), 0);
-  const diferencia = propuesta ? Math.round((propuesta.importeDeclarado - totalAsignado) * 100) / 100 : 0;
+  // Only sum asignaciones for included contracts
+  const totalAsignado = propuesta
+    ? propuesta.contratos
+        .filter((c) => incluidos.has(c.contratoId))
+        .reduce((s, c) => s + (asignaciones[c.contratoId] || 0), 0)
+    : 0;
+  const diferencia = propuesta
+    ? Math.round((propuesta.importeDeclarado - totalAsignado) * 100) / 100
+    : 0;
 
   const handleAsignacionChange = (contratoId: number, value: string) => {
     const num = parseFloat(value.replace(',', '.')) || 0;
     setAsignaciones((prev) => ({ ...prev, [contratoId]: num }));
+  };
+
+  const handleToggleIncluido = (contratoId: number) => {
+    setIncluidos((prev) => {
+      const next = new Set(prev);
+      if (next.has(contratoId)) {
+        next.delete(contratoId);
+      } else {
+        next.add(contratoId);
+        // Restore propuesta amount when re-including
+        const original = propuesta?.contratos.find((c) => c.contratoId === contratoId);
+        if (original) {
+          setAsignaciones((a) => ({ ...a, [contratoId]: a[contratoId] ?? original.importePropuesto }));
+        }
+      }
+      return next;
+    });
   };
 
   const handleConfirmar = async () => {
@@ -74,9 +103,10 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
 
     setSubmitting(true);
     try {
-      const asigs = Object.entries(asignaciones).map(([id, importe]) => ({
-        contratoId: Number(id),
-        importeAsignado: importe,
+      // Only send contracts that are included (excluded ones get 0 and are skipped by the service)
+      const asigs = propuesta.contratos.map((c) => ({
+        contratoId: c.contratoId,
+        importeAsignado: incluidos.has(c.contratoId) ? (asignaciones[c.contratoId] || 0) : 0,
       }));
       await confirmarVinculacion(sinIdentificadorId, ejercicio, asigs);
       toast.success('Ingresos vinculados correctamente');
@@ -104,6 +134,10 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
       setSubmitting(false);
     }
   };
+
+  const hayAlgunoIncluido = propuesta
+    ? propuesta.contratos.some((c) => incluidos.has(c.contratoId))
+    : false;
 
   return (
     <>
@@ -149,7 +183,13 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--grey-500)' }}>
                 {inmuebleAlias}
                 {propuesta && (
-                  <> · <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>{formatEuroMono(propuesta.importeDeclarado)}</span> declarados</>
+                  <>
+                    {' · '}
+                    <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
+                      {formatEuroMono(propuesta.importeDeclarado)}
+                    </span>{' '}
+                    declarados
+                  </>
                 )}
               </p>
             </div>
@@ -194,19 +234,39 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                 }}
               >
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>Declarado AEAT</div>
-                  <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 13, fontWeight: 600, color: 'var(--navy-900)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>
+                    Declarado AEAT
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'IBM Plex Mono, monospace',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: 'var(--navy-900)',
+                    }}
+                  >
                     {formatEuroMono(propuesta.importeDeclarado)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>Asignado</div>
-                  <div style={{ fontFamily: 'IBM Plex Mono, monospace', fontSize: 13, fontWeight: 600, color: 'var(--navy-900)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>
+                    Asignado
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'IBM Plex Mono, monospace',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: 'var(--navy-900)',
+                    }}
+                  >
                     {formatEuroMono(totalAsignado)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>Diferencia</div>
+                  <div style={{ fontSize: 11, color: 'var(--grey-500)', marginBottom: 2 }}>
+                    Diferencia
+                  </div>
                   <div
                     style={{
                       fontFamily: 'IBM Plex Mono, monospace',
@@ -257,7 +317,8 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                   }}
                 >
                   <p style={{ margin: '0 0 16px', fontSize: 14, color: 'var(--grey-500)' }}>
-                    No hay contratos cargados para este inmueble en este período. Crea los contratos primero desde Alquileres.
+                    No hay contratos cargados para este inmueble en este período. Crea los contratos
+                    primero desde Alquileres.
                   </p>
                   <button
                     onClick={() => navigate('/inmuebles/contratos')}
@@ -284,6 +345,8 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                       key={c.contratoId}
                       contrato={c}
                       importeAsignado={asignaciones[c.contratoId] ?? c.importeAsignado}
+                      incluido={incluidos.has(c.contratoId)}
+                      onToggleIncluido={() => handleToggleIncluido(c.contratoId)}
                       onChange={(val) => handleAsignacionChange(c.contratoId, val)}
                     />
                   ))}
@@ -340,7 +403,13 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
             </button>
             <button
               onClick={handleConfirmar}
-              disabled={submitting || diferencia < 0 || !propuesta || propuesta.contratos.length === 0}
+              disabled={
+                submitting ||
+                diferencia < 0 ||
+                !propuesta ||
+                propuesta.contratos.length === 0 ||
+                !hayAlgunoIncluido
+              }
               style={{
                 padding: '8px 16px',
                 border: 'none',
@@ -349,11 +418,19 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                 color: 'var(--white)',
                 fontSize: 13,
                 cursor:
-                  submitting || diferencia < 0 || !propuesta || propuesta.contratos.length === 0
+                  submitting ||
+                  diferencia < 0 ||
+                  !propuesta ||
+                  propuesta.contratos.length === 0 ||
+                  !hayAlgunoIncluido
                     ? 'not-allowed'
                     : 'pointer',
                 opacity:
-                  submitting || diferencia < 0 || !propuesta || propuesta.contratos.length === 0
+                  submitting ||
+                  diferencia < 0 ||
+                  !propuesta ||
+                  propuesta.contratos.length === 0 ||
+                  !hayAlgunoIncluido
                     ? 0.5
                     : 1,
               }}
@@ -370,10 +447,18 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
 interface ContratoCardProps {
   contrato: ContratoPropuesta;
   importeAsignado: number;
+  incluido: boolean;
+  onToggleIncluido: () => void;
   onChange: (value: string) => void;
 }
 
-const ContratoCard: React.FC<ContratoCardProps> = ({ contrato, importeAsignado, onChange }) => (
+const ContratoCard: React.FC<ContratoCardProps> = ({
+  contrato,
+  importeAsignado,
+  incluido,
+  onToggleIncluido,
+  onChange,
+}) => (
   <div
     style={{
       border: '1px solid var(--grey-200)',
@@ -381,29 +466,58 @@ const ContratoCard: React.FC<ContratoCardProps> = ({ contrato, importeAsignado, 
       padding: 12,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 12,
+      gap: 10,
+      opacity: incluido ? 1 : 0.45,
+      transition: 'opacity 0.15s ease',
     }}
   >
+    {/* Toggle checkbox */}
+    <button
+      type="button"
+      onClick={onToggleIncluido}
+      aria-label={incluido ? 'Excluir contrato' : 'Incluir contrato'}
+      style={{
+        flexShrink: 0,
+        width: 18,
+        height: 18,
+        borderRadius: 4,
+        border: `2px solid ${incluido ? 'var(--navy-900)' : 'var(--grey-300)'}`,
+        background: incluido ? 'var(--navy-900)' : 'var(--white)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      {incluido && <Check size={11} color="var(--white)" strokeWidth={3} />}
+    </button>
+
+    {/* Info */}
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy-900)', marginBottom: 2 }}>
         {contrato.habitacionId ? `${contrato.habitacionId} · ` : ''}
         {contrato.inquilinoNombre.toUpperCase()}
       </div>
       <div style={{ fontSize: 12, color: 'var(--grey-500)' }}>
-        {formatDate(contrato.fechaInicio)} → {formatDate(contrato.fechaFin)} ·{' '}
+        {formatDate(contrato.fechaInicio)} → {formatDate(contrato.fechaFinEfectiva)} ·{' '}
         <span style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
-          {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(contrato.rentaMensual)}
+          {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(
+            contrato.rentaMensual
+          )}
         </span>
         /mes · {contrato.diasActivosEnEjercicio} días
       </div>
     </div>
+
+    {/* Importe input */}
     <div style={{ flexShrink: 0 }}>
       <input
         type="number"
         min="0"
         step="0.01"
         value={importeAsignado}
+        disabled={!incluido}
         onChange={(e) => onChange(e.target.value)}
         style={{
           width: 100,
@@ -414,7 +528,8 @@ const ContratoCard: React.FC<ContratoCardProps> = ({ contrato, importeAsignado, 
           borderRadius: 6,
           padding: '6px 8px',
           color: 'var(--navy-900)',
-          background: 'var(--white)',
+          background: incluido ? 'var(--white)' : 'var(--grey-50)',
+          cursor: incluido ? 'text' : 'not-allowed',
         }}
       />
     </div>
