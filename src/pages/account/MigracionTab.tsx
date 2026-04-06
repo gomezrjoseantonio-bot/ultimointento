@@ -2,7 +2,8 @@
 // ATLAS HORIZON: Migration Data tab for Account page
 
 import React, { useState } from 'react';
-import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText } from 'lucide-react';
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
@@ -14,6 +15,7 @@ import ImportarNominas from './migracion/ImportarNominas';
 type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas';
 
 const MigracionTab: React.FC = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState<MigracionView>('menu');
   const [completados, setCompletados] = useState<Set<string>>(new Set());
 
@@ -169,6 +171,14 @@ const MigracionTab: React.FC = () => {
           color="var(--navy-700)"
           completed={completados.has('nominas')}
           onClick={() => setView('nominas')}
+        />
+        <MigracionCard
+          icon={FileText}
+          title="Declaración de la renta (IRPF)"
+          description="Importa tus declaraciones históricas desde el fichero XML de la AEAT."
+          color="var(--navy-700)"
+          completed={false}
+          onClick={() => navigate('/fiscalidad')}
         />
       </div>
     </div>
