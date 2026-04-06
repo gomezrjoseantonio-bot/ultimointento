@@ -721,7 +721,9 @@ const TesoreriaV4: React.FC = () => {
 
   // ── Format date as Spanish header ──
   const formatDateHeader = (dateStr: string): string => {
-    const d = new Date(dateStr + 'T00:00:00');
+    const dateOnly = dateStr.substring(0, 10); // normalize: strip time component if present
+    const d = new Date(dateOnly + 'T00:00:00');
+    if (isNaN(d.getTime())) return dateOnly;
     const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
     const mesesEs = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     return `${dias[d.getDay()]}, ${d.getDate()} de ${mesesEs[d.getMonth()]}`;
@@ -733,12 +735,13 @@ const TesoreriaV4: React.FC = () => {
       return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--grey-400)', fontSize: 13 }}>Sin movimientos para este filtro</div>;
     }
     const result: React.ReactNode[] = [];
-    let lastDate = '';
+    let lastDateKey = '';
     for (const mov of movs) {
-      if (mov.date !== lastDate) {
-        lastDate = mov.date;
+      const dateKey = mov.date.substring(0, 10); // normalize to YYYY-MM-DD for grouping
+      if (dateKey !== lastDateKey) {
+        lastDateKey = dateKey;
         result.push(
-          <div key={`date-${mov.date}`} className="tv4-date-header">
+          <div key={`date-${dateKey}`} className="tv4-date-header">
             {formatDateHeader(mov.date)}
           </div>
         );
@@ -959,8 +962,11 @@ const TesoreriaV4: React.FC = () => {
 
                 {/* Movement list — always visible */}
                 {(() => {
-                  const selAccName = cuentaSel >= 0 ? accounts[cuentaSel]?.name : 'Todos los movimientos';
-                  const bd = cuentaSel >= 0 ? accountBreakdown.get(accounts[cuentaSel]?.id) : null;
+                  const selectedAccount = cuentaSel >= 0 && cuentaSel < accounts.length
+                    ? accounts[cuentaSel]
+                    : null;
+                  const selAccName = selectedAccount?.name ?? 'Todos los movimientos';
+                  const bd = selectedAccount != null ? accountBreakdown.get(selectedAccount.id) : null;
                   const punteadosCount = bd != null
                     ? bd.punteados
                     : events.filter(e => e.status === 'confirmado').length;

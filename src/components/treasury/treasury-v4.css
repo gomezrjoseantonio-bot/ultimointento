@@ -236,7 +236,9 @@
   background: var(--white);
   border: 1px solid var(--grey-200);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: clip; /* clip instead of hidden so position:sticky on date headers still works */
+  overflow-y: auto;
+  max-height: 600px;
 }
 
 .tv4-date-header {
