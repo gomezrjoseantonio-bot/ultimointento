@@ -75,7 +75,7 @@ const Analisis: React.FC = () => {
       const [allProperties, contractsData, ingresosData, prestamosData, valoracionesData] = await Promise.all([
         getCachedStoreRecords<Property>('properties'),
         getCachedStoreRecords<Contract>('contracts'),
-        getCachedStoreRecords<Ingreso>('ingresos'),
+        Promise.resolve([] as Ingreso[]), // store deleted in V44
         getCachedStoreRecords<Prestamo>('prestamos'),
         getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
       ]);

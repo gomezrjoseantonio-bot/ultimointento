@@ -1197,7 +1197,7 @@ export default function InmueblesAnalisis() {
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
-          getCachedStoreRecords<Expense>('expenses'),
+          Promise.resolve([] as Expense[]), // store deleted in V44
           getCachedStoreRecords<OpexRule>('opexRules'),
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,

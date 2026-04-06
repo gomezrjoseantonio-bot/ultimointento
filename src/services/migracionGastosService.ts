@@ -23,9 +23,11 @@ export async function ejecutarMigracion(): Promise<void> {
   const db = await initDB();
   const now = new Date().toISOString();
 
-  // 1. fiscalSummaries → gastosInmueble
+  // 1. fiscalSummaries → gastosInmueble (store deleted in V4.2 — skip if absent)
   let errores1 = 0;
-  const summaries = await db.getAll('fiscalSummaries');
+  const summaries = db.objectStoreNames.contains('fiscalSummaries')
+    ? await db.getAll('fiscalSummaries')
+    : [];
   const CASILLAS = [
     { campo: 'box0105', casilla: '0105', categoria: 'intereses' },
     { campo: 'box0106', casilla: '0106', categoria: 'reparacion' },
