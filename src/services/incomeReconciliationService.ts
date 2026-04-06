@@ -22,8 +22,8 @@ export const calculateCurrentYearAccruedIncome = async (
   const db = await initDB();
   
   // Get all income records for the property in the specified year
-  const allIngresos = await db.getAll('ingresos');
-  const yearIngresos = allIngresos.filter(ingreso => {
+  const allIngresos = await db.getAll('ingresos').catch(() => [] as any[]);
+  const yearIngresos = allIngresos.filter((ingreso: any) => {
     const incomeDate = new Date(ingreso.fecha_emision);
     return incomeDate.getFullYear() === year && 
            ingreso.destino === 'inmueble_id' && 
@@ -147,8 +147,8 @@ export const findIncomeReconciliationMatches = async (): Promise<Array<{
 
   try {
     // Get unreconciled income records
-    const allIngresos = await db.getAll('ingresos');
-    const unreconciledIngresos = allIngresos.filter(i => 
+    const allIngresos = await db.getAll('ingresos').catch(() => [] as any[]);
+    const unreconciledIngresos = allIngresos.filter((i: any) =>
       !i.movement_id && (i.estado === 'previsto' || i.estado === 'incompleto')
     );
 

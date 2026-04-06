@@ -46,7 +46,7 @@ const IngresosPanel: React.FC = () => {
     try {
       const db = await initDB();
       const [ingresosData, propertiesData] = await Promise.all([
-        db.getAll('ingresos'),
+        db.getAll('ingresos').catch(() => [] as any[]),
         db.getAll('properties')
       ]);
 

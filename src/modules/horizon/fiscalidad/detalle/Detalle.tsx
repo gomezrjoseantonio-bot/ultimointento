@@ -50,7 +50,7 @@ const Detalle: React.FC = () => {
       const db = await initDB();
       const [contractsData, ingresosData, allGastosInm, propertiesData] = await Promise.all([
         db.getAll('contracts'),
-        db.getAll('ingresos'),
+        db.getAll('ingresos').catch(() => [] as any[]),
         gastosInmuebleService.getAll(),
         db.getAll('properties')
       ]);

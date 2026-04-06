@@ -442,7 +442,7 @@ export async function conciliarEjercicioFiscal(
   const [properties, contracts, ingresos, allGastosInmueble, treasuryEvents] = await Promise.all([
     db.getAll('properties'),
     db.getAll('contracts'),
-    db.getAll('ingresos'),
+    db.getAll('ingresos').catch(() => [] as any[]),
     gastosInmuebleService.getAll(),
     db.getAll('treasuryEvents'),
   ]);

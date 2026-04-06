@@ -351,7 +351,7 @@ export const findReconciliationMatches = async (): Promise<{
 
     // Get unreconciled treasury records
     const [ingresos, allGastosInmueble] = await Promise.all([
-      db.getAll('ingresos'),
+      db.getAll('ingresos').catch(() => [] as any[]),
       gastosInmuebleService.getAll(),
     ]);
     const mejoras: any[] = []; // mejoras loaded from mejorasInmueble if needed

@@ -225,7 +225,7 @@ class ProyeccionService {
       const db = await initDB();
       const [contracts, expenses, properties] = await Promise.all([
         db.getAll('contracts'),
-        db.getAll('expenses'),
+        db.getAll('expenses').catch(() => [] as any[]),
         db.getAll('properties')
       ]);
 

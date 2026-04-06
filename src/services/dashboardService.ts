@@ -1786,26 +1786,27 @@ class DashboardService {
         });
       });
       
-      // Check for upcoming payments (pago type)
-      const expenses: any[] = []; // store deleted in V44
-      const upcomingExpenses = expenses.filter((expense: any) => {
-        if (!expense.fecha) return false;
-        const fecha = new Date(expense.fecha);
+      // Check for upcoming payments — sourced from gastosInmueble (estado previsto, due in ≤7 days)
+      const gastosService = (await import('./gastosInmuebleService')).gastosInmuebleService;
+      const todosGastos = await gastosService.getAll().catch(() => []);
+      const upcomingExpenses = todosGastos.filter((g: any) => {
+        if (!g.fecha || g.estado !== 'previsto') return false;
+        const fecha = new Date(g.fecha);
         const daysUntilDue = Math.floor((fecha.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return daysUntilDue > 0 && daysUntilDue <= 7 && !expense.pagado;
+        return daysUntilDue > 0 && daysUntilDue <= 7;
       });
-      
-      upcomingExpenses.forEach((expense: any, index: number) => {
-        const fecha = new Date(expense.fecha);
+
+      upcomingExpenses.forEach((g: any, index: number) => {
+        const fecha = new Date(g.fecha);
         const diasHastaVencimiento = Math.floor((fecha.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         alerts.push({
-          id: `expense-${expense.id || index}`,
+          id: `expense-${g.id || index}`,
           tipo: 'pago',
           titulo: 'Pago pendiente',
-          descripcion: `${expense.concepto || 'Gasto'} vence en ${diasHastaVencimiento} días`,
+          descripcion: `${g.concepto || 'Gasto'} vence en ${diasHastaVencimiento} días`,
           urgencia: diasHastaVencimiento <= 3 ? 'alta' : 'media',
           diasVencimiento: diasHastaVencimiento,
-          importe: expense.importe || undefined,
+          importe: g.importe || undefined,
           link: '/inmuebles/gastos-capex'
         });
       });

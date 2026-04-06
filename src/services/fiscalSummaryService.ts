@@ -252,7 +252,7 @@ export const calculateCarryForwards = async (
     .sort((a, b) => a.exerciseYear - b.exerciseYear);
 
   const db = await initDB();
-  const allIngresos = await db.getAll('ingresos');
+  const allIngresos = await db.getAll('ingresos').catch(() => [] as any[]);
   const result = [];
 
   for (const summary of excessSummaries) {

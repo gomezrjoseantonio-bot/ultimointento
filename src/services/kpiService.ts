@@ -288,7 +288,7 @@ export class KPIService {
 
     // Get related data
     const contracts = await db.getAll('contracts');
-    const expenses = await db.getAll('expenses');
+    const expenses = await db.getAll('expenses').catch(() => [] as any[]);
     
     // Filter data for this property
     const propertyContracts = contracts.filter(c => c.propertyId === propertyId);
