@@ -87,10 +87,10 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
         next.delete(contratoId);
       } else {
         next.add(contratoId);
-        // Restore propuesta amount when re-including
+        // Always restore the proposed amount unconditionally when re-including
         const original = propuesta?.contratos.find((c) => c.contratoId === contratoId);
         if (original) {
-          setAsignaciones((a) => ({ ...a, [contratoId]: a[contratoId] ?? original.importePropuesto }));
+          setAsignaciones((a) => ({ ...a, [contratoId]: original.importePropuesto }));
         }
       }
       return next;
@@ -104,10 +104,13 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
     setSubmitting(true);
     try {
       // Only send contracts that are included (excluded ones get 0 and are skipped by the service)
-      const asigs = propuesta.contratos.map((c) => ({
-        contratoId: c.contratoId,
-        importeAsignado: incluidos.has(c.contratoId) ? (asignaciones[c.contratoId] || 0) : 0,
-      }));
+      // Only send contracts that are included and have a positive amount
+      const asigs = propuesta.contratos
+        .filter((c) => incluidos.has(c.contratoId) && (asignaciones[c.contratoId] || 0) > 0)
+        .map((c) => ({
+          contratoId: c.contratoId,
+          importeAsignado: asignaciones[c.contratoId] || 0,
+        }));
       await confirmarVinculacion(sinIdentificadorId, ejercicio, asigs);
       toast.success('Ingresos vinculados correctamente');
       onVinculado();
@@ -474,8 +477,10 @@ const ContratoCard: React.FC<ContratoCardProps> = ({
     {/* Toggle checkbox */}
     <button
       type="button"
+      role="checkbox"
+      aria-checked={incluido}
+      aria-label={incluido ? 'Excluir contrato de la vinculación' : 'Incluir contrato en la vinculación'}
       onClick={onToggleIncluido}
-      aria-label={incluido ? 'Excluir contrato' : 'Incluir contrato'}
       style={{
         flexShrink: 0,
         width: 18,
@@ -488,7 +493,10 @@ const ContratoCard: React.FC<ContratoCardProps> = ({
         justifyContent: 'center',
         cursor: 'pointer',
         padding: 0,
+        outline: 'none',
       }}
+      onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--navy-900)'; }}
+      onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
     >
       {incluido && <Check size={11} color="var(--white)" strokeWidth={3} />}
     </button>
