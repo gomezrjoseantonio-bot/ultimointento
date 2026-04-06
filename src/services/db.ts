@@ -511,6 +511,15 @@ export interface Document {
   uploadDate: string;
 }
 
+// Historial fiscal por ejercicio para contratos
+export interface EjercicioFiscalContrato {
+  estado: 'declarado' | 'pendiente' | 'en_curso';
+  importeDeclarado?: number;
+  dias?: number;
+  fuente?: 'xml_aeat' | 'atlas' | 'manual';
+  fechaImportacion?: string;
+}
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -570,7 +579,7 @@ export interface Contract {
   cuentaCobroId: number; // ID of bank account for collections
   
   // NEW FIELDS: Contract status
-  estadoContrato: 'activo' | 'rescindido' | 'finalizado';
+  estadoContrato: 'activo' | 'rescindido' | 'finalizado' | 'sin_identificar';
 
   // NEW FIELDS: Document preparation for PDF generation
   documentoContrato?: {
@@ -598,6 +607,9 @@ export interface Contract {
     porcentaje: number; // 0, 50, 60, 70, 90
     motivo?: 'transitorio_pre_2023' | 'general_post_2023' | 'rehabilitacion' | 'zona_tensionada_joven' | 'zona_tensionada_rebaja';
   };
+
+  // Historial fiscal por ejercicio — declarado/pendiente/en_curso
+  ejerciciosFiscales?: Record<number, EjercicioFiscalContrato>;
 
   // Additional fields for reduction calculation (Ley 12/2023)
   fechaFirmaContrato?: string; // Actual contract signing date (ISO date), distinct from firma.fechaFirma (digital signature)
