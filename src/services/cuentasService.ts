@@ -338,7 +338,23 @@ class CuentasService {
    * Update existing account
    */
   public async update(id: number, data: UpdateAccountData): Promise<Account> {
-    const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
+    let accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
+
+    if (accountIndex === -1) {
+      // The ID might be an IndexedDB auto-increment ID, not a localStorage timestamp ID.
+      // TesoreriaV4 reads accounts directly from IndexedDB so their IDs differ.
+      // Fall back: look up the account in IndexedDB by ID, get its IBAN, then find it in localStorage.
+      try {
+        const db = await initDB();
+        const dbAccount = await db.get('accounts', id) as any;
+        if (dbAccount?.iban) {
+          accountIndex = this.accounts.findIndex(acc => acc.iban === dbAccount.iban && !acc.deleted_at);
+        }
+      } catch {
+        // ignore, will throw below
+      }
+    }
+
     if (accountIndex === -1) {
       throw new Error('Cuenta no encontrada');
     }
