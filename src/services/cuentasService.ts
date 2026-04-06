@@ -222,12 +222,28 @@ class CuentasService {
       ? `CARD-${Date.now()}`
       : normalizeIban(data.iban!);
     
-    // Check for duplicates
-    const existingAccount = this.accounts.find(
+    // Check for duplicates - also verify against IndexedDB to avoid orphaned localStorage entries
+    const existingInMemory = this.accounts.find(
       acc => acc.iban === normalizedIban && !acc.deleted_at
     );
-    if (existingAccount) {
-      throw new Error('Ya existe una cuenta con este IBAN');
+    if (existingInMemory) {
+      // Verify it actually exists in IndexedDB (the authoritative store)
+      let existsInDB = false;
+      try {
+        const db = await initDB();
+        const dbAccounts = await db.getAll('accounts');
+        existsInDB = dbAccounts.some((acc: any) => acc.iban === normalizedIban && !acc.deleted_at);
+      } catch {
+        // If DB check fails, trust the in-memory state
+        existsInDB = true;
+      }
+      if (existsInDB) {
+        throw new Error('Ya existe una cuenta con este IBAN');
+      }
+      // Orphaned entry in localStorage - clean it up and proceed
+      console.warn('[ACCOUNTS] Removing orphaned localStorage entry for IBAN', normalizedIban.slice(-4));
+      this.accounts = this.accounts.filter(acc => acc.iban !== normalizedIban);
+      this.saveAccounts();
     }
 
     // Detect bank information using new function
@@ -256,11 +272,15 @@ class CuentasService {
       updatedAt: new Date().toISOString()
     };
 
+    // Sync to IndexedDB first (authoritative store) before writing to localStorage
+    const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
+
+    if (dbAccountId == null) {
+      throw new Error('Error guardando la cuenta en la base de datos. Por favor, recarga la página e inténtalo de nuevo.');
+    }
+
     this.accounts.push(newAccount);
     this.saveAccounts();
-
-    // Sync to IndexedDB (treasury storage) and get the assigned ID
-    const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
 
     // P1: Create opening balance movement if openingBalance is non-zero
     const openingBalance = newAccount.openingBalance ?? 0;
