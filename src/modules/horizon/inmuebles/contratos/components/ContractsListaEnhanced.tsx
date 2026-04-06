@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, FileText, Trash2, XCircle, Search, Building, User, Calendar, Euro, Send, CheckCircle2, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { Contract, Property } from '../../../../../services/db';
 import {
   getAllContracts,
@@ -14,6 +14,7 @@ import { formatEuro, formatDate } from '../../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../../../services/confirmationService';
 import { showPrompt } from '../../../../../services/promptService';
+import VinculacionDrawer from './VinculacionDrawer';
 
 interface ContractsListaEnhancedProps {
   onEditContract: (contract?: Contract) => void;
@@ -37,6 +38,13 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'property', direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
   const [signatureProcessingId, setSignatureProcessingId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'terminated' | 'sin_identificar'>('active');
+  const [vinculacionDrawer, setVinculacionDrawer] = useState<{
+    open: boolean;
+    sinIdentificadorId: number;
+    ejercicio: number;
+    inmuebleAlias: string;
+  }>({ open: false, sinIdentificadorId: 0, ejercicio: 0, inmuebleAlias: '' });
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const pageSize = 10;
 
@@ -109,8 +117,8 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
   }, []);
 
   useEffect(() => {
-    // First filter out any undefined or invalid contracts
-    let filtered = contracts.filter(contract => contract && contract.inquilino);
+    // First filter out any undefined or invalid contracts, and exclude sin_identificar from main list
+    let filtered = contracts.filter(contract => contract && contract.inquilino && contract.estadoContrato !== 'sin_identificar');
 
     // Filter by search term (tenant name, DNI, or email)
     if (searchTerm.trim()) {
@@ -405,6 +413,8 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
     return nextDate.toLocaleDateString('es-ES');
   };
 
+  const sinIdentificarContratos = contracts.filter(c => c.estadoContrato === 'sin_identificar');
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -532,22 +542,30 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
         <div className="px-6 py-4 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <h3 className="text-lg font-medium text-gray-900">
-              Contratos ({filteredContracts.length})
+              Contratos ({activeTab === 'sin_identificar' ? sinIdentificarContratos.length : filteredContracts.length})
             </h3>
             <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Filtrar contratos por estado">
               {[
                 { id: 'all', label: 'Todos' },
                 { id: 'active', label: 'Activos' },
                 { id: 'terminated', label: 'Finalizados' },
+                ...(sinIdentificarContratos.length > 0
+                  ? [{ id: 'sin_identificar', label: `Sin identificar (${sinIdentificarContratos.length})` }]
+                  : []),
               ].map((pill) => {
-                const isActive = statusFilter === pill.id;
+                const isActive = activeTab === pill.id;
                 return (
                   <button
                     key={pill.id}
                     type="button"
                     role="tab"
                     aria-selected={isActive}
-                    onClick={() => setStatusFilter(pill.id as typeof statusFilter)}
+                    onClick={() => {
+                      setActiveTab(pill.id as typeof activeTab);
+                      if (pill.id !== 'sin_identificar') {
+                        setStatusFilter(pill.id as typeof statusFilter);
+                      }
+                    }}
                     className={`inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
                       isActive
                         ? 'border-brand-navy bg-primary-50 text-brand-navy'
@@ -580,7 +598,115 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           </div>
         </div>
 
-        {filteredContracts.length === 0 ? (
+        {activeTab === 'sin_identificar' ? (
+          <div className="p-6">
+            {sinIdentificarContratos.length === 0 ? (
+              <div className="p-8 text-center">
+                <FileText className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">No hay contratos sin identificar.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {sinIdentificarContratos.map((contrato) => {
+                  const inmuebleAlias = getPropertyName(contrato.inmuebleId);
+                  const ejercicios = Object.entries(contrato.ejerciciosFiscales ?? {}).sort(
+                    ([a], [b]) => Number(a) - Number(b)
+                  );
+                  return (
+                    <div
+                      key={contrato.id}
+                      style={{
+                        border: '1px solid var(--grey-200)',
+                        borderRadius: 10,
+                        padding: '16px 20px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--navy-900)' }}>
+                          {inmuebleAlias}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 500,
+                            background: 'var(--grey-100, #f3f4f6)',
+                            color: 'var(--grey-500, #6b7280)',
+                            borderRadius: 6,
+                            padding: '2px 8px',
+                          }}
+                        >
+                          Sin identificar
+                        </span>
+                      </div>
+                      <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--grey-500)' }}>
+                        Ejercicios con ingresos declarados sin inquilino:
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {ejercicios.map(([anio, data]) => {
+                          const esSinVincular = data.fuente === 'manual';
+                          return (
+                            <div
+                              key={anio}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontFamily: 'IBM Plex Mono, monospace',
+                                  fontSize: 13,
+                                  color: 'var(--navy-900)',
+                                }}
+                              >
+                                {anio} ·{' '}
+                                {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(
+                                  data.importeDeclarado ?? 0
+                                )}
+                              </span>
+                              {esSinVincular ? (
+                                <span style={{ fontSize: 12, color: 'var(--grey-500)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  ✓ Sin vincular
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    setVinculacionDrawer({
+                                      open: true,
+                                      sinIdentificadorId: contrato.id!,
+                                      ejercicio: Number(anio),
+                                      inmuebleAlias,
+                                    })
+                                  }
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '4px 12px',
+                                    background: 'var(--navy-900)',
+                                    color: 'var(--white)',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Vincular <ArrowRight size={12} />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : filteredContracts.length === 0 ? (
           <div className="p-8 text-center">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No hay contratos</h3>
@@ -849,6 +975,15 @@ const ContractsListaEnhanced: React.FC<ContractsListaEnhancedProps> = ({ onEditC
           </>
         )}
       </div>
+
+      <VinculacionDrawer
+        open={vinculacionDrawer.open}
+        sinIdentificadorId={vinculacionDrawer.sinIdentificadorId}
+        ejercicio={vinculacionDrawer.ejercicio}
+        inmuebleAlias={vinculacionDrawer.inmuebleAlias}
+        onClose={() => setVinculacionDrawer((prev) => ({ ...prev, open: false }))}
+        onVinculado={() => loadData()}
+      />
     </div>
   );
 };

@@ -1077,17 +1077,16 @@ export async function crearContratoPendienteIdentificar(params: {
 
   if (!propertyId || importeDeclarado <= 0) return;
 
-  // Buscar si ya existe un contrato sin_identificar para este inmueble y ejercicio
+  // Buscar si ya existe un contrato sin_identificar para este inmueble (sin importar el ejercicio)
   const existentes = await getContractsByProperty(propertyId);
   const yaExiste = existentes.find(c =>
-    c.estadoContrato === 'sin_identificar' &&
-    c.ejerciciosFiscales?.[ejercicio] !== undefined
+    c.estadoContrato === 'sin_identificar'
   );
 
   if (yaExiste) {
     // Actualizar el existente con los nuevos datos (puede haber múltiples arrendamientos sin NIF)
     const ejerciciosFiscales = yaExiste.ejerciciosFiscales ?? {};
-    // Si ya existe ese ejercicio, sumar el importe (pueden ser varios arrendamientos sin NIF)
+    // Si ya existe ese ejercicio, sumar el importe (pueden ser varios arrendamientos sin NIF mismo año)
     const existenteEjercicio = ejerciciosFiscales[ejercicio];
     ejerciciosFiscales[ejercicio] = {
       estado: 'declarado',
