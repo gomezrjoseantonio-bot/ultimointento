@@ -65,23 +65,6 @@ export async function generateTesoreria(data: InformesData): Promise<void> {
     propertyAliasById.set(String(property.id), alias);
   }
 
-  // Completar con cuentas de localStorage (fuente alternativa de nombres)
-  try {
-    const stored = localStorage.getItem('atlas_accounts');
-    if (stored) {
-      const lsAccounts = JSON.parse(stored) as Account[];
-      for (const c of lsAccounts) {
-        const nombre = resolverNombreCuenta(c);
-        if (c.id != null && !mapaId.has(String(c.id))) mapaId.set(String(c.id), nombre);
-        if (!c.iban) continue;
-        const key = c.iban.replace(/\s/g, '').toUpperCase();
-        if (!mapaIban.has(key)) mapaIban.set(key, nombre);
-      }
-    }
-  } catch {
-    // silencioso
-  }
-
   const getAlias = (movement: Movement): string => {
     const rawAccountId = movement.accountId == null ? '' : String(movement.accountId);
     const normalizedAccountId = rawAccountId.replace(/\s/g, '').toUpperCase();
