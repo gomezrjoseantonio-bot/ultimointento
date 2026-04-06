@@ -183,13 +183,6 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                 >
                   Plan & Facturación
                 </button>
-                <button
-                  onClick={() => { navigate('/cuenta/cuentas'); setAccountMenuOpen(false); }}
-                  className="block px-4 py-2 text-sm w-full text-left"
-                  style={{ color: 'var(--grey-700)' }}
-                >
-                  Métodos de pago
-                </button>
                 <div style={{ borderTop: '1px solid var(--grey-200)', margin: '4px 0' }} />
                 <button
                   onClick={handleLogout}

@@ -19,6 +19,7 @@ import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/servic
 import { gastosPersonalesRealService } from '../../services/gastosPersonalesRealService';
 import { patronGastosPersonalesService } from '../../services/patronGastosPersonalesService';
 import type { PersonalExpenseCategory } from '../../types/personal';
+import AccountFormModal from '../../modules/horizon/configuracion/cuentas/components/AccountFormModal';
 import './treasury-reconciliation.css';
 import './treasury-v4.css';
 
@@ -112,6 +113,7 @@ const TesoreriaV4: React.FC = () => {
   const [filtro, setFiltro] = useState<string>('pendiente');
   const [editState, setEditState] = useState<{ eventId: string; amount: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
   const [newMovForm, setNewMovForm] = useState<NewMovForm>(DEFAULT_FORM);
   const [savingMovement, setSavingMovement] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -983,7 +985,7 @@ const TesoreriaV4: React.FC = () => {
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.07em', textTransform: 'uppercase', color: 'var(--grey-400)' }}>
                 Cuentas y tarjetas
               </div>
-              <button className="btn-primary-v4">
+              <button className="btn-primary-v4" onClick={() => setShowAccountModal(true)}>
                 <Plus size={13} /> Nueva cuenta
               </button>
             </div>
@@ -1031,7 +1033,7 @@ const TesoreriaV4: React.FC = () => {
               })}
 
               {/* Dashed add card */}
-              <div className="tv4-cuenta-dashed">
+              <div className="tv4-cuenta-dashed" onClick={() => setShowAccountModal(true)} style={{ cursor: 'pointer' }}>
                 <Plus size={20} />
                 <span style={{ fontSize: 12, fontWeight: 500, marginTop: 6 }}>Nueva cuenta</span>
               </div>
@@ -1040,6 +1042,13 @@ const TesoreriaV4: React.FC = () => {
         )}
 
       </div>
+
+      {/* ══ MODAL — NUEVA CUENTA BANCARIA ══ */}
+      <AccountFormModal
+        open={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        onSuccess={loadData}
+      />
 
       {/* ══ DRAWER — AÑADIR MOVIMIENTO ══ */}
       <div
