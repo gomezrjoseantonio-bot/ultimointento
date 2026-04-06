@@ -1,12 +1,37 @@
 import { initDB } from './db';
 import { getContractsByProperty, updateContract } from './contractService';
 
+// Parse a YYYY-MM-DD string as a UTC date to avoid timezone-induced off-by-one errors
+function parseUTCDate(dateStr: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  if (!match) {
+    throw new Error(`Invalid date format: "${dateStr}". Expected YYYY-MM-DD.`);
+  }
+
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+
+  const parsedDate = new Date(Date.UTC(y, m - 1, d));
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.getUTCFullYear() !== y ||
+    parsedDate.getUTCMonth() !== m - 1 ||
+    parsedDate.getUTCDate() !== d
+  ) {
+    throw new Error(`Invalid calendar date: "${dateStr}". Expected a real YYYY-MM-DD date.`);
+  }
+
+  return parsedDate;
+}
+
 export interface ContratoPropuesta {
   contratoId: number;
   inquilinoNombre: string;
   habitacionId?: string;
   fechaInicio: string;
   fechaFin: string;
+  fechaFinEfectiva: string; // fechaFin capped to end of ejercicio (YYYY-MM-DD)
   rentaMensual: number;
   diasActivosEnEjercicio: number;
   importePropuesto: number;
@@ -50,14 +75,16 @@ export async function calcularPropostaDistribucion(
     (c) => c.estadoContrato !== 'sin_identificar' && c.id !== sinIdentificadorId
   );
 
-  const inicioEjercicio = new Date(`${ejercicio}-01-01`);
-  const finEjercicio = new Date(`${ejercicio}-12-31`);
+  // Use Date.UTC to build boundary dates — avoids timezone-induced off-by-one errors
+  const inicioEjercicio = new Date(Date.UTC(ejercicio, 0, 1));  // Jan 1
+  const finEjercicio = new Date(Date.UTC(ejercicio, 11, 31));   // Dec 31
+  const finEjercicioStr = `${ejercicio}-12-31`;
 
   const propuestas: ContratoPropuesta[] = [];
 
   for (const contrato of contratosReales) {
-    const inicio = new Date(contrato.fechaInicio);
-    const fin = new Date(contrato.fechaFin);
+    const inicio = parseUTCDate(contrato.fechaInicio);
+    const fin = parseUTCDate(contrato.fechaFin);
 
     const inicioEfectivo = inicio > inicioEjercicio ? inicio : inicioEjercicio;
     const finEfectivo = fin < finEjercicio ? fin : finEjercicio;
@@ -68,9 +95,14 @@ export async function calcularPropostaDistribucion(
       Math.round((finEfectivo.getTime() - inicioEfectivo.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
     const rentaAnual = contrato.rentaMensual * 12;
-    const diasEjercicio = ejercicio % 4 === 0 ? 366 : 365;
+    // Full leap year rule: divisible by 4 AND (not by 100 OR divisible by 400)
+    const esBisiesto = (ejercicio % 4 === 0 && ejercicio % 100 !== 0) || ejercicio % 400 === 0;
+    const diasEjercicio = esBisiesto ? 366 : 365;
     const importePropuesto =
       Math.round((rentaAnual / diasEjercicio) * diasActivos * 100) / 100;
+
+    // Effective end date: contract's real fechaFin or end of ejercicio, whichever is earlier
+    const fechaFinEfectiva = fin <= finEjercicio ? contrato.fechaFin : finEjercicioStr;
 
     propuestas.push({
       contratoId: contrato.id!,
@@ -80,6 +112,7 @@ export async function calcularPropostaDistribucion(
       habitacionId: contrato.habitacionId,
       fechaInicio: contrato.fechaInicio,
       fechaFin: contrato.fechaFin,
+      fechaFinEfectiva,
       rentaMensual: contrato.rentaMensual,
       diasActivosEnEjercicio: diasActivos,
       importePropuesto,
