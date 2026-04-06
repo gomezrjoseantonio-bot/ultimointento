@@ -1122,9 +1122,14 @@ const TesoreriaV4: React.FC = () => {
                 style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: 'none', background: 'var(--red-600, #dc2626)', color: '#fff', cursor: 'pointer', opacity: (deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)) ? 0.5 : 1 }}
                 onClick={async () => {
                   if (!deleteConfirmation) return;
+                  const accountId = deleteConfirmation.account.id;
+                  if (!accountId) {
+                    toast.error('No se puede eliminar: la cuenta no tiene identificador');
+                    return;
+                  }
                   setDeleting(true);
                   try {
-                    await cuentasService.hardDelete(deleteConfirmation.account.id!, {
+                    await cuentasService.hardDelete(accountId, {
                       deleteMovements: deleteConfirmation.deleteMovements,
                       confirmCascade: true,
                     });
