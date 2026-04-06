@@ -1116,6 +1116,9 @@ export async function crearContratoPendienteIdentificar(params: {
   const accounts = await db.getAll('accounts');
   const firstActiveAccount = accounts.find((account: any) => account.isActive ?? account.activa ?? true);
 
+  // Calcular renta mensual estimada
+  const rentaMensualEstimada = Math.round(importeDeclarado / 12);
+
   // Crear contrato sin_identificar
   await saveContract({
     inmuebleId: propertyId,
@@ -1131,7 +1134,7 @@ export async function crearContratoPendienteIdentificar(params: {
     },
     fechaInicio,
     fechaFin,
-    rentaMensual: Math.round(importeDeclarado / 12),
+    rentaMensual: rentaMensualEstimada,
     diaPago: 1,
     margenGraciaDias: 5,
     indexacion: 'none',
@@ -1168,7 +1171,7 @@ export async function crearContratoPendienteIdentificar(params: {
     },
     startDate: fechaInicio,
     endDate: fechaFin,
-    monthlyRent: Math.round(importeDeclarado / 12),
+    monthlyRent: rentaMensualEstimada,
     paymentDay: 1,
     periodicity: 'monthly',
     status: 'active',

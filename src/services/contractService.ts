@@ -508,7 +508,7 @@ export const validateContract = async (contract: Partial<Contract>): Promise<str
   // with multiple tenants for the same property in the same year.
   // Overlap management will be handled in a future task.
   
-  return errors;;
+  return errors;
 };
 
 // Occupancy validation to prevent double-booking
