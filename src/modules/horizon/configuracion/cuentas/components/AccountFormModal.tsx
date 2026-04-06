@@ -372,7 +372,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             <button
               type="submit"
               disabled={saving || uploadingLogo}
-              className="px-4 py-2 text-sm font-medium bg-atlas-blue border border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-atlas-blue border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
             >
               {uploadingLogo ? 'Subiendo logo...' : saving ? 'Guardando...' : editingAccount ? 'Actualizar' : 'Crear cuenta'}
             </button>
