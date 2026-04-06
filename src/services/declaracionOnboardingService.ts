@@ -1,4 +1,4 @@
-import type { Contract, Property, EjercicioFiscalContrato } from './db';
+import type { Contract, Property } from './db';
 import { initDB } from './db';
 import type {
   DeclaracionActividad,
