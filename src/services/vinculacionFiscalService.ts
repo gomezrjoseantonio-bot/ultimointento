@@ -51,6 +51,7 @@ export async function calcularPropostaDistribucion(
   sinIdentificadorId: number,
   ejercicio: number
 ): Promise<PropuestaDistribucion> {
+  try {
   const db = await initDB();
 
   const sinId = await db.get('contracts', sinIdentificadorId);
@@ -83,6 +84,7 @@ export async function calcularPropostaDistribucion(
   const propuestas: ContratoPropuesta[] = [];
 
   for (const contrato of contratosReales) {
+    console.debug('[vinculacion] procesando contrato', contrato.id, 'fechaInicio:', contrato.fechaInicio, 'fechaFin:', contrato.fechaFin);
     const inicio = parseUTCDate(contrato.fechaInicio);
     const fin = parseUTCDate(contrato.fechaFin);
 
@@ -130,6 +132,10 @@ export async function calcularPropostaDistribucion(
     totalPropuesto: Math.round(totalPropuesto * 100) / 100,
     diferencia: Math.round((importeDeclarado - totalPropuesto) * 100) / 100,
   };
+  } catch (err) {
+    console.error('[vinculacion] Error en calcularPropostaDistribucion:', err);
+    throw err;
+  }
 }
 
 export async function confirmarVinculacion(
