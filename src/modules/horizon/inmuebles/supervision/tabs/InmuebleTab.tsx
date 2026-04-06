@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Receipt, Calculator } from 'lucide-react';
+import { Pencil, Receipt, Calculator, ChevronRight } from 'lucide-react';
 import SupervisionCard from '../components/SupervisionCards';
 import Chart360 from '../components/Chart360';
 import MotoresGrid from '../components/MotoresGrid';
+import IngastoDrawer, { type DrawerTipo } from '../components/IngastoDrawer';
 import PropertySaleModal from '../../components/PropertySaleModal';
 import { initDB, type Property } from '../../../../../services/db';
 import type { InmuebleSupervision, TotalesCartera } from '../hooks/useSupervisionData';
@@ -32,6 +33,8 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   const [horizonte, setHorizonte] = useState(10);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [drawerTipo, setDrawerTipo] = useState<DrawerTipo>(null);
+  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [fullProperty, setFullProperty] = useState<Property | null>(null);
 
   const inm = useMemo(
@@ -83,6 +86,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           onChange={(e) => {
             setSelectedId(Number(e.target.value));
             setSelectedYear(null);
+            setDrawerTipo(null);
           }}
           style={{
             flex: '0 0 320px',
@@ -245,7 +249,10 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
               {availableYears.map((yr) => (
                 <button
                   key={yr}
-                  onClick={() => setSelectedYear(yr)}
+                  onClick={() => {
+                    setSelectedYear(yr);
+                    setDrawerTipo(null);
+                  }}
                   style={{
                     padding: '2px 8px', borderRadius: 'var(--r-sm)',
                     border: '1px solid', fontSize: 11, fontFamily: 'var(--font-mono)',
@@ -263,29 +270,51 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {[
-              { label: 'Rentas', value: yearData?.rentas ?? 0 },
-              { label: 'Gastos op.', value: yearData?.gastosOp ?? 0 },
-              { label: 'Intereses', value: yearData?.intereses ?? 0 },
-              { label: 'Reparaciones', value: yearData?.reparaciones ?? 0 },
-              { label: 'Cashflow', value: yearData?.cashflow ?? 0, highlight: true },
+              { label: 'Rentas', value: yearData?.rentas ?? 0, tipo: 'rentas' as DrawerTipo },
+              { label: 'Gastos op.', value: yearData?.gastosOp ?? 0, tipo: 'gastos_op' as DrawerTipo },
+              { label: 'Intereses', value: yearData?.intereses ?? 0, tipo: 'intereses' as DrawerTipo },
+              { label: 'Reparaciones', value: yearData?.reparaciones ?? 0, tipo: 'reparaciones' as DrawerTipo },
+              { label: 'Cashflow', value: yearData?.cashflow ?? 0, highlight: true, tipo: null },
             ].map((row) => (
               <div key={row.label} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: row.highlight ? '6px 8px' : '2px 8px',
                 borderRadius: row.highlight ? 'var(--r-sm)' : 0,
-                background: row.highlight ? 'var(--grey-50)' : 'transparent',
+                background: row.highlight
+                  ? 'var(--grey-50)'
+                  : (row.tipo && hoveredRow === row.label ? 'var(--navy-50)' : 'transparent'),
                 borderTop: row.highlight ? '1px solid var(--grey-200)' : 'none',
+                cursor: row.tipo ? 'pointer' : 'default',
               }}>
-                <span style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)' }}>{row.label}</span>
-                <span style={{
-                  fontSize: 'var(--t-sm)', fontFamily: 'var(--font-mono)',
-                  fontWeight: row.highlight ? 600 : 400,
-                  color: row.highlight
-                    ? ((yearData?.cashflow ?? 0) >= 0 ? 'var(--navy-900)' : 'var(--grey-700)')
-                    : 'var(--grey-700)',
-                }}>
-                  {fmt(row.value)}
-                </span>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredRow(row.tipo ? row.label : null)}
+                  onMouseLeave={() => setHoveredRow((prev) => (prev === row.label ? null : prev))}
+                  onClick={() => row.tipo && setDrawerTipo(row.tipo)}
+                  style={{
+                    all: 'unset',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: row.tipo ? 'pointer' : 'default',
+                  }}
+                  aria-label={row.tipo ? `Ver desglose de ${row.label}` : undefined}
+                >
+                  <span style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)' }}>{row.label}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{
+                      fontSize: 'var(--t-sm)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
+                      fontWeight: row.highlight ? 600 : 400,
+                      color: row.highlight
+                        ? ((yearData?.cashflow ?? 0) >= 0 ? 'var(--navy-900)' : 'var(--grey-700)')
+                        : 'var(--grey-700)',
+                    }}>
+                      {fmt(row.value)}
+                    </span>
+                    {row.tipo ? <ChevronRight size={14} color="var(--teal-600)" aria-hidden="true" /> : null}
+                  </span>
+                </button>
               </div>
             ))}
             {/* Yield rows */}
@@ -351,6 +380,15 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
         source="analisis"
         onClose={() => setShowSaleModal(false)}
         onConfirmed={() => setShowSaleModal(false)}
+      />
+
+      <IngastoDrawer
+        open={drawerTipo !== null}
+        tipo={drawerTipo}
+        ano={detailYear}
+        inmuebleId={inm.id}
+        inmuebleAlias={inm.alias}
+        onClose={() => setDrawerTipo(null)}
       />
     </div>
   );
