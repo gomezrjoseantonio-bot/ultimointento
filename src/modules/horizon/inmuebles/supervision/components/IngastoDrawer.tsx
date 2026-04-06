@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { initDB, type Contract, type Movement, type RentaMensual, type TreasuryEvent } from '../../../../../services/db';
 import { gastosInmuebleService } from '../../../../../services/gastosInmuebleService';
 import { getMejorasPorInmueble } from '../../../../../services/mejoraActivoService';
-import { getMobiliarioPorInmueble } from '../../../../../services/mobiliarioActivoService';
 import { prestamosService, getAllocationFactor } from '../../../../../services/prestamosService';
 
 export type DrawerTipo = 'rentas' | 'gastos_op' | 'intereses' | 'reparaciones' | null;
@@ -164,11 +163,6 @@ const isConfirmedMovement = (m: any): boolean => {
     || unified === 'conciliado';
 };
 
-const isRentMovement = (m: any): boolean => {
-  const sourceType = String(m?.sourceType ?? m?.source_type ?? '').toLowerCase();
-  return RENT_SOURCE_TYPES.has(sourceType);
-};
-
 const isInteresesMovement = (m: any): boolean => {
   const text = `${String(m?.description ?? '')} ${String(m?.categoria ?? '')} ${String(m?.category?.tipo ?? '')}`.toLowerCase();
   return INTERES_HINTS.some((h) => text.includes(h));
@@ -208,8 +202,12 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
   const [loanData, setLoanData] = useState<LoanDrawerData>({ prestamos: [], totalIntereses: 0, totalCapital: 0, cuotaMedia: 0, saldoVivoFinAno: 0 });
   const [repairData, setRepairData] = useState<RepairRow[]>([]);
 
+  const asideRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
     if (!open || !tipo) return;
+
+    let cancelled = false;
 
     const load = async () => {
       setLoading(true);
@@ -218,10 +216,10 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
         const db = await initDB();
 
         if (tipo === 'rentas') {
-          const [contracts, rentasMensuales, movements] = await Promise.all([
+          const [contracts, rentasMensuales, treasuryEvents] = await Promise.all([
             db.getAll('contracts') as Promise<Contract[]>,
             db.getAll('rentaMensual') as Promise<RentaMensual[]>,
-            db.getAll('movements') as Promise<Movement[]>,
+            db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           ]);
 
           const propertyContracts = contracts.filter((c) => Number(c.inmuebleId ?? c.propertyId) === inmuebleId);
@@ -230,6 +228,18 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
             const arr = rentasByContract.get(r.contratoId) ?? [];
             arr.push(r);
             rentasByContract.set(r.contratoId, arr);
+          }
+
+          // Build a map of confirmed/executed rent treasury events per contract id
+          const rentEventsByContractId = new Map<number, TreasuryEvent[]>();
+          for (const e of treasuryEvents) {
+            if (!RENT_SOURCE_TYPES.has(e.sourceType)) continue;
+            if (e.sourceId == null) continue;
+            if (e.status !== 'confirmed' && e.status !== 'executed') continue;
+            if (!isWithinYear(e.predictedDate, ano)) continue;
+            const arr = rentEventsByContractId.get(e.sourceId) ?? [];
+            arr.push(e);
+            rentEventsByContractId.set(e.sourceId, arr);
           }
 
           const rows: RentContractRow[] = [];
@@ -252,16 +262,12 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
             const cobradoRentaMensual = records.reduce((s, r) => s + Number(r.importeCobradoAcum ?? 0), 0);
             const mesesCobrados = records.filter((r) => r.estado === 'cobrada' || r.estado === 'parcial').length;
 
-            let cobradoMovement = 0;
-            if (ano >= 2025) {
-              cobradoMovement = movements
-                .filter((m) => isWithinYear((m as any).date, ano))
-                .filter((m) => matchesProperty(m, inmuebleId))
-                .filter((m) => isConfirmedMovement(m) && isRentMovement(m))
-                .reduce((s, m) => s + parseMovementAmount(m), 0);
-            }
+            // Confirmed amount for this specific contract from treasury events
+            const cobradoTreasury = ano >= 2025
+              ? (rentEventsByContractId.get(c.id) ?? []).reduce((s, e) => s + Math.abs(Number(e.amount)), 0)
+              : 0;
 
-            const cobrado = ano >= 2025 ? Math.max(cobradoRentaMensual, cobradoMovement) : cobradoRentaMensual;
+            const cobrado = ano >= 2025 ? Math.max(cobradoRentaMensual, cobradoTreasury) : cobradoRentaMensual;
             const previstoAnual = ano === 2026
               ? records
                 .filter((r) => r.estado !== 'cobrada')
@@ -290,24 +296,24 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
             totalMeses += mesesTotales;
           }
 
-          const movimientosSinContrato = movements
-            .filter((m) => isWithinYear((m as any).date, ano))
-            .filter((m) => matchesProperty(m, inmuebleId))
-            .filter((m) => isConfirmedMovement(m) && isRentMovement(m))
-            .reduce((s, m) => s + parseMovementAmount(m), 0);
+          // Income not linked to any known contract for this property
+          const knownContractIds = new Set(propertyContracts.map((c) => c.id).filter((id): id is number => id != null));
+          const sinContratoImporte = treasuryEvents
+            .filter((e) => RENT_SOURCE_TYPES.has(e.sourceType) && (e.status === 'confirmed' || e.status === 'executed') && isWithinYear(e.predictedDate, ano))
+            .filter((e) => e.sourceId == null || !knownContractIds.has(e.sourceId))
+            .reduce((s, e) => s + Math.abs(Number(e.amount)), 0);
 
-          const cobradoContratos = rows.reduce((s, r) => s + r.cobrado, 0);
-          const sinContratoImporte = Math.max(0, movimientosSinContrato - cobradoContratos);
-
-          setRentData({
-            contratos: rows,
-            previsto: totalPrevisto,
-            confirmado: totalConfirmado,
-            pendiente: Math.max(0, totalPrevisto - totalConfirmado),
-            mesesCobrados: totalMesesCobrados,
-            mesesTotales: totalMeses,
-            sinContratoImporte,
-          });
+          if (!cancelled) {
+            setRentData({
+              contratos: rows,
+              previsto: totalPrevisto,
+              confirmado: totalConfirmado,
+              pendiente: Math.max(0, totalPrevisto - totalConfirmado),
+              mesesCobrados: totalMesesCobrados,
+              mesesTotales: totalMeses,
+              sinContratoImporte,
+            });
+          }
         }
 
         if (tipo === 'gastos_op') {
@@ -343,7 +349,7 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
               const amount = parseMovementAmount(m);
               confirmados += amount;
               items.push({
-                id: `mov-${m.id ?? Math.random().toString(16).slice(2)}`,
+                id: `mov-${m.id ?? `${(m as any).date ?? ''}-${m.amount}-${String(m.description ?? '').slice(0, 30)}`}`,
                 concepto: String((m as any).category?.tipo || (m as any).categoria || m.description || 'Gasto operativo'),
                 frecuencia: 'Mensual',
                 importe: amount,
@@ -353,20 +359,23 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
           }
 
           if (ano >= 2026) {
+            // Only include predicted events whose sourceId matches a gasto for this inmueble
+            const gastosIds = new Set(gastosInmueble.filter((g) => g.id != null).map((g) => g.id as number));
             const pendingEvents = treasuryEvents
               .filter((e) => isWithinYear(e.predictedDate, ano))
               .filter((e) => e.status === 'predicted')
               .filter((e) => {
                 const sid = String(e.sourceType || '').toLowerCase();
-                const text = `${e.description || ''} ${sid}`.toLowerCase();
-                return OPEX_SOURCE_TYPES.has(sid) || text.includes('ibi') || text.includes('comunidad') || text.includes('seguro') || text.includes('suministro');
+                if (!OPEX_SOURCE_TYPES.has(sid)) return false;
+                if (e.sourceId == null) return false;
+                return gastosIds.has(e.sourceId);
               });
 
             for (const e of pendingEvents) {
               const amount = Math.abs(Number(e.amount || 0));
               previstos += amount;
               items.push({
-                id: `evt-${e.id ?? Math.random().toString(16).slice(2)}`,
+                id: `evt-${e.id ?? `${e.predictedDate ?? ''}-${e.amount}-${String(e.description ?? '').slice(0, 30)}`}`,
                 concepto: e.description || 'Gasto operativo previsto',
                 frecuencia: 'Mensual',
                 importe: amount,
@@ -377,7 +386,7 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
 
           const total = items.reduce((s, i) => s + i.importe, 0);
           const fromDeclarado = items.filter((i) => i.estado === 'Declarado').reduce((s, i) => s + i.importe, 0);
-          setOpexData({ items, total, confirmados: confirmados + fromDeclarado, previstos });
+          if (!cancelled) setOpexData({ items, total, confirmados: confirmados + fromDeclarado, previstos });
         }
 
         if (tipo === 'intereses') {
@@ -419,13 +428,15 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
             });
           }
 
-          setLoanData({
-            prestamos: rows,
-            totalIntereses,
-            totalCapital,
-            cuotaMedia: cuotasContadas > 0 ? totalCuotas / cuotasContadas : 0,
-            saldoVivoFinAno,
-          });
+          if (!cancelled) {
+            setLoanData({
+              prestamos: rows,
+              totalIntereses,
+              totalCapital,
+              cuotaMedia: cuotasContadas > 0 ? totalCuotas / cuotasContadas : 0,
+              saldoVivoFinAno,
+            });
+          }
         }
 
         if (tipo === 'reparaciones') {
@@ -439,23 +450,18 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
               importe: Number(m.importe || 0),
               proveedor: m.proveedorNombre || m.proveedorNIF,
             }));
-          setRepairData(repairs);
-
-          // Cargamos también estos para asegurar la fuente de verdad de año (mobiliario/mejoras no reparación)
-          await Promise.all([
-            getMobiliarioPorInmueble(inmuebleId),
-            getMejorasPorInmueble(inmuebleId),
-          ]);
+          if (!cancelled) setRepairData(repairs);
         }
       } catch (e) {
         console.error('[IngastoDrawer] Error loading data', e);
-        setError('No se pudo cargar el desglose');
+        if (!cancelled) setError('No se pudo cargar el desglose');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     load();
+    return () => { cancelled = true; };
   }, [open, tipo, ano, inmuebleId]);
 
   const title = useMemo(() => {
@@ -465,6 +471,13 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
     if (tipo === 'reparaciones') return `Reparaciones ${ano}`;
     return '';
   }, [tipo, ano]);
+
+  // Focus the drawer when it opens for keyboard accessibility
+  useEffect(() => {
+    if (open && asideRef.current) {
+      asideRef.current.focus();
+    }
+  }, [open]);
 
   if (!tipo) return null;
 
@@ -496,7 +509,11 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
       />
 
       <aside
-        aria-label={title}
+        ref={asideRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ingasto-drawer-title"
+        tabIndex={-1}
         style={{
           position: 'absolute',
           right: 0,
@@ -515,7 +532,7 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
         <div style={{ padding: 'var(--space-5)', borderBottom: '1px solid var(--grey-100)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--grey-900)' }}>{title}</h2>
+              <h2 id="ingasto-drawer-title" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--grey-900)' }}>{title}</h2>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--grey-500)' }}>
                 {tipo === 'rentas'
                   ? `${rentData.contratos.length} contratos · ${inmuebleAlias}`
