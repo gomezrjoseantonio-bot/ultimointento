@@ -3,7 +3,7 @@ import {
   BarChart3, RefreshCw, Plus, Check, CheckCircle2,
   ChevronLeft, ChevronRight,
   AlertCircle, TrendingUp, TrendingDown, CreditCard,
-  X,
+  X, Edit2, Trash2, AlertTriangle,
 } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../shared/PageHeader';
 import toast from 'react-hot-toast';
@@ -20,6 +20,7 @@ import { gastosPersonalesRealService } from '../../services/gastosPersonalesReal
 import { patronGastosPersonalesService } from '../../services/patronGastosPersonalesService';
 import type { PersonalExpenseCategory } from '../../types/personal';
 import AccountFormModal from '../../modules/horizon/configuracion/cuentas/components/AccountFormModal';
+import { cuentasService } from '../../services/cuentasService';
 import './treasury-reconciliation.css';
 import './treasury-v4.css';
 
@@ -114,6 +115,13 @@ const TesoreriaV4: React.FC = () => {
   const [editState, setEditState] = useState<{ eventId: string; amount: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<DBAccount | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    account: DBAccount;
+    movementsCount: number;
+    deleteMovements: boolean;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [newMovForm, setNewMovForm] = useState<NewMovForm>(DEFAULT_FORM);
   const [savingMovement, setSavingMovement] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
@@ -994,6 +1002,7 @@ const TesoreriaV4: React.FC = () => {
               {accounts.map(c => {
                 const bd = accountBreakdown.get(c.id);
                 const saldoHoy = bd?.saldoHoy ?? 0;
+                const rawAccount = rawAccounts.find(a => a.id === c.dbId) ?? null;
                 return (
                   <div key={c.id} className="tv4-cuenta-card">
                     {/* Inicial + nombre */}
@@ -1007,7 +1016,7 @@ const TesoreriaV4: React.FC = () => {
                       }}>
                         {c.name[0]?.toUpperCase()}
                       </div>
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--grey-900)' }}>{c.name}</div>
                         <div style={{ fontSize: 10, color: 'var(--grey-400)' }}>{c.ibanMask || '—'}</div>
                       </div>
@@ -1021,12 +1030,36 @@ const TesoreriaV4: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Saldo inicial */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                      <span style={{ color: 'var(--grey-500)' }}>Saldo inicial</span>
-                      <span style={{ color: 'var(--teal-600)', cursor: 'pointer', fontSize: 11 }}>
+                    {/* Acciones */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--grey-100)' }}>
+                      <button
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--teal-600)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={() => {
+                          if (rawAccount) {
+                            setEditingAccount(rawAccount);
+                            setShowAccountModal(true);
+                          }
+                        }}
+                      >
+                        <Edit2 size={11} />
                         Editar
-                      </span>
+                      </button>
+                      <button
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--red-600, #dc2626)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        onClick={async () => {
+                          if (!rawAccount) return;
+                          try {
+                            const allMovements = JSON.parse(localStorage.getItem('atlas_movimientos') || '[]');
+                            const movementsCount = allMovements.filter((m: any) => m.cuentaId === rawAccount.id && !m.deleted_at).length;
+                            setDeleteConfirmation({ account: rawAccount, movementsCount, deleteMovements: false });
+                          } catch {
+                            toast.error('Error al verificar la cuenta');
+                          }
+                        }}
+                      >
+                        <Trash2 size={11} />
+                        Eliminar
+                      </button>
                     </div>
                   </div>
                 );
@@ -1043,12 +1076,79 @@ const TesoreriaV4: React.FC = () => {
 
       </div>
 
-      {/* ══ MODAL — NUEVA CUENTA BANCARIA ══ */}
+      {/* ══ MODAL — NUEVA/EDITAR CUENTA BANCARIA ══ */}
       <AccountFormModal
         open={showAccountModal}
-        onClose={() => setShowAccountModal(false)}
+        onClose={() => { setShowAccountModal(false); setEditingAccount(null); }}
         onSuccess={loadData}
+        editingAccount={editingAccount}
       />
+
+      {/* ══ MODAL — ELIMINAR CUENTA BANCARIA ══ */}
+      {deleteConfirmation && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div style={{ background: 'var(--white)', borderRadius: 12, padding: 24, width: '100%', maxWidth: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <AlertTriangle size={20} style={{ color: 'var(--red-600, #dc2626)', flexShrink: 0 }} />
+              <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--grey-900)' }}>Eliminar cuenta definitivamente</span>
+            </div>
+            <div style={{ background: 'var(--red-50, #fef2f2)', border: '1px solid var(--red-200, #fecaca)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--red-800, #991b1b)', margin: 0 }}>
+                <strong>Acción irreversible:</strong> La cuenta <strong>{deleteConfirmation.account.alias || deleteConfirmation.account.iban}</strong> será eliminada permanentemente.
+              </p>
+            </div>
+            {deleteConfirmation.movementsCount > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--grey-700)' }}>
+                  <input
+                    type="checkbox"
+                    checked={deleteConfirmation.deleteMovements}
+                    onChange={(e) => setDeleteConfirmation({ ...deleteConfirmation, deleteMovements: e.target.checked })}
+                    style={{ marginTop: 2 }}
+                  />
+                  También eliminar sus {deleteConfirmation.movementsCount} movimientos (irreversible)
+                </label>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: '1px solid var(--grey-200)', background: 'var(--white)', cursor: 'pointer', color: 'var(--grey-700)' }}
+                onClick={() => setDeleteConfirmation(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)}
+                style={{ padding: '8px 16px', fontSize: 13, borderRadius: 6, border: 'none', background: 'var(--red-600, #dc2626)', color: '#fff', cursor: 'pointer', opacity: (deleting || (deleteConfirmation.movementsCount > 0 && !deleteConfirmation.deleteMovements)) ? 0.5 : 1 }}
+                onClick={async () => {
+                  if (!deleteConfirmation) return;
+                  const accountId = deleteConfirmation.account.id;
+                  if (!accountId) {
+                    toast.error('No se puede eliminar: la cuenta no tiene identificador');
+                    return;
+                  }
+                  setDeleting(true);
+                  try {
+                    await cuentasService.hardDelete(accountId, {
+                      deleteMovements: deleteConfirmation.deleteMovements,
+                      confirmCascade: true,
+                    });
+                    toast.success('Cuenta eliminada definitivamente');
+                    setDeleteConfirmation(null);
+                    await loadData();
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : 'Error al eliminar la cuenta');
+                  } finally {
+                    setDeleting(false);
+                  }
+                }}
+              >
+                {deleting ? 'Eliminando…' : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══ DRAWER — AÑADIR MOVIMIENTO ══ */}
       <div

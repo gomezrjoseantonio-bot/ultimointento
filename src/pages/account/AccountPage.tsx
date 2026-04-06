@@ -4,12 +4,11 @@ import PageLayout from '../../components/common/PageLayout';
 import ProfileView from '../../modules/personal/components/ProfileView';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import MigracionTab from './MigracionTab';
-import Cuentas from '../../modules/horizon/configuracion/cuentas/CuentasContainer';
 import { User, CreditCard, Settings, Upload } from 'lucide-react';
 
 const PandaDocTemplateBuilder = React.lazy(() => import('../../modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 
-type AccountTab = 'perfil' | 'plan' | 'cuentas' | 'configuracion' | 'migracion';
+type AccountTab = 'perfil' | 'plan' | 'configuracion' | 'migracion';
 
 const AccountPage: React.FC = () => {
   const location = useLocation();
@@ -19,7 +18,7 @@ const AccountPage: React.FC = () => {
   useEffect(() => {
     const pathSegments = location.pathname.split('/');
     const tabFromPath = pathSegments[2] as AccountTab;
-    if (['perfil', 'plan', 'cuentas', 'configuracion', 'migracion'].includes(tabFromPath)) {
+    if (['perfil', 'plan', 'configuracion', 'migracion'].includes(tabFromPath)) {
       setActiveTab(tabFromPath);
     }
   }, [location.pathname]);
@@ -27,7 +26,6 @@ const AccountPage: React.FC = () => {
   const tabs = [
     { key: 'perfil', label: 'Perfil', icon: User },
     { key: 'plan', label: 'Plan & Facturación', icon: CreditCard },
-    { key: 'cuentas', label: 'Métodos de pago', icon: CreditCard },
     { key: 'configuracion', label: 'Configuración', icon: Settings },
     { key: 'migracion', label: 'Migración de Datos', icon: Upload },
   ];
@@ -65,8 +63,6 @@ const AccountPage: React.FC = () => {
       {activeTab === 'plan' && (
         <PlanFacturacion />
       )}
-
-      {activeTab === 'cuentas' && <Cuentas />}
 
       {activeTab === 'configuracion' && (
         <React.Suspense fallback={
