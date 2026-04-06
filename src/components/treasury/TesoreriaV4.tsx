@@ -250,7 +250,7 @@ const TesoreriaV4: React.FC = () => {
   // ── Computed: accounts list ──
   const accounts = useMemo((): SimpleAccountV4[] =>
     rawAccounts
-      .filter(a => a.id != null && (a as any).activa !== false && (a as any).status !== 'DELETED' && a.tipo !== 'TARJETA_CREDITO')
+      .filter(a => a.id != null && (a as any).activa !== false && (a as any).status !== 'DELETED')
       .map(a => ({
         id: String(a.id),
         dbId: a.id as number,

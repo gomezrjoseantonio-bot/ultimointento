@@ -42,23 +42,21 @@ export interface UpdateAccountData {
 class CuentasService {
   private accounts: Account[] = [];
   private eventListeners: ((event: string, data?: any) => void)[] = [];
+  private ready: Promise<void>;
 
   constructor() {
-    this.loadInitialData();
+    this.ready = this.loadInitialData();
   }
 
   /**
-   * Initialize service with data from localStorage
+   * Initialize service with data from IndexedDB (single source of truth)
    */
   private async loadInitialData(): Promise<void> {
     try {
-      // Load accounts from localStorage
-      const stored = localStorage.getItem('atlas_accounts');
-      if (stored) {
-        this.accounts = JSON.parse(stored);
-      }
+      const db = await initDB();
+      this.accounts = await db.getAll('accounts') as Account[];
     } catch (error) {
-      console.error('[ACCOUNTS] Failed to load initial data:', error);
+      console.error('[ACCOUNTS] Failed to load initial data from IndexedDB:', error);
     }
   }
 
@@ -156,6 +154,25 @@ class CuentasService {
   }
 
   /**
+   * Find account index in cache by ID, with IBAN fallback for IndexedDB IDs.
+   * TesoreriaV4 reads accounts from IndexedDB (auto-increment IDs) while the cache
+   * may use localStorage timestamp IDs — this resolves the mismatch.
+   */
+  private async findIndexById(id: number): Promise<number> {
+    await this.ready; // ensure cache is populated before lookup
+    let idx = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at && acc.status !== 'DELETED');
+    if (idx !== -1) return idx;
+    try {
+      const db = await initDB();
+      const dbAccount = await db.get('accounts', id) as any;
+      if (dbAccount?.iban) {
+        idx = this.accounts.findIndex(acc => acc.iban === dbAccount.iban && !acc.deleted_at && acc.status !== 'DELETED');
+      }
+    } catch { /* return -1 below */ }
+    return idx;
+  }
+
+  /**
    * Add event listener
    */
   public on(listener: (event: string, data?: any) => void): () => void {
@@ -172,14 +189,27 @@ class CuentasService {
    * List all active accounts
    */
   public async list(): Promise<Account[]> {
-    return this.accounts.filter(acc => !acc.deleted_at);
+    try {
+      const db = await initDB();
+      const all = await db.getAll('accounts') as Account[];
+      this.accounts = all; // keep cache in sync
+      return all.filter(acc => !acc.deleted_at && acc.status !== 'DELETED' && (acc.status === 'ACTIVE' || (acc as any).activa !== false));
+    } catch {
+      // Fallback to cache if DB unavailable
+      return this.accounts.filter(acc => !acc.deleted_at && acc.status !== 'DELETED' && (acc.status === 'ACTIVE' || (acc as any).activa !== false));
+    }
   }
 
   /**
    * Get account by ID
    */
   public async get(id: number): Promise<Account | null> {
-    return this.accounts.find(acc => acc.id === id && !acc.deleted_at) || null;
+    try {
+      const db = await initDB();
+      const acc = await db.get('accounts', id) as Account | null;
+      if (acc && !acc.deleted_at && acc.status !== 'DELETED') return acc;
+    } catch { /* fallback below */ }
+    return this.accounts.find(acc => acc.id === id && !acc.deleted_at && acc.status !== 'DELETED') || null;
   }
 
   /**
@@ -338,7 +368,7 @@ class CuentasService {
    * Update existing account
    */
   public async update(id: number, data: UpdateAccountData): Promise<Account> {
-    const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
+    const accountIndex = await this.findIndexById(id);
     if (accountIndex === -1) {
       throw new Error('Cuenta no encontrada');
     }
@@ -356,9 +386,9 @@ class CuentasService {
 
     // Handle default account logic
     if (data.isDefault === true) {
-      // Unmark current default account
+      // Unmark current default account — use account.id (resolved IndexedDB ID), not the raw incoming id
       this.accounts.forEach(acc => {
-        if (acc.id !== id && acc.isDefault) {
+        if (acc.id !== account.id && acc.isDefault) {
           acc.isDefault = false;
         }
       });
@@ -413,7 +443,7 @@ class CuentasService {
    * Deactivate account (soft delete) - Enhanced with status system
    */
   public async deactivate(id: number): Promise<void> {
-    const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
+    const accountIndex = await this.findIndexById(id);
     if (accountIndex === -1) {
       throw new Error('Cuenta no encontrada');
     }
@@ -452,7 +482,7 @@ class CuentasService {
    * Reactivate account (opposite of deactivate) - Enhanced with status system
    */
   public async reactivate(id: number): Promise<void> {
-    const accountIndex = this.accounts.findIndex(acc => acc.id === id && !acc.deleted_at);
+    const accountIndex = await this.findIndexById(id);
     if (accountIndex === -1) {
       throw new Error('Cuenta no encontrada');
     }
@@ -490,37 +520,41 @@ class CuentasService {
     deleteMovements?: boolean;
     confirmCascade?: boolean;
   }): Promise<{ success: boolean; summary?: any }> {
-    const account = this.accounts.find(acc => acc.id === id && !acc.deleted_at);
-    if (!account) {
+    const accountIndex = await this.findIndexById(id);
+    if (accountIndex === -1) {
       throw new Error('Cuenta no encontrada');
     }
+    const account = this.accounts[accountIndex];
 
     console.info(`${LOG_PREFIX} Starting hard deletion for account ${id}: ${account.alias}`);
 
     try {
-      // Get movements count for summary
+      // account.id is the IndexedDB auto-increment ID (cache loaded from IndexedDB)
+      const resolvedId = account.id!;
+
+      // Get movements count for summary — check by resolved ID (legacy data may use either)
       const allMovements = JSON.parse(localStorage.getItem('atlas_movimientos') || '[]');
-      const accountMovements = allMovements.filter((m: any) => m.cuentaId === id && !m.deleted_at);
+      const accountMovements = allMovements.filter((m: any) => (m.cuentaId === resolvedId || m.cuentaId === id) && !m.deleted_at);
       const movementsCount = accountMovements.length;
 
       const summary = {
         action: 'hard_delete',
-        accountId: id,
+        accountId: resolvedId,
         removedItems: {} as Record<string, number>
       };
 
       // Step 1: Handle movements according to checkbox
       if (options.deleteMovements && movementsCount > 0) {
-        // Delete movements from localStorage
-        const filteredMovements = allMovements.filter((m: any) => m.cuentaId !== id || m.deleted_at);
+        // Delete movements from localStorage (match by either resolved or legacy ID)
+        const filteredMovements = allMovements.filter((m: any) => (m.cuentaId !== resolvedId && m.cuentaId !== id) || m.deleted_at);
         localStorage.setItem('atlas_movimientos', JSON.stringify(filteredMovements));
         summary.removedItems.movements = movementsCount;
 
         // Also delete from IndexedDB treasury storage
         const db = await initDB();
         const allTreasuryMovements = await db.getAll('movements');
-        const treasuryAccountMovements = allTreasuryMovements.filter(m => m.account_id === id);
-        
+        const treasuryAccountMovements = allTreasuryMovements.filter(m => m.account_id === resolvedId || m.account_id === id);
+
         for (const movement of treasuryAccountMovements) {
           if (movement.id) {
             await db.delete('movements', movement.id);
@@ -528,21 +562,21 @@ class CuentasService {
         }
       }
 
-      // Step 2: Delete account from IndexedDB treasury storage
+      // Step 2: Delete account from IndexedDB using the resolved ID (no getAll() needed)
       const db = await initDB();
       try {
-        await db.delete('accounts', id);
+        await db.delete('accounts', resolvedId);
       } catch (error) {
         console.warn(`${LOG_PREFIX} Account not found in treasury DB or error deleting:`, error);
       }
 
       // Step 3: Clean caches and aggregated data
-      this.cleanAccountCaches(id);
+      this.cleanAccountCaches(resolvedId);
 
       // Step 4: Remove from local accounts array
-      const accountIndex = this.accounts.findIndex(acc => acc.id === id);
-      if (accountIndex !== -1) {
-        this.accounts.splice(accountIndex, 1);
+      const localAccountIndex = this.accounts.findIndex(acc => acc.id === account.id);
+      if (localAccountIndex !== -1) {
+        this.accounts.splice(localAccountIndex, 1);
         this.saveAccounts();
       }
 
