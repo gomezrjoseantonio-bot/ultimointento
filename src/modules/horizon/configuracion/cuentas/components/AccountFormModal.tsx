@@ -53,7 +53,9 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
   // Load accounts for TARJETA_CREDITO charge account selector
   useEffect(() => {
-    cuentasService.list().then(setAccounts).catch(() => {});
+    cuentasService.list().then(setAccounts).catch((err) => {
+      console.error('Error loading accounts for modal:', err);
+    });
   }, [open]);
 
   // Populate form when editing an account
