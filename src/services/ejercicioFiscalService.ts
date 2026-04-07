@@ -96,7 +96,13 @@ function toDomain(record?: DbEjercicioFiscal): EjercicioFiscal | undefined {
 
   return {
     ejercicio: record.ejercicio ?? record.año ?? 0,
-    estado: (record.estado === 'vivo' ? 'en_curso' : record.estado) as EstadoEjercicio,
+    estado: (() => {
+      const st = record.estado;
+      // Mapear estados GAP-3 al vocabulario del dominio UI (fiscal.ts)
+      if (st === 'vivo' || st === 'pendiente_cierre') return 'en_curso';
+      if (st === 'prescrito') return 'declarado';
+      return st;
+    })() as EstadoEjercicio,
     calculoAtlas: record.calculoAtlas ? clone(record.calculoAtlas) : undefined,
     calculoAtlasFecha: record.calculoAtlasFecha,
     declaracionAeat: record.declaracionAeat ? clone(record.declaracionAeat) : undefined,

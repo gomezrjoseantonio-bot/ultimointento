@@ -216,14 +216,17 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
       // El año ya tiene cierre ATLAS — la UI abrirá ValidacionXMLDrawer
       informe.requiereValidacionXML = true;
       informe.ejercicioConCierreAtlas = decl.meta.ejercicio;
-    } else if (ejercicioExistente && ejercicioExistente.estado !== 'declarado') {
-      // No tiene cierre ATLAS previo — marcar directamente como declarado
-      await db.put('ejerciciosFiscales', {
-        ...ejercicioExistente,
-        estado: 'declarado' as const,
-        declaradoAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+    } else if (ejercicioExistente) {
+      // Solo transicionar a declarado desde estados que lo permiten; nunca sobreescribir prescrito
+      const transicionables = ['vivo', 'en_curso', 'pendiente_cierre', 'cerrado'] as const;
+      if (transicionables.includes(ejercicioExistente.estado as typeof transicionables[number])) {
+        await db.put('ejerciciosFiscales', {
+          ...ejercicioExistente,
+          estado: 'declarado' as const,
+          declaradoAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
     }
   } catch (err) {
     console.warn('GAP-3: Error al verificar estado de ejercicio tras importar XML:', err);

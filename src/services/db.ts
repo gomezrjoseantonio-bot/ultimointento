@@ -1164,6 +1164,7 @@ export interface EjercicioFiscal {
     totalIngresos: number;
     totalGastos: number;
     cashflowNeto: number;
+    cuotaEstimada: number;             // cuota líquida estimada para comparación vs XML
   };
 
   casillasRaw?: Record<string, number | string>;

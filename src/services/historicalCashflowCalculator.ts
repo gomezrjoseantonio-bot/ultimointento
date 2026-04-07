@@ -21,8 +21,8 @@ export interface CashflowAño {
   // Resultado parcial (sin gastos personales)
   cashflowParcial: number;
   // Fuente de datos
-  fuenteNomina: 'xml_aeat' | 'atlas_nativo' | 'no_disponible';
-  fuenteRentas: 'xml_aeat' | 'atlas_nativo' | 'no_disponible';
+  fuenteNomina: 'xml_aeat' | 'no_disponible';
+  fuenteRentas: 'xml_aeat' | 'no_disponible';
   prestamosConDatos: number;    // préstamos con cuadro de amortización
   prestamosSinDatos: number;    // préstamos sin cuadro de amortización
 }

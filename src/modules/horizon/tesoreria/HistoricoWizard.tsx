@@ -183,10 +183,19 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
           tieneCuadro: Array.isArray(p.cuadroAmortizacion) && p.cuadroAmortizacion.length > 0,
         })));
 
+        // Cargar contracts y eventos históricos UNA SOLA VEZ (evitar N+1)
+        const contracts = await db.getAll('contracts');
+        const todosEventosHistoricos = await db.getAll('treasuryEvents');
+        const añosConHistorico = new Set(
+          todosEventosHistoricos
+            .filter(e => e.generadoPor === 'historicalTreasuryService' && e.año != null)
+            .map(e => e.año as number)
+        );
+
         const añosList: AñoInfo[] = [];
         for (const ej of ejercicios) {
           const año = ej.año;
-          const tieneHistorico = await tieneHistoricoGenerado(año);
+          const tieneHistorico = añosConHistorico.has(año);
 
           let prestamosConDatos = 0;
           let prestamosSinDatos = 0;
@@ -205,7 +214,6 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
           const casillas: Record<string, number> = ej.aeat?.snapshot ?? {};
           const tieneNomina = Number(casillas['0003'] ?? 0) > 0;
           const tieneAut = Number(casillas['VE1II1'] ?? 0) > 0;
-          const contracts = await db.getAll('contracts');
           const tieneRentas = contracts.some(c => c.ejerciciosFiscales?.[año]?.importeDeclarado);
 
           const calidad: AñoInfo['calidad'] =

@@ -42,7 +42,12 @@ export function useEjercicioFiscal(anio: number): UseEjercicioFiscalResult {
 
       setEjercicio({
         ejercicio: ejercicioDb.ejercicio,
-        estado: (ejercicioDb.estado === 'vivo' ? 'en_curso' : ejercicioDb.estado) as EstadoEjercicio,
+        estado: (() => {
+          const st = ejercicioDb.estado;
+          if (st === 'vivo' || st === 'pendiente_cierre') return 'en_curso';
+          if (st === 'prescrito') return 'declarado';
+          return st;
+        })() as EstadoEjercicio,
         calculoAtlas: ejercicioDb.calculoAtlas,
         calculoAtlasFecha: ejercicioDb.calculoAtlasFecha,
         declaracionAeat: ejercicioDb.declaracionAeat,
