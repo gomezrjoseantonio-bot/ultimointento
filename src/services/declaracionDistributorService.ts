@@ -916,24 +916,7 @@ async function escribirMejoras(
       });
     }
 
-    // 2. Reparaciones del ejercicio
-    if (inm.gastos.reparacionConservacion > 0) {
-      const duplicada = existentes.find(m =>
-        m.ejercicio === decl.meta.ejercicio && m.tipo === 'reparacion' &&
-        Math.abs(m.importe - inm.gastos.reparacionConservacion) < 1
-      );
-      if (!duplicada) {
-        const provRep = inm.proveedores.find(p => p.concepto === 'reparacion');
-        await mejorasInmuebleService.crear({
-          inmuebleId: property.id, ejercicio: decl.meta.ejercicio, tipo: 'reparacion',
-          importe: inm.gastos.reparacionConservacion,
-          descripcion: `Reparación/conservación declarada IRPF ${decl.meta.ejercicio}`,
-          fecha: `${decl.meta.ejercicio}-12-31`, proveedorNIF: provRep?.nif || '',
-        });
-      }
-    }
-
-    // 3. Mejoras anteriores acumuladas
+    // 2. Mejoras anteriores acumuladas (reparaciones van a gastosInmueble via escribirFiscalSummaries)
     if (inm.mejorasAnteriores && inm.mejorasAnteriores > 0) {
       const tieneAnteriores = existentes.some(m => m.tipo !== 'reparacion' && m.ejercicio < decl.meta.ejercicio);
       if (!tieneAnteriores) {

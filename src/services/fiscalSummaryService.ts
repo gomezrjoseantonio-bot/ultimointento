@@ -5,7 +5,7 @@ import { initDB, FiscalSummary, Document, AEATCarryForward } from './db';
 import { getExerciseStatus } from './aeatClassificationService';
 import { getRentalDaysForYear, updateFiscalSummaryWithAEAT } from './aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from './mobiliarioActivoService';
-import { getTotalMejorasHastaEjercicio, getTotalReparacionesEjercicio } from './mejoraActivoService';
+import { getTotalMejorasHastaEjercicio } from './mejoraActivoService';
 import {
   generarOperacionesDesdeIntereses,
   generarOperacionesDesdeRecurrentes,
@@ -76,13 +76,12 @@ export const calculateFiscalSummary = async (
   const diasDisponibles = isLeapYear(exerciseYear) ? 366 : 365;
   const box0117 = await calcularAmortizacionMobiliarioAnual(propertyId, exerciseYear, diasArrendados, diasDisponibles);
   const mejorasTotal = await getTotalMejorasHastaEjercicio(propertyId, exerciseYear);
-  const reparacionesFromMejoras = await getTotalReparacionesEjercicio(propertyId, exerciseYear);
 
   const summary: FiscalSummary = {
     propertyId,
     exerciseYear,
     box0105: casillas['0105'] || 0,
-    box0106: (casillas['0106'] || 0) + reparacionesFromMejoras,
+    box0106: casillas['0106'] || 0,
     box0109: casillas['0109'] || 0,
     box0112: casillas['0112'] || 0,
     box0113: casillas['0113'] || 0,
