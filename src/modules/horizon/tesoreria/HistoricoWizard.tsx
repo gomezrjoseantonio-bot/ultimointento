@@ -175,14 +175,53 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
       setIsLoading(true);
       try {
         const db = await initDB();
-        const ejercicios = await db.getAll('ejerciciosFiscalesCoord');
+        const añoActual = new Date().getFullYear();
+
+        // Bug 1 fix: solo años ya cerrados (ejercicios anteriores al año en curso)
+        const ejercicios = (await db.getAll('ejerciciosFiscalesCoord'))
+          .filter(e => e.año < añoActual);
+
         const prestamos = await db.getAll('prestamos');
+
+        // Bug 2 fix: resolver el plan de amortización soportando formato antiguo
+        // (prestamo.cuadro_amortizacion) y nuevo (keyval/planpagos_${id})
+        const resolvePlanPeriodos = async (p: any): Promise<{ fecha: string }[]> => {
+          const old = p.cuadro_amortizacion ?? p.cuadroAmortizacion;
+          if (Array.isArray(old) && old.length > 0) {
+            return old.map((c: any) => ({ fecha: String(c.fecha ?? c.fechaCargo ?? '') }));
+          }
+          const plan = await (db as any).get('keyval', `planpagos_${p.id}`);
+          if (plan?.periodos?.length > 0) {
+            return (plan.periodos as any[]).map((per: any) => ({ fecha: String(per.fechaCargo ?? '') }));
+          }
+          return [];
+        };
+
+        // Cargar periodos de todos los préstamos una sola vez
+        const planPorPrestamo = new Map<string | number, { fecha: string }[]>();
+        for (const p of prestamos) {
+          planPorPrestamo.set(p.id, await resolvePlanPeriodos(p));
+        }
+
         setTotalPrestamos(prestamos.map((p) => ({
           id: p.id as number,
           nombre: p.nombre ?? `Préstamo ${p.id}`,
-          tieneCuadro: Array.isArray(p.cuadroAmortizacion) && p.cuadroAmortizacion.length > 0,
+          tieneCuadro: (planPorPrestamo.get(p.id) ?? []).length > 0,
         })));
 
+        // Bug 4 fix: pre-rellenar saldo de cuentas e inversiones desde DB
+        const accounts = await db.getAll('accounts');
+        const totalSaldo = accounts
+          .filter((a: any) => a.status === 'ACTIVE' || a.isActive || a.activa)
+          .reduce((sum: number, a: any) => sum + Number(a.balance ?? a.saldo ?? 0), 0);
+        setSaldoCuentas(Math.round(totalSaldo));
+
+        const inversionesList = await db.getAll('inversiones');
+        const totalInversiones = inversionesList
+          .reduce((sum: number, inv: any) => sum + Number(inv.valor_actual ?? inv.valorActual ?? 0), 0);
+        setInversiones(Math.round(totalInversiones));
+
+        const contracts = await db.getAll('contracts');
         const añosList: AñoInfo[] = [];
         for (const ej of ejercicios) {
           const año = ej.año;
@@ -191,10 +230,9 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
           let prestamosConDatos = 0;
           let prestamosSinDatos = 0;
           for (const p of prestamos) {
-            if (Array.isArray(p.cuadroAmortizacion) && p.cuadroAmortizacion.length > 0) {
-              const tieneEsteAño = p.cuadroAmortizacion.some((c: { fecha?: string }) =>
-                c.fecha?.startsWith(`${año}`)
-              );
+            const periodos = planPorPrestamo.get(p.id) ?? [];
+            if (periodos.length > 0) {
+              const tieneEsteAño = periodos.some(c => c.fecha.startsWith(`${año}`));
               if (tieneEsteAño) prestamosConDatos++;
               else prestamosSinDatos++;
             } else {
@@ -202,10 +240,11 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
             }
           }
 
-          const casillas: Record<string, number> = ej.aeat?.snapshot ?? {};
+          // Bug 3 fix: caer en atlas.snapshot si no hay aeat importado
+          const casillas: Record<string, number> =
+            ej.aeat?.snapshot ?? ej.atlas?.snapshot ?? {};
           const tieneNomina = Number(casillas['0003'] ?? 0) > 0;
           const tieneAut = Number(casillas['VE1II1'] ?? 0) > 0;
-          const contracts = await db.getAll('contracts');
           const tieneRentas = contracts.some(c => c.ejerciciosFiscales?.[año]?.importeDeclarado);
 
           const calidad: AñoInfo['calidad'] =

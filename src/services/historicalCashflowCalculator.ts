@@ -46,12 +46,40 @@ export interface CuadreCaja {
   gastosPersonalesPorAño: Record<number, number>; // €/mes estimados por año
 }
 
+// Normaliza el cuadro de amortización de un préstamo a [{fecha, cuota}].
+// Soporta dos formatos:
+//   - Antiguo (loanService): prestamo.cuadro_amortizacion[] con {fecha?, cuota?, cuotaTotal?}
+//   - Nuevo (PrestamosWizard): keyval/"planpagos_${id}" → PlanPagos.periodos[] con {fechaCargo, cuota}
+async function resolveSchedule(
+  db: Awaited<ReturnType<typeof initDB>>,
+  prestamo: any
+): Promise<{ fecha: string; cuota: number }[]> {
+  const old = prestamo.cuadro_amortizacion ?? prestamo.cuadroAmortizacion;
+  if (Array.isArray(old) && old.length > 0) {
+    return old.map((c: any) => ({
+      fecha: String(c.fecha ?? c.fechaCargo ?? ''),
+      cuota: Number(c.cuota ?? c.cuotaTotal ?? 0),
+    }));
+  }
+  // Nuevo formato: plan guardado en keyval
+  const plan = await (db as any).get('keyval', `planpagos_${prestamo.id}`);
+  if (plan?.periodos?.length > 0) {
+    return (plan.periodos as any[]).map(p => ({
+      fecha: String(p.fechaCargo ?? ''),
+      cuota: Number(p.cuota ?? 0),
+    }));
+  }
+  return [];
+}
+
 export async function getCashflowAño(año: number): Promise<CashflowAño> {
   const db = await initDB();
 
-  // Casillas desde ejerciciosFiscalesCoord (almacenadas en aeat.snapshot)
+  // Casillas desde ejerciciosFiscalesCoord — aeat.snapshot si hay XML importado,
+  // atlas.snapshot como fallback si se calculó con Atlas
   const ejercicio = await db.get('ejerciciosFiscalesCoord', año);
-  const casillas: Record<string, number> = ejercicio?.aeat?.snapshot ?? {};
+  const casillas: Record<string, number> =
+    ejercicio?.aeat?.snapshot ?? ejercicio?.atlas?.snapshot ?? {};
 
   // Nómina neta: rendimientos trabajo (0003) - retenciones (0596) - SS (0013)
   const nominaBruta = Number(casillas['0003'] ?? 0);
@@ -74,24 +102,24 @@ export async function getCashflowAño(año: number): Promise<CashflowAño> {
     }
   }
 
-  // Cuotas de préstamos desde cuadroAmortizacion
+  // Cuotas de préstamos:
+  // - Formato antiguo (loanService): prestamo.cuadro_amortizacion[]  con campos {fecha, cuota}
+  // - Formato nuevo (PrestamosWizard): keyval/planpagos_${id} → PlanPagos.periodos[] con {fechaCargo, cuota}
   const prestamos = await db.getAll('prestamos');
   let cuotasPrestamos = 0;
   let prestamosConDatos = 0;
   let prestamosSinDatos = 0;
   for (const prestamo of prestamos) {
-    if (!prestamo.cuadroAmortizacion || prestamo.cuadroAmortizacion.length === 0) {
+    // Normalizar schedule a [{fecha, cuota}]
+    const schedule = await resolveSchedule(db, prestamo);
+    if (schedule.length === 0) {
       prestamosSinDatos++;
       continue;
     }
     prestamosConDatos++;
-    const cuotasDelAño = prestamo.cuadroAmortizacion.filter((c: { fecha?: string }) =>
-      c.fecha?.startsWith(`${año}`)
-    );
-    for (const cuota of cuotasDelAño) {
-      cuotasPrestamos += Number((cuota as { cuota?: number; cuotaTotal?: number }).cuota
-        ?? (cuota as { cuota?: number; cuotaTotal?: number }).cuotaTotal
-        ?? 0);
+    const cuotasDelAño = schedule.filter(c => c.fecha.startsWith(`${año}`));
+    for (const c of cuotasDelAño) {
+      cuotasPrestamos += c.cuota;
     }
   }
 

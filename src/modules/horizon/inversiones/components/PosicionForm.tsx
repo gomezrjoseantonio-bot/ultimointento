@@ -269,7 +269,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       valor_actual: formData.valor_actual,
       fecha_valoracion: new Date(formData.fecha_valoracion).toISOString(),
       notas: formData.notas || undefined,
-      fecha_compra: formData.fecha_compra ? new Date(formData.fecha_compra).toISOString() : undefined,
+      fecha_compra: formData.fecha_compra ? `${formData.fecha_compra}T12:00:00.000Z` : undefined,
       cuenta_cargo_id: formData.cuenta_cargo_id ? Number(formData.cuenta_cargo_id) : undefined,
     };
 
