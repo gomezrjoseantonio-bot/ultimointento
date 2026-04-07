@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Migration Data tab for Account page
 
 import React, { useState } from 'react';
-import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText } from 'lucide-react';
+import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText, History } from 'lucide-react';
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
@@ -11,12 +11,14 @@ import ImportarPrestamos from './migracion/ImportarPrestamos';
 import ImportarInmuebles from './migracion/ImportarInmuebles';
 import ImportarNominas from './migracion/ImportarNominas';
 import ImportarDeclaracionWizard from '../../modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard';
+import HistoricoWizard from '../../modules/horizon/tesoreria/HistoricoWizard';
 
 type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf';
 
 const MigracionTab: React.FC = () => {
   const [view, setView] = useState<MigracionView>('menu');
   const [completados, setCompletados] = useState<Set<string>>(new Set());
+  const [showHistoricoWizard, setShowHistoricoWizard] = useState(false);
 
   const markCompleted = (key: string) => {
     setCompletados((prev) => {
@@ -190,7 +192,26 @@ const MigracionTab: React.FC = () => {
           completed={completados.has('irpf')}
           onClick={() => setView('irpf')}
         />
+        <MigracionCard
+          icon={History}
+          title="Historial de Tesorería"
+          description="Genera el cashflow histórico de tus años anteriores a partir de tus declaraciones importadas."
+          color="var(--navy-700)"
+          completed={completados.has('historico-tesoreria')}
+          onClick={() => setShowHistoricoWizard(true)}
+        />
       </div>
+
+      {showHistoricoWizard && (
+        <HistoricoWizard
+          open={showHistoricoWizard}
+          onClose={() => setShowHistoricoWizard(false)}
+          onComplete={() => {
+            markCompleted('historico-tesoreria');
+            setShowHistoricoWizard(false);
+          }}
+        />
+      )}
     </div>
   );
 };
