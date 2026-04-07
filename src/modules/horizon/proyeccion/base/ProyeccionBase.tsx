@@ -24,9 +24,11 @@ const ProyeccionBase: React.FC<ProyeccionBaseProps> = ({ isEmbedded = false }): 
   const loadBaseData = async () => {
     try {
       setLoading(true);
+      // getBaseAssumptions uses in-memory cache, so calling both in parallel is fine.
+      // The service itself avoids a double DB fetch internally.
       const [baseAssumptions, baseProjection] = await Promise.all([
         proyeccionService.getBaseAssumptions(),
-        proyeccionService.getBaseProjection()
+        proyeccionService.getBaseProjection(),
       ]);
       setAssumptions(baseAssumptions);
       setProjection(baseProjection);
