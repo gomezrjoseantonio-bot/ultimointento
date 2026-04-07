@@ -45,6 +45,10 @@ export interface InformeDistribucion {
 
   cuentaBancaria?: string;
 
+  // GAP-3: Flag para que la UI abra ValidacionXMLDrawer
+  requiereValidacionXML?: boolean;
+  ejercicioConCierreAtlas?: number;
+
   trabajo?: {
     ingresoBruto: number;
     retenciones: number;

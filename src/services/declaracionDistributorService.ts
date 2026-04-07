@@ -208,7 +208,28 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     console.warn('Error al aplicar datos personales desde declaración:', err);
   }
 
-  return construirInforme(decl, resultadoInmuebles);
+  // GAP-3: Detectar si el año ya tiene cierre ATLAS para abrir ValidacionXMLDrawer en la UI
+  const informe = construirInforme(decl, resultadoInmuebles);
+  try {
+    const ejercicioExistente = await db.get('ejerciciosFiscales', decl.meta.ejercicio);
+    if (ejercicioExistente?.estado === 'cerrado' && ejercicioExistente?.cierreAtlasMetadata) {
+      // El año ya tiene cierre ATLAS — la UI abrirá ValidacionXMLDrawer
+      informe.requiereValidacionXML = true;
+      informe.ejercicioConCierreAtlas = decl.meta.ejercicio;
+    } else if (ejercicioExistente && ejercicioExistente.estado !== 'declarado') {
+      // No tiene cierre ATLAS previo — marcar directamente como declarado
+      await db.put('ejerciciosFiscales', {
+        ...ejercicioExistente,
+        estado: 'declarado' as const,
+        declaradoAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    console.warn('GAP-3: Error al verificar estado de ejercicio tras importar XML:', err);
+  }
+
+  return informe;
 }
 
 async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promise<void> {
