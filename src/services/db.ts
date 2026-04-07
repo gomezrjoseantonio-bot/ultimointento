@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 45; // V4.5: Eliminar stores rentCalendar y rentPayments (migrados a rentaMensual)
+const DB_VERSION = 46; // V4.6: GAP-3 — Añadir índices año/certeza/generadoPor a treasuryEvents
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1030,6 +1030,17 @@ export interface TreasuryEvent {
   // Source tracking
   sourceType: 'document' | 'contract' | 'manual' | 'ingreso' | 'gasto' | 'opex_rule' | 'gasto_recurrente' | 'personal_expense' | 'nomina' | 'contrato' | 'prestamo' | 'hipoteca' | 'autonomo' | 'autonomo_ingreso' | 'otros_ingresos' | 'inversion_compra' | 'inversion_aportacion' | 'inversion_rendimiento' | 'inversion_dividendo' | 'inversion_liquidacion' | 'irpf_prevision';
   sourceId?: number; // Document ID or Contract ID
+  // GAP-3: Clasificación histórica
+  año?: number;                          // Ejercicio fiscal del evento
+  mes?: number;                          // Mes (1-12) si el dato es mensual
+  certeza?: 'declarado' | 'calculado' | 'atlas_nativo' | 'estimado' | 'manual';
+  fuenteHistorica?: 'xml_aeat' | 'pdf_aeat' | 'print_aeat' | 'atlas_nativo' | 'manual';
+  ejercicioFiscalOrigen?: number;        // Año de la declaración de la que viene
+  generadoPor?: 'historicalTreasuryService' | 'treasurySyncService' | 'user';
+  actualizadoPorDeclaracion?: boolean;   // true si fue ajustado al importar XML
+  // GAP-3: Vinculación adicional
+  inmuebleId?: number;
+  contratoId?: number;
   // Account information
   accountId?: number;
   paymentMethod?: 'Domiciliado' | 'Transferencia' | 'TPV' | 'Efectivo';
@@ -1110,7 +1121,7 @@ export interface TreasuryRecommendation {
 
 // ─── V2.7: Ejercicios Fiscales ─────────────────────────────────────────────────
 
-export type EstadoEjercicio = 'vivo' | 'en_curso' | 'cerrado' | 'declarado';
+export type EstadoEjercicio = 'vivo' | 'en_curso' | 'pendiente_cierre' | 'cerrado' | 'declarado' | 'prescrito';
 export type OrigenEjercicio = 'calculado' | 'importado' | 'mixto';
 
 export interface EjercicioFiscal {
@@ -1129,6 +1140,32 @@ export interface EjercicioFiscal {
   declaracionAeatFecha?: string;
   declaracionAeatPdfRef?: string;
   declaracionAeatOrigen?: OrigenDeclaracion;
+
+  // GAP-3: Validación al comparar calculoAtlas con declaracionAeat
+  validacionDeclaracion?: {
+    fechaValidacion: string;
+    diferenciaIngresos: number;        // declarado - atlas
+    diferenciaGastos: number;
+    diferenciaCuota: number;
+    hayDiferencias: boolean;
+    decisionUsuario: 'actualizar' | 'mantener' | 'revision_parcial' | 'pendiente';
+    fechaDecision?: string;
+    // SIN campo motivo — ATLAS no pregunta el por qué
+  };
+
+  // GAP-3: Metadatos del cierre ATLAS
+  cierreAtlasMetadata?: {
+    fechaCierre: string;
+    fuenteDatos: ('xml_aeat' | 'pdf_aeat' | 'print_aeat' | 'atlas_nativo' | 'manual')[];
+    confirmadoPorUsuario: boolean;
+    fechaConfirmacion?: string;
+    gastosPersonalesEstimados: number;   // €/mes estimados
+    gastosPersonalesAjustadosPorUsuario: boolean;
+    totalIngresos: number;
+    totalGastos: number;
+    cashflowNeto: number;
+  };
+
   casillasRaw?: Record<string, number | string>;
   arrastresRecibidos?: ArrastresEjercicio;
   arrastresGenerados?: ArrastresEjercicio;
@@ -2064,6 +2101,16 @@ export const initDB = async () => {
           treasuryEventsStore.createIndex('status', 'status', { unique: false });
           treasuryEventsStore.createIndex('sourceType', 'sourceType', { unique: false });
           treasuryEventsStore.createIndex('sourceId', 'sourceId', { unique: false });
+          // GAP-3: Índices para cashflow histórico
+          ensureIndex(treasuryEventsStore, 'año', 'año', { unique: false });
+          ensureIndex(treasuryEventsStore, 'generadoPor', 'generadoPor', { unique: false });
+          ensureIndex(treasuryEventsStore, 'certeza', 'certeza', { unique: false });
+        } else {
+          // GAP-3: Añadir índices históricos a bases de datos existentes
+          const treasuryEventsStore = transaction.objectStore('treasuryEvents');
+          ensureIndex(treasuryEventsStore, 'año', 'año', { unique: false });
+          ensureIndex(treasuryEventsStore, 'generadoPor', 'generadoPor', { unique: false });
+          ensureIndex(treasuryEventsStore, 'certeza', 'certeza', { unique: false });
         }
 
         // H9: Treasury Recommendations store
