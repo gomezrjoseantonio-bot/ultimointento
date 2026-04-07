@@ -7,12 +7,13 @@
  */
 
 import { initDB } from './db';
+import type { DeclaracionCompleta } from '../types/declaracionCompleta';
 
 export interface CashflowAño {
   año: number;
   // Ingresos
-  nominaNeta: number;           // TPING - IDRE - GSS (neto de nómina)
-  autonomoNeto: number;         // ingresos autónomo - retenciones
+  nominaNeta: number;           // retribucionesDinerarias - retenciones - cotizacionesSS
+  autonomoNeto: number;         // totalIngresos actividad económica - retenciones
   rentasAlquiler: number;       // suma de contracts.ejerciciosFiscales[año].importeDeclarado
   otrosIngresos: number;
   // Gastos
@@ -75,22 +76,46 @@ async function resolveSchedule(
 export async function getCashflowAño(año: number): Promise<CashflowAño> {
   const db = await initDB();
 
-  // Casillas desde ejerciciosFiscalesCoord — aeat.snapshot si hay XML importado,
-  // atlas.snapshot como fallback si se calculó con Atlas
   const ejercicio = await db.get('ejerciciosFiscalesCoord', año);
-  const casillas: Record<string, number> =
-    ejercicio?.aeat?.snapshot ?? ejercicio?.atlas?.snapshot ?? {};
 
-  // Nómina neta: rendimientos trabajo (0003) - retenciones (0596) - SS (0013)
-  const nominaBruta = Number(casillas['0003'] ?? 0);
-  const nominaRetenciones = Number(casillas['0596'] ?? 0);
-  const nominaSS = Number(casillas['0013'] ?? 0);
+  // Nómina: leer desde declaracionCompleta.trabajo (campo rico con todos los datos)
+  // Fallback al snapshot (casillas AEAT o Atlas) para casos sin declaracionCompleta
+  const decl: DeclaracionCompleta | undefined = ejercicio?.aeat?.declaracionCompleta;
+
+  let nominaBruta = 0;
+  let nominaRetenciones = 0;
+  let nominaSS = 0;
+  let autonomoIngresos = 0;
+  let autonomoRet = 0;
+  let fuenteNomina: CashflowAño['fuenteNomina'] = 'no_disponible';
+
+  if (decl?.trabajo) {
+    nominaBruta = Number(decl.trabajo.retribucionesDinerarias ?? 0);
+    nominaRetenciones = Number(decl.trabajo.retenciones ?? 0);
+    nominaSS = Number(decl.trabajo.cotizacionesSS ?? 0);
+    if (nominaBruta > 0) fuenteNomina = 'xml_aeat';
+  }
+
+  if (decl?.actividadEconomica) {
+    autonomoIngresos = Number(decl.actividadEconomica.totalIngresos ?? 0);
+    autonomoRet = Number(decl.actividadEconomica.retenciones ?? 0);
+    if (autonomoIngresos > 0 && fuenteNomina === 'no_disponible') fuenteNomina = 'xml_aeat';
+  }
+
+  // Fallback: snapshot (aeat o atlas) si no hay declaracionCompleta
+  if (!decl) {
+    const casillas: Record<string, number> =
+      ejercicio?.aeat?.snapshot ?? ejercicio?.atlas?.snapshot ?? {};
+    nominaBruta = Number(casillas['0003'] ?? 0);
+    nominaRetenciones = Number(casillas['0596'] ?? 0);
+    nominaSS = Number(casillas['0013'] ?? 0);
+    autonomoIngresos = Number(casillas['VE1II1'] ?? 0);
+    autonomoRet = Number(casillas['RETENED'] ?? 0);
+    if (nominaBruta > 0 || autonomoIngresos > 0) fuenteNomina = 'atlas_nativo';
+  }
+
   const nominaNeta = nominaBruta - nominaRetenciones - nominaSS;
-
-  // Autónomo neto: ingresos (VE1II1) - retenciones (RETENED)
-  const autIngresos = Number(casillas['VE1II1'] ?? 0);
-  const autRet = Number(casillas['RETENED'] ?? 0);
-  const autonomoNeto = autIngresos - autRet;
+  const autonomoNeto = autonomoIngresos - autonomoRet;
 
   // Rentas de alquiler desde contracts.ejerciciosFiscales[año]
   const contracts = await db.getAll('contracts');
@@ -103,14 +128,13 @@ export async function getCashflowAño(año: number): Promise<CashflowAño> {
   }
 
   // Cuotas de préstamos:
-  // - Formato antiguo (loanService): prestamo.cuadro_amortizacion[]  con campos {fecha, cuota}
+  // - Formato antiguo (loanService): prestamo.cuadro_amortizacion[] con campos {fecha, cuota}
   // - Formato nuevo (PrestamosWizard): keyval/planpagos_${id} → PlanPagos.periodos[] con {fechaCargo, cuota}
   const prestamos = await db.getAll('prestamos');
   let cuotasPrestamos = 0;
   let prestamosConDatos = 0;
   let prestamosSinDatos = 0;
   for (const prestamo of prestamos) {
-    // Normalizar schedule a [{fecha, cuota}]
     const schedule = await resolveSchedule(db, prestamo);
     if (schedule.length === 0) {
       prestamosSinDatos++;
@@ -150,7 +174,7 @@ export async function getCashflowAño(año: number): Promise<CashflowAño> {
     cuotasPrestamos,
     gastosInmuebles,
     cashflowParcial,
-    fuenteNomina: nominaBruta > 0 ? 'xml_aeat' : 'no_disponible',
+    fuenteNomina,
     fuenteRentas: rentasAlquiler > 0 ? 'xml_aeat' : 'no_disponible',
     prestamosConDatos,
     prestamosSinDatos,
@@ -168,12 +192,14 @@ export async function calcularCuadreCaja(params: {
 }): Promise<CuadreCaja> {
   const db = await initDB();
 
-  // Obtener todos los ejercicios disponibles
+  // Bug fix: solo años cerrados (< año en curso)
+  const añoActual = new Date().getFullYear();
   const ejercicios = await db.getAll('ejerciciosFiscalesCoord');
   const añosDisponibles = ejercicios
     .map(e => e.año)
     .filter(Boolean)
-    .sort((a, b) => a - b);
+    .filter((a: number) => a < añoActual)
+    .sort((a: number, b: number) => a - b);
 
   const cashflowPorAño: CashflowAño[] = [];
   for (const año of añosDisponibles) {
@@ -186,9 +212,20 @@ export async function calcularCuadreCaja(params: {
     0
   );
 
+  // Bug fix: inversiones → usar coste de adquisición (total_aportado), no valor actual.
+  // Se lee desde DB para garantizar coherencia; el param del wizard sirve de override.
+  const posiciones = await db.getAll('inversiones');
+  const inversionesCoste = Math.round(
+    posiciones.reduce((s: number, p: any) =>
+      s + Number(p.total_aportado ?? p.costeAdquisicion ?? p.valor_actual ?? 0), 0
+    )
+  );
+  const inversionesActuales = params.inversionesActuales > 0
+    ? params.inversionesActuales
+    : inversionesCoste;
+
   const {
     saldoCuentasActual,
-    inversionesActuales,
     ventasNetas = 0,
     aportacionesInversion = 0,
     prestamosOtorgados = 0,
@@ -241,3 +278,4 @@ export async function calcularCuadreCaja(params: {
     gastosPersonalesPorAño,
   };
 }
+
