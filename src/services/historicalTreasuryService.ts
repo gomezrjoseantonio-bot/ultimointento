@@ -12,7 +12,7 @@ export interface HistoricalGenerationParams {
   año: number;
   gastosPersonalesMes: number;       // confirmado por el usuario en el wizard
   cuentaIdDefecto?: number;          // cuenta bancaria por defecto para eventos sin cuenta
-  fuente: 'xml_aeat' | 'pdf_aeat' | 'atlas_nativo' | 'manual';
+  fuente: 'xml_aeat' | 'pdf_aeat' | 'print_aeat' | 'atlas_nativo' | 'manual';
 }
 
 export interface HistoricalGenerationResult {
