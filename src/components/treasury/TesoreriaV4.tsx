@@ -3,8 +3,9 @@ import {
   BarChart3, RefreshCw, Plus, Check, CheckCircle2,
   ChevronLeft, ChevronRight,
   AlertCircle, TrendingUp, TrendingDown, CreditCard,
-  X, Edit2, Trash2, AlertTriangle,
+  X, Edit2, Trash2, AlertTriangle, History,
 } from 'lucide-react';
+import HistoricoWizard from '../../modules/horizon/tesoreria/HistoricoWizard';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../shared/PageHeader';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
@@ -137,6 +138,11 @@ const TesoreriaV4: React.FC = () => {
   // ── Mutable events state (for optimistic UI) ──
   const [events, setEvents] = useState<TreasuryEventLocal[]>([]);
 
+  // ── Histórico wizard + banner ──
+  const [showHistoricoWizard, setShowHistoricoWizard] = useState(false);
+  const [tieneHistorico, setTieneHistorico] = useState<boolean>(true); // optimistic: assume true until checked
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   // ── Focus amount input on edit ──
   useEffect(() => {
     if (editState && amountInputRef.current) {
@@ -200,6 +206,16 @@ const TesoreriaV4: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // ── Check if historical treasury data exists ──
+  useEffect(() => {
+    const checkHistorico = async () => {
+      const allEvents = await getCachedStoreRecords<any>('treasuryEvents');
+      const hasHistorico = allEvents.some((e: any) => e.generadoPor === 'historicalTreasuryService');
+      setTieneHistorico(hasHistorico);
+    };
+    checkHistorico();
+  }, [allDbEvents]);
 
   // ── Resolve card-settled account ──
   const resolveAccId = useCallback((e: any): number | undefined => {
@@ -807,6 +823,58 @@ const TesoreriaV4: React.FC = () => {
         ))}
       </div>
 
+      {/* ══ BANNER: HISTORIAL VACÍO ══ */}
+      {!tieneHistorico && !bannerDismissed && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          padding: '14px 20px',
+          marginBottom: 16,
+          backgroundColor: 'var(--grey-50)',
+          border: '1px solid var(--grey-200)',
+          borderRadius: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <History size={18} strokeWidth={1.5} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
+            <div>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--grey-900)' }}>
+                Tu historial de Tesorería está vacío
+              </p>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--grey-500)', marginTop: 2 }}>
+                Genera el cashflow histórico de tus años anteriores para ver el cuadro completo de tu situación financiera.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={() => setShowHistoricoWizard(true)}
+              style={{
+                padding: '6px 14px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                color: 'var(--atlas-blue)',
+                background: 'transparent',
+                border: '1px solid var(--atlas-blue)',
+                borderRadius: 6,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Configurar historial →
+            </button>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--grey-400)', display: 'flex' }}
+              aria-label="Cerrar"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ══ TAB CONTENT ══ */}
       <div className="tv4-content">
 
@@ -1312,6 +1380,18 @@ const TesoreriaV4: React.FC = () => {
           </button>
         </div>
       </aside>
+
+      {/* ══ HISTÓRICO WIZARD ══ */}
+      {showHistoricoWizard && (
+        <HistoricoWizard
+          open={showHistoricoWizard}
+          onClose={() => setShowHistoricoWizard(false)}
+          onComplete={() => {
+            setShowHistoricoWizard(false);
+            setTieneHistorico(true);
+          }}
+        />
+      )}
 
     </div>
   );
