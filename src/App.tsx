@@ -9,6 +9,7 @@ import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
+import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
@@ -138,6 +139,7 @@ function App() {
   useEffect(() => {
     void initDB()
       .then(() => ejecutarMigracionGastos())
+      .then(() => fixReparacionesDuplicadas())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o migración gastos:', error);
       });
