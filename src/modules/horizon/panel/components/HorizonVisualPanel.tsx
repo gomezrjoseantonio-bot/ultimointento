@@ -46,7 +46,19 @@ const HorizonVisualPanel: React.FC = () => {
 
   const loadDashboardData = async () => {
     setLoading(true);
-    const { dashboardService } = await import('../../../../services/dashboardService');
+    const [{ dashboardService }, { warmCachedStores }] = await Promise.all([
+      import('../../../../services/dashboardService'),
+      import('../../../../services/indexedDbCacheService'),
+    ]);
+
+    // Pre-warm all stores used by the 6 dashboard methods in parallel so each
+    // method hits the in-memory cache instead of making redundant IndexedDB reads.
+    await warmCachedStores([
+      'properties', 'inversiones', 'prestamos', 'contracts',
+      'accounts', 'treasuryEvents', 'rentaMensual',
+      'valoraciones_historicas', 'patronGastosPersonales',
+    ]);
+
     const [patrimonio, liquidez, salud, tesoreria, alertas, flujosCaja] = await Promise.all([
       dashboardService.getPatrimonioNeto(),
       dashboardService.getLiquidez(),

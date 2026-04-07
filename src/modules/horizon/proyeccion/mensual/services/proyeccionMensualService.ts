@@ -13,6 +13,7 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
+import { getCachedStoreRecords } from '../../../../../services/indexedDbCacheService';
 import { PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';
@@ -337,10 +338,14 @@ async function loadIrpfForecastByMonth(): Promise<Map<string, number>> {
       (_, index) => START_YEAR + index - 1,
     );
 
+    // Only use conciliation (real data) for current and past years.
+    // Future years have no real data, so conciliation just bypasses the cache needlessly.
+    const currentYear = new Date().getFullYear();
     const eventosPorEjercicio = await Promise.all(
       ejercicios.map(async (ejercicio) => {
         try {
-          const declaracion = await calcularDeclaracionIRPF(ejercicio, { usarConciliacion: true });
+          const usarConciliacion = ejercicio <= currentYear;
+          const declaracion = await calcularDeclaracionIRPF(ejercicio, { usarConciliacion });
           return await generarEventosFiscales(ejercicio, declaracion);
         } catch (error) {
           console.warn(`[proyeccionMensualService] No se pudo calcular el IRPF ${ejercicio}:`, error);
@@ -802,8 +807,8 @@ async function loadBaseData(): Promise<BaseData> {
       }
     }
 
-    // Load all OpexRules for use by forecastEngine functions
-    opexRules = await db.getAll('opexRules');
+    // Load all OpexRules for use by forecastEngine functions (cached to avoid repeated DB reads)
+    opexRules = await getCachedStoreRecords<OpexRule>('opexRules');
   } catch {
     // No property/contract data available
   }
@@ -914,8 +919,11 @@ async function loadDeudaState(): Promise<DeudaState> {
 
   try {
     const prestamos = await prestamosService.getAllPrestamos();
-    for (const p of prestamos) {
-      const plan = await prestamosService.getPaymentPlan(p.id);
+    const plans = await Promise.all(prestamos.map(p => prestamosService.getPaymentPlan(p.id)));
+
+    for (let i = 0; i < prestamos.length; i++) {
+      const p = prestamos[i];
+      const plan = plans[i];
       const isHipoteca = p.ambito
         ? p.ambito === 'INMUEBLE'
         : Boolean(p.inmuebleId && p.inmuebleId !== 'standalone');
@@ -938,6 +946,16 @@ const PROYECCION_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 let proyeccionCache: ProyeccionAnual[] | null = null;
 let proyeccionCacheExpiresAt = 0;
 let proyeccionPending: Promise<ProyeccionAnual[]> | null = null;
+
+/**
+ * Invalidate the projection cache so the next call to generateProyeccionMensual
+ * recomputes from scratch. Call this after any CRUD operation that affects the projection.
+ */
+export function invalidateProyeccionCache(): void {
+  proyeccionCache = null;
+  proyeccionCacheExpiresAt = 0;
+  proyeccionPending = null;
+}
 
 /**
  * Generate 20-year monthly financial projection.
