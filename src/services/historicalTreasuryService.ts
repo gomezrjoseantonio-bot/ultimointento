@@ -233,7 +233,7 @@ export async function generarHistoricoAño(
       const cuotaTotal = c.cuota ?? c.cuotaTotal ?? 0;
       if (!cuotaTotal) continue;
       eventos.push(makeEvento({
-        type: 'expense',
+        type: 'financing',
         amount: cuotaTotal,
         predictedDate: c.fecha ?? `${año}-01-01`,
         actualDate: c.fecha ?? `${año}-01-01`,
