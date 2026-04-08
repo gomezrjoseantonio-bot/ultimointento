@@ -504,28 +504,47 @@ export async function exportarContratosParaImportacion(): Promise<void> {
   );
 
   const propertiesMap = new Map<string, string>(
-    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+    properties.map((p) => [String(p.id), `${p.alias || ''} ${p.address || ''}`.trim()]),
   );
 
   const modalidadLabel = (modalidad: Contract['modalidad']): string => {
-    if (modalidad === 'habitual') return 'Contrato de arrendamiento de vivienda';
     if (modalidad === 'temporada') return 'Contrato de temporada';
-    return 'Contrato vacacional';
+    if (modalidad === 'vacacional') return 'Contrato vacacional';
+    return 'Contrato de arrendamiento de vivienda';
   };
 
-  const rows = contracts.map((contract) => ({
-    ID: String(contract.id ?? ''),
-    Propiedad: propertiesMap.get(String(contract.inmuebleId)) || String(contract.inmuebleId),
-    Tipo: modalidadLabel(contract.modalidad),
-    'Inicio de alquiler': contract.fechaInicio,
-    'Fin de alquiler': contract.fechaFin,
-    'Nombre compañía': `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim(),
-    Habitación: contract.habitacionId || '',
-    Alquiler: contract.rentaMensual,
-    Fianza: contract.fianzaImporte,
-    'Banco de cobro': accountsMap.get(contract.cuentaCobroId) || '',
-    Comentarios: contract.estadoContrato,
-  }));
+  const rows = contracts.map((contract) => {
+    // Support legacy field shapes that may exist in older records
+    const legacy = contract as Contract & {
+      startDate?: string;
+      endDate?: string;
+      monthlyRent?: number;
+      deposit?: { amount?: number };
+    };
+
+    // Legacy contracts may use `tenant.name` (single string) instead of inquilino.nombre + apellidos
+    const nombreCompania = [
+      [contract.inquilino?.nombre, contract.inquilino?.apellidos].filter(Boolean).join(' ').trim(),
+      contract.tenant?.name ?? '',
+    ].find((v) => Boolean(v?.trim()))?.trim() ?? '';
+
+    // Legacy contracts may store the property reference as `propertyId` instead of `inmuebleId`
+    const inmuebleKey = String(contract.inmuebleId ?? contract.propertyId ?? '');
+
+    return {
+      ID: String(contract.id ?? ''),
+      Propiedad: propertiesMap.get(inmuebleKey) || inmuebleKey,
+      Tipo: modalidadLabel(contract.modalidad),
+      'Inicio de alquiler': contract.fechaInicio ?? legacy.startDate ?? '',
+      'Fin de alquiler': contract.fechaFin ?? legacy.endDate ?? '',
+      'Nombre compañía': nombreCompania,
+      Habitación: contract.habitacionId || '',
+      Alquiler: contract.rentaMensual ?? legacy.monthlyRent ?? 0,
+      Fianza: contract.fianzaImporte ?? legacy.deposit?.amount ?? 0,
+      'Banco de cobro': accountsMap.get(contract.cuentaCobroId) || '',
+      Comentarios: '',
+    };
+  });
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
@@ -554,7 +573,7 @@ export async function exportarPrestamosParaImportacion(): Promise<void> {
   );
 
   const propertiesMap = new Map<string, string>(
-    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+    properties.map((p) => [String(p.id), `${p.alias || ''} ${p.address || ''}`.trim()]),
   );
 
   const rows = prestamos.map((prestamo) => {
@@ -571,9 +590,9 @@ export async function exportarPrestamosParaImportacion(): Promise<void> {
       tipo_interes: prestamo.tipo.toLowerCase(),
       tin_fijo: !isVariable ? (prestamo.tipoNominalAnualFijo ?? '') : '',
       diferencial: isVariable ? (prestamo.diferencial ?? '') : '',
-      indice: isVariable ? (prestamo.indice?.toLowerCase() ?? '') : '',
-      valor_indice_actual: isVariable ? (prestamo.valorIndiceActual ?? '') : '',
-      revision_meses: isVariable ? (prestamo.periodoRevisionMeses ?? '') : '',
+      indice: (isVariable || isMixto) ? (prestamo.indice?.toLowerCase() ?? '') : '',
+      valor_indice_actual: (isVariable || isMixto) ? (prestamo.valorIndiceActual ?? '') : '',
+      revision_meses: (isVariable || isMixto) ? (prestamo.periodoRevisionMeses ?? '') : '',
       tramo_fijo_meses: isMixto ? (prestamo.tramoFijoMeses ?? '') : '',
       tin_tramo_fijo: isMixto ? (prestamo.tipoNominalAnualMixtoFijo ?? '') : '',
       diferencial_variable: isMixto ? (prestamo.diferencial ?? '') : '',
