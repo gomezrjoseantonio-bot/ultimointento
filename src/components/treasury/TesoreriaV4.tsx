@@ -144,15 +144,6 @@ const TesoreriaV4: React.FC = () => {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [wizardJustCompleted, setWizardJustCompleted] = useState(false);
 
-  // Reload treasury data after wizard completes — must run in useEffect (after render),
-  // not inline in the callback, to avoid racing with React's batched state updates.
-  useEffect(() => {
-    if (!wizardJustCompleted) return;
-    setWizardJustCompleted(false);
-    invalidateCachedStores(['treasuryEvents']);
-    loadData();
-  }, [wizardJustCompleted, loadData]);
-
   // ── Focus amount input on edit ──
   useEffect(() => {
     if (editState && amountInputRef.current) {
@@ -216,6 +207,14 @@ const TesoreriaV4: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Reload after wizard — in useEffect (after render) to avoid racing with React's batched state updates.
+  useEffect(() => {
+    if (!wizardJustCompleted) return;
+    setWizardJustCompleted(false);
+    invalidateCachedStores(['treasuryEvents']);
+    loadData();
+  }, [wizardJustCompleted, loadData]);
 
   // ── Check if historical treasury data exists ──
   useEffect(() => {
