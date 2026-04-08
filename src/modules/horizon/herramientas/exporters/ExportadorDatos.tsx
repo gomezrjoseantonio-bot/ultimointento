@@ -3,6 +3,7 @@ import { FileSpreadsheet, Loader2 } from 'lucide-react';
 import {
   exportarCarteraInmuebles,
   exportarContratosParaImportacion,
+  exportarCuentas,
   exportarFiscal,
   exportarPrestamos,
   exportarPrestamosParaImportacion,
@@ -13,7 +14,7 @@ import styles from './ExportadorDatos.module.css';
 
 type ExportState = 'idle' | 'loading' | 'error';
 
-type ExportKey = 'proyeccion' | 'cartera' | 'fiscal' | 'prestamos' | 'tesoreria' | 'contratos_importacion' | 'prestamos_importacion';
+type ExportKey = 'proyeccion' | 'cartera' | 'fiscal' | 'prestamos' | 'tesoreria' | 'contratos_importacion' | 'prestamos_importacion' | 'cuentas';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -33,6 +34,7 @@ const ExportadorDatos: React.FC = () => {
     tesoreria: 'idle',
     contratos_importacion: 'idle',
     prestamos_importacion: 'idle',
+    cuentas: 'idle',
   });
   const [errors, setErrors] = useState<Partial<Record<ExportKey, string>>>({});
   const [añoProyeccion, setAñoProyeccion] = useState(CURRENT_YEAR);
@@ -134,6 +136,13 @@ const ExportadorDatos: React.FC = () => {
       description: 'Todos los préstamos en formato compatible con Migración de Datos.',
       controls: null,
       onClick: () => handleExport('prestamos_importacion', exportarPrestamosParaImportacion),
+    },
+    {
+      key: 'cuentas' as const,
+      title: 'Cuentas bancarias y saldos',
+      description: 'Todas las cuentas con IBAN, alias, banco, tipo y saldo inicial en formato compatible con Migración de Datos.',
+      controls: null,
+      onClick: () => handleExport('cuentas', exportarCuentas),
     },
   ]), [añoFiscal, añoProyeccion, mesesTesoreria]);
 

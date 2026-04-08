@@ -490,6 +490,35 @@ export async function exportarPrestamos(): Promise<void> {
   writeWorkbook(workbook, `atlas_prestamos_${fecha}.xlsx`);
 }
 
+export async function exportarCuentas(): Promise<void> {
+  const fecha = new Date().toISOString().slice(0, 10);
+  const db = await initDB();
+  const accounts = await safe(db.getAll('accounts'), [] as Account[]);
+
+  const rows = accounts
+    .filter((a) => a.status !== 'DELETED' && !a.deleted_at)
+    .map((a) => ({
+      iban: a.iban,
+      alias: a.alias || '',
+      banco: a.banco?.name || a.bank || '',
+      tipo: a.tipo || 'CORRIENTE',
+      saldo_inicial: a.openingBalance ?? a.balance ?? 0,
+      fecha_saldo_inicial: a.openingBalanceDate || a.createdAt?.slice(0, 10) || '',
+      titular_nombre: a.titular?.nombre || '',
+      titular_nif: a.titular?.nif || '',
+      estado: a.status || (a.activa ? 'ACTIVE' : 'INACTIVE'),
+    }));
+
+  const headers = ['iban', 'alias', 'banco', 'tipo', 'saldo_inicial', 'fecha_saldo_inicial', 'titular_nombre', 'titular_nif', 'estado'];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    createSheetFromJson(rows, [28, 20, 20, 18, 16, 20, 24, 20, 12], headers),
+    'Cuentas',
+  );
+  writeWorkbook(workbook, `atlas_cuentas_${fecha}.xlsx`);
+}
+
 export async function exportarContratosParaImportacion(): Promise<void> {
   const fecha = new Date().toISOString().slice(0, 10);
   const db = await initDB();
