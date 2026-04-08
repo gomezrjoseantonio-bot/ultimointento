@@ -2,7 +2,7 @@
 // ATLAS HORIZON: Migration Data tab for Account page
 
 import React, { useState } from 'react';
-import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText, History } from 'lucide-react';
+import { TrendingUp, Banknote, Users, AlertCircle, ArrowRight, CheckCircle, LucideIcon, Landmark, Home, Receipt, FileText, History, Wallet } from 'lucide-react';
 import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
@@ -10,10 +10,11 @@ import ImportarAportaciones from './migracion/ImportarAportaciones';
 import ImportarPrestamos from './migracion/ImportarPrestamos';
 import ImportarInmuebles from './migracion/ImportarInmuebles';
 import ImportarNominas from './migracion/ImportarNominas';
+import ImportarCuentas from './migracion/ImportarCuentas';
 import ImportarDeclaracionWizard from '../../modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard';
 import HistoricoWizard from '../../modules/horizon/tesoreria/HistoricoWizard';
 
-type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf';
+type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf' | 'cuentas';
 
 const MigracionTab: React.FC = () => {
   const [view, setView] = useState<MigracionView>('menu');
@@ -30,6 +31,14 @@ const MigracionTab: React.FC = () => {
     setView('menu');
   };
 
+  if (view === 'cuentas') {
+    return (
+      <ImportarCuentas
+        onComplete={() => markCompleted('cuentas')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
   if (view === 'valoraciones') {
     return (
       <ImportarValoraciones
@@ -128,6 +137,14 @@ const MigracionTab: React.FC = () => {
           gap: '16px',
         }}
       >
+        <MigracionCard
+          icon={Wallet}
+          title="Cuentas bancarias y saldos"
+          description="Importa tus cuentas bancarias con IBAN, alias, tipo y saldo inicial desde Excel."
+          color="var(--atlas-blue)"
+          completed={completados.has('cuentas')}
+          onClick={() => setView('cuentas')}
+        />
         <MigracionCard
           icon={TrendingUp}
           title="Valoraciones históricas"
