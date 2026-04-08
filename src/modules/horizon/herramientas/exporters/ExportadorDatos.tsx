@@ -2,8 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { FileSpreadsheet, Loader2 } from 'lucide-react';
 import {
   exportarCarteraInmuebles,
+  exportarContratosParaImportacion,
   exportarFiscal,
   exportarPrestamos,
+  exportarPrestamosParaImportacion,
   exportarProyeccionMensual,
   exportarTesoreria,
 } from './atlasExportService';
@@ -11,7 +13,7 @@ import styles from './ExportadorDatos.module.css';
 
 type ExportState = 'idle' | 'loading' | 'error';
 
-type ExportKey = 'proyeccion' | 'cartera' | 'fiscal' | 'prestamos' | 'tesoreria';
+type ExportKey = 'proyeccion' | 'cartera' | 'fiscal' | 'prestamos' | 'tesoreria' | 'contratos_importacion' | 'prestamos_importacion';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -29,6 +31,8 @@ const ExportadorDatos: React.FC = () => {
     fiscal: 'idle',
     prestamos: 'idle',
     tesoreria: 'idle',
+    contratos_importacion: 'idle',
+    prestamos_importacion: 'idle',
   });
   const [errors, setErrors] = useState<Partial<Record<ExportKey, string>>>({});
   const [añoProyeccion, setAñoProyeccion] = useState(CURRENT_YEAR);
@@ -116,6 +120,20 @@ const ExportadorDatos: React.FC = () => {
         </select>
       ),
       onClick: () => handleExport('tesoreria', () => exportarTesoreria(mesesTesoreria)),
+    },
+    {
+      key: 'contratos_importacion' as const,
+      title: 'Contratos de alquiler',
+      description: 'Contratos actuales e históricos en formato compatible con Migración de Datos.',
+      controls: null,
+      onClick: () => handleExport('contratos_importacion', exportarContratosParaImportacion),
+    },
+    {
+      key: 'prestamos_importacion' as const,
+      title: 'Préstamos e hipotecas',
+      description: 'Todos los préstamos en formato compatible con Migración de Datos.',
+      controls: null,
+      onClick: () => handleExport('prestamos_importacion', exportarPrestamosParaImportacion),
     },
   ]), [añoFiscal, añoProyeccion, mesesTesoreria]);
 
