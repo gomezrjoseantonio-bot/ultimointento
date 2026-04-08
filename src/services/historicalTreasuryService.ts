@@ -43,13 +43,15 @@ export async function generarHistoricoAño(
   // 1. Limpiar eventos históricos previos del año
   await borrarHistoricoAño(año);
 
-  // 2. NÓMINA — desde ejerciciosFiscalesCoord (casillas en aeat.snapshot)
+  // 2. NÓMINA — desde ejerciciosFiscalesCoord (declaracionCompleta.trabajo)
   const ejercicio = await db.get('ejerciciosFiscalesCoord', año);
   const casillas: Record<string, number> = ejercicio?.aeat?.snapshot ?? {};
+  const decl = ejercicio?.aeat?.declaracionCompleta;
+  const trabajo = decl?.trabajo;
 
-  const nominaBruta = Number(casillas['0003'] ?? 0);
-  const nominaRetenciones = Number(casillas['0596'] ?? 0);
-  const nominaSS = Number(casillas['0013'] ?? 0);
+  const nominaBruta = Number(trabajo?.retribucionesDinerarias ?? casillas['0003'] ?? 0);
+  const nominaRetenciones = Number(trabajo?.retenciones ?? casillas['0596'] ?? 0);
+  const nominaSS = Number(trabajo?.cotizacionesSS ?? casillas['0013'] ?? 0);
   const nominaNeta = nominaBruta - nominaRetenciones - nominaSS;
 
   if (nominaNeta > 0) {
@@ -79,9 +81,10 @@ export async function generarHistoricoAño(
     gaps.push(`Nómina ${año}: no disponible en ejerciciosFiscalesCoord`);
   }
 
-  // 3. AUTÓNOMO — ingresos (VE1II1) - retenciones (RETENED)
-  const autIngresos = Number(casillas['VE1II1'] ?? 0);
-  const autRet = Number(casillas['RETENED'] ?? 0);
+  // 3. AUTÓNOMO — desde declaracionCompleta.actividadEconomica
+  const actividad = decl?.actividadEconomica;
+  const autIngresos = Number(actividad?.totalIngresos ?? casillas['VE1II1'] ?? 0);
+  const autRet = Number(actividad?.retenciones ?? casillas['RETENED'] ?? 0);
   const autNeto = autIngresos - autRet;
 
   if (autNeto > 0) {
