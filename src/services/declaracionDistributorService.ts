@@ -211,14 +211,14 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // GAP-3: Detectar si el año ya tiene cierre ATLAS para abrir ValidacionXMLDrawer en la UI
   const informe = construirInforme(decl, resultadoInmuebles);
   try {
-    const ejercicioExistente = await db.get('ejerciciosFiscales', decl.meta.ejercicio);
+    const ejercicioExistente = await db.get('ejerciciosFiscalesCoord', decl.meta.ejercicio);
     if (ejercicioExistente?.estado === 'cerrado' && ejercicioExistente?.cierreAtlasMetadata) {
       // El año ya tiene cierre ATLAS — la UI abrirá ValidacionXMLDrawer
       informe.requiereValidacionXML = true;
       informe.ejercicioConCierreAtlas = decl.meta.ejercicio;
     } else if (ejercicioExistente && ejercicioExistente.estado !== 'declarado') {
       // No tiene cierre ATLAS previo — marcar directamente como declarado
-      await db.put('ejerciciosFiscales', {
+      await db.put('ejerciciosFiscalesCoord', {
         ...ejercicioExistente,
         estado: 'declarado' as const,
         declaradoAt: new Date().toISOString(),
@@ -259,8 +259,8 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
       cuotaIntegra: decl.resultado.cuotaIntegraEstatal + decl.resultado.cuotaIntegraAutonomica,
       cuotaIntegraEstatal: decl.resultado.cuotaIntegraEstatal,
       cuotaIntegraAutonomica: decl.resultado.cuotaIntegraAutonomica,
-      cuotaLiquidaEstatal: 0,
-      cuotaLiquidaAutonomica: 0,
+      cuotaLiquidaEstatal: decl.resultado.cuotaLiquidaEstatal,
+      cuotaLiquidaAutonomica: decl.resultado.cuotaLiquidaAutonomica,
       resultado: decl.resultado.resultadoDeclaracion,
     },
     fechaImportacion: ahora,
