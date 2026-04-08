@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Receipt, Calculator, ChevronRight } from 'lucide-react';
+import { Pencil, Receipt, Calculator } from 'lucide-react';
 import SupervisionCard from '../components/SupervisionCards';
 import Chart360 from '../components/Chart360';
 import MotoresGrid from '../components/MotoresGrid';
 import IngastoDrawer, { type DrawerTipo } from '../components/IngastoDrawer';
+import RendimientoActivo from '../components/RendimientoActivo';
 import PropertySaleModal from '../../components/PropertySaleModal';
 import { initDB, type Property } from '../../../../../services/db';
 import type { InmuebleSupervision, TotalesCartera } from '../hooks/useSupervisionData';
@@ -34,7 +35,6 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [drawerTipo, setDrawerTipo] = useState<DrawerTipo>(null);
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [fullProperty, setFullProperty] = useState<Property | null>(null);
 
   const inm = useMemo(
@@ -62,7 +62,6 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   );
 
   const detailYear = selectedYear ?? availableYears[availableYears.length - 1] ?? new Date().getFullYear();
-  const yearData = inm?.datosPorAno.find((d) => d.ano === detailYear);
 
   // Totals for this property
   const ganancia = inm
@@ -234,103 +233,26 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
 
       {/* ── 6.5 — Layout crow2 (1fr 1fr) ──────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' }}>
-        {/* Izquierda: Ingresos y gastos por año */}
+        {/* Izquierda: Rendimiento del activo */}
         <div style={{
           background: 'var(--white)',
           border: '1px solid var(--grey-200)',
           borderRadius: 'var(--r-lg)',
           padding: 'var(--space-5)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
-            <h4 style={{ fontSize: 'var(--t-sm)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
-              Ingresos y gastos
-            </h4>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {availableYears.map((yr) => (
-                <button
-                  key={yr}
-                  onClick={() => {
-                    setSelectedYear(yr);
-                    setDrawerTipo(null);
-                  }}
-                  style={{
-                    padding: '2px 8px', borderRadius: 'var(--r-sm)',
-                    border: '1px solid', fontSize: 11, fontFamily: 'var(--font-mono)',
-                    cursor: 'pointer', fontWeight: 500,
-                    borderColor: detailYear === yr ? 'var(--navy-900)' : 'var(--grey-300)',
-                    background: detailYear === yr ? 'var(--navy-900)' : 'var(--white)',
-                    color: detailYear === yr ? 'var(--white)' : 'var(--grey-700)',
-                  }}
-                >
-                  {yr}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[
-              { label: 'Rentas', value: yearData?.rentas ?? 0, tipo: 'rentas' as DrawerTipo },
-              { label: 'Gastos op.', value: yearData?.gastosOp ?? 0, tipo: 'gastos_op' as DrawerTipo },
-              { label: 'Intereses', value: yearData?.intereses ?? 0, tipo: 'intereses' as DrawerTipo },
-              { label: 'Reparaciones', value: yearData?.reparaciones ?? 0, tipo: 'reparaciones' as DrawerTipo },
-              { label: 'Cashflow', value: yearData?.cashflow ?? 0, highlight: true, tipo: null },
-            ].map((row) => (
-              <div key={row.label} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: row.highlight ? '6px 8px' : '2px 8px',
-                borderRadius: row.highlight ? 'var(--r-sm)' : 0,
-                background: row.highlight
-                  ? 'var(--grey-50)'
-                  : (row.tipo && hoveredRow === row.label ? 'var(--navy-50)' : 'transparent'),
-                borderTop: row.highlight ? '1px solid var(--grey-200)' : 'none',
-                cursor: row.tipo ? 'pointer' : 'default',
-              }}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setHoveredRow(row.tipo ? row.label : null)}
-                  onMouseLeave={() => setHoveredRow((prev) => (prev === row.label ? null : prev))}
-                  onClick={() => row.tipo && setDrawerTipo(row.tipo)}
-                  style={{
-                    all: 'unset',
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: row.tipo ? 'pointer' : 'default',
-                  }}
-                  aria-label={row.tipo ? `Ver desglose de ${row.label}` : undefined}
-                >
-                  <span style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)' }}>{row.label}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{
-                      fontSize: 'var(--t-sm)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
-                      fontWeight: row.highlight ? 600 : 400,
-                      color: row.highlight
-                        ? ((yearData?.cashflow ?? 0) >= 0 ? 'var(--navy-900)' : 'var(--grey-700)')
-                        : 'var(--grey-700)',
-                    }}>
-                      {fmt(row.value)}
-                    </span>
-                    {row.tipo ? <ChevronRight size={14} color="var(--teal-600)" aria-hidden="true" /> : null}
-                  </span>
-                </button>
-              </div>
-            ))}
-            {/* Yield rows */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px' }}>
-              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>Yield s/adq.</span>
-              <span style={{ fontSize: 'var(--t-xs)', fontFamily: 'var(--font-mono)', color: 'var(--grey-500)' }}>
-                {fmtPct(safeDiv(yearData?.rentas ?? 0, inm.costeAdquisicion) * 100)}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px' }}>
-              <span style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>Yield s/inv.</span>
-              <span style={{ fontSize: 'var(--t-xs)', fontFamily: 'var(--font-mono)', color: 'var(--grey-500)' }}>
-                {fmtPct(safeDiv(yearData?.rentas ?? 0, inm.inversionTotal) * 100)}
-              </span>
-            </div>
-          </div>
+          <RendimientoActivo
+            propertyId={inm.id}
+            referenciaCatastral={fullProperty?.cadastralReference ?? ''}
+            selectedYear={detailYear}
+            onYearChange={(yr) => {
+              setSelectedYear(yr);
+              setDrawerTipo(null);
+            }}
+            availableYears={availableYears}
+            onOpenDrawer={(tipo) => setDrawerTipo(tipo)}
+            costeAdquisicion={inm.costeAdquisicion}
+            inversionTotal={inm.inversionTotal}
+          />
         </div>
 
         {/* Derecha: Rentabilidad acumulada */}
