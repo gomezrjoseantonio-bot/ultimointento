@@ -504,7 +504,7 @@ export async function exportarContratosParaImportacion(): Promise<void> {
   );
 
   const propertiesMap = new Map<string, string>(
-    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+    properties.map((p) => [String(p.id), `${p.alias || ''} ${p.address || ''}`.trim()]),
   );
 
   const modalidadLabel = (modalidad: Contract['modalidad']): string => {
@@ -570,7 +570,7 @@ export async function exportarPrestamosParaImportacion(): Promise<void> {
   );
 
   const propertiesMap = new Map<string, string>(
-    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+    properties.map((p) => [String(p.id), `${p.alias || ''} ${p.address || ''}`.trim()]),
   );
 
   const rows = prestamos.map((prestamo) => {
