@@ -142,6 +142,7 @@ const TesoreriaV4: React.FC = () => {
   const [showHistoricoWizard, setShowHistoricoWizard] = useState(false);
   const [tieneHistorico, setTieneHistorico] = useState<boolean>(true); // optimistic: assume true until checked
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [wizardJustCompleted, setWizardJustCompleted] = useState(false);
 
   // ── Focus amount input on edit ──
   useEffect(() => {
@@ -206,6 +207,14 @@ const TesoreriaV4: React.FC = () => {
   }, [loadData]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Reload after wizard — in useEffect (after render) to avoid racing with React's batched state updates.
+  useEffect(() => {
+    if (!wizardJustCompleted) return;
+    setWizardJustCompleted(false);
+    invalidateCachedStores(['treasuryEvents']);
+    loadData();
+  }, [wizardJustCompleted, loadData]);
 
   // ── Check if historical treasury data exists ──
   useEffect(() => {
@@ -1389,8 +1398,7 @@ const TesoreriaV4: React.FC = () => {
           onComplete={() => {
             setShowHistoricoWizard(false);
             setTieneHistorico(true);
-            invalidateCachedStores(['treasuryEvents']);
-            loadData();
+            setWizardJustCompleted(true);
           }}
         />
       )}
