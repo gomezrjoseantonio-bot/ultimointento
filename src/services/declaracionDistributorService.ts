@@ -208,6 +208,20 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     console.warn('Error al aplicar datos personales desde declaración:', err);
   }
 
+  // Persistir plan de pensiones en planesPensionInversion
+  try {
+    await persistirPlanPensiones(db, decl, decl.meta.ejercicio);
+  } catch (err) {
+    console.warn('Error al persistir plan de pensiones:', err);
+  }
+
+  // Persistir fondos y criptomonedas en inversiones
+  try {
+    await persistirInversionesDeclaradas(db, decl, decl.meta.ejercicio);
+  } catch (err) {
+    console.warn('Error al persistir inversiones declaradas:', err);
+  }
+
   // GAP-3: Detectar si el año ya tiene cierre ATLAS para abrir ValidacionXMLDrawer en la UI
   const informe = construirInforme(decl, resultadoInmuebles);
   try {
@@ -732,6 +746,113 @@ async function persistirVinculosAccesorio(
         throw error;
       }
     }
+  }
+}
+
+/**
+ * Persiste el plan de pensiones de empleo declarado en el store planesPensionInversion.
+ * Requiere que personalData ya exista (ejecutar después de ejecutarOnboardingPersonal).
+ * Deduplicación por año: no inserta si ya hay un plan con el mismo año en el nombre.
+ */
+async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
+  const pp = decl.planPensiones;
+  if (!pp || (pp.aportacionesTrabajador === 0 && pp.contribucionesEmpresa === 0)) return;
+
+  const perfiles = await db.getAll('personalData');
+  const perfil = perfiles[0];
+  if (!perfil?.id) return;
+
+  // Deduplicar: no insertar si ya existe un plan para este ejercicio
+  const planesExistentes = await db.getAll('planesPensionInversion');
+  const clave = `(${año})`;
+  const yaExiste = planesExistentes.some((p) => typeof p.nombre === 'string' && p.nombre.includes(clave));
+  if (yaExiste) return;
+
+  const ahora = new Date().toISOString();
+  const nombre = pp.nombreEmpleador
+    ? `${pp.nombreEmpleador} ${clave}`
+    : `Plan de pensiones empleo ${clave}`;
+
+  await db.add('planesPensionInversion', {
+    personalDataId: perfil.id,
+    nombre,
+    tipo: 'plan-pensiones',
+    aportacionesRealizadas: (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0),
+    valorCompra: 0,
+    valorActual: 0,
+    titularidad: 'yo',
+    esHistorico: true,
+    fechaCreacion: ahora,
+    fechaActualizacion: ahora,
+  } as any);
+}
+
+/**
+ * Persiste fondos de inversión y criptomonedas declarados en el store inversiones.
+ * Cada transmisión genera una PosicionInversion cerrada (activo=false).
+ * Deduplicación por nombre (nombre incluye el año).
+ */
+async function persistirInversionesDeclaradas(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
+  const gp = decl.gananciasPerdidas;
+  if (!gp) return;
+
+  const ahora = new Date().toISOString();
+  const hoy = ahora.slice(0, 10);
+
+  const existentes = await db.getAll('inversiones');
+  const nombresExistentes = new Set(existentes.map((i: any) => i.nombre));
+
+  // Fondos de inversión
+  for (const fondo of gp.fondos ?? []) {
+    const nombre = `Fondo ${fondo.nifFondo || 'desconocido'} (${año})`;
+    if (nombresExistentes.has(nombre)) continue;
+
+    const totalAportado = fondo.valorAdquisicion ?? 0;
+    const valorActual = fondo.valorTransmision ?? 0;
+    const ganancia = fondo.ganancia ?? 0;
+
+    await db.add('inversiones', {
+      nombre,
+      tipo: 'fondo_inversion',
+      entidad: fondo.nifFondo || 'AEAT',
+      isin: fondo.nifFondo || undefined,
+      valor_actual: valorActual,
+      fecha_valoracion: hoy,
+      aportaciones: [],
+      total_aportado: totalAportado,
+      rentabilidad_euros: ganancia,
+      rentabilidad_porcentaje: totalAportado > 0 ? Math.round((ganancia / totalAportado) * 10000) / 100 : 0,
+      notas: `Transmisión declarada IRPF ${año}. Retención: ${fondo.retencion ?? 0} €`,
+      activo: false,
+      created_at: ahora,
+      updated_at: ahora,
+    } as any);
+  }
+
+  // Criptomonedas
+  for (const cripto of gp.criptomonedas ?? []) {
+    const nombre = `${cripto.moneda || 'Crypto'} (${año})`;
+    if (nombresExistentes.has(nombre)) continue;
+
+    const totalAportado = cripto.valorAdquisicion ?? 0;
+    const valorActual = cripto.valorTransmision ?? 0;
+    const ganancia = cripto.resultado ?? 0;
+
+    await db.add('inversiones', {
+      nombre,
+      tipo: 'crypto',
+      entidad: 'AEAT XML',
+      valor_actual: valorActual,
+      fecha_valoracion: hoy,
+      aportaciones: [],
+      total_aportado: totalAportado,
+      rentabilidad_euros: ganancia,
+      rentabilidad_porcentaje: totalAportado > 0 ? Math.round((ganancia / totalAportado) * 10000) / 100 : 0,
+      notas: `Transmisión declarada IRPF ${año}. Clave: ${cripto.claveContraprestacion || ''}`,
+      activo: false,
+      created_at: ahora,
+      updated_at: ahora,
+    } as any);
   }
 }
 

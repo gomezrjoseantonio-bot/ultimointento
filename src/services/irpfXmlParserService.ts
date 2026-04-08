@@ -104,7 +104,7 @@ export function parseIrpfXml(xmlContent: string): DeclaracionCompleta {
     declarante: extraerDeclarante(doc),
     trabajo: tda ? extraerTrabajo(tda) : undefined,
     actividadEconomica: tda?.querySelector('RegEstimaDirecta') ? extraerActividad(tda) : undefined,
-    capitalMobiliario: tda?.querySelector('RdtoCapitalMobiliario')
+    capitalMobiliario: (tda?.querySelector('RdtoCapitalMobiliario') || tda?.querySelector('RdtoCapitalMobiliarioAhorro'))
       ? extraerCapitalMobiliario(tda)
       : undefined,
     inmuebles: tda ? extraerInmuebles(tda) : [],
