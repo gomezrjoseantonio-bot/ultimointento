@@ -490,6 +490,127 @@ export async function exportarPrestamos(): Promise<void> {
   writeWorkbook(workbook, `atlas_prestamos_${fecha}.xlsx`);
 }
 
+export async function exportarContratosParaImportacion(): Promise<void> {
+  const fecha = new Date().toISOString().slice(0, 10);
+  const db = await initDB();
+  const [contracts, properties, accounts] = await Promise.all([
+    safe(db.getAll('contracts'), [] as Contract[]),
+    safe(db.getAll('properties'), [] as ExtendedProperty[]),
+    safe(db.getAll('accounts'), [] as Account[]),
+  ]);
+
+  const accountsMap = new Map<number, string>(
+    accounts.map((a) => [a.id ?? 0, a.alias || a.iban || '']),
+  );
+
+  const propertiesMap = new Map<string, string>(
+    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+  );
+
+  const modalidadLabel = (modalidad: Contract['modalidad']): string => {
+    if (modalidad === 'habitual') return 'Contrato de arrendamiento de vivienda';
+    if (modalidad === 'temporada') return 'Contrato de temporada';
+    return 'Contrato vacacional';
+  };
+
+  const rows = contracts.map((contract) => ({
+    ID: String(contract.id ?? ''),
+    Propiedad: propertiesMap.get(String(contract.inmuebleId)) || String(contract.inmuebleId),
+    Tipo: modalidadLabel(contract.modalidad),
+    'Inicio de alquiler': contract.fechaInicio,
+    'Fin de alquiler': contract.fechaFin,
+    'Nombre compañía': `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim(),
+    Habitación: contract.habitacionId || '',
+    Alquiler: contract.rentaMensual,
+    Fianza: contract.fianzaImporte,
+    'Banco de cobro': accountsMap.get(contract.cuentaCobroId) || '',
+    Comentarios: contract.estadoContrato,
+  }));
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    createSheetFromJson(
+      rows,
+      [10, 30, 38, 18, 18, 28, 12, 14, 14, 24, 20],
+      ['ID', 'Propiedad', 'Tipo', 'Inicio de alquiler', 'Fin de alquiler', 'Nombre compañía', 'Habitación', 'Alquiler', 'Fianza', 'Banco de cobro', 'Comentarios'],
+    ),
+    'Contratos',
+  );
+  writeWorkbook(workbook, `atlas_contratos_importacion_${fecha}.xlsx`);
+}
+
+export async function exportarPrestamosParaImportacion(): Promise<void> {
+  const fecha = new Date().toISOString().slice(0, 10);
+  const db = await initDB();
+  const [prestamos, properties, accounts] = await Promise.all([
+    safe(prestamosService.getAllPrestamos(), [] as Prestamo[]),
+    safe(db.getAll('properties'), [] as ExtendedProperty[]),
+    safe(db.getAll('accounts'), [] as Account[]),
+  ]);
+
+  const accountsMap = new Map<string, string>(
+    accounts.map((a) => [String(a.id ?? ''), a.alias || a.iban || '']),
+  );
+
+  const propertiesMap = new Map<string, string>(
+    properties.map((p) => [String(p.id), [p.alias, p.address].filter(Boolean).join(' - ')]),
+  );
+
+  const rows = prestamos.map((prestamo) => {
+    const isVariable = prestamo.tipo === 'VARIABLE';
+    const isMixto = prestamo.tipo === 'MIXTO';
+    return {
+      tipo: prestamo.ambito === 'INMUEBLE' ? 'inmueble' : 'personal',
+      cuenta_cargo: accountsMap.get(prestamo.cuentaCargoId) || '',
+      fecha_firma: prestamo.fechaFirma,
+      fecha_primer_cargo: prestamo.fechaPrimerCargo,
+      dia_cobro: prestamo.diaCargoMes,
+      capital_inicial: prestamo.principalInicial,
+      plazo_total_meses: prestamo.plazoMesesTotal,
+      tipo_interes: prestamo.tipo.toLowerCase(),
+      tin_fijo: !isVariable ? (prestamo.tipoNominalAnualFijo ?? '') : '',
+      diferencial: isVariable ? (prestamo.diferencial ?? '') : '',
+      indice: isVariable ? (prestamo.indice?.toLowerCase() ?? '') : '',
+      valor_indice_actual: isVariable ? (prestamo.valorIndiceActual ?? '') : '',
+      revision_meses: isVariable ? (prestamo.periodoRevisionMeses ?? '') : '',
+      tramo_fijo_meses: isMixto ? (prestamo.tramoFijoMeses ?? '') : '',
+      tin_tramo_fijo: isMixto ? (prestamo.tipoNominalAnualMixtoFijo ?? '') : '',
+      diferencial_variable: isMixto ? (prestamo.diferencial ?? '') : '',
+      indice_variable: isMixto ? (prestamo.indice?.toLowerCase() ?? '') : '',
+      inmueble_direccion: prestamo.inmuebleId ? (propertiesMap.get(prestamo.inmuebleId) || '') : '',
+      alias: prestamo.nombre,
+      esquema_primer_recibo: (prestamo.esquemaPrimerRecibo ?? 'NORMAL').toLowerCase(),
+      carencia: prestamo.carencia.toLowerCase(),
+      meses_carencia: prestamo.carenciaMeses ?? '',
+      comision_apertura: prestamo.comisionApertura ?? 0,
+      comision_mantenimiento: prestamo.comisionMantenimiento ?? 0,
+      comision_amortizacion_anticipada: prestamo.comisionAmortizacionAnticipada ?? 0,
+    };
+  });
+
+  const headers = [
+    'tipo', 'cuenta_cargo', 'fecha_firma', 'fecha_primer_cargo', 'dia_cobro',
+    'capital_inicial', 'plazo_total_meses', 'tipo_interes', 'tin_fijo', 'diferencial',
+    'indice', 'valor_indice_actual', 'revision_meses', 'tramo_fijo_meses', 'tin_tramo_fijo',
+    'diferencial_variable', 'indice_variable', 'inmueble_direccion', 'alias',
+    'esquema_primer_recibo', 'carencia', 'meses_carencia', 'comision_apertura',
+    'comision_mantenimiento', 'comision_amortizacion_anticipada',
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    createSheetFromJson(
+      rows,
+      [12, 30, 14, 18, 12, 16, 18, 14, 12, 14, 14, 20, 16, 18, 16, 22, 18, 30, 28, 22, 14, 16, 18, 24, 28],
+      headers,
+    ),
+    'Prestamos',
+  );
+  writeWorkbook(workbook, `atlas_prestamos_importacion_${fecha}.xlsx`);
+}
+
 export async function exportarTesoreria(mesesAtras: number): Promise<void> {
   const fecha = new Date().toISOString().slice(0, 10);
   const db = await initDB();
