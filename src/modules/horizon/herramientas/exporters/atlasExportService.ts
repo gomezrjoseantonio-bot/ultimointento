@@ -496,7 +496,7 @@ export async function exportarCuentas(): Promise<void> {
   const accounts = await safe(db.getAll('accounts'), [] as Account[]);
 
   const rows = accounts
-    .filter((a) => a.status !== 'DELETED' && !a.deleted_at)
+    .filter((a) => a.status !== 'DELETED' && !a.deleted_at && a.tipo !== 'TARJETA_CREDITO')
     .map((a) => ({
       iban: a.iban,
       alias: a.alias || '',

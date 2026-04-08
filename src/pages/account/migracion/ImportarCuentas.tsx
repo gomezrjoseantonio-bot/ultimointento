@@ -17,11 +17,13 @@ interface PreviewRow {
   iban: string;
   alias: string;
   banco: string;
-  tipo: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
-  saldo_inicial: number;
-  fecha_saldo_inicial: string;
+  // Optional: only set when the cell has an explicit value in the file
+  tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA';
+  saldo_inicial?: number;
+  fecha_saldo_inicial?: string;
   titular_nombre: string;
   titular_nif: string;
+  activa?: boolean;            // parsed from 'estado' column
   _accion: 'crear' | 'actualizar';
   _existingId?: number;
 }
@@ -34,22 +36,25 @@ const normalizeHeader = (h: string): string =>
 const normalizeIban = (raw: string): string =>
   raw.replace(/\s/g, '').toUpperCase();
 
-const parseNumber = (value: unknown): number => {
+const parseNumber = (value: unknown): number | undefined => {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
   if (typeof value === 'number') return value;
-  const s = String(value || '').replace(/€/g, '').replace(/\./g, '').replace(',', '.').trim();
+  const s = String(value).replace(/€/g, '').replace(/\./g, '').replace(',', '.').trim();
   const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? n : undefined;
 };
 
-const parseDate = (value: unknown): string => {
+const parseDate = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
   if (typeof value === 'number' && Number.isFinite(value)) {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (parsed?.y && parsed?.m && parsed?.d) {
       return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
     }
+    return undefined;
   }
-  const raw = String(value || '').trim();
-  if (!raw) return '';
+  const raw = String(value).trim();
+  if (!raw) return undefined;
   const normalized = raw.replace(/\./g, '/').replace(/-/g, '/');
   const parts = normalized.split('/');
   if (parts.length === 3) {
@@ -60,12 +65,23 @@ const parseDate = (value: unknown): string => {
   return raw;
 };
 
-const parseTipo = (raw: string): PreviewRow['tipo'] => {
-  const v = raw.trim().toUpperCase();
+// Returns undefined when cell is empty; returns null when it's TARJETA (unsupported → skip row)
+const parseTipo = (value: unknown): 'CORRIENTE' | 'AHORRO' | 'OTRA' | undefined | null => {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
+  const v = String(value).trim().toUpperCase();
+  if (v === 'TARJETA_CREDITO' || v === 'TARJETA') return null; // signal to skip
   if (v === 'AHORRO') return 'AHORRO';
   if (v === 'OTRA') return 'OTRA';
-  if (v === 'TARJETA_CREDITO' || v === 'TARJETA') return 'TARJETA_CREDITO';
-  return 'CORRIENTE';
+  if (v === 'CORRIENTE') return 'CORRIENTE';
+  return undefined; // unrecognised value → let service use its default
+};
+
+const parseActiva = (value: unknown): boolean | undefined => {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
+  const v = String(value).trim().toUpperCase();
+  if (v === 'INACTIVE' || v === 'INACTIVO' || v === 'FALSE' || v === '0') return false;
+  if (v === 'ACTIVE' || v === 'ACTIVO' || v === 'TRUE' || v === '1') return true;
+  return undefined;
 };
 
 const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete }) => {
@@ -130,35 +146,51 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
           return;
         }
 
-        // Load existing accounts for merge detection
+        // Load existing accounts and build O(1) lookup map
         const db = await initDB();
         const existingAccounts = await db.getAll('accounts');
+        const existingByIban = new Map(
+          existingAccounts.map((a) => [normalizeIban(a.iban), a]),
+        );
 
-        const parsed: PreviewRow[] = rows
-          .map((row) => {
-            const byKey = Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeHeader(k), v]));
-            const iban = normalizeIban(String(byKey.iban || ''));
-            if (!iban) return null;
+        let skippedTarjetas = 0;
+        const parsed: PreviewRow[] = [];
 
-            const existing = existingAccounts.find((a) => normalizeIban(a.iban) === iban);
+        for (const row of rows) {
+          const byKey = Object.fromEntries(Object.entries(row).map(([k, v]) => [normalizeHeader(k), v]));
+          const iban = normalizeIban(String(byKey.iban || ''));
+          if (!iban) continue;
 
-            return {
-              iban,
-              alias: String(byKey.alias || '').trim(),
-              banco: String(byKey.banco || '').trim(),
-              tipo: parseTipo(String(byKey.tipo || 'CORRIENTE')),
-              saldo_inicial: parseNumber(byKey.saldo_inicial),
-              fecha_saldo_inicial: parseDate(byKey.fecha_saldo_inicial) || new Date().toISOString().slice(0, 10),
-              titular_nombre: String(byKey.titular_nombre || '').trim(),
-              titular_nif: String(byKey.titular_nif || '').trim(),
-              _accion: existing ? 'actualizar' : 'crear',
-              _existingId: existing?.id,
-            } as PreviewRow;
-          })
-          .filter((r): r is PreviewRow => r !== null && r.iban.length > 0);
+          const tipoResult = parseTipo(byKey.tipo);
+          if (tipoResult === null) {
+            // TARJETA_CREDITO — not importable without cardConfig
+            skippedTarjetas += 1;
+            continue;
+          }
+
+          const existing = existingByIban.get(iban);
+
+          parsed.push({
+            iban,
+            alias: String(byKey.alias || '').trim(),
+            banco: String(byKey.banco || '').trim(),
+            tipo: tipoResult,                           // undefined = not specified, use service default
+            saldo_inicial: parseNumber(byKey.saldo_inicial),
+            fecha_saldo_inicial: parseDate(byKey.fecha_saldo_inicial),
+            titular_nombre: String(byKey.titular_nombre || '').trim(),
+            titular_nif: String(byKey.titular_nif || '').trim(),
+            activa: parseActiva(byKey.estado),
+            _accion: existing ? 'actualizar' : 'crear',
+            _existingId: existing?.id,
+          });
+        }
+
+        if (skippedTarjetas > 0) {
+          toast(`${skippedTarjetas} cuenta(s) de tipo tarjeta omitidas (no se pueden importar sin configuración de domiciliación).`, { icon: '⚠️' });
+        }
 
         if (!parsed.length) {
-          toast.error('No se encontraron filas con IBAN válido');
+          toast.error('No se encontraron filas con IBAN válido para importar');
           return;
         }
 
@@ -187,20 +219,22 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
         if (row._accion === 'actualizar' && row._existingId != null) {
           await cuentasService.update(row._existingId, {
             alias: row.alias || undefined,
-            tipo: row.tipo,
-            titular,
-            openingBalance: row.saldo_inicial,
-            openingBalanceDate: row.fecha_saldo_inicial,
+            // Only include optional fields when explicitly present in the file
+            ...(row.tipo !== undefined && { tipo: row.tipo }),
+            ...(titular !== undefined && { titular }),
+            ...(row.saldo_inicial !== undefined && { openingBalance: row.saldo_inicial }),
+            ...(row.fecha_saldo_inicial !== undefined && { openingBalanceDate: row.fecha_saldo_inicial }),
+            ...(row.activa !== undefined && { activa: row.activa }),
           });
           updated += 1;
         } else {
           await cuentasService.create({
             iban: row.iban,
             alias: row.alias || undefined,
-            tipo: row.tipo,
-            titular,
-            openingBalance: row.saldo_inicial,
-            openingBalanceDate: row.fecha_saldo_inicial,
+            ...(row.tipo !== undefined && { tipo: row.tipo }),
+            ...(titular !== undefined && { titular }),
+            ...(row.saldo_inicial !== undefined && { openingBalance: row.saldo_inicial }),
+            ...(row.fecha_saldo_inicial !== undefined && { openingBalanceDate: row.fecha_saldo_inicial }),
           });
           created += 1;
         }
@@ -297,9 +331,13 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
                   <tr key={`${row.iban}-${i}`} style={{ borderBottom: '1px solid #f2f2f2' }}>
                     <td style={{ padding: '8px 6px', fontFamily: 'monospace' }}>{row.iban.replace(/(.{4})/g, '$1 ').trim()}</td>
                     <td style={{ padding: '8px 6px' }}>{row.alias || <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
-                    <td style={{ padding: '8px 6px' }}>{row.tipo}</td>
-                    <td style={{ padding: '8px 6px' }}>{row.saldo_inicial.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}</td>
-                    <td style={{ padding: '8px 6px' }}>{row.fecha_saldo_inicial}</td>
+                    <td style={{ padding: '8px 6px' }}>{row.tipo ?? <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
+                    <td style={{ padding: '8px 6px' }}>
+                      {row.saldo_inicial !== undefined
+                        ? row.saldo_inicial.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })
+                        : <span style={{ color: 'var(--text-gray)' }}>—</span>}
+                    </td>
+                    <td style={{ padding: '8px 6px' }}>{row.fecha_saldo_inicial ?? <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
                     <td style={{ padding: '8px 6px' }}>
                       <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: row._accion === 'crear' ? 'var(--ok-light, #E8F8EF)' : '#EEF2FF', color: row._accion === 'crear' ? 'var(--ok)' : '#4F46E5' }}>
                         {row._accion === 'crear' ? 'Crear' : 'Actualizar'}
