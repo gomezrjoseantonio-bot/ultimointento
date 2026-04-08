@@ -1389,6 +1389,8 @@ const TesoreriaV4: React.FC = () => {
           onComplete={() => {
             setShowHistoricoWizard(false);
             setTieneHistorico(true);
+            invalidateCachedStores(['treasuryEvents']);
+            loadData();
           }}
         />
       )}
