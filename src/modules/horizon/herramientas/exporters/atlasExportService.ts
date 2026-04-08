@@ -520,17 +520,20 @@ export async function exportarContratosParaImportacion(): Promise<void> {
       endDate?: string;
       monthlyRent?: number;
       deposit?: { amount?: number };
-      tenant?: { nombre?: string; apellidos?: string };
     };
 
+    // Legacy contracts may use `tenant.name` (single string) instead of inquilino.nombre + apellidos
     const nombreCompania = [
-      contract.inquilino?.nombre ?? legacy.tenant?.nombre ?? '',
-      contract.inquilino?.apellidos ?? legacy.tenant?.apellidos ?? '',
-    ].filter(Boolean).join(' ').trim();
+      [contract.inquilino?.nombre, contract.inquilino?.apellidos].filter(Boolean).join(' ').trim(),
+      contract.tenant?.name ?? '',
+    ].find((v) => Boolean(v?.trim()))?.trim() ?? '';
+
+    // Legacy contracts may store the property reference as `propertyId` instead of `inmuebleId`
+    const inmuebleKey = String(contract.inmuebleId ?? contract.propertyId ?? '');
 
     return {
       ID: String(contract.id ?? ''),
-      Propiedad: propertiesMap.get(String(contract.inmuebleId)) || String(contract.inmuebleId),
+      Propiedad: propertiesMap.get(inmuebleKey) || inmuebleKey,
       Tipo: modalidadLabel(contract.modalidad),
       'Inicio de alquiler': contract.fechaInicio ?? legacy.startDate ?? '',
       'Fin de alquiler': contract.fechaFin ?? legacy.endDate ?? '',
