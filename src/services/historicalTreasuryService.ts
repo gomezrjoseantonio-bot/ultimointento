@@ -49,9 +49,9 @@ export async function generarHistoricoAño(
   const decl = ejercicio?.aeat?.declaracionCompleta;
   const trabajo = decl?.trabajo;
 
-  const nominaBruta = Number(trabajo?.retribucionesDinerarias ?? 0);
-  const nominaRetenciones = Number(trabajo?.retenciones ?? 0);
-  const nominaSS = Number(trabajo?.cotizacionesSS ?? 0);
+  const nominaBruta = Number(trabajo?.retribucionesDinerarias ?? casillas['0003'] ?? 0);
+  const nominaRetenciones = Number(trabajo?.retenciones ?? casillas['0596'] ?? 0);
+  const nominaSS = Number(trabajo?.cotizacionesSS ?? casillas['0013'] ?? 0);
   const nominaNeta = nominaBruta - nominaRetenciones - nominaSS;
 
   if (nominaNeta > 0) {
@@ -83,8 +83,8 @@ export async function generarHistoricoAño(
 
   // 3. AUTÓNOMO — desde declaracionCompleta.actividadEconomica
   const actividad = decl?.actividadEconomica;
-  const autIngresos = Number(actividad?.totalIngresos ?? 0);
-  const autRet = Number(actividad?.retenciones ?? 0);
+  const autIngresos = Number(actividad?.totalIngresos ?? casillas['VE1II1'] ?? 0);
+  const autRet = Number(actividad?.retenciones ?? casillas['RETENED'] ?? 0);
   const autNeto = autIngresos - autRet;
 
   if (autNeto > 0) {
