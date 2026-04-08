@@ -70,7 +70,7 @@ export const inversionesService = {
     const totalAportado = Number(posicion.total_aportado ?? posicion.importe_inicial ?? valorActual);
     const aportacionInicial: Aportacion = {
       id: Date.now() + Math.floor(Math.random() * 1000),
-      fecha: posicion.fecha_valoracion,
+      fecha: posicion.fecha_compra || posicion.fecha_valoracion,
       importe: totalAportado,
       tipo: 'aportacion',
       notas: 'Aportación inicial',
