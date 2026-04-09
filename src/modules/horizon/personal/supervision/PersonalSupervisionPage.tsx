@@ -32,7 +32,7 @@ const fmt = (v: number) =>
  * bruto / neto: gross and net income.
  * gastoVida: living expenses (residuo from treasury, clamped ≥ 0; wizard estimate for current year).
  * financiacion: net loan payment OUTFLOW as positive number (max(0, -subtotalFinanciacion)).
- * subtotalFinanciacion: raw treasury value (negative = net outflow) — used for excedente formula.
+ * subtotalFinanciacion: raw treasury value (negative = net outflow), used to derive `financiacion`.
  */
 interface AñoData {
   año: number;
@@ -249,7 +249,7 @@ const PersonalSupervisionPage: React.FC = () => {
       año: d.año,
       gastoVida: Math.max(0, d.gastoVida),
       financiacion: Math.max(0, d.financiacion),
-      excedente: Math.max(0, calcExcedente(d)),
+      excedente: calcExcedente(d),
     }));
 
   // Table rows
@@ -505,7 +505,7 @@ const PersonalSupervisionPage: React.FC = () => {
                 ? Math.round((refData.financiacion / refData.neto) * 100)
                 : undefined
             }
-            gastoVidaEstimado={gastoVidaConfigurado}
+            gastoVidaEstimado={refData ? Boolean(refData?.gastoVidaEstimado) : gastoVidaConfigurado}
             onConfigurarConyuge={() => navigate('/cuenta/perfil')}
           />
         </div>
