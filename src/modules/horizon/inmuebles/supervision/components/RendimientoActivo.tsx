@@ -573,7 +573,7 @@ const RendimientoActivo: React.FC<RendimientoActivoProps> = ({
       </div>
 
       {/* Content */}
-      {loading || data === null ? (
+      {data === null ? (
         <div style={{
           padding: '24px 8px',
           textAlign: 'center',
@@ -589,7 +589,7 @@ const RendimientoActivo: React.FC<RendimientoActivoProps> = ({
       )}
 
       {/* Yield metrics — siempre visibles */}
-      {!loading && data !== null && (
+      {data !== null && (
         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Separator />
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 8px' }}>
