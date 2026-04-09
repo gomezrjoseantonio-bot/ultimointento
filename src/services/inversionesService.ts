@@ -96,6 +96,7 @@ export const inversionesService = {
       created_at: now,
       updated_at: now,
       // Extended fields
+      ...(posicion.fecha_compra !== undefined && { fecha_compra: posicion.fecha_compra }),
       ...(posicionAny.rendimiento !== undefined && { rendimiento: posicionAny.rendimiento }),
       ...(posicionAny.numero_participaciones !== undefined && { numero_participaciones: posicionAny.numero_participaciones }),
       ...(posicionAny.precio_medio_compra !== undefined && { precio_medio_compra: posicionAny.precio_medio_compra }),
