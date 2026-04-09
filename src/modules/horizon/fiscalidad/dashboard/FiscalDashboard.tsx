@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, Scale, X } from 'lucide-react';
 import FiscalPageShell from '../components/FiscalPageShell';
 import EjercicioPillSelector from '../components/EjercicioPillSelector';
 import {
+  bootstrapEjercicios,
   getEjercicio,
   getDeclaracion,
   getInmueblesDelEjercicio,
@@ -78,19 +79,23 @@ const FiscalDashboard: React.FC = () => {
   // Opex per inmueble
   const [opexByInmueble, setOpexByInmueble] = useState<Record<number, OpexRule[]>>({});
 
-  // Load available years
+  // Load available years (with one-time cleanup of garbage records)
   useEffect(() => {
-    getTodosLosEjercicios().then((todos) => {
-      const years = todos.map((e) => e.año).sort((a, b) => b - a);
-      if (years.length === 0) {
-        const defaultYears = Array.from({ length: 7 }, (_, i) => currentYear - i);
-        setAllYears(defaultYears);
-      } else {
-        setAllYears(years);
-      }
-    }).catch(() => {
-      setAllYears(Array.from({ length: 7 }, (_, i) => currentYear - i));
-    });
+    bootstrapEjercicios()
+      .catch(() => { /* non-blocking: cleanup failures don't affect UI */ })
+      .finally(() => {
+        getTodosLosEjercicios().then((todos) => {
+          const years = todos.map((e) => e.año).sort((a, b) => b - a);
+          if (years.length === 0) {
+            const defaultYears = Array.from({ length: 7 }, (_, i) => currentYear - i);
+            setAllYears(defaultYears);
+          } else {
+            setAllYears(years);
+          }
+        }).catch(() => {
+          setAllYears(Array.from({ length: 7 }, (_, i) => currentYear - i));
+        });
+      });
   }, [currentYear]);
 
   // Load exercise data when year changes
