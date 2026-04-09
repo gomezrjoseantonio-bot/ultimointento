@@ -97,10 +97,17 @@ export const treasuryOverviewService = {
     const db = await initDB();
 
     // ── 1. Load all ejerciciosFiscalesCoord ──────────────────────────────────
-    const coords: EjercicioFiscalCoord[] = await db.getAll('ejerciciosFiscalesCoord');
+    let coords: EjercicioFiscalCoord[] = await db.getAll('ejerciciosFiscalesCoord');
     coords.sort((a, b) => a.año - b.año);
 
     if (coords.length === 0) return [];
+
+    // Fix 2: only include relevant years
+    // Include a year if: it's not in the future AND (it has AEAT data OR it's the current/previous year)
+    const añoActual = new Date().getFullYear();
+    coords = coords.filter(
+      (c) => c.año <= añoActual && (!!c.aeat?.resumen || c.año >= añoActual - 1),
+    );
 
     // Build a lookup: año → resultado (for IRPF assignment to next year)
     const resultadoPorAño: Record<number, number> = {};
@@ -208,10 +215,12 @@ export const treasuryOverviewService = {
         pagoIrpf = resAnterior;
       }
 
-      const gastosPersonales = gastosPersonalesAnual;
-
       // — Totals —
       const totalIngresos = nominaNeta + autonomoNeto + rentasAlquiler + devolucionIrpf;
+
+      // Fix 3: only include estimated personal expenses for years that have at least one income entry
+      const gastosPersonales = totalIngresos > 0 ? gastosPersonalesAnual : 0;
+
       const totalGastos   = gastosInmuebles + cuotasPrestamos + pagoIrpf + gastosPersonales;
       const cashflowNeto  = totalIngresos - totalGastos;
 

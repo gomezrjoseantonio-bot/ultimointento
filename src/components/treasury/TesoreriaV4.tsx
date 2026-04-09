@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { TreasuryEvolucionContent } from './TreasuryEvolucion';
 import {
   BarChart3, RefreshCw, Plus, Check, CheckCircle2,
   ChevronLeft, ChevronRight,
@@ -108,14 +109,14 @@ const TesoreriaV4: React.FC = () => {
   const nowInit = new Date();
   const [searchParams] = useSearchParams();
 
-  // Read ?año=YYYY from URL to start at a specific year (e.g., when navigating
-  // from TreasuryEvolucion's 2026 link → /tesoreria?año=2026)
+  // Read ?año=YYYY from URL — if present, start directly in Flujo de caja
   const añoParam = searchParams.get('año');
   const añoFromUrl = añoParam ? parseInt(añoParam, 10) : NaN;
   const initialAño = Number.isFinite(añoFromUrl) ? añoFromUrl : nowInit.getFullYear();
+  const initialTab = Number.isFinite(añoFromUrl) ? 'flujo' : 'evolucion';
 
   // ── UI state ──
-  const [tab, setTab] = useState<'flujo' | 'cuentas'>('flujo');
+  const [tab, setTab] = useState<'evolucion' | 'flujo' | 'cuentas'>(initialTab as any);
   const [vista, setVista] = useState<'anual' | 'mensual'>('anual');
   const [año, setAño] = useState<number>(initialAño);
   const [mesActivo, setMesActivo] = useState<number>(nowInit.getMonth());
@@ -802,22 +803,31 @@ const TesoreriaV4: React.FC = () => {
       <PageHeader
         icon={BarChart3}
         title="Tesorería"
-        subtitle="Conciliación y flujo de caja"
+        subtitle={tab === 'evolucion' ? 'Evolución histórica' : 'Conciliación y flujo de caja'}
         tabs={[
+          { id: 'evolucion', label: 'Evolución' },
           { id: 'flujo', label: 'Flujo de caja' },
           { id: 'cuentas', label: 'Cuentas bancarias' },
         ]}
         activeTab={tab}
-        onTabChange={(id) => setTab(id as 'flujo' | 'cuentas')}
-        actions={
+        onTabChange={(id) => setTab(id as 'evolucion' | 'flujo' | 'cuentas')}
+        actions={tab !== 'evolucion' ? (
           <>
             <HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />
             <HeaderPrimaryButton icon={Plus} label="Añadir movimiento" onClick={() => setShowAddModal(true)} />
           </>
-        }
+        ) : undefined}
       />
 
-      {/* ══ KPI GRID ══ */}
+      {/* ══ EVOLUCIÓN TAB ══ */}
+      {tab === 'evolucion' && (
+        <TreasuryEvolucionContent
+          onGoToFlujo={(targetAño) => { setAño(targetAño); setTab('flujo'); setVista('anual'); }}
+        />
+      )}
+
+      {/* ══ KPI GRID (flujo + cuentas only) ══ */}
+      {tab !== 'evolucion' && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 0, marginBottom: 20, border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
         {kpis.map((k, i) => (
           <div
@@ -839,9 +849,10 @@ const TesoreriaV4: React.FC = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* ══ BANNER: HISTORIAL VACÍO ══ */}
-      {!tieneHistorico && !bannerDismissed && (
+      {tab !== 'evolucion' && !tieneHistorico && !bannerDismissed && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -893,7 +904,7 @@ const TesoreriaV4: React.FC = () => {
       )}
 
       {/* ══ TAB CONTENT ══ */}
-      <div className="tv4-content">
+      {tab !== 'evolucion' && <div className="tv4-content">
 
         {/* ─ TAB: FLUJO DE CAJA ─ */}
         {tab === 'flujo' && (
@@ -1208,7 +1219,7 @@ const TesoreriaV4: React.FC = () => {
           </div>
         )}
 
-      </div>
+      </div>}
 
       {/* ══ MODAL — NUEVA/EDITAR CUENTA BANCARIA ══ */}
       <AccountFormModal
