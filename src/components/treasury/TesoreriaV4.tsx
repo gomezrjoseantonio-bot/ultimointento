@@ -107,16 +107,16 @@ const DEFAULT_FORM: NewMovForm = {
 
 const TesoreriaV4: React.FC = () => {
   const nowInit = new Date();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Read ?año=YYYY from URL — if present, start directly in Flujo de caja
   const añoParam = searchParams.get('año');
   const añoFromUrl = añoParam ? parseInt(añoParam, 10) : NaN;
   const initialAño = Number.isFinite(añoFromUrl) ? añoFromUrl : nowInit.getFullYear();
-  const initialTab = Number.isFinite(añoFromUrl) ? 'flujo' : 'evolucion';
+  const initialTab: 'evolucion' | 'flujo' = Number.isFinite(añoFromUrl) ? 'flujo' : 'evolucion';
 
   // ── UI state ──
-  const [tab, setTab] = useState<'evolucion' | 'flujo' | 'cuentas'>(initialTab as any);
+  const [tab, setTab] = useState<'evolucion' | 'flujo' | 'cuentas'>(initialTab);
   const [vista, setVista] = useState<'anual' | 'mensual'>('anual');
   const [año, setAño] = useState<number>(initialAño);
   const [mesActivo, setMesActivo] = useState<number>(nowInit.getMonth());
@@ -152,6 +152,18 @@ const TesoreriaV4: React.FC = () => {
   const [tieneHistorico, setTieneHistorico] = useState<boolean>(true); // optimistic: assume true until checked
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [wizardJustCompleted, setWizardJustCompleted] = useState(false);
+
+  // ── Sync tab/año from URL (handles back/forward + in-app navigation) ──
+  // When ?año=YYYY appears in the URL (back/forward or programmatic push),
+  // switch to the Flujo tab for that year.
+  useEffect(() => {
+    const param = searchParams.get('año');
+    const fromUrl = param ? parseInt(param, 10) : NaN;
+    if (Number.isFinite(fromUrl)) {
+      setTab('flujo');
+      setAño(fromUrl);
+    }
+  }, [searchParams]);
 
   // ── Focus amount input on edit ──
   useEffect(() => {
@@ -810,7 +822,16 @@ const TesoreriaV4: React.FC = () => {
           { id: 'cuentas', label: 'Cuentas bancarias' },
         ]}
         activeTab={tab}
-        onTabChange={(id) => setTab(id as 'evolucion' | 'flujo' | 'cuentas')}
+        onTabChange={(id) => {
+          const newTab = id as 'evolucion' | 'flujo' | 'cuentas';
+          setTab(newTab);
+          // Sync URL: clear ?año= when leaving Flujo, set it when entering Flujo
+          if (newTab === 'evolucion' || newTab === 'cuentas') {
+            setSearchParams({}, { replace: true });
+          } else if (newTab === 'flujo') {
+            setSearchParams({ año: String(año) }, { replace: true });
+          }
+        }}
         actions={tab !== 'evolucion' ? (
           <>
             <HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />
@@ -822,7 +843,12 @@ const TesoreriaV4: React.FC = () => {
       {/* ══ EVOLUCIÓN TAB ══ */}
       {tab === 'evolucion' && (
         <TreasuryEvolucionContent
-          onGoToFlujo={(targetAño) => { setAño(targetAño); setTab('flujo'); setVista('anual'); }}
+          onGoToFlujo={(targetAño) => {
+            setAño(targetAño);
+            setTab('flujo');
+            setVista('anual');
+            setSearchParams({ año: String(targetAño) });
+          }}
         />
       )}
 
