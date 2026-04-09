@@ -294,7 +294,8 @@ export async function bootstrapEjercicios(): Promise<void> {
   // Limpiar ejercicios fuera del rango válido (basura de bootstrap anteriores)
   const todos = await db.getAll('ejerciciosFiscalesCoord');
   for (const ej of todos) {
-    if (ej.año > añoFin || ej.año < 2015) {
+    // Para años futuros: solo borrar si NO tienen datos AEAT reales
+    if ((ej.año > añoFin && !ej.aeat) || ej.año < 2015) {
       await db.delete('ejerciciosFiscalesCoord', ej.año);
     }
   }

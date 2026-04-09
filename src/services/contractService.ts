@@ -139,8 +139,8 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
   
   await db.put('contracts', updatedContract);
   
-  // If dates or rent changed, regenerate monthly forecasts
-  if (updates.fechaInicio || updates.fechaFin || updates.rentaMensual) {
+  // If dates, rent, or fiscal data changed, regenerate monthly forecasts
+  if (updates.fechaInicio || updates.fechaFin || updates.rentaMensual || updates.ejerciciosFiscales) {
     await regenerateRentaMensual(id, updatedContract);
   }
 };
