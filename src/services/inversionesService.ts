@@ -74,6 +74,7 @@ export const inversionesService = {
       importe: totalAportado,
       tipo: 'aportacion',
       notas: 'Aportación inicial',
+      ...(posicion.cuenta_cargo_id !== undefined && { cuenta_cargo_id: posicion.cuenta_cargo_id }),
     };
     const aportaciones = posicion.aportaciones?.length ? posicion.aportaciones : [aportacionInicial];
     const posicionAny = posicion as any;
@@ -96,6 +97,10 @@ export const inversionesService = {
       created_at: now,
       updated_at: now,
       // Extended fields
+      ...(posicion.fecha_compra !== undefined && { fecha_compra: posicion.fecha_compra }),
+      ...(posicion.cuenta_cargo_id !== undefined && { cuenta_cargo_id: posicion.cuenta_cargo_id }),
+      ...(posicionAny.plan_aportaciones !== undefined && { plan_aportaciones: posicionAny.plan_aportaciones }),
+      ...(posicionAny.plan_liquidacion !== undefined && { plan_liquidacion: posicionAny.plan_liquidacion }),
       ...(posicionAny.rendimiento !== undefined && { rendimiento: posicionAny.rendimiento }),
       ...(posicionAny.numero_participaciones !== undefined && { numero_participaciones: posicionAny.numero_participaciones }),
       ...(posicionAny.precio_medio_compra !== undefined && { precio_medio_compra: posicionAny.precio_medio_compra }),
