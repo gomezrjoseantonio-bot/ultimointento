@@ -213,21 +213,39 @@ export const rescindContract = async (id: number, fechaRescision: string, motivo
 
 // Generate monthly rent forecasts for treasury integration
 export const generateRentaMensual = async (contratoId: number, contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+  // sin_identificar contracts never generate monthly rent forecasts
+  if (contract.estadoContrato === 'sin_identificar') return;
+
   const db = await initDB();
-  const periods = calculateRentPeriodsNew(contract);
-  
-  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods.map(period => ({
-    contratoId,
-    periodo: period.periodo,
-    importePrevisto: period.importe,
-    importeCobradoAcum: 0,
-    estado: 'pendiente',
-    movimientosVinculados: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
-  
-  // Clear existing entries and add new ones
+
+  // Truncate fechaFin to max añoActual+1, 31-12 to avoid generating hundreds of
+  // future periods for contracts with open-ended dates (e.g. '2099-12-31').
+  const añoActual = new Date().getFullYear();
+  const fechaLimite = `${añoActual + 1}-12-31`;
+  const contractParaCalculo = contract.fechaFin && contract.fechaFin <= fechaLimite
+    ? contract
+    : { ...contract, fechaFin: fechaLimite };
+
+  const periods = calculateRentPeriodsNew(contractParaCalculo);
+
+  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods.map(period => {
+    // Periods belonging to a declared fiscal year are confirmed income (from XML).
+    const añoPeriodo = parseInt(period.periodo.slice(0, 4), 10);
+    const yearDeclarado = contract.ejerciciosFiscales?.[añoPeriodo]?.estado === 'declarado';
+
+    return {
+      contratoId,
+      periodo: period.periodo,
+      importePrevisto: period.importe,
+      importeCobradoAcum: yearDeclarado ? period.importe : 0,
+      estado: yearDeclarado ? 'cobrada' : 'pendiente',
+      movimientosVinculados: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  // Clear existing entries and regenerate within the new time window
   await clearRentaMensual(contratoId);
   for (const entry of rentaMensualEntries) {
     await db.add('rentaMensual', entry);

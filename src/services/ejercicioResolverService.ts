@@ -334,10 +334,34 @@ export async function bootstrapEjercicios(): Promise<void> {
       modificado = true;
     }
 
+    // Corregir años históricos sin AEAT que quedaron marcados como 'declarado'
+    // (artefacto de crearEjercicioInicial antes de la corrección de 2026-04-09)
+    if (
+      ej.año < añoActual - 1 &&
+      ej.estado === 'declarado' &&
+      !ej.aeat
+    ) {
+      ej.estado = 'pendiente';
+      modificado = true;
+    }
+
     if (modificado) {
       ej.updatedAt = new Date().toISOString();
       await db.put('ejerciciosFiscalesCoord', ej);
     }
+  }
+
+  // Limpiar ejerciciosFiscales (store legacy) de años futuros que pudieran haberse creado
+  try {
+    const todosLegacy = await db.getAll('ejerciciosFiscales');
+    for (const ej of todosLegacy) {
+      const añoEj = (ej as any).ejercicio ?? (ej as any).año;
+      if (typeof añoEj === 'number' && añoEj > añoActual + 1) {
+        await db.delete('ejerciciosFiscales', añoEj);
+      }
+    }
+  } catch {
+    // ejerciciosFiscales store might not exist in older DB versions
   }
 }
 
@@ -356,7 +380,9 @@ function crearEjercicioInicial(año: number): EjercicioFiscalCoord {
     const finCampaña = new Date(añoActual, 5, 30); // 30 de junio
     estado = hoy <= finCampaña ? 'pendiente' : 'declarado';
   } else {
-    estado = 'declarado';
+    // Historical years without AEAT import default to 'pendiente', not 'declarado'.
+    // bootstrapEjercicios / guardarEjercicioFiscal will set 'declarado' once AEAT arrives.
+    estado = 'pendiente';
   }
 
   const now = new Date().toISOString();
