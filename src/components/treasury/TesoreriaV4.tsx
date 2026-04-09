@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3, RefreshCw, Plus, Check, CheckCircle2,
   ChevronLeft, ChevronRight,
@@ -105,11 +106,18 @@ const DEFAULT_FORM: NewMovForm = {
 
 const TesoreriaV4: React.FC = () => {
   const nowInit = new Date();
+  const [searchParams] = useSearchParams();
+
+  // Read ?año=YYYY from URL to start at a specific year (e.g., when navigating
+  // from TreasuryEvolucion's 2026 link → /tesoreria?año=2026)
+  const añoParam = searchParams.get('año');
+  const añoFromUrl = añoParam ? parseInt(añoParam, 10) : NaN;
+  const initialAño = Number.isFinite(añoFromUrl) ? añoFromUrl : nowInit.getFullYear();
 
   // ── UI state ──
   const [tab, setTab] = useState<'flujo' | 'cuentas'>('flujo');
   const [vista, setVista] = useState<'anual' | 'mensual'>('anual');
-  const [año, setAño] = useState<number>(nowInit.getFullYear());
+  const [año, setAño] = useState<number>(initialAño);
   const [mesActivo, setMesActivo] = useState<number>(nowInit.getMonth());
   const [cuentaSel, setCuentaSel] = useState<number>(-1);
   const [filtro, setFiltro] = useState<string>('pendiente');
