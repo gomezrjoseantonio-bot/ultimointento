@@ -42,23 +42,51 @@ export interface TreasuryYearSummary {
 
 const GASTOS_PERSONALES_DEFAULT_MES = 4120; // €/mes (documented default)
 
+// Casilla numbers for snapshot fallback (matches historicalCashflowCalculator.ts)
+const CASILLA_NOMINA_BRUTA     = '0003';
+const CASILLA_NOMINA_RET       = '0596';
+const CASILLA_NOMINA_SS        = '0013';
+const CASILLA_AUTONOMO_INGRESOS = 'VE1II1';
+const CASILLA_AUTONOMO_RET     = 'RETENED';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function extractNominaNeta(declaracionCompleta: any): number {
-  const t = declaracionCompleta?.trabajo;
-  if (!t) return 0;
-  const bruto = t.retribucionesDinerarias ?? 0;
-  const ret   = t.retenciones ?? 0;
-  const ss    = t.cotizacionesSS ?? 0;
-  return Math.max(0, bruto - ret - ss);
+/**
+ * Extract nómina neta from declaracionCompleta.
+ * Falls back to casillas snapshot when declaracionCompleta is absent.
+ */
+function extractNominaNeta(dc: any, snapshot?: Record<string, number>): number {
+  if (dc?.trabajo) {
+    const bruto = Number(dc.trabajo.retribucionesDinerarias ?? 0);
+    const ret   = Number(dc.trabajo.retenciones ?? 0);
+    const ss    = Number(dc.trabajo.cotizacionesSS ?? 0);
+    return Math.max(0, bruto - ret - ss);
+  }
+  if (snapshot) {
+    const bruto = Number(snapshot[CASILLA_NOMINA_BRUTA] ?? 0);
+    const ret   = Number(snapshot[CASILLA_NOMINA_RET] ?? 0);
+    const ss    = Number(snapshot[CASILLA_NOMINA_SS] ?? 0);
+    return Math.max(0, bruto - ret - ss);
+  }
+  return 0;
 }
 
-function extractAutonomoNeto(declaracionCompleta: any): number {
-  const a = declaracionCompleta?.actividadEconomica;
-  if (!a) return 0;
-  const ingresos   = a.totalIngresos ?? 0;
-  const retenciones = a.retenciones ?? 0;
-  return Math.max(0, ingresos - retenciones);
+/**
+ * Extract autónomo neto from declaracionCompleta.
+ * Falls back to casillas snapshot when declaracionCompleta is absent.
+ */
+function extractAutonomoNeto(dc: any, snapshot?: Record<string, number>): number {
+  if (dc?.actividadEconomica) {
+    const ingresos    = Number(dc.actividadEconomica.totalIngresos ?? 0);
+    const retenciones = Number(dc.actividadEconomica.retenciones ?? 0);
+    return Math.max(0, ingresos - retenciones);
+  }
+  if (snapshot) {
+    const ingresos    = Number(snapshot[CASILLA_AUTONOMO_INGRESOS] ?? 0);
+    const retenciones = Number(snapshot[CASILLA_AUTONOMO_RET] ?? 0);
+    return Math.max(0, ingresos - retenciones);
+  }
+  return 0;
 }
 
 // ─── Main service ─────────────────────────────────────────────────────────────
@@ -126,15 +154,18 @@ export const treasuryOverviewService = {
       let devolucionIrpf = 0;
 
       if (hasAeat) {
-        const dc = coord.aeat!.declaracionCompleta;
-        nominaNeta   = extractNominaNeta(dc);
-        autonomoNeto = extractAutonomoNeto(dc);
+        const dc       = coord.aeat!.declaracionCompleta;
+        const snapshot = coord.aeat!.snapshot;
+        // Use declaracionCompleta when available; fall back to raw casillas snapshot
+        nominaNeta   = extractNominaNeta(dc, snapshot);
+        autonomoNeto = extractAutonomoNeto(dc, snapshot);
+      }
 
-        // devolucionIrpf: resultado of year (año-1) if < 0 (you receive it this year)
-        const resAnterior = resultadoPorAño[año - 1];
-        if (resAnterior !== undefined && resAnterior < 0) {
-          devolucionIrpf = Math.abs(resAnterior);
-        }
+      // devolucionIrpf: resultado of year (año-1) if < 0 (money received this year).
+      // Computed regardless of current year's AEAT status.
+      const resAnterior = resultadoPorAño[año - 1];
+      if (resAnterior !== undefined && resAnterior < 0) {
+        devolucionIrpf = Math.abs(resAnterior);
       }
 
       // rentasAlquiler: sum importeDeclarado from all contracts for this año
@@ -150,9 +181,11 @@ export const treasuryOverviewService = {
       let cuotasPrestamos = 0;
       let pagoIrpf        = 0;
 
-      // gastosInmuebles: sum importe excluding amortización (casillaAEAT '0117')
+      // gastosInmuebles: sum importe excluding amortización (casillaAEAT '0117').
+      // Legacy records may use `año` instead of `ejercicio` — check both.
       for (const g of gastosInmueble) {
-        if (g.ejercicio === año && g.casillaAEAT !== '0117') {
+        const gastoYear = (g as any).año ?? g.ejercicio;
+        if (gastoYear === año && g.casillaAEAT !== '0117') {
           gastosInmuebles += g.importe ?? 0;
         }
       }
@@ -168,12 +201,11 @@ export const treasuryOverviewService = {
         }
       }
 
-      // pagoIrpf: resultado of year (año-1) if > 0 (paid in June of año)
-      if (hasAeat) {
-        const resAnterior = resultadoPorAño[año - 1];
-        if (resAnterior !== undefined && resAnterior > 0) {
-          pagoIrpf = resAnterior;
-        }
+      // pagoIrpf: resultado of year (año-1) if > 0 (paid in June of año).
+      // Computed regardless of current year's AEAT status so current year
+      // correctly shows the payment for the prior declared year.
+      if (resAnterior !== undefined && resAnterior > 0) {
+        pagoIrpf = resAnterior;
       }
 
       const gastosPersonales = gastosPersonalesAnual;
@@ -207,7 +239,13 @@ export const treasuryOverviewService = {
     const db = await initDB();
     const accounts: any[] = await db.getAll('accounts');
     return accounts
-      .filter((a) => a.activa !== false && a.status !== 'DELETED')
+      .filter(
+        (a) =>
+          !a.deleted_at &&
+          a.activa !== false &&
+          a.isActive !== false &&
+          (a.status == null || a.status === 'ACTIVE'),
+      )
       .reduce((sum, a) => sum + (a.balance ?? a.openingBalance ?? 0), 0);
   },
 };

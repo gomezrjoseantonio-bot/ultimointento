@@ -477,26 +477,34 @@ const TreasuryEvolucion: React.FC = () => {
                         fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
                         whiteSpace: 'nowrap',
                       }}
-                      onClick={s.año === CURRENT_YEAR ? () => navigate(`/tesoreria?año=${s.año}`) : undefined}
                     >
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 3 }}>
-                        <span
-                          style={{
-                            fontSize: 13,
-                            fontWeight: s.año === CURRENT_YEAR ? 500 : 400,
-                            color: s.año === CURRENT_YEAR ? 'var(--navy-900)' : 'var(--grey-700)',
-                            cursor: s.año === CURRENT_YEAR ? 'pointer' : 'default',
-                            textDecoration: 'none',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (s.año === CURRENT_YEAR) (e.currentTarget as HTMLElement).style.textDecoration = 'underline';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (s.año === CURRENT_YEAR) (e.currentTarget as HTMLElement).style.textDecoration = 'none';
-                          }}
-                        >
-                          {s.año}
-                        </span>
+                        {s.año === CURRENT_YEAR ? (
+                          <button
+                            type="button"
+                            aria-label={`Ir al detalle de tesorería de ${s.año}`}
+                            onClick={() => navigate(`/tesoreria?año=${s.año}`)}
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 500,
+                              color: 'var(--navy-900)',
+                              cursor: 'pointer',
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              fontFamily: 'inherit',
+                              textAlign: 'right',
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'underline'; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.textDecoration = 'none'; }}
+                          >
+                            {s.año}
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--grey-700)' }}>
+                            {s.año}
+                          </span>
+                        )}
                         {getBadge(s)}
                       </div>
                     </th>
