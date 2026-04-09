@@ -23,6 +23,8 @@ export interface TreasuryYearSummary {
   fuente: 'xml_aeat' | 'atlas_nativo' | 'sin_datos';
 
   // Bloque 1 — Operativo
+  nominaBruta: number;         // trabajo: totalIngresosIntegros (antes de retenciones y SS)
+  autonomoBruto: number;       // actividadEconomica: totalIngresos (antes de retenciones)
   nominaNeta: number;          // trabajo: totalIngresosIntegros - retenciones - cotizacionesSS
   autonomoNeto: number;        // actividadEconomica: totalIngresos - retenciones
   rentasAlquiler: number;      // sum contracts.ejerciciosFiscales[año].importeDeclarado
@@ -64,6 +66,32 @@ const CASILLA_AUTONOMO_INGRESOS = 'VE1II1';
 const CASILLA_AUTONOMO_RET     = 'RETENED';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Nómina bruta = totalIngresosIntegros (antes de retenciones y SS).
+ */
+function extractNominaBruta(dc: any, snapshot?: Record<string, number>): number {
+  if (dc?.trabajo) {
+    return Number(dc.trabajo.totalIngresosIntegros ?? dc.trabajo.retribucionesDinerarias ?? 0);
+  }
+  if (snapshot) {
+    return Number(snapshot[CASILLA_NOMINA_BRUTA_V2] ?? snapshot[CASILLA_NOMINA_BRUTA_V1] ?? 0);
+  }
+  return 0;
+}
+
+/**
+ * Autónomo bruto = totalIngresos (antes de retenciones).
+ */
+function extractAutonomoBruto(dc: any, snapshot?: Record<string, number>): number {
+  if (dc?.actividadEconomica) {
+    return Number(dc.actividadEconomica.totalIngresos ?? 0);
+  }
+  if (snapshot) {
+    return Number(snapshot[CASILLA_AUTONOMO_INGRESOS] ?? 0);
+  }
+  return 0;
+}
 
 /**
  * Nómina neta = totalIngresosIntegros - retenciones - cotizacionesSS
@@ -178,6 +206,8 @@ export const treasuryOverviewService = {
 
       // ── BLOQUE 1: OPERATIVO ───────────────────────────────────────────────
 
+      let nominaBruta      = 0;
+      let autonomoBruto    = 0;
       let nominaNeta       = 0;
       let autonomoNeto     = 0;
       let capitalMobiliario = 0;
@@ -185,6 +215,8 @@ export const treasuryOverviewService = {
       if (hasAeat) {
         const dc       = coord.aeat!.declaracionCompleta;
         const snapshot = coord.aeat!.snapshot;
+        nominaBruta       = extractNominaBruta(dc, snapshot);
+        autonomoBruto     = extractAutonomoBruto(dc, snapshot);
         nominaNeta        = extractNominaNeta(dc, snapshot);
         autonomoNeto      = extractAutonomoNeto(dc, snapshot);
         capitalMobiliario = extractCapitalMobiliario(dc);
@@ -322,6 +354,8 @@ export const treasuryOverviewService = {
       summaries.push({
         año,
         fuente,
+        nominaBruta,
+        autonomoBruto,
         nominaNeta,
         autonomoNeto,
         rentasAlquiler,

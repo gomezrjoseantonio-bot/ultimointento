@@ -13,10 +13,10 @@ import { personalResumenService } from '../../../../services/personalResumenServ
 import { autonomoService } from '../../../../services/autonomoService';
 import { otrosIngresosService } from '../../../../services/otrosIngresosService';
 import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
-import { ejercicioFiscalService } from '../../../../services/ejercicioFiscalService';
 import { prestamosService } from '../../../../services/prestamosService';
+import { treasuryOverviewService } from '../../../../services/treasuryOverviewService';
+import type { TreasuryYearSummary } from '../../../../services/treasuryOverviewService';
 import type { PersonalData, PersonalModuleConfig } from '../../../../types/personal';
-import type { EjercicioFiscal } from '../../../../types/fiscal';
 
 const MESES_LABEL = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -25,36 +25,59 @@ const AÑO_ACTUAL = new Date().getFullYear();
 const fmt = (v: number) =>
   new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(v);
 
-// ── Computation helpers ──
-
-const calcBruto = (nomina: number, autonom: number, conyuge: number, otros: number = 0) =>
-  nomina + autonom + conyuge + otros;
-
-const calcNeto = (bruto: number, retenciones: number) =>
-  bruto - retenciones;
-
-const calcExcedente = (neto: number, gastoVida: number, financiacion: number) =>
-  neto - gastoVida - financiacion;
-
-const calcTasaAhorro = (excedente: number, neto: number) =>
-  neto > 0 ? Math.round((excedente / neto) * 100) : 0;
-
 // ── Types ──
 
+/**
+ * All values pre-computed for display.
+ * bruto / neto: gross and net income.
+ * gastoVida: living expenses (residuo from treasury, clamped ≥ 0; wizard estimate for current year).
+ * financiacion: net loan payment OUTFLOW as positive number (max(0, -subtotalFinanciacion)).
+ * subtotalFinanciacion: raw treasury value (negative = net outflow) — used for excedente formula.
+ */
 interface AñoData {
   año: number;
-  nomina: number;
-  retenciones: number;
-  autonom: number;
-  otros: number;
-  conyuge: number;
+  bruto: number;
+  neto: number;
+  nominaNeta: number;
+  autonomoNeto: number;
   gastoVida: number;
   financiacion: number;
+  subtotalFinanciacion: number;
   fuente: 'AEAT' | 'ATLAS' | null;
   gastoVidaEstimado: boolean;
 }
 
 type Vista = { tipo: 'anual' } | { tipo: 'mensual'; año: number };
+
+// ── Calculation helpers ──
+
+/** excedente = neto - gastoVida - financiacion (financing already sign-corrected) */
+const calcExcedente = (d: AñoData) => d.neto - d.gastoVida - d.financiacion;
+
+const calcTasaAhorro = (excedente: number, neto: number) =>
+  neto > 0 ? Math.round((excedente / neto) * 100) : 0;
+
+/** Build AñoData from a treasury summary for XML years. */
+function fromTreasury(t: TreasuryYearSummary): AñoData {
+  const neto = t.nominaNeta + t.autonomoNeto;
+  const bruto = t.nominaBruta + t.autonomoBruto;
+  // Financing outflow = net cash leaving via loan block (positive when paying out more than receiving).
+  const financiacion = Math.max(0, -t.subtotalFinanciacion);
+  // Living expense residuo. Clamp to 0 — a negative residuo means investment cash covered personal.
+  const gastoVida = Math.max(0, t.gastosPersonales);
+  return {
+    año: t.año,
+    bruto,
+    neto,
+    nominaNeta: t.nominaNeta,
+    autonomoNeto: t.autonomoNeto,
+    gastoVida,
+    financiacion,
+    subtotalFinanciacion: t.subtotalFinanciacion,
+    fuente: t.fuente === 'xml_aeat' ? 'AEAT' : t.fuente === 'atlas_nativo' ? 'ATLAS' : null,
+    gastoVidaEstimado: t.fuente !== 'xml_aeat',
+  };
+}
 
 // ── Main Component ──
 
@@ -65,7 +88,11 @@ const PersonalSupervisionPage: React.FC = () => {
   const [, setConfig] = useState<PersonalModuleConfig | null>(null);
   const [datosAnuales, setDatosAnuales] = useState<AñoData[]>([]);
   const [vista, setVista] = useState<Vista>({ tipo: 'anual' });
-  const [gastoVidaAnual, setGastoVidaAnual] = useState<number>(0);
+  // Wizard-derived values for current year (used in LateralDesglose and when no XML for current year)
+  const [wizardNominaNeta, setWizardNominaNeta] = useState(0);
+  const [wizardAutonomoNeto, setWizardAutonomoNeto] = useState(0);
+  const [wizardOtros, setWizardOtros] = useState(0);
+  const [gastoVidaAnual, setGastoVidaAnual] = useState(0);
   const [gastoVidaConfigurado, setGastoVidaConfigurado] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -83,33 +110,36 @@ const PersonalSupervisionPage: React.FC = () => {
         return;
       }
 
-      // Get all fiscal exercises to know which years have data
-      let ejercicios: EjercicioFiscal[] = [];
+      // ── 1. Treasury overview — primary data source for ALL historical years ──
+      let treasuryData: TreasuryYearSummary[] = [];
       try {
-        ejercicios = await ejercicioFiscalService.getAllEjercicios();
+        treasuryData = await treasuryOverviewService.getTreasuryOverview();
       } catch {
-        // No fiscal data yet
+        // No treasury data yet
       }
 
-      // Get personal expenses (monthly total × 12 = annual)
+      // Build AñoData for XML years (< AÑO_ACTUAL or any year with AEAT data).
+      const historicalFromTreasury: AñoData[] = treasuryData
+        .filter((t) => t.fuente === 'xml_aeat')
+        .map(fromTreasury);
+
+      const xmlAños = new Set(historicalFromTreasury.map((d) => d.año));
+
+      // ── 2. Wizard data for current year and LateralDesglose ──
       let gastoMensual = 0;
       try {
         gastoMensual = await patronGastosPersonalesService.calcularTotalMensual(moduleConfig.personalDataId);
-      } catch {
-        // No expense data
-      }
+      } catch { /* no expense data */ }
       const gastoAnual = Math.round(gastoMensual * 12);
       setGastoVidaAnual(gastoAnual);
       setGastoVidaConfigurado(gastoAnual > 0);
 
-      // Get personal loans
       let financiacionAnual = 0;
       try {
         const allPrestamos = await prestamosService.getAllPrestamos();
         const personales = allPrestamos.filter(
           (p) => (p.ambito === 'PERSONAL' || p.finalidad === 'PERSONAL') && p.activo !== false
         );
-        // Estimate annual payments from payment plan periods
         for (const p of personales) {
           try {
             const plan = await prestamosService.getPaymentPlan(p.id);
@@ -120,19 +150,13 @@ const PersonalSupervisionPage: React.FC = () => {
                   .filter((cuota) => Number.isFinite(cuota) && cuota > 0)
               : [];
             if (cuotas.length > 0) {
-              const cuotaMensualMedia =
-                cuotas.reduce((total, cuota) => total + cuota, 0) / cuotas.length;
-              financiacionAnual += Math.round(cuotaMensualMedia * 12);
+              const media = cuotas.reduce((t, c) => t + c, 0) / cuotas.length;
+              financiacionAnual += Math.round(media * 12);
             }
-          } catch {
-            // Fallback: no plan available
-          }
+          } catch { /* no plan */ }
         }
-      } catch {
-        // No loan data
-      }
+      } catch { /* no loan data */ }
 
-      // Get autónomo annual income
       let autonomoAnual = 0;
       try {
         const autonomos = await autonomoService.getAutonomosActivos(moduleConfig.personalDataId);
@@ -140,21 +164,17 @@ const PersonalSupervisionPage: React.FC = () => {
           const est = autonomoService.calculateEstimatedAnnualForAutonomos(autonomos);
           autonomoAnual = est.rendimientoNeto;
         }
-      } catch {
-        // No autonomo data
-      }
+      } catch { /* no autonomo data */ }
+      setWizardAutonomoNeto(autonomoAnual);
 
-      // Get otros ingresos annual income
       let otrosAnual = 0;
       try {
         const otrosIngresos = await otrosIngresosService.getOtrosIngresos(moduleConfig.personalDataId);
         const activos = otrosIngresos.filter((o) => o.activo);
         otrosAnual = otrosIngresosService.calculateAnnualIncome(activos);
-      } catch {
-        // No otros ingresos
-      }
+      } catch { /* no otros ingresos */ }
+      setWizardOtros(otrosAnual);
 
-      // Get resumen for current year (monthly data)
       let nominaAnual = 0;
       try {
         const resumenAnual = await personalResumenService.getResumenAnual(
@@ -162,62 +182,40 @@ const PersonalSupervisionPage: React.FC = () => {
           AÑO_ACTUAL
         );
         nominaAnual = resumenAnual.reduce((s, r) => s + r.ingresos.nomina, 0);
-      } catch {
-        // No resumen data
-      }
+      } catch { /* no resumen data */ }
+      setWizardNominaNeta(nominaAnual);
 
-      // Build per-year data from fiscal exercises
-      const añosData: AñoData[] = [];
+      // Current year entry: use treasury XML if available, else wizard estimate.
+      const currentTreasury = treasuryData.find((t) => t.año === AÑO_ACTUAL && t.fuente === 'xml_aeat');
+      let currentYearData: AñoData;
 
-      // Add current year from live data
-      const currentYearData: AñoData = {
-        año: AÑO_ACTUAL,
-        nomina: nominaAnual,
-        retenciones: 0,
-        autonom: autonomoAnual,
-        otros: otrosAnual,
-        conyuge: 0,
-        gastoVida: gastoAnual,
-        financiacion: financiacionAnual,
-        fuente: 'ATLAS',
-        gastoVidaEstimado: true,
-      };
-      añosData.push(currentYearData);
-
-      // Add historical years from fiscal exercises
-      for (const ej of ejercicios) {
-        if (ej.ejercicio === AÑO_ACTUAL) {
-          // Update current year with AEAT data if available
-          const decl = ej.declaracionAeat || ej.calculoAtlas;
-          if (decl) {
-            currentYearData.nomina = decl.trabajo?.retribucionesDinerarias || currentYearData.nomina;
-            currentYearData.retenciones = decl.trabajo?.retencionesTrabajoTotal || 0;
-            currentYearData.autonom = decl.actividades?.reduce(
-              (s, a) => s + (a.rendimientoNeto || 0), 0
-            ) || currentYearData.autonom;
-            currentYearData.fuente = ej.declaracionAeat ? 'AEAT' : 'ATLAS';
-          }
-          continue;
-        }
-
-        const decl = ej.declaracionAeat || ej.calculoAtlas;
-        if (!decl) continue;
-
-        añosData.push({
-          año: ej.ejercicio,
-          nomina: decl.trabajo?.retribucionesDinerarias || 0,
-          retenciones: decl.trabajo?.retencionesTrabajoTotal || 0,
-          autonom: decl.actividades?.reduce((s, a) => s + (a.rendimientoNeto || 0), 0) || 0,
-          otros: 0,
-          conyuge: 0,
-          gastoVida: gastoAnual, // Same estimate for all years (no historical data)
-          financiacion: financiacionAnual, // Same estimate
-          fuente: ej.declaracionAeat ? 'AEAT' : 'ATLAS',
+      if (currentTreasury) {
+        currentYearData = fromTreasury(currentTreasury);
+      } else {
+        const neto = nominaAnual + autonomoAnual + otrosAnual;
+        currentYearData = {
+          año: AÑO_ACTUAL,
+          bruto: neto, // wizard doesn't split gross/net — bruto ≈ neto for display
+          neto,
+          nominaNeta: nominaAnual,
+          autonomoNeto: autonomoAnual,
+          gastoVida: gastoAnual,
+          financiacion: financiacionAnual,
+          subtotalFinanciacion: -financiacionAnual,
+          fuente: 'ATLAS',
           gastoVidaEstimado: true,
-        });
+        };
       }
 
-      // Sort by year descending
+      // Merge: historical XML years + current year (if not already in historical set).
+      const añosData: AñoData[] = [
+        ...historicalFromTreasury.filter((d) => d.año !== AÑO_ACTUAL),
+        // Only add wizard current year if it wasn't already in XML set
+        ...(xmlAños.has(AÑO_ACTUAL) ? [] : [currentYearData]),
+        // If current year IS from XML, it's already in historicalFromTreasury
+        ...(xmlAños.has(AÑO_ACTUAL) ? historicalFromTreasury.filter((d) => d.año === AÑO_ACTUAL) : []),
+      ];
+
       añosData.sort((a, b) => b.año - a.año);
       setDatosAnuales(añosData);
     } catch (error) {
@@ -236,55 +234,38 @@ const PersonalSupervisionPage: React.FC = () => {
   const refData = datosAnuales.find((d) => d.año === AÑO_ACTUAL);
   const prevData = datosAnuales.find((d) => d.año === AÑO_ACTUAL - 1);
 
-  const refBruto = refData ? calcBruto(refData.nomina, refData.autonom, refData.conyuge, refData.otros) : null;
-  const refNeto = refData && refBruto !== null ? calcNeto(refBruto, refData.retenciones) : null;
-  const refExcedente = refData && refNeto !== null
-    ? calcExcedente(refNeto, refData.gastoVida, refData.financiacion) : null;
-  const refTasa = refExcedente !== null && refNeto !== null
-    ? calcTasaAhorro(refExcedente, refNeto) : null;
+  const refExcedente = refData ? calcExcedente(refData) : null;
+  const refTasa = refExcedente !== null && refData ? calcTasaAhorro(refExcedente, refData.neto) : null;
+  const prevExcedente = prevData ? calcExcedente(prevData) : null;
 
-  const prevBruto = prevData ? calcBruto(prevData.nomina, prevData.autonom, prevData.conyuge, prevData.otros) : null;
-  const prevNeto = prevData && prevBruto !== null ? calcNeto(prevBruto, prevData.retenciones) : null;
-  const prevExcedente = prevData && prevNeto !== null
-    ? calcExcedente(prevNeto, prevData.gastoVida, prevData.financiacion) : null;
-
-  const delta = refExcedente !== null && prevExcedente !== null
-    ? refExcedente - prevExcedente : null;
+  const delta = refExcedente !== null && prevExcedente !== null ? refExcedente - prevExcedente : null;
   const deltaPct = delta !== null && prevExcedente !== null && prevExcedente !== 0
     ? Math.round((delta / Math.abs(prevExcedente)) * 100) : null;
 
-  // Chart data
+  // Chart data (sorted ascending)
   const graficaData: DatoAnual[] = [...datosAnuales]
     .sort((a, b) => a.año - b.año)
-    .map((d) => {
-      const bruto = calcBruto(d.nomina, d.autonom, d.conyuge, d.otros);
-      const neto = calcNeto(bruto, d.retenciones);
-      return {
-        año: d.año,
-        gastoVida: d.gastoVida,
-        financiacion: d.financiacion,
-        excedente: calcExcedente(neto, d.gastoVida, d.financiacion),
-      };
-    });
+    .map((d) => ({
+      año: d.año,
+      gastoVida: Math.max(0, d.gastoVida),
+      financiacion: Math.max(0, d.financiacion),
+      excedente: Math.max(0, calcExcedente(d)),
+    }));
 
   // Table rows
   const filasHistorial: FilaHistorial[] = datosAnuales.map((d) => {
-    const bruto = calcBruto(d.nomina, d.autonom, d.conyuge, d.otros);
-    const neto = calcNeto(bruto, d.retenciones);
-    const excedente = calcExcedente(neto, d.gastoVida, d.financiacion);
-    const tasa = calcTasaAhorro(excedente, neto);
-
-    const tieneNeto = neto !== null && neto !== undefined;
-
+    const excedente = calcExcedente(d);
+    const tasa = calcTasaAhorro(excedente, d.neto);
+    const hasData = d.neto > 0 || d.bruto > 0;
     return {
       año: d.año,
-      bruto: bruto ?? null,
-      retenciones: d.retenciones ?? null,
-      neto: neto ?? null,
-      gastoVida: d.gastoVida ?? null,
-      financiacion: d.financiacion ?? null,
-      excedente: tieneNeto ? excedente : null,
-      tasaAhorro: tieneNeto ? tasa : null,
+      bruto: d.bruto > 0 ? d.bruto : null,
+      retenciones: d.bruto > d.neto ? d.bruto - d.neto : null,
+      neto: d.neto > 0 ? d.neto : null,
+      gastoVida: d.gastoVida > 0 ? d.gastoVida : null,
+      financiacion: d.financiacion > 0 ? d.financiacion : null,
+      excedente: hasData ? excedente : null,
+      tasaAhorro: hasData && d.neto > 0 ? tasa : null,
       fuente: d.fuente,
       gastoVidaEstimado: d.gastoVidaEstimado,
     };
@@ -292,35 +273,25 @@ const PersonalSupervisionPage: React.FC = () => {
 
   const totalXmls = datosAnuales.filter((d) => d.fuente === 'AEAT').length;
 
-  // Lateral fuentes
-  const nominaTotal = refData?.nomina || 0;
-  const autonomTotal = refData?.autonom || 0;
-  const otrosTotal = refData?.otros || 0;
-  const totalIngresos = nominaTotal + autonomTotal + otrosTotal;
+  // LateralDesglose — always shows wizard values for current-year breakdown.
+  const totalIngresosWizard = wizardNominaNeta + wizardAutonomoNeto + wizardOtros;
 
   // ── Handlers ──
 
-  const handleDrilldown = (año: number) => {
-    setVista({ tipo: 'mensual', año });
-  };
+  const handleDrilldown = (año: number) => setVista({ tipo: 'mensual', año });
+  const handleBackAnual = () => setVista({ tipo: 'anual' });
 
-  const handleBackAnual = () => {
-    setVista({ tipo: 'anual' });
-  };
-
-  // ── Monthly drill-down data ──
+  // ── Monthly drill-down ──
 
   const buildDatosMensuales = (año: number): DatoMensual[] => {
-    const yearData = datosAnuales.find((d) => d.año === año);
-    if (!yearData) return [];
+    const d = datosAnuales.find((x) => x.año === año);
+    if (!d) return [];
 
-    const bruto = calcBruto(yearData.nomina, yearData.autonom, yearData.conyuge);
-    const netoAnual = calcNeto(bruto, yearData.retenciones);
-    const netoMes = Math.round(netoAnual / 12);
-    const gastoMes = Math.round(yearData.gastoVida / 12);
-    const finMes = Math.round(yearData.financiacion / 12);
-    const nominaMes = Math.round(yearData.nomina / 12);
-    const autoMes = Math.round(yearData.autonom / 12);
+    const netoMes = Math.round(d.neto / 12);
+    const gastoMes = Math.round(d.gastoVida / 12);
+    const finMes = Math.round(d.financiacion / 12);
+    const nominaMes = Math.round(d.nominaNeta / 12);
+    const autoMes = Math.round(d.autonomoNeto / 12);
 
     return MESES_LABEL.map((label, i) => ({
       mes: i + 1,
@@ -339,17 +310,8 @@ const PersonalSupervisionPage: React.FC = () => {
   if (loading) {
     return (
       <div>
-        <PageHeader
-          icon={User}
-          title="Personal"
-          subtitle="Ingresos laborales y coste de vida"
-        />
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 48,
-        }}>
+        <PageHeader icon={User} title="Personal" subtitle="Ingresos laborales y coste de vida" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
           <div
             className="animate-spin h-8 w-8 border-2 border-t-transparent rounded-full"
             style={{ borderColor: 'var(--navy-900)', borderTopColor: 'transparent' }}
@@ -360,7 +322,6 @@ const PersonalSupervisionPage: React.FC = () => {
     );
   }
 
-  // Empty state
   if (!personalData || datosAnuales.length === 0) {
     return (
       <div>
@@ -381,10 +342,7 @@ const PersonalSupervisionPage: React.FC = () => {
             lucideIcon={User}
             title="Sin datos de ingresos"
             description="Importa tus declaraciones de la renta para ver tu historial laboral."
-            action={{
-              label: 'Importar declaración',
-              onClick: () => navigate('/fiscalidad/historial'),
-            }}
+            action={{ label: 'Importar declaración', onClick: () => navigate('/fiscalidad/historial') }}
           />
         </div>
       </div>
@@ -409,11 +367,7 @@ const PersonalSupervisionPage: React.FC = () => {
           }
         />
         <div className="p-6">
-          <DrilldownMensual
-            año={vista.año}
-            datos={datosMes}
-            onBack={handleBackAnual}
-          />
+          <DrilldownMensual año={vista.año} datos={datosMes} onBack={handleBackAnual} />
         </div>
       </div>
     );
@@ -438,19 +392,15 @@ const PersonalSupervisionPage: React.FC = () => {
 
       <div className="p-6" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* KPIs - 4 columns */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 16,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
           {/* KPI 1 — Ingresos netos */}
           <KpiStandard
             barColor="var(--navy-900, #042C5E)"
             label={`INGRESOS NETOS ${AÑO_ACTUAL}`}
-            value={refNeto}
+            value={refData ? refData.neto || null : null}
             valueColor="var(--navy-900, #042C5E)"
             sub="Todas las fuentes · año"
-            badgeLabel={totalIngresos > 0 ? 'Nómina + Consultoría' : undefined}
+            badgeLabel={refData && refData.neto > 0 ? 'Nómina + Consultoría' : undefined}
             badgeBg="var(--navy-100, #E8EFF7)"
             badgeColor="var(--navy-900, #042C5E)"
           />
@@ -459,20 +409,23 @@ const PersonalSupervisionPage: React.FC = () => {
           <KpiStandard
             barColor="var(--grey-300, #C8D0DC)"
             label={`GASTO DE VIDA ${AÑO_ACTUAL}`}
-            value={gastoVidaAnual || null}
+            value={refData ? (refData.gastoVida || null) : (gastoVidaAnual || null)}
             valueColor="var(--grey-900, #1A2332)"
             sub="Gastos personales · año"
-            badgeLabel={gastoVidaConfigurado ? 'Estimación anual' : 'Sin configurar'}
+            badgeLabel={
+              refData?.fuente === 'AEAT' ? 'Dato real' :
+              gastoVidaConfigurado ? 'Estimación anual' : 'Sin configurar'
+            }
             badgeBg="var(--grey-100, #EEF1F5)"
             badgeColor="var(--grey-400, #9CA3AF)"
-            badgeItalic
+            badgeItalic={refData?.fuente !== 'AEAT'}
           />
 
-          {/* KPI 3 — Financiación personal */}
+          {/* KPI 3 — Financiación */}
           <KpiStandard
             barColor="var(--teal-600, #1DA0BA)"
             label={`FINANCIACIÓN ${AÑO_ACTUAL}`}
-            value={refData?.financiacion || null}
+            value={refData ? (refData.financiacion || null) : null}
             prefix="−"
             valueColor="var(--teal-600, #1DA0BA)"
             sub="Cuotas préstamos · año"
@@ -481,7 +434,7 @@ const PersonalSupervisionPage: React.FC = () => {
             badgeColor="var(--teal-600, #1DA0BA)"
           />
 
-          {/* KPI 4 — Excedente (KPI-D) */}
+          {/* KPI 4 — Excedente */}
           <KpiExcedente
             año={AÑO_ACTUAL}
             excedente={refExcedente}
@@ -493,35 +446,31 @@ const PersonalSupervisionPage: React.FC = () => {
         </div>
 
         {/* Grid principal: chart + lateral */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 300px',
-          gap: 16,
-        }}>
-          {/* Left — Gráfica histórica */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16 }}>
+          {/* Left — Gráfica histórica (todos los años) */}
           <GraficaHistorica datos={graficaData} añoActual={AÑO_ACTUAL} />
 
-          {/* Right — Lateral desglose */}
+          {/* Right — Lateral desglose (wizard values for income sources) */}
           <LateralDesglose
             año={AÑO_ACTUAL}
             fuentes={[
               {
                 nombre: 'Nómina',
                 meta: personalData?.dni || undefined,
-                importe: nominaTotal > 0 ? nominaTotal : null,
-                porcentaje: totalIngresos > 0 ? Math.round((nominaTotal / totalIngresos) * 100) : 0,
+                importe: wizardNominaNeta > 0 ? wizardNominaNeta : null,
+                porcentaje: totalIngresosWizard > 0 ? Math.round((wizardNominaNeta / totalIngresosWizard) * 100) : 0,
                 iconKey: 'nomina',
               },
               {
                 nombre: 'Autónomo · Consultoría',
-                importe: autonomTotal > 0 ? autonomTotal : null,
-                porcentaje: totalIngresos > 0 ? Math.round((autonomTotal / totalIngresos) * 100) : 0,
+                importe: wizardAutonomoNeto > 0 ? wizardAutonomoNeto : null,
+                porcentaje: totalIngresosWizard > 0 ? Math.round((wizardAutonomoNeto / totalIngresosWizard) * 100) : 0,
                 iconKey: 'autonomo',
               },
-              ...(otrosTotal > 0 ? [{
+              ...(wizardOtros > 0 ? [{
                 nombre: 'Otros ingresos',
-                importe: otrosTotal,
-                porcentaje: totalIngresos > 0 ? Math.round((otrosTotal / totalIngresos) * 100) : 0,
+                importe: wizardOtros,
+                porcentaje: totalIngresosWizard > 0 ? Math.round((wizardOtros / totalIngresosWizard) * 100) : 0,
                 iconKey: 'nomina' as const,
               }] : []),
               ...(personalData?.spouseName ? [{
@@ -552,8 +501,8 @@ const PersonalSupervisionPage: React.FC = () => {
             ]}
             financiacion={refData?.financiacion || null}
             financiacionPct={
-              refNeto && refData?.financiacion
-                ? Math.round((refData.financiacion / refNeto) * 100)
+              refData && refData.neto > 0 && refData.financiacion > 0
+                ? Math.round((refData.financiacion / refData.neto) * 100)
                 : undefined
             }
             gastoVidaEstimado={gastoVidaConfigurado}
@@ -561,7 +510,7 @@ const PersonalSupervisionPage: React.FC = () => {
           />
         </div>
 
-        {/* Tabla historial */}
+        {/* Tabla historial — todos los años */}
         <TablaHistorial
           filas={filasHistorial}
           añoActual={AÑO_ACTUAL}
