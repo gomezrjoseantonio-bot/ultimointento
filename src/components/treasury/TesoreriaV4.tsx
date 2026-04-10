@@ -105,7 +105,12 @@ const DEFAULT_FORM: NewMovForm = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-const TesoreriaV4: React.FC = () => {
+interface TesoreriaV4Props {
+  /** When true, hides the Evolución tab and shows only Punteo mensual + Cuentas bancarias */
+  conciliacionMode?: boolean;
+}
+
+const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) => {
   const nowInit = new Date();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -113,7 +118,7 @@ const TesoreriaV4: React.FC = () => {
   const añoParam = searchParams.get('año');
   const añoFromUrl = añoParam ? parseInt(añoParam, 10) : NaN;
   const initialAño = Number.isFinite(añoFromUrl) ? añoFromUrl : nowInit.getFullYear();
-  const initialTab: 'evolucion' | 'flujo' = Number.isFinite(añoFromUrl) ? 'flujo' : 'evolucion';
+  const initialTab: 'evolucion' | 'flujo' = (conciliacionMode || Number.isFinite(añoFromUrl)) ? 'flujo' : 'evolucion';
 
   // ── UI state ──
   const [tab, setTab] = useState<'evolucion' | 'flujo' | 'cuentas'>(initialTab);
@@ -814,13 +819,24 @@ const TesoreriaV4: React.FC = () => {
       {/* ══ PAGE HEADER ══ */}
       <PageHeader
         icon={BarChart3}
-        title="Tesorería"
-        subtitle={tab === 'evolucion' ? 'Evolución histórica' : 'Conciliación y flujo de caja'}
-        tabs={[
-          { id: 'evolucion', label: 'Evolución' },
-          { id: 'flujo', label: 'Flujo de caja' },
-          { id: 'cuentas', label: 'Cuentas bancarias' },
-        ]}
+        title={conciliacionMode ? 'Conciliación' : 'Tesorería'}
+        subtitle={
+          conciliacionMode
+            ? 'Punteo mensual y cuentas bancarias'
+            : tab === 'evolucion' ? 'Evolución histórica' : 'Conciliación y flujo de caja'
+        }
+        tabs={
+          conciliacionMode
+            ? [
+                { id: 'flujo', label: 'Punteo mensual' },
+                { id: 'cuentas', label: 'Cuentas bancarias' },
+              ]
+            : [
+                { id: 'evolucion', label: 'Evolución' },
+                { id: 'flujo', label: 'Flujo de caja' },
+                { id: 'cuentas', label: 'Cuentas bancarias' },
+              ]
+        }
         activeTab={tab}
         onTabChange={(id) => {
           const newTab = id as 'evolucion' | 'flujo' | 'cuentas';
@@ -832,7 +848,7 @@ const TesoreriaV4: React.FC = () => {
             setSearchParams({ año: String(año) }, { replace: true });
           }
         }}
-        actions={tab !== 'evolucion' ? (
+        actions={(conciliacionMode || tab !== 'evolucion') ? (
           <>
             <HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />
             <HeaderPrimaryButton icon={Plus} label="Añadir movimiento" onClick={() => setShowAddModal(true)} />
@@ -841,7 +857,7 @@ const TesoreriaV4: React.FC = () => {
       />
 
       {/* ══ EVOLUCIÓN TAB ══ */}
-      {tab === 'evolucion' && (
+      {tab === 'evolucion' && !conciliacionMode && (
         <TreasuryEvolucionContent
           onGoToFlujo={(targetAño) => {
             setAño(targetAño);
@@ -853,7 +869,7 @@ const TesoreriaV4: React.FC = () => {
       )}
 
       {/* ══ KPI GRID (flujo + cuentas only) ══ */}
-      {tab !== 'evolucion' && (
+      {(conciliacionMode || tab !== 'evolucion') && (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 0, marginBottom: 20, border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
         {kpis.map((k, i) => (
           <div
@@ -878,7 +894,7 @@ const TesoreriaV4: React.FC = () => {
       )}
 
       {/* ══ BANNER: HISTORIAL VACÍO ══ */}
-      {tab !== 'evolucion' && !tieneHistorico && !bannerDismissed && (
+      {(conciliacionMode || tab !== 'evolucion') && !tieneHistorico && !bannerDismissed && (
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -930,7 +946,7 @@ const TesoreriaV4: React.FC = () => {
       )}
 
       {/* ══ TAB CONTENT ══ */}
-      {tab !== 'evolucion' && <div className="tv4-content">
+      {(conciliacionMode || tab !== 'evolucion') && <div className="tv4-content">
 
         {/* ─ TAB: FLUJO DE CAJA ─ */}
         {tab === 'flujo' && (

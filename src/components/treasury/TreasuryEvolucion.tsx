@@ -29,6 +29,7 @@ import {
   type TreasuryYearSummary,
   type SaldoActual,
 } from '../../services/treasuryOverviewService';
+import { prestamosService } from '../../services/prestamosService';
 
 ChartJS.register(
   CategoryScale,
@@ -62,14 +63,14 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface KpiCardProps { label: string; value: string; sub?: string; accent?: boolean; }
+interface KpiCardProps { label: string; value: string; sub?: string; }
 
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, accent }) => (
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub }) => (
   <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--grey-400)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       {label}
     </div>
-    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', color: accent ? 'var(--teal-600)' : 'var(--grey-900)', lineHeight: 1.2 }}>
+    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', color: 'var(--grey-900)', lineHeight: 1.2 }}>
       {value}
     </div>
     {sub && <div style={{ fontSize: 11, color: 'var(--grey-400)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>{sub}</div>}
@@ -87,9 +88,10 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
   const navigate = useNavigate();
   const chartRef = useRef<any>(null);
 
-  const [summaries, setSummaries] = useState<TreasuryYearSummary[]>([]);
-  const [saldo, setSaldo]         = useState<SaldoActual>({ cuentas: 0, inversiones: 0, total: 0 });
-  const [loading, setLoading]     = useState(true);
+  const [summaries, setSummaries]   = useState<TreasuryYearSummary[]>([]);
+  const [saldo, setSaldo]           = useState<SaldoActual>({ cuentas: 0, inversiones: 0, total: 0 });
+  const [prestamos, setPrestamos]   = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
 
   const [expanded, setExpanded] = useState({
     personal:    false,
@@ -104,11 +106,12 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     let cancelled = false;
     (async () => {
       try {
-        const [data, s] = await Promise.all([
+        const [data, s, ps] = await Promise.all([
           treasuryOverviewService.getTreasuryOverview(),
           treasuryOverviewService.getSaldoActual(),
+          prestamosService.getAllPrestamos(),
         ]);
-        if (!cancelled) { setSummaries(data); setSaldo(s); }
+        if (!cancelled) { setSummaries(data); setSaldo(s); setPrestamos(ps as any[]); }
       } catch (err) {
         console.error('TreasuryEvolucion load error:', err);
       } finally {
@@ -120,9 +123,7 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
   // ── Derived KPIs ─────────────────────────────────────────────────────────
 
-  const añosCargados = summaries.filter((y) => y.fuente === 'xml_aeat').length;
-
-  // Media mensual del gasto personal: derivada del primer año (full=÷12, parcial=÷mesActual)
+  // KPI 1 — Gasto de vida: media mensual del gasto personal acumulado
   const gastoMensual = useMemo(() => {
     if (summaries.length === 0) return 0;
     const now       = new Date();
@@ -132,13 +133,32 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     return mesesAño0 > 0 ? s0.gastoPersonalEstimado / mesesAño0 : 0;
   }, [summaries]);
 
-  // Cuadre: variación acumulada debe converger al saldo actual
-  const variacionAcumulada = summaries.reduce((s, y) => s + y.variacionNeta, 0);
-  const cuadreOk = useMemo(() => {
-    if (saldo.total === 0) return null; // desconocido
-    const diff = Math.abs(variacionAcumulada - saldo.total);
-    return diff / Math.max(1, Math.abs(saldo.total)) < 0.05;
-  }, [variacionAcumulada, saldo.total]);
+  // KPI 2 — Excedente mensual: (ingresos − cuotas − gasto personal) / meses del último año XML
+  const excedentesMensual = useMemo(() => {
+    if (summaries.length === 0) return null;
+    const now      = new Date();
+    const xmlYears = summaries.filter((s) => s.fuente === 'xml_aeat');
+    if (xmlYears.length === 0) return null;
+    const lastXml  = xmlYears[xmlYears.length - 1];
+    const meses    = lastXml.año < now.getFullYear() ? 12 : now.getMonth() + 1;
+    const cuotas   = lastXml.cuotasPrestamosPersonales + lastXml.cuotasHipotecas;
+    return (lastXml.nominaNeta + lastXml.autonomoNeto - cuotas - lastXml.gastoPersonalEstimado) / meses;
+  }, [summaries]);
+
+  // KPI 3 — Patrimonio neto: saldo total − deuda viva de préstamos
+  const patrimonioNeto = useMemo(() => {
+    const deuda = prestamos.reduce((s: number, p: any) => s + (p.principalVivo ?? 0), 0);
+    return saldo.total - deuda;
+  }, [saldo.total, prestamos]);
+
+  // KPI 4 — Tendencia: cambio relativo de variacionNeta entre los dos últimos años
+  const tendencia = useMemo(() => {
+    if (summaries.length < 2) return null;
+    const recent = summaries[0].variacionNeta;
+    const prior  = summaries[1].variacionNeta;
+    if (prior === 0) return null;
+    return (recent - prior) / Math.abs(prior) * 100;
+  }, [summaries]);
 
   // ── Chart ─────────────────────────────────────────────────────────────────
 
@@ -207,7 +227,7 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
       },
       y: {
         stacked: false,
-        grid: { color: 'var(--grey-100)' },
+        grid: { color: (ctx: any) => ctx.tick.value === 0 ? 'rgba(0,0,0,0.15)' : 'transparent' },
         ticks: { font: { family: 'IBM Plex Mono, monospace', size: 10 }, color: 'var(--grey-500)', callback: (v: any) => fmtK(v) },
       },
     },
@@ -229,23 +249,23 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
       : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--grey-900)' }}>{fmtEur(Math.abs(v))}</span>
   );
 
-  // Outflow cell — shown in teal with minus sign (0 = "—")
+  // Outflow cell — shown with minus sign (0 = "—")
   const fmtSalida = (v: number): React.ReactNode => (
     v === 0
       ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-      : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>{fmtSign(-v)}</span>
+      : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--navy-900)' }}>{fmtSign(-v)}</span>
   );
 
   // IRPF cell — devolución positive (+), pago negative (−)
   const fmtIrpf = (dev: number, pago: number): React.ReactNode => {
     if (dev > 0)  return <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--grey-900)' }}>{fmtSign(dev)}</span>;
-    if (pago > 0) return <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>{fmtSign(-pago)}</span>;
+    if (pago > 0) return <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--navy-900)' }}>{fmtSign(-pago)}</span>;
     return <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>;
   };
 
   // Subtotal bold cell
   const fmtSubtotal = (v: number): React.ReactNode => (
-    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, color: v < 0 ? 'var(--teal-600)' : 'var(--grey-900)' }}>
+    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, color: v < 0 ? 'var(--navy-900)' : 'var(--grey-900)' }}>
       {v === 0 ? '—' : fmtSign(v)}
     </span>
   );
@@ -323,43 +343,33 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
         {[
           {
-            label: 'Gasto personal estimado',
+            label: 'Gasto de vida',
             value: gastoMensual > 0 ? fmtEur(Math.round(gastoMensual)) + '/mes' : '—',
             sub: 'Media mensual acumulada',
           },
           {
-            label: 'Saldo actual',
-            value: fmtEur(saldo.total),
-            sub: saldo.cuentas === 0 ? 'Introduce saldo en cuentas' : 'Cuentas + inversiones',
+            label: 'Excedente mensual',
+            value: excedentesMensual !== null ? fmtEur(Math.round(excedentesMensual)) + '/mes' : '—',
+            sub: excedentesMensual !== null
+              ? excedentesMensual >= 0 ? 'Ingresos − cuotas − gasto personal' : 'Déficit mensual estimado'
+              : 'Importa XML AEAT para calcular',
           },
           {
-            label: 'Años cargados',
-            value: String(añosCargados),
-            sub: 'Con XML AEAT',
+            label: 'Patrimonio neto',
+            value: fmtEur(Math.round(patrimonioNeto)),
+            sub: saldo.cuentas === 0 ? 'Introduce saldo en cuentas' : 'Activos − deuda viva',
           },
           {
-            label: 'Cuadre',
-            value: cuadreOk === null ? '—' : cuadreOk ? '✓' : '✗',
-            sub: cuadreOk === null
-              ? 'Introduce el saldo actual'
-              : cuadreOk
-                ? 'Acumulado converge al saldo'
-                : `Desviación: ${fmtEur(Math.abs(variacionAcumulada - saldo.total))}`,
-            accent: cuadreOk === false,
+            label: 'Tendencia',
+            value: tendencia !== null ? (tendencia >= 0 ? '+' : '') + tendencia.toFixed(0) + '%' : '—',
+            sub: tendencia !== null ? 'Variación neta vs año anterior' : 'Necesita al menos 2 años',
           },
         ].map((kpi, i) => (
           <div key={i} style={{ borderRight: i < 3 ? '1px solid var(--grey-200)' : 'none' }}>
-            <KpiCard label={kpi.label} value={kpi.value} sub={kpi.sub} accent={kpi.accent} />
+            <KpiCard label={kpi.label} value={kpi.value} sub={kpi.sub} />
           </div>
         ))}
       </div>
-
-      {/* Nota saldo */}
-      {saldo.cuentas === 0 && (
-        <div style={{ padding: '10px 14px', background: 'var(--navy-50, #F0F4FA)', border: '1px solid var(--navy-100, #D0DDEF)', borderRadius: 6, fontSize: 12, color: 'var(--navy-700, #1C4A8A)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
-          Introduce el saldo actual de tus cuentas para refinar el cálculo del gasto personal estimado.
-        </div>
-      )}
 
       {/* CHART */}
       <div style={{ background: '#fff', border: '1px solid var(--grey-200)', borderRadius: 8, padding: '16px 20px 12px' }}>
@@ -434,7 +444,9 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
                 Personal
               </td>
               {summaries.map((s) => (
-                <td key={s.año} style={tdToggleBase}>{fmtSubtotal(s.subtotalPersonal)}</td>
+                <td key={s.año} style={tdToggleBase}>
+                  {fmtSubtotal(s.subtotalPersonal - s.gastoPersonalEstimado - s.gastoPersonalReal)}
+                </td>
               ))}
             </tr>
 
@@ -462,6 +474,39 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
                   <td style={tdDetailLabel}>Cuotas préstamos</td>
                   {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.cuotasPrestamosPersonales)}</td>)}
                 </tr>
+                {/* Gasto personal — inside Personal block */}
+                <tr>
+                  <td style={{ ...tdDetailLabel, fontStyle: 'italic', color: 'var(--grey-400)' }}>
+                    Gasto personal est.
+                  </td>
+                  {summaries.map((s) => (
+                    <td key={s.año} style={tdDetailBase}>
+                      {s.gastoPersonalEstimado === 0
+                        ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
+                        : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontStyle: 'italic', color: 'var(--grey-400)' }}>
+                            {fmtSign(-s.gastoPersonalEstimado)}
+                          </span>
+                      }
+                    </td>
+                  ))}
+                </tr>
+                {summaries.some((s) => s.gastoPersonalReal > 0) && (
+                  <tr>
+                    <td style={{ ...tdDetailLabel, color: 'var(--grey-500)' }}>
+                      Gasto personal real
+                    </td>
+                    {summaries.map((s) => (
+                      <td key={s.año} style={tdDetailBase}>
+                        {s.gastoPersonalReal === 0
+                          ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
+                          : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--navy-900)' }}>
+                              {fmtSign(-s.gastoPersonalReal)}
+                            </span>
+                        }
+                      </td>
+                    ))}
+                  </tr>
+                )}
               </>
             )}
 
@@ -565,43 +610,9 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
               </>
             )}
 
-            {/* ── GASTO PERSONAL + VARIACIÓN NETA ──────────────────────── */}
+            {/* ── VARIACIÓN NETA ────────────────────────────────────────── */}
             <tr>
               <td colSpan={summaries.length + 1} style={{ height: 6, borderTop: '3px solid var(--grey-300)', background: 'var(--grey-50)' }} />
-            </tr>
-
-            {/* Gasto personal estimado (residuo acumulado) */}
-            <tr>
-              <td style={{ ...tdLabel, fontStyle: 'italic', color: 'var(--grey-500)' }}>
-                Gasto personal est.
-              </td>
-              {summaries.map((s) => (
-                <td key={s.año} style={{ ...tdBase }}>
-                  {s.gastoPersonalEstimado === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontStyle: 'italic', color: 'var(--grey-400)' }}>
-                        {fmtSign(-s.gastoPersonalEstimado)}
-                      </span>
-                  }
-                </td>
-              ))}
-            </tr>
-
-            {/* Gasto personal real (confirmado desde punteo) */}
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>
-                Gasto personal real
-              </td>
-              {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.gastoPersonalReal === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.gastoPersonalReal)}
-                      </span>
-                  }
-                </td>
-              ))}
             </tr>
 
             {/* Variación neta */}
@@ -611,7 +622,7 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
               </td>
               {summaries.map((s) => (
                 <td key={s.año} style={{ ...tdBase, fontWeight: 700, paddingTop: 10, paddingBottom: 10, borderTop: '2px solid var(--grey-300)', borderBottom: 'none' }}>
-                  <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 700, color: s.variacionNeta >= 0 ? 'var(--navy-900)' : 'var(--teal-600)' }}>
+                  <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 700, color: 'var(--navy-900)' }}>
                     {fmtSign(s.variacionNeta)}
                   </span>
                 </td>
