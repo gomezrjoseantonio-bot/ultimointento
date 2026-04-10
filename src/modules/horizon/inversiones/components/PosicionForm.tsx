@@ -27,45 +27,52 @@ type TipoUI = 'prestamo' | 'plan_pp' | 'fondo' | 'accion' | 'crypto' | 'deposito
 
 const TIPO_LABELS: Record<TipoUI, string> = {
   prestamo: 'Préstamo',
-  plan_pp: 'Plan PP',
-  fondo: 'Fondo',
-  accion: 'Acción',
-  crypto: 'Crypto',
+  plan_pp:  'Plan PP',
+  fondo:    'Fondo',
+  accion:   'Acción',
+  crypto:   'Crypto',
   deposito: 'Depósito',
 };
 
 const TIPO_MAP: Record<TipoUI, TipoPosicion> = {
   prestamo: 'prestamo_p2p',
-  plan_pp: 'plan_pensiones',
-  fondo: 'fondo_inversion',
-  accion: 'accion',
-  crypto: 'crypto',
+  plan_pp:  'plan_pensiones',
+  fondo:    'fondo_inversion',
+  accion:   'accion',
+  crypto:   'crypto',
   deposito: 'deposito_plazo',
 };
 
 const TIPO_UI_FROM_POSICION: Partial<Record<TipoPosicion, TipoUI>> = {
-  prestamo_p2p: 'prestamo',
+  prestamo_p2p:   'prestamo',
   plan_pensiones: 'plan_pp',
-  plan_empleo: 'plan_pp',
+  plan_empleo:    'plan_pp',
   fondo_inversion: 'fondo',
-  accion: 'accion',
-  etf: 'accion',
-  reit: 'accion',
-  crypto: 'crypto',
-  deposito_plazo: 'deposito',
-  deposito: 'deposito',
+  accion:  'accion',
+  etf:     'accion',
+  reit:    'accion',
+  crypto:          'crypto',
+  deposito_plazo:  'deposito',
+  deposito:        'deposito',
 };
 
 const PLACEHOLDERS: Record<TipoUI, { nombre: string; entidad: string }> = {
-  prestamo: { nombre: 'Ej: Smartflip, Juan...', entidad: 'Ej: Smartflip, Particular...' },
-  plan_pp:  { nombre: 'Ej: Plan Orange',        entidad: 'Ej: VidaCaixa, BBVA...' },
-  fondo:    { nombre: 'Ej: Indexa Cartera 10',  entidad: 'Ej: Indexa, MyInvestor...' },
-  accion:   { nombre: 'Ej: Apple, Inditex',     entidad: 'Ej: DEGIRO, Interactive Brokers...' },
-  crypto:   { nombre: 'Ej: Bitcoin, Ethereum',  entidad: 'Ej: Binance, Kraken...' },
-  deposito: { nombre: 'Ej: Depósito 12m BBVA',  entidad: 'Ej: BBVA, Raisin...' },
+  prestamo: { nombre: 'Ej: Smartflip, Juan...',      entidad: 'Ej: Smartflip, Particular...' },
+  plan_pp:  { nombre: 'Ej: Plan Orange',             entidad: 'Ej: VidaCaixa, BBVA...' },
+  fondo:    { nombre: 'Ej: Indexa Cartera 10',       entidad: 'Ej: Indexa, MyInvestor...' },
+  accion:   { nombre: 'Ej: Apple, Inditex',          entidad: 'Ej: DEGIRO, Interactive Brokers...' },
+  crypto:   { nombre: 'Ej: Bitcoin, Ethereum',       entidad: 'Ej: Binance, Kraken...' },
+  deposito: { nombre: 'Ej: Depósito 12m BBVA',       entidad: 'Ej: BBVA, Raisin...' },
 };
 
+type Modalidad = 'solo_intereses' | 'capital_e_intereses' | 'al_vencimiento';
+
 const today = () => new Date().toISOString().split('T')[0];
+
+// ── Number formatter ──────────────────────────────────────────────────────────
+
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -76,30 +83,31 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     ? (TIPO_UI_FROM_POSICION[posicion.tipo] ?? 'fondo')
     : 'prestamo';
 
-  const [tipoUI, setTipoUI] = useState<TipoUI>(initialTipo);
+  const [tipoUI, setTipoUI]   = useState<TipoUI>(initialTipo);
   const [cuentas, setCuentas] = useState<Account[]>([]);
 
   const [form, setForm] = useState({
-    nombre:               posicion?.nombre ?? '',
-    entidad:              posicion?.entidad ?? '',
+    nombre:  posicion?.nombre  ?? '',
+    entidad: posicion?.entidad ?? '',
     // Money
-    importe_inicial:      (posAny?.total_aportado as number) ?? 0,
-    valor_actual:         posicion?.valor_actual ?? 0,
+    importe_inicial: (posAny?.total_aportado as number) ?? 0,
+    valor_actual:    posicion?.valor_actual ?? 0,
     // Date
-    fecha_compra:         posicion?.fecha_compra?.split('T')[0] ?? today(),
+    fecha_compra: posicion?.fecha_compra?.split('T')[0] ?? today(),
     // Interest (prestamo, deposito)
-    tasa_interes_anual:   (posAny?.rendimiento?.tasa_interes_anual as number) ?? 0,
-    duracion_meses:       (posAny?.duracion_meses as number) ?? 12,
-    modalidad_devolucion: ((posAny?.modalidad_devolucion ?? 'solo_intereses') as 'solo_intereses' | 'capital_e_intereses'),
-    frecuencia_cobro:     ((posAny?.frecuencia_cobro ?? posAny?.rendimiento?.frecuencia_pago ?? 'mensual') as 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'al_vencimiento'),
-    retencion_fiscal:     (posAny?.retencion_fiscal ?? posAny?.rendimiento?.retencion_porcentaje ?? 19) as number,
+    tasa_interes_anual: (posAny?.rendimiento?.tasa_interes_anual as number) ?? 0,
+    duracion_meses:     (posAny?.duracion_meses as number) ?? 12,
+    modalidad_devolucion: ((posAny?.modalidad_devolucion ?? 'solo_intereses') as Modalidad),
+    frecuencia_cobro: ((posAny?.frecuencia_cobro ?? posAny?.rendimiento?.frecuencia_pago ?? 'mensual') as 'mensual' | 'trimestral' | 'semestral' | 'anual'),
+    retencion_fiscal: (posAny?.retencion_fiscal ?? posAny?.rendimiento?.retencion_porcentaje ?? 19) as number,
     // Deposito
     liquidacion_intereses: ((posAny?.liquidacion_intereses ?? 'al_vencimiento') as 'al_vencimiento' | 'mensual' | 'trimestral' | 'anual'),
     // Securities
-    ticker:                posicion?.ticker ?? '',
-    isin:                  posicion?.isin ?? '',
+    ticker: posicion?.ticker ?? '',
+    isin:   posicion?.isin   ?? '',
     numero_participaciones: (posAny?.numero_participaciones as number) ?? 0,
-    precio_medio_compra:    (posAny?.precio_medio_compra as number) ?? 0,
+    precio_medio_compra:    (posAny?.precio_medio_compra    as number) ?? 0,
+    dividendo_anual_estimado: (posAny?.dividendo_anual_estimado as number) ?? 0,
     // Accounts
     cuenta_cargo_id: posicion?.cuenta_cargo_id ? String(posicion.cuenta_cargo_id) : '',
     cuenta_cobro_id: posAny?.cuenta_cobro_id   ? String(posAny.cuenta_cobro_id)   : '',
@@ -119,6 +127,51 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
   const set = <K extends keyof typeof form>(key: K, value: typeof form[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  // ── Live preview for prestamo ───────────────────────────────────────────────
+
+  const prestamoPreview = (() => {
+    const capital  = form.importe_inicial;
+    const tasaAnual = form.tasa_interes_anual / 100;
+    const duracion  = form.duracion_meses;
+    const ret       = form.retencion_fiscal / 100;
+
+    if (!capital || !tasaAnual || !duracion) return null;
+
+    const mod = form.modalidad_devolucion;
+
+    if (mod === 'al_vencimiento') {
+      const capitalFinal  = capital * Math.pow(1 + tasaAnual, duracion / 12);
+      const intereses     = capitalFinal - capital;
+      const retEuros      = intereses * ret;
+      const neto          = capitalFinal - retEuros;
+      return { tipo: 'vencimiento' as const, capitalFinal, intereses, retEuros, neto };
+    }
+
+    if (mod === 'solo_intereses') {
+      const divisor = form.frecuencia_cobro === 'mensual' ? 12
+                    : form.frecuencia_cobro === 'trimestral' ? 4
+                    : form.frecuencia_cobro === 'semestral'  ? 2
+                    : 1;
+      const bruto    = capital * tasaAnual / divisor;
+      const retEuros = bruto * ret;
+      const neto     = bruto - retEuros;
+      const netoAnual = neto * divisor;
+      return { tipo: 'intereses' as const, divisor, frecuencia: form.frecuencia_cobro, bruto, retEuros, neto, netoAnual };
+    }
+
+    if (mod === 'capital_e_intereses') {
+      const tasaMensual = tasaAnual / 12;
+      const cuota       = tasaMensual === 0
+        ? capital / duracion
+        : capital * tasaMensual / (1 - Math.pow(1 + tasaMensual, -duracion));
+      const totalIntereses = cuota * duracion - capital;
+      const retEuros       = totalIntereses * ret;
+      return { tipo: 'cuotas' as const, cuota, totalIntereses, retEuros };
+    }
+
+    return null;
+  })();
+
   // ── Validation ──────────────────────────────────────────────────────────────
 
   const validate = (): boolean => {
@@ -133,6 +186,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       if (!form.fecha_compra)           e.fecha_compra       = 'Obligatorio';
       if (form.duracion_meses <= 0)     e.duracion_meses     = 'Debe ser > 0';
       if (!form.cuenta_cargo_id)        e.cuenta_cargo_id    = 'Obligatorio';
+      if (!form.cuenta_cobro_id)        e.cuenta_cobro_id    = 'Obligatorio';
     } else if (tipoUI === 'plan_pp') {
       if (!form.fecha_compra)    e.fecha_compra = 'Obligatorio';
       if (form.valor_actual < 0) e.valor_actual = 'Debe ser ≥ 0';
@@ -154,6 +208,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       if (form.precio_medio_compra <= 0)    e.precio_medio_compra    = 'Debe ser > 0';
       if (form.valor_actual <= 0)           e.valor_actual           = 'Debe ser > 0';
       if (!form.fecha_compra)               e.fecha_compra           = 'Obligatorio';
+      if (!form.cuenta_cargo_id)            e.cuenta_cargo_id        = 'Obligatorio';
       if (!form.cuenta_cobro_id)            e.cuenta_cobro_id        = 'Obligatorio';
     } else if (tipoUI === 'deposito') {
       if (form.importe_inicial <= 0)    e.importe_inicial    = 'Debe ser > 0';
@@ -184,21 +239,23 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     };
 
     if (tipoUI === 'prestamo') {
-      const frecuenciaPago = form.frecuencia_cobro === 'al_vencimiento' ? 'anual' : form.frecuencia_cobro;
+      const esVencimiento = form.modalidad_devolucion === 'al_vencimiento';
+      const frecuenciaPago = esVencimiento ? 'anual' : form.frecuencia_cobro;
       Object.assign(base, {
         importe_inicial:      form.importe_inicial,
         valor_actual:         form.importe_inicial,
         fecha_compra:         `${form.fecha_compra}T12:00:00.000Z`,
         cuenta_cargo_id:      Number(form.cuenta_cargo_id),
+        cuenta_cobro_id:      Number(form.cuenta_cobro_id),
         duracion_meses:       form.duracion_meses,
         modalidad_devolucion: form.modalidad_devolucion,
-        frecuencia_cobro:     form.frecuencia_cobro,
+        frecuencia_cobro:     esVencimiento ? 'al_vencimiento' : form.frecuencia_cobro,
         retencion_fiscal:     form.retencion_fiscal,
         rendimiento: {
           tipo_rendimiento:         'interes_fijo',
           tasa_interes_anual:       form.tasa_interes_anual,
           frecuencia_pago:          frecuenciaPago,
-          reinvertir:               form.frecuencia_cobro === 'al_vencimiento',
+          reinvertir:               esVencimiento,
           fecha_inicio_rendimiento: `${form.fecha_compra}T12:00:00.000Z`,
           retencion_porcentaje:     form.retencion_fiscal,
           pagos_generados:          posAny?.rendimiento?.pagos_generados ?? [],
@@ -222,15 +279,16 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
       });
     } else if (tipoUI === 'accion') {
       Object.assign(base, {
-        importe_inicial:        form.numero_participaciones * form.precio_medio_compra,
-        valor_actual:           form.valor_actual,
-        ticker:                 form.ticker || undefined,
-        isin:                   form.isin   || undefined,
-        numero_participaciones: form.numero_participaciones,
-        precio_medio_compra:    form.precio_medio_compra,
-        fecha_compra:           `${form.fecha_compra}T12:00:00.000Z`,
-        cuenta_cargo_id:        Number(form.cuenta_cargo_id),
-        cuenta_cobro_id:        Number(form.cuenta_cobro_id),
+        importe_inicial:          form.numero_participaciones * form.precio_medio_compra,
+        valor_actual:             form.valor_actual,
+        ticker:                   form.ticker || undefined,
+        isin:                     form.isin   || undefined,
+        numero_participaciones:   form.numero_participaciones,
+        precio_medio_compra:      form.precio_medio_compra,
+        dividendo_anual_estimado: form.dividendo_anual_estimado || undefined,
+        fecha_compra:             `${form.fecha_compra}T12:00:00.000Z`,
+        cuenta_cargo_id:          Number(form.cuenta_cargo_id),
+        cuenta_cobro_id:          Number(form.cuenta_cobro_id),
       });
     } else if (tipoUI === 'crypto') {
       Object.assign(base, {
@@ -240,6 +298,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
         numero_participaciones: form.numero_participaciones,
         precio_medio_compra:    form.precio_medio_compra,
         fecha_compra:           `${form.fecha_compra}T12:00:00.000Z`,
+        cuenta_cargo_id:        Number(form.cuenta_cargo_id),
         cuenta_cobro_id:        Number(form.cuenta_cobro_id),
       });
     } else if (tipoUI === 'deposito') {
@@ -315,7 +374,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     gap: '10px',
   };
 
-  // Inline field renderer to avoid extra DOM nodes from wrapper components
+  // Inline field renderer
   const F = (
     label: string,
     req: boolean,
@@ -346,58 +405,167 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
     </select>
   ));
 
+  // ── Prestamo yield preview ──────────────────────────────────────────────────
+
+  const renderPrestamoPreview = () => {
+    if (!prestamoPreview) return null;
+    const p = prestamoPreview;
+    const monoSt: React.CSSProperties = {
+      fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)',
+      fontSize: '0.8125rem',
+      color: 'var(--atlas-navy-1)',
+    };
+    const rowSt: React.CSSProperties = {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '8px',
+    };
+    const dimSt: React.CSSProperties = {
+      ...monoSt,
+      color: 'var(--text-gray)',
+    };
+
+    return (
+      <div style={{
+        background: 'var(--grey-50, #f9fafb)',
+        border: '1px solid var(--hz-neutral-300)',
+        borderRadius: '6px',
+        padding: '10px 12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+      }}>
+        <span style={{ fontFamily: 'var(--font-inter)', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--atlas-navy-1)', marginBottom: '2px' }}>
+          Estimación de rendimiento
+        </span>
+
+        {p.tipo === 'intereses' && (
+          <>
+            <div style={rowSt}>
+              <span style={dimSt}>Bruto / período</span>
+              <span style={monoSt}>{fmt(p.bruto)} €</span>
+            </div>
+            {form.retencion_fiscal > 0 && (
+              <div style={rowSt}>
+                <span style={dimSt}>Retención ({form.retencion_fiscal}%)</span>
+                <span style={{ ...monoSt, color: 'var(--error)' }}>−{fmt(p.retEuros)} €</span>
+              </div>
+            )}
+            <div style={rowSt}>
+              <span style={dimSt}>Neto / período</span>
+              <span style={monoSt}>{fmt(p.neto)} €</span>
+            </div>
+            <div style={rowSt}>
+              <span style={dimSt}>Neto anual</span>
+              <span style={{ ...monoSt, fontWeight: 600 }}>{fmt(p.netoAnual)} €</span>
+            </div>
+          </>
+        )}
+
+        {p.tipo === 'cuotas' && (
+          <>
+            <div style={rowSt}>
+              <span style={dimSt}>Cuota mensual</span>
+              <span style={monoSt}>{fmt(p.cuota)} €</span>
+            </div>
+            <div style={rowSt}>
+              <span style={dimSt}>Total intereses</span>
+              <span style={monoSt}>{fmt(p.totalIntereses)} €</span>
+            </div>
+            {form.retencion_fiscal > 0 && (
+              <div style={rowSt}>
+                <span style={dimSt}>Retención ({form.retencion_fiscal}%)</span>
+                <span style={{ ...monoSt, color: 'var(--error)' }}>−{fmt(p.retEuros)} €</span>
+              </div>
+            )}
+          </>
+        )}
+
+        {p.tipo === 'vencimiento' && (
+          <>
+            <div style={rowSt}>
+              <span style={dimSt}>Capital al vencimiento</span>
+              <span style={monoSt}>{fmt(p.capitalFinal)} €</span>
+            </div>
+            <div style={rowSt}>
+              <span style={dimSt}>Intereses acumulados</span>
+              <span style={monoSt}>{fmt(p.intereses)} €</span>
+            </div>
+            {form.retencion_fiscal > 0 && (
+              <div style={rowSt}>
+                <span style={dimSt}>Retención ({form.retencion_fiscal}%)</span>
+                <span style={{ ...monoSt, color: 'var(--error)' }}>−{fmt(p.retEuros)} €</span>
+              </div>
+            )}
+            <div style={rowSt}>
+              <span style={dimSt}>Neto al vencimiento</span>
+              <span style={{ ...monoSt, fontWeight: 600 }}>{fmt(p.neto)} €</span>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
   // ── Type-specific fields ────────────────────────────────────────────────────
 
   const renderFields = () => {
-    if (tipoUI === 'prestamo') return (
-      <>
-        <div style={row2}>
-          {F('Capital prestado', true, errors.importe_inicial,
-            <input type="number" step="0.01" value={form.importe_inicial || ''} onChange={e => set('importe_inicial', parseFloat(e.target.value) || 0)} style={monoInp(errors.importe_inicial)} placeholder="10000.00" />
-          )}
-          {F('Tipo de interés anual (%)', true, errors.tasa_interes_anual,
-            <input type="number" step="0.01" value={form.tasa_interes_anual || ''} onChange={e => set('tasa_interes_anual', parseFloat(e.target.value) || 0)} style={monoInp(errors.tasa_interes_anual)} placeholder="10.00" />
-          )}
-        </div>
-        <div style={row2}>
-          {F('Fecha del préstamo', true, errors.fecha_compra,
-            <input type="date" value={form.fecha_compra} onChange={e => set('fecha_compra', e.target.value)} style={inp(errors.fecha_compra)} />
-          )}
-          {F('Duración (meses)', true, errors.duracion_meses,
-            <input type="number" min={1} value={form.duracion_meses || ''} onChange={e => set('duracion_meses', parseInt(e.target.value) || 0)} style={monoInp(errors.duracion_meses)} placeholder="12" />
-          )}
-        </div>
-        <div style={row2}>
-          {F('Modalidad', true, undefined,
-            <select value={form.modalidad_devolucion} onChange={e => set('modalidad_devolucion', e.target.value as 'solo_intereses' | 'capital_e_intereses')} style={sel()}>
-              <option value="solo_intereses">Solo intereses</option>
-              <option value="capital_e_intereses">Capital e intereses</option>
-            </select>
-          )}
-          {F('Frecuencia de cobro', true, undefined,
-            <select value={form.frecuencia_cobro} onChange={e => set('frecuencia_cobro', e.target.value as typeof form.frecuencia_cobro)} style={sel()}>
-              <option value="mensual">Mensual</option>
-              <option value="trimestral">Trimestral</option>
-              <option value="semestral">Semestral</option>
-              <option value="anual">Anual</option>
-              <option value="al_vencimiento">Al vencimiento</option>
-            </select>
-          )}
-        </div>
-        <div style={row2}>
-          {F('Retención fiscal', false, undefined,
-            <select value={form.retencion_fiscal} onChange={e => set('retencion_fiscal', Number(e.target.value))} style={sel()}>
-              <option value={0}>0%</option>
-              <option value={19}>19%</option>
-              <option value={21}>21%</option>
-              <option value={23}>23%</option>
-              <option value={27}>27%</option>
-            </select>
-          )}
-          {AccountSel('Cuenta origen', 'cuenta_cargo_id', true)}
-        </div>
-      </>
-    );
+    if (tipoUI === 'prestamo') {
+      const esVencimiento = form.modalidad_devolucion === 'al_vencimiento';
+      return (
+        <>
+          <div style={row2}>
+            {F('Capital prestado', true, errors.importe_inicial,
+              <input type="number" step="0.01" value={form.importe_inicial || ''} onChange={e => set('importe_inicial', parseFloat(e.target.value) || 0)} style={monoInp(errors.importe_inicial)} placeholder="10000.00" />
+            )}
+            {F('Tipo de interés anual (%)', true, errors.tasa_interes_anual,
+              <input type="number" step="0.01" value={form.tasa_interes_anual || ''} onChange={e => set('tasa_interes_anual', parseFloat(e.target.value) || 0)} style={monoInp(errors.tasa_interes_anual)} placeholder="10.00" />
+            )}
+          </div>
+          <div style={row2}>
+            {F('Fecha del préstamo', true, errors.fecha_compra,
+              <input type="date" value={form.fecha_compra} onChange={e => set('fecha_compra', e.target.value)} style={inp(errors.fecha_compra)} />
+            )}
+            {F('Duración (meses)', true, errors.duracion_meses,
+              <input type="number" min={1} value={form.duracion_meses || ''} onChange={e => set('duracion_meses', parseInt(e.target.value) || 0)} style={monoInp(errors.duracion_meses)} placeholder="12" />
+            )}
+          </div>
+          <div style={row2}>
+            {F('Modalidad', true, undefined,
+              <select value={form.modalidad_devolucion} onChange={e => set('modalidad_devolucion', e.target.value as Modalidad)} style={sel()}>
+                <option value="solo_intereses">Solo intereses (periódicos)</option>
+                <option value="capital_e_intereses">Capital + intereses (cuotas)</option>
+                <option value="al_vencimiento">Todo al vencimiento</option>
+              </select>
+            )}
+            {!esVencimiento && F('Frecuencia de cobro', true, undefined,
+              <select value={form.frecuencia_cobro} onChange={e => set('frecuencia_cobro', e.target.value as typeof form.frecuencia_cobro)} style={sel()}>
+                <option value="mensual">Mensual</option>
+                <option value="trimestral">Trimestral</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+              </select>
+            )}
+          </div>
+          <div style={row2}>
+            {AccountSel('Cuenta origen', 'cuenta_cargo_id', true)}
+            {AccountSel('Cuenta cobro', 'cuenta_cobro_id', true)}
+          </div>
+          <div style={row2}>
+            {F('Retención fiscal', false, undefined,
+              <select value={form.retencion_fiscal} onChange={e => set('retencion_fiscal', Number(e.target.value))} style={sel()}>
+                <option value={0}>0%</option>
+                <option value={19}>19%</option>
+                <option value={21}>21%</option>
+                <option value={23}>23%</option>
+                <option value={27}>27%</option>
+              </select>
+            )}
+          </div>
+          {renderPrestamoPreview()}
+        </>
+      );
+    }
 
     if (tipoUI === 'plan_pp') return (
       <div style={row2}>
@@ -462,8 +630,13 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
           )}
         </div>
         <div style={row2}>
-          {AccountSel('Cuenta origen', 'cuenta_cargo_id', true)}
+          {F('Dividendo anual est. (€/título)', false, undefined,
+            <input type="number" step="0.0001" min={0} value={form.dividendo_anual_estimado || ''} onChange={e => set('dividendo_anual_estimado', parseFloat(e.target.value) || 0)} style={monoInp()} placeholder="1.20" />
+          )}
           {AccountSel('Cuenta cobro', 'cuenta_cobro_id', true)}
+        </div>
+        <div style={row2}>
+          {AccountSel('Cuenta origen', 'cuenta_cargo_id', true)}
         </div>
       </>
     );
@@ -490,6 +663,9 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
           {F('Valor actual total', true, errors.valor_actual,
             <input type="number" step="0.01" value={form.valor_actual || ''} onChange={e => set('valor_actual', parseFloat(e.target.value) || 0)} style={monoInp(errors.valor_actual)} placeholder="35000.00" />
           )}
+          {AccountSel('Cuenta origen', 'cuenta_cargo_id', true)}
+        </div>
+        <div style={row2}>
           {AccountSel('Cuenta cobro (venta)', 'cuenta_cobro_id', true)}
         </div>
       </>
@@ -608,11 +784,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
           {/* Type tabs */}
-          <div style={{
-            display: 'flex',
-            padding: '10px 20px 0',
-            gap: '4px',
-          }}>
+          <div style={{ display: 'flex', padding: '10px 20px 0', gap: '4px' }}>
             {(Object.keys(TIPO_LABELS) as TipoUI[]).map(t => (
               <button
                 key={t}
@@ -637,14 +809,14 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
             ))}
           </div>
 
-          {/* Fields area — no overflow, fixed layout */}
+          {/* Fields — no overflow */}
           <div style={{
             padding: '14px 20px',
             display: 'flex',
             flexDirection: 'column',
             gap: '10px',
           }}>
-            {/* Nombre + Entidad: always first row */}
+            {/* Nombre + Entidad: always first */}
             <div style={row2}>
               {F('Nombre', true, errors.nombre,
                 <input
@@ -666,7 +838,7 @@ const PosicionForm: React.FC<PosicionFormProps> = ({ posicion, onSave, onClose }
               )}
             </div>
 
-            {/* Type-specific fields — conditional render, not display:none */}
+            {/* Type-specific — conditional render, not display:none */}
             {renderFields()}
           </div>
 
