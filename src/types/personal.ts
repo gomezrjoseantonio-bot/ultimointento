@@ -271,13 +271,29 @@ export interface PlanPensionInversion {
   personalDataId: number;
   nombre: string;
   tipo: 'plan-pensiones' | 'inversion' | 'fondo-indexado' | 'acciones' | 'otros';
-  aportacionesRealizadas: number;
+  entidad?: string;                    // entidad gestora (Orange, VidaCaixa...)
+  fechaApertura?: string;              // cuándo se abrió el plan
+  aportacionesRealizadas: number;      // total acumulado (compatibilidad)
   unidades?: number;
   valorCompra: number;
   valorActual: number;
   titularidad: 'yo' | 'pareja' | 'ambos';
   aportacionPeriodica?: AportacionPeriodica;
   esHistorico: boolean; // true for historical investments without periodic contributions
+
+  // historial de aportaciones por año
+  historialAportaciones?: Record<number, {
+    titular: number;      // aportación del titular en el año
+    empresa: number;      // aportación de la empresa en el año
+    total: number;        // titular + empresa
+    fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
+  }>;
+
+  // vinculación a nómina y empresa
+  nominaVinculadaId?: number;
+  empresaNif?: string;
+  empresaNombre?: string;
+
   fechaCreacion: string;
   fechaActualizacion: string;
 }
