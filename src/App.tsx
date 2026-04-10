@@ -143,7 +143,7 @@ function App() {
       .then(() => fixReparacionesDuplicadas())
       .then(() => migrarPlanesDuplicados())
       .catch((error) => {
-        console.error('[ATLAS] Error inicializando IndexedDB o migración gastos:', error);
+        console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales (gastos, reparaciones duplicadas, planes duplicados):', error);
       });
 
     const cleanupTasks = [

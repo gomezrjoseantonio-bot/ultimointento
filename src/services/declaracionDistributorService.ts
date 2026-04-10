@@ -765,16 +765,26 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
   const ahora = new Date().toISOString();
   const totalAño = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
 
-  // Buscar plan existente por NIF empresa o por nombre base (sin año)
+  // Buscar plan existente: primero por NIF, luego por nombre empresa, luego por nombre base normalizado
+  const nombreBaseNuevo = (pp.nombreEmpleador ?? '').replace(/\s*\(\d{4}\)\s*/, '').trim();
   const planes = await db.getAll('planesPensionInversion');
   const planExistente = planes.find((p) => {
     if (p.tipo !== 'plan-pensiones') return false;
     if (pp.nifEmpleador && p.empresaNif === pp.nifEmpleador) return true;
     if (pp.nombreEmpleador && p.empresaNombre === pp.nombreEmpleador) return true;
+    // Fallback: comparar nombre normalizado para capturar registros legacy sin empresaNif/empresaNombre
+    if (nombreBaseNuevo) {
+      const nombrePNorm = typeof p.nombre === 'string' ? p.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim() : '';
+      if (nombrePNorm === nombreBaseNuevo) return true;
+    }
     return false;
   });
 
   if (planExistente) {
+    // Backfill de campos empresa si el registro legacy no los tenía
+    if (!planExistente.empresaNif && pp.nifEmpleador) planExistente.empresaNif = pp.nifEmpleador;
+    if (!planExistente.empresaNombre && pp.nombreEmpleador) planExistente.empresaNombre = pp.nombreEmpleador;
+
     // ACTUALIZAR: añadir/sobrescribir año en el historial
     if (!planExistente.historialAportaciones) {
       planExistente.historialAportaciones = {};
@@ -786,8 +796,8 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
       fuente: 'xml_aeat',
     };
     // Recalcular acumulado desde el historial completo
-    planExistente.aportacionesRealizadas = Object.values(planExistente.historialAportaciones)
-      .reduce((sum: number, a: { total: number }) => sum + a.total, 0);
+    const entradas = Object.values(planExistente.historialAportaciones) as Array<{ total: number }>;
+    planExistente.aportacionesRealizadas = entradas.reduce((sum, a) => sum + a.total, 0);
     planExistente.fechaActualizacion = ahora;
     await db.put('planesPensionInversion', planExistente);
   } else {
@@ -797,7 +807,6 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
       personalDataId: perfil.id,
       nombre: nombreBase,
       tipo: 'plan-pensiones',
-      entidad: pp.nombreEmpleador,
       empresaNif: pp.nifEmpleador,
       empresaNombre: pp.nombreEmpleador,
       aportacionesRealizadas: totalAño,

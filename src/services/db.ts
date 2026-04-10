@@ -2491,9 +2491,12 @@ export const migrarPlanesDuplicados = async (): Promise<void> => {
     const db = await initDB();
     const planes = await db.getAll('planesPensionInversion');
 
+    // Solo operar sobre planes de pensiones, no sobre inversiones del mismo store
+    const planesPension = planes.filter((p) => p.tipo === 'plan-pensiones');
+
     // Agrupar por empresa: NIF si existe, o nombre base sin "(YYYY)"
-    const grupos: Record<string, typeof planes> = {};
-    for (const plan of planes) {
+    const grupos: Record<string, typeof planesPension> = {};
+    for (const plan of planesPension) {
       const key =
         plan.empresaNif ??
         (typeof plan.nombre === 'string' ? plan.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim() : 'unknown');
@@ -2510,23 +2513,37 @@ export const migrarPlanesDuplicados = async (): Promise<void> => {
       if (!principal.historialAportaciones) principal.historialAportaciones = {};
 
       for (const plan of grupo) {
-        const yearMatch = typeof plan.nombre === 'string' ? plan.nombre.match(/\((\d{4})\)/) : null;
-        const año = yearMatch ? parseInt(yearMatch[1]) : null;
-        if (año && !principal.historialAportaciones[año]) {
-          principal.historialAportaciones[año] = {
-            titular: 0,
-            empresa: 0,
-            total: plan.aportacionesRealizadas ?? 0,
-            fuente: 'xml_aeat',
-          };
+        // Fusionar historialAportaciones existente si el registro ya tenía uno
+        if (plan.historialAportaciones) {
+          for (const [yearKey, entry] of Object.entries(plan.historialAportaciones)) {
+            const año = Number(yearKey);
+            if (!principal.historialAportaciones[año]) {
+              principal.historialAportaciones[año] = entry as {
+                titular: number; empresa: number; total: number; fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
+              };
+            }
+          }
+        } else {
+          // Registro legacy sin historial: extraer año del nombre si lo tiene
+          const yearMatch = typeof plan.nombre === 'string' ? plan.nombre.match(/\((\d{4})\)/) : null;
+          const año = yearMatch ? parseInt(yearMatch[1]) : null;
+          if (año && !principal.historialAportaciones[año]) {
+            principal.historialAportaciones[año] = {
+              titular: 0,
+              empresa: 0,
+              total: plan.aportacionesRealizadas ?? 0,
+              fuente: 'xml_aeat',
+            };
+          }
         }
       }
 
-      // Recalcular acumulado desde el historial
-      principal.aportacionesRealizadas = Object.values(principal.historialAportaciones).reduce(
-        (sum: number, a: { total: number }) => sum + a.total,
-        0
-      );
+      // Recalcular acumulado desde el historial fusionado
+      const entradas = Object.values(principal.historialAportaciones) as Array<{ total: number }>;
+      principal.aportacionesRealizadas = entradas.length > 0
+        ? entradas.reduce((sum, a) => sum + a.total, 0)
+        : principal.aportacionesRealizadas;
+
       // Limpiar año del nombre base si lo tenía
       if (typeof principal.nombre === 'string') {
         principal.nombre = principal.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim();
@@ -2535,7 +2552,7 @@ export const migrarPlanesDuplicados = async (): Promise<void> => {
 
       await db.put('planesPensionInversion', principal);
 
-      // Borrar duplicados
+      // Borrar duplicados (todos menos el principal)
       for (const plan of grupo.slice(1)) {
         if (plan.id != null) await db.delete('planesPensionInversion', plan.id);
       }
