@@ -4,7 +4,7 @@ import { User, Settings } from 'lucide-react';
 import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import EmptyState from '../../../../components/common/EmptyState';
 import KpiExcedente from './components/KpiExcedente';
-import LateralDesglose from './components/LateralDesglose';
+import LateralDesglose, { type CosteVida } from './components/LateralDesglose';
 import GraficaHistorica, { type DatoAnual } from './components/GraficaHistorica';
 import TablaHistorial, { type FilaHistorial } from './components/TablaHistorial';
 import DrilldownMensual, { type DatoMensual } from './components/DrilldownMensual';
@@ -16,7 +16,18 @@ import { patronGastosPersonalesService } from '../../../../services/patronGastos
 import { prestamosService } from '../../../../services/prestamosService';
 import { treasuryOverviewService } from '../../../../services/treasuryOverviewService';
 import type { TreasuryYearSummary } from '../../../../services/treasuryOverviewService';
-import type { PersonalData, PersonalModuleConfig } from '../../../../types/personal';
+import type { PersonalData, PersonalModuleConfig, ResumenPersonalMensual } from '../../../../types/personal';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  vivienda: 'Vivienda',
+  alimentacion: 'Alimentación',
+  transporte: 'Transporte',
+  ocio: 'Ocio',
+  salud: 'Salud',
+  seguros: 'Seguros',
+  educacion: 'Educación',
+  otros: 'Otros',
+};
 
 const MESES_LABEL = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -62,13 +73,14 @@ function fromTreasury(t: TreasuryYearSummary): AñoData {
   const neto = t.nominaNeta + t.autonomoNeto;
   // bruto no disponible en el nuevo interface — se aproxima con neto para display
   const bruto = neto;
-  // Reconstruct net financing flow from split fields (hipotecas + personales)
-  const subtotalFinanciacion =
-    (t.prestamosPersonalesRecibidos + t.hipotecasRecibidas)
-    - (t.cuotasPrestamosPersonales + t.cuotasHipotecas + t.cancelacionesHipotecas);
-  const financiacion = Math.max(0, -subtotalFinanciacion);
-  // Living expense: accumulated residue distributed as monthly average
-  const gastoVida = Math.max(0, t.gastoPersonalEstimado);
+  // Personal financing: only outflows (cuotas paid), not netted with loans received
+  const financiacion = t.cuotasPrestamosPersonales;
+  const subtotalFinanciacion = -financiacion;
+  // Living expense: prefer confirmed real data from Tesorería; fallback to estimate
+  const tieneGastoReal = t.gastoPersonalReal > 0;
+  const gastoVida = tieneGastoReal
+    ? t.gastoPersonalReal
+    : Math.max(0, t.gastoPersonalEstimado);
   return {
     año: t.año,
     bruto,
@@ -79,7 +91,7 @@ function fromTreasury(t: TreasuryYearSummary): AñoData {
     financiacion,
     subtotalFinanciacion,
     fuente: t.fuente === 'xml_aeat' ? 'AEAT' : t.fuente === 'atlas_nativo' ? 'ATLAS' : null,
-    gastoVidaEstimado: t.fuente !== 'xml_aeat',
+    gastoVidaEstimado: !tieneGastoReal,
   };
 }
 
@@ -98,6 +110,8 @@ const PersonalSupervisionPage: React.FC = () => {
   const [wizardOtros, setWizardOtros] = useState(0);
   const [gastoVidaAnual, setGastoVidaAnual] = useState(0);
   const [gastoVidaConfigurado, setGastoVidaConfigurado] = useState(false);
+  const [costesVidaCategoria, setCostesVidaCategoria] = useState<CosteVida[]>([]);
+  const [resumenMensual, setResumenMensual] = useState<ResumenPersonalMensual[]>([]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -130,35 +144,58 @@ const PersonalSupervisionPage: React.FC = () => {
       const xmlAños = new Set(historicalFromTreasury.map((d) => d.año));
 
       // ── 2. Wizard data for current year and LateralDesglose ──
-      let gastoMensual = 0;
+
+      // Gastos de vida: read real categories from patronGastosPersonales
+      let gastoAnual = 0;
       try {
-        gastoMensual = await patronGastosPersonalesService.calcularTotalMensual(moduleConfig.personalDataId);
+        const patrones = await patronGastosPersonalesService.getPatrones(moduleConfig.personalDataId);
+        const activos = patrones.filter(p => p.activo && p.importe > 0);
+        const porCategoria: Record<string, number> = {};
+        for (const p of activos) {
+          const cat = p.categoria || 'otros';
+          const mensual = patronGastosPersonalesService.calcularImporteMensual(p);
+          porCategoria[cat] = (porCategoria[cat] || 0) + mensual * 12;
+        }
+        gastoAnual = Math.round(Object.values(porCategoria).reduce((s, v) => s + v, 0));
+        const categorias: CosteVida[] = Object.entries(porCategoria)
+          .filter(([, v]) => v > 0)
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, importe]) => ({
+            nombre: CATEGORY_LABELS[cat] || cat,
+            importe: Math.round(importe),
+            iconKey: cat,
+          }));
+        setCostesVidaCategoria(categorias);
       } catch { /* no expense data */ }
-      const gastoAnual = Math.round(gastoMensual * 12);
       setGastoVidaAnual(gastoAnual);
       setGastoVidaConfigurado(gastoAnual > 0);
 
+      // Financiación: personal loans only (unified filter with treasuryOverviewService)
       let financiacionAnual = 0;
       try {
         const allPrestamos = await prestamosService.getAllPrestamos();
+        const esHipoteca = (p: any) =>
+          p.ambito === 'INMUEBLE' || (p.inmuebleId && p.inmuebleId !== 'standalone');
         const personales = allPrestamos.filter(
-          (p) => (p.ambito === 'PERSONAL' || p.finalidad === 'PERSONAL') && p.activo !== false
+          (p) => !esHipoteca(p) && p.activo !== false
         );
         for (const p of personales) {
           try {
             const plan = await prestamosService.getPaymentPlan(p.id);
             const periodos = plan?.periodos;
-            const cuotas = Array.isArray(periodos)
-              ? periodos
-                  .map((periodo) => Number(periodo?.cuota ?? 0))
-                  .filter((cuota) => Number.isFinite(cuota) && cuota > 0)
-              : [];
-            if (cuotas.length > 0) {
-              const media = cuotas.reduce((t, c) => t + c, 0) / cuotas.length;
-              financiacionAnual += Math.round(media * 12);
+            if (Array.isArray(periodos)) {
+              // Sum cuotas for the current year only
+              const cuotasAño = periodos.filter((periodo: any) => {
+                const fecha = periodo?.fechaCargo;
+                return fecha && new Date(fecha).getFullYear() === AÑO_ACTUAL;
+              });
+              financiacionAnual += cuotasAño.reduce(
+                (sum: number, periodo: any) => sum + (Number(periodo?.cuota) || 0), 0
+              );
             }
           } catch { /* no plan */ }
         }
+        financiacionAnual = Math.round(financiacionAnual);
       } catch { /* no loan data */ }
 
       let autonomoAnual = 0;
@@ -179,15 +216,18 @@ const PersonalSupervisionPage: React.FC = () => {
       } catch { /* no otros ingresos */ }
       setWizardOtros(otrosAnual);
 
+      // Monthly salary data — store per-month for drill-down
       let nominaAnual = 0;
+      let resumenAnualData: ResumenPersonalMensual[] = [];
       try {
-        const resumenAnual = await personalResumenService.getResumenAnual(
+        resumenAnualData = await personalResumenService.getResumenAnual(
           moduleConfig.personalDataId,
           AÑO_ACTUAL
         );
-        nominaAnual = resumenAnual.reduce((s, r) => s + r.ingresos.nomina, 0);
+        nominaAnual = resumenAnualData.reduce((s, r) => s + r.ingresos.nomina, 0);
       } catch { /* no resumen data */ }
       setWizardNominaNeta(nominaAnual);
+      setResumenMensual(resumenAnualData);
 
       // Current year entry: use treasury XML if available, else wizard estimate.
       const currentTreasury = treasuryData.find((t) => t.año === AÑO_ACTUAL && t.fuente === 'xml_aeat');
@@ -291,22 +331,29 @@ const PersonalSupervisionPage: React.FC = () => {
     const d = datosAnuales.find((x) => x.año === año);
     if (!d) return [];
 
-    const netoMes = Math.round(d.neto / 12);
+    // Use real monthly salary distribution when available (current year)
+    const tieneResumenMensual = año === AÑO_ACTUAL && resumenMensual.length === 12;
     const gastoMes = Math.round(d.gastoVida / 12);
     const finMes = Math.round(d.financiacion / 12);
-    const nominaMes = Math.round(d.nominaNeta / 12);
-    const autoMes = Math.round(d.autonomoNeto / 12);
 
-    return MESES_LABEL.map((label, i) => ({
-      mes: i + 1,
-      label,
-      neto: netoMes,
-      gastoVida: gastoMes,
-      financiacion: finMes,
-      excedente: netoMes - gastoMes - finMes,
-      nomina: nominaMes,
-      autonomo: autoMes,
-    }));
+    return MESES_LABEL.map((label, i) => {
+      const rm = tieneResumenMensual ? resumenMensual[i] : null;
+      const nominaMes = rm ? Math.round(rm.ingresos.nomina) : Math.round(d.nominaNeta / 12);
+      const autoMes = rm ? Math.round(rm.ingresos.autonomo) : Math.round(d.autonomoNeto / 12);
+      const otrosMes = rm ? Math.round(rm.ingresos.otros) : 0;
+      const netoMes = nominaMes + autoMes + otrosMes;
+
+      return {
+        mes: i + 1,
+        label,
+        neto: netoMes,
+        gastoVida: gastoMes,
+        financiacion: finMes,
+        excedente: netoMes - gastoMes - finMes,
+        nomina: nominaMes,
+        autonomo: autoMes,
+      };
+    });
   };
 
   // ── Render ──
@@ -371,7 +418,12 @@ const PersonalSupervisionPage: React.FC = () => {
           }
         />
         <div className="p-6">
-          <DrilldownMensual año={vista.año} datos={datosMes} onBack={handleBackAnual} />
+          <DrilldownMensual
+            año={vista.año}
+            datos={datosMes}
+            costesVidaCategoria={costesVidaCategoria}
+            onBack={handleBackAnual}
+          />
         </div>
       </div>
     );
@@ -485,24 +537,10 @@ const PersonalSupervisionPage: React.FC = () => {
                 vacio: true,
               }] : []),
             ]}
-            costesVida={[
-              {
-                nombre: 'Alquiler',
-                meta: personalData?.comunidadAutonoma || undefined,
-                importe: gastoVidaAnual > 0 ? Math.round(gastoVidaAnual * 0.45) : null,
-                iconKey: 'alquiler',
-              },
-              {
-                nombre: 'Alimentación',
-                importe: gastoVidaAnual > 0 ? Math.round(gastoVidaAnual * 0.30) : null,
-                iconKey: 'alimentacion',
-              },
-              {
-                nombre: 'Seguros + suministros',
-                importe: gastoVidaAnual > 0 ? Math.round(gastoVidaAnual * 0.25) : null,
-                iconKey: 'seguros',
-              },
-            ]}
+            costesVida={costesVidaCategoria.length > 0
+              ? costesVidaCategoria
+              : [{ nombre: 'Sin configurar', importe: null, iconKey: 'otros' }]
+            }
             financiacion={refData?.financiacion || null}
             financiacionPct={
               refData && refData.neto > 0 && refData.financiacion > 0
