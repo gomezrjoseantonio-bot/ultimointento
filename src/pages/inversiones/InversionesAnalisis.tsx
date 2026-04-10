@@ -17,8 +17,10 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   Star,
   Activity,
+  Archive,
 } from 'lucide-react';
 import {
   LineChart,
@@ -38,6 +40,8 @@ import {
 } from 'recharts';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
+import { planesInversionService } from '../../services/planesInversionService';
+import type { PlanPensionInversion } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
@@ -82,6 +86,8 @@ type PositionRow = {
   peso: number;
   color: string;
   tag: string | null;
+  fechaCompra: string | null;
+  duracionMeses: number | null;
 };
 
 const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
@@ -117,58 +123,125 @@ const calculateEstimatedCagr = (position: PosicionInversion): number => {
 };
 
 const resolveAnnualReturn = (position: PosicionInversion): number => {
+  // For periodic-yield types (loans, deposits, remunerated accounts): use the configured interest rate
+  const tiposRendimientoPeriodico = ['prestamo_p2p', 'deposito_plazo', 'deposito', 'cuenta_remunerada'];
+  if (tiposRendimientoPeriodico.includes(position.tipo)) {
+    const rendObj = (position as any).rendimiento;
+    if (rendObj && typeof rendObj === 'object' && Number.isFinite(Number(rendObj.tasa_interes_anual))) {
+      return Number(rendObj.tasa_interes_anual);
+    }
+  }
+
+  // For market-valued assets: CAGR based on value appreciation
   const estimatedCagr = calculateEstimatedCagr(position);
   if (Number.isFinite(estimatedCagr) && Math.abs(estimatedCagr) > 0.0001) {
     return estimatedCagr;
   }
 
-  const rendimientoPersistido = Number((position as any).rendimiento);
-  return Number.isFinite(rendimientoPersistido) ? rendimientoPersistido : 0;
+  // Fallback: try extracting rate from rendimiento object (any type)
+  const rendObj = (position as any).rendimiento;
+  if (rendObj && typeof rendObj === 'object' && Number.isFinite(Number(rendObj.tasa_interes_anual))) {
+    return Number(rendObj.tasa_interes_anual);
+  }
+
+  return 0;
 };
 
 const buildEvolucionInversiones = (positions: PositionRow[]) => {
   const currentYear = new Date().getFullYear();
-  const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
-  const aportado = positions.reduce((sum, p) => sum + p.aportado, 0);
-  const valor = positions.reduce((sum, p) => sum + p.valor, 0);
 
-  return years.map((year, index) => {
-    const progress = (index + 1) / years.length;
-    return {
-      year: String(year),
-      aportado: Math.round(aportado * progress),
-      valor: Math.round(aportado + (valor - aportado) * progress),
-    };
-  });
+  // Find the earliest real purchase year from positions
+  const fechasCompra = positions
+    .map(p => p.fechaCompra ? new Date(p.fechaCompra).getFullYear() : NaN)
+    .filter(y => y > 2000 && y <= currentYear);
+
+  if (fechasCompra.length === 0 && positions.length > 0) {
+    // No purchase dates available — show only the current year
+    const totalAportado = positions.reduce((sum, p) => sum + p.aportado, 0);
+    const totalValor = positions.reduce((sum, p) => sum + p.valor, 0);
+    return [{ year: String(currentYear), aportado: totalAportado, valor: totalValor }];
+  }
+
+  const primerAño = Math.min(...fechasCompra);
+
+  // Build real data points per year based on when positions were created
+  const result: { year: string; aportado: number; valor: number }[] = [];
+  let acumuladoAportado = 0;
+
+  for (let año = primerAño; año <= currentYear; año++) {
+    // Sum contributions from positions created in or before this year
+    const aportadoAño = positions
+      .filter(p => {
+        if (!p.fechaCompra) return false;
+        return new Date(p.fechaCompra).getFullYear() === año;
+      })
+      .reduce((sum, p) => sum + p.aportado, 0);
+
+    acumuladoAportado += aportadoAño;
+
+    result.push({
+      year: String(año),
+      aportado: acumuladoAportado,
+      valor: año === currentYear
+        ? positions.reduce((sum, p) => sum + p.valor, 0)
+        : acumuladoAportado, // past years without stored valuations: use cost basis
+    });
+  }
+
+  return result;
 };
 
-const buildProyInv = (years: number, base: number, aportado: number) => {
-  const rate = 0.08;
+const buildProyInv = (years: number, base: number, aportado: number, portfolioRate: number) => {
+  const rate = portfolioRate / 100;
   return Array.from({ length: years + 1 }, (_, i) => ({
     year: String(new Date().getFullYear() + i),
     valor: Math.round(base * Math.pow(1 + rate, i)),
-    coste: Math.round(aportado * (1 + i * 0.03)),
+    coste: aportado, // constant — we don't assume future contributions
   }));
 };
 
 const buildIndividualEvolucion = (position: PositionRow) => {
   const currentYear = new Date().getFullYear();
-  const hist = Array.from({ length: 5 }, (_, i) => {
-    const progress = (i + 1) / 5;
-    return {
-      year: String(currentYear - 4 + i),
-      hist: Math.round(position.aportado + (position.valor - position.aportado) * progress),
-      proy: null as number | null,
-    };
-  });
+  const añoCompra = position.fechaCompra
+    ? new Date(position.fechaCompra).getFullYear()
+    : NaN;
+  const añoInicio = (añoCompra > 2000 && añoCompra <= currentYear) ? añoCompra : currentYear;
 
-  const proy = Array.from({ length: 3 }, (_, i) => ({
-    year: String(currentYear + (i + 1) * 2),
-    hist: null as number | null,
-    proy: Math.round(position.valor * Math.pow(1 + Math.max(0.01, position.rentAnual / 100), i + 1)),
-  }));
+  // Historical: only from actual purchase year to today
+  const hist: { year: string; hist: number | null; proy: number | null }[] = [];
+  for (let año = añoInicio; año <= currentYear; año++) {
+    hist.push({
+      year: String(año),
+      hist: año === añoInicio ? position.aportado
+        : año === currentYear ? position.valor
+        : position.aportado, // past years without stored valuations: use cost basis
+      proy: año === currentYear ? position.valor : null,
+    });
+  }
 
-  hist[hist.length - 1].proy = position.valor;
+  // Projection: use real rentAnual (now includes interest rate for loans)
+  const tasa = Math.max(0, position.rentAnual / 100);
+
+  // For loans with a maturity, limit projection horizon
+  const tiposConVencimiento = ['prestamo_p2p', 'deposito_plazo', 'deposito', 'cuenta_remunerada'];
+  const esRentaFija = tiposConVencimiento.includes(position.tipo);
+  const maxAñosProyeccion = esRentaFija && position.duracionMeses
+    ? Math.ceil(position.duracionMeses / 12)
+    : 10;
+
+  const proy: { year: string; hist: number | null; proy: number | null }[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const añoTarget = currentYear + i * 2;
+    if (añoTarget > currentYear + maxAñosProyeccion) break;
+    proy.push({
+      year: String(añoTarget),
+      hist: null,
+      proy: esRentaFija
+        ? position.valor // Loans/deposits: principal doesn't grow in market value
+        : Math.round(position.valor * Math.pow(1 + tasa, i * 2)),
+    });
+  }
+
   return [...hist, ...proy];
 };
 
@@ -230,17 +303,45 @@ function ChartCard({ title, sub, children, right }: { title: string; sub?: strin
 
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
-function TabResumen({ positions }: { positions: PositionRow[] }) {
+function TabResumen({ positions, planesPension }: { positions: PositionRow[]; planesPension: PlanPensionInversion[] }) {
   const [horizon, setHorizon] = useState(10);
-  const safePositions = positions.length ? positions : [{
-    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0, rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
-  }];
+  const emptyRow: PositionRow = {
+    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0,
+    rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
+    fechaCompra: null, duracionMeses: null,
+  };
+  const safePositions = positions.length ? positions : [emptyRow];
   const totalAportado = safePositions.reduce((sum, p) => sum + p.aportado, 0);
   const valorTotal = safePositions.reduce((sum, p) => sum + p.valor, 0);
   const ganancia = valorTotal - totalAportado;
   const rentabilidadTotal = totalAportado > 0 ? (ganancia / totalAportado) * 100 : 0;
-  const proyData = useMemo(() => buildProyInv(horizon, valorTotal, totalAportado), [horizon, totalAportado, valorTotal]);
-  const best = safePositions.reduce((a, b) => (a.rentPct > b.rentPct ? a : b), safePositions[0]);
+
+  // Weighted annual return (calculated, not hardcoded)
+  const rentAnualPonderada = valorTotal > 0
+    ? safePositions.reduce((sum, p) => sum + p.rentAnual * (p.valor / valorTotal), 0)
+    : 0;
+
+  const proyData = useMemo(
+    () => buildProyInv(horizon, valorTotal, totalAportado, rentAnualPonderada),
+    [horizon, totalAportado, valorTotal, rentAnualPonderada],
+  );
+
+  // Best position: by annual return (not just capital gain)
+  const best = safePositions.reduce((a, b) => (a.rentAnual > b.rentAnual ? a : b), safePositions[0]);
+
+  // Most stable position: fixed-income types first, then lowest |rentPct| variance
+  const tiposRentaFija = ['prestamo_p2p', 'deposito_plazo', 'deposito', 'cuenta_remunerada'];
+  const posicionEstable = (() => {
+    const fijas = safePositions.filter(p => tiposRentaFija.includes(p.tipo));
+    if (fijas.length) return fijas.reduce((a, b) => (a.rentAnual > b.rentAnual ? a : b));
+    // Fallback: position with lowest absolute volatility proxy (smallest |rentPct - rentAnual|)
+    return safePositions.reduce((a, b) =>
+      Math.abs(a.rentPct - a.rentAnual) <= Math.abs(b.rentPct - b.rentAnual) ? a : b
+    );
+  })();
+
+  // Calculated multiple
+  const multiplo = totalAportado > 0 ? (valorTotal / totalAportado) : 0;
 
   return (
     <div>
@@ -248,8 +349,8 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
       <div style={{ background: `linear-gradient(135deg, ${C.blue} 0%, #0D4A8A 100%)`, borderRadius: 12, padding: '20px 24px', marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff' }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', opacity: .7, marginBottom: 6 }}>Mejor posición · {best.alias}</div>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 38, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>{fmtPct(best.rentPct)}</div>
-          <div style={{ fontSize: 13, opacity: .75 }}>Rentabilidad total · {best.broker} · {best.tipo}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 38, fontWeight: 600, lineHeight: 1, marginBottom: 4 }}>{fmtPct(best.rentAnual)}</div>
+          <div style={{ fontSize: 13, opacity: .75 }}>Rentabilidad anual · {best.broker} · {best.tipo}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: 11, opacity: .7, marginBottom: 4 }}>Valor posición</div>
@@ -270,8 +371,8 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 16 }}>
         {[
           { label: 'Rentabilidad total portfolio', val: fmtPct(rentabilidadTotal), meta: 'Desde primera aportación' },
-          { label: 'Rentabilidad anualizada', val: '+8,2%', meta: '/ año · CAGR estimado' },
-          { label: 'Mejor posición', val: `${best.alias} +${best.rentPct.toFixed(1)}%`, meta: `${best.rentAnual.toFixed(2)}% / año · ${best.broker}` },
+          { label: 'Rentabilidad anualizada', val: fmtPct(rentAnualPonderada), meta: '/ año · media ponderada' },
+          { label: 'Mejor posición', val: `${best.alias} ${fmtPct(best.rentAnual)}`, meta: `${best.rentAnual.toFixed(2)}% / año · ${best.broker}` },
         ].map(k => (
           <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
@@ -285,7 +386,7 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         <ChartCard
           title="Proyección del portfolio"
-          sub="Valor proyectado a tasa histórica ~15%/año"
+          sub={`Valor proyectado a ${fmtPct(rentAnualPonderada)}/año`}
           right={
             <div style={{ display: 'inline-flex', gap: 2, background: C.n100, borderRadius: 8, padding: 3 }}>
               {[5, 10, 20].map(y => (
@@ -313,15 +414,39 @@ function TabResumen({ positions }: { positions: PositionRow[] }) {
           <ResultRow label="Valor actual" value={fmt(valorTotal)} />
           <ResultRow label="Ganancia no realizada" value={`${ganancia >= 0 ? '+' : ''}${fmt(ganancia)}`} valueColor={C.pos} />
           <ResultRow label="Rentabilidad total" value={fmtPct(rentabilidadTotal)} valueColor={C.pos} />
-          <ResultRow label="Mejor posición" value={`${best.alias}`} />
-          <ResultRow label="Posición más estable" value="Smartflip P2P" />
+          <ResultRow label="Mejor posición" value={best.alias} />
+          <ResultRow label="Posición más estable" value={posicionEstable.alias} />
           <div style={{ height: 1, background: C.n300, margin: '8px 0' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: C.n700 }}>Múltiplo sobre capital</span>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>× 1,31</span>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 20, fontWeight: 600, color: C.blue }}>
+              {totalAportado > 0 ? `× ${multiplo.toFixed(2).replace('.', ',')}` : '—'}
+            </span>
           </div>
         </div>
       </div>
+
+      {/* Planes de pensión summary */}
+      {planesPension.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginTop: 20 }}>
+          {(() => {
+            const totalPensionAportado = planesPension.reduce((sum, p) => sum + (p.aportacionesRealizadas || 0), 0);
+            const totalPensionValor = planesPension.reduce((sum, p) => sum + ((p.unidades ? p.unidades * p.valorActual : p.valorActual) || 0), 0);
+            const pensionGP = totalPensionValor - totalPensionAportado;
+            return [
+              { label: 'Planes de pensión acum.', val: fmt(totalPensionAportado), meta: `${planesPension.length} plan${planesPension.length > 1 ? 'es' : ''}` },
+              { label: 'Valor actual pensiones', val: totalPensionValor > 0 ? fmt(totalPensionValor) : 'Sin actualizar', meta: 'Último valor conocido' },
+              { label: 'Plusvalía / Minusvalía', val: `${pensionGP >= 0 ? '+' : ''}${fmt(pensionGP)}`, meta: 'Sobre aportaciones realizadas' },
+            ];
+          })().map(k => (
+            <div key={k.label} style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 4 }}>{k.label}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 22, fontWeight: 600, color: C.blue, lineHeight: 1, marginBottom: 4 }}>{k.val}</div>
+              <div style={{ fontSize: 12, color: C.n500 }}>{k.meta}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -334,16 +459,21 @@ function TabCartera({
   onNewPosition,
   onEditPosition,
   positions,
+  closedPositions,
+  planesPension,
 }: {
   onSelectPosition: (id: string) => void;
   onViewAportaciones: (id: string) => void;
   onNewPosition: () => void;
   onEditPosition: (id: string) => void;
   positions: PositionRow[];
+  closedPositions: PosicionInversion[];
+  planesPension: PlanPensionInversion[];
 }) {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
+  const [showClosed, setShowClosed] = useState(false);
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return positions
@@ -493,6 +623,89 @@ function TabCartera({
           </tbody>
         </table>
       </div>
+
+      {/* Planes de pensión */}
+      {planesPension.length > 0 && (
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden', marginTop: 20 }}>
+          <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, fontSize: 15, fontWeight: 700, color: C.n700 }}>
+            Planes de pensión e inversión
+          </div>
+          <div style={{ padding: '8px 20px', fontSize: 11, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>
+            {planesPension.length} plan{planesPension.length > 1 ? 'es' : ''}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Nombre', 'Entidad', 'Tipo', 'Aportado acum.', 'Valor actual', 'Titularidad'].map(col => (
+                  <th key={col} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col.startsWith('Aportado') || col.startsWith('Valor') ? 'right' : 'left' }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {planesPension.map((plan, i) => (
+                <tr key={plan.id ?? i} style={{ borderBottom: i < planesPension.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: C.n700, fontSize: 13 }}>
+                    {plan.nombre}
+                    {plan.esHistorico && <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: C.n100, color: C.n500 }}>Histórico</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.entidad || '—'}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.tipo}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(plan.aportacionesRealizadas || 0)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
+                    {plan.valorActual > 0 ? fmt(plan.unidades ? plan.unidades * plan.valorActual : plan.valorActual) : <span style={{ color: C.n500, fontSize: 11 }}>Sin actualizar</span>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.titularidad}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Posiciones cerradas */}
+      {closedPositions.length > 0 && (
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden', marginTop: 20 }}>
+          <button
+            onClick={() => setShowClosed(!showClosed)}
+            style={{ width: '100%', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', borderBottom: showClosed ? `1px solid ${C.n100}` : 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <Archive size={14} color={C.n500} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: C.n700 }}>Posiciones cerradas</span>
+            <span style={{ fontSize: 12, color: C.n500, marginLeft: 4 }}>({closedPositions.length})</span>
+            <ChevronRight size={14} color={C.n500} style={{ marginLeft: 'auto', transform: showClosed ? 'rotate(90deg)' : 'none', transition: 'transform 150ms' }} />
+          </button>
+          {showClosed && (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Posición', 'Tipo', 'Aportado', 'Último valor', 'G/P'].map(col => (
+                    <th key={col} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col === 'Posición' || col === 'Tipo' ? 'left' : 'right' }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {closedPositions.map((p, i) => {
+                  const gp = p.valor_actual - p.total_aportado;
+                  return (
+                    <tr key={p.id} style={{ borderBottom: i < closedPositions.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{p.nombre}</div>
+                        <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{p.tipo}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.total_aportado)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.valor_actual)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: gp >= 0 ? C.pos : C.neg, fontWeight: 600 }}>
+                        {gp >= 0 ? '+' : ''}{fmt(gp)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -505,10 +718,16 @@ function TabRendimientos({ positions }: { positions: PositionRow[] }) {
   const donutColors = positions.map(p => p.color);
   const rentData = positions.map(p => ({ name: p.alias, rentPct: p.rentPct, rentAnual: p.rentAnual }));
 
+  // Dynamic subtitle from actual chart data range
+  const evolYears = evolucionInv.map(d => d.year);
+  const evolSub = evolYears.length > 1
+    ? `Valor total vs capital aportado · ${evolYears[0]}–${evolYears[evolYears.length - 1]}`
+    : 'Valor total vs capital aportado';
+
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-        <ChartCard title="Evolución del portfolio" sub="Valor total vs capital aportado · 2017–2026">
+        <ChartCard title="Evolución del portfolio" sub={evolSub}>
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={evolucionInv} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
               <CartesianGrid stroke="rgba(200,208,220,.4)" />
@@ -582,7 +801,9 @@ function TabRendimientos({ positions }: { positions: PositionRow[] }) {
 function TabIndividual({ selectedId, positions }: { selectedId: string; positions: PositionRow[] }) {
   const [posId, setPosId] = useState(selectedId || '');
   const safePositions = positions.length ? positions : [{
-    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0, rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
+    id: 'empty', alias: 'Sin datos', broker: '-', tipo: '-', aportado: 0, valor: 0,
+    rentPct: 0, rentAnual: 0, peso: 0, color: C.blue, tag: null,
+    fechaCompra: null, duracionMeses: null,
   }];
   const pos = safePositions.find(p => p.id === posId) ?? safePositions[0];
   const evolData = buildIndividualEvolucion(pos);
@@ -605,7 +826,7 @@ function TabIndividual({ selectedId, positions }: { selectedId: string; position
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Aportado', val: fmt(pos.aportado), sub: 'Capital invertido total', cls: 'past' },
-          { label: 'Hoy', val: fmt(pos.valor), sub: 'Valor estimado · mar 2026', cls: 'present' },
+          { label: 'Hoy', val: fmt(pos.valor), sub: `Valor estimado · ${new Date().toLocaleDateString('es-ES', { month: 'short', year: 'numeric' })}`, cls: 'present' },
           { label: 'Proyección 5 años', val: `~${fmt(Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 5)))}`, sub: `A ${pos.rentAnual.toFixed(2)}% anual`, cls: 'future' },
           { label: 'Proyección 10 años', val: `~${fmt(Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 10)))}`, sub: `A ${pos.rentAnual.toFixed(2)}% anual`, cls: 'future' },
         ].map(t => (
@@ -685,6 +906,8 @@ export default function InversionesAnalisis() {
   const [activeTab, setActiveTab] = useState<Tab>('cartera');
   const [selectedPositionId, setSelectedPositionId] = useState('');
   const [positions, setPositions] = useState<PositionRow[]>([]);
+  const [closedPositions, setClosedPositions] = useState<PosicionInversion[]>([]);
+  const [planesPension, setPlanesPension] = useState<PlanPensionInversion[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showAportacionForm, setShowAportacionForm] = useState(false);
@@ -712,20 +935,30 @@ export default function InversionesAnalisis() {
         peso: Number(peso.toFixed(1)),
         color: colorPalette[index % colorPalette.length],
         tag: null,
+        fechaCompra: p.fecha_compra || p.created_at || null,
+        duracionMeses: p.duracion_meses ?? null,
       };
     });
 
-    const bestIdx = mapped.reduce((best, item, index, arr) => (item.rentPct > arr[best].rentPct ? index : best), 0);
+    const bestIdx = mapped.reduce((best, item, index, arr) => (item.rentAnual > arr[best].rentAnual ? index : best), 0);
     mapped[bestIdx] = { ...mapped[bestIdx], tag: 'Top performer' };
     return mapped;
   };
 
   const refreshPosiciones = useCallback(async () => {
-    const data = await inversionesService.getPosiciones();
-    const mapped = mapPosicionesToRows(data);
+    const { activas, cerradas } = await inversionesService.getAllPosiciones();
+    const mapped = mapPosicionesToRows(activas);
     setPositions(mapped);
+    setClosedPositions(cerradas);
     if (mapped.length && !mapped.some((p) => p.id === selectedPositionId)) {
       setSelectedPositionId(mapped[0].id);
+    }
+    // Load pension plans (personalDataId=1 as default)
+    try {
+      const planes = await planesInversionService.getPlanes(1);
+      setPlanesPension(planes);
+    } catch {
+      setPlanesPension([]);
     }
   }, [selectedPositionId]);
 
@@ -868,7 +1101,7 @@ export default function InversionesAnalisis() {
         </div>
 
         {/* Tab content */}
-        {activeTab === 'resumen'      && <TabResumen positions={positions} />}
+        {activeTab === 'resumen'      && <TabResumen positions={positions} planesPension={planesPension} />}
         {activeTab === 'cartera'      && (
           <TabCartera
             onSelectPosition={handleSelectPosition}
@@ -876,6 +1109,8 @@ export default function InversionesAnalisis() {
             onNewPosition={handleNewPosition}
             onEditPosition={handleEditPosition}
             positions={positions}
+            closedPositions={closedPositions}
+            planesPension={planesPension}
           />
         )}
         {activeTab === 'rendimientos' && <TabRendimientos positions={positions} />}
