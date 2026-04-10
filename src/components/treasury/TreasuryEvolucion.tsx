@@ -1,7 +1,7 @@
 /**
  * TreasuryEvolucion.tsx
  *
- * Multi-year treasury historical overview — 3-block cash-flow table.
+ * Multi-year treasury historical overview — Personal / Inmuebles / Inversiones.
  * Exported in two forms:
  *  - TreasuryEvolucionContent  →  embeddable (no PageHeader), used as tab inside TesoreriaV4
  *  - TreasuryEvolucion         →  standalone page with PageHeader (kept for future use)
@@ -27,6 +27,7 @@ import PageHeader from '../shared/PageHeader';
 import {
   treasuryOverviewService,
   type TreasuryYearSummary,
+  type SaldoActual,
 } from '../../services/treasuryOverviewService';
 
 ChartJS.register(
@@ -59,28 +60,16 @@ const cssVar = (name: string, fallback: string): string => {
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-// Total inflows across all blocks (for chart)
-const calcTotalInflows = (s: TreasuryYearSummary): number =>
-  s.nominaNeta + s.autonomoNeto + s.rentasAlquiler + s.capitalMobiliario + s.devolucionIrpf
-  + s.ventaInmuebles + s.recuperacionInversiones
-  + s.hipotecasRecibidas + s.prestamosRecibidos;
-
-// Total known outflows (excl. gastos personales, for chart)
-const calcTotalOutflows = (s: TreasuryYearSummary): number =>
-  s.gastosInmuebles + s.pagoIrpf
-  + s.compraInmuebles + s.mejorasCapex + s.aportacionesInversiones
-  + s.cuotasPrestamos + s.cancelacionesPrestamos;
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface KpiCardProps { label: string; value: string; sub?: string; positive?: boolean; }
+interface KpiCardProps { label: string; value: string; sub?: string; accent?: boolean; }
 
-const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, positive }) => (
+const KpiCard: React.FC<KpiCardProps> = ({ label, value, sub, accent }) => (
   <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
     <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--grey-400)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
       {label}
     </div>
-    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', color: positive === false ? 'var(--teal-600)' : 'var(--grey-900)', lineHeight: 1.2 }}>
+    <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', color: accent ? 'var(--teal-600)' : 'var(--grey-900)', lineHeight: 1.2 }}>
       {value}
     </div>
     {sub && <div style={{ fontSize: 11, color: 'var(--grey-400)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>{sub}</div>}
@@ -99,18 +88,27 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
   const chartRef = useRef<any>(null);
 
   const [summaries, setSummaries] = useState<TreasuryYearSummary[]>([]);
-  const [saldoActual, setSaldoActual] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  const [saldo, setSaldo]         = useState<SaldoActual>({ cuentas: 0, inversiones: 0, total: 0 });
+  const [loading, setLoading]     = useState(true);
+
+  const [expanded, setExpanded] = useState({
+    personal:    false,
+    inmuebles:   false,
+    inversiones: false,
+  });
+
+  const toggle = (block: keyof typeof expanded) =>
+    setExpanded((prev) => ({ ...prev, [block]: !prev[block] }));
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [data, saldo] = await Promise.all([
+        const [data, s] = await Promise.all([
           treasuryOverviewService.getTreasuryOverview(),
           treasuryOverviewService.getSaldoActual(),
         ]);
-        if (!cancelled) { setSummaries(data); setSaldoActual(saldo); }
+        if (!cancelled) { setSummaries(data); setSaldo(s); }
       } catch (err) {
         console.error('TreasuryEvolucion load error:', err);
       } finally {
@@ -120,36 +118,67 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     return () => { cancelled = true; };
   }, []);
 
-  const totalGastosPersonales = summaries.reduce((s, y) => s + y.gastosPersonales, 0);
+  // ── Derived KPIs ─────────────────────────────────────────────────────────
+
   const añosCargados = summaries.filter((y) => y.fuente === 'xml_aeat').length;
+
+  // Media mensual del gasto personal: derivada del primer año (full=÷12, parcial=÷mesActual)
+  const gastoMensual = useMemo(() => {
+    if (summaries.length === 0) return 0;
+    const now       = new Date();
+    const añoActual = now.getFullYear();
+    const s0        = summaries[0];
+    const mesesAño0 = s0.año < añoActual ? 12 : now.getMonth() + 1;
+    return mesesAño0 > 0 ? s0.gastoPersonalEstimado / mesesAño0 : 0;
+  }, [summaries]);
+
+  // Cuadre: variación acumulada debe converger al saldo actual
+  const variacionAcumulada = summaries.reduce((s, y) => s + y.variacionNeta, 0);
+  const cuadreOk = useMemo(() => {
+    if (saldo.total === 0) return null; // desconocido
+    const diff = Math.abs(variacionAcumulada - saldo.total);
+    return diff / Math.max(1, Math.abs(saldo.total)) < 0.05;
+  }, [variacionAcumulada, saldo.total]);
+
+  // ── Chart ─────────────────────────────────────────────────────────────────
 
   const chartData = useMemo(() => ({
     labels: summaries.map((y) => String(y.año)),
     datasets: [
       {
         type: 'bar' as const,
-        label: 'Entradas',
-        data: summaries.map(calcTotalInflows),
+        label: 'Personal',
+        data: summaries.map((s) => s.subtotalPersonal),
         backgroundColor: cssVar('--navy-900', '#042C5E'),
-        barPercentage: 0.6,
+        barPercentage: 0.55,
         categoryPercentage: 0.7,
         order: 2,
         yAxisID: 'y',
       },
       {
         type: 'bar' as const,
-        label: 'Salidas conocidas',
-        data: summaries.map(calcTotalOutflows),
+        label: 'Inmuebles',
+        data: summaries.map((s) => s.subtotalInmuebles),
         backgroundColor: cssVar('--grey-300', '#C8D0DC'),
-        barPercentage: 0.6,
+        barPercentage: 0.55,
+        categoryPercentage: 0.7,
+        order: 2,
+        yAxisID: 'y',
+      },
+      {
+        type: 'bar' as const,
+        label: 'Inversiones',
+        data: summaries.map((s) => s.subtotalInversiones),
+        backgroundColor: cssVar('--teal-200', '#A7E9F0'),
+        barPercentage: 0.55,
         categoryPercentage: 0.7,
         order: 2,
         yAxisID: 'y',
       },
       {
         type: 'line' as const,
-        label: 'Gastos personales',
-        data: summaries.map((y) => y.gastosPersonales),
+        label: 'Gasto personal estimado',
+        data: summaries.map((s) => -s.gastoPersonalEstimado),
         borderColor: cssVar('--teal-600', '#1DA0BA'),
         backgroundColor: cssVar('--teal-600', '#1DA0BA'),
         pointRadius: 4,
@@ -172,10 +201,12 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     },
     scales: {
       x: {
+        stacked: false,
         grid: { display: false },
         ticks: { font: { family: "'IBM Plex Sans', system-ui, sans-serif", size: 11 }, color: 'var(--grey-500)' },
       },
       y: {
+        stacked: false,
         grid: { color: 'var(--grey-100)' },
         ticks: { font: { family: 'IBM Plex Mono, monospace', size: 10 }, color: 'var(--grey-500)', callback: (v: any) => fmtK(v) },
       },
@@ -189,27 +220,32 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     return <span style={{ color: 'var(--grey-400)', fontSize: 12 }}>—</span>;
   };
 
-  // Render a simple numeric cell (absolute value, 0 = "—")
+  // ── Cell renderers ────────────────────────────────────────────────────────
+
+  // Absolute value cell (0 = "—")
   const fmtCell = (v: number): React.ReactNode => (
-    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--grey-900)' }}>
-      {v === 0 ? '—' : fmtEur(Math.abs(v))}
-    </span>
+    v === 0
+      ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
+      : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--grey-900)' }}>{fmtEur(Math.abs(v))}</span>
   );
 
-  // Render a signed cell with explicit +/- (0 = "—")
-  const fmtSigned = (v: number, opts?: { dim?: boolean }): React.ReactNode => {
-    if (v === 0) return <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>;
-    const color = opts?.dim ? 'var(--grey-400)' : v < 0 ? 'var(--teal-600)' : 'var(--grey-900)';
-    return (
-      <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color }}>
-        {fmtSign(v)}
-      </span>
-    );
+  // Outflow cell — shown in teal with minus sign (0 = "—")
+  const fmtSalida = (v: number): React.ReactNode => (
+    v === 0
+      ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
+      : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>{fmtSign(-v)}</span>
+  );
+
+  // IRPF cell — devolución positive (+), pago negative (−)
+  const fmtIrpf = (dev: number, pago: number): React.ReactNode => {
+    if (dev > 0)  return <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--grey-900)' }}>{fmtSign(dev)}</span>;
+    if (pago > 0) return <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>{fmtSign(-pago)}</span>;
+    return <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>;
   };
 
-  // Render a subtotal cell (bold, separator style)
+  // Subtotal bold cell
   const fmtSubtotal = (v: number): React.ReactNode => (
-    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 600, color: v < 0 ? 'var(--teal-600)' : 'var(--grey-900)' }}>
+    <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, color: v < 0 ? 'var(--teal-600)' : 'var(--grey-900)' }}>
       {v === 0 ? '—' : fmtSign(v)}
     </span>
   );
@@ -230,10 +266,10 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     return <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--grey-400)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>No hay datos de ejercicios fiscales. Importa tus declaraciones XML desde Fiscalidad.</div>;
   }
 
-  // ── Table style helpers ──────────────────────────────────────────────────────
+  // ── Table style helpers ────────────────────────────────────────────────────
 
   const tdBase: React.CSSProperties = {
-    padding: '7px 12px',
+    padding: '6px 12px',
     textAlign: 'right',
     whiteSpace: 'nowrap',
     borderBottom: '1px solid var(--grey-100)',
@@ -245,45 +281,35 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
     color: 'var(--grey-700)',
     fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
   };
-  const tdSubtotalBase: React.CSSProperties = {
+  const tdDetailLabel: React.CSSProperties = {
+    ...tdLabel,
+    paddingLeft: 28,
+    fontSize: 12,
+    color: 'var(--grey-600)',
+  };
+  const tdDetailBase: React.CSSProperties = {
+    ...tdBase,
+    fontSize: 12,
+  };
+  const tdToggleBase: React.CSSProperties = {
     padding: '8px 12px',
     textAlign: 'right',
     whiteSpace: 'nowrap',
     borderTop: '1px solid var(--grey-300)',
     borderBottom: '2px solid var(--grey-200)',
     background: 'var(--grey-50)',
+    cursor: 'pointer',
+    userSelect: 'none',
   };
-  const tdSubtotalLabel: React.CSSProperties = {
-    ...tdSubtotalBase,
+  const tdToggleLabel: React.CSSProperties = {
+    ...tdToggleBase,
     textAlign: 'left',
-    fontSize: 12,
-    fontWeight: 600,
-    color: 'var(--grey-700)',
+    fontSize: 13,
+    fontWeight: 700,
+    color: 'var(--grey-800)',
     fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
   };
 
-  const SectionHeader: React.FC<{ children: string }> = ({ children }) => (
-    <tr>
-      <td
-        colSpan={summaries.length + 1}
-        style={{
-          padding: '10px 12px 4px',
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '.07em',
-          color: 'var(--grey-500)',
-          fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
-          background: 'var(--grey-50)',
-          borderTop: '2px solid var(--grey-200)',
-        }}
-      >
-        {children}
-      </td>
-    </tr>
-  );
-
-  // Separator row between blocks
   const BlockSeparator: React.FC = () => (
     <tr>
       <td colSpan={summaries.length + 1} style={{ height: 4, background: 'var(--grey-50)', borderBottom: '1px solid var(--grey-100)' }} />
@@ -293,26 +319,56 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 40 }}>
 
-      {/* KPI GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
+      {/* KPI GRID — 4 cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: '1px solid var(--grey-200)', borderRadius: 8, background: '#fff', overflow: 'hidden' }}>
         {[
-          { label: 'Gastos personales acumulados', value: fmtEur(totalGastosPersonales), sub: `${summaries.length} años`, positive: true },
-          { label: 'Saldo actual', value: fmtEur(saldoActual), sub: 'Suma de cuentas', positive: true },
-          { label: 'Años cargados', value: String(añosCargados), sub: 'Con XML AEAT', positive: true },
+          {
+            label: 'Gasto personal estimado',
+            value: gastoMensual > 0 ? fmtEur(Math.round(gastoMensual)) + '/mes' : '—',
+            sub: 'Media mensual acumulada',
+          },
+          {
+            label: 'Saldo actual',
+            value: fmtEur(saldo.total),
+            sub: saldo.cuentas === 0 ? 'Introduce saldo en cuentas' : 'Cuentas + inversiones',
+          },
+          {
+            label: 'Años cargados',
+            value: String(añosCargados),
+            sub: 'Con XML AEAT',
+          },
+          {
+            label: 'Cuadre',
+            value: cuadreOk === null ? '—' : cuadreOk ? '✓' : '✗',
+            sub: cuadreOk === null
+              ? 'Introduce el saldo actual'
+              : cuadreOk
+                ? 'Acumulado converge al saldo'
+                : `Desviación: ${fmtEur(Math.abs(variacionAcumulada - saldo.total))}`,
+            accent: cuadreOk === false,
+          },
         ].map((kpi, i) => (
-          <div key={i} style={{ borderRight: i < 2 ? '1px solid var(--grey-200)' : 'none' }}>
-            <KpiCard label={kpi.label} value={kpi.value} sub={kpi.sub} positive={kpi.positive} />
+          <div key={i} style={{ borderRight: i < 3 ? '1px solid var(--grey-200)' : 'none' }}>
+            <KpiCard label={kpi.label} value={kpi.value} sub={kpi.sub} accent={kpi.accent} />
           </div>
         ))}
       </div>
+
+      {/* Nota saldo */}
+      {saldo.cuentas === 0 && (
+        <div style={{ padding: '10px 14px', background: 'var(--navy-50, #F0F4FA)', border: '1px solid var(--navy-100, #D0DDEF)', borderRadius: 6, fontSize: 12, color: 'var(--navy-700, #1C4A8A)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+          Introduce el saldo actual de tus cuentas para refinar el cálculo del gasto personal estimado.
+        </div>
+      )}
 
       {/* CHART */}
       <div style={{ background: '#fff', border: '1px solid var(--grey-200)', borderRadius: 8, padding: '16px 20px 12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 12 }}>
           {[
-            { color: 'var(--navy-900)', label: 'Entradas', bar: true },
-            { color: 'var(--grey-300)', label: 'Salidas conocidas', bar: true },
-            { color: 'var(--teal-600)', label: 'Gastos personales', bar: false },
+            { color: 'var(--navy-900)', label: 'Personal', bar: true },
+            { color: 'var(--grey-300)', label: 'Inmuebles', bar: true },
+            { color: 'var(--teal-200)', label: 'Inversiones', bar: true },
+            { color: 'var(--teal-600)', label: 'Gasto personal estimado', bar: false },
           ].map(({ color, label, bar }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {bar
@@ -327,7 +383,7 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
         </div>
       </div>
 
-      {/* TABLE — 3 blocks */}
+      {/* TABLE — Personal / Inmuebles / Inversiones (colapsable) */}
       <div style={{ background: '#fff', border: '1px solid var(--grey-200)', borderRadius: 8, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
           <thead>
@@ -361,183 +417,202 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
           <tbody>
 
-            {/* ── BLOQUE 1: OPERATIVO ────────────────────────────────────── */}
-            <SectionHeader>Operativo</SectionHeader>
+            {/* ── PERSONAL ──────────────────────────────────────────────── */}
 
-            <tr>
-              <td style={tdLabel}>Nómina neta</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.nominaNeta)}</td>)}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Autónomo neto</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.autonomoNeto)}</td>)}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Rentas alquiler</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.rentasAlquiler)}</td>)}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Capital mobiliario</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.capitalMobiliario)}</td>)}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Devol. / Pago IRPF</td>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.personal}
+              onClick={() => toggle('personal')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('personal'); } }}
+              style={{ cursor: 'pointer' }}
+            >
+              <td style={tdToggleLabel}>
+                <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
+                  {expanded.personal ? '▾' : '▸'}
+                </span>
+                Personal
+              </td>
               {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {fmtSigned(s.devolucionIrpf > 0 ? s.devolucionIrpf : s.pagoIrpf > 0 ? -s.pagoIrpf : 0)}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>Gastos inmuebles</td>
-              {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.gastosInmuebles === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.gastosInmuebles)}
-                      </span>
-                  }
-                </td>
+                <td key={s.año} style={tdToggleBase}>{fmtSubtotal(s.subtotalPersonal)}</td>
               ))}
             </tr>
 
-            {/* Subtotal operativo */}
-            <tr>
-              <td style={tdSubtotalLabel}>Subtotal operativo</td>
-              {summaries.map((s) => <td key={s.año} style={tdSubtotalBase}>{fmtSubtotal(s.subtotalOperativo)}</td>)}
-            </tr>
+            {expanded.personal && (
+              <>
+                <tr>
+                  <td style={tdDetailLabel}>Nómina neta</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.nominaNeta)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Autónomo neto</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.autonomoNeto)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Devol. / Pago IRPF</td>
+                  {summaries.map((s) => (
+                    <td key={s.año} style={tdDetailBase}>{fmtIrpf(s.devolucionIrpf, s.pagoIrpf)}</td>
+                  ))}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Préstamos recibidos</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.prestamosPersonalesRecibidos)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Cuotas préstamos</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.cuotasPrestamosPersonales)}</td>)}
+                </tr>
+              </>
+            )}
 
             <BlockSeparator />
 
-            {/* ── BLOQUE 2: INVERSIÓN ───────────────────────────────────── */}
-            <SectionHeader>Inversión</SectionHeader>
+            {/* ── INMUEBLES ─────────────────────────────────────────────── */}
 
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>Compra inmuebles</td>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.inmuebles}
+              onClick={() => toggle('inmuebles')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('inmuebles'); } }}
+              style={{ cursor: 'pointer' }}
+            >
+              <td style={tdToggleLabel}>
+                <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
+                  {expanded.inmuebles ? '▾' : '▸'}
+                </span>
+                Inmuebles
+              </td>
               {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.compraInmuebles === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.compraInmuebles)}
-                      </span>
-                  }
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Venta inmuebles</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.ventaInmuebles)}</td>)}
-            </tr>
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>Mejoras / CAPEX</td>
-              {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.mejorasCapex === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.mejorasCapex)}
-                      </span>
-                  }
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Inversiones (neto)</td>
-              {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {fmtSigned(s.recuperacionInversiones - s.aportacionesInversiones)}
-                </td>
+                <td key={s.año} style={tdToggleBase}>{fmtSubtotal(s.subtotalInmuebles)}</td>
               ))}
             </tr>
 
-            {/* Subtotal inversión */}
-            <tr>
-              <td style={tdSubtotalLabel}>Subtotal inversión</td>
-              {summaries.map((s) => <td key={s.año} style={tdSubtotalBase}>{fmtSubtotal(s.subtotalInversion)}</td>)}
-            </tr>
+            {expanded.inmuebles && (
+              <>
+                <tr>
+                  <td style={tdDetailLabel}>Rentas alquiler</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.rentasAlquiler)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Gastos operativos</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.gastosInmuebles)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Compra inmuebles</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.compraInmuebles)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Venta inmuebles</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.ventaInmuebles)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Hipotecas recibidas</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.hipotecasRecibidas)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Cuotas hipotecas</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.cuotasHipotecas)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Mejoras / CAPEX</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.mejorasCapex)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Cancelaciones hipotecas</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.cancelacionesHipotecas)}</td>)}
+                </tr>
+              </>
+            )}
 
             <BlockSeparator />
 
-            {/* ── BLOQUE 3: FINANCIACIÓN ───────────────────────────────── */}
-            <SectionHeader>Financiación</SectionHeader>
+            {/* ── INVERSIONES ───────────────────────────────────────────── */}
 
-            <tr>
-              <td style={tdLabel}>Hipotecas recibidas</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.hipotecasRecibidas)}</td>)}
-            </tr>
-            <tr>
-              <td style={tdLabel}>Préstamos recibidos</td>
-              {summaries.map((s) => <td key={s.año} style={tdBase}>{fmtCell(s.prestamosRecibidos)}</td>)}
-            </tr>
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>Cuotas préstamos</td>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.inversiones}
+              onClick={() => toggle('inversiones')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('inversiones'); } }}
+              style={{ cursor: 'pointer' }}
+            >
+              <td style={tdToggleLabel}>
+                <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
+                  {expanded.inversiones ? '▾' : '▸'}
+                </span>
+                Inversiones
+              </td>
               {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.cuotasPrestamos === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.cuotasPrestamos)}
-                      </span>
-                  }
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>Cancelaciones</td>
-              {summaries.map((s) => (
-                <td key={s.año} style={tdBase}>
-                  {s.cancelacionesPrestamos === 0
-                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
-                        {fmtSign(-s.cancelacionesPrestamos)}
-                      </span>
-                  }
-                </td>
+                <td key={s.año} style={tdToggleBase}>{fmtSubtotal(s.subtotalInversiones)}</td>
               ))}
             </tr>
 
-            {/* Subtotal financiación */}
+            {expanded.inversiones && (
+              <>
+                <tr>
+                  <td style={tdDetailLabel}>Capital mobiliario</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.capitalMobiliario)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Aportaciones</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtSalida(s.aportacionesInversiones)}</td>)}
+                </tr>
+                <tr>
+                  <td style={tdDetailLabel}>Recuperaciones</td>
+                  {summaries.map((s) => <td key={s.año} style={tdDetailBase}>{fmtCell(s.recuperacionInversiones)}</td>)}
+                </tr>
+              </>
+            )}
+
+            {/* ── GASTO PERSONAL + VARIACIÓN NETA ──────────────────────── */}
             <tr>
-              <td style={tdSubtotalLabel}>Subtotal financiación</td>
-              {summaries.map((s) => <td key={s.año} style={tdSubtotalBase}>{fmtSubtotal(s.subtotalFinanciacion)}</td>)}
+              <td colSpan={summaries.length + 1} style={{ height: 6, borderTop: '3px solid var(--grey-300)', background: 'var(--grey-50)' }} />
             </tr>
 
-            {/* ── RESIDUO + CASHFLOW ───────────────────────────────────── */}
-            <tr>
-              <td
-                colSpan={summaries.length + 1}
-                style={{ height: 6, borderTop: '3px solid var(--grey-300)', background: 'var(--grey-50)' }}
-              />
-            </tr>
-
-            {/* Gastos personales (residuo) */}
+            {/* Gasto personal estimado (residuo acumulado) */}
             <tr>
               <td style={{ ...tdLabel, fontStyle: 'italic', color: 'var(--grey-500)' }}>
-                Gastos personales <span style={{ fontSize: 11 }}>(residuo)</span>
+                Gasto personal est.
               </td>
               {summaries.map((s) => (
-                <td key={s.año} style={{ ...tdBase, borderBottom: 'none' }}>
-                  {s.gastosPersonales === 0
+                <td key={s.año} style={{ ...tdBase }}>
+                  {s.gastoPersonalEstimado === 0
                     ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
-                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontStyle: 'italic', color: 'var(--grey-500)' }}>
-                        {fmtSign(-s.gastosPersonales)}
+                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, fontStyle: 'italic', color: 'var(--grey-400)' }}>
+                        {fmtSign(-s.gastoPersonalEstimado)}
                       </span>
                   }
                 </td>
               ))}
             </tr>
 
-            {/* Cashflow neto */}
+            {/* Gasto personal real (confirmado desde punteo) */}
             <tr>
-              <td style={{ ...tdLabel, fontWeight: 600, fontSize: 13, color: 'var(--grey-900)', paddingTop: 10, paddingBottom: 10, borderTop: '1px solid var(--grey-200)' }}>
-                Cashflow neto
+              <td style={{ ...tdLabel, color: 'var(--grey-500)' }}>
+                Gasto personal real
               </td>
               {summaries.map((s) => (
-                <td key={s.año} style={{ ...tdBase, fontWeight: 600, paddingTop: 10, paddingBottom: 10, borderTop: '1px solid var(--grey-200)', borderBottom: 'none' }}>
-                  <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 600, color: s.cashflowNeto >= 0 ? 'var(--navy-900)' : 'var(--teal-600)' }}>
-                    {fmtSign(s.cashflowNeto)}
+                <td key={s.año} style={tdBase}>
+                  {s.gastoPersonalReal === 0
+                    ? <span style={{ color: 'var(--grey-400)', fontFamily: 'IBM Plex Mono, monospace', fontSize: 12 }}>—</span>
+                    : <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--teal-600)' }}>
+                        {fmtSign(-s.gastoPersonalReal)}
+                      </span>
+                  }
+                </td>
+              ))}
+            </tr>
+
+            {/* Variación neta */}
+            <tr>
+              <td style={{ ...tdLabel, fontWeight: 700, fontSize: 13, color: 'var(--grey-900)', paddingTop: 10, paddingBottom: 10, borderTop: '2px solid var(--grey-300)' }}>
+                Variación neta
+              </td>
+              {summaries.map((s) => (
+                <td key={s.año} style={{ ...tdBase, fontWeight: 700, paddingTop: 10, paddingBottom: 10, borderTop: '2px solid var(--grey-300)', borderBottom: 'none' }}>
+                  <span style={{ fontFamily: 'IBM Plex Mono, monospace', fontVariantNumeric: 'tabular-nums', fontSize: 13, fontWeight: 700, color: s.variacionNeta >= 0 ? 'var(--navy-900)' : 'var(--teal-600)' }}>
+                    {fmtSign(s.variacionNeta)}
                   </span>
                 </td>
               ))}
@@ -547,7 +622,7 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
         </table>
 
         <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--grey-400)', borderTop: '1px solid var(--grey-100)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif", fontStyle: 'italic' }}>
-          Amortización contable excluida de gastos inmuebles (no es salida de caja). Gastos personales = residuo del cuadre de flujos.
+          Amortización contable (0117) excluida. Gasto personal estimado = residuo acumulado distribuido como media mensual. Click en ▸ para ver detalle.
         </div>
       </div>
 

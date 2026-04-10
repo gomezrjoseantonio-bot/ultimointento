@@ -30,9 +30,9 @@ const fmt = (v: number) =>
 /**
  * All values pre-computed for display.
  * bruto / neto: gross and net income.
- * gastoVida: living expenses (residuo from treasury, clamped ≥ 0; wizard estimate for current year).
- * financiacion: net loan payment OUTFLOW as positive number (max(0, -subtotalFinanciacion)).
- * subtotalFinanciacion: raw treasury value (negative = net outflow), used to derive `financiacion`.
+ * gastoVida: living expenses (residuo acumulado distribuido; wizard estimate for current year).
+ * financiacion: net loan payment OUTFLOW as positive number (max(0, -(hipotecas+personales net flow))).
+ * subtotalFinanciacion: raw net financing flow (negative = net outflow), used to derive `financiacion`.
  */
 interface AñoData {
   año: number;
@@ -60,11 +60,15 @@ const calcTasaAhorro = (excedente: number, neto: number) =>
 /** Build AñoData from a treasury summary for XML years. */
 function fromTreasury(t: TreasuryYearSummary): AñoData {
   const neto = t.nominaNeta + t.autonomoNeto;
-  const bruto = t.nominaBruta + t.autonomoBruto;
-  // Financing outflow = net cash leaving via loan block (positive when paying out more than receiving).
-  const financiacion = Math.max(0, -t.subtotalFinanciacion);
-  // Living expense residuo. Clamp to 0 — a negative residuo means investment cash covered personal.
-  const gastoVida = Math.max(0, t.gastosPersonales);
+  // bruto no disponible en el nuevo interface — se aproxima con neto para display
+  const bruto = neto;
+  // Reconstruct net financing flow from split fields (hipotecas + personales)
+  const subtotalFinanciacion =
+    (t.prestamosPersonalesRecibidos + t.hipotecasRecibidas)
+    - (t.cuotasPrestamosPersonales + t.cuotasHipotecas + t.cancelacionesHipotecas);
+  const financiacion = Math.max(0, -subtotalFinanciacion);
+  // Living expense: accumulated residue distributed as monthly average
+  const gastoVida = Math.max(0, t.gastoPersonalEstimado);
   return {
     año: t.año,
     bruto,
@@ -73,7 +77,7 @@ function fromTreasury(t: TreasuryYearSummary): AñoData {
     autonomoNeto: t.autonomoNeto,
     gastoVida,
     financiacion,
-    subtotalFinanciacion: t.subtotalFinanciacion,
+    subtotalFinanciacion,
     fuente: t.fuente === 'xml_aeat' ? 'AEAT' : t.fuente === 'atlas_nativo' ? 'ATLAS' : null,
     gastoVidaEstimado: t.fuente !== 'xml_aeat',
   };
