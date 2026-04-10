@@ -117,6 +117,13 @@ export const navigationConfig: NavigationItem[] = [
     section: 'pulse'
   },
   {
+    name: 'Conciliación',
+    href: '/conciliacion',
+    icon: Landmark,
+    module: 'shared',
+    section: 'pulse'
+  },
+  {
     name: 'Gestión Personal',
     href: '/gestion/personal',
     icon: User,

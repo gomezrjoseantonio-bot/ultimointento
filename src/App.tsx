@@ -78,6 +78,7 @@ const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/In
 // Financing Module - New standalone financing module
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
+const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
 const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
@@ -414,6 +415,14 @@ function App() {
               <Route path="cuenta/:id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Tesoreria />
+                </React.Suspense>
+              } />
+            </Route>
+
+            <Route path="conciliacion">
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ConciliacionPage />
                 </React.Suspense>
               } />
             </Route>
