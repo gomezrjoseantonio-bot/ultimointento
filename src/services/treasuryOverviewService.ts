@@ -4,12 +4,10 @@
  * Reads directly from source stores to build a multi-year treasury overview.
  * NO dependency on treasuryEvents or historicalTreasuryService.
  *
- * Cash-flow structure — 3 blocks:
- *  Bloque 1 — Operativo  (nómina, autónomo, alquiler, capital mobiliario, IRPF, gastos inmuebles)
- *  Bloque 2 — Inversión  (compra/venta inmuebles, CAPEX, inversiones)
- *  Bloque 3 — Financiación (hipotecas/préstamos recibidos, cuotas, cancelaciones)
+ * Classification: Personal / Inmuebles / Inversiones
  *
- *  Gastos personales = residuo del cuadre (NO es un input, nunca hardcodeado)
+ * Gasto personal = residuo acumulado distribuido como media mensual
+ * (NO es un input, nunca hardcodeado)
  */
 
 import { initDB } from './db';
@@ -22,81 +20,57 @@ export interface TreasuryYearSummary {
   año: number;
   fuente: 'xml_aeat' | 'atlas_nativo' | 'sin_datos';
 
-  // Bloque 1 — Operativo
-  nominaBruta: number;         // trabajo: totalIngresosIntegros (antes de retenciones y SS)
-  autonomoBruto: number;       // actividadEconomica: totalIngresos (antes de retenciones)
-  nominaNeta: number;          // trabajo: totalIngresosIntegros - retenciones - cotizacionesSS
-  autonomoNeto: number;        // actividadEconomica: totalIngresos - retenciones
-  rentasAlquiler: number;      // sum contracts.ejerciciosFiscales[año].importeDeclarado
-  capitalMobiliario: number;   // capitalMobiliario: totalBruto - retenciones
-  devolucionIrpf: number;      // resultado[año-1] if < 0 → ingreso en año
-  pagoIrpf: number;            // resultado[año-1] if > 0 → gasto en año
-  gastosInmuebles: number;     // sum gastosInmueble excl. amortización ('0117')
-  subtotalOperativo: number;
+  // ── BLOQUE: PERSONAL ──────────────────────────────────────────────────────
+  nominaNeta: number;                    // entrada: trabajo neto de retenciones y SS
+  autonomoNeto: number;                  // entrada: actividadEconomica neta de retenciones
+  devolucionIrpf: number;                // entrada: resultado[año-1] < 0 → cobrado en año
+  pagoIrpf: number;                      // salida:  resultado[año-1] > 0 → pagado en año
+  prestamosPersonalesRecibidos: number;  // entrada: principal de préstamos personales en año de firma
+  cuotasPrestamosPersonales: number;     // salida:  cuotas + cancelaciones de préstamos personales del año
+  subtotalPersonal: number;
 
-  // Bloque 2 — Inversión
-  compraInmuebles: number;         // salida: price + itp + iva + notary + ... por purchaseDate
-  ventaInmuebles: number;          // entrada: grossProceeds de property_sales confirmed
-  mejorasCapex: number;            // salida: mejorasInmueble por ejercicio
-  aportacionesInversiones: number; // salida: inversiones aportaciones tipo='aportacion'
-  recuperacionInversiones: number; // entrada: inversiones aportaciones tipo='reembolso'
-  subtotalInversion: number;
+  // ── BLOQUE: INMUEBLES ─────────────────────────────────────────────────────
+  rentasAlquiler: number;                // entrada: importeDeclarado de contratos del año
+  gastosInmuebles: number;              // salida:  gastosInmueble excl. amortización (0117)
+  compraInmuebles: number;              // salida:  acquisitionCosts en año de purchaseDate
+  ventaInmuebles: number;               // entrada: grossProceeds de ventas confirmed
+  hipotecasRecibidas: number;           // entrada: principal de hipotecas en año de firma
+  cuotasHipotecas: number;              // salida:  cuotas del cuadro de amortización del año
+  mejorasCapex: number;                  // salida:  mejorasInmueble por ejercicio
+  cancelacionesHipotecas: number;        // salida:  loan_settlements de hipotecas confirmed
+  subtotalInmuebles: number;
 
-  // Bloque 3 — Financiación
-  hipotecasRecibidas: number;      // entrada: prestamos ambito=INMUEBLE por fechaFirma
-  prestamosRecibidos: number;      // entrada: prestamos ambito=PERSONAL por fechaFirma
-  cuotasPrestamos: number;         // salida: sum cuota de cuadroAmortizacion por año
-  cancelacionesPrestamos: number;  // salida: loan_settlements.totalCashOut confirmed
-  subtotalFinanciacion: number;
+  // ── BLOQUE: INVERSIONES ──────────────────────────────────────────────────
+  capitalMobiliario: number;             // entrada: capitalMobiliario.totalBruto - retenciones
+  aportacionesInversiones: number;       // salida:  inversiones aportaciones tipo='aportacion'
+  recuperacionInversiones: number;       // entrada: inversiones aportaciones tipo='reembolso'
+  subtotalInversiones: number;
 
-  // Residuo
-  gastosPersonales: number;        // = subtotalOperativo + subtotalInversion + subtotalFinanciacion
+  // ── GASTO PERSONAL ───────────────────────────────────────────────────────
+  gastoPersonalEstimado: number;         // residuo acumulado distribuido como media mensual × meses
+  gastoPersonalReal: number;             // confirmado desde Tesorería activa (0 si no disponible)
 
-  // Total
-  cashflowNeto: number;            // variación de saldo (0 para históricos sin dato de saldo)
+  // ── VARIACIÓN NETA ───────────────────────────────────────────────────────
+  variacionNeta: number;                 // subtotalPersonal + subtotalInmuebles + subtotalInversiones - gastoPersonalEstimado
+}
+
+export interface SaldoActual {
+  cuentas: number;
+  inversiones: number;
+  total: number;
 }
 
 // ─── Casilla constants (snapshot fallback) ────────────────────────────────────
 
-const CASILLA_NOMINA_BRUTA_V2  = '0012'; // totalIngresosIntegros
-const CASILLA_NOMINA_BRUTA_V1  = '0003'; // retribucionesDinerarias (fallback)
-const CASILLA_NOMINA_RET       = '0596';
-const CASILLA_NOMINA_SS        = '0013';
+const CASILLA_NOMINA_BRUTA_V2   = '0012';
+const CASILLA_NOMINA_BRUTA_V1   = '0003';
+const CASILLA_NOMINA_RET        = '0596';
+const CASILLA_NOMINA_SS         = '0013';
 const CASILLA_AUTONOMO_INGRESOS = 'VE1II1';
-const CASILLA_AUTONOMO_RET     = 'RETENED';
+const CASILLA_AUTONOMO_RET      = 'RETENED';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/**
- * Nómina bruta = totalIngresosIntegros (antes de retenciones y SS).
- */
-function extractNominaBruta(dc: any, snapshot?: Record<string, number>): number {
-  if (dc?.trabajo) {
-    return Number(dc.trabajo.totalIngresosIntegros ?? dc.trabajo.retribucionesDinerarias ?? 0);
-  }
-  if (snapshot) {
-    return Number(snapshot[CASILLA_NOMINA_BRUTA_V2] ?? snapshot[CASILLA_NOMINA_BRUTA_V1] ?? 0);
-  }
-  return 0;
-}
-
-/**
- * Autónomo bruto = totalIngresos (antes de retenciones).
- */
-function extractAutonomoBruto(dc: any, snapshot?: Record<string, number>): number {
-  if (dc?.actividadEconomica) {
-    return Number(dc.actividadEconomica.totalIngresos ?? 0);
-  }
-  if (snapshot) {
-    return Number(snapshot[CASILLA_AUTONOMO_INGRESOS] ?? 0);
-  }
-  return 0;
-}
-
-/**
- * Nómina neta = totalIngresosIntegros - retenciones - cotizacionesSS
- * Falls back to casillas snapshot when declaracionCompleta is absent.
- */
 function extractNominaNeta(dc: any, snapshot?: Record<string, number>): number {
   if (dc?.trabajo) {
     const bruto = Number(dc.trabajo.totalIngresosIntegros ?? dc.trabajo.retribucionesDinerarias ?? 0);
@@ -113,9 +87,6 @@ function extractNominaNeta(dc: any, snapshot?: Record<string, number>): number {
   return 0;
 }
 
-/**
- * Autónomo neto = totalIngresos - retenciones
- */
 function extractAutonomoNeto(dc: any, snapshot?: Record<string, number>): number {
   if (dc?.actividadEconomica) {
     const ingresos    = Number(dc.actividadEconomica.totalIngresos ?? 0);
@@ -130,9 +101,6 @@ function extractAutonomoNeto(dc: any, snapshot?: Record<string, number>): number
   return 0;
 }
 
-/**
- * Capital mobiliario neto = totalBruto - retenciones (lo que entra en cuenta)
- */
 function extractCapitalMobiliario(dc: any): number {
   if (dc?.capitalMobiliario) {
     const bruto       = Number(dc.capitalMobiliario.totalBruto ?? 0);
@@ -140,6 +108,24 @@ function extractCapitalMobiliario(dc: any): number {
     return Math.max(0, bruto - retenciones);
   }
   return 0;
+}
+
+function sumCuentas(accounts: any[]): number {
+  return accounts
+    .filter(
+      (a) =>
+        !a.deleted_at &&
+        a.activa !== false &&
+        a.isActive !== false &&
+        (a.status == null || a.status === 'ACTIVE'),
+    )
+    .reduce((s, a) => s + (a.balance ?? a.openingBalance ?? 0), 0);
+}
+
+function sumInversionesActivas(inversiones: any[]): number {
+  return inversiones
+    .filter((inv) => inv.activo !== false)
+    .reduce((s, inv) => s + (inv.valor_actual ?? 0), 0);
 }
 
 // ─── Main service ─────────────────────────────────────────────────────────────
@@ -154,7 +140,8 @@ export const treasuryOverviewService = {
     coords.sort((a, b) => a.año - b.año);
     if (coords.length === 0) return [];
 
-    const añoActual = new Date().getFullYear();
+    const now       = new Date();
+    const añoActual = now.getFullYear();
     coords = coords.filter(
       (c) => c.año <= añoActual && (!!c.aeat?.resumen || c.año >= añoActual - 1),
     );
@@ -176,6 +163,7 @@ export const treasuryOverviewService = {
       mejorasInmueble,
       inversiones,
       loanSettlements,
+      accounts,
     ] = await Promise.all([
       db.getAll('contracts'),
       db.getAll('gastosInmueble'),
@@ -184,6 +172,7 @@ export const treasuryOverviewService = {
       db.getAll('mejorasInmueble'),
       db.getAll('inversiones'),
       db.getAll('loan_settlements'),
+      db.getAll('accounts'),
     ]);
 
     // ── 3. Préstamos y planes de amortización ────────────────────────────────
@@ -196,33 +185,35 @@ export const treasuryOverviewService = {
       }),
     );
 
-    // ── 4. Build summary per year ────────────────────────────────────────────
-    const summaries: TreasuryYearSummary[] = [];
+    // Clasificar préstamos: hipotecas (INMUEBLE) vs personales
+    const hipotecaIds = new Set<string>(
+      (prestamos as any[])
+        .filter((p) => p.ambito === 'INMUEBLE' || (p.inmuebleId && p.inmuebleId !== 'standalone'))
+        .map((p) => String(p.id)),
+    );
+
+    // ── 4. Build partials per year (sin gastoPersonal) ───────────────────────
+
+    type PartialYear = Omit<TreasuryYearSummary, 'gastoPersonalEstimado' | 'gastoPersonalReal' | 'variacionNeta'>;
+    const partials: PartialYear[] = [];
 
     for (const coord of coords) {
-      const año    = coord.año;
+      const año     = coord.año;
       const hasAeat = !!coord.aeat?.resumen;
       const fuente: TreasuryYearSummary['fuente'] = hasAeat ? 'xml_aeat' : 'sin_datos';
 
-      // ── BLOQUE 1: OPERATIVO ───────────────────────────────────────────────
+      // ── BLOQUE: PERSONAL ─────────────────────────────────────────────────
 
-      let nominaBruta      = 0;
-      let autonomoBruto    = 0;
-      let nominaNeta       = 0;
-      let autonomoNeto     = 0;
-      let capitalMobiliario = 0;
+      let nominaNeta    = 0;
+      let autonomoNeto  = 0;
 
       if (hasAeat) {
         const dc       = coord.aeat!.declaracionCompleta;
         const snapshot = coord.aeat!.snapshot;
-        nominaBruta       = extractNominaBruta(dc, snapshot);
-        autonomoBruto     = extractAutonomoBruto(dc, snapshot);
-        nominaNeta        = extractNominaNeta(dc, snapshot);
-        autonomoNeto      = extractAutonomoNeto(dc, snapshot);
-        capitalMobiliario = extractCapitalMobiliario(dc);
+        nominaNeta   = extractNominaNeta(dc, snapshot);
+        autonomoNeto = extractAutonomoNeto(dc, snapshot);
       }
 
-      // IRPF del año anterior: resultado[año-1]
       let devolucionIrpf = 0;
       let pagoIrpf       = 0;
       const resAnterior  = resultadoPorAño[año - 1];
@@ -231,35 +222,60 @@ export const treasuryOverviewService = {
         else if (resAnterior > 0) pagoIrpf  = resAnterior;
       }
 
-      // Rentas alquiler: suma importeDeclarado de todos los contratos del año
-      let rentasAlquiler = 0;
-      for (const contract of contracts) {
-        const ejF = (contract as any).ejerciciosFiscales?.[año];
-        if (ejF?.importeDeclarado) rentasAlquiler += ejF.importeDeclarado;
-      }
-
-      // Gastos inmuebles: sum excl. amortización ('0117')
-      let gastosInmuebles = 0;
-      for (const g of gastosInmueble) {
-        const gastoYear = (g as any).año ?? (g as any).ejercicio;
-        if (gastoYear === año && (g as any).casillaAEAT !== '0117') {
-          gastosInmuebles += (g as any).importe ?? 0;
+      let prestamosPersonalesRecibidos = 0;
+      for (const p of prestamos as any[]) {
+        const fechaFirma = p.fechaFirma ?? p.fechaInicio;
+        if (!fechaFirma) continue;
+        if (new Date(fechaFirma).getFullYear() !== año) continue;
+        if (!hipotecaIds.has(String(p.id))) {
+          prestamosPersonalesRecibidos += p.principalInicial ?? 0;
         }
       }
 
-      const subtotalOperativo =
-        (nominaNeta + autonomoNeto + rentasAlquiler + capitalMobiliario + devolucionIrpf)
-        - (gastosInmuebles + pagoIrpf);
+      let cuotasPrestamosPersonales = 0;
+      for (const [prestamoId, plan] of planesPorPrestamo) {
+        if (hipotecaIds.has(prestamoId)) continue;
+        for (const periodo of (plan as any).periodos ?? []) {
+          if (!periodo.fechaCargo) continue;
+          if (new Date(periodo.fechaCargo).getFullYear() === año) {
+            cuotasPrestamosPersonales += periodo.cuota ?? 0;
+          }
+        }
+      }
+      // Cancelaciones de préstamos personales → sumadas como salida personal
+      for (const ls of loanSettlements as any[]) {
+        if (ls.status !== 'confirmed' || !ls.operationDate) continue;
+        if (new Date(ls.operationDate).getFullYear() !== año) continue;
+        if (!hipotecaIds.has(String(ls.loanId))) {
+          cuotasPrestamosPersonales += ls.totalCashOut ?? ls.principalApplied ?? 0;
+        }
+      }
 
-      // ── BLOQUE 2: INVERSIÓN ──────────────────────────────────────────────
+      const subtotalPersonal =
+        (nominaNeta + autonomoNeto + devolucionIrpf + prestamosPersonalesRecibidos)
+        - (pagoIrpf + cuotasPrestamosPersonales);
 
-      // Compra inmuebles: price + todos los costes de adquisición
+      // ── BLOQUE: INMUEBLES ────────────────────────────────────────────────
+
+      let rentasAlquiler = 0;
+      for (const contract of contracts as any[]) {
+        const ejF = contract.ejerciciosFiscales?.[año];
+        if (ejF?.importeDeclarado) rentasAlquiler += ejF.importeDeclarado;
+      }
+
+      let gastosInmuebles = 0;
+      for (const g of gastosInmueble as any[]) {
+        const gastoYear = g.año ?? g.ejercicio;
+        if (gastoYear === año && g.casillaAEAT !== '0117') {
+          gastosInmuebles += g.importe ?? 0;
+        }
+      }
+
       let compraInmuebles = 0;
-      for (const prop of properties) {
-        if (!(prop as any).purchaseDate) continue;
-        const propYear = new Date((prop as any).purchaseDate).getFullYear();
-        if (propYear !== año) continue;
-        const ac       = (prop as any).acquisitionCosts ?? {};
+      for (const prop of properties as any[]) {
+        if (!prop.purchaseDate) continue;
+        if (new Date(prop.purchaseDate).getFullYear() !== año) continue;
+        const ac       = prop.acquisitionCosts ?? {};
         const otherSum = ((ac.other ?? []) as Array<{ amount?: number }>)
           .reduce((s, o) => s + (o.amount ?? 0), 0);
         compraInmuebles +=
@@ -269,131 +285,158 @@ export const treasuryOverviewService = {
           + (ac.realEstate ?? 0) + otherSum;
       }
 
-      // Venta inmuebles: grossProceeds de ventas confirmed
       let ventaInmuebles = 0;
-      for (const sale of propertySales) {
-        if ((sale as any).status !== 'confirmed' || !(sale as any).saleDate) continue;
-        if (new Date((sale as any).saleDate).getFullYear() === año) {
-          ventaInmuebles += (sale as any).grossProceeds ?? 0;
+      for (const sale of propertySales as any[]) {
+        if (sale.status !== 'confirmed' || !sale.saleDate) continue;
+        if (new Date(sale.saleDate).getFullYear() === año) {
+          ventaInmuebles += sale.grossProceeds ?? 0;
         }
       }
-
-      // Mejoras / CAPEX
-      let mejorasCapex = 0;
-      for (const mejora of mejorasInmueble) {
-        if ((mejora as any).ejercicio === año) mejorasCapex += (mejora as any).importe ?? 0;
-      }
-
-      // Inversiones: aportaciones y reembolsos del año
-      let aportacionesInversiones = 0;
-      let recuperacionInversiones = 0;
-      for (const inv of inversiones) {
-        for (const ap of (inv as any).aportaciones ?? []) {
-          if (!ap.fecha) continue;
-          if (new Date(ap.fecha).getFullYear() !== año) continue;
-          if (ap.tipo === 'aportacion')  aportacionesInversiones += ap.importe ?? 0;
-          else if (ap.tipo === 'reembolso') recuperacionInversiones += ap.importe ?? 0;
-        }
-      }
-
-      const subtotalInversion =
-        (ventaInmuebles + recuperacionInversiones)
-        - (compraInmuebles + mejorasCapex + aportacionesInversiones);
-
-      // ── BLOQUE 3: FINANCIACIÓN ───────────────────────────────────────────
 
       let hipotecasRecibidas = 0;
-      let prestamosRecibidos = 0;
-      for (const p of prestamos) {
-        const fechaFirma = (p as any).fechaFirma ?? (p as any).fechaInicio;
+      for (const p of prestamos as any[]) {
+        const fechaFirma = p.fechaFirma ?? p.fechaInicio;
         if (!fechaFirma) continue;
         if (new Date(fechaFirma).getFullYear() !== año) continue;
-        const principal = (p as any).principalInicial ?? 0;
-        // Hipotecas: ambito === 'INMUEBLE' o con inmuebleId
-        if ((p as any).ambito === 'INMUEBLE' || (p as any).inmuebleId) {
-          hipotecasRecibidas += principal;
-        } else {
-          prestamosRecibidos += principal;
+        if (hipotecaIds.has(String(p.id))) {
+          hipotecasRecibidas += p.principalInicial ?? 0;
         }
       }
 
-      // Cuotas: sum cuota de todos los períodos del año
-      let cuotasPrestamos = 0;
-      for (const [, plan] of planesPorPrestamo) {
+      let cuotasHipotecas = 0;
+      for (const [prestamoId, plan] of planesPorPrestamo) {
+        if (!hipotecaIds.has(prestamoId)) continue;
         for (const periodo of (plan as any).periodos ?? []) {
           if (!periodo.fechaCargo) continue;
           if (new Date(periodo.fechaCargo).getFullYear() === año) {
-            cuotasPrestamos += periodo.cuota ?? 0;
+            cuotasHipotecas += periodo.cuota ?? 0;
           }
         }
       }
 
-      // Cancelaciones anticipadas
-      let cancelacionesPrestamos = 0;
-      for (const ls of loanSettlements) {
-        if ((ls as any).status !== 'confirmed' || !(ls as any).operationDate) continue;
-        if (new Date((ls as any).operationDate).getFullYear() === año) {
-          cancelacionesPrestamos += (ls as any).totalCashOut ?? (ls as any).principalApplied ?? 0;
+      let mejorasCapex = 0;
+      for (const mejora of mejorasInmueble as any[]) {
+        if (mejora.ejercicio === año) mejorasCapex += mejora.importe ?? 0;
+      }
+
+      let cancelacionesHipotecas = 0;
+      for (const ls of loanSettlements as any[]) {
+        if (ls.status !== 'confirmed' || !ls.operationDate) continue;
+        if (new Date(ls.operationDate).getFullYear() !== año) continue;
+        if (hipotecaIds.has(String(ls.loanId))) {
+          cancelacionesHipotecas += ls.totalCashOut ?? ls.principalApplied ?? 0;
         }
       }
 
-      const subtotalFinanciacion =
-        (hipotecasRecibidas + prestamosRecibidos)
-        - (cuotasPrestamos + cancelacionesPrestamos);
+      const subtotalInmuebles =
+        (rentasAlquiler + ventaInmuebles + hipotecasRecibidas)
+        - (gastosInmuebles + compraInmuebles + cuotasHipotecas + mejorasCapex + cancelacionesHipotecas);
 
-      // ── RESIDUO: GASTOS PERSONALES ───────────────────────────────────────
-      // Todo lo disponible (operativo + inversión + financiación) que no está
-      // en otro bloque conocido = gasto personal implícito del año.
-      const gastosPersonales =
-        subtotalOperativo + subtotalInversion + subtotalFinanciacion;
+      // ── BLOQUE: INVERSIONES ──────────────────────────────────────────────
 
-      // cashflowNeto = variación de saldo de cuentas.
-      // Para años históricos sin dato de saldo inicial: 0 (aproximación).
-      const cashflowNeto = 0;
+      let capitalMobiliario       = 0;
+      let aportacionesInversiones = 0;
+      let recuperacionInversiones = 0;
 
-      summaries.push({
+      if (hasAeat) {
+        capitalMobiliario = extractCapitalMobiliario(coord.aeat!.declaracionCompleta);
+      }
+
+      for (const inv of inversiones as any[]) {
+        for (const ap of inv.aportaciones ?? []) {
+          if (!ap.fecha) continue;
+          if (new Date(ap.fecha).getFullYear() !== año) continue;
+          if (ap.tipo === 'aportacion')   aportacionesInversiones += ap.importe ?? 0;
+          else if (ap.tipo === 'reembolso') recuperacionInversiones += ap.importe ?? 0;
+        }
+      }
+
+      const subtotalInversiones =
+        (capitalMobiliario + recuperacionInversiones)
+        - aportacionesInversiones;
+
+      partials.push({
         año,
         fuente,
-        nominaBruta,
-        autonomoBruto,
         nominaNeta,
         autonomoNeto,
-        rentasAlquiler,
-        capitalMobiliario,
         devolucionIrpf,
         pagoIrpf,
+        prestamosPersonalesRecibidos,
+        cuotasPrestamosPersonales,
+        subtotalPersonal,
+        rentasAlquiler,
         gastosInmuebles,
-        subtotalOperativo,
         compraInmuebles,
         ventaInmuebles,
+        hipotecasRecibidas,
+        cuotasHipotecas,
         mejorasCapex,
+        cancelacionesHipotecas,
+        subtotalInmuebles,
+        capitalMobiliario,
         aportacionesInversiones,
         recuperacionInversiones,
-        subtotalInversion,
-        hipotecasRecibidas,
-        prestamosRecibidos,
-        cuotasPrestamos,
-        cancelacionesPrestamos,
-        subtotalFinanciacion,
-        gastosPersonales,
-        cashflowNeto,
+        subtotalInversiones,
       });
     }
+
+    // ── 5. Gasto personal acumulado → distribuido como media mensual ─────────
+
+    const totalEntradas = partials.reduce(
+      (s, y) =>
+        s + y.nominaNeta + y.autonomoNeto + y.rentasAlquiler + y.capitalMobiliario
+          + y.devolucionIrpf + y.ventaInmuebles + y.hipotecasRecibidas
+          + y.prestamosPersonalesRecibidos + y.recuperacionInversiones,
+      0,
+    );
+
+    const totalSalidas = partials.reduce(
+      (s, y) =>
+        s + y.gastosInmuebles + y.pagoIrpf + y.cuotasPrestamosPersonales + y.cuotasHipotecas
+          + y.cancelacionesHipotecas + y.compraInmuebles + y.mejorasCapex + y.aportacionesInversiones,
+      0,
+    );
+
+    const saldoCuentas    = sumCuentas(accounts as any[]);
+    const saldoInversiones = sumInversionesActivas(inversiones as any[]);
+    const saldoTotal       = saldoCuentas + saldoInversiones;
+
+    const gastoPersonalTotal = Math.max(0, totalEntradas - totalSalidas - saldoTotal);
+
+    // Meses desde primer año con datos hasta hoy (al menos 1)
+    const primerAño    = partials.length > 0 ? partials[0].año : añoActual;
+    const mesesPeriodo = Math.max(1, (añoActual - primerAño) * 12 + (now.getMonth() + 1));
+    const gastoMensual = gastoPersonalTotal / mesesPeriodo;
+
+    // ── 6. Distribuir gasto personal y calcular variación neta ──────────────
+
+    const summaries: TreasuryYearSummary[] = partials.map((p) => {
+      const meses = p.año < añoActual ? 12 : now.getMonth() + 1;
+      const gastoPersonalEstimado = gastoMensual * meses;
+      const variacionNeta =
+        p.subtotalPersonal + p.subtotalInmuebles + p.subtotalInversiones - gastoPersonalEstimado;
+      return {
+        ...p,
+        gastoPersonalEstimado,
+        gastoPersonalReal: 0,
+        variacionNeta,
+      };
+    });
 
     return summaries;
   },
 
-  async getSaldoActual(): Promise<number> {
+  async getSaldoActual(): Promise<SaldoActual> {
     const db = await initDB();
-    const accounts: any[] = await db.getAll('accounts');
-    return accounts
-      .filter(
-        (a) =>
-          !a.deleted_at &&
-          a.activa !== false &&
-          a.isActive !== false &&
-          (a.status == null || a.status === 'ACTIVE'),
-      )
-      .reduce((sum, a) => sum + (a.balance ?? a.openingBalance ?? 0), 0);
+    const [accounts, inversiones] = await Promise.all([
+      db.getAll('accounts'),
+      db.getAll('inversiones'),
+    ]);
+    return {
+      cuentas:    sumCuentas(accounts as any[]),
+      inversiones: sumInversionesActivas(inversiones as any[]),
+      total:      sumCuentas(accounts as any[]) + sumInversionesActivas(inversiones as any[]),
+    };
   },
 };
