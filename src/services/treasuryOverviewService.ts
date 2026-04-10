@@ -404,15 +404,19 @@ export const treasuryOverviewService = {
 
     const gastoPersonalTotal = Math.max(0, totalEntradas - totalSalidas - saldoTotal);
 
-    // Meses desde primer año con datos hasta hoy (al menos 1)
-    const primerAño    = partials.length > 0 ? partials[0].año : añoActual;
-    const mesesPeriodo = Math.max(1, (añoActual - primerAño) * 12 + (now.getMonth() + 1));
+    // Meses realmente asignados a los años presentes en partials (al menos 1).
+    // Usando la suma real en lugar de un span para evitar desajuste cuando faltan años.
+    const getMesesAsignados = (año: number) => (año < añoActual ? 12 : now.getMonth() + 1);
+    const mesesPeriodo = Math.max(
+      1,
+      partials.reduce((acc, p) => acc + getMesesAsignados(p.año), 0),
+    );
     const gastoMensual = gastoPersonalTotal / mesesPeriodo;
 
     // ── 6. Distribuir gasto personal y calcular variación neta ──────────────
 
     const summaries: TreasuryYearSummary[] = partials.map((p) => {
-      const meses = p.año < añoActual ? 12 : now.getMonth() + 1;
+      const meses = getMesesAsignados(p.año);
       const gastoPersonalEstimado = gastoMensual * meses;
       const variacionNeta =
         p.subtotalPersonal + p.subtotalInmuebles + p.subtotalInversiones - gastoPersonalEstimado;

@@ -122,16 +122,12 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
   const añosCargados = summaries.filter((y) => y.fuente === 'xml_aeat').length;
 
-  // Media mensual del gasto personal (tomar de cualquier año, es la misma)
+  // Media mensual del gasto personal: derivada del primer año (full=÷12, parcial=÷mesActual)
   const gastoMensual = useMemo(() => {
     if (summaries.length === 0) return 0;
-    const now        = new Date();
-    const añoActual  = now.getFullYear();
-    const primerAño  = summaries[0].año;
-    const meses      = Math.max(1, (añoActual - primerAño) * 12 + (now.getMonth() + 1));
-    // gastoPersonalEstimado[primerAño] = gastoMensual * 12 (si es año completo)
-    // Si el primer año ya es full: gastoMensual = estimado[primerAño] / 12
-    const s0 = summaries[0];
+    const now       = new Date();
+    const añoActual = now.getFullYear();
+    const s0        = summaries[0];
     const mesesAño0 = s0.año < añoActual ? 12 : now.getMonth() + 1;
     return mesesAño0 > 0 ? s0.gastoPersonalEstimado / mesesAño0 : 0;
   }, [summaries]);
@@ -333,8 +329,8 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
           },
           {
             label: 'Saldo actual',
-            value: saldo.total > 0 ? fmtEur(saldo.total) : '—',
-            sub: saldo.total === 0 ? 'Introduce saldo en cuentas' : `Cuentas + inversiones`,
+            value: fmtEur(saldo.total),
+            sub: saldo.cuentas === 0 ? 'Introduce saldo en cuentas' : 'Cuentas + inversiones',
           },
           {
             label: 'Años cargados',
@@ -423,7 +419,14 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
             {/* ── PERSONAL ──────────────────────────────────────────────── */}
 
-            <tr onClick={() => toggle('personal')} style={{ cursor: 'pointer' }}>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.personal}
+              onClick={() => toggle('personal')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('personal'); } }}
+              style={{ cursor: 'pointer' }}
+            >
               <td style={tdToggleLabel}>
                 <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
                   {expanded.personal ? '▾' : '▸'}
@@ -466,7 +469,14 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
             {/* ── INMUEBLES ─────────────────────────────────────────────── */}
 
-            <tr onClick={() => toggle('inmuebles')} style={{ cursor: 'pointer' }}>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.inmuebles}
+              onClick={() => toggle('inmuebles')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('inmuebles'); } }}
+              style={{ cursor: 'pointer' }}
+            >
               <td style={tdToggleLabel}>
                 <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
                   {expanded.inmuebles ? '▾' : '▸'}
@@ -519,7 +529,14 @@ export const TreasuryEvolucionContent: React.FC<TreasuryEvolucionContentProps> =
 
             {/* ── INVERSIONES ───────────────────────────────────────────── */}
 
-            <tr onClick={() => toggle('inversiones')} style={{ cursor: 'pointer' }}>
+            <tr
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded.inversiones}
+              onClick={() => toggle('inversiones')}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle('inversiones'); } }}
+              style={{ cursor: 'pointer' }}
+            >
               <td style={tdToggleLabel}>
                 <span style={{ display: 'inline-block', width: 16, marginRight: 4, fontSize: 10, verticalAlign: 'middle' }}>
                   {expanded.inversiones ? '▾' : '▸'}
