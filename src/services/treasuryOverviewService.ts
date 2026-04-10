@@ -164,6 +164,7 @@ export const treasuryOverviewService = {
       inversiones,
       loanSettlements,
       accounts,
+      gastosPersonalesReal,
     ] = await Promise.all([
       db.getAll('contracts'),
       db.getAll('gastosInmueble'),
@@ -173,7 +174,16 @@ export const treasuryOverviewService = {
       db.getAll('inversiones'),
       db.getAll('loan_settlements'),
       db.getAll('accounts'),
+      db.getAll('gastosPersonalesReal').catch(() => [] as any[]),
     ]);
+
+    // Build confirmed real personal expenses by year
+    const gastosRealesPorAño: Record<number, number> = {};
+    for (const g of gastosPersonalesReal as any[]) {
+      if (g.ejercicio != null && g.importeReal > 0) {
+        gastosRealesPorAño[g.ejercicio] = (gastosRealesPorAño[g.ejercicio] || 0) + g.importeReal;
+      }
+    }
 
     // ── 3. Préstamos y planes de amortización ────────────────────────────────
     const prestamos = await prestamosService.getAllPrestamos();
@@ -418,12 +428,14 @@ export const treasuryOverviewService = {
     const summaries: TreasuryYearSummary[] = partials.map((p) => {
       const meses = getMesesAsignados(p.año);
       const gastoPersonalEstimado = gastoMensual * meses;
+      const gastoPersonalReal = gastosRealesPorAño[p.año] || 0;
+      const gastoEfectivo = gastoPersonalReal > 0 ? gastoPersonalReal : gastoPersonalEstimado;
       const variacionNeta =
-        p.subtotalPersonal + p.subtotalInmuebles + p.subtotalInversiones - gastoPersonalEstimado;
+        p.subtotalPersonal + p.subtotalInmuebles + p.subtotalInversiones - gastoEfectivo;
       return {
         ...p,
         gastoPersonalEstimado,
-        gastoPersonalReal: 0,
+        gastoPersonalReal,
         variacionNeta,
       };
     });

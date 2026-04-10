@@ -10,7 +10,7 @@ import {
   Cell,
 } from 'recharts';
 import KpiExcedente from './KpiExcedente';
-import LateralDesglose from './LateralDesglose';
+import LateralDesglose, { type CosteVida } from './LateralDesglose';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -28,6 +28,7 @@ export interface DatoMensual {
 interface DrilldownMensualProps {
   año: number;
   datos: DatoMensual[];
+  costesVidaCategoria?: CosteVida[];
   onBack: () => void;
 }
 
@@ -39,7 +40,7 @@ const fmtK = (v: number) => {
   return `${v}`;
 };
 
-const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack }) => {
+const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, costesVidaCategoria, onBack }) => {
   const [mesActivo, setMesActivo] = useState(0); // 0-indexed
 
   const dm = datos[mesActivo] || {
@@ -62,10 +63,23 @@ const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack
   const totalIngMes = dm.nomina + dm.autonomo;
   const totalGastosMes = gastoVidaMes + financiacionMes;
 
-  // Estimate breakdown for expenses
-  const alquilerMes = Math.round(gastoVidaMes * 0.45);
-  const alimentacionMes = Math.round(gastoVidaMes * 0.30);
-  const restoMes = gastoVidaMes - alquilerMes - alimentacionMes;
+  // Monthly category breakdown: divide annual categories by 12
+  const categoriasMes: { nombre: string; importe: number }[] =
+    costesVidaCategoria && costesVidaCategoria.length > 0
+      ? costesVidaCategoria.map(c => ({
+          nombre: c.nombre,
+          importe: Math.round((c.importe ?? 0) / 12),
+        }))
+      : [{ nombre: 'Gastos personales', importe: gastoVidaMes }];
+
+  // Monthly lateral costesVida
+  const costesVidaMes: CosteVida[] =
+    costesVidaCategoria && costesVidaCategoria.length > 0
+      ? costesVidaCategoria.map(c => ({
+          ...c,
+          importe: Math.round((c.importe ?? 0) / 12),
+        }))
+      : [{ nombre: 'Sin configurar', importe: null, iconKey: 'otros' }];
 
   return (
     <div>
@@ -156,7 +170,6 @@ const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack
           barColor="var(--grey-300, #C8D0DC)"
           label={`GASTO DE VIDA ${MESES[mesActivo]}`}
           value={gastoVidaMes}
-          prefix="~"
           sub="Gastos personales · mes"
           valueColor="var(--grey-900, #1A2332)"
           badgeLabel="Estimación mensual"
@@ -293,9 +306,9 @@ const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack
               }}>
                 Gastos · {MESES[mesActivo]} <span style={{ fontWeight: 400, fontStyle: 'italic' }}>(est.)</span>
               </div>
-              <DetailRow label="Alquiler" value={alquilerMes} color="var(--grey-700)" />
-              <DetailRow label="Alimentación" value={alimentacionMes} color="var(--grey-700)" />
-              <DetailRow label="Resto" value={restoMes} color="var(--grey-700)" />
+              {categoriasMes.map((cat) => (
+                <DetailRow key={cat.nombre} label={cat.nombre} value={cat.importe} color="var(--grey-700)" />
+              ))}
               <DetailRow label="Financiación" value={financiacionMes} color="var(--teal-600)" prefix="−" />
               <div style={{
                 borderTop: '1px solid var(--grey-300)',
@@ -325,11 +338,7 @@ const DrilldownMensual: React.FC<DrilldownMensualProps> = ({ año, datos, onBack
               iconKey: 'autonomo',
             },
           ]}
-          costesVida={[
-            { nombre: 'Alquiler', importe: alquilerMes, iconKey: 'alquiler' },
-            { nombre: 'Alimentación', importe: alimentacionMes, iconKey: 'alimentacion' },
-            { nombre: 'Resto', importe: restoMes, iconKey: 'seguros' },
-          ]}
+          costesVida={costesVidaMes}
           financiacion={financiacionMes}
           gastoVidaEstimado
         />

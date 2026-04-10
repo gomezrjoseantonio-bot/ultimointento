@@ -1,7 +1,7 @@
 import React from 'react';
-import { Banknote, Briefcase, UserPlus, Home, UtensilsCrossed, Shield, CreditCard } from 'lucide-react';
+import { Banknote, Briefcase, UserPlus, Home, UtensilsCrossed, Shield, CreditCard, Car, Gamepad2, Heart, GraduationCap, Package } from 'lucide-react';
 
-interface FuenteIngreso {
+export interface FuenteIngreso {
   nombre: string;
   meta?: string;
   importe: number | null;
@@ -10,11 +10,11 @@ interface FuenteIngreso {
   vacio?: boolean;
 }
 
-interface CosteVida {
+export interface CosteVida {
   nombre: string;
   meta?: string;
   importe: number | null;
-  iconKey: 'alquiler' | 'alimentacion' | 'seguros';
+  iconKey: string;
 }
 
 interface LateralDesgloseProps {
@@ -34,9 +34,15 @@ const ICONS_FUENTE: Record<string, React.ElementType> = {
 };
 
 const ICONS_COSTE: Record<string, React.ElementType> = {
+  vivienda: Home,
   alquiler: Home,
   alimentacion: UtensilsCrossed,
+  transporte: Car,
+  ocio: Gamepad2,
+  salud: Heart,
   seguros: Shield,
+  educacion: GraduationCap,
+  otros: Package,
 };
 
 const fmt = (v: number) =>
