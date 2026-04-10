@@ -91,10 +91,11 @@ export interface PosicionInversion {
   precio_medio_compra?: number;       // Para accion, etf, reit, crypto
   cuenta_cobro_id?: number;           // Cuenta destino de rescates/ventas/dividendos
   duracion_meses?: number;            // Para prestamo_p2p y deposito_plazo
-  modalidad_devolucion?: 'solo_intereses' | 'capital_e_intereses'; // Para prestamo_p2p
+  modalidad_devolucion?: 'solo_intereses' | 'capital_e_intereses' | 'al_vencimiento'; // Para prestamo_p2p
   frecuencia_cobro?: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'al_vencimiento'; // Para prestamo_p2p
   liquidacion_intereses?: 'al_vencimiento' | 'mensual' | 'trimestral' | 'anual'; // Para deposito_plazo
   retencion_fiscal?: number;          // % retención fiscal (0, 19, 21, 23, 27)
+  dividendo_anual_estimado?: number;  // Para accion, etf, reit (€/título/año, opcional)
 
   // Metadata
   notas?: string;
