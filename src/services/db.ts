@@ -2481,6 +2481,70 @@ export const initDB = async () => {
   return dbPromise;
 };
 
+/**
+ * Migración de datos: fusiona registros duplicados en planesPensionInversion.
+ * Cada plan de pensiones debe ser UN único registro con historialAportaciones por año.
+ * Los registros antiguos con formato "NOMBRE (YYYY)" se fusionan en uno sin año en el nombre.
+ */
+export const migrarPlanesDuplicados = async (): Promise<void> => {
+  try {
+    const db = await initDB();
+    const planes = await db.getAll('planesPensionInversion');
+
+    // Agrupar por empresa: NIF si existe, o nombre base sin "(YYYY)"
+    const grupos: Record<string, typeof planes> = {};
+    for (const plan of planes) {
+      const key =
+        plan.empresaNif ??
+        (typeof plan.nombre === 'string' ? plan.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim() : 'unknown');
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(plan);
+    }
+
+    for (const grupo of Object.values(grupos)) {
+      if (grupo.length <= 1) continue;
+
+      // El principal es el de menor id (más antiguo)
+      grupo.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+      const principal = grupo[0];
+      if (!principal.historialAportaciones) principal.historialAportaciones = {};
+
+      for (const plan of grupo) {
+        const yearMatch = typeof plan.nombre === 'string' ? plan.nombre.match(/\((\d{4})\)/) : null;
+        const año = yearMatch ? parseInt(yearMatch[1]) : null;
+        if (año && !principal.historialAportaciones[año]) {
+          principal.historialAportaciones[año] = {
+            titular: 0,
+            empresa: 0,
+            total: plan.aportacionesRealizadas ?? 0,
+            fuente: 'xml_aeat',
+          };
+        }
+      }
+
+      // Recalcular acumulado desde el historial
+      principal.aportacionesRealizadas = Object.values(principal.historialAportaciones).reduce(
+        (sum: number, a: { total: number }) => sum + a.total,
+        0
+      );
+      // Limpiar año del nombre base si lo tenía
+      if (typeof principal.nombre === 'string') {
+        principal.nombre = principal.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim();
+      }
+      principal.fechaActualizacion = new Date().toISOString();
+
+      await db.put('planesPensionInversion', principal);
+
+      // Borrar duplicados
+      for (const plan of grupo.slice(1)) {
+        if (plan.id != null) await db.delete('planesPensionInversion', plan.id);
+      }
+    }
+  } catch (err) {
+    console.warn('[ATLAS] migrarPlanesDuplicados: error en migración de planes duplicados:', err);
+  }
+};
+
 // Blob storage and download utilities (H0.4 requirement)
 export const getDocumentBlob = async (id: number): Promise<Blob | null> => {
   try {

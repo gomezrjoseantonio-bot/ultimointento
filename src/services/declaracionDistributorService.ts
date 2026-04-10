@@ -751,8 +751,8 @@ async function persistirVinculosAccesorio(
 
 /**
  * Persiste el plan de pensiones de empleo declarado en el store planesPensionInversion.
- * Requiere que personalData ya exista (ejecutar después de ejecutarOnboardingPersonal).
- * Deduplicación por año: no inserta si ya hay un plan con el mismo año en el nombre.
+ * Lógica upsert: UN solo registro por plan (deduplicado por NIF empresa o nombre base).
+ * Añade el año al historialAportaciones en lugar de crear un registro nuevo por ejercicio.
  */
 async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
   const pp = decl.planPensiones;
@@ -762,29 +762,61 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
   const perfil = perfiles[0];
   if (!perfil?.id) return;
 
-  // Deduplicar: no insertar si ya existe un plan para este ejercicio
-  const planesExistentes = await db.getAll('planesPensionInversion');
-  const clave = `(${año})`;
-  const yaExiste = planesExistentes.some((p) => typeof p.nombre === 'string' && p.nombre.includes(clave));
-  if (yaExiste) return;
-
   const ahora = new Date().toISOString();
-  const nombre = pp.nombreEmpleador
-    ? `${pp.nombreEmpleador} ${clave}`
-    : `Plan de pensiones empleo ${clave}`;
+  const totalAño = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
 
-  await db.add('planesPensionInversion', {
-    personalDataId: perfil.id,
-    nombre,
-    tipo: 'plan-pensiones',
-    aportacionesRealizadas: (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0),
-    valorCompra: 0,
-    valorActual: 0,
-    titularidad: 'yo',
-    esHistorico: true,
-    fechaCreacion: ahora,
-    fechaActualizacion: ahora,
-  } as any);
+  // Buscar plan existente por NIF empresa o por nombre base (sin año)
+  const planes = await db.getAll('planesPensionInversion');
+  const planExistente = planes.find((p) => {
+    if (p.tipo !== 'plan-pensiones') return false;
+    if (pp.nifEmpleador && p.empresaNif === pp.nifEmpleador) return true;
+    if (pp.nombreEmpleador && p.empresaNombre === pp.nombreEmpleador) return true;
+    return false;
+  });
+
+  if (planExistente) {
+    // ACTUALIZAR: añadir/sobrescribir año en el historial
+    if (!planExistente.historialAportaciones) {
+      planExistente.historialAportaciones = {};
+    }
+    planExistente.historialAportaciones[año] = {
+      titular: pp.aportacionesTrabajador ?? 0,
+      empresa: pp.contribucionesEmpresa ?? 0,
+      total: totalAño,
+      fuente: 'xml_aeat',
+    };
+    // Recalcular acumulado desde el historial completo
+    planExistente.aportacionesRealizadas = Object.values(planExistente.historialAportaciones)
+      .reduce((sum: number, a: { total: number }) => sum + a.total, 0);
+    planExistente.fechaActualizacion = ahora;
+    await db.put('planesPensionInversion', planExistente);
+  } else {
+    // CREAR: nuevo plan con primer año de historial
+    const nombreBase = pp.nombreEmpleador ?? 'Plan de pensiones empleo';
+    await db.add('planesPensionInversion', {
+      personalDataId: perfil.id,
+      nombre: nombreBase,
+      tipo: 'plan-pensiones',
+      entidad: pp.nombreEmpleador,
+      empresaNif: pp.nifEmpleador,
+      empresaNombre: pp.nombreEmpleador,
+      aportacionesRealizadas: totalAño,
+      valorCompra: 0,
+      valorActual: 0,
+      titularidad: 'yo',
+      esHistorico: true,
+      historialAportaciones: {
+        [año]: {
+          titular: pp.aportacionesTrabajador ?? 0,
+          empresa: pp.contribucionesEmpresa ?? 0,
+          total: totalAño,
+          fuente: 'xml_aeat',
+        },
+      },
+      fechaCreacion: ahora,
+      fechaActualizacion: ahora,
+    });
+  }
 }
 
 /**

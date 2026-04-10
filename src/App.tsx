@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
-import { initDB } from './services/db';
+import { initDB, migrarPlanesDuplicados } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
@@ -141,6 +141,7 @@ function App() {
     void initDB()
       .then(() => ejecutarMigracionGastos())
       .then(() => fixReparacionesDuplicadas())
+      .then(() => migrarPlanesDuplicados())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o migración gastos:', error);
       });
