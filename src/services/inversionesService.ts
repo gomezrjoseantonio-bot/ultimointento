@@ -55,6 +55,19 @@ export const inversionesService = {
       .map((p) => normalizePosicion(p as PosicionInversion));
   },
 
+  // Obtener todas las posiciones (activas + cerradas)
+  async getAllPosiciones(): Promise<{
+    activas: PosicionInversion[];
+    cerradas: PosicionInversion[];
+  }> {
+    const db = await initDB();
+    const todas = await db.getAll('inversiones');
+    return {
+      activas: todas.filter((p: any) => p.activo !== false).map((p: any) => normalizePosicion(p as PosicionInversion)),
+      cerradas: todas.filter((p: any) => p.activo === false).map((p: any) => normalizePosicion(p as PosicionInversion)),
+    };
+  },
+
   // Obtener una posición por ID
   async getPosicion(id: number): Promise<PosicionInversion | undefined> {
     const db = await initDB();
