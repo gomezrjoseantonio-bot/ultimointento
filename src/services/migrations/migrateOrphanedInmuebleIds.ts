@@ -84,10 +84,14 @@ export async function migrateOrphanedInmuebleIds(): Promise<MigrationReport> {
     const orphanedGastos = allGastos.filter((g) => !propertyIds.has(g.inmuebleId));
 
     if (orphanedGastos.length === 0) {
-      // No orphaned gastos — still check other stores but likely nothing to do
-      await migrateOtherStores(db, propertyIds, new Map(), report);
-      await db.put('keyval', 'completed', MIGRATION_KEY);
-      console.log('[Migración] migrateOrphanedInmuebleIds: no orphaned gastos found');
+      // No orphaned gastos — check if other stores have orphans before marking done
+      const hasOtherOrphans = await detectOrphansInOtherStores(db, propertyIds);
+      if (!hasOtherOrphans) {
+        await db.put('keyval', 'completed', MIGRATION_KEY);
+        console.log('[Migración] migrateOrphanedInmuebleIds: no orphaned records found in any store');
+      } else {
+        console.warn('[Migración] migrateOrphanedInmuebleIds: no orphaned gastos but other stores have orphans; will retry');
+      }
       return report;
     }
 
@@ -100,8 +104,10 @@ export async function migrateOrphanedInmuebleIds(): Promise<MigrationReport> {
     report.idMap = Object.fromEntries(idMap);
 
     if (idMap.size === 0) {
-      console.warn('[Migración] migrateOrphanedInmuebleIds: could not build ID map for orphaned IDs:', [...orphanedIdSet]);
-      await db.put('keyval', 'completed', MIGRATION_KEY);
+      console.warn(
+        '[Migración] migrateOrphanedInmuebleIds: could not build ID map for orphaned IDs; migration will be retried on next startup:',
+        [...orphanedIdSet],
+      );
       return report;
     }
 
@@ -112,8 +118,11 @@ export async function migrateOrphanedInmuebleIds(): Promise<MigrationReport> {
     for (const gasto of orphanedGastos) {
       const newId = idMap.get(gasto.inmuebleId);
       if (newId == null || gasto.id == null) continue;
+      const oldOrigenIdPrefix = `${gasto.inmuebleId}-`;
       const newOrigenId = gasto.origenId
-        ? gasto.origenId.replace(`${gasto.inmuebleId}-`, `${newId}-`)
+        ? gasto.origenId.startsWith(oldOrigenIdPrefix)
+          ? `${newId}-${gasto.origenId.slice(oldOrigenIdPrefix.length)}`
+          : gasto.origenId
         : undefined;
       await db.put('gastosInmueble', {
         ...gasto,
@@ -188,55 +197,81 @@ async function buildIdMap(
     const gastos = gastosByOrphanId.get(orphanId) ?? [];
     if (gastos.length === 0) continue;
 
-    // Use the first available exercise to match
-    const ejercicio = gastos[0].ejercicio;
-    const gastosInYear = gastos.filter((g) => g.ejercicio === ejercicio);
+    // Try all available exercises for this orphanId until a consistent match is found
+    const ejerciciosCandidatos = [...new Set(gastos.map((g) => g.ejercicio))];
 
-    const ej = ejercicios.find((e) => e.año === ejercicio);
-    const xmlInmuebles = ej?.aeat?.declaracionCompleta?.inmuebles;
-    if (!xmlInmuebles) continue;
+    for (const ejercicio of ejerciciosCandidatos) {
+      const gastosInYear = gastos.filter((g) => g.ejercicio === ejercicio);
 
-    for (const xmlInm of xmlInmuebles) {
-      if (xmlInm.esAccesorioDe) continue;
+      const ej = ejercicios.find((e) => e.año === ejercicio);
+      const xmlInmuebles = ej?.aeat?.declaracionCompleta?.inmuebles;
+      if (!xmlInmuebles) continue;
 
-      // Compare gastos amounts: every orphaned gasto for this year must match
-      let allMatch = true;
-      let matchCount = 0;
-      for (const gasto of gastosInYear) {
-        const campo = CASILLA_A_CAMPO[gasto.casillaAEAT];
-        if (!campo) continue;
-        const xmlAmount = xmlInm.gastos[campo] || 0;
-        if (Math.abs(xmlAmount - gasto.importe) < 0.01) {
-          matchCount++;
-        } else {
-          allMatch = false;
+      for (const xmlInm of xmlInmuebles) {
+        if (xmlInm.esAccesorioDe) continue;
+
+        // Compare gastos amounts: every orphaned gasto for this year must match
+        let allMatch = true;
+        let matchCount = 0;
+        for (const gasto of gastosInYear) {
+          const campo = CASILLA_A_CAMPO[gasto.casillaAEAT];
+          if (!campo) continue;
+          const xmlAmount = xmlInm.gastos[campo] || 0;
+          if (Math.abs(xmlAmount - gasto.importe) < 0.01) {
+            matchCount++;
+          } else {
+            allMatch = false;
+            break;
+          }
+        }
+
+        if (!allMatch || matchCount === 0) continue;
+
+        // Found matching XML inmueble — resolve to real property
+        const rc = normalizeRef(xmlInm.refCatastral);
+        let realProp = realByRef.get(rc);
+        if (!realProp) {
+          const addr = normalizeDireccion(xmlInm.direccion);
+          realProp = realByAddr.get(addr);
+          if (!realProp) {
+            const alias = normalizeDireccion(acortarDireccion(xmlInm.direccion));
+            realProp = realByAddr.get(alias);
+          }
+        }
+
+        if (realProp?.id != null && !matchedRealIds.has(realProp.id)) {
+          idMap.set(orphanId, realProp.id);
+          matchedRealIds.add(realProp.id);
           break;
         }
       }
 
-      if (!allMatch || matchCount === 0) continue;
-
-      // Found matching XML inmueble — resolve to real property
-      const rc = normalizeRef(xmlInm.refCatastral);
-      let realProp = realByRef.get(rc);
-      if (!realProp) {
-        const addr = normalizeDireccion(xmlInm.direccion);
-        realProp = realByAddr.get(addr);
-        if (!realProp) {
-          const alias = normalizeDireccion(acortarDireccion(xmlInm.direccion));
-          realProp = realByAddr.get(alias);
-        }
-      }
-
-      if (realProp?.id != null && !matchedRealIds.has(realProp.id)) {
-        idMap.set(orphanId, realProp.id);
-        matchedRealIds.add(realProp.id);
-        break;
-      }
+      if (idMap.has(orphanId)) break;
     }
   }
 
   return idMap;
+}
+
+/**
+ * Quick check: do any non-gastos stores have orphaned inmuebleIds?
+ */
+async function detectOrphansInOtherStores(
+  db: Awaited<ReturnType<typeof initDB>>,
+  propertyIds: Set<number>,
+): Promise<boolean> {
+  const stores = ['mejorasInmueble', 'mueblesInmueble', 'contracts'] as const;
+  for (const store of stores) {
+    try {
+      const all = await db.getAll(store);
+      const hasOrphan = all.some((rec: any) => {
+        const id = rec.inmuebleId ?? rec.propertyId;
+        return id != null && !propertyIds.has(Number(id));
+      });
+      if (hasOrphan) return true;
+    } catch (_e) { /* store might not exist */ }
+  }
+  return false;
 }
 
 /**
@@ -310,7 +345,7 @@ async function migrateOtherStores(
       const inmId = rec.inmuebleId ?? (rec as any).propertyId;
       const newId = idMap.get(inmId);
       if (newId != null && !propertyIds.has(inmId) && rec.id != null) {
-        await db.put('contracts', { ...rec, inmuebleId: newId, propertyId: newId });
+        await db.put('contracts', { ...rec, inmuebleId: newId, propertyId: newId, updatedAt: new Date().toISOString() });
         count++;
       }
     }
@@ -362,17 +397,20 @@ async function migrateOtherStores(
     console.warn('[Migración] Error migrating vinculosAccesorio:', e);
   }
 
-  // documentosFiscales
+  // documentosFiscales (inmuebleId may be string or number depending on version)
   try {
     const all = await db.getAll('documentosFiscales');
     let count = 0;
     for (const rec of all) {
-      const inmId = (rec as any).inmuebleId as number | undefined;
-      if (inmId != null) {
-        const newId = idMap.get(inmId);
-        if (newId != null && !propertyIds.has(inmId) && rec.id != null) {
-          await db.put('documentosFiscales', { ...rec, inmuebleId: newId });
-          count++;
+      const rawInmuebleId = (rec as any).inmuebleId as string | number | undefined;
+      if (rawInmuebleId != null) {
+        const inmId = Number(rawInmuebleId);
+        if (!Number.isNaN(inmId)) {
+          const newId = idMap.get(inmId);
+          if (newId != null && !propertyIds.has(inmId) && rec.id != null) {
+            await db.put('documentosFiscales', { ...rec, inmuebleId: newId, updatedAt: new Date().toISOString() });
+            count++;
+          }
         }
       }
     }
@@ -390,7 +428,7 @@ async function migrateOtherStores(
       if (inmId != null) {
         const newId = idMap.get(inmId);
         if (newId != null && !propertyIds.has(inmId) && rec.id != null) {
-          await db.put('arrastresIRPF', { ...rec, inmuebleId: newId });
+          await db.put('arrastresIRPF', { ...rec, inmuebleId: newId, updatedAt: new Date().toISOString() });
           count++;
         }
       }
