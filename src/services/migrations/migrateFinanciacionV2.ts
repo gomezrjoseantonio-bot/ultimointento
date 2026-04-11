@@ -17,9 +17,27 @@ import type { DestinoCapital, Garantia } from '../../types/prestamos';
 
 const MIGRATION_FLAG = 'atlas-financiacion-v2-migrated';
 
+function safeLocalStorageGet(key: string): string | null {
+  try {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+  } catch {
+    return null;
+  }
+}
+
+function safeLocalStorageSet(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value);
+    }
+  } catch {
+    // Safari private mode or quota exceeded — migration will re-run next load, which is safe
+  }
+}
+
 export async function migrateFinanciacionV2(): Promise<void> {
   // Guard idempotency via localStorage flag
-  if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_FLAG) === 'true') {
+  if (safeLocalStorageGet(MIGRATION_FLAG) === 'true') {
     return;
   }
 
@@ -91,9 +109,7 @@ export async function migrateFinanciacionV2(): Promise<void> {
     migrated++;
   }
 
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(MIGRATION_FLAG, 'true');
-  }
+  safeLocalStorageSet(MIGRATION_FLAG, 'true');
 
   console.log(`✅ [migrateFinanciacionV2] ${migrated} préstamos migrados al modelo v2 (de ${prestamos.length} totales)`);
 }

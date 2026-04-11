@@ -11,7 +11,8 @@ import { getImputacionFactor } from './financiacionImputacionService';
  * Compatible con destinos v2, afectacionesInmueble y inmuebleId.
  */
 export const getAllocationFactor = (
-  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>,
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'> &
+    Partial<Pick<Prestamo, 'destinos' | 'principalInicial'>>,
   inmuebleId: string
 ): number => {
   return getImputacionFactor(prestamo, inmuebleId);

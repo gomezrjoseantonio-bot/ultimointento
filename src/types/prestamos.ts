@@ -208,7 +208,7 @@ export interface DestinoCapital {
   inversionId?: string;
   prestamoIdCancelado?: string;
   importe: number;
-  porcentaje?: number;           // calculado: importe / principalInicial * 100
+  porcentaje?: number;           // opcional: puede venir almacenado (legacy) o derivarse como importe / principalInicial * 100
   descripcion?: string;
 }
 

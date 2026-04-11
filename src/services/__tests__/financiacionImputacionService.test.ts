@@ -131,16 +131,56 @@ describe('getImputacionFactor', () => {
   });
 
   describe('modelo v2: array destinos vacío', () => {
-    it('destinos vacío → factor 0 (no usa legacy)', () => {
-      // Si el array existe pero está vacío, el préstamo fue migrado y no tiene destinos reales
+    it('destinos:[] → factor 0, NO usa legacy inmuebleId', () => {
+      // Préstamo migrado a v2 pero sin destinos activos → no debe caer a legacy
       const p: TestPrestamo = {
         inmuebleId: 'X',
         afectacionesInmueble: undefined,
         principalInicial: 50000,
         destinos: [],
       };
-      // Array vacío → sum=0, factor=0 (correcto: préstamo sin destinos activos)
       expect(getImputacionFactor(p, 'X')).toBe(0);
+    });
+
+    it('destinos:[] → factor 0, NO usa legacy afectacionesInmueble', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        principalInicial: 98000,
+        afectacionesInmueble: [{ inmuebleId: 'T64-4D', porcentaje: 50 }],
+        destinos: [],
+      };
+      expect(getImputacionFactor(p, 'T64-4D')).toBe(0);
+    });
+  });
+
+  describe('modelo v2: factor capping con múltiples destinos al mismo inmueble', () => {
+    it('dos destinos al mismo inmueble cuya suma supera principal → cap a 1', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 100000,
+        destinos: [
+          { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'X', importe: 60000 },
+          { id: 'd2', tipo: 'REFORMA', inmuebleId: 'X', importe: 60000 },
+        ],
+      };
+      expect(getImputacionFactor(p, 'X')).toBe(1);
+    });
+  });
+
+  describe('caso real: 75/25 mixto (ING)', () => {
+    it('factor exacto al 0.75 para T48', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 200000,
+        destinos: [
+          { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'T48', importe: 150000 },
+          { id: 'd2', tipo: 'CANCELACION_DEUDA', importe: 50000 },
+        ],
+      };
+      expect(getImputacionFactor(p, 'T48')).toBeCloseTo(0.75, 10);
+      expect(getImputacionFactor(p, 'otro')).toBe(0);
     });
   });
 });
@@ -241,6 +281,68 @@ describe('interesesDeduciblesInmueble', () => {
       };
       // factor = 1/3 → 100 * (1/3) = 33.33...
       expect(interesesDeduciblesInmueble(p, 'X', 100)).toBe(33.33);
+    });
+
+    it('destinos:[] → 0 deducible, NO usa legacy (aunque inmuebleId coincida)', () => {
+      const p: TestPrestamo = {
+        inmuebleId: 'T64-4D',
+        afectacionesInmueble: undefined,
+        principalInicial: 98000,
+        destinos: [],
+      };
+      expect(interesesDeduciblesInmueble(p, 'T64-4D', 2000)).toBe(0);
+    });
+
+    it('caso 75/25 ING: solo 75% deducible (ADQUISICION), CANCELACION_DEUDA no lo es', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 200000,
+        destinos: [
+          { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'T48', importe: 150000 },
+          { id: 'd2', tipo: 'CANCELACION_DEUDA', importe: 50000 },
+        ],
+      };
+      expect(interesesDeduciblesInmueble(p, 'T48', 4000)).toBe(3000);
+    });
+
+    it('dos destinos deducibles al mismo inmueble se suman correctamente', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 100000,
+        destinos: [
+          { id: 'd1', tipo: 'ADQUISICION', inmuebleId: 'X', importe: 40000 },
+          { id: 'd2', tipo: 'REFORMA', inmuebleId: 'X', importe: 40000 },
+          { id: 'd3', tipo: 'PERSONAL', importe: 20000 },
+        ],
+      };
+      // 80% deducible para X
+      expect(interesesDeduciblesInmueble(p, 'X', 1000)).toBe(800);
+    });
+
+    it('INVERSION no es deducible como alquiler', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 50000,
+        destinos: [
+          { id: 'd1', tipo: 'INVERSION', inmuebleId: 'Y', importe: 50000 },
+        ],
+      };
+      expect(interesesDeduciblesInmueble(p, 'Y', 1000)).toBe(0);
+    });
+
+    it('OTRA no es deducible', () => {
+      const p: TestPrestamo = {
+        inmuebleId: undefined,
+        afectacionesInmueble: undefined,
+        principalInicial: 50000,
+        destinos: [
+          { id: 'd1', tipo: 'OTRA', importe: 50000 },
+        ],
+      };
+      expect(interesesDeduciblesInmueble(p, 'cualquiera', 1000)).toBe(0);
     });
   });
 });

@@ -27,11 +27,12 @@ const TIPOS_DEDUCIBLES = new Set<string>(['ADQUISICION', 'REFORMA']);
  * - Si el préstamo no tiene `destinos` → usa afectacionesInmueble o inmuebleId.
  */
 export function getImputacionFactor(
-  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>,
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'> &
+    Partial<Pick<Prestamo, 'destinos' | 'principalInicial'>>,
   inmuebleId: string
 ): number {
-  // ─── Modelo v2: usar destinos ───
-  if (prestamo.destinos && prestamo.destinos.length > 0) {
+  // ─── Modelo v2: destinos presente (incluso vacío → factor 0, no hay legacy fallback) ───
+  if (Array.isArray(prestamo.destinos)) {
     const principal = prestamo.principalInicial;
     if (!principal || principal <= 0) return 0;
 
@@ -62,14 +63,15 @@ export function getImputacionFactor(
  * y asume que el préstamo es de tipo ADQUISICION (comportamiento anterior).
  */
 export function interesesDeduciblesInmueble(
-  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>,
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'> &
+    Partial<Pick<Prestamo, 'destinos' | 'principalInicial'>>,
   inmuebleId: string,
   interesesTotalAño: number
 ): number {
   if (interesesTotalAño <= 0) return 0;
 
-  // ─── Modelo v2: usar solo destinos deducibles ───
-  if (prestamo.destinos && prestamo.destinos.length > 0) {
+  // ─── Modelo v2: destinos presente (incluso vacío → 0 deducible, sin fallback legacy) ───
+  if (Array.isArray(prestamo.destinos)) {
     const principal = prestamo.principalInicial;
     if (!principal || principal <= 0) return 0;
 
