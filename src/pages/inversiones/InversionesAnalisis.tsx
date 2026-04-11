@@ -958,26 +958,6 @@ export default function InversionesAnalisis() {
     setActiveTab('individual');
   };
 
-  const handleNewPosition = () => {
-    setEditingPosicion(undefined);
-    setShowForm(true);
-  };
-
-  const handleEditPosition = async (id: string) => {
-    try {
-      const posicion = await inversionesService.getPosicion(Number(id));
-      if (!posicion) {
-        toast.error('No se ha encontrado la posición para editar');
-        return;
-      }
-      setEditingPosicion(posicion);
-      setShowForm(true);
-    } catch (error) {
-      console.error('Error cargando la posición para editar:', error);
-      toast.error('Error al abrir la edición');
-    }
-  };
-
   const handleViewAportaciones = async (id: string) => {
     try {
       const posicion = await inversionesService.getPosicion(Number(id));

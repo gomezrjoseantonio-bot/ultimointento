@@ -2,7 +2,8 @@
 // Página de GESTIÓN de inversiones: acciones CRUD sobre posiciones
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { TrendingUp, Eye, Edit2, Plus } from 'lucide-react';
+import { TrendingUp, Eye, Edit2, Trash2, Plus } from 'lucide-react';
+import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
@@ -72,6 +73,17 @@ const GestionInversionesPage: React.FC = () => {
     }
   };
 
+  const handleArchivePosition = async (p: PosicionInversion) => {
+    if (!window.confirm(`¿Archivar "${p.nombre}"? La posición se marcará como cerrada y dejará de aparecer en la cartera activa.`)) return;
+    try {
+      await inversionesService.deletePosicion(p.id);
+      toast.success(`"${p.nombre}" archivada correctamente`);
+      await refresh();
+    } catch {
+      toast.error('Error al archivar la posición');
+    }
+  };
+
   const handleSavePosition = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
     try {
       if (editingPosicion) {
@@ -91,8 +103,12 @@ const GestionInversionesPage: React.FC = () => {
 
   const refreshDetailPosicion = async () => {
     if (!detailPosicion) return;
-    const updated = await inversionesService.getPosicion(detailPosicion.id);
-    setDetailPosicion(updated);
+    try {
+      const updated = await inversionesService.getPosicion(detailPosicion.id);
+      if (updated) setDetailPosicion(updated);
+    } catch {
+      // silently keep previous state; the save already succeeded
+    }
   };
 
   const handleSaveAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
@@ -122,139 +138,115 @@ const GestionInversionesPage: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
-      {/* Cabecera GESTIÓN: fondo navy-900 */}
-      <div style={{
-        background: 'var(--navy-900)',
-        padding: '24px 32px 20px',
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <TrendingUp size={20} color="rgba(255,255,255,0.7)" />
-            <h1 style={{
-              fontSize: 'var(--t-xl)',
-              fontWeight: 700,
-              color: 'white',
-              margin: 0,
-            }}>
-              Gestión inversiones
-            </h1>
-          </div>
-          <button
+    <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif", padding: '24px 32px' }}>
+      <PageHeader
+        icon={TrendingUp}
+        title="Gestión inversiones"
+        subtitle="Crea, edita y gestiona tus posiciones financieras"
+        actions={
+          <HeaderPrimaryButton
+            icon={Plus}
+            label="Nueva posición"
             onClick={handleNewPosition}
-            style={{
-              background: 'white',
-              color: 'var(--navy-900)',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 16px',
-              fontSize: 'var(--t-base)',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <Plus size={14} />
-            Nueva posición
-          </button>
-        </div>
-      </div>
+          />
+        }
+      />
 
       {/* Listado de posiciones con acciones */}
-      <div style={{ padding: '24px 32px' }}>
-        {posiciones.length === 0 ? (
-          <div style={{
-            background: 'white',
-            border: `1px solid ${C.n300}`,
-            borderRadius: 12,
-            padding: '32px',
-            textAlign: 'center',
-            color: C.n500,
-            fontSize: 14,
-          }}>
-            No hay posiciones activas. Crea tu primera posición con el botón "+ Nueva posición".
+      {posiciones.length === 0 ? (
+        <div style={{
+          background: 'white',
+          border: `1px solid ${C.n300}`,
+          borderRadius: 12,
+          padding: '32px',
+          textAlign: 'center',
+          color: C.n500,
+          fontSize: 14,
+        }}>
+          No hay posiciones activas. Crea tu primera posición con el botón "Nueva posición".
+        </div>
+      ) : (
+        <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, fontSize: 13, fontWeight: 600, color: C.n700 }}>
+            {posiciones.length} posición{posiciones.length !== 1 ? 'es' : ''} activa{posiciones.length !== 1 ? 's' : ''}
           </div>
-        ) : (
-          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, fontSize: 13, fontWeight: 600, color: C.n700 }}>
-              {posiciones.length} posición{posiciones.length !== 1 ? 'es' : ''} activa{posiciones.length !== 1 ? 's' : ''}
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Posición / Entidad', 'Tipo', 'Aportado', 'Valor actual', 'Rent. total', 'Acciones'].map((col, i) => (
-                    <th
-                      key={col}
-                      style={{
-                        padding: '9px 16px',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        letterSpacing: '.08em',
-                        textTransform: 'uppercase',
-                        color: C.n500,
-                        background: C.n50,
-                        borderBottom: `1px solid ${C.n200}`,
-                        textAlign: i >= 2 && i <= 4 ? 'right' : i === 5 ? 'center' : 'left',
-                      }}
-                    >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {posiciones.map((p, i) => (
-                  <tr
-                    key={p.id}
-                    style={{ borderBottom: i < posiciones.length - 1 ? `1px solid ${C.n100}` : 'none' }}
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Posición / Entidad', 'Tipo', 'Aportado', 'Valor actual', 'Rent. total', 'Acciones'].map((col, i) => (
+                  <th
+                    key={col}
+                    style={{
+                      padding: '9px 16px',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '.08em',
+                      textTransform: 'uppercase',
+                      color: C.n500,
+                      background: C.n50,
+                      borderBottom: `1px solid ${C.n200}`,
+                      textAlign: i >= 2 && i <= 4 ? 'right' : i === 5 ? 'center' : 'left',
+                    }}
                   >
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{p.nombre}</div>
-                      <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{p.tipo}</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                      {fmt(p.total_aportado)}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                      {fmt(p.valor_actual)}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: p.rentabilidad_porcentaje >= 0 ? C.blue : C.n700, fontWeight: 600 }}>
-                      {fmtPct(p.rentabilidad_porcentaje)}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <button
-                          onClick={() => handleViewDetail(p.id)}
-                          title="Ver detalle y aportaciones"
-                          aria-label={`Ver detalle de ${p.nombre}`}
-                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleEditPosition(p.id)}
-                          title="Editar posición"
-                          aria-label={`Editar ${p.nombre}`}
-                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    {col}
+                  </th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </tr>
+            </thead>
+            <tbody>
+              {posiciones.map((p, i) => (
+                <tr
+                  key={p.id}
+                  style={{ borderBottom: i < posiciones.length - 1 ? `1px solid ${C.n100}` : 'none' }}
+                >
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{p.nombre}</div>
+                    <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{p.tipo}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
+                    {fmt(p.total_aportado)}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
+                    {fmt(p.valor_actual)}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: p.rentabilidad_porcentaje >= 0 ? C.blue : C.n700, fontWeight: 600 }}>
+                    {fmtPct(p.rentabilidad_porcentaje)}
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      <button
+                        onClick={() => handleViewDetail(p.id)}
+                        title="Ver detalle y aportaciones"
+                        aria-label={`Ver detalle de ${p.nombre}`}
+                        style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                      >
+                        <Eye size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleEditPosition(p.id)}
+                        title="Editar posición"
+                        aria-label={`Editar ${p.nombre}`}
+                        style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleArchivePosition(p)}
+                        title="Archivar posición"
+                        aria-label={`Archivar ${p.nombre}`}
+                        style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showForm && (
         <PosicionForm
@@ -286,8 +278,10 @@ const GestionInversionesPage: React.FC = () => {
             setShowAportacionForm(true);
           }}
           onDeleteAportacion={handleDeleteAportacion}
-          onActualizarValor={async () => {
-            toast('Actualiza el valor desde editar posición por ahora.', { icon: 'ℹ️' });
+          onActualizarValor={() => {
+            setShowDetail(false);
+            setEditingPosicion(detailPosicion);
+            setShowForm(true);
           }}
           onEditarPosicion={() => {
             setShowDetail(false);
