@@ -8,3 +8,10 @@ export { default as PosicionForm } from './components/PosicionForm';
 export { default as PosicionDetailModal } from './components/PosicionDetailModal';
 export { default as ActualizarValorModal } from './components/ActualizarValorModal';
 export { default as AportacionForm } from './components/AportacionForm';
+
+// New tab components
+export * from './components/tabs';
+export * from './components/cards';
+export * from './components/types';
+export * from './components/utils';
+

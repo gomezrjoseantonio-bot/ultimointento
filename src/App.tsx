@@ -75,8 +75,6 @@ const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/su
 const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
-const InversionesAnalisis = lazyWithPreload(() => import('./pages/inversiones/InversionesAnalisis'));
-
 // Financing Module - New standalone financing module
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
 const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
@@ -393,21 +391,11 @@ function App() {
               } />
             </Route>
             
-            {/* Inversiones Module */}
+            {/* Inversiones Module - unified with 4 tabs */}
             <Route path="inversiones">
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesAnalisis />
-                </React.Suspense>
-              } />
-              <Route path="cartera" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesPage initialTab="cartera" />
-                </React.Suspense>
-              } />
-              <Route path="rendimientos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesPage initialTab="rendimientos" />
+                  <InversionesPage />
                 </React.Suspense>
               } />
               <Route path="analisis" element={

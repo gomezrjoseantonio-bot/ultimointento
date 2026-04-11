@@ -1,20 +1,24 @@
+// InversionesPage.tsx
+// ATLAS HORIZON: Unified Investment Portfolio Page
+// Uses PageHeader (mandatory) with 4 tabs: Resumen, Cartera, Rendimientos, Individual
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, TrendingUp, AlertCircle } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton } from '../../../components/shared/PageHeader';
 import { inversionesService } from '../../../services/inversionesService';
 import { rendimientosService } from '../../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../../services/migrations/migrateInversiones';
+import { planesInversionService } from '../../../services/planesInversionService';
 import { PosicionInversion, Aportacion } from '../../../types/inversiones';
-import CarteraResumen from './components/CarteraResumen';
-import PosicionCard from './components/PosicionCard';
+import type { PlanPensionInversion } from '../../../types/personal';
 import PosicionForm from './components/PosicionForm';
 import PosicionDetailModal from './components/PosicionDetailModal';
-import ActualizarValorModal from './components/ActualizarValorModal';
 import AportacionForm from './components/AportacionForm';
 import RendimientosTab from './components/RendimientosTab';
+import { TabResumen, TabCartera, TabRendimientos, TabIndividual } from './components/tabs';
+import { PositionRow, Tab } from './components/types';
+import { mapPosicionesToRows } from './components/utils';
 import toast from 'react-hot-toast';
-
-type Tab = 'cartera' | 'rendimientos';
 
 interface InversionesPageProps {
   initialTab?: Tab;
@@ -22,47 +26,56 @@ interface InversionesPageProps {
 
 
 
-const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera' }) => {
-  const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
-  const [resumen, setResumen] = useState({
-    valor_total: 0,
-    total_aportado: 0,
-    rentabilidad_euros: 0,
-    rentabilidad_porcentaje: 0,
-    num_posiciones: 0,
-    por_tipo: {} as Record<string, number>,
-  });
+const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen' }) => {
+  const [closedPositions, setClosedPositions] = useState<PosicionInversion[]>([]);
+  const [planesPension, setPlanesPension] = useState<PlanPensionInversion[]>([]);
+  const [positions, setPositions] = useState<PositionRow[]>([]);
+  const [selectedPositionId, setSelectedPositionId] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
-  const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportacionForm, setShowAportacionForm] = useState(false);
   const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
+  const [detailPosicion, setDetailPosicion] = useState<PosicionInversion | undefined>();
   const [loading, setLoading] = useState(true);
   const [pendingRendimientos, setPendingRendimientos] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [posicionesData, resumenData] = await Promise.all([
-        inversionesService.getPosiciones(),
+      const [{ activas, cerradas }] = await Promise.all([
+        inversionesService.getAllPosiciones(),
         inversionesService.getResumenCartera(),
       ]);
-      setPosiciones(posicionesData);
-      setResumen(resumenData);
+      setClosedPositions(cerradas);
+      
+      // Map positions to PositionRow format for tabs
+      const mapped = mapPosicionesToRows(activas);
+      setPositions(mapped);
+      if (mapped.length && !mapped.some((p) => p.id === selectedPositionId)) {
+        setSelectedPositionId(mapped[0].id);
+      }
 
       // Count pending rendimientos
       const allRendimientos = await rendimientosService.getAllRendimientos();
       const pending = allRendimientos.filter(r => r.estado === 'pendiente').length;
       setPendingRendimientos(pending);
+      
+      // Load pension plans (personalDataId=1 as default)
+      try {
+        const planes = await planesInversionService.getPlanes(1);
+        setPlanesPension(planes);
+      } catch {
+        setPlanesPension([]);
+      }
     } catch (error) {
       console.error('Error loading inversiones:', error);
       toast.error('Error al cargar las inversiones');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedPositionId]);
 
 
   useEffect(() => {
@@ -102,59 +115,57 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
     }
   };
 
-  const handleViewDetails = (id: number) => {
-    const posicion = posiciones.find(p => p.id === id);
-    if (posicion) {
-      setEditingPosicion(posicion);
-      setShowDetail(true);
-    }
+  const handleSelectPosition = (id: string) => {
+    setSelectedPositionId(id);
+    setActiveTab('individual');
   };
 
-  const handleActualizarValor = async (nuevoValor: number, fechaValoracion: string) => {
-    if (!editingPosicion) return;
+  const handleViewAportaciones = async (id: string) => {
     try {
-      await inversionesService.updatePosicion(editingPosicion.id, {
-        valor_actual: nuevoValor,
-        fecha_valoracion: fechaValoracion,
-      });
-      toast.success('Valor actualizado correctamente');
-      setShowActualizarValor(false);
-      await loadData();
-      const updated = await inversionesService.getPosicion(editingPosicion.id);
-      setEditingPosicion(updated);
+      const posicion = await inversionesService.getPosicion(Number(id));
+      if (!posicion) {
+        toast.error('No se ha encontrado la posición');
+        return;
+      }
+      setDetailPosicion(posicion);
+      setShowDetail(true);
     } catch (error) {
-      console.error('Error updating valor:', error);
-      toast.error('Error al actualizar el valor');
+      console.error('Error cargando detalle de posición:', error);
+      toast.error('Error al abrir el detalle de aportaciones');
     }
   };
 
-  const handleAddAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
-    if (!editingPosicion) return;
+  const refreshDetailPosicion = async () => {
+    if (!detailPosicion) return;
+    const updated = await inversionesService.getPosicion(detailPosicion.id);
+    setDetailPosicion(updated);
+  };
+
+  const handleDeleteAportacion = async (aportacionId: number) => {
+    if (!detailPosicion) return;
+    await inversionesService.deleteAportacion(detailPosicion.id, aportacionId);
+    await loadData();
+    await refreshDetailPosicion();
+  };
+
+  const handleSaveAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
+    if (!detailPosicion) return;
     try {
       if (editingAportacion) {
-        await inversionesService.updateAportacion(editingPosicion.id, editingAportacion.id, aportacion);
+        await inversionesService.updateAportacion(detailPosicion.id, editingAportacion.id, aportacion);
         toast.success('Movimiento actualizado correctamente');
       } else {
-        await inversionesService.addAportacion(editingPosicion.id, aportacion);
+        await inversionesService.addAportacion(detailPosicion.id, aportacion);
         toast.success('Aportación añadida correctamente');
       }
       setShowAportacionForm(false);
       setEditingAportacion(undefined);
       await loadData();
-      const updated = await inversionesService.getPosicion(editingPosicion.id);
-      setEditingPosicion(updated);
+      await refreshDetailPosicion();
     } catch (error) {
-      console.error('Error adding aportacion:', error);
-      toast.error('Error al añadir la aportación');
+      console.error('Error guardando aportación:', error);
+      toast.error('Error al guardar el movimiento');
     }
-  };
-
-  const handleDeleteAportacion = async (aportacionId: number) => {
-    if (!editingPosicion) return;
-    await inversionesService.deleteAportacion(editingPosicion.id, aportacionId);
-    await loadData();
-    const updated = await inversionesService.getPosicion(editingPosicion.id);
-    setEditingPosicion(updated);
   };
 
   const handleNewPosicion = () => {
@@ -178,134 +189,111 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
   }
 
   return (
-    <div>
-      {/* v4 Header */}
-      <PageHeader
-        icon={TrendingUp}
-        title="Inversiones"
-        tabs={[
-          { id: 'cartera', label: 'Cartera' },
-          { id: 'rendimientos', label: pendingRendimientos > 0 ? `Rendimientos (${pendingRendimientos})` : 'Rendimientos' },
-        ]}
-        activeTab={activeTab}
-        onTabChange={(id) => setActiveTab(id as Tab)}
-        actions={<HeaderPrimaryButton icon={Plus} label="Nueva posición" onClick={handleNewPosicion} />}
-      />
+    <div style={{ minHeight: '100vh', background: 'var(--grey-50, #F8F9FA)', fontFamily: "'IBM Plex Sans', system-ui, sans-serif" }}>
+      <div style={{ padding: 24 }}>
+        {/* v4 PageHeader with 4 tabs */}
+        <PageHeader
+          icon={TrendingUp}
+          title="Inversiones"
+          subtitle="Análisis de rendimiento y evolución de tus posiciones"
+          tabs={[
+            { id: 'resumen', label: 'Resumen' },
+            { id: 'cartera', label: 'Cartera' },
+            { id: 'rendimientos', label: pendingRendimientos > 0 ? `Rendimientos (${pendingRendimientos})` : 'Rendimientos' },
+            { id: 'individual', label: 'Individual' },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as Tab)}
+          actions={<HeaderPrimaryButton icon={Plus} label="Nueva posición" onClick={handleNewPosicion} />}
+        />
 
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
-      {/* Pending rendimientos alert */}
-      {pendingRendimientos > 0 && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '12px 16px',
-          background: 'var(--grey-100)',
-          border: '1px solid var(--grey-300)',
-          borderRadius: 'var(--r-md)',
-          marginBottom: 24,
-        }}>
-          <AlertCircle size={18} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
-          <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', color: 'var(--grey-700)', margin: 0 }}>
-            Tienes <strong>{pendingRendimientos}</strong> {pendingRendimientos === 1 ? 'rendimiento pendiente' : 'rendimientos pendientes'} de cobrar.{' '}
-            <button
-              onClick={() => setActiveTab('rendimientos')}
-              style={{ background: 'none', border: 'none', color: 'var(--navy-900)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', padding: 0 }}
-            >
-              Ver rendimientos
-            </button>
-          </p>
-        </div>
-      )}
-
-      {/* Tab content */}
-      {activeTab === 'cartera' && (
-        <>
-          <CarteraResumen
-            valorTotal={resumen.valor_total}
-            rentabilidadEuros={resumen.rentabilidad_euros}
-            rentabilidadPorcentaje={resumen.rentabilidad_porcentaje}
-            porTipo={resumen.por_tipo}
-          />
-
-          <h2 style={{
-            fontFamily: 'var(--font-base)',
-            fontSize: 'var(--text-lg)',
-            fontWeight: 600,
-            color: 'var(--atlas-navy-1)',
-            margin: '0 0 1rem 0',
+        {/* Pending rendimientos alert */}
+        {pendingRendimientos > 0 && activeTab !== 'rendimientos' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 16px',
+            background: 'var(--grey-100)',
+            border: '1px solid var(--grey-300)',
+            borderRadius: 8,
+            marginBottom: 20,
           }}>
-            Mis Posiciones
-          </h2>
-
-          {posiciones.length === 0 ? (
-            <div style={{
-              background: 'var(--white)',
-              border: '1px solid var(--grey-200)',
-              borderRadius: 'var(--r-lg)',
-              padding: '48px 24px',
-              textAlign: 'center',
-            }}>
-              <TrendingUp size={48} style={{ color: 'var(--grey-400)', margin: '0 auto 16px', display: 'block' }} />
-              <h3 style={{
-                fontSize: 'var(--t-md)',
-                fontWeight: 600,
-                color: 'var(--grey-700)',
-                margin: '0 0 4px',
-              }}>
-                No hay posiciones todavía
-              </h3>
-              <p style={{
-                fontSize: 'var(--t-sm)',
-                color: 'var(--grey-500)',
-                margin: '0 0 24px',
-              }}>
-                Comienza añadiendo tu primera posición de inversión
-              </p>
+            <AlertCircle size={18} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
+            <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', color: 'var(--grey-700)', margin: 0 }}>
+              Tienes <strong>{pendingRendimientos}</strong> {pendingRendimientos === 1 ? 'rendimiento pendiente' : 'rendimientos pendientes'} de cobrar.{' '}
               <button
-                onClick={handleNewPosicion}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '10px 16px',
-                  background: 'var(--navy-900)',
-                  color: 'var(--white)',
-                  border: 'none',
-                  borderRadius: 'var(--r-md)',
-                  fontFamily: 'var(--font-base)',
-                  fontSize: 'var(--t-base)',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
+                onClick={() => setActiveTab('rendimientos')}
+                style={{ background: 'none', border: 'none', color: 'var(--navy-900)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', padding: 0 }}
               >
-                <Plus size={16} />
-                Añadir primera posición
+                Ver rendimientos
               </button>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-              {posiciones.map(posicion => (
-                <PosicionCard
-                  key={posicion.id}
-                  posicion={posicion}
-                  onViewDetails={handleViewDetails}
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+            </p>
+          </div>
+        )}
 
-      {activeTab === 'rendimientos' && <RendimientosTab />}
-    </div>
+        {/* Tab content */}
+        {activeTab === 'resumen' && (
+          <TabResumen positions={positions} planesPension={planesPension} />
+        )}
+        
+        {activeTab === 'cartera' && (
+          <TabCartera
+            positions={positions}
+            closedPositions={closedPositions}
+            planesPension={planesPension}
+            onSelectPosition={handleSelectPosition}
+            onViewAportaciones={handleViewAportaciones}
+          />
+        )}
+        
+        {activeTab === 'rendimientos' && (
+          <div>
+            {/* Analytics charts */}
+            <TabRendimientos positions={positions} />
+            
+            {/* Operational rendimientos table */}
+            <div style={{ marginTop: 24 }}>
+              <h3 style={{ 
+                fontSize: 15, 
+                fontWeight: 600, 
+                color: 'var(--grey-700, #303A4C)', 
+                marginBottom: 16,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                Rendimientos pendientes
+                {pendingRendimientos > 0 && (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'var(--grey-500)',
+                    background: 'var(--grey-100)',
+                    borderRadius: 12,
+                    padding: '2px 8px',
+                  }}>
+                    {pendingRendimientos}
+                  </span>
+                )}
+              </h3>
+              <RendimientosTab />
+            </div>
+          </div>
+        )}
+        
+        {activeTab === 'individual' && (
+          <TabIndividual selectedId={selectedPositionId} positions={positions} />
+        )}
+      </div>
+
       {/* Detail Modal */}
-      {showDetail && editingPosicion && (
+      {showDetail && detailPosicion && (
         <PosicionDetailModal
-          posicion={editingPosicion}
+          posicion={detailPosicion}
           onClose={() => {
             setShowDetail(false);
-            setEditingPosicion(undefined);
+            setDetailPosicion(undefined);
             setEditingAportacion(undefined);
           }}
           onAddAportacion={() => {
@@ -313,15 +301,18 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
             setShowAportacionForm(true);
           }}
           onEditAportacion={(aportacionId) => {
-            const aportacion = editingPosicion.aportaciones.find((a) => a.id === aportacionId);
+            const aportacion = detailPosicion.aportaciones.find((a) => a.id === aportacionId);
             if (!aportacion) return;
             setEditingAportacion(aportacion);
             setShowAportacionForm(true);
           }}
           onDeleteAportacion={handleDeleteAportacion}
-          onActualizarValor={() => setShowActualizarValor(true)}
+          onActualizarValor={async () => {
+            toast('Actualiza el valor desde editar posición por ahora.', { icon: 'ℹ️' });
+          }}
           onEditarPosicion={() => {
             setShowDetail(false);
+            setEditingPosicion(detailPosicion);
             setShowForm(true);
           }}
         />
@@ -339,23 +330,13 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'cartera
         />
       )}
 
-      {/* Actualizar Valor Modal */}
-      {showActualizarValor && editingPosicion && (
-        <ActualizarValorModal
-          posicionNombre={editingPosicion.nombre}
-          valorActual={editingPosicion.valor_actual}
-          onSave={handleActualizarValor}
-          onClose={() => setShowActualizarValor(false)}
-        />
-      )}
-
       {/* Aportacion Form Modal */}
-      {showAportacionForm && editingPosicion && (
+      {showAportacionForm && detailPosicion && (
         <AportacionForm
-          posicionNombre={editingPosicion.nombre}
-          posicion={editingPosicion}
+          posicionNombre={detailPosicion.nombre}
+          posicion={detailPosicion}
           initialAportacion={editingAportacion}
-          onSave={handleAddAportacion}
+          onSave={handleSaveAportacion}
           onClose={() => {
             setShowAportacionForm(false);
             setEditingAportacion(undefined);
