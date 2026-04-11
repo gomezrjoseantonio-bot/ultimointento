@@ -8,6 +8,8 @@ import Stepper from './Stepper';
 import StepTransition from './StepTransition';
 import LiveCalculationFooter from './LiveCalculationFooter';
 import IdentificacionStep from './steps/IdentificacionStep';
+import DestinoCapitalStep from './steps/DestinoCapitalStep';
+import GarantiaStep from './steps/GarantiaStep';
 import EstructuraStep from './steps/EstructuraStep';
 import ConfiguracionStep from './steps/ConfiguracionStep';
 import BonificacionesStep from './steps/BonificacionesStep';
@@ -20,10 +22,13 @@ interface PrestamosWizardProps {
   onCancel: () => void;
 }
 
-type StepId = 'identificacion' | 'estructura' | 'configuracion' | 'bonificaciones' | 'resumen';
+type StepId = 'identificacion' | 'destino' | 'garantia' | 'estructura' | 'configuracion' | 'bonificaciones' | 'resumen';
 
 const mapToStoragePrestamo = (data: PrestamoFinanciacion): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> => ({
   ambito: data.ambito,
+  destinos: data.destinos,
+  garantias: data.garantias,
+  // Legacy fields kept for backward compat (migratePrestamo fallback)
   inmuebleId: data.inmuebleId,
   afectacionesInmueble: data.afectacionesInmueble,
   nombre: data.alias || 'Préstamo',
@@ -114,6 +119,8 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
           setFormData({
             id: prestamo.id,
             ambito: prestamo.ambito,
+            destinos: prestamo.destinos,
+            garantias: prestamo.garantias,
             inmuebleId: prestamo.inmuebleId,
             afectacionesInmueble: prestamo.afectacionesInmueble,
             alias: prestamo.nombre,
@@ -158,11 +165,14 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   }, []);
 
   // Determine steps (no Importación step - origen is always manual)
+  // NOTE: estructura goes before destino so capitalInicial is known when entering destinos
   const getSteps = useCallback(() => {
     const base: { id: StepId; label: string }[] = [
       { id: 'identificacion', label: 'Identificación' },
-      { id: 'estructura', label: 'Condiciones' },
-      { id: 'configuracion', label: 'Configuración' },
+      { id: 'estructura',     label: 'Condiciones' },
+      { id: 'destino',        label: 'Destino' },
+      { id: 'garantia',       label: 'Garantía' },
+      { id: 'configuracion',  label: 'Configuración' },
       { id: 'bonificaciones', label: 'Bonificaciones' },
     ];
     base.push({ id: 'resumen', label: 'Resumen' });
@@ -201,6 +211,23 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       if (!formData.fechaPrimerCargo) newErrors.fechaPrimerCargo = 'Introduce la fecha del primer cargo';
       if (!formData.diaCobroMes || formData.diaCobroMes < 1 || formData.diaCobroMes > 31) {
         newErrors.diaCobroMes = 'Día de cobro debe estar entre 1 y 31';
+      }
+    }
+
+    if (currentStep === 'destino') {
+      if (!formData.destinos?.length) {
+        newErrors.destinos = 'Añade al menos un destino del capital';
+      } else if (formData.capitalInicial && formData.capitalInicial > 0) {
+        const totalImporte = formData.destinos.reduce((sum, d) => sum + (d.importe || 0), 0);
+        if (Math.abs(totalImporte - formData.capitalInicial) > 0.01) {
+          newErrors.destinos = `Los importes de los destinos (${totalImporte.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €) deben sumar el capital inicial (${formData.capitalInicial.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €)`;
+        }
+        const sinInmueble = formData.destinos.some(
+          (d) => (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA') && !d.inmuebleId,
+        );
+        if (sinInmueble) {
+          newErrors.destinos = 'Selecciona un inmueble para todos los destinos de compra o reforma';
+        }
       }
     }
 
@@ -312,6 +339,20 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         <StepTransition stepKey={currentStep}>
           {currentStep === 'identificacion' && (
             <IdentificacionStep
+              data={formData}
+              onChange={handleChange}
+              errors={errors}
+            />
+          )}
+          {currentStep === 'destino' && (
+            <DestinoCapitalStep
+              data={formData}
+              onChange={handleChange}
+              errors={errors}
+            />
+          )}
+          {currentStep === 'garantia' && (
+            <GarantiaStep
               data={formData}
               onChange={handleChange}
               errors={errors}
