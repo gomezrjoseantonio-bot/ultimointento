@@ -1,17 +1,151 @@
 // Préstamos Service - CRUD operations
 
-import { Prestamo, PlanPagos } from '../types/prestamos';
+import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { initDB } from './db';
 
-export const getAllocationFactor = (prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'>, inmuebleId: string): number => {
+// ── Helper: generate short unique id ──────────────────────────────────────
+
+function generateDestinoId(): string {
+  return `d_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+}
+
+// ── getAllocationFactor ────────────────────────────────────────────────────
+// Retorna la fracción (0..1) del préstamo imputable a un inmueble concreto.
+// Usa el nuevo modelo destinos[] si existe; cae en legacy si no.
+
+export const getAllocationFactor = (
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>,
+  inmuebleId: string,
+): number => {
+  // Nuevo modelo: usar destinos[]
+  if (prestamo.destinos?.length) {
+    const importeDeducible = prestamo.destinos
+      .filter((d) => d.inmuebleId === inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
+      .reduce((sum, d) => sum + d.importe, 0);
+    return (prestamo.principalInicial ?? 0) > 0
+      ? importeDeducible / (prestamo.principalInicial ?? 1)
+      : 0;
+  }
+
+  // Legacy: afectacionesInmueble (% porcentaje sobre total préstamo)
   if (prestamo.afectacionesInmueble?.length) {
     const afectacion = prestamo.afectacionesInmueble.find((a) => a.inmuebleId === inmuebleId);
     return afectacion ? afectacion.porcentaje / 100 : 0;
   }
 
+  // Legacy: inmuebleId simple (100%)
   return prestamo.inmuebleId === inmuebleId ? 1 : 0;
 };
+
+// ── Fiscal engine ──────────────────────────────────────────────────────────
+
+/**
+ * Calcula los intereses deducibles para un inmueble en un año.
+ *
+ * Solo los destinos de tipo ADQUISICION o REFORMA vinculados a un inmueble
+ * de alquiler generan intereses deducibles (casilla 0105).
+ * El reparto es proporcional al importe destinado vs principalInicial.
+ */
+export function interesesDeduciblesInmueble(
+  prestamo: Prestamo,
+  inmuebleId: string,
+  interesesTotalAño: number,
+): number {
+  if (!prestamo.destinos?.length) {
+    // Legacy: si no tiene destinos, usar inmuebleId directo (100%)
+    return prestamo.inmuebleId === inmuebleId ? interesesTotalAño : 0;
+  }
+
+  const destinoDeducible = prestamo.destinos
+    .filter(
+      (d) => d.inmuebleId === inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'),
+    )
+    .reduce((sum, d) => sum + d.importe, 0);
+
+  return (prestamo.principalInicial ?? 0) > 0
+    ? interesesTotalAño * (destinoDeducible / prestamo.principalInicial)
+    : 0;
+}
+
+/**
+ * Calcula el total de intereses deducibles de un préstamo en un año.
+ * Suma solo los destinos que vinculan a inmuebles (ADQUISICION o REFORMA).
+ */
+export function interesesTotalDeducible(
+  prestamo: Prestamo,
+  interesesTotalAño: number,
+): number {
+  if (!prestamo.destinos?.length) return interesesTotalAño; // legacy
+
+  const importeDeducible = prestamo.destinos
+    .filter((d) => d.inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
+    .reduce((sum, d) => sum + d.importe, 0);
+
+  return (prestamo.principalInicial ?? 0) > 0
+    ? interesesTotalAño * (importeDeducible / prestamo.principalInicial)
+    : 0;
+}
+
+// ── Migration ─────────────────────────────────────────────────────────────
+
+/**
+ * Convierte un préstamo del modelo legacy al nuevo modelo con destinos y garantías.
+ * Si ya tiene destinos definidos, lo devuelve sin cambios.
+ *
+ * NOTA: La migración automática asume destino = garantía (correcto para la mayoría
+ * de casos). Los casos donde difieren (ej: ING — destino T48, garantía Buigas)
+ * el usuario deberá corregir manualmente desde la ficha del préstamo.
+ */
+export function migratePrestamo(legacy: Prestamo): Prestamo {
+  if (legacy.destinos?.length) return legacy;
+
+  const destinos: DestinoCapital[] = [];
+  const garantias: Garantia[] = [];
+
+  if (legacy.afectacionesInmueble?.length) {
+    // Multi-inmueble legacy (ej: Unicaja)
+    for (const af of legacy.afectacionesInmueble) {
+      destinos.push({
+        id: generateDestinoId(),
+        tipo: 'ADQUISICION',
+        inmuebleId: af.inmuebleId,
+        importe: legacy.principalInicial * (af.porcentaje / 100),
+        porcentaje: af.porcentaje,
+      });
+      garantias.push({
+        tipo: 'HIPOTECARIA',
+        inmuebleId: af.inmuebleId,
+      });
+    }
+  } else if (legacy.inmuebleId && legacy.inmuebleId !== 'standalone') {
+    // Single-inmueble legacy
+    destinos.push({
+      id: generateDestinoId(),
+      tipo: (legacy.finalidad === 'REFORMA' ? 'REFORMA' : 'ADQUISICION') as DestinoCapital['tipo'],
+      inmuebleId: legacy.inmuebleId,
+      importe: legacy.principalInicial,
+      porcentaje: 100,
+    });
+    if (legacy.ambito === 'INMUEBLE') {
+      garantias.push({
+        tipo: 'HIPOTECARIA',
+        inmuebleId: legacy.inmuebleId,
+      });
+    }
+  } else {
+    // Préstamo personal sin inmueble
+    destinos.push({
+      id: generateDestinoId(),
+      tipo: 'PERSONAL',
+      importe: legacy.principalInicial,
+      porcentaje: 100,
+    });
+    garantias.push({ tipo: 'PERSONAL' });
+  }
+
+  return { ...legacy, destinos, garantias };
+}
 
 export class PrestamosService {
   private planesGenerados: Map<string, PlanPagos> = new Map();

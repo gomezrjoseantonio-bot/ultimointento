@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Prestamo, PlanPagos } from '../../../../types/prestamos';
+import { ArrowLeft, Home, User, BarChart2, Wrench, CreditCard, TrendingUp, MoreHorizontal, ShieldCheck } from 'lucide-react';
+import { Prestamo, PlanPagos, DestinoCapital, Garantia } from '../../../../types/prestamos';
 import { prestamosService } from '../../../../services/prestamosService';
 import { LoanSettlement } from '../../../../services/db';
 import { getLoanSettlementsByLoanId } from '../../../../services/loanSettlementService';
@@ -11,6 +11,153 @@ import BonificacionesSection from './detail/BonificacionesSection';
 import CalendarioPagosSection from './detail/CalendarioPagosSection';
 import AmortizationSimulator from '../../inmuebles/prestamos/components/AmortizationSimulator';
 import LoanSettlementModal from './LoanSettlementModal';
+
+// ── Helpers for Destino / Garantia display ────────────────────────────────
+
+const TIPO_DESTINO_LABELS: Record<DestinoCapital['tipo'], string> = {
+  ADQUISICION:       'Compra inmueble',
+  REFORMA:           'Reforma inmueble',
+  CANCELACION_DEUDA: 'Cancelación de deuda',
+  INVERSION:         'Inversión',
+  PERSONAL:          'Personal',
+  OTRA:              'Otro',
+};
+
+const TIPO_DESTINO_ICONS: Record<DestinoCapital['tipo'], React.ReactNode> = {
+  ADQUISICION:       <Home size={14} strokeWidth={1.5} />,
+  REFORMA:           <Wrench size={14} strokeWidth={1.5} />,
+  CANCELACION_DEUDA: <CreditCard size={14} strokeWidth={1.5} />,
+  INVERSION:         <TrendingUp size={14} strokeWidth={1.5} />,
+  PERSONAL:          <User size={14} strokeWidth={1.5} />,
+  OTRA:              <MoreHorizontal size={14} strokeWidth={1.5} />,
+};
+
+const TIPO_GARANTIA_LABELS: Record<Garantia['tipo'], string> = {
+  HIPOTECARIA:  'Hipotecaria',
+  PERSONAL:     'Personal',
+  PIGNORATICIA: 'Pignoraticia',
+};
+
+const TIPO_GARANTIA_ICONS: Record<Garantia['tipo'], React.ReactNode> = {
+  HIPOTECARIA:  <Home size={14} strokeWidth={1.5} />,
+  PERSONAL:     <User size={14} strokeWidth={1.5} />,
+  PIGNORATICIA: <BarChart2 size={14} strokeWidth={1.5} />,
+};
+
+const isDeducible = (tipo: DestinoCapital['tipo']) =>
+  tipo === 'ADQUISICION' || tipo === 'REFORMA';
+
+// ── DestinoCapitalSection ────────────────────────────────────────────────
+
+function DestinoCapitalSection({ prestamo }: { prestamo: Prestamo }) {
+  const destinos = prestamo.destinos;
+  if (!destinos?.length) return null;
+
+  const total = destinos.reduce((s, d) => s + (d.importe || 0), 0);
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <h3 className="text-base font-semibold mb-3" style={{ color: 'var(--atlas-navy-1)' }}>
+        Destino del capital
+      </h3>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Tipo</th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Descripción / Inmueble</th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">Importe</th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wide">%</th>
+              <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wide">Deducible</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {destinos.map((d) => {
+              const pct = prestamo.principalInicial > 0
+                ? ((d.importe / prestamo.principalInicial) * 100).toFixed(1)
+                : '—';
+              const deducible = isDeducible(d.tipo);
+              return (
+                <tr key={d.id}>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2" style={{ color: 'var(--atlas-navy-1)' }}>
+                      {TIPO_DESTINO_ICONS[d.tipo]}
+                      <span>{TIPO_DESTINO_LABELS[d.tipo]}</span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-gray-600">
+                    {d.descripcion || d.inmuebleId || '—'}
+                  </td>
+                  <td className="px-3 py-2 text-right font-medium" style={{ color: 'var(--atlas-navy-1)' }}>
+                    {formatEuro(d.importe)}
+                  </td>
+                  <td className="px-3 py-2 text-right text-gray-500">{pct}%</td>
+                  <td className="px-3 py-2 text-center">
+                    {deducible ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">Sí (0105)</span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">No</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-50">
+              <td className="px-3 py-2 text-xs font-semibold text-gray-600" colSpan={2}>Total</td>
+              <td className="px-3 py-2 text-right text-xs font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
+                {formatEuro(total)}
+              </td>
+              <td colSpan={2} />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {Math.abs(total - prestamo.principalInicial) > 1 && (
+        <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          Los importes de destino ({formatEuro(total)}) no cuadran con el capital inicial ({formatEuro(prestamo.principalInicial)}).
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── GarantiaSection ──────────────────────────────────────────────────────
+
+function GarantiaSection({ prestamo }: { prestamo: Prestamo }) {
+  const garantias = prestamo.garantias;
+  if (!garantias?.length) return null;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <ShieldCheck size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-navy-1)' }} />
+        <h3 className="text-base font-semibold" style={{ color: 'var(--atlas-navy-1)' }}>
+          Garantía
+        </h3>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 ml-1">
+          Informativa · no afecta fiscalidad
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {garantias.map((g, idx) => (
+          <div
+            key={idx}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm"
+            style={{ color: 'var(--atlas-navy-1)' }}
+          >
+            {TIPO_GARANTIA_ICONS[g.tipo]}
+            <span className="font-medium">{TIPO_GARANTIA_LABELS[g.tipo]}</span>
+            {(g.inmuebleId || g.descripcion) && (
+              <span className="text-gray-500">— {g.descripcion || g.inmuebleId}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface PrestamoDetailPageProps {
   prestamoId: string;
@@ -121,6 +268,8 @@ const PrestamoDetailPage: React.FC<PrestamoDetailPageProps> = ({ prestamoId, onB
           onSimular={() => setShowSimulator(true)}
           onGestionarOperacion={() => setShowSettlementModal(true)}
         />
+        <DestinoCapitalSection prestamo={prestamo} />
+        <GarantiaSection prestamo={prestamo} />
         <BonificacionesSection prestamo={prestamo} />
         <CondicionesSection prestamo={prestamo} />
         <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">

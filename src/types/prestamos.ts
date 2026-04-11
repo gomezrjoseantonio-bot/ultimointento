@@ -1,21 +1,76 @@
 // Préstamos - Comprehensive Loan Data Models
 // Following the requirements from the problem statement
 
+// ── DestinoCapital ─────────────────────────────────────────────────────────
+// Para qué se pide el dinero — determina fiscalidad (no la garantía)
+
+export interface DestinoCapital {
+  id: string;                         // uuid corto
+  tipo: 'ADQUISICION'                 // comprar un inmueble
+      | 'REFORMA'                     // reformar un inmueble
+      | 'CANCELACION_DEUDA'           // cancelar otro préstamo/deuda
+      | 'INVERSION'                   // financiar inversión mobiliaria
+      | 'PERSONAL'                    // gasto personal (no deducible)
+      | 'OTRA';
+
+  // Vinculación al activo (según tipo)
+  inmuebleId?: string;                // si ADQUISICION o REFORMA
+  inversionId?: string;               // si INVERSION
+  prestamoIdCancelado?: string;       // si CANCELACION_DEUDA
+
+  importe: number;                    // € destinados a este fin
+  porcentaje?: number;                // calculado: importe / principalInicial * 100
+  descripcion?: string;               // texto libre: "Compra Tenderina 48"
+}
+
+// ── Garantia ───────────────────────────────────────────────────────────────
+// Qué responde si no pagas — informativa, NO afecta fiscalidad
+
+export interface Garantia {
+  tipo: 'HIPOTECARIA'                 // un inmueble responde
+      | 'PERSONAL'                    // la persona responde
+      | 'PIGNORATICIA';               // un activo financiero responde
+
+  // Vinculación al activo que garantiza
+  inmuebleId?: string;                // si HIPOTECARIA
+  inversionId?: string;               // si PIGNORATICIA (fondo, PP, depósito)
+
+  descripcion?: string;               // "Buigas 15 Sant Fruitós" o "Plan pensiones Orange"
+}
+
 export interface Prestamo {
   id: string;
   ambito: 'PERSONAL' | 'INMUEBLE';
-  inmuebleId?: string;          // optional (required when ambito='INMUEBLE')
+  // NOTE: ambito se CALCULA de destinos:
+  //   Si algún destino tiene inmuebleId → 'INMUEBLE'
+  //   Si ninguno → 'PERSONAL'
+
+  // ── NUEVO v2: Destino y Garantía ─────────────────────────────────────────
   /**
+   * Para qué se pide el dinero — determina fiscalidad.
+   * sum(destinos[].importe) debe === principalInicial.
+   * Si vacío → usar inmuebleId/afectacionesInmueble como fallback (legacy).
+   */
+  destinos?: DestinoCapital[];
+  /**
+   * Qué responde si no pagas — informativo, NO afecta cálculos fiscales.
+   */
+  garantias?: Garantia[];
+
+  // ── LEGACY (mantener para migración, no usar en código nuevo) ────────────
+  /** @deprecated Usar destinos[].inmuebleId */
+  inmuebleId?: string;
+  /**
+   * @deprecated Usar destinos[] con un DestinoCapital por cada inmueble.
    * Distribución opcional del préstamo entre varios inmuebles.
-   * Permite modelar hipotecas cruzadas o préstamos puente sin romper
-   * la compatibilidad con `inmuebleId` (1 préstamo ↔ 1 inmueble).
    */
   afectacionesInmueble?: AfectacionInmueblePrestamo[];
   /**
+   * @deprecated Usar destinos[].tipo
    * Finalidad económica principal del préstamo.
-   * PERSONAL excluye el préstamo de métricas de rentabilidad por inmueble.
    */
   finalidad?: 'ADQUISICION' | 'REFORMA' | 'INVERSION' | 'PERSONAL' | 'OTRA';
+
   nombre: string;
 
   principalInicial: number;

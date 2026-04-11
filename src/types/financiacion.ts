@@ -1,15 +1,19 @@
-import { AfectacionInmueblePrestamo } from './prestamos';
+import { AfectacionInmueblePrestamo, DestinoCapital, Garantia } from './prestamos';
 
 // Updated Préstamos types for standalone Financing module
 // Following the requirements from the problem statement
 
 export interface PrestamoFinanciacion {
   id: string;
-  
+
+  // ── Destino y Garantía (v2) ──────────────────────────────────────────────
+  destinos?: DestinoCapital[];           // Para qué se pide el dinero (determina fiscalidad)
+  garantias?: Garantia[];                // Qué responde si no pagas (informativo)
+
   // Identification & Account Selection (Step 1)
-  ambito: 'PERSONAL' | 'INMUEBLE';       // Scope selector
-  inmuebleId?: string;                   // Only if scope is INMUEBLE
-  afectacionesInmueble?: AfectacionInmueblePrestamo[]; // Optional multi-property allocation
+  ambito: 'PERSONAL' | 'INMUEBLE';       // Scope selector — derivado de destinos
+  inmuebleId?: string;                   // Only if scope is INMUEBLE (legacy)
+  afectacionesInmueble?: AfectacionInmueblePrestamo[]; // legacy multi-property allocation
   cuentaCargoId: string;                 // Charge account - mandatory
   alias?: string;                        // Optional alias
   fechaFirma: string;                    // Signing date (ISO date)
