@@ -357,10 +357,17 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
   const todasProperties = await db.getAll('properties');
   const porRefCatastral = new Map<string, Property>();
+  const porDireccionNorm = new Map<string, Property>();
   for (const property of todasProperties) {
     const ref = normalizeRef(property.cadastralReference);
     if (ref) {
       porRefCatastral.set(ref, property);
+    } else {
+      // Properties without cadastral ref: index by normalized address and alias
+      const dirN = normalizeDireccion(property.address);
+      if (dirN) porDireccionNorm.set(dirN, property);
+      const aliasN = normalizeDireccion(property.alias);
+      if (aliasN && aliasN !== dirN) porDireccionNorm.set(aliasN, property);
     }
   }
 
@@ -369,7 +376,25 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
     if (!rc) continue;
 
     const dirCorta = acortarDireccion(inm.direccion);
-    const existente = porRefCatastral.get(rc);
+    let existente = porRefCatastral.get(rc);
+
+    // Fallback: match by normalized address/alias when cadastral ref not found
+    if (!existente && inm.direccion) {
+      const dirXml = normalizeDireccion(inm.direccion);
+      const aliasXml = normalizeDireccion(acortarDireccion(inm.direccion));
+      existente = porDireccionNorm.get(dirXml)
+        || porDireccionNorm.get(aliasXml)
+        || undefined;
+      if (existente) {
+        // Register in cadastral map so subsequent lookups and downstream
+        // functions (escribirFiscalSummaries, etc.) find the right property
+        porRefCatastral.set(rc, existente);
+        // Remove from address map to prevent double-matching
+        porDireccionNorm.delete(normalizeDireccion(existente.address));
+        porDireccionNorm.delete(normalizeDireccion(existente.alias));
+        console.log(`[distribuidor] Inmueble ${rc} vinculado por dirección a property id=${existente.id} (${existente.alias})`);
+      }
+    }
 
     let accion: InmuebleDistribuido['accion'];
     const camposNuevos: string[] = [];
@@ -391,6 +416,13 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       const next: Property = { ...existente, acquisitionCosts: { ...(existente.acquisitionCosts || { price: 0 }) } };
 
       next.fiscalData = { ...(existente.fiscalData || {}) };
+
+      // Enrich cadastral reference if missing (e.g., manually-created property matched by address)
+      if (!next.cadastralReference && rc) {
+        next.cadastralReference = rc;
+        camposNuevos.push('Ref. catastral');
+        modificado = true;
+      }
 
       if (!next.purchaseDate && inm.fechaAdquisicion) {
         next.purchaseDate = toISODate(inm.fechaAdquisicion);
@@ -1009,6 +1041,21 @@ function normalizeRef(value?: string | null): string {
     .replace(/[\s.-]/g, '')
     .trim()
     .toUpperCase();
+}
+
+/**
+ * Normaliza una dirección para matching flexible: quita prefijos de vía,
+ * ceros a la izquierda, puntuación y pasa a mayúsculas.
+ */
+export function normalizeDireccion(dir?: string | null): string {
+  if (!dir) return '';
+  return dir
+    .toUpperCase()
+    .replace(/^(CL|CR|AV|PZ|PS|CM|C\/|CALLE|CARRER|AVDA|AVENIDA|PLAZA|PASEO|CAMINO)\s+/i, '')
+    .replace(/[.,\-\/]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\b0+(\d+)/g, '$1')
+    .trim();
 }
 
 function sumGastosAdquisicion(acquisitionCosts: Property['acquisitionCosts']): number {
