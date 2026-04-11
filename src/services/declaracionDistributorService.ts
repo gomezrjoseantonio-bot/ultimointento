@@ -1052,7 +1052,7 @@ export function normalizeDireccion(dir?: string | null): string {
   return dir
     .toUpperCase()
     .replace(/^(CL|CR|AV|PZ|PS|CM|C\/|CALLE|CARRER|AVDA|AVENIDA|PLAZA|PASEO|CAMINO)\s+/i, '')
-    .replace(/[.,\-\/]/g, '')
+    .replace(/[.,\-/]/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\b0+(\d+)/g, '$1')
     .trim();
