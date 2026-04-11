@@ -1,18 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, ArrowRight, Save, X } from 'lucide-react';
 import { PrestamoFinanciacion } from '../../../../types/financiacion';
-import { Prestamo, Bonificacion } from '../../../../types/prestamos';
+import { Prestamo, Bonificacion, DestinoCapital } from '../../../../types/prestamos';
 import { prestamosService } from '../../../../services/prestamosService';
 import { useDebouncedCalculation } from '../../../../hooks/useDebouncedCalculation';
 import Stepper from './Stepper';
 import StepTransition from './StepTransition';
 import LiveCalculationFooter from './LiveCalculationFooter';
-import IdentificacionStep from './steps/IdentificacionStep';
+import BasicoStep from './steps/BasicoStep';
+import FinancieroStep from './steps/FinancieroStep';
 import DestinoCapitalStep from './steps/DestinoCapitalStep';
-import GarantiaStep from './steps/GarantiaStep';
-import EstructuraStep from './steps/EstructuraStep';
-import ConfiguracionStep from './steps/ConfiguracionStep';
-import BonificacionesStep from './steps/BonificacionesStep';
 import ResumenStep from './steps/ResumenStep';
 
 interface PrestamosWizardProps {
@@ -22,12 +19,19 @@ interface PrestamosWizardProps {
   onCancel: () => void;
 }
 
-type StepId = 'identificacion' | 'destino' | 'garantia' | 'estructura' | 'configuracion' | 'bonificaciones' | 'resumen';
+type StepId = 'basico' | 'financiero' | 'destino' | 'resumen';
+
+function sugerirGarantiaFallback(destinos: DestinoCapital[] | undefined) {
+  if (!destinos?.length) return [{ tipo: 'PERSONAL' as const }];
+  const primerInmueble = destinos.find((d) => d.inmuebleId)?.inmuebleId;
+  if (!primerInmueble) return [{ tipo: 'PERSONAL' as const }];
+  return [{ tipo: 'HIPOTECARIA' as const, inmuebleId: primerInmueble }];
+}
 
 const mapToStoragePrestamo = (data: PrestamoFinanciacion): Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> => ({
   ambito: data.ambito,
   destinos: data.destinos,
-  garantias: data.garantias,
+  garantias: data.garantias?.length ? data.garantias : sugerirGarantiaFallback(data.destinos),
   // Legacy fields kept for backward compat (migratePrestamo fallback)
   inmuebleId: data.inmuebleId,
   afectacionesInmueble: data.afectacionesInmueble,
@@ -54,7 +58,7 @@ const mapToStoragePrestamo = (data: PrestamoFinanciacion): Omit<Prestamo, 'id' |
   comisionApertura: data.comisionApertura,
   comisionMantenimiento: data.comisionMantenimiento,
   comisionAmortizacionAnticipada: data.comisionAmortizacionAnticipada,
-  bonificaciones: (data.bonificaciones || []).map(b => ({
+  bonificaciones: (data.bonificaciones || []).map((b) => ({
     id: b.id,
     tipo: b.tipo as Bonificacion['tipo'],
     nombre: b.nombre,
@@ -87,7 +91,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         bonificaciones: initialData.bonificaciones || [],
       };
     }
-
     return {
       ambito: 'PERSONAL',
       esquemaPrimerRecibo: 'NORMAL',
@@ -101,7 +104,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     };
   });
 
-  const [currentStep, setCurrentStep] = useState<StepId>('identificacion');
+  const [currentStep, setCurrentStep] = useState<StepId>('basico');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const existingPrincipalVivoRef = useRef<number | undefined>(undefined);
@@ -109,10 +112,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
 
   const calculoLive = useDebouncedCalculation(formData);
 
-  // Load existing prestamo for edit mode
+  // Cargar préstamo existente en modo edición
   useEffect(() => {
     if (prestamoId) {
-      prestamosService.getPrestamoById(prestamoId).then(prestamo => {
+      prestamosService.getPrestamoById(prestamoId).then((prestamo) => {
         if (prestamo) {
           existingPrincipalVivoRef.current = prestamo.principalVivo;
           existingCuotasPagadasRef.current = prestamo.cuotasPagadas;
@@ -139,7 +142,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
             indice: prestamo.indice,
             valorIndice: prestamo.valorIndiceActual,
             diferencial: prestamo.diferencial,
-            revision: prestamo.periodoRevisionMeses as 6 | 12 || 12,
+            revision: (prestamo.periodoRevisionMeses as 6 | 12) || 12,
             tramoFijoAnos: prestamo.tramoFijoMeses ? prestamo.tramoFijoMeses / 12 : undefined,
             tinTramoFijo: prestamo.tipoNominalAnualMixtoFijo,
             sistema: 'FRANCES',
@@ -154,63 +157,52 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   }, [prestamoId]);
 
   const handleChange = useCallback((updates: Partial<PrestamoFinanciacion>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
-    // Clear errors for updated fields
+    setFormData((prev) => ({ ...prev, ...updates }));
     const updatedKeys = Object.keys(updates);
-    setErrors(prev => {
+    setErrors((prev) => {
       const next = { ...prev };
-      updatedKeys.forEach(k => delete next[k]);
+      updatedKeys.forEach((k) => delete next[k]);
       return next;
     });
   }, []);
 
-  // Determine steps (no Importación step - origen is always manual)
-  // NOTE: estructura goes before destino so capitalInicial is known when entering destinos
-  const getSteps = useCallback(() => {
-    const base: { id: StepId; label: string }[] = [
-      { id: 'identificacion', label: 'Identificación' },
-      { id: 'estructura',     label: 'Condiciones' },
-      { id: 'destino',        label: 'Destino' },
-      { id: 'garantia',       label: 'Garantía' },
-      { id: 'configuracion',  label: 'Configuración' },
-      { id: 'bonificaciones', label: 'Bonificaciones' },
-    ];
-    base.push({ id: 'resumen', label: 'Resumen' });
-    return base;
-  }, []);
+  const STEPS: { id: StepId; label: string }[] = [
+    { id: 'basico',      label: 'Básico' },
+    { id: 'financiero',  label: 'Financiero' },
+    { id: 'destino',     label: 'Destino' },
+    { id: 'resumen',     label: 'Resumen' },
+  ];
 
-  const allSteps = getSteps();
-
-  const stepOrder: StepId[] = allSteps.map(s => s.id);
+  const stepOrder: StepId[] = STEPS.map((s) => s.id);
   const currentIndex = stepOrder.indexOf(currentStep);
 
   const validateCurrentStep = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (currentStep === 'identificacion') {
-      if (!formData.ambito) newErrors.ambito = 'Selecciona el ámbito';
-      if (formData.ambito === 'INMUEBLE') {
-        if (formData.afectacionesInmueble?.length) {
-          const total = formData.afectacionesInmueble.reduce((sum, afectacion) => sum + (afectacion.porcentaje || 0), 0);
-          const sinInmueble = formData.afectacionesInmueble.some((afectacion) => !afectacion.inmuebleId);
-          const duplicados = new Set(formData.afectacionesInmueble.map((afectacion) => afectacion.inmuebleId).filter(Boolean));
-
-          if (Math.abs(total - 100) > 0.01) {
-            newErrors.afectacionesInmueble = 'Los porcentajes de los inmuebles deben sumar 100%';
-          } else if (sinInmueble) {
-            newErrors.afectacionesInmueble = 'Todos los inmuebles vinculados deben estar seleccionados';
-          } else if (duplicados.size !== formData.afectacionesInmueble.filter((afectacion) => afectacion.inmuebleId).length) {
-            newErrors.afectacionesInmueble = 'No puedes repetir el mismo inmueble en varias filas';
-          }
-        } else if (!formData.inmuebleId) {
-          newErrors.inmuebleId = 'Selecciona un inmueble';
-        }
-      }
+    if (currentStep === 'basico') {
       if (!formData.cuentaCargoId) newErrors.cuentaCargoId = 'Selecciona una cuenta de cargo';
       if (!formData.fechaFirma) newErrors.fechaFirma = 'Introduce la fecha de firma';
       if (!formData.fechaPrimerCargo) newErrors.fechaPrimerCargo = 'Introduce la fecha del primer cargo';
       if (!formData.diaCobroMes || formData.diaCobroMes < 1 || formData.diaCobroMes > 31) {
-        newErrors.diaCobroMes = 'Día de cobro debe estar entre 1 y 31';
+        newErrors.diaCobroMes = 'El día de cobro debe estar entre 1 y 31';
+      }
+    }
+
+    if (currentStep === 'financiero') {
+      if (!formData.capitalInicial || formData.capitalInicial <= 0) {
+        newErrors.capitalInicial = 'Introduce el capital inicial';
+      }
+      if (!formData.plazoTotal || formData.plazoTotal <= 0) {
+        newErrors.plazoTotal = 'Introduce el plazo';
+      }
+      if (!formData.tipo) {
+        newErrors.tipo = 'Selecciona el tipo de interés';
+      }
+      if (formData.tipo === 'FIJO' && (formData.tinFijo === undefined || formData.tinFijo < 0)) {
+        newErrors.tinFijo = 'Introduce el TIN fijo';
+      }
+      if (formData.tipo === 'VARIABLE' && formData.diferencial === undefined) {
+        newErrors.diferencial = 'Introduce el diferencial';
       }
     }
 
@@ -220,7 +212,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
       } else if (formData.capitalInicial && formData.capitalInicial > 0) {
         const totalImporte = formData.destinos.reduce((sum, d) => sum + (d.importe || 0), 0);
         if (Math.abs(totalImporte - formData.capitalInicial) > 0.01) {
-          newErrors.destinos = `Los importes de los destinos (${totalImporte.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €) deben sumar el capital inicial (${formData.capitalInicial.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €)`;
+          newErrors.destinos = `Los importes (${totalImporte.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €) deben sumar el capital inicial (${formData.capitalInicial.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €)`;
         }
         const sinInmueble = formData.destinos.some(
           (d) => (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA') && !d.inmuebleId,
@@ -228,21 +220,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         if (sinInmueble) {
           newErrors.destinos = 'Selecciona un inmueble para todos los destinos de compra o reforma';
         }
-      }
-    }
-
-    if (currentStep === 'estructura') {
-      if (!formData.capitalInicial || formData.capitalInicial <= 0) newErrors.capitalInicial = 'Introduce el capital inicial';
-      if (!formData.plazoTotal || formData.plazoTotal <= 0) newErrors.plazoTotal = 'Introduce el plazo';
-      if (!formData.tipo) newErrors.tipo = 'Selecciona el tipo de interés';
-    }
-
-    if (currentStep === 'configuracion') {
-      if (formData.tipo === 'FIJO' && (formData.tinFijo === undefined || formData.tinFijo < 0)) {
-        newErrors.tinFijo = 'Introduce el TIN fijo';
-      }
-      if (formData.tipo === 'VARIABLE' && formData.diferencial === undefined) {
-        newErrors.diferencial = 'Introduce el diferencial';
       }
     }
 
@@ -269,7 +246,6 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     try {
       const mapped = mapToStoragePrestamo(formData as PrestamoFinanciacion);
       if (prestamoId) {
-        // Preserve principalVivo and cuotasPagadas for existing loans instead of resetting
         if (existingPrincipalVivoRef.current !== undefined) {
           mapped.principalVivo = existingPrincipalVivoRef.current;
         }
@@ -295,109 +271,59 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
     }
   };
 
-  const stepDefs = allSteps.map((s, i) => ({
+  const stepDefs = STEPS.map((s, i) => ({
     id: s.id,
     label: s.label,
     isCompleted: i < currentIndex,
     isActive: s.id === currentStep,
   }));
 
-  const uniqueSteps = stepDefs;
-
   const isLastStep = currentIndex === stepOrder.length - 1;
 
   return (
     <div style={{ height: '100%', backgroundColor: 'var(--bg)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{
-        flexShrink: 0,
-        backgroundColor: 'var(--bg)',
-        borderBottom: '1px solid #eee',
-        padding: '12px 24px',
-      }}>
+      <div style={{ flexShrink: 0, backgroundColor: 'var(--bg)', borderBottom: '1px solid #eee', padding: '12px 24px' }}>
         <div style={{ maxWidth: 800, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
               {prestamoId ? 'Editar préstamo' : 'Nuevo préstamo'}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={onCancel}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
-              >
-                <X size={16} strokeWidth={1.5} />
-                Cancelar
-              </button>
-            </div>
+            <button
+              onClick={onCancel}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-gray)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 13 }}
+            >
+              <X size={16} strokeWidth={1.5} />
+              Cancelar
+            </button>
           </div>
-          <Stepper steps={uniqueSteps} onStepClick={(id) => setCurrentStep(id as StepId)} />
+          <Stepper steps={stepDefs} onStepClick={(id) => setCurrentStep(id as StepId)} />
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, padding: '24px 24px 24px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowY: 'auto' }} className="hide-scrollbar">
+      {/* Contenido */}
+      <div
+        style={{ flex: 1, padding: '24px', maxWidth: 800, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowY: 'auto' }}
+        className="hide-scrollbar"
+      >
         <StepTransition stepKey={currentStep}>
-          {currentStep === 'identificacion' && (
-            <IdentificacionStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
+          {currentStep === 'basico' && (
+            <BasicoStep data={formData} onChange={handleChange} errors={errors} />
+          )}
+          {currentStep === 'financiero' && (
+            <FinancieroStep data={formData} onChange={handleChange} errors={errors} />
           )}
           {currentStep === 'destino' && (
-            <DestinoCapitalStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
-          )}
-          {currentStep === 'garantia' && (
-            <GarantiaStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
-          )}
-          {currentStep === 'estructura' && (
-            <EstructuraStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
-          )}
-          {currentStep === 'configuracion' && (
-            <ConfiguracionStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
-          )}
-          {currentStep === 'bonificaciones' && (
-            <BonificacionesStep
-              data={formData}
-              onChange={handleChange}
-              errors={errors}
-            />
+            <DestinoCapitalStep data={formData} onChange={handleChange} errors={errors} />
           )}
           {currentStep === 'resumen' && (
-            <ResumenStep
-              data={formData}
-              onSubmit={handleSubmit}
-              isLoading={isLoading}
-              errors={errors}
-            />
+            <ResumenStep data={formData} onSubmit={handleSubmit} isLoading={isLoading} errors={errors} />
           )}
         </StepTransition>
       </div>
 
       {/* Footer */}
-      <div style={{
-        flexShrink: 0,
-        backgroundColor: 'var(--bg)',
-        borderTop: '1px solid #eee',
-        padding: '12px 24px',
-        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)',
-      }}>
+      <div style={{ flexShrink: 0, backgroundColor: 'var(--bg)', borderTop: '1px solid #eee', padding: '12px 24px', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' }}>
         <div style={{ maxWidth: 800, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <LiveCalculationFooter
             cuotaMensual={calculoLive?.cuotaEstimada ?? null}
@@ -410,17 +336,12 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
               onClick={handlePrev}
               disabled={currentIndex === 0}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 18px',
-                borderRadius: 8,
-                border: '1.5px solid #ddd',
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '9px 18px', borderRadius: 8, border: '1.5px solid #ddd',
                 backgroundColor: 'var(--bg)',
                 color: currentIndex === 0 ? 'var(--text-gray)' : 'var(--atlas-navy-1)',
                 cursor: currentIndex === 0 ? 'default' : 'pointer',
-                fontSize: 14,
-                fontWeight: 500,
+                fontSize: 14, fontWeight: 500,
               }}
             >
               <ArrowLeft size={16} strokeWidth={1.5} />
@@ -436,17 +357,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
                 onClick={handleSubmit}
                 disabled={isLoading}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '9px 20px',
-                  borderRadius: 8,
-                  border: 'none',
-                  backgroundColor: 'var(--atlas-navy-1)',
-                  color: '#fff',
-                  cursor: isLoading ? 'wait' : 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 20px', borderRadius: 8, border: 'none',
+                  backgroundColor: 'var(--atlas-navy-1)', color: '#fff',
+                  cursor: isLoading ? 'wait' : 'pointer', fontSize: 14, fontWeight: 600,
                 }}
               >
                 <Save size={16} strokeWidth={1.5} />
@@ -456,17 +370,10 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
               <button
                 onClick={handleNext}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '9px 18px',
-                  borderRadius: 8,
-                  border: 'none',
-                  backgroundColor: 'var(--atlas-blue)',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 14,
-                  fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '9px 18px', borderRadius: 8, border: 'none',
+                  backgroundColor: 'var(--atlas-blue)', color: '#fff',
+                  cursor: 'pointer', fontSize: 14, fontWeight: 600,
                 }}
               >
                 Siguiente
