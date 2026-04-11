@@ -270,7 +270,7 @@ function FiscalTab({ d, onOpenDrawer }: FiscalTabProps) {
       )}
       <Row
         label="IBI y tasas"
-        casilla={isXml ? '0114' : undefined}
+        casilla={isXml ? '0115' : undefined}
         value={d.ibiTasas}
         clickable
         onClick={() => onOpenDrawer('gastos_op')}
@@ -291,7 +291,7 @@ function FiscalTab({ d, onOpenDrawer }: FiscalTabProps) {
       />
       <Row
         label="Seguros"
-        casilla={isXml ? '0112' : undefined}
+        casilla={isXml ? '0114' : undefined}
         value={d.seguros}
         clickable
         onClick={() => onOpenDrawer('gastos_op')}
