@@ -788,14 +788,16 @@ async function persistirVinculosAccesorio(
  */
 async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
   const pp = decl.planPensiones;
-  if (!pp || (pp.aportacionesTrabajador === 0 && pp.contribucionesEmpresa === 0)) return;
+  // Usar totalConDerechoReduccion como criterio principal — es RSUMAD, fiable en todos los años.
+  if (!pp || pp.totalConDerechoReduccion === 0) return;
 
   const perfiles = await db.getAll('personalData');
   const perfil = perfiles[0];
   if (!perfil?.id) return;
 
   const ahora = new Date().toISOString();
-  const totalAño = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
+  // Usar el total directo del XML (RSUMAD) en vez de sumar las partes, para evitar errores de redondeo.
+  const totalAño = pp.totalConDerechoReduccion;
 
   // Buscar plan existente: primero por NIF, luego por nombre empresa, luego por nombre base normalizado
   const nombreBaseNuevo = (pp.nombreEmpleador ?? '').replace(/\s*\(\d{4}\)\s*/, '').trim();
@@ -821,12 +823,16 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
     if (!planExistente.historialAportaciones) {
       planExistente.historialAportaciones = {};
     }
-    planExistente.historialAportaciones[año] = {
-      titular: pp.aportacionesTrabajador ?? 0,
-      empresa: pp.contribucionesEmpresa ?? 0,
-      total: totalAño,
-      fuente: 'xml_aeat',
-    };
+    const entradaExistente = planExistente.historialAportaciones[año];
+    // El XML solo sobreescribe si no había entrada o si la entrada existente también era de XML (no manual).
+    if (!entradaExistente || entradaExistente.fuente !== 'manual') {
+      planExistente.historialAportaciones[año] = {
+        titular: pp.aportacionesTrabajador ?? 0,
+        empresa: pp.contribucionesEmpresa ?? 0,
+        total: totalAño,
+        fuente: 'xml_aeat',
+      };
+    }
     // Recalcular acumulado desde el historial completo
     const entradas = Object.values(planExistente.historialAportaciones) as Array<{ total: number }>;
     planExistente.aportacionesRealizadas = entradas.reduce((sum, a) => sum + a.total, 0);
