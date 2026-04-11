@@ -704,63 +704,56 @@ function TabCartera({
 
           {/* Tabla */}
           <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden' }}>
-            {/* Cabecera */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 60px 140px 1fr 1fr', padding: '10px 20px', background: C.n50, borderBottom: `1px solid ${C.n200}` }}>
-              {['Operación', 'Año', 'Tipo', 'Valor transmisión', 'Ganancia / Pérdida'].map(col => (
-                <span key={col} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>
-                  {col}
-                </span>
-              ))}
-            </div>
-
-            {/* Filas */}
-            {closedPositions.map((p, idx) => {
-              const año = p.fecha_valoracion
-                ? new Date(p.fecha_valoracion).getFullYear()
-                : p.fecha_compra
-                  ? new Date(p.fecha_compra).getFullYear()
-                  : '—';
-              const gp = p.valor_actual - p.total_aportado;
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 60px 140px 1fr 1fr',
-                    padding: '12px 20px',
-                    borderBottom: idx < closedPositions.length - 1 ? `1px solid ${C.n100}` : 'none',
-                    background: idx % 2 === 0 ? '#fff' : C.n50,
-                    alignItems: 'center',
-                  }}
-                >
-                  {/* Nombre + entidad */}
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: C.n700 }}>{p.nombre}</div>
-                    {p.entidad && <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>}
-                  </div>
-
-                  {/* Año */}
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>
-                    {año}
-                  </span>
-
-                  {/* Tipo */}
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, background: C.n100, borderRadius: 4, padding: '2px 6px', display: 'inline-block' }}>
-                    {p.tipo.replace(/_/g, ' ')}
-                  </span>
-
-                  {/* Valor transmisión */}
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>
-                    {fmt(p.valor_actual)}
-                  </span>
-
-                  {/* Ganancia / Pérdida */}
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: gp >= 0 ? C.pos : C.teal }}>
-                    {gp >= 0 ? '+' : ''}{fmt(gp)}
-                  </span>
-                </div>
-              );
-            })}
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <thead>
+                <tr style={{ background: C.n50, borderBottom: `1px solid ${C.n200}` }}>
+                  {[
+                    { label: 'Operación',          w: undefined },
+                    { label: 'Año',                w: 70 },
+                    { label: 'Tipo',               w: 150 },
+                    { label: 'Valor transmisión',  w: undefined },
+                    { label: 'Ganancia / Pérdida', w: undefined },
+                  ].map(({ label, w }) => (
+                    <th key={label} style={{ padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, textAlign: 'left', borderBottom: `1px solid ${C.n200}`, ...(w ? { width: w } : {}) }}>
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {closedPositions.map((p, idx) => {
+                  // slice(0,4) is deterministic for YYYY-MM-DD strings — no timezone drift, no NaN risk
+                  const año = p.fecha_valoracion?.slice(0, 4)
+                    ?? p.fecha_compra?.slice(0, 4)
+                    ?? '—';
+                  const gp = p.valor_actual - p.total_aportado;
+                  return (
+                    <tr key={p.id} style={{ borderBottom: idx < closedPositions.length - 1 ? `1px solid ${C.n100}` : 'none', background: idx % 2 === 0 ? '#fff' : C.n50 }}>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: C.n700 }}>{p.nombre}</div>
+                        {p.entidad && <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>}
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>{año}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, background: C.n100, borderRadius: 4, padding: '2px 6px', display: 'inline-block' }}>
+                          {p.tipo.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>{fmt(p.valor_actual)}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: gp >= 0 ? C.pos : C.teal }}>
+                          {gp >= 0 ? '+' : ''}{fmt(gp)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
