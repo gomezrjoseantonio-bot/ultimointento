@@ -15,10 +15,8 @@ import {
   Search,
   ChevronUp,
   ChevronDown,
-  ChevronRight,
   Star,
   Activity,
-  Archive,
 } from 'lucide-react';
 import {
   LineChart,
@@ -467,7 +465,6 @@ function TabCartera({
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
-  const [showClosed, setShowClosed] = useState(false);
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return positions
@@ -694,48 +691,77 @@ function TabCartera({
         </div>
       )}
 
-      {/* Posiciones cerradas */}
+      {/* ─── Operaciones declaradas ─────────────────────────────────────── */}
       {closedPositions.length > 0 && (
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden', marginTop: 20 }}>
-          <button
-            onClick={() => setShowClosed(!showClosed)}
-            style={{ width: '100%', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', border: 'none', borderBottom: showClosed ? `1px solid ${C.n100}` : 'none', cursor: 'pointer', fontFamily: 'inherit' }}
-          >
-            <Archive size={14} color={C.n500} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: C.n700 }}>Posiciones cerradas</span>
-            <span style={{ fontSize: 12, color: C.n500, marginLeft: 4 }}>({closedPositions.length})</span>
-            <ChevronRight size={14} color={C.n500} style={{ marginLeft: 'auto', transform: showClosed ? 'rotate(90deg)' : 'none', transition: 'transform 150ms' }} />
-          </button>
-          {showClosed && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Posición', 'Tipo', 'Aportado', 'Último valor', 'G/P'].map(col => (
-                    <th key={col} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col === 'Posición' || col === 'Tipo' ? 'left' : 'right' }}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {closedPositions.map((p, i) => {
-                  const gp = p.valor_actual - p.total_aportado;
-                  return (
-                    <tr key={p.id} style={{ borderBottom: i < closedPositions.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{p.nombre}</div>
-                        <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{p.tipo}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.total_aportado)}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(p.valor_actual)}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: gp >= 0 ? C.pos : C.neg, fontWeight: 600 }}>
-                        {gp >= 0 ? '+' : ''}{fmt(gp)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
+        <div style={{ marginTop: 20 }}>
+          {/* Título de sección */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: C.n700 }}>Operaciones declaradas</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.n500, background: C.n100, borderRadius: 12, padding: '2px 8px' }}>
+              {closedPositions.length}
+            </span>
+          </div>
+
+          {/* Tabla */}
+          <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden' }}>
+            {/* Cabecera */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 60px 140px 1fr 1fr', padding: '10px 20px', background: C.n50, borderBottom: `1px solid ${C.n200}` }}>
+              {['Operación', 'Año', 'Tipo', 'Valor transmisión', 'Ganancia / Pérdida'].map(col => (
+                <span key={col} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500 }}>
+                  {col}
+                </span>
+              ))}
+            </div>
+
+            {/* Filas */}
+            {closedPositions.map((p, idx) => {
+              const año = p.fecha_valoracion
+                ? new Date(p.fecha_valoracion).getFullYear()
+                : p.fecha_compra
+                  ? new Date(p.fecha_compra).getFullYear()
+                  : '—';
+              const gp = p.valor_actual - p.total_aportado;
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 60px 140px 1fr 1fr',
+                    padding: '12px 20px',
+                    borderBottom: idx < closedPositions.length - 1 ? `1px solid ${C.n100}` : 'none',
+                    background: idx % 2 === 0 ? '#fff' : C.n50,
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Nombre + entidad */}
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: C.n700 }}>{p.nombre}</div>
+                    {p.entidad && <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>{p.entidad}</div>}
+                  </div>
+
+                  {/* Año */}
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>
+                    {año}
+                  </span>
+
+                  {/* Tipo */}
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, background: C.n100, borderRadius: 4, padding: '2px 6px', display: 'inline-block' }}>
+                    {p.tipo.replace(/_/g, ' ')}
+                  </span>
+
+                  {/* Valor transmisión */}
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: C.n700 }}>
+                    {fmt(p.valor_actual)}
+                  </span>
+
+                  {/* Ganancia / Pérdida */}
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: gp >= 0 ? C.pos : C.teal }}>
+                    {gp >= 0 ? '+' : ''}{fmt(gp)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
