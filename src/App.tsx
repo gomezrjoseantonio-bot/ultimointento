@@ -11,6 +11,7 @@ import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
+import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import CopilotWidget from './components/common/CopilotWidget';
@@ -149,6 +150,7 @@ function App() {
           console.log('[ATLAS] Migración IDs huérfanos completada:', migrationReport);
         }
       })
+      .then(() => migrateFinanciacionV2())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales:', error);
       });

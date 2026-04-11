@@ -3,14 +3,19 @@
 import { Prestamo, PlanPagos } from '../types/prestamos';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { initDB } from './db';
+import { getImputacionFactor } from './financiacionImputacionService';
 
-export const getAllocationFactor = (prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'>, inmuebleId: string): number => {
-  if (prestamo.afectacionesInmueble?.length) {
-    const afectacion = prestamo.afectacionesInmueble.find((a) => a.inmuebleId === inmuebleId);
-    return afectacion ? afectacion.porcentaje / 100 : 0;
-  }
-
-  return prestamo.inmuebleId === inmuebleId ? 1 : 0;
+/**
+ * Legacy wrapper — mantiene la API pública existente.
+ * Internamente delega en getImputacionFactor (modelo v2).
+ * Compatible con destinos v2, afectacionesInmueble y inmuebleId.
+ */
+export const getAllocationFactor = (
+  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble'> &
+    Partial<Pick<Prestamo, 'destinos' | 'principalInicial'>>,
+  inmuebleId: string
+): number => {
+  return getImputacionFactor(prestamo, inmuebleId);
 };
 
 export class PrestamosService {
