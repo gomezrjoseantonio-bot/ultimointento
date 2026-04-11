@@ -670,15 +670,23 @@ function extraerGananciasPerdidas(
 
 function extraerPlanPensiones(tda: Element | null): PlanPensionesDeclarado | undefined {
   const rg = tda?.querySelector('RedRegimenGeneral');
-  if (!rg) return undefined;
+  // RSUMAD = total titular + empresa. Existe en TODOS los años (2020–2024).
   const total = num(rg, 'RSUMAD');
   if (total === 0) return undefined;
 
+  // IEIP = aportación del titular en RendimientoTrabajo. Más fiable que RGATEM (que puede ser 0 en años antiguos).
+  const rt = tda?.querySelector('RendimientoTrabajo');
+  const aportacionTitular = num(rt, 'IEIP') || num(rg, 'RGATEM');
+
+  // Empresa = total - titular. En 2020/2021 también existe V01PP2ORGEA y debe coincidir.
+  const contribucionEmpresa = Math.round((total - aportacionTitular) * 100) / 100;
+
+  const apcoppe = tda?.querySelector('DatosAPCOPPE');
   return {
-    aportacionesTrabajador: num(rg, 'RGATEM'),
-    contribucionesEmpresa: num(rg, 'RGCONT'),
-    nifEmpleador: txt(rg, 'NIFEMPSPS') || undefined,
-    nombreEmpleador: txt(tda?.querySelector('DatosAPCOPPE'), 'VNOMEMAPCOPPE') || undefined,
+    aportacionesTrabajador: aportacionTitular,
+    contribucionesEmpresa: contribucionEmpresa,
+    nifEmpleador: txt(rg, 'NIFEMPSPS') || txt(apcoppe, 'VNIFEMAPCOPPE') || undefined,
+    nombreEmpleador: txt(apcoppe, 'VNOMEMAPCOPPE') || undefined,
     totalConDerechoReduccion: total,
   };
 }
