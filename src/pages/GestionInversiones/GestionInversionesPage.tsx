@@ -7,6 +7,7 @@ import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHea
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
+import { personalDataService } from '../../services/personalDataService';
 import type { PlanPensionInversion } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
@@ -58,7 +59,7 @@ function KpiCard({ label, val, meta, color }: { label: string; val: string; meta
 
 function ContenidoPrestamo({ posicion }: { posicion: PosicionInversion }) {
   const capital = posicion.total_aportado;
-  const annualRate: number = Number((posicion as any).rendimiento?.tasa_interes_anual) || 0;
+  const annualRate: number = posicion.rendimiento?.tasa_interes_anual ?? 0;
   const monthlyRate = annualRate / 100 / 12;
   const n = Math.max(posicion.duracion_meses ?? 12, 1);
   const retencion = posicion.retencion_fiscal ?? 19;
@@ -387,7 +388,10 @@ const GestionInversionesPage: React.FC = () => {
   useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
-    planesInversionService.getPlanes(1).then(setPlanesPension).catch(() => setPlanesPension([]));
+    personalDataService.getPersonalData()
+      .then(data => data ? planesInversionService.getPlanes(data.id) : Promise.resolve([]))
+      .then(setPlanesPension)
+      .catch(() => setPlanesPension([]));
   }, []);
 
   const handleNewPosition = () => {
@@ -481,8 +485,22 @@ const GestionInversionesPage: React.FC = () => {
     await refreshDetailPosicion();
   };
 
+  useEffect(() => {
+    if (posiciones.length === 0) {
+      if (selectedPosId != null) setSelectedPosId(null);
+      return;
+    }
+    if (selectedPosId == null) {
+      setSelectedPosId(posiciones[0].id);
+      return;
+    }
+    if (!posiciones.some(p => p.id === selectedPosId)) {
+      setSelectedPosId(posiciones[0].id);
+    }
+  }, [posiciones, selectedPosId]);
+
   const selectedPosicion: PosicionInversion | null =
-    posiciones.find(p => p.id === (selectedPosId ?? posiciones[0]?.id)) ?? posiciones[0] ?? null;
+    selectedPosId == null ? null : posiciones.find(p => p.id === selectedPosId) ?? null;
 
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif", padding: '24px 32px' }}>
@@ -605,8 +623,9 @@ const GestionInversionesPage: React.FC = () => {
 
           {/* Selector de posición */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
+            <label htmlFor="individual-position-select" style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
             <select
+              id="individual-position-select"
               value={selectedPosicion.id}
               onChange={e => setSelectedPosId(Number(e.target.value))}
               style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 280, fontFamily: 'inherit' }}
