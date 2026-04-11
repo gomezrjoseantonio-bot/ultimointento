@@ -605,39 +605,92 @@ function TabCartera({
 
       {/* Planes de pensión */}
       {planesPension.length > 0 && (
-        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden', marginTop: 20 }}>
-          <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.n100}`, fontSize: 15, fontWeight: 700, color: C.n700 }}>
-            Planes de pensión e inversión
+        <div style={{ marginTop: 20 }}>
+          {/* Título de sección */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: C.n700 }}>Planes de pensión e inversión</span>
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.n500, background: C.n100, borderRadius: 12, padding: '2px 8px' }}>
+              {planesPension.length}
+            </span>
           </div>
-          <div style={{ padding: '8px 20px', fontSize: 11, color: C.n500, borderBottom: `1px solid ${C.n100}` }}>
-            {planesPension.length} plan{planesPension.length > 1 ? 'es' : ''}
+
+          {/* Cards */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {planesPension.map((plan) => {
+              const historial = plan.historialAportaciones ?? {};
+              const aniosConDatos = Object.keys(historial).length;
+              const valorMostrado = plan.valorActual > 0
+                ? (plan.unidades != null ? plan.unidades * plan.valorActual : plan.valorActual)
+                : null;
+              const ultimasAportaciones = Object.entries(historial)
+                .sort(([a], [b]) => Number(b) - Number(a))
+                .slice(0, 4);
+
+              return (
+                <div
+                  key={plan.id ?? plan.nombre}
+                  style={{
+                    background: '#fff',
+                    border: `1px solid ${C.n200}`,
+                    borderTop: `3px solid ${C.blue}`,
+                    borderRadius: 8,
+                    padding: '16px 20px',
+                  }}
+                >
+                  {/* Cabecera de la card */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.n700 }}>{plan.nombre}</span>
+                      {plan.esHistorico && (
+                        <span style={{ marginLeft: 8, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: C.n100, color: C.n500 }}>Histórico</span>
+                      )}
+                      {plan.entidad && (
+                        <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{plan.entidad}</div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, background: C.n100, borderRadius: 12, padding: '3px 9px', whiteSpace: 'nowrap' }}>
+                      {plan.tipo.replace('-', ' ')}
+                    </span>
+                  </div>
+
+                  {/* KPIs */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: ultimasAportaciones.length ? 12 : 0 }}>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 3 }}>Valor actual</div>
+                      {valorMostrado !== null ? (
+                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 16, fontWeight: 600, color: C.n700 }}>{fmt(valorMostrado)}</div>
+                      ) : (
+                        <div style={{ fontSize: 12, color: C.n500 }}>Sin actualizar</div>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 3 }}>Aportado acum.</div>
+                      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 16, fontWeight: 600, color: C.n700 }}>{fmt(plan.aportacionesRealizadas || 0)}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: C.n500, marginBottom: 3 }}>Años con datos</div>
+                      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 16, fontWeight: 600, color: C.n700 }}>{aniosConDatos}</div>
+                    </div>
+                  </div>
+
+                  {/* Historial compacto (últimas 4 anualidades) */}
+                  {ultimasAportaciones.length > 0 && (
+                    <div style={{ fontSize: 12, color: C.n500, borderTop: `1px solid ${C.n100}`, paddingTop: 10 }}>
+                      {ultimasAportaciones.map(([year, data], i) => (
+                        <span key={year}>
+                          {year}:{' '}
+                          <span style={{ fontFamily: "'IBM Plex Mono', monospace", color: C.n700, fontWeight: 600 }}>
+                            {fmt(data.total)}
+                          </span>
+                          {i < ultimasAportaciones.length - 1 ? '  ·  ' : ''}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Nombre', 'Entidad', 'Tipo', 'Aportado acum.', 'Valor actual', 'Titularidad'].map(col => (
-                  <th key={col} style={{ padding: '9px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: col.startsWith('Aportado') || col.startsWith('Valor') ? 'right' : 'left' }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {planesPension.map((plan, i) => (
-                <tr key={plan.id ?? i} style={{ borderBottom: i < planesPension.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: C.n700, fontSize: 13 }}>
-                    {plan.nombre}
-                    {plan.esHistorico && <span style={{ marginLeft: 6, padding: '1px 6px', borderRadius: 4, fontSize: 9, fontWeight: 700, background: C.n100, color: C.n500 }}>Histórico</span>}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.entidad || '—'}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.tipo}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(plan.aportacionesRealizadas || 0)}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                    {plan.valorActual > 0 ? fmt(plan.unidades ? plan.unidades * plan.valorActual : plan.valorActual) : <span style={{ color: C.n500, fontSize: 11 }}>Sin actualizar</span>}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.n500 }}>{plan.titularidad}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
 
