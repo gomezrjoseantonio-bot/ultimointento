@@ -11,9 +11,7 @@ import {
   Wallet,
   ArrowUpRight,
   Eye,
-  MoreHorizontal,
   SlidersHorizontal,
-  Plus,
   Search,
   ChevronUp,
   ChevronDown,
@@ -456,16 +454,12 @@ function TabResumen({ positions, planesPension }: { positions: PositionRow[]; pl
 function TabCartera({
   onSelectPosition,
   onViewAportaciones,
-  onNewPosition,
-  onEditPosition,
   positions,
   closedPositions,
   planesPension,
 }: {
   onSelectPosition: (id: string) => void;
   onViewAportaciones: (id: string) => void;
-  onNewPosition: () => void;
-  onEditPosition: (id: string) => void;
   positions: PositionRow[];
   closedPositions: PosicionInversion[];
   planesPension: PlanPensionInversion[];
@@ -499,12 +493,6 @@ function TabCartera({
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: 'transparent', border: `1.5px solid ${C.n200}`, borderRadius: 8, cursor: 'pointer', color: C.n500, fontFamily: 'inherit' }}>
             <SlidersHorizontal size={13} /> Filtros
-          </button>
-          <button
-            onClick={onNewPosition}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', fontSize: 12, background: C.blue, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontFamily: 'inherit' }}
-          >
-            <Plus size={13} /> Nueva posición
           </button>
         </div>
       </div>
@@ -607,15 +595,6 @@ function TabCartera({
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
                     <button onClick={e => { e.stopPropagation(); onViewAportaciones(p.id); }} title="Ver historial aportaciones" aria-label={`Ver historial de ${p.alias}`} style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}><Eye size={14} /></button>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        onViewAportaciones(p.id);
-                      }}
-                      title="Gestionar aportaciones"
-                      aria-label={`Gestionar aportaciones de ${p.alias}`}
-                      style={{ width: 28, height: 28, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
-                    ><MoreHorizontal size={14} /></button>
                   </div>
                 </td>
               </tr>
@@ -979,26 +958,6 @@ export default function InversionesAnalisis() {
     setActiveTab('individual');
   };
 
-  const handleNewPosition = () => {
-    setEditingPosicion(undefined);
-    setShowForm(true);
-  };
-
-  const handleEditPosition = async (id: string) => {
-    try {
-      const posicion = await inversionesService.getPosicion(Number(id));
-      if (!posicion) {
-        toast.error('No se ha encontrado la posición para editar');
-        return;
-      }
-      setEditingPosicion(posicion);
-      setShowForm(true);
-    } catch (error) {
-      console.error('Error cargando la posición para editar:', error);
-      toast.error('Error al abrir la edición');
-    }
-  };
-
   const handleViewAportaciones = async (id: string) => {
     try {
       const posicion = await inversionesService.getPosicion(Number(id));
@@ -1106,8 +1065,6 @@ export default function InversionesAnalisis() {
           <TabCartera
             onSelectPosition={handleSelectPosition}
             onViewAportaciones={handleViewAportaciones}
-            onNewPosition={handleNewPosition}
-            onEditPosition={handleEditPosition}
             positions={positions}
             closedPositions={closedPositions}
             planesPension={planesPension}
