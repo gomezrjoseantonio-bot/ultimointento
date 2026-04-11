@@ -620,7 +620,7 @@ function TabCartera({
               const historial = plan.historialAportaciones ?? {};
               const aniosConDatos = Object.keys(historial).length;
               const valorMostrado = plan.valorActual > 0
-                ? (plan.unidades ? plan.unidades * plan.valorActual : plan.valorActual)
+                ? (plan.unidades != null ? plan.unidades * plan.valorActual : plan.valorActual)
                 : null;
               const ultimasAportaciones = Object.entries(historial)
                 .sort(([a], [b]) => Number(b) - Number(a))
@@ -628,14 +628,13 @@ function TabCartera({
 
               return (
                 <div
-                  key={plan.id}
+                  key={plan.id ?? plan.nombre}
                   style={{
                     background: '#fff',
                     border: `1px solid ${C.n200}`,
                     borderTop: `3px solid ${C.blue}`,
                     borderRadius: 8,
                     padding: '16px 20px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                   }}
                 >
                   {/* Cabecera de la card */}
