@@ -95,6 +95,7 @@ export interface PosicionInversion {
   frecuencia_cobro?: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'al_vencimiento'; // Para prestamo_p2p
   liquidacion_intereses?: 'al_vencimiento' | 'mensual' | 'trimestral' | 'anual'; // Para deposito_plazo
   retencion_fiscal?: number;          // % retención fiscal (0, 19, 21, 23, 27)
+  rendimiento?: { tasa_interes_anual?: number }; // Para prestamo_p2p, deposito_plazo, cuenta_remunerada
   dividendo_anual_estimado?: number;  // Para accion, etf, reit (€/título/año, opcional)
 
   // Metadata

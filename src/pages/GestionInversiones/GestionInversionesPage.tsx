@@ -6,6 +6,9 @@ import { TrendingUp, Eye, Edit2, Trash2, Plus } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
+import { planesInversionService } from '../../services/planesInversionService';
+import { personalDataService } from '../../services/personalDataService';
+import type { PlanPensionInversion } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
@@ -26,8 +29,346 @@ const fmt = (n: number) =>
 
 const fmtPct = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2)}%`;
 
+const fmtDate = (dateStr: string): string => {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.slice(0, 10).split('-').map(Number);
+  return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(y, m - 1, d));
+};
+
+const addMonths = (baseDate: string, months: number): string => {
+  const [y, m, d] = baseDate.slice(0, 10).split('-').map(Number);
+  const targetYear = y + Math.floor((m - 1 + months) / 12);
+  const targetMonth = ((m - 1 + months) % 12 + 12) % 12 + 1;
+  const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+  return `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(Math.min(d, lastDay)).padStart(2, '0')}`;
+};
+
+// ─── Shared KPI card ──────────────────────────────────────────────────────────
+
+function KpiCard({ label, val, meta, color }: { label: string; val: string; meta: string; color?: string }) {
+  return (
+    <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 14, flexShrink: 0, minWidth: 140 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' as const, color: C.n500, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 17, fontWeight: 600, color: color ?? C.n700 }}>{val}</div>
+      <div style={{ fontSize: 11, color: C.n500, marginTop: 2 }}>{meta}</div>
+    </div>
+  );
+}
+
+// ─── ContenidoPrestamo — cuadro de amortización ───────────────────────────────
+
+function ContenidoPrestamo({ posicion }: { posicion: PosicionInversion }) {
+  const capital = posicion.total_aportado;
+  const annualRate: number = posicion.rendimiento?.tasa_interes_anual ?? 0;
+  const monthlyRate = annualRate / 100 / 12;
+  const n = Math.max(posicion.duracion_meses ?? 12, 1);
+  const retencion = posicion.retencion_fiscal ?? 19;
+  const modalidad = posicion.modalidad_devolucion ?? 'capital_e_intereses';
+  const startDate = posicion.fecha_compra ?? posicion.created_at;
+
+  type CobroRow = {
+    mes: number; fecha: string; capitalPendiente: number;
+    interesesBrutos: number; retencionEuros: number; interesesNetos: number;
+    amortizacion: number; cuotaNeta: number;
+  };
+
+  const rows: CobroRow[] = [];
+
+  if (modalidad === 'capital_e_intereses') {
+    const cuota = monthlyRate > 0
+      ? capital * monthlyRate / (1 - Math.pow(1 + monthlyRate, -n))
+      : capital / n;
+    let capitalPendiente = capital;
+    for (let i = 1; i <= n; i++) {
+      const intereses = capitalPendiente * monthlyRate;
+      const amortizacion = cuota - intereses;
+      const ret = intereses * retencion / 100;
+      rows.push({
+        mes: i, fecha: addMonths(startDate, i), capitalPendiente,
+        interesesBrutos: intereses, retencionEuros: ret,
+        interesesNetos: intereses - ret, amortizacion,
+        cuotaNeta: amortizacion + intereses - ret,
+      });
+      capitalPendiente = Math.max(0, capitalPendiente - amortizacion);
+    }
+  } else if (modalidad === 'solo_intereses') {
+    const interesesMes = capital * monthlyRate;
+    for (let i = 1; i <= n; i++) {
+      const isLast = i === n;
+      const ret = interesesMes * retencion / 100;
+      rows.push({
+        mes: i, fecha: addMonths(startDate, i), capitalPendiente: capital,
+        interesesBrutos: interesesMes, retencionEuros: ret,
+        interesesNetos: interesesMes - ret,
+        amortizacion: isLast ? capital : 0,
+        cuotaNeta: (isLast ? capital : 0) + interesesMes - ret,
+      });
+    }
+  } else {
+    // al_vencimiento: single row at maturity
+    const totalIntereses = capital * annualRate / 100 * (n / 12);
+    const ret = totalIntereses * retencion / 100;
+    rows.push({
+      mes: n, fecha: addMonths(startDate, n), capitalPendiente: capital,
+      interesesBrutos: totalIntereses, retencionEuros: ret,
+      interesesNetos: totalIntereses - ret, amortizacion: capital,
+      cuotaNeta: capital + totalIntereses - ret,
+    });
+  }
+
+  const totalIntBrutos = rows.reduce((s, r) => s + r.interesesBrutos, 0);
+  const totalRet = rows.reduce((s, r) => s + r.retencionEuros, 0);
+  const totalIntNetos = rows.reduce((s, r) => s + r.interesesNetos, 0);
+  const cuotaPrimera = rows[0]?.cuotaNeta ?? 0;
+
+  const TH: React.CSSProperties = {
+    padding: '8px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
+    textTransform: 'uppercase', color: C.n500, background: C.n50,
+    borderBottom: `1px solid ${C.n200}`, whiteSpace: 'nowrap',
+  };
+  const tdMono = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: '7px 12px', textAlign: 'right' as const,
+    fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, ...extra,
+  });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <KpiCard label="Capital" val={fmt(capital)} meta="Importe prestado" />
+        <KpiCard label="Tasa anual" val={`${annualRate.toFixed(2)}%`} meta="Interés nominal" />
+        <KpiCard label="Duración" val={`${n} meses`} meta={posicion.modalidad_devolucion ?? 'Devolución'} />
+        <KpiCard label="Retención" val={`${retencion}%`} meta="Retención fiscal" />
+        <KpiCard label="Cuota neta" val={fmt(cuotaPrimera)} meta="Primer cobro" color={C.blue} />
+        <KpiCard label="Intereses netos" val={fmt(totalIntNetos)} meta="Total préstamo" color={C.blue} />
+      </div>
+
+      <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.n100}`, fontSize: 13, fontWeight: 600, color: C.n700 }}>
+          Calendario de cobros
+        </div>
+        <div style={{ overflowX: 'auto', maxHeight: 420, overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+              <tr>
+                <th style={{ ...TH, textAlign: 'center' }}>Mes</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Fecha</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Cap. pendiente</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Int. brutos</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Retención</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Int. netos</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Amortización</th>
+                <th style={{ ...TH, textAlign: 'right' }}>Cuota neta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, idx) => (
+                <tr key={row.mes} style={{ borderBottom: idx < rows.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                  <td style={{ padding: '7px 12px', textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: C.n500 }}>{row.mes}</td>
+                  <td style={{ padding: '7px 12px', textAlign: 'right', fontSize: 12, color: C.n700 }}>{fmtDate(row.fecha)}</td>
+                  <td style={tdMono()}>{fmt(row.capitalPendiente)}</td>
+                  <td style={tdMono()}>{fmt(row.interesesBrutos)}</td>
+                  <td style={tdMono({ color: C.n500 })}>{fmt(row.retencionEuros)}</td>
+                  <td style={tdMono({ color: C.blue, fontWeight: 600 })}>{fmt(row.interesesNetos)}</td>
+                  <td style={tdMono()}>{row.amortizacion > 0 ? fmt(row.amortizacion) : '—'}</td>
+                  <td style={tdMono({ fontWeight: 600, color: C.n700 })}>{fmt(row.cuotaNeta)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: C.n50, borderTop: `1px solid ${C.n200}` }}>
+                <td colSpan={3} style={{ padding: '8px 12px', fontSize: 12, fontWeight: 600, color: C.n700 }}>Totales</td>
+                <td style={tdMono({ fontWeight: 600 })}>{fmt(totalIntBrutos)}</td>
+                <td style={tdMono({ fontWeight: 600, color: C.n500 })}>{fmt(totalRet)}</td>
+                <td style={tdMono({ fontWeight: 600, color: C.blue })}>{fmt(totalIntNetos)}</td>
+                <td style={tdMono({ fontWeight: 600 })}>{fmt(capital)}</td>
+                <td style={tdMono({ fontWeight: 600, color: C.n700 })}>{fmt(capital + totalIntNetos)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ContenidoPlanPension — historial de aportaciones ────────────────────────
+
+function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionInversion; planesPension: PlanPensionInversion[] }) {
+  const matchingPlan = planesPension.find(p =>
+    p.nombre.toLowerCase() === posicion.nombre.toLowerCase() ||
+    (p.entidad && posicion.entidad && p.entidad.toLowerCase() === posicion.entidad.toLowerCase())
+  );
+  const historial = matchingPlan?.historialAportaciones ?? {};
+  const years = Object.keys(historial).map(Number).sort((a, b) => b - a);
+
+  const aportacionesPorAño: Record<number, number> = {};
+  posicion.aportaciones.forEach(a => {
+    const year = Number(a.fecha.slice(0, 4));
+    if (!aportacionesPorAño[year]) aportacionesPorAño[year] = 0;
+    aportacionesPorAño[year] += a.tipo === 'aportacion' ? a.importe : a.tipo === 'reembolso' ? -a.importe : 0;
+  });
+  const yearsPos = Object.keys(aportacionesPorAño).map(Number).sort((a, b) => b - a);
+
+  const TH = (right = true): React.CSSProperties => ({
+    padding: '8px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
+    textTransform: 'uppercase' as const, color: C.n500, background: C.n50,
+    borderBottom: `1px solid ${C.n200}`, textAlign: right ? 'right' : 'left',
+  });
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <KpiCard label="Aportado total" val={fmt(posicion.total_aportado)} meta="Acumulado" />
+        <KpiCard label="Valor actual" val={fmt(posicion.valor_actual)} meta={posicion.fecha_valoracion ? fmtDate(posicion.fecha_valoracion) : '—'} />
+        <KpiCard label="Rentabilidad" val={fmtPct(posicion.rentabilidad_porcentaje)} meta={fmt(posicion.rentabilidad_euros)} color={posicion.rentabilidad_porcentaje >= 0 ? C.blue : C.n700} />
+        {matchingPlan && <KpiCard label="Plan vinculado" val={matchingPlan.nombre} meta={matchingPlan.entidad ?? '—'} />}
+      </div>
+
+      {years.length > 0 && (
+        <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.n100}`, fontSize: 13, fontWeight: 600, color: C.n700 }}>
+            Historial de aportaciones · Plan de pensiones
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={TH(false)}>Año</th>
+                <th style={TH()}>Titular</th>
+                <th style={TH()}>Empresa</th>
+                <th style={TH()}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {years.map((year, idx) => {
+                const row = historial[year];
+                return (
+                  <tr key={year} style={{ borderBottom: idx < years.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                    <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.n700 }}>{year}</td>
+                    <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(row.titular)}</td>
+                    <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(row.empresa)}</td>
+                    <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.blue }}>{fmt(row.total)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {yearsPos.length > 0 && (
+        <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 16px', borderBottom: `1px solid ${C.n100}`, fontSize: 13, fontWeight: 600, color: C.n700 }}>
+            Movimientos por año
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={TH(false)}>Año</th>
+                <th style={TH()}>Neto aportado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yearsPos.map((year, idx) => (
+                <tr key={year} style={{ borderBottom: idx < yearsPos.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                  <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.n700 }}>{year}</td>
+                  <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.blue }}>{fmt(aportacionesPorAño[year])}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {years.length === 0 && yearsPos.length === 0 && (
+        <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, padding: '32px', textAlign: 'center', color: C.n500, fontSize: 14 }}>
+          No hay historial de aportaciones registrado para este plan.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ContenidoResumen — ficha genérica de posición ───────────────────────────
+
+function ContenidoResumen({ posicion }: { posicion: PosicionInversion }) {
+  const aportacionesPorAño: Record<number, number> = {};
+  posicion.aportaciones.forEach(a => {
+    const year = Number(a.fecha.slice(0, 4));
+    if (!aportacionesPorAño[year]) aportacionesPorAño[year] = 0;
+    aportacionesPorAño[year] += a.tipo === 'aportacion' ? a.importe : a.tipo === 'reembolso' ? -a.importe : 0;
+  });
+  const years = Object.keys(aportacionesPorAño).map(Number).sort((a, b) => b - a);
+
+  const kpis = [
+    { label: 'Aportado', val: fmt(posicion.total_aportado), meta: 'Capital invertido' },
+    { label: 'Valor actual', val: fmt(posicion.valor_actual), meta: posicion.fecha_valoracion ? fmtDate(posicion.fecha_valoracion) : '—' },
+    { label: 'Ganancia', val: `${posicion.rentabilidad_euros >= 0 ? '+' : ''}${fmt(posicion.rentabilidad_euros)}`, meta: 'No realizada', color: posicion.rentabilidad_euros >= 0 ? C.blue : C.n700 },
+    { label: 'Rent. total', val: fmtPct(posicion.rentabilidad_porcentaje), meta: 'Acumulada', color: posicion.rentabilidad_porcentaje >= 0 ? C.blue : C.n700 },
+    ...(posicion.numero_participaciones != null ? [{ label: 'Participaciones', val: posicion.numero_participaciones.toLocaleString('es-ES'), meta: 'En cartera', color: undefined }] : []),
+  ];
+
+  const fichaRows: [string, string][] = [
+    ['Nombre', posicion.nombre],
+    ['Entidad', posicion.entidad],
+    ['Tipo', posicion.tipo],
+    ['Estado', posicion.activo ? 'Activa' : 'Archivada'],
+    ['Fecha compra', posicion.fecha_compra ? fmtDate(posicion.fecha_compra) : '—'],
+    ['Fecha valoración', posicion.fecha_valoracion ? fmtDate(posicion.fecha_valoracion) : '—'],
+    ...(posicion.isin ? [['ISIN', posicion.isin] as [string, string]] : []),
+    ...(posicion.ticker ? [['Ticker', posicion.ticker] as [string, string]] : []),
+  ];
+
+  return (
+    <div>
+      {!posicion.activo && (
+        <div style={{ background: C.n100, border: `1px solid ${C.n200}`, borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: C.n500 }}>
+          Posición archivada · Solo lectura
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        {kpis.map(k => <KpiCard key={k.label} label={k.label} val={k.val} meta={k.meta} color={k.color} />)}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: years.length > 0 ? '1fr 1fr' : '1fr', gap: 16 }}>
+        <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.n700, marginBottom: 12 }}>Ficha de posición</div>
+          {fichaRows.map(([label, val]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '5px 0', borderBottom: `1px solid ${C.n100}` }}>
+              <span style={{ fontSize: 12, color: C.n500 }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: C.n700 }}>{val}</span>
+            </div>
+          ))}
+        </div>
+        {years.length > 0 && (
+          <div style={{ background: '#fff', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: `1px solid ${C.n100}`, fontSize: 14, fontWeight: 700, color: C.n700 }}>Aportaciones por año</div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Año', 'Neto aportado'].map((h, i) => (
+                    <th key={h} style={{ padding: '8px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: C.n500, background: C.n50, borderBottom: `1px solid ${C.n200}`, textAlign: i === 0 ? 'left' : 'right' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {years.map((year, idx) => (
+                  <tr key={year} style={{ borderBottom: idx < years.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                    <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.n700 }}>{year}</td>
+                    <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.blue }}>{fmt(aportacionesPorAño[year])}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const GestionInversionesPage: React.FC = () => {
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
+  const [selectedPosId, setSelectedPosId] = useState<number | null>(null);
+  const [planesPension, setPlanesPension] = useState<PlanPensionInversion[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showAportacionForm, setShowAportacionForm] = useState(false);
@@ -45,6 +386,13 @@ const GestionInversionesPage: React.FC = () => {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    personalDataService.getPersonalData()
+      .then(data => data?.id != null ? planesInversionService.getPlanes(data.id) : Promise.resolve([]))
+      .then(setPlanesPension)
+      .catch(() => setPlanesPension([]));
+  }, []);
 
   const handleNewPosition = () => {
     setEditingPosicion(undefined);
@@ -136,6 +484,23 @@ const GestionInversionesPage: React.FC = () => {
     await refresh();
     await refreshDetailPosicion();
   };
+
+  useEffect(() => {
+    if (posiciones.length === 0) {
+      if (selectedPosId != null) setSelectedPosId(null);
+      return;
+    }
+    if (selectedPosId == null) {
+      setSelectedPosId(posiciones[0].id);
+      return;
+    }
+    if (!posiciones.some(p => p.id === selectedPosId)) {
+      setSelectedPosId(posiciones[0].id);
+    }
+  }, [posiciones, selectedPosId]);
+
+  const selectedPosicion: PosicionInversion | null =
+    selectedPosId == null ? null : posiciones.find(p => p.id === selectedPosId) ?? null;
 
   return (
     <div style={{ minHeight: '100vh', background: C.n50, fontFamily: "'IBM Plex Sans', system-ui, sans-serif", padding: '24px 32px' }}>
@@ -245,6 +610,44 @@ const GestionInversionesPage: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Vista individual ── */}
+      {posiciones.length > 0 && selectedPosicion && (
+        <div style={{ marginTop: 32 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: C.n500, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            Vista individual
+            <div style={{ flex: 1, height: 1, background: C.n200 }} />
+          </div>
+
+          {/* Selector de posición */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <label htmlFor="individual-position-select" style={{ fontSize: 13, fontWeight: 600, color: C.n700 }}>Posición</label>
+            <select
+              id="individual-position-select"
+              value={selectedPosicion.id}
+              onChange={e => setSelectedPosId(Number(e.target.value))}
+              style={{ padding: '7px 12px', border: `1.5px solid ${C.n300}`, borderRadius: 8, fontSize: 13, color: C.n700, background: '#fff', cursor: 'pointer', minWidth: 280, fontFamily: 'inherit' }}
+            >
+              {posiciones.map(p => (
+                <option key={p.id} value={p.id}>{p.nombre} · {p.entidad}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Contenido según tipo */}
+          {selectedPosicion.tipo === 'prestamo_p2p' && (
+            <ContenidoPrestamo posicion={selectedPosicion} />
+          )}
+          {(selectedPosicion.tipo === 'plan_pensiones' || selectedPosicion.tipo === 'plan_empleo') && (
+            <ContenidoPlanPension posicion={selectedPosicion} planesPension={planesPension} />
+          )}
+          {selectedPosicion.tipo !== 'prestamo_p2p' &&
+           selectedPosicion.tipo !== 'plan_pensiones' &&
+           selectedPosicion.tipo !== 'plan_empleo' && (
+            <ContenidoResumen posicion={selectedPosicion} />
+          )}
         </div>
       )}
 
