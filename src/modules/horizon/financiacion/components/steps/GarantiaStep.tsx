@@ -17,23 +17,17 @@ const GARANTIA_OPTIONS: { id: Garantia['tipo']; label: string; sub: string; icon
 ];
 
 /**
- * Deriva la garantía sugerida a partir de los destinos del préstamo.
- * Si todos los destinos tienen inmuebleId → hipotecaria sobre el primer inmueble.
- * Si no hay ninguno → personal.
+ * Deriva una única garantía sugerida a partir de los destinos del préstamo.
+ * Si hay algún inmueble en destinos → hipotecaria sobre el primero.
+ * Si no hay inmueble → personal.
  */
 function sugerirGarantia(destinos: DestinoCapital[] | undefined): Garantia[] {
   if (!destinos?.length) return [{ tipo: 'PERSONAL' }];
 
-  const inmueblesDestino = [...new Set(
-    destinos.filter((d) => d.inmuebleId).map((d) => d.inmuebleId!),
-  )];
+  const primerInmueble = destinos.find((d) => d.inmuebleId)?.inmuebleId;
+  if (!primerInmueble) return [{ tipo: 'PERSONAL' }];
 
-  if (inmueblesDestino.length === 0) return [{ tipo: 'PERSONAL' }];
-
-  return inmueblesDestino.map((inmuebleId) => ({
-    tipo: 'HIPOTECARIA' as const,
-    inmuebleId,
-  }));
+  return [{ tipo: 'HIPOTECARIA', inmuebleId: primerInmueble }];
 }
 
 const GarantiaStep: React.FC<GarantiaStepProps> = ({ data, onChange, errors }) => {
@@ -46,11 +40,10 @@ const GarantiaStep: React.FC<GarantiaStepProps> = ({ data, onChange, errors }) =
       .catch(() => {});
   }, []);
 
-  // Inicializar garantías sugeridas si no hay ninguna
+  // Inicializar garantía sugerida si no hay ninguna
   useEffect(() => {
     if (!data.garantias?.length && data.destinos) {
-      const sugeridas = sugerirGarantia(data.destinos);
-      onChange({ garantias: sugeridas });
+      onChange({ garantias: sugerirGarantia(data.destinos) });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -85,13 +78,10 @@ const GarantiaStep: React.FC<GarantiaStepProps> = ({ data, onChange, errors }) =
   const destinosInmuebles = new Set(
     (data.destinos ?? []).filter((d) => d.inmuebleId).map((d) => d.inmuebleId!),
   );
-  const garantiasInmuebles = new Set(
-    garantias.filter((g) => g.inmuebleId).map((g) => g.inmuebleId!),
-  );
   const hasDifference =
-    tipoActual === 'PERSONAL' && destinosInmuebles.size > 0
-    || tipoActual === 'HIPOTECARIA' && inmuebleActual && !destinosInmuebles.has(inmuebleActual)
-    || tipoActual === 'PIGNORATICIA';
+    (tipoActual === 'PERSONAL' && destinosInmuebles.size > 0) ||
+    (tipoActual === 'HIPOTECARIA' && Boolean(inmuebleActual) && !destinosInmuebles.has(inmuebleActual)) ||
+    tipoActual === 'PIGNORATICIA';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

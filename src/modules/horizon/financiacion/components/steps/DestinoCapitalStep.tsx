@@ -22,7 +22,10 @@ const TIPO_OPTIONS: { id: DestinoCapital['tipo']; label: string; sub: string; ic
 const needsInmueble = (tipo: DestinoCapital['tipo']) => tipo === 'ADQUISICION' || tipo === 'REFORMA';
 
 function generateId(): string {
-  return `d_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return `d_${globalThis.crypto.randomUUID()}`;
+  }
+  return `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 const DestinoCapitalStep: React.FC<DestinoCapitalStepProps> = ({ data, onChange, errors }) => {
@@ -66,12 +69,6 @@ const DestinoCapitalStep: React.FC<DestinoCapitalStepProps> = ({ data, onChange,
   const deriveAmbito = (ds: DestinoCapital[]): Partial<PrestamoFinanciacion> => {
     const hasInmueble = ds.some((d) => d.inmuebleId);
     return { ambito: hasInmueble ? 'INMUEBLE' : 'PERSONAL' };
-  };
-
-  const getInmuebleLabel = (id: string) => {
-    const inm = inmuebles.find((i) => i.id === id);
-    if (!inm) return id;
-    return inm.alias || `${inm.direccion?.calle ?? ''}, ${inm.direccion?.municipio ?? ''}`.trim() || id;
   };
 
   return (

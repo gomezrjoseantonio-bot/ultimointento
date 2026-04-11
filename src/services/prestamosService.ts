@@ -7,7 +7,10 @@ import { initDB } from './db';
 // ── Helper: generate short unique id ──────────────────────────────────────
 
 function generateDestinoId(): string {
-  return `d_${Date.now().toString(36)}_${Math.random().toString(36).substr(2, 6)}`;
+  if (typeof globalThis !== 'undefined' && globalThis.crypto?.randomUUID) {
+    return `d_${globalThis.crypto.randomUUID()}`;
+  }
+  return `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 // ── getAllocationFactor ────────────────────────────────────────────────────
@@ -15,7 +18,7 @@ function generateDestinoId(): string {
 // Usa el nuevo modelo destinos[] si existe; cae en legacy si no.
 
 export const getAllocationFactor = (
-  prestamo: Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>,
+  prestamo: Partial<Pick<Prestamo, 'inmuebleId' | 'afectacionesInmueble' | 'destinos' | 'principalInicial'>>,
   inmuebleId: string,
 ): number => {
   // Nuevo modelo: usar destinos[]
@@ -53,8 +56,8 @@ export function interesesDeduciblesInmueble(
   interesesTotalAño: number,
 ): number {
   if (!prestamo.destinos?.length) {
-    // Legacy: si no tiene destinos, usar inmuebleId directo (100%)
-    return prestamo.inmuebleId === inmuebleId ? interesesTotalAño : 0;
+    // Legacy: reutilizar getAllocationFactor para cubrir inmuebleId simple y afectacionesInmueble
+    return interesesTotalAño * getAllocationFactor(prestamo, inmuebleId);
   }
 
   const destinoDeducible = prestamo.destinos
@@ -76,7 +79,20 @@ export function interesesTotalDeducible(
   prestamo: Prestamo,
   interesesTotalAño: number,
 ): number {
-  if (!prestamo.destinos?.length) return interesesTotalAño; // legacy
+  if (!prestamo.destinos?.length) {
+    // Legacy: préstamos PERSONAL/INVERSION/OTRA no generan intereses deducibles
+    const finalidadNoDeducible =
+      prestamo.finalidad === 'PERSONAL' ||
+      prestamo.finalidad === 'INVERSION' ||
+      prestamo.finalidad === 'OTRA';
+    if (finalidadNoDeducible || prestamo.ambito === 'PERSONAL') return 0;
+    // ADQUISICION/REFORMA con afectacionesInmueble: suma porcentajes de todos los inmuebles
+    if (prestamo.afectacionesInmueble?.length) {
+      const pctTotal = prestamo.afectacionesInmueble.reduce((s, a) => s + a.porcentaje, 0);
+      return interesesTotalAño * Math.min(pctTotal / 100, 1);
+    }
+    return interesesTotalAño; // single inmuebleId → 100% deducible
+  }
 
   const importeDeducible = prestamo.destinos
     .filter((d) => d.inmuebleId && (d.tipo === 'ADQUISICION' || d.tipo === 'REFORMA'))
@@ -119,19 +135,30 @@ export function migratePrestamo(legacy: Prestamo): Prestamo {
       });
     }
   } else if (legacy.inmuebleId && legacy.inmuebleId !== 'standalone') {
-    // Single-inmueble legacy
+    // Single-inmueble legacy — mapear finalidad completa a DestinoCapital['tipo']
+    const tipoDestino: DestinoCapital['tipo'] =
+      legacy.finalidad === 'REFORMA'    ? 'REFORMA'    :
+      legacy.finalidad === 'INVERSION'  ? 'INVERSION'  :
+      legacy.finalidad === 'PERSONAL'   ? 'PERSONAL'   :
+      legacy.finalidad === 'OTRA'       ? 'OTRA'       :
+      'ADQUISICION';
+
     destinos.push({
       id: generateDestinoId(),
-      tipo: (legacy.finalidad === 'REFORMA' ? 'REFORMA' : 'ADQUISICION') as DestinoCapital['tipo'],
-      inmuebleId: legacy.inmuebleId,
+      tipo: tipoDestino,
+      inmuebleId: (tipoDestino === 'ADQUISICION' || tipoDestino === 'REFORMA')
+        ? legacy.inmuebleId
+        : undefined,
       importe: legacy.principalInicial,
       porcentaje: 100,
     });
-    if (legacy.ambito === 'INMUEBLE') {
+    if (legacy.ambito === 'INMUEBLE' && (tipoDestino === 'ADQUISICION' || tipoDestino === 'REFORMA')) {
       garantias.push({
         tipo: 'HIPOTECARIA',
         inmuebleId: legacy.inmuebleId,
       });
+    } else {
+      garantias.push({ tipo: 'PERSONAL' });
     }
   } else {
     // Préstamo personal sin inmueble
@@ -144,7 +171,12 @@ export function migratePrestamo(legacy: Prestamo): Prestamo {
     garantias.push({ tipo: 'PERSONAL' });
   }
 
-  return { ...legacy, destinos, garantias };
+  // Recalcular ambito a partir de los destinos generados
+  const ambito: Prestamo['ambito'] = destinos.some((d) => Boolean(d.inmuebleId))
+    ? 'INMUEBLE'
+    : 'PERSONAL';
+
+  return { ...legacy, destinos, garantias, ambito };
 }
 
 export class PrestamosService {

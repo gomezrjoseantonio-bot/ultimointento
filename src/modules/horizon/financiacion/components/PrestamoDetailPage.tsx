@@ -114,7 +114,7 @@ function DestinoCapitalSection({ prestamo }: { prestamo: Prestamo }) {
           </tfoot>
         </table>
       </div>
-      {Math.abs(total - prestamo.principalInicial) > 1 && (
+      {Math.abs(total - prestamo.principalInicial) > 0.01 && (
         <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
           Los importes de destino ({formatEuro(total)}) no cuadran con el capital inicial ({formatEuro(prestamo.principalInicial)}).
         </div>

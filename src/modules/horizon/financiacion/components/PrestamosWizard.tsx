@@ -165,12 +165,13 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
   }, []);
 
   // Determine steps (no Importación step - origen is always manual)
+  // NOTE: estructura goes before destino so capitalInicial is known when entering destinos
   const getSteps = useCallback(() => {
     const base: { id: StepId; label: string }[] = [
       { id: 'identificacion', label: 'Identificación' },
+      { id: 'estructura',     label: 'Condiciones' },
       { id: 'destino',        label: 'Destino' },
       { id: 'garantia',       label: 'Garantía' },
-      { id: 'estructura',     label: 'Condiciones' },
       { id: 'configuracion',  label: 'Configuración' },
       { id: 'bonificaciones', label: 'Bonificaciones' },
     ];
@@ -218,7 +219,7 @@ const PrestamosWizard: React.FC<PrestamosWizardProps> = ({
         newErrors.destinos = 'Añade al menos un destino del capital';
       } else if (formData.capitalInicial && formData.capitalInicial > 0) {
         const totalImporte = formData.destinos.reduce((sum, d) => sum + (d.importe || 0), 0);
-        if (Math.abs(totalImporte - formData.capitalInicial) > 1) {
+        if (Math.abs(totalImporte - formData.capitalInicial) > 0.01) {
           newErrors.destinos = `Los importes de los destinos (${totalImporte.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €) deben sumar el capital inicial (${formData.capitalInicial.toLocaleString('es-ES', { minimumFractionDigits: 2 })} €)`;
         }
         const sinInmueble = formData.destinos.some(
