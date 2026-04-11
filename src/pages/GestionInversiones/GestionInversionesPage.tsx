@@ -389,7 +389,7 @@ const GestionInversionesPage: React.FC = () => {
 
   useEffect(() => {
     personalDataService.getPersonalData()
-      .then(data => data ? planesInversionService.getPlanes(data.id) : Promise.resolve([]))
+      .then(data => data?.id != null ? planesInversionService.getPlanes(data.id) : Promise.resolve([]))
       .then(setPlanesPension)
       .catch(() => setPlanesPension([]));
   }, []);
