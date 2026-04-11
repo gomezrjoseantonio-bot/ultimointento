@@ -219,6 +219,7 @@ function mapRowsToAportaciones(
           fecha,
           importe: importeTotal,
           tipo: 'aportacion',
+          fuente: 'excel',
           notas: detalleAportacion ? `${notasBase} · ${detalleAportacion}` : notasBase,
         },
       });
@@ -238,7 +239,7 @@ function mapRowsToAportaciones(
       posicionId,
       posicionNombre,
       entidad,
-      aportacion: { fecha, importe, tipo: 'aportacion', notas: notasBase },
+      aportacion: { fecha, importe, tipo: 'aportacion', fuente: 'excel', notas: notasBase },
     });
   });
 

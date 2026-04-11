@@ -28,6 +28,8 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
     notas: initialAportacion?.notas || '',
     cuenta_cargo_id: initialAportacion?.cuenta_cargo_id ? String(initialAportacion.cuenta_cargo_id) : '',
     unidades_vendidas: initialAportacion?.unidades_vendidas || 0,
+    unidades: initialAportacion?.unidades || 0,
+    precioUnitario: initialAportacion?.precioUnitario || 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [cuentas, setCuentas] = useState<Account[]>([]);
@@ -77,9 +79,10 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
       importe: formData.importe,
       notas: formData.notas || undefined,
       cuenta_cargo_id: formData.cuenta_cargo_id ? Number(formData.cuenta_cargo_id) : undefined,
-      unidades_vendidas: formData.tipo === 'reembolso' && formData.unidades_vendidas > 0
-        ? formData.unidades_vendidas
-        : undefined,
+      fuente: 'manual',
+      ...(formData.tipo === 'aportacion' && formData.unidades > 0 && { unidades: formData.unidades }),
+      ...(formData.tipo === 'aportacion' && formData.precioUnitario > 0 && { precioUnitario: formData.precioUnitario }),
+      ...(formData.tipo === 'reembolso' && formData.unidades_vendidas > 0 && { unidades_vendidas: formData.unidades_vendidas }),
     };
 
     if (formData.tipo === 'reembolso') {
@@ -197,6 +200,45 @@ const AportacionForm: React.FC<AportacionFormProps> = ({ posicionNombre, posicio
               />
               {errors.importe && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--error)', marginTop: '0.25rem', display: 'block' }}>{errors.importe}</span>}
             </div>
+
+            {formData.tipo === 'aportacion' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
+                    Unidades / participaciones (opcional)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={0}
+                    value={formData.unidades || ''}
+                    onChange={(e) => {
+                      const unidades = parseFloat(e.target.value) || 0;
+                      const precioUnitario = unidades > 0 && formData.importe > 0
+                        ? Math.round((formData.importe / unidades) * 10000) / 10000
+                        : formData.precioUnitario;
+                      setFormData({ ...formData, unidades, precioUnitario });
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', fontFamily: 'var(--font-inter)', fontSize: '1rem' }}
+                    placeholder="Ej: 10, 0.5..."
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'var(--font-inter)', fontSize: 'var(--text-caption)', fontWeight: 500, color: 'var(--atlas-navy-1)', marginBottom: '0.5rem' }}>
+                    Precio por unidad (opcional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    min={0}
+                    value={formData.precioUnitario || ''}
+                    onChange={(e) => setFormData({ ...formData, precioUnitario: parseFloat(e.target.value) || 0 })}
+                    style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--hz-neutral-300)', borderRadius: '8px', fontFamily: 'var(--font-mono, "IBM Plex Mono", monospace)', fontSize: '1rem' }}
+                    placeholder="Calculado automáticamente"
+                  />
+                </div>
+              </div>
+            )}
 
             {formData.tipo === 'reembolso' && (
               <>

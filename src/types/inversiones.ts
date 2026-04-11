@@ -26,9 +26,12 @@ export interface Aportacion {
   tipo: 'aportacion' | 'reembolso' | 'dividendo';
   notas?: string;
   cuenta_cargo_id?: number; // Account from which the contribution is made
-  unidades_vendidas?: number; // Participaciones/acciones vendidas (si aplica)
+  unidades?: number; // Participaciones/títulos/BTC comprados (aportaciones) o vendidos (reembolsos)
+  unidades_vendidas?: number; // Participaciones/acciones vendidas — mantener por compatibilidad con registros existentes
+  precioUnitario?: number; // Precio por unidad en el momento de la aportación (importe / unidades)
   coste_adquisicion_fifo?: number; // Coste de adquisición calculado por FIFO
   ganancia_perdida?: number; // importe - coste_adquisicion_fifo
+  fuente?: string; // Origen del dato: 'manual' | 'xml' | 'excel' | 'pdf' | ...
 }
 
 // ── Bloque ①: Plan de Aportaciones Periódicas ──────────────────────────────
