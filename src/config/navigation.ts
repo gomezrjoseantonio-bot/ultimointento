@@ -124,6 +124,13 @@ export const navigationConfig: NavigationItem[] = [
     section: 'pulse'
   },
   {
+    name: 'Gestión inversiones',
+    href: '/gestion/inversiones',
+    icon: TrendingUp,
+    module: 'shared',
+    section: 'pulse'
+  },
+  {
     name: 'Gestión Personal',
     href: '/gestion/personal',
     icon: User,
