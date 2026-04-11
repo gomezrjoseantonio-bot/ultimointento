@@ -16,6 +16,12 @@ export interface Prestamo {
    * PERSONAL excluye el préstamo de métricas de rentabilidad por inmueble.
    */
   finalidad?: 'ADQUISICION' | 'REFORMA' | 'INVERSION' | 'PERSONAL' | 'OTRA';
+
+  // ─── v2: Destino y Garantía ───
+  /** Destinos del capital (nuevo modelo v2). Legacy: usar inmuebleId / afectacionesInmueble. */
+  destinos?: DestinoCapital[];
+  /** Garantías del préstamo (nuevo modelo v2). Solo informativo — nunca determina fiscalidad. */
+  garantias?: Garantia[];
   nombre: string;
 
   principalInicial: number;
@@ -183,7 +189,7 @@ export interface CalculoAmortizacion {
   modo: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA';
   importeAmortizar: number;
   fechaAmortizacion: string;
-  
+
   // Results
   penalizacion: number;
   nuevaCuota?: number;           // if REDUCIR_CUOTA
@@ -191,4 +197,24 @@ export interface CalculoAmortizacion {
   nuevaFechaFin?: string;
   interesesAhorrados: number;
   puntoEquilibrio?: number;      // months to break even
+}
+
+// ─── NUEVO v2: Destino y Garantía ───
+
+export interface DestinoCapital {
+  id: string;
+  tipo: 'ADQUISICION' | 'REFORMA' | 'CANCELACION_DEUDA' | 'INVERSION' | 'PERSONAL' | 'OTRA';
+  inmuebleId?: string;
+  inversionId?: string;
+  prestamoIdCancelado?: string;
+  importe: number;
+  porcentaje?: number;           // calculado: importe / principalInicial * 100
+  descripcion?: string;
+}
+
+export interface Garantia {
+  tipo: 'HIPOTECARIA' | 'PERSONAL' | 'PIGNORATICIA';
+  inmuebleId?: string;
+  inversionId?: string;
+  descripcion?: string;
 }
