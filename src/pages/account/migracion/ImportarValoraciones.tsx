@@ -224,7 +224,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       const inmuebleNames: string[] = (properties as any[])
         .map((p) => p.alias || p.address)
         .filter(Boolean);
-      // planNames includes both "Nombre" and "Nombre (Entidad)" — for exact matching and dropdown
+      // planNames includes both "Nombre" and "Nombre (Entidad)" — used for the dropdown/manual selection
       const planNames: string[] = (planes as any[]).flatMap((p: any) => {
         const n = p.nombre as string | undefined;
         if (!n) return [];
