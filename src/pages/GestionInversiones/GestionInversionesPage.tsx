@@ -429,14 +429,14 @@ const GestionInversionesPage: React.FC = () => {
     }
   };
 
-  const handleArchivePosition = async (p: PosicionInversion) => {
-    if (!window.confirm(`¿Archivar "${p.nombre}"? La posición se marcará como cerrada y dejará de aparecer en la cartera activa.`)) return;
+  const handleDeletePosition = async (p: PosicionInversion) => {
+    if (!window.confirm(`¿Eliminar "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
     try {
-      await inversionesService.deletePosicion(p.id);
-      toast.success(`"${p.nombre}" archivada correctamente`);
+      await inversionesService.purgarPosicion(p.id);
+      toast.success(`"${p.nombre}" eliminada correctamente`);
       await refresh();
     } catch {
-      toast.error('Error al archivar la posición');
+      toast.error('Error al eliminar la posición');
     }
   };
 
@@ -605,9 +605,9 @@ const GestionInversionesPage: React.FC = () => {
                         <Edit2 size={14} />
                       </button>
                       <button
-                        onClick={() => handleArchivePosition(p)}
-                        title="Archivar posición"
-                        aria-label={`Archivar ${p.nombre}`}
+                        onClick={() => handleDeletePosition(p)}
+                        title="Eliminar posición"
+                        aria-label={`Eliminar ${p.nombre}`}
                         style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
                       >
                         <Trash2 size={14} />

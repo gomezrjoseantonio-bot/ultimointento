@@ -2,15 +2,16 @@
 // ATLAS HORIZON: Investment position card component
 
 import React from 'react';
-import { Eye, TrendingUp, LineChart, BarChart3, PiggyBank, Briefcase, Coins, Wallet, Package, Building2, Landmark, CreditCard } from 'lucide-react';
+import { Eye, Trash2, TrendingUp, LineChart, BarChart3, PiggyBank, Briefcase, Coins, Wallet, Package, Building2, Landmark, CreditCard } from 'lucide-react';
 import { PosicionInversion } from '../../../../types/inversiones';
 
 interface PosicionCardProps {
   posicion: PosicionInversion;
   onViewDetails: (id: number) => void;
+  onDelete?: (posicion: PosicionInversion) => void;
 }
 
-const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) => {
+const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails, onDelete }) => {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -194,33 +195,67 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails }) 
           </div>
         </div>
 
-        {/* Ver más button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onViewDetails(posicion.id);
-          }}
-          style={{
-            background: 'var(--atlas-blue)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '0.5rem 1rem',
-            fontFamily: 'var(--font-base)',
-            fontSize: 'var(--text-sm)',
-            fontWeight: 500,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'background 0.2s',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-hover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--atlas-blue)'; }}
-        >
-          <Eye size={16} />
-          Ver más
-        </button>
+        {/* Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(posicion);
+              }}
+              title="Eliminar inversión"
+              style={{
+                width: 36,
+                height: 36,
+                border: '1px solid var(--hz-neutral-300)',
+                borderRadius: '8px',
+                background: 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--n-500)',
+                transition: 'color 0.2s, border-color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--s-neg, #c0392b)';
+                e.currentTarget.style.borderColor = 'var(--s-neg, #c0392b)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--n-500)';
+                e.currentTarget.style.borderColor = 'var(--hz-neutral-300)';
+              }}
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewDetails(posicion.id);
+            }}
+            style={{
+              background: 'var(--atlas-blue)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.5rem 1rem',
+              fontFamily: 'var(--font-base)',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--blue-hover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--atlas-blue)'; }}
+          >
+            <Eye size={16} />
+            Ver más
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -215,6 +215,12 @@ export const inversionesService = {
     await this.updatePosicion(id, { activo: false });
   },
 
+  // Eliminar posición permanentemente (hard delete)
+  async purgarPosicion(id: number): Promise<void> {
+    const db = await initDB();
+    await db.delete('inversiones', id);
+  },
+
   // Obtener resumen de cartera
   async getResumenCartera(): Promise<{
     valor_total: number;
