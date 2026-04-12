@@ -440,6 +440,21 @@ const GestionInversionesPage: React.FC = () => {
     }
   };
 
+  const handleDeletePlanPension = async (plan: PlanPensionInversion) => {
+    if (plan.id == null) { toast.error('El plan no tiene ID y no puede eliminarse'); return; }
+    if (!window.confirm(`¿Eliminar "${plan.nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      const personalData = await personalDataService.getPersonalData();
+      if (!personalData?.id) return;
+      await planesInversionService.deletePlan(plan.id);
+      const planes = await planesInversionService.getPlanes(personalData.id);
+      setPlanesPension(planes);
+      toast.success(`"${plan.nombre}" eliminado`);
+    } catch {
+      toast.error('Error al eliminar el plan de pensiones');
+    }
+  };
+
   const handleSavePosition = async (data: Partial<PosicionInversion> & { importe_inicial?: number }) => {
     try {
       if (editingPosicion) {
@@ -704,6 +719,14 @@ const GestionInversionesPage: React.FC = () => {
                             style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
                           >
                             <Plus size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePlanPension(plan)}
+                            title="Eliminar plan"
+                            aria-label={`Eliminar ${plan.nombre}`}
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
