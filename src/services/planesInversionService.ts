@@ -15,6 +15,18 @@ class PlanesInversionService {
   }
 
   /**
+   * Get every plan across all users (used by the import service)
+   */
+  async getAllPlanes(): Promise<PlanPensionInversion[]> {
+    try {
+      const db = await this.getDB();
+      return (await db.getAll('planesPensionInversion')) || [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Get all plans for a personal data ID
    */
   async getPlanes(personalDataId: number): Promise<PlanPensionInversion[]> {

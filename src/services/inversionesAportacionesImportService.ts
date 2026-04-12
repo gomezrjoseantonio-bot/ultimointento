@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
 import { inversionesService } from './inversionesService';
+import { planesInversionService } from './planesInversionService';
 import { Aportacion, PosicionInversion } from '../types/inversiones';
+import type { PlanPensionInversion } from '../types/personal';
 
 export interface ImportAportacionesResult {
   imported: number;
@@ -37,7 +39,15 @@ type ParsedAportacionRow = {
   posicionNombre?: string;
   entidad?: string;
   aportacion: Omit<Aportacion, 'id'>;
+  importeEmpresa?: number;   // pension plan breakdown
+  importeIndividuo?: number; // pension plan breakdown
 };
+
+// Result of looking up a position or plan by name/id
+type FindResult =
+  | { kind: 'posicion'; value: PosicionInversion }
+  | { kind: 'plan'; value: PlanPensionInversion }
+  | null;
 
 const normalizeHeader = (value: string): string =>
   value
@@ -160,6 +170,7 @@ async function parseRows(file: File): Promise<{ rows: RawRow[]; errors: string[]
 function mapRowsToAportaciones(
   rows: RawRow[],
   posicionesById: Map<number, PosicionInversion>,
+  planes: PlanPensionInversion[],
   posicionPorDefecto?: PosicionInversion
 ): { aportaciones: ParsedAportacionRow[]; skipped: number; errors: string[] } {
   const aportaciones: ParsedAportacionRow[] = [];
@@ -191,8 +202,18 @@ function mapRowsToAportaciones(
       ? notasRaw.trim()
       : 'Importación histórica';
 
+    // Detect if this refers to a pension plan — check both inversiones store type
+    // AND planesPensionInversion by name/entidad
     const tipoPosicion = posicionId ? posicionesById.get(posicionId)?.tipo : undefined;
-    const esPlanPensiones = tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo';
+    const nombreNormLower = posicionNombre.toLowerCase();
+    const entidadNormLower = entidad.toLowerCase();
+    const esPlanPensiones =
+      tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo' ||
+      planes.some(
+        (p) =>
+          p.nombre.toLowerCase() === nombreNormLower &&
+          (!entidadNormLower || p.entidad.toLowerCase() === entidadNormLower)
+      );
 
     if (esPlanPensiones) {
       const importeEmpresa = parseAmount(getRowValue(row, ['importe_empresa', 'aportacion_empresa', 'empresa']));
@@ -215,6 +236,8 @@ function mapRowsToAportaciones(
         posicionId,
         posicionNombre,
         entidad,
+        importeEmpresa,
+        importeIndividuo,
         aportacion: {
           fecha,
           importe: importeTotal,
@@ -246,27 +269,41 @@ function mapRowsToAportaciones(
   return { aportaciones, skipped, errors };
 }
 
-const findPosicion = (
+/**
+ * Find a matching posicion (inversiones store) OR plan de pensiones by id/name.
+ */
+const findPosicionOrPlan = (
   row: ParsedAportacionRow,
   posicionesById: Map<number, PosicionInversion>,
-  posiciones: PosicionInversion[]
-): PosicionInversion | undefined => {
+  posiciones: PosicionInversion[],
+  planes: PlanPensionInversion[]
+): FindResult => {
+  // 1. Try inversiones by ID
   if (row.posicionId) {
     const byId = posicionesById.get(row.posicionId);
-    if (byId) return byId;
+    if (byId) return { kind: 'posicion', value: byId };
   }
 
   const nombreNorm = (row.posicionNombre ?? '').toLowerCase().trim();
   const entidadNorm = (row.entidad ?? '').toLowerCase().trim();
 
-  const matches = posiciones.filter((p) => {
+  // 2. Try inversiones by name + entidad
+  const posMatches = posiciones.filter((p) => {
     if (p.nombre.toLowerCase() !== nombreNorm) return false;
     if (!entidadNorm) return true;
     return p.entidad.toLowerCase() === entidadNorm;
   });
+  if (posMatches.length === 1) return { kind: 'posicion', value: posMatches[0] };
 
-  if (matches.length === 1) return matches[0];
-  return undefined;
+  // 3. Try planesPensionInversion by name + entidad
+  const planMatches = planes.filter((p) => {
+    if (p.nombre.toLowerCase() !== nombreNorm) return false;
+    if (!entidadNorm) return true;
+    return p.entidad.toLowerCase() === entidadNorm;
+  });
+  if (planMatches.length === 1) return { kind: 'plan', value: planMatches[0] };
+
+  return null;
 };
 
 export async function previsualizarImportacionAportaciones(
@@ -275,6 +312,7 @@ export async function previsualizarImportacionAportaciones(
 ): Promise<AportacionesImportPreview> {
   const posiciones = await inversionesService.getPosiciones();
   const posicionesById = new Map<number, PosicionInversion>(posiciones.map((p) => [p.id, p]));
+  const planes = await planesInversionService.getAllPlanes();
 
   const parsed = await parseRows(file);
   if (parsed.errors.length > 0) {
@@ -288,10 +326,10 @@ export async function previsualizarImportacionAportaciones(
     };
   }
 
-  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, posicionPorDefecto);
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, planes, posicionPorDefecto);
   const previewRows: AportacionImportPreviewRow[] = mapped.aportaciones.map((row) => {
-    const posicion = findPosicion(row, posicionesById, posiciones);
-    if (!posicion) {
+    const result = findPosicionOrPlan(row, posicionesById, posiciones, planes);
+    if (!result) {
       const referencia = row.posicionId
         ? `No se encontró una coincidencia única para posicion_id ${row.posicionId}.`
         : `No se encontró una coincidencia única para posición "${row.posicionNombre}"${row.entidad ? ` (${row.entidad})` : ''}.`;
@@ -309,12 +347,13 @@ export async function previsualizarImportacionAportaciones(
       };
     }
 
+    const matched = result.value;
     return {
       fila: row.sourceRow,
       fecha: row.aportacion.fecha,
-      posicionId: posicion.id,
-      posicionNombre: row.posicionNombre || posicion.nombre,
-      entidad: row.entidad || posicion.entidad,
+      posicionId: matched.id,
+      posicionNombre: row.posicionNombre || matched.nombre,
+      entidad: row.entidad || matched.entidad,
       importe: row.aportacion.importe,
       notas: row.aportacion.notas ?? '',
       estado: 'valida',
@@ -349,13 +388,14 @@ export async function importarAportacionesHistoricasMasivas(
 
   const posiciones = await inversionesService.getPosiciones();
   const posicionesById = new Map<number, PosicionInversion>(posiciones.map((p) => [p.id, p]));
+  const planes = await planesInversionService.getAllPlanes();
 
   const parsed = await parseRows(file);
   if (parsed.errors.length > 0) {
     return { imported: 0, skipped: parsed.errors.length, errors: parsed.errors };
   }
 
-  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, posicionPorDefecto);
+  const mapped = mapRowsToAportaciones(parsed.rows, posicionesById, planes, posicionPorDefecto);
   const ordered = [...mapped.aportaciones].sort(
     (a, b) => new Date(a.aportacion.fecha).getTime() - new Date(b.aportacion.fecha).getTime()
   );
@@ -364,9 +404,12 @@ export async function importarAportacionesHistoricasMasivas(
   let skipped = mapped.skipped;
   const errors = [...mapped.errors];
 
+  // Accumulate pension plan contributions in memory, then flush once per plan
+  const planAccum = new Map<number, PlanPensionInversion>();
+
   for (const row of ordered) {
-    const posicion = findPosicion(row, posicionesById, posiciones);
-    if (!posicion) {
+    const result = findPosicionOrPlan(row, posicionesById, posiciones, planes);
+    if (!result) {
       skipped += 1;
       const referencia = row.posicionId
         ? `posicion_id ${row.posicionId}`
@@ -375,8 +418,39 @@ export async function importarAportacionesHistoricasMasivas(
       continue;
     }
 
-    await inversionesService.addAportacion(posicion.id, row.aportacion);
+    if (result.kind === 'plan') {
+      const planId = result.value.id!;
+      // Use the in-memory accumulator so contributions from the same year add up
+      if (!planAccum.has(planId)) {
+        planAccum.set(planId, {
+          ...result.value,
+          historialAportaciones: { ...(result.value.historialAportaciones ?? {}) },
+        });
+      }
+      const plan = planAccum.get(planId)!;
+      const año = new Date(row.aportacion.fecha).getFullYear();
+      const existing = plan.historialAportaciones?.[año] ?? { titular: 0, empresa: 0, total: 0 };
+      plan.historialAportaciones = {
+        ...plan.historialAportaciones,
+        [año]: {
+          titular: (existing.titular ?? 0) + (row.importeIndividuo ?? 0),
+          empresa: (existing.empresa ?? 0) + (row.importeEmpresa ?? 0),
+          total: (existing.total ?? 0) + row.aportacion.importe,
+          fuente: 'excel',
+        },
+      };
+      imported += 1;
+      continue;
+    }
+
+    // Regular posicion in inversiones store
+    await inversionesService.addAportacion(result.value.id, row.aportacion);
     imported += 1;
+  }
+
+  // Flush pension plan updates
+  for (const [planId, plan] of planAccum) {
+    await planesInversionService.updatePlan(planId, plan);
   }
 
   return { imported, skipped, errors };
