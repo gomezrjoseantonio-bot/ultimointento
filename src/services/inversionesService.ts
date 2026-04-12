@@ -215,9 +215,38 @@ export const inversionesService = {
     await this.updatePosicion(id, { activo: false });
   },
 
-  // Eliminar posición permanentemente (hard delete)
+  // Eliminar posición permanentemente (hard delete con cascade)
   async purgarPosicion(id: number): Promise<void> {
     const db = await initDB();
+
+    // Collect IDs to cascade: position id + all aportacion ids
+    const pos = await db.get('inversiones', id);
+    const aportacionIds: number[] = (pos?.aportaciones ?? [])
+      .map((a: any) => a.id)
+      .filter((aid: unknown): aid is number => typeof aid === 'number');
+    const allSourceIds = new Set([id, ...aportacionIds]);
+
+    // Delete related treasury events (inversion_* sourceTypes)
+    const inversionSourceTypes = new Set([
+      'inversion_compra', 'inversion_aportacion', 'inversion_rendimiento',
+      'inversion_dividendo', 'inversion_liquidacion',
+    ]);
+    const allEvents: any[] = await db.getAll('treasuryEvents');
+    for (const ev of allEvents) {
+      if (inversionSourceTypes.has(ev.sourceType) && ev.sourceId != null && allSourceIds.has(ev.sourceId)) {
+        await db.delete('treasuryEvents', ev.id);
+      }
+    }
+
+    // Delete related historical valuations
+    const allValoraciones: any[] = await db.getAll('valoraciones_historicas');
+    for (const v of allValoraciones) {
+      if (v.tipo_activo === 'inversion' && v.activo_id === id) {
+        await db.delete('valoraciones_historicas', v.id);
+      }
+    }
+
+    // Delete the position itself
     await db.delete('inversiones', id);
   },
 

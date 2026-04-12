@@ -204,6 +204,7 @@ const PosicionCard: React.FC<PosicionCardProps> = ({ posicion, onViewDetails, on
                 onDelete(posicion);
               }}
               title="Eliminar inversión"
+              aria-label={`Eliminar ${posicion.nombre}`}
               style={{
                 width: 36,
                 height: 36,
