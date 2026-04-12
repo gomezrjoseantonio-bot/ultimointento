@@ -722,16 +722,17 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             <div
               style={{
                 marginTop: '16px',
-                border: '1px solid var(--ok)',
-                borderRadius: '10px',
+                border: '1px solid var(--hz-neutral-300)',
+                borderLeft: '3px solid var(--atlas-blue)',
+                borderRadius: '8px',
                 padding: '12px 16px',
-                backgroundColor: 'var(--ok-light, #f0fdf4)',
+                backgroundColor: 'var(--s-positive-bg, var(--atlas-blue-light, #EBF3FF))',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <CheckCircle2 size={15} strokeWidth={1.5} style={{ color: 'var(--ok)', flexShrink: 0 }} aria-hidden="true" />
+                <CheckCircle2 size={15} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-                  Nombres auto-corregidos
+                  Nombres corregidos automáticamente
                 </span>
               </div>
               {Object.entries(nameValidations)
@@ -742,7 +743,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-gray)' }}>"{nombre}"</span>
                       <span style={{ color: 'var(--text-gray)' }}>→</span>
-                      <span style={{ fontWeight: 600, color: 'var(--ok)' }}>{v.correctedName}</span>
+                      <span style={{ fontWeight: 600 }}>{v.correctedName}</span>
                       <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem' }}>({v.rowCount} fila{v.rowCount !== 1 ? 's' : ''})</span>
                     </div>
                   );
@@ -755,14 +756,15 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             <div
               style={{
                 marginTop: '16px',
-                border: '1px solid #f59e0b',
-                borderRadius: '10px',
+                border: '1px solid var(--hz-neutral-300)',
+                borderLeft: '3px solid var(--s-warn, var(--warn))',
+                borderRadius: '8px',
                 padding: '16px',
-                backgroundColor: '#fffbeb',
+                backgroundColor: 'var(--s-warn-bg)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <AlertCircle size={16} strokeWidth={1.5} style={{ color: '#f59e0b', flexShrink: 0 }} aria-hidden="true" />
+                <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--s-warn)', flexShrink: 0 }} aria-hidden="true" />
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
                   Nombres no encontrados en ATLAS — corrígelos antes de importar
                 </span>
