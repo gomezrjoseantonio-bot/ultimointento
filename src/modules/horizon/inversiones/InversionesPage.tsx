@@ -17,7 +17,7 @@ import AportacionForm from './components/AportacionForm';
 import RendimientosTab from './components/RendimientosTab';
 import { TabResumen, TabCartera, TabRendimientos, TabIndividual } from './components/tabs';
 import { PositionRow, Tab } from './components/types';
-import { mapPosicionesToRows } from './components/utils';
+import { mapPosicionesToRows, POSITION_COLORS } from './components/utils';
 import toast from 'react-hot-toast';
 
 interface InversionesPageProps {
@@ -44,31 +44,56 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [{ activas, cerradas }] = await Promise.all([
+      const [{ activas, cerradas }, planes] = await Promise.all([
         inversionesService.getAllPosiciones(),
-        inversionesService.getResumenCartera(),
+        planesInversionService.getPlanes(1).catch(() => [] as typeof planesPension),
       ]);
       setClosedPositions(cerradas);
-      
-      // Map positions to PositionRow format for tabs
+      setPlanesPension(planes);
+
+      // Convertir planes de pensión a PositionRow para incluirlos en todas las vistas
+      const planRows: PositionRow[] = planes.map((plan, index) => {
+        const valorActual = plan.unidades ? plan.unidades * plan.valorActual : plan.valorActual;
+        const aportado = plan.aportacionesRealizadas;
+        const valor = valorActual > 0 ? valorActual : aportado;
+        const rentPct = aportado > 0 ? ((valor - aportado) / aportado) * 100 : 0;
+        return {
+          id: `plan-${plan.id ?? index}`,
+          alias: plan.nombre,
+          broker: plan.entidad ?? '—',
+          tipo: 'plan_pensiones',
+          aportado,
+          valor,
+          rentPct,
+          rentAnual: 0,
+          peso: 0, // recalculado abajo
+          color: POSITION_COLORS[(activas.length + index) % POSITION_COLORS.length],
+          tag: null,
+          fechaCompra: plan.fechaApertura ?? null,
+          duracionMeses: null,
+        };
+      });
+
+      // Map positions y combinar con planes
       const mapped = mapPosicionesToRows(activas);
-      setPositions(mapped);
-      if (mapped.length && !mapped.some((p) => p.id === selectedPositionId)) {
-        setSelectedPositionId(mapped[0].id);
+      const allRows = [...mapped, ...planRows];
+
+      // Recalcular pesos sobre el total real (posiciones + planes)
+      const totalValor = allRows.reduce((s, r) => s + r.valor, 0);
+      const allRowsConPeso = allRows.map(r => ({
+        ...r,
+        peso: totalValor > 0 ? Number(((r.valor / totalValor) * 100).toFixed(1)) : 0,
+      }));
+
+      setPositions(allRowsConPeso);
+      if (allRowsConPeso.length && !allRowsConPeso.some((p) => p.id === selectedPositionId)) {
+        setSelectedPositionId(allRowsConPeso[0].id);
       }
 
       // Count pending rendimientos
       const allRendimientos = await rendimientosService.getAllRendimientos();
       const pending = allRendimientos.filter(r => r.estado === 'pendiente').length;
       setPendingRendimientos(pending);
-      
-      // Load pension plans (personalDataId=1 as default)
-      try {
-        const planes = await planesInversionService.getPlanes(1);
-        setPlanesPension(planes);
-      } catch {
-        setPlanesPension([]);
-      }
     } catch (error) {
       console.error('Error loading inversiones:', error);
       toast.error('Error al cargar las inversiones');
@@ -121,6 +146,8 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
   };
 
   const handleViewAportaciones = async (id: string) => {
+    // Los planes de pensión no tienen historial de aportaciones en formato inversiones
+    if (id.startsWith('plan-')) return;
     try {
       const posicion = await inversionesService.getPosicion(Number(id));
       if (!posicion) {

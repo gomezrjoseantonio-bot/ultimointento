@@ -233,6 +233,11 @@ export const buildIndividualEvolucion = (position: PositionRow) => {
     });
   }
 
+  // Planes de pensión: sin proyección de rentabilidad (no hay CAGR fiable sin histórico de valor)
+  if (position.tipo === 'plan_pensiones') {
+    return hist;
+  }
+
   // Projection: use real rentAnual (now includes interest rate for loans)
   const tasa = Math.max(0, position.rentAnual / 100);
 
