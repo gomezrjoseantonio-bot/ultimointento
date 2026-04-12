@@ -220,15 +220,21 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         else counts.set(key, { tipo: r.tipo_activo, nombre: r.activo_nombre, count: 1 });
       });
 
-      // Pre-compute flat name lists for fuzzy matching
+      // Pre-compute flat name lists
       const inmuebleNames: string[] = (properties as any[])
         .map((p) => p.alias || p.address)
         .filter(Boolean);
+      // planNames includes both "Nombre" and "Nombre (Entidad)" — used for the dropdown/manual selection
       const planNames: string[] = (planes as any[]).flatMap((p: any) => {
         const n = p.nombre as string | undefined;
         if (!n) return [];
         return p.entidad ? [n, `${n} (${p.entidad})`] : [n];
       });
+      // planBaseNames has only the base nombre — used for fuzzy matching to avoid double-counting
+      // when a plan has an entidad (both "X" and "X (Entidad)" would score the same, causing ambiguity)
+      const planBaseNames: string[] = (planes as any[])
+        .map((p: any) => p.nombre as string | undefined)
+        .filter((n): n is string => Boolean(n));
       const inversionNames: string[] = (inversiones as any[])
         .map((i: any) => i.nombre)
         .filter(Boolean);
@@ -252,10 +258,12 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           matched = inversionNames.some((n) => n.toLowerCase() === lower);
         }
         if (!matched) {
-          // Exact match failed — try fuzzy match to auto-fill and auto-verify
-          const candidateNames =
-            tipo === 'inmueble' ? inmuebleNames : tipo === 'plan_pensiones' ? planNames : inversionNames;
-          const fuzzyMatch = fuzzyFindName(nombre, candidateNames);
+          // Exact match failed — try fuzzy match to auto-fill and auto-verify.
+          // For plans, fuzzy uses planBaseNames only (not "Nombre (Entidad)" variants) so that
+          // a plan with entidad doesn't produce two candidates with identical scores.
+          const fuzzyNames =
+            tipo === 'inmueble' ? inmuebleNames : tipo === 'plan_pensiones' ? planBaseNames : inversionNames;
+          const fuzzyMatch = fuzzyFindName(nombre, fuzzyNames);
           validations[key] = {
             correctedName: fuzzyMatch ?? nombre,
             status: fuzzyMatch ? 'matched' : 'not_found',
@@ -267,7 +275,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       setDbNamesByTipo({
         inmueble: inmuebleNames,
         inversion: inversionNames,
-        plan_pensiones: planNames,
+        plan_pensiones: planNames, // dropdown still shows all variants for manual selection
       });
     } catch (err) {
       console.error('Error validating names:', err);
@@ -325,8 +333,10 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
     const datos = [
       { fecha: '2024-01', tipo_activo: 'inmueble', activo_nombre: 'Piso Madrid', valor: 250000 },
       { fecha: '2024-01', tipo_activo: 'inversion', activo_nombre: 'Fondo Indexado', valor: 15000 },
+      { fecha: '2024-01', tipo_activo: 'plan_pensiones', activo_nombre: 'Mi Plan de Pensiones', valor: 12000 },
       { fecha: '2024-02', tipo_activo: 'inmueble', activo_nombre: 'Piso Madrid', valor: 252000 },
       { fecha: '2024-02', tipo_activo: 'inversion', activo_nombre: 'Fondo Indexado', valor: 15500 },
+      { fecha: '2024-02', tipo_activo: 'plan_pensiones', activo_nombre: 'Mi Plan de Pensiones', valor: 12300 },
     ];
     const ws = XLSX.utils.json_to_sheet(datos);
     const wb = XLSX.utils.book_new();
@@ -649,7 +659,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           >
             <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>
-              Solo se importarán filas donde el nombre del activo coincida exactamente con los activos registrados en ATLAS.
+              El nombre del activo debe coincidir con el registrado en ATLAS. Si no coincide exactamente, se intenta auto-corregir; si no es posible, aparece un selector para elegir el activo correcto.
             </p>
           </div>
 
