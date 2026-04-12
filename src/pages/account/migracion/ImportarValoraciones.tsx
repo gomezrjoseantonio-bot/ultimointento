@@ -143,6 +143,37 @@ type NameValidation = {
   rowCount: number;
 };
 
+/**
+ * Fuzzy name matcher — normalizes both strings (lowercase, no accents, collapsed spaces)
+ * then checks for containment or significant token overlap.
+ * Returns the best DB candidate name, or undefined if no clear match.
+ * Only returns a match when it is unambiguous (exactly one strong candidate).
+ */
+const fuzzyFindName = (excelName: string, dbNames: string[]): string | undefined => {
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const normalizedExcel = norm(excelName);
+  // Significant words: length > 2, not generic stop words
+  const STOP = new Set(['the', 'los', 'las', 'del', 'de', 'la', 'el', 'sa', 'sl', 'slu']);
+  const words = normalizedExcel.split(' ').filter((w) => w.length > 2 && !STOP.has(w));
+  if (!words.length) return undefined;
+
+  const candidates: Array<{ name: string; score: number }> = [];
+  for (const name of dbNames) {
+    const normalizedDb = norm(name);
+    // Containment: one is a substring of the other — strong unambiguous signal
+    if (normalizedDb.includes(normalizedExcel) || normalizedExcel.includes(normalizedDb)) {
+      return name;
+    }
+    // Token overlap: how many significant words from Excel appear in the DB name
+    const score = words.filter((w) => normalizedDb.includes(w)).length / words.length;
+    if (score >= 0.6) candidates.push({ name, score });
+  }
+  // Auto-match only when exactly one candidate to avoid false positives
+  if (candidates.length === 1) return candidates[0].name;
+  return undefined;
+};
+
 const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -173,14 +204,25 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         else counts.set(key, { tipo: r.tipo_activo, nombre: r.activo_nombre, count: 1 });
       });
 
+      // Pre-compute flat name lists for fuzzy matching
+      const inmuebleNames: string[] = (properties as any[])
+        .map((p) => p.alias || p.address)
+        .filter(Boolean);
+      const planNames: string[] = (planes as any[]).flatMap((p: any) => {
+        const n = p.nombre as string | undefined;
+        if (!n) return [];
+        return p.entidad ? [n, `${n} (${p.entidad})`] : [n];
+      });
+      const inversionNames: string[] = (inversiones as any[])
+        .map((i: any) => i.nombre)
+        .filter(Boolean);
+
       const validations: Record<string, NameValidation> = {};
       for (const [key, { tipo, nombre, count }] of counts) {
         const lower = nombre.toLowerCase();
         let matched = false;
         if (tipo === 'inmueble') {
-          matched = (properties as any[]).some(
-            (p) => (p.alias || p.address)?.toLowerCase() === lower
-          );
+          matched = inmuebleNames.some((n) => n.toLowerCase() === lower);
         } else if (tipo === 'plan_pensiones') {
           matched = (planes as any[]).some((p: any) => {
             const n = (p.nombre as string)?.toLowerCase();
@@ -191,12 +233,18 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           });
         } else {
           // Match without filtering by active state — same as importarHistorico in valoracionesService
-          matched = (inversiones as any[]).some(
-            (i) => i.nombre?.toLowerCase() === lower
-          );
+          matched = inversionNames.some((n) => n.toLowerCase() === lower);
         }
         if (!matched) {
-          validations[key] = { correctedName: nombre, status: 'not_found', rowCount: count };
+          // Exact match failed — try fuzzy match to auto-fill and auto-verify
+          const candidateNames =
+            tipo === 'inmueble' ? inmuebleNames : tipo === 'plan_pensiones' ? planNames : inversionNames;
+          const fuzzyMatch = fuzzyFindName(nombre, candidateNames);
+          validations[key] = {
+            correctedName: fuzzyMatch ?? nombre,
+            status: fuzzyMatch ? 'matched' : 'not_found',
+            rowCount: count,
+          };
         }
       }
       setNameValidations(validations);
