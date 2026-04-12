@@ -3,7 +3,7 @@
 
 export interface ValoracionHistorica {
   id?: number;
-  tipo_activo: 'inmueble' | 'inversion';
+  tipo_activo: 'inmueble' | 'inversion' | 'plan_pensiones';
   activo_id: number;
   activo_nombre: string;
   fecha_valoracion: string; // YYYY-MM
@@ -29,7 +29,7 @@ export interface ValoracionesMensuales {
 }
 
 export interface ValoracionInput {
-  tipo_activo: 'inmueble' | 'inversion';
+  tipo_activo: 'inmueble' | 'inversion' | 'plan_pensiones';
   activo_id: number;
   activo_nombre: string;
   valor: number;
@@ -39,7 +39,7 @@ export interface ValoracionInput {
 export interface ActivoParaActualizar {
   id: number;
   nombre: string;
-  tipo: 'inmueble' | 'inversion';
+  tipo: 'inmueble' | 'inversion' | 'plan_pensiones';
   ultima_valoracion?: number;
   fecha_ultima_valoracion?: string;
 }

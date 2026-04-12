@@ -47,13 +47,14 @@ export const valoracionesService = {
     return result;
   },
 
-  /** Obtener inversiones activas con su última valoración */
+  /** Obtener inversiones activas + planes de pensiones con su última valoración */
   async getInversionesParaActualizar(): Promise<ActivoParaActualizar[]> {
     const db = await initDB();
-    const inversiones = await db.getAll('inversiones');
-    const activas = inversiones.filter((i: any) => i.activo);
     const result: ActivoParaActualizar[] = [];
 
+    // Inversiones regulares
+    const inversiones = await db.getAll('inversiones');
+    const activas = inversiones.filter((i: any) => i.activo);
     for (const inv of activas) {
       const ultima = await this.getUltimaValoracion('inversion', inv.id as number);
       result.push({
@@ -64,6 +65,21 @@ export const valoracionesService = {
         fecha_ultima_valoracion: ultima?.fecha_valoracion,
       });
     }
+
+    // Planes de pensiones (solo tipo 'plan-pensiones', no inversiones ni acciones)
+    const planes: any[] = await db.getAll('planesPensionInversion');
+    for (const plan of planes) {
+      if (plan.esHistorico || plan.tipo !== 'plan-pensiones') continue;
+      const ultima = await this.getUltimaValoracion('plan_pensiones', plan.id as number);
+      result.push({
+        id: plan.id as number,
+        nombre: plan.nombre + (plan.entidad ? ` (${plan.entidad})` : ''),
+        tipo: 'plan_pensiones',
+        ultima_valoracion: ultima?.valor ?? plan.valorActual,
+        fecha_ultima_valoracion: ultima?.fecha_valoracion,
+      });
+    }
+
     return result;
   },
 
@@ -71,7 +87,7 @@ export const valoracionesService = {
 
   /** Obtener última valoración de un activo específico */
   async getUltimaValoracion(
-    tipo: 'inmueble' | 'inversion',
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number
   ): Promise<ValoracionHistorica | undefined> {
     const db = await initDB();
@@ -82,12 +98,9 @@ export const valoracionesService = {
     return filtered[0];
   },
 
-  /** Obtener evolución temporal de un activo */
-
-
   /** Obtener última valoración hasta un mes objetivo (inclusive, YYYY-MM) */
   async getUltimaValoracionHastaMes(
-    tipo: 'inmueble' | 'inversion',
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number,
     fechaMes: string
   ): Promise<ValoracionHistorica | undefined> {
@@ -100,7 +113,7 @@ export const valoracionesService = {
   },
 
   async getEvolucionActivo(
-    tipo: 'inmueble' | 'inversion',
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number
   ): Promise<ValoracionHistorica[]> {
     const db = await initDB();
@@ -113,9 +126,48 @@ export const valoracionesService = {
   // ── Guardar valoraciones ──────────────────────────────────────────────────
 
   /**
+   * Guardar la valoración de un único activo para un mes dado.
+   * Solo escribe en valoraciones_historicas — no recalcula snapshots mensuales.
+   * Usar para actualizaciones puntuales desde formularios.
+   */
+  async guardarValoracionActivo(
+    fecha: string, // YYYY-MM
+    valoracion: ValoracionInput
+  ): Promise<void> {
+    const db = await initDB();
+    const now = new Date().toISOString();
+
+    // Use composite index to avoid full-table scan
+    const tx = db.transaction('valoraciones_historicas', 'readwrite');
+    const existing = await tx.store
+      .index('tipo-activo-fecha')
+      .getAll([valoracion.tipo_activo, valoracion.activo_id, fecha]);
+    const prev = existing[0] as ValoracionHistorica | undefined;
+
+    const record: ValoracionHistorica = {
+      tipo_activo: valoracion.tipo_activo,
+      activo_id: valoracion.activo_id,
+      activo_nombre: valoracion.activo_nombre,
+      fecha_valoracion: fecha,
+      valor: valoracion.valor,
+      origen: 'manual',
+      notas: valoracion.notas,
+      created_at: prev?.created_at ?? now,
+      updated_at: now,
+    };
+
+    if (prev?.id !== undefined) {
+      await tx.store.put({ ...record, id: prev.id });
+    } else {
+      await tx.store.add(record);
+    }
+    await tx.done;
+  },
+
+  /**
    * Guardar valoraciones de un mes completo.
    * 1. Guarda cada valoración en valoraciones_historicas
-   * 2. Actualiza valor_actual en inversiones
+   * 2. Actualiza valor_actual en inversiones / valorActual en planesPensionInversion
    * 3. Calcula totales y variación
    * 4. Guarda snapshot en valoraciones_mensuales
    */
@@ -161,9 +213,19 @@ export const valoracionesService = {
         await db.add('valoraciones_historicas', record);
       }
 
-      // Acumular totales
+      // Acumular totales y actualizar store del activo
       if (v.tipo_activo === 'inmueble') {
         inmueblesTotal += v.valor;
+      } else if (v.tipo_activo === 'plan_pensiones') {
+        inversionesTotal += v.valor;
+        const plan = await db.get('planesPensionInversion', v.activo_id);
+        if (plan) {
+          await db.put('planesPensionInversion', {
+            ...plan,
+            valorActual: v.valor,
+            fechaActualizacion: now,
+          });
+        }
       } else {
         inversionesTotal += v.valor;
         // Actualizar valor_actual en inversiones
@@ -237,11 +299,12 @@ export const valoracionesService = {
   /**
    * Importar valoraciones desde Excel (datos ya parseados).
    * Los datos se agrupan por mes y se guardan con origen='importacion'.
+   * Soporta tipo_activo: 'inmueble', 'inversion', 'plan_pensiones'.
    */
   async importarHistorico(
     datos: Array<{
       fecha: string; // YYYY-MM
-      tipo_activo: 'inmueble' | 'inversion';
+      tipo_activo: 'inmueble' | 'inversion' | 'plan_pensiones';
       activo_nombre: string;
       valor: number;
     }>
@@ -250,12 +313,30 @@ export const valoracionesService = {
     const now = new Date().toISOString();
 
     // Cargar activos para mapear nombres a IDs
-    const [properties, inversiones] = await Promise.all([
+    const [properties, inversiones, planes] = await Promise.all([
       db.getAll('properties'),
       db.getAll('inversiones'),
+      db.getAll('planesPensionInversion'),
     ]);
 
+    // Acepta "Nombre" o "Nombre (Entidad)" para planes de pensiones
+    const matchPlanByNombre = (nombre: string): any | undefined => {
+      const lower = nombre.toLowerCase();
+      return (planes as any[]).find((p: any) => {
+        if (!p.nombre) return false;
+        const n = (p.nombre as string).toLowerCase();
+        if (lower === n) return true;
+        if (p.entidad) {
+          const conEntidad = `${n} (${(p.entidad as string).toLowerCase()})`;
+          if (lower === conEntidad) return true;
+        }
+        return false;
+      });
+    };
+
     let importados = 0;
+    // Track la fecha más reciente por plan para actualizar valorActual una sola vez al final
+    const latestFechaPorPlan = new Map<number, { fecha: string; valor: number }>();
 
     for (const dato of datos) {
       // Buscar ID del activo por nombre (case-insensitive)
@@ -266,6 +347,8 @@ export const valoracionesService = {
             (p.alias || p.address)?.toLowerCase() === dato.activo_nombre.toLowerCase()
         );
         activoId = prop?.id;
+      } else if (dato.tipo_activo === 'plan_pensiones') {
+        activoId = matchPlanByNombre(dato.activo_nombre)?.id;
       } else {
         const inv = (inversiones as any[]).find(
           (i) => i.nombre?.toLowerCase() === dato.activo_nombre.toLowerCase()
@@ -299,7 +382,28 @@ export const valoracionesService = {
       } else {
         await db.add('valoraciones_historicas', record);
       }
+
+      // Acumular la fecha+valor más reciente por plan (sin DB round-trip por fila)
+      if (dato.tipo_activo === 'plan_pensiones') {
+        const current = latestFechaPorPlan.get(activoId);
+        if (!current || dato.fecha > current.fecha) {
+          latestFechaPorPlan.set(activoId, { fecha: dato.fecha, valor: dato.valor });
+        }
+      }
+
       importados++;
+    }
+
+    // Actualizar valorActual de cada plan con la valoración más reciente importada
+    for (const [planId, { valor }] of latestFechaPorPlan) {
+      const plan = await db.get('planesPensionInversion', planId);
+      if (plan) {
+        await db.put('planesPensionInversion', {
+          ...plan,
+          valorActual: valor,
+          fechaActualizacion: now,
+        });
+      }
     }
 
     // Recalcular snapshots mensuales agrupando por fecha
@@ -307,6 +411,7 @@ export const valoracionesService = {
     datos.forEach((d) => mesesSet.add(d.fecha));
     const meses: string[] = [];
     mesesSet.forEach((m) => meses.push(m));
+
     for (const mes of meses) {
       const datosMes = datos.filter((d) => d.fecha === mes);
       const inputs = datosMes
@@ -318,6 +423,8 @@ export const valoracionesService = {
                 (p.alias || p.address)?.toLowerCase() === d.activo_nombre.toLowerCase()
             );
             activoId = prop?.id;
+          } else if (d.tipo_activo === 'plan_pensiones') {
+            activoId = matchPlanByNombre(d.activo_nombre)?.id;
           } else {
             const inv = (inversiones as any[]).find(
               (i) => i.nombre?.toLowerCase() === d.activo_nombre.toLowerCase()
@@ -326,7 +433,7 @@ export const valoracionesService = {
           }
           if (activoId === undefined) return null;
           return {
-            tipo_activo: d.tipo_activo as 'inmueble' | 'inversion',
+            tipo_activo: d.tipo_activo as 'inmueble' | 'inversion' | 'plan_pensiones',
             activo_id: activoId,
             activo_nombre: d.activo_nombre,
             valor: d.valor,

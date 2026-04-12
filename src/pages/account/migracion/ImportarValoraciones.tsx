@@ -14,7 +14,7 @@ interface ImportarValoracionesProps {
 
 interface PreviewRow {
   fecha: string;
-  tipo_activo: string;
+  tipo_activo: 'inmueble' | 'inversion' | 'plan_pensiones' | '';
   activo_nombre: string;
   valor: number;
 }
@@ -32,6 +32,7 @@ const formatCurrency = (value: number): string =>
 const TIPO_COLORS: Record<string, string> = {
   inmueble: 'var(--atlas-blue)',
   inversion: 'var(--ok)',
+  plan_pensiones: 'var(--c3, #8b5cf6)',
 };
 
 const toYearMonth = (year: number, month: number): string => `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
@@ -105,24 +106,29 @@ const TIPOS_INVERSION = new Set([
   'reit',
   'fondo de inversion',
   'fondo_inversion',
+  'criptomoneda',
+  'crypto',
+  'otro',
+]);
+
+const TIPOS_PLAN_PENSIONES = new Set([
   'plan de pensiones',
   'plan pensiones',
   'plan_pensiones',
   'plan de empleo',
   'plan empleo',
   'plan_empleo',
-  'criptomoneda',
-  'crypto',
-  'otro',
-  // Variantes en inglés
   'pension plan',
+  'plan de prevision',
+  'pppa',
 ]);
 
-const normalizarTipoActivo = (value: unknown): 'inmueble' | 'inversion' | '' => {
+const normalizarTipoActivo = (value: unknown): 'inmueble' | 'inversion' | 'plan_pensiones' | '' => {
   const tipo = normalizarTexto(value);
   if (!tipo) return '';
 
   if (TIPOS_INMUEBLE.has(tipo)) return 'inmueble';
+  if (TIPOS_PLAN_PENSIONES.has(tipo)) return 'plan_pensiones';
   if (TIPOS_INVERSION.has(tipo)) return 'inversion';
 
   return '';
@@ -223,7 +229,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       const validRows = preview.filter(
         (r) =>
           r.fecha &&
-          (r.tipo_activo === 'inmueble' || r.tipo_activo === 'inversion') &&
+          (r.tipo_activo === 'inmueble' || r.tipo_activo === 'inversion' || r.tipo_activo === 'plan_pensiones') &&
           r.activo_nombre &&
           r.valor > 0
       );
@@ -236,7 +242,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       const importados = await valoracionesService.importarHistorico(
         validRows.map((r) => ({
           fecha: r.fecha,
-          tipo_activo: r.tipo_activo as 'inmueble' | 'inversion',
+          tipo_activo: r.tipo_activo as 'inmueble' | 'inversion' | 'plan_pensiones',
           activo_nombre: r.activo_nombre,
           valor: r.valor,
         }))

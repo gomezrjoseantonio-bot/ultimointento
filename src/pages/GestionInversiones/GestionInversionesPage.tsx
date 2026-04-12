@@ -2,11 +2,13 @@
 // Página de GESTIÓN de inversiones: acciones CRUD sobre posiciones
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { TrendingUp, Eye, Edit2, Trash2, Plus, RefreshCw } from 'lucide-react';
+import { TrendingUp, Eye, Edit2, Trash2, Plus, RefreshCw, BarChart2, X } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
+import { valoracionesService } from '../../services/valoracionesService';
 import { personalDataService } from '../../services/personalDataService';
 import type { PlanPensionInversion } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
@@ -379,10 +381,13 @@ const GestionInversionesPage: React.FC = () => {
   const [planSeleccionado, setPlanSeleccionado] = useState<PlanPensionInversion | null>(null);
   const [mostrarModalValor, setMostrarModalValor] = useState(false);
   const [mostrarModalAportacion, setMostrarModalAportacion] = useState(false);
+  const [mostrarModalEvolucion, setMostrarModalEvolucion] = useState(false);
   const [valorActualInput, setValorActualInput] = useState('');
+  const [valorFechaMes, setValorFechaMes] = useState('');
   const [apFecha, setApFecha] = useState('');
   const [apTitular, setApTitular] = useState('');
   const [apEmpresa, setApEmpresa] = useState('');
+  const [evolucionDatos, setEvolucionDatos] = useState<Array<{ mes: string; valor: number }>>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -452,6 +457,41 @@ const GestionInversionesPage: React.FC = () => {
       toast.success(`"${plan.nombre}" eliminado`);
     } catch {
       toast.error('Error al eliminar el plan de pensiones');
+    }
+  };
+
+  const handleGuardarValorPlan = async () => {
+    const valor = parseFloat(valorActualInput);
+    if (isNaN(valor) || valor < 0 || !planSeleccionado?.id) return;
+    try {
+      await planesInversionService.updatePlan(planSeleccionado.id, { valorActual: valor });
+      const mes = valorFechaMes || new Date().toISOString().slice(0, 7);
+      await valoracionesService.guardarValoracionActivo(mes, {
+        tipo_activo: 'plan_pensiones',
+        activo_id: planSeleccionado.id,
+        activo_nombre: planSeleccionado.nombre + (planSeleccionado.entidad ? ` (${planSeleccionado.entidad})` : ''),
+        valor,
+      });
+      setMostrarModalValor(false);
+      const personalData = await personalDataService.getPersonalData();
+      if (personalData?.id) {
+        setPlanesPension(await planesInversionService.getPlanes(personalData.id));
+      }
+      toast.success('Valor actualizado y registrado en el histórico');
+    } catch {
+      toast.error('Error al actualizar el valor');
+    }
+  };
+
+  const handleVerEvolucion = async (plan: PlanPensionInversion) => {
+    if (!plan.id) return;
+    try {
+      const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id);
+      setEvolucionDatos(datos.map(d => ({ mes: d.fecha_valoracion, valor: d.valor })));
+      setPlanSeleccionado(plan);
+      setMostrarModalEvolucion(true);
+    } catch {
+      toast.error('Error al cargar el histórico de valoraciones');
     }
   };
 
@@ -697,9 +737,18 @@ const GestionInversionesPage: React.FC = () => {
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                           <button
+                            onClick={() => handleVerEvolucion(plan)}
+                            title="Ver evolución histórica"
+                            aria-label={`Ver evolución de ${plan.nombre}`}
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <BarChart2 size={14} />
+                          </button>
+                          <button
                             onClick={() => {
                               setPlanSeleccionado(plan);
                               setValorActualInput(plan.valorActual > 0 ? String(plan.valorActual) : '');
+                              setValorFechaMes(new Date().toISOString().slice(0, 7));
                               setMostrarModalValor(true);
                             }}
                             title="Actualizar valor"
@@ -835,10 +884,17 @@ const GestionInversionesPage: React.FC = () => {
       {/* ── Modal: actualizar valor actual ─────────────────────── */}
       {mostrarModalValor && planSeleccionado && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 24, width: 380, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 24, width: 400, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.n700, marginBottom: 4 }}>Actualizar valor</div>
             <div style={{ fontSize: 12, color: C.n500, marginBottom: 20 }}>{planSeleccionado.nombre}</div>
-            <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 6 }}>Valor actual del fondo (€)</label>
+            <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 6 }}>Mes de la valoración</label>
+            <input
+              type="month"
+              value={valorFechaMes}
+              onChange={e => setValorFechaMes(e.target.value)}
+              style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.n300}`, borderRadius: 8, fontSize: 13, marginBottom: 14, boxSizing: 'border-box' }}
+            />
+            <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 6 }}>Valor del fondo a fin de mes (€)</label>
             <input
               type="number"
               value={valorActualInput}
@@ -851,20 +907,7 @@ const GestionInversionesPage: React.FC = () => {
                 Cancelar
               </button>
               <button
-                onClick={async () => {
-                  const valor = parseFloat(valorActualInput);
-                  if (isNaN(valor) || valor < 0) return;
-                  const personalData = await personalDataService.getPersonalData();
-                  if (!personalData?.id) return;
-                  await planesInversionService.updatePlan(planSeleccionado.id!, {
-                    ...planSeleccionado,
-                    valorActual: valor,
-                  });
-                  setMostrarModalValor(false);
-                  const planes = await planesInversionService.getPlanes(personalData.id);
-                  setPlanesPension(planes);
-                  toast.success('Valor actualizado');
-                }}
+                onClick={handleGuardarValorPlan}
                 style={{ padding: '8px 16px', background: C.blue, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
               >
                 Guardar
@@ -956,6 +999,97 @@ const GestionInversionesPage: React.FC = () => {
                 Guardar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal: evolución histórica del plan ──────────────────── */}
+      {mostrarModalEvolucion && planSeleccionado && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
+          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 720, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: C.n700 }}>Evolución histórica</div>
+                <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>
+                  {planSeleccionado.nombre}{planSeleccionado.entidad ? ` · ${planSeleccionado.entidad}` : ''}
+                </div>
+              </div>
+              <button
+                onClick={() => setMostrarModalEvolucion(false)}
+                aria-label="Cerrar"
+                style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', color: C.n500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {evolucionDatos.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: C.n500, fontSize: 14 }}>
+                No hay valoraciones históricas registradas para este plan.<br />
+                <span style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+                  Usa el botón <strong>Actualizar valor (↺)</strong> para registrar el valor de cada mes, o importa el histórico desde Migración de datos.
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Chart */}
+                <div style={{ marginBottom: 24 }}>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={evolucionDatos} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={C.n200} />
+                      <XAxis
+                        dataKey="mes"
+                        tick={{ fontSize: 11, fill: C.n500 }}
+                        tickFormatter={(v: string) => v.slice(0, 7)}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: C.n500 }}
+                        tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`}
+                        width={44}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [fmt(value), 'Valor']}
+                        labelFormatter={(label: string) => `Mes: ${label}`}
+                        contentStyle={{ fontSize: 12, borderRadius: 8, border: `1px solid ${C.n200}` }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="valor"
+                        stroke={C.blue}
+                        strokeWidth={2}
+                        dot={{ r: 3, fill: C.blue }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Table */}
+                <div style={{ background: '#fff', border: `1px solid ${C.n200}`, borderRadius: 8, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Mes', 'Valor'].map((h, i) => (
+                          <th key={h} style={{
+                            padding: '8px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.08em',
+                            textTransform: 'uppercase', color: C.n500, background: C.n50,
+                            borderBottom: `1px solid ${C.n200}`, textAlign: i === 0 ? 'left' : 'right',
+                          }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...evolucionDatos].reverse().map((row, idx) => (
+                        <tr key={row.mes} style={{ borderBottom: idx < evolucionDatos.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                          <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", color: C.n700 }}>{row.mes}</td>
+                          <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontWeight: 600, color: C.blue }}>{fmt(row.valor)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
