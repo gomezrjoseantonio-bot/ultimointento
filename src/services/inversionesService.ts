@@ -224,26 +224,42 @@ export const inversionesService = {
     num_posiciones: number;
     por_tipo: Record<string, number>;
   }> {
+    const db = await initDB();
     const posiciones = await this.getPosiciones();
-    
-    const valor_total = posiciones.reduce((sum, p) => sum + p.valor_actual, 0);
-    const total_aportado = posiciones.reduce((sum, p) => sum + p.total_aportado, 0);
+
+    // Sumar planes de pensión al total
+    const planes = await db.getAll('planesPensionInversion');
+    const valorPlanes = planes.reduce((s: number, p: any) => {
+      const v = p.unidades ? p.unidades * (p.valorActual ?? 0) : (p.valorActual ?? 0);
+      return s + v;
+    }, 0);
+    const aportadoPlanes = planes.reduce((s: number, p: any) => {
+      const historial = p.historialAportaciones ?? {};
+      return s + Object.values(historial).reduce((ss: number, row: any) =>
+        ss + (row.total ?? (row.titular ?? 0) + (row.empresa ?? 0)), 0);
+    }, 0);
+
+    const valor_total = posiciones.reduce((sum, p) => sum + p.valor_actual, 0) + valorPlanes;
+    const total_aportado = posiciones.reduce((sum, p) => sum + p.total_aportado, 0) + aportadoPlanes;
     const rentabilidad_euros = valor_total - total_aportado;
-    const rentabilidad_porcentaje = total_aportado > 0 
-      ? (rentabilidad_euros / total_aportado) * 100 
+    const rentabilidad_porcentaje = total_aportado > 0
+      ? (rentabilidad_euros / total_aportado) * 100
       : 0;
 
     const por_tipo: Record<string, number> = {};
     posiciones.forEach(p => {
       por_tipo[p.tipo] = (por_tipo[p.tipo] || 0) + p.valor_actual;
     });
+    if (valorPlanes > 0) {
+      por_tipo['plan_pensiones'] = (por_tipo['plan_pensiones'] || 0) + valorPlanes;
+    }
 
     return {
       valor_total,
       total_aportado,
       rentabilidad_euros,
       rentabilidad_porcentaje,
-      num_posiciones: posiciones.length,
+      num_posiciones: posiciones.length + planes.length,
       por_tipo,
     };
   },

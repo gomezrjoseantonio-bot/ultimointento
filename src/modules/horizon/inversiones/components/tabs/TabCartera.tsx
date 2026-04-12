@@ -540,28 +540,30 @@ const TabCartera: React.FC<TabCarteraProps> = ({
                       gap: 4,
                     }}
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewAportaciones(p.id);
-                      }}
-                      title="Ver historial aportaciones"
-                      aria-label={`Ver historial de ${p.alias}`}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        border: 'none',
-                        background: 'transparent',
-                        cursor: 'pointer',
-                        borderRadius: 6,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'var(--grey-500, #6C757D)',
-                      }}
-                    >
-                      <Eye size={14} />
-                    </button>
+                    {p.tipo !== 'plan_pensiones' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewAportaciones(p.id);
+                        }}
+                        title="Ver historial aportaciones"
+                        aria-label={`Ver historial de ${p.alias}`}
+                        style={{
+                          width: 28,
+                          height: 28,
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          borderRadius: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--grey-500, #6C757D)',
+                        }}
+                      >
+                        <Eye size={14} />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -569,266 +571,6 @@ const TabCartera: React.FC<TabCarteraProps> = ({
           </tbody>
         </table>
       </div>
-
-      {/* Planes de pensión */}
-      {planesPension.length > 0 && (
-        <div style={{ marginTop: 20 }}>
-          {/* Title */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 16,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--grey-700, #303A4C)',
-              }}
-            >
-              Planes de pensión e inversión
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: 'var(--grey-500, #6C757D)',
-                background: 'var(--grey-100, #EEF1F5)',
-                borderRadius: 12,
-                padding: '2px 8px',
-              }}
-            >
-              {planesPension.length}
-            </span>
-          </div>
-
-          {/* Cards */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            {planesPension.map((plan: any) => {
-              const historial = plan.historialAportaciones ?? {};
-              const aniosConDatos = Object.keys(historial).length;
-              const valorMostrado =
-                plan.valorActual > 0
-                  ? plan.unidades != null
-                    ? plan.unidades * plan.valorActual
-                    : plan.valorActual
-                  : null;
-              const ultimasAportaciones = Object.entries(historial)
-                .sort(([a], [b]) => Number(b) - Number(a))
-                .slice(0, 4);
-
-              return (
-                <div
-                  key={plan.id ?? plan.nombre}
-                  style={{
-                    background: 'var(--white, #fff)',
-                    border: '1px solid var(--grey-200, #DDE3EC)',
-                    borderTop: `3px solid ${CHART_COLORS.navy900}`,
-                    borderRadius: 8,
-                    padding: '16px 20px',
-                  }}
-                >
-                  {/* Header */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: 12,
-                    }}
-                  >
-                    <div>
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 600,
-                          color: 'var(--grey-700, #303A4C)',
-                        }}
-                      >
-                        {plan.nombre}
-                      </span>
-                      {plan.esHistorico && (
-                        <span
-                          style={{
-                            marginLeft: 8,
-                            padding: '1px 6px',
-                            borderRadius: 4,
-                            fontSize: 9,
-                            fontWeight: 700,
-                            background: 'var(--grey-100, #EEF1F5)',
-                            color: 'var(--grey-500, #6C757D)',
-                          }}
-                        >
-                          Histórico
-                        </span>
-                      )}
-                      {plan.entidad && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: 'var(--grey-500, #6C757D)',
-                            marginTop: 2,
-                          }}
-                        >
-                          {plan.entidad}
-                        </div>
-                      )}
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        color: 'var(--grey-500, #6C757D)',
-                        background: 'var(--grey-100, #EEF1F5)',
-                        borderRadius: 12,
-                        padding: '3px 9px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {plan.tipo.replace('-', ' ')}
-                    </span>
-                  </div>
-
-                  {/* KPIs */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: 16,
-                      marginBottom: ultimasAportaciones.length ? 12 : 0,
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: '.06em',
-                          textTransform: 'uppercase',
-                          color: 'var(--grey-500, #6C757D)',
-                          marginBottom: 3,
-                        }}
-                      >
-                        Valor actual
-                      </div>
-                      {valorMostrado !== null ? (
-                        <div
-                          style={{
-                            fontFamily: "'IBM Plex Mono', monospace",
-                            fontSize: 16,
-                            fontWeight: 600,
-                            color: 'var(--grey-700, #303A4C)',
-                          }}
-                        >
-                          {formatCurrency(valorMostrado)}
-                        </div>
-                      ) : (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: 'var(--grey-500, #6C757D)',
-                          }}
-                        >
-                          Sin actualizar
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: '.06em',
-                          textTransform: 'uppercase',
-                          color: 'var(--grey-500, #6C757D)',
-                          marginBottom: 3,
-                        }}
-                      >
-                        Aportado acum.
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'IBM Plex Mono', monospace",
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: 'var(--grey-700, #303A4C)',
-                        }}
-                      >
-                        {formatCurrency(plan.aportacionesRealizadas || 0)}
-                      </div>
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          letterSpacing: '.06em',
-                          textTransform: 'uppercase',
-                          color: 'var(--grey-500, #6C757D)',
-                          marginBottom: 3,
-                        }}
-                      >
-                        Años con datos
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'IBM Plex Mono', monospace",
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: 'var(--grey-700, #303A4C)',
-                        }}
-                      >
-                        {aniosConDatos}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent contributions */}
-                  {ultimasAportaciones.length > 0 && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: 'var(--grey-500, #6C757D)',
-                        borderTop: '1px solid var(--grey-100, #EEF1F5)',
-                        paddingTop: 10,
-                      }}
-                    >
-                      {ultimasAportaciones.map(
-                        ([year, data]: [string, any], i: number) => (
-                          <span key={year}>
-                            {year}:{' '}
-                            <span
-                              style={{
-                                fontFamily: "'IBM Plex Mono', monospace",
-                                color: 'var(--grey-700, #303A4C)',
-                                fontWeight: 600,
-                              }}
-                            >
-                              {formatCurrency(data.total)}
-                            </span>
-                            {i < ultimasAportaciones.length - 1 ? '  ·  ' : ''}
-                          </span>
-                        )
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Closed positions */}
       {closedPositions.length > 0 && (
