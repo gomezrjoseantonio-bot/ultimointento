@@ -224,18 +224,31 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       const inmuebleNames: string[] = (properties as any[])
         .map((p) => p.alias || p.address)
         .filter(Boolean);
-      // planNames includes both "Nombre" and "Nombre (Entidad)" — used for the dropdown/manual selection
-      const planNames: string[] = (planes as any[]).flatMap((p: any) => {
-        const n = p.nombre as string | undefined;
-        if (!n) return [];
-        return p.entidad ? [n, `${n} (${p.entidad})`] : [n];
-      });
-      // planBaseNames has only the base nombre — used for fuzzy matching to avoid double-counting
-      // when a plan has an entidad (both "X" and "X (Entidad)" would score the same, causing ambiguity)
-      const planBaseNames: string[] = (planes as any[])
-        .map((p: any) => p.nombre as string | undefined)
-        .filter((n): n is string => Boolean(n));
+
+      // Plans can live in planesPensionInversion OR in inversiones (legacy data with tipo plan_pensiones)
+      const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones']);
+      const inversionesPlan = (inversiones as any[]).filter((i: any) => PLAN_TIPOS_INV.has(i.tipo));
+
+      // planNames: dropdown options — both "Nombre" and "Nombre (Entidad)" variants, from both stores
+      const planNames: string[] = [
+        ...(planes as any[]).flatMap((p: any) => {
+          const n = p.nombre as string | undefined;
+          if (!n) return [];
+          return p.entidad ? [n, `${n} (${p.entidad})`] : [n];
+        }),
+        ...inversionesPlan.flatMap((i: any) => {
+          const n = i.nombre as string | undefined;
+          if (!n) return [];
+          return i.entidad ? [n, `${n} (${i.entidad})`] : [n];
+        }),
+      ];
+      // planBaseNames: base names only (no entidad suffix) — for fuzzy matching to avoid ambiguity
+      const planBaseNames: string[] = [
+        ...(planes as any[]).map((p: any) => p.nombre as string | undefined).filter((n): n is string => Boolean(n)),
+        ...inversionesPlan.map((i: any) => i.nombre as string | undefined).filter((n): n is string => Boolean(n)),
+      ];
       const inversionNames: string[] = (inversiones as any[])
+        .filter((i: any) => !PLAN_TIPOS_INV.has(i.tipo)) // exclude plans — already in planNames
         .map((i: any) => i.nombre)
         .filter(Boolean);
 
@@ -246,6 +259,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         if (tipo === 'inmueble') {
           matched = inmuebleNames.some((n) => n.toLowerCase() === lower);
         } else if (tipo === 'plan_pensiones') {
+          // Check planesPensionInversion (new store)
           matched = (planes as any[]).some((p: any) => {
             const n = (p.nombre as string)?.toLowerCase();
             if (!n) return false;
@@ -253,6 +267,16 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
             return false;
           });
+          // Also check inversiones with plan tipo (legacy data stored there) — mirror entidad logic
+          if (!matched) {
+            matched = inversionesPlan.some((i: any) => {
+              const n = (i.nombre as string)?.toLowerCase();
+              if (!n) return false;
+              if (lower === n) return true;
+              if (i.entidad) return lower === `${n} (${(i.entidad as string).toLowerCase()})`;
+              return false;
+            });
+          }
         } else {
           // Match without filtering by active state — same as importarHistorico in valoracionesService
           matched = inversionNames.some((n) => n.toLowerCase() === lower);
@@ -298,14 +322,21 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         const props = await db.getAll('properties');
         matched = (props as any[]).some((p) => (p.alias || p.address)?.toLowerCase() === lower);
       } else if (tipo === 'plan_pensiones') {
-        const planes = await db.getAll('planesPensionInversion');
-        matched = (planes as any[]).some((p: any) => {
-          const n = (p.nombre as string)?.toLowerCase();
+        const [planes, invs] = await Promise.all([
+          db.getAll('planesPensionInversion'),
+          db.getAll('inversiones'),
+        ]);
+        const matchEntry = (entry: any) => {
+          const n = (entry.nombre as string)?.toLowerCase();
           if (!n) return false;
           if (lower === n) return true;
-          if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
+          if (entry.entidad) return lower === `${n} (${(entry.entidad as string).toLowerCase()})`;
           return false;
-        });
+        };
+        const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones']);
+        matched =
+          (planes as any[]).some(matchEntry) ||
+          (invs as any[]).filter((i: any) => PLAN_TIPOS_INV.has(i.tipo)).some(matchEntry);
       } else {
         // Match without filtering by active state — same as importarHistorico in valoracionesService
         const invs = await db.getAll('inversiones');

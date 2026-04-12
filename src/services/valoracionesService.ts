@@ -319,24 +319,37 @@ export const valoracionesService = {
       db.getAll('planesPensionInversion'),
     ]);
 
-    // Acepta "Nombre" o "Nombre (Entidad)" para planes de pensiones
-    const matchPlanByNombre = (nombre: string): any | undefined => {
+    // Plans can live in planesPensionInversion OR in inversiones (with tipo plan_pensiones/plan-pensiones).
+    // Search both stores so users whose data predates the dedicated store are not blocked.
+    const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones']);
+    const inversionesPlan = (inversiones as any[]).filter((i: any) => PLAN_TIPOS_INV.has(i.tipo));
+
+    const matchPlanByNombre = (nombre: string): { id: number; store: 'planesPensionInversion' | 'inversiones' } | undefined => {
       const lower = nombre.toLowerCase();
-      return (planes as any[]).find((p: any) => {
+      // 1. Search planesPensionInversion (new dedicated store)
+      const p = (planes as any[]).find((p: any) => {
         if (!p.nombre) return false;
         const n = (p.nombre as string).toLowerCase();
         if (lower === n) return true;
-        if (p.entidad) {
-          const conEntidad = `${n} (${(p.entidad as string).toLowerCase()})`;
-          if (lower === conEntidad) return true;
-        }
+        if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
         return false;
       });
+      if (p) return { id: p.id, store: 'planesPensionInversion' };
+      // 2. Fallback: search inversiones with plan tipo (legacy data) — mirror entidad logic
+      const inv = inversionesPlan.find((i: any) => {
+        if (!i.nombre) return false;
+        const n = (i.nombre as string).toLowerCase();
+        if (lower === n) return true;
+        if (i.entidad) return lower === `${n} (${(i.entidad as string).toLowerCase()})`;
+        return false;
+      });
+      if (inv) return { id: inv.id, store: 'inversiones' };
+      return undefined;
     };
 
     let importados = 0;
-    // Track la fecha más reciente por plan para actualizar valorActual una sola vez al final
-    const latestFechaPorPlan = new Map<number, { fecha: string; valor: number }>();
+    // Use composite key store|id to avoid ID collisions across stores (both are auto-increment)
+    const latestFechaPorPlan = new Map<string, { fecha: string; valor: number; id: number; store: 'planesPensionInversion' | 'inversiones' }>();
 
     for (const dato of datos) {
       // Buscar ID del activo por nombre (case-insensitive)
@@ -384,10 +397,13 @@ export const valoracionesService = {
       }
 
       // Acumular la fecha+valor más reciente por plan (sin DB round-trip por fila)
-      if (dato.tipo_activo === 'plan_pensiones') {
-        const current = latestFechaPorPlan.get(activoId);
+      if (dato.tipo_activo === 'plan_pensiones' && activoId !== undefined) {
+        const planMatch = matchPlanByNombre(dato.activo_nombre);
+        const store = planMatch?.store ?? 'planesPensionInversion';
+        const compositeKey = `${store}|${activoId}`;
+        const current = latestFechaPorPlan.get(compositeKey);
         if (!current || dato.fecha > current.fecha) {
-          latestFechaPorPlan.set(activoId, { fecha: dato.fecha, valor: dato.valor });
+          latestFechaPorPlan.set(compositeKey, { fecha: dato.fecha, valor: dato.valor, id: activoId, store });
         }
       }
 
@@ -395,10 +411,10 @@ export const valoracionesService = {
     }
 
     // Actualizar valorActual de cada plan con la valoración más reciente importada
-    for (const [planId, { valor }] of latestFechaPorPlan) {
-      const plan = await db.get('planesPensionInversion', planId);
+    for (const [, { valor, id, store }] of latestFechaPorPlan) {
+      const plan = await db.get(store, id);
       if (plan) {
-        await db.put('planesPensionInversion', {
+        await db.put(store, {
           ...plan,
           valorActual: valor,
           fechaActualizacion: now,
