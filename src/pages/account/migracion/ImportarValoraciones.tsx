@@ -3,9 +3,10 @@
 
 import React, { useCallback, useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, Download, X, TrendingUp, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Upload, Download, X, TrendingUp, ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { valoracionesService } from '../../../services/valoracionesService';
+import { initDB } from '../../../services/db';
 
 interface ImportarValoracionesProps {
   onComplete: () => void;
@@ -134,11 +135,114 @@ const normalizarTipoActivo = (value: unknown): 'inmueble' | 'inversion' | 'plan_
   return '';
 };
 
+// Key for name validation: `${tipo_activo}||${activo_nombre}`
+type NameValidationStatus = 'not_found' | 'verifying' | 'matched';
+type NameValidation = {
+  correctedName: string;
+  status: NameValidationStatus;
+  rowCount: number;
+};
+
 const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [nameValidations, setNameValidations] = useState<Record<string, NameValidation>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Validate names against DB ───────────────────────────────────────────────
+
+  const validateNamesAsync = useCallback(async (rows: PreviewRow[]) => {
+    try {
+      const db = await initDB();
+      const [properties, inversiones, planes] = await Promise.all([
+        db.getAll('properties'),
+        db.getAll('inversiones'),
+        db.getAll('planesPensionInversion'),
+      ]);
+
+      // Count rows per unique tipo+nombre key
+      const counts = new Map<string, { tipo: string; nombre: string; count: number }>();
+      rows.forEach((r) => {
+        if (!r.tipo_activo || !r.activo_nombre) return;
+        const key = `${r.tipo_activo}||${r.activo_nombre}`;
+        const existing = counts.get(key);
+        if (existing) existing.count++;
+        else counts.set(key, { tipo: r.tipo_activo, nombre: r.activo_nombre, count: 1 });
+      });
+
+      const validations: Record<string, NameValidation> = {};
+      for (const [key, { tipo, nombre, count }] of counts) {
+        const lower = nombre.toLowerCase();
+        let matched = false;
+        if (tipo === 'inmueble') {
+          matched = (properties as any[]).some(
+            (p) => (p.alias || p.address)?.toLowerCase() === lower
+          );
+        } else if (tipo === 'plan_pensiones') {
+          matched = (planes as any[]).some((p: any) => {
+            const n = (p.nombre as string)?.toLowerCase();
+            if (!n) return false;
+            if (lower === n) return true;
+            if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
+            return false;
+          });
+        } else {
+          matched = (inversiones as any[]).some(
+            (i) => i.nombre?.toLowerCase() === lower && i.activo !== false
+          );
+        }
+        if (!matched) {
+          validations[key] = { correctedName: nombre, status: 'not_found', rowCount: count };
+        }
+      }
+      setNameValidations(validations);
+    } catch (err) {
+      console.error('Error validating names:', err);
+    }
+  }, []);
+
+  const handleVerifyName = useCallback(async (key: string, tipo: string) => {
+    setNameValidations((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], status: 'verifying' },
+    }));
+    try {
+      const correctedName = nameValidations[key]?.correctedName ?? '';
+      const lower = correctedName.toLowerCase();
+      const db = await initDB();
+      let matched = false;
+      if (tipo === 'inmueble') {
+        const props = await db.getAll('properties');
+        matched = (props as any[]).some((p) => (p.alias || p.address)?.toLowerCase() === lower);
+      } else if (tipo === 'plan_pensiones') {
+        const planes = await db.getAll('planesPensionInversion');
+        matched = (planes as any[]).some((p: any) => {
+          const n = (p.nombre as string)?.toLowerCase();
+          if (!n) return false;
+          if (lower === n) return true;
+          if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
+          return false;
+        });
+      } else {
+        const invs = await db.getAll('inversiones');
+        matched = (invs as any[]).some(
+          (i) => i.nombre?.toLowerCase() === lower && i.activo !== false
+        );
+      }
+      setNameValidations((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], status: matched ? 'matched' : 'not_found' },
+      }));
+      if (!matched) toast.error(`"${correctedName}" no encontrado en ATLAS`);
+    } catch (err) {
+      console.error('Error verifying name:', err);
+      setNameValidations((prev) => ({
+        ...prev,
+        [key]: { ...prev[key], status: 'not_found' },
+      }));
+    }
+  }, [nameValidations]);
 
   // ── Download template ───────────────────────────────────────────────────────
 
@@ -194,13 +298,15 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         }));
 
         setPreview(parsed);
+        setNameValidations({});
+        void validateNamesAsync(parsed);
       } catch (err) {
         console.error('Error parsing file:', err);
         toast.error('Error al leer el archivo Excel');
       }
     };
     reader.readAsArrayBuffer(file);
-  }, []);
+  }, [validateNamesAsync]);
 
   // ── Drag & Drop ─────────────────────────────────────────────────────────────
 
@@ -234,22 +340,34 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           r.valor > 0
       );
 
-      if (!validRows.length) {
-        toast.error('No hay filas válidas para importar');
+      // Apply name overrides (verified corrections) and skip still-unmatched rows
+      const finalRows = validRows
+        .filter((r) => {
+          const key = `${r.tipo_activo}||${r.activo_nombre}`;
+          const v = nameValidations[key];
+          return !v || v.status === 'matched'; // skip not_found/verifying
+        })
+        .map((r) => {
+          const key = `${r.tipo_activo}||${r.activo_nombre}`;
+          const v = nameValidations[key];
+          return {
+            fecha: r.fecha,
+            tipo_activo: r.tipo_activo as 'inmueble' | 'inversion' | 'plan_pensiones',
+            activo_nombre: v?.status === 'matched' ? v.correctedName : r.activo_nombre,
+            valor: r.valor,
+          };
+        });
+
+      if (!finalRows.length) {
+        toast.error('No hay filas que coincidan con activos en ATLAS. Corrige los nombres no encontrados.');
         return;
       }
 
-      const importados = await valoracionesService.importarHistorico(
-        validRows.map((r) => ({
-          fecha: r.fecha,
-          tipo_activo: r.tipo_activo as 'inmueble' | 'inversion' | 'plan_pensiones',
-          activo_nombre: r.activo_nombre,
-          valor: r.valor,
-        }))
-      );
+      const importados = await valoracionesService.importarHistorico(finalRows);
 
       toast.success(`${importados} valoraciones importadas correctamente`);
       setPreview(null);
+      setNameValidations({});
       onComplete();
     } catch (err) {
       console.error('Error importing:', err);
@@ -258,6 +376,15 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       setImporting(false);
     }
   };
+
+  const importableCount = preview
+    ? preview.filter((r) => {
+        if (!r.fecha || !r.tipo_activo || !r.activo_nombre || r.valor <= 0) return false;
+        const key = `${r.tipo_activo}||${r.activo_nombre}`;
+        const v = nameValidations[key];
+        return !v || v.status === 'matched';
+      }).length
+    : 0;
 
   return (
     <div style={{ fontFamily: 'var(--font-inter)' }}>
@@ -515,24 +642,130 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             )}
           </div>
 
+          {/* Unmatched names section */}
+          {Object.keys(nameValidations).length > 0 && (
+            <div
+              style={{
+                marginTop: '16px',
+                border: '1px solid #f59e0b',
+                borderRadius: '10px',
+                padding: '16px',
+                backgroundColor: '#fffbeb',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <AlertCircle size={16} strokeWidth={1.5} style={{ color: '#f59e0b', flexShrink: 0 }} aria-hidden="true" />
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+                  Nombres no encontrados en ATLAS — corrígelos antes de importar
+                </span>
+              </div>
+              {Object.entries(nameValidations).map(([key, v]) => {
+                const [tipo, nombre] = key.split('||');
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      marginBottom: '10px',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-gray)', minWidth: '90px', flexShrink: 0 }}>
+                      {v.rowCount} fila{v.rowCount !== 1 ? 's' : ''} · <em>{tipo}</em>
+                    </span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', fontWeight: 500, flexShrink: 0 }}>
+                      "{nombre}"
+                    </span>
+                    <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem', flexShrink: 0 }}>→</span>
+                    {v.status === 'matched' ? (
+                      <span
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: 'var(--ok)',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <CheckCircle2 size={14} strokeWidth={2} aria-hidden="true" />
+                        {v.correctedName}
+                      </span>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={v.correctedName}
+                          onChange={(e) =>
+                            setNameValidations((prev) => ({
+                              ...prev,
+                              [key]: { ...prev[key], correctedName: e.target.value },
+                            }))
+                          }
+                          placeholder="Nombre exacto en ATLAS"
+                          style={{
+                            flex: 1,
+                            minWidth: '180px',
+                            padding: '6px 10px',
+                            border: '1px solid var(--hz-neutral-300)',
+                            borderRadius: '6px',
+                            fontSize: '0.8125rem',
+                            fontFamily: 'var(--font-inter)',
+                            color: 'var(--atlas-navy-1)',
+                          }}
+                        />
+                        <button
+                          onClick={() => void handleVerifyName(key, tipo)}
+                          disabled={v.status === 'verifying' || !v.correctedName.trim()}
+                          style={{
+                            padding: '6px 14px',
+                            border: 'none',
+                            borderRadius: '6px',
+                            backgroundColor:
+                              v.status === 'verifying' || !v.correctedName.trim()
+                                ? 'var(--hz-neutral-300)'
+                                : 'var(--atlas-blue)',
+                            color: '#fff',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            cursor:
+                              v.status === 'verifying' || !v.correctedName.trim()
+                                ? 'not-allowed'
+                                : 'pointer',
+                            fontFamily: 'var(--font-inter)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {v.status === 'verifying' ? 'Verificando...' : 'Verificar'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Import button */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button
               onClick={handleImportar}
-              disabled={importing}
+              disabled={importing || importableCount === 0}
               style={{
                 padding: '10px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: importing ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
+                backgroundColor: importing || importableCount === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
                 color: '#fff',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                cursor: importing ? 'not-allowed' : 'pointer',
+                cursor: importing || importableCount === 0 ? 'not-allowed' : 'pointer',
                 fontFamily: 'var(--font-inter)',
               }}
             >
-              {importing ? 'Importando...' : `Importar ${preview.length} valoraciones`}
+              {importing ? 'Importando...' : `Importar ${importableCount} valoraciones`}
             </button>
           </div>
         </div>
