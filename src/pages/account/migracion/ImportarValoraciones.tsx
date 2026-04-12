@@ -791,38 +791,45 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                         "{nombre}"
                       </span>
                       <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem', flexShrink: 0 }}>→</span>
-                      {(dbNamesByTipo[tipo] ?? []).length > 0 ? (
-                        <select
-                          value={v.correctedName}
-                          onChange={(e) => {
-                            const selected = e.target.value;
-                            setNameValidations((prev) => ({
-                              ...prev,
-                              [key]: {
-                                ...prev[key],
-                                correctedName: selected,
-                                status: selected ? 'matched' : 'not_found',
-                              },
-                            }));
-                          }}
-                          style={{
-                            flex: 1,
-                            minWidth: '200px',
-                            padding: '6px 10px',
-                            border: '1px solid var(--hz-neutral-300)',
-                            borderRadius: '6px',
-                            fontSize: '0.8125rem',
-                            fontFamily: 'var(--font-inter)',
-                            color: 'var(--atlas-navy-1)',
-                            backgroundColor: '#fff',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <option value="">— Selecciona el activo correcto —</option>
-                          {(dbNamesByTipo[tipo] ?? []).sort().map((name) => (
-                            <option key={name} value={name}>{name}</option>
-                          ))}
-                        </select>
+                      {(dbNamesByTipo[tipo] ?? []).length > 0 ? (() => {
+                        // Deduplicate and sort without mutating state array
+                        const options = [...new Set(dbNamesByTipo[tipo] ?? [])].sort((a, b) => a.localeCompare(b));
+                        // Show placeholder when correctedName is not yet a valid DB option
+                        const selectValue = options.includes(v.correctedName) ? v.correctedName : '';
+                        return (
+                          <select
+                            value={selectValue}
+                            onChange={(e) => {
+                              const selected = e.target.value;
+                              setNameValidations((prev) => ({
+                                ...prev,
+                                [key]: {
+                                  ...prev[key],
+                                  correctedName: selected,
+                                  status: selected ? 'matched' : 'not_found',
+                                },
+                              }));
+                            }}
+                            style={{
+                              flex: 1,
+                              minWidth: '200px',
+                              padding: '6px 10px',
+                              border: '1px solid var(--hz-neutral-300)',
+                              borderRadius: '6px',
+                              fontSize: '0.8125rem',
+                              fontFamily: 'var(--font-inter)',
+                              color: 'var(--atlas-navy-1)',
+                              backgroundColor: '#fff',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <option value="">— Selecciona el activo correcto —</option>
+                            {options.map((name, i) => (
+                              <option key={`${name}-${i}`} value={name}>{name}</option>
+                            ))}
+                          </select>
+                        );
+                      })()
                       ) : (
                         <>
                           <input
