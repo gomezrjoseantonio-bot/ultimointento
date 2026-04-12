@@ -662,7 +662,7 @@ const GestionInversionesPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                      {(p.tipo === 'plan_pensiones' || p.tipo === 'plan-pensiones') && (
+                      {p.tipo === 'plan_pensiones' && (
                         <button
                           onClick={() => handleVerEvolucionPosicion(p)}
                           title="Ver evolución histórica"
