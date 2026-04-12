@@ -2,7 +2,7 @@
 // Página de GESTIÓN de inversiones: acciones CRUD sobre posiciones
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { TrendingUp, Eye, Edit2, Trash2, Plus } from 'lucide-react';
+import { TrendingUp, Eye, Edit2, Trash2, Plus, RefreshCw } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
@@ -376,6 +376,14 @@ const GestionInversionesPage: React.FC = () => {
   const [detailPosicion, setDetailPosicion] = useState<PosicionInversion | undefined>();
   const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
 
+  const [planSeleccionado, setPlanSeleccionado] = useState<PlanPensionInversion | null>(null);
+  const [mostrarModalValor, setMostrarModalValor] = useState(false);
+  const [mostrarModalAportacion, setMostrarModalAportacion] = useState(false);
+  const [valorActualInput, setValorActualInput] = useState('');
+  const [apFecha, setApFecha] = useState('');
+  const [apTitular, setApTitular] = useState('');
+  const [apEmpresa, setApEmpresa] = useState('');
+
   const refresh = useCallback(async () => {
     try {
       const { activas } = await inversionesService.getAllPosiciones();
@@ -613,6 +621,101 @@ const GestionInversionesPage: React.FC = () => {
         </div>
       )}
 
+      {/* ── Planes de pensiones ─────────────────────────────────── */}
+      {planesPension.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+            textTransform: 'uppercase', color: C.n500, marginBottom: 12,
+          }}>
+            Planes de pensiones
+          </div>
+          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['Plan', 'Valor actual', 'Aportado acum.', 'Última aportación', 'Acciones'].map((col, i) => (
+                    <th key={col} style={{
+                      padding: '9px 16px', fontSize: 10, fontWeight: 700,
+                      letterSpacing: '.08em', textTransform: 'uppercase',
+                      color: C.n500, background: C.n50,
+                      borderBottom: `1px solid ${C.n200}`,
+                      textAlign: i >= 1 && i <= 3 ? 'right' : i === 4 ? 'center' : 'left',
+                    }}>
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {planesPension.map((plan, i) => {
+                  const historial = plan.historialAportaciones ?? {};
+                  const totalAportado = Object.values(historial).reduce(
+                    (s, row) => s + (row.total ?? (row.titular ?? 0) + (row.empresa ?? 0)), 0
+                  );
+                  const años = Object.keys(historial).map(Number).sort((a, b) => b - a);
+                  const ultimoAño = años[0];
+                  const ultimaAp = ultimoAño ? historial[ultimoAño] : null;
+
+                  return (
+                    <tr key={plan.id ?? plan.nombre} style={{ borderBottom: i < planesPension.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{plan.nombre}</div>
+                        <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>
+                          Plan de pensiones{plan.entidad ? ` · ${plan.entidad}` : ''}
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {plan.valorActual > 0
+                          ? <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(plan.valorActual)}</span>
+                          : <span style={{ fontSize: 12, color: C.n500, fontStyle: 'italic' }}>Sin actualizar</span>
+                        }
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
+                        {fmt(totalAportado)}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
+                        {ultimaAp && ultimoAño
+                          ? `${fmt(ultimaAp.total ?? (ultimaAp.titular ?? 0) + (ultimaAp.empresa ?? 0))} · ${ultimoAño}`
+                          : '—'}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                          <button
+                            onClick={() => {
+                              setPlanSeleccionado(plan);
+                              setValorActualInput(plan.valorActual > 0 ? String(plan.valorActual) : '');
+                              setMostrarModalValor(true);
+                            }}
+                            title="Actualizar valor"
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPlanSeleccionado(plan);
+                              setApFecha(new Date().toISOString().split('T')[0]);
+                              setApTitular('');
+                              setApEmpresa('');
+                              setMostrarModalAportacion(true);
+                            }}
+                            title="Añadir aportación"
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* ── Vista individual ── */}
       {posiciones.length > 0 && selectedPosicion && (
         <div style={{ marginTop: 32 }}>
@@ -705,6 +808,133 @@ const GestionInversionesPage: React.FC = () => {
             setEditingAportacion(undefined);
           }}
         />
+      )}
+      {/* ── Modal: actualizar valor actual ─────────────────────── */}
+      {mostrarModalValor && planSeleccionado && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 24, width: 380, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.n700, marginBottom: 4 }}>Actualizar valor</div>
+            <div style={{ fontSize: 12, color: C.n500, marginBottom: 20 }}>{planSeleccionado.nombre}</div>
+            <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 6 }}>Valor actual del fondo (€)</label>
+            <input
+              type="number"
+              value={valorActualInput}
+              onChange={e => setValorActualInput(e.target.value)}
+              placeholder="0"
+              style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.n300}`, borderRadius: 8, fontSize: 14, fontFamily: "'IBM Plex Mono', monospace", marginBottom: 20, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setMostrarModalValor(false)} style={{ padding: '8px 16px', border: `1px solid ${C.n300}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  const valor = parseFloat(valorActualInput);
+                  if (isNaN(valor) || valor < 0) return;
+                  const personalData = await personalDataService.getPersonalData();
+                  if (!personalData?.id) return;
+                  await planesInversionService.updatePlan(planSeleccionado.id!, {
+                    ...planSeleccionado,
+                    valorActual: valor,
+                  });
+                  setMostrarModalValor(false);
+                  const planes = await planesInversionService.getPlanes(personalData.id);
+                  setPlanesPension(planes);
+                  toast.success('Valor actualizado');
+                }}
+                style={{ padding: '8px 16px', background: C.blue, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: añadir aportación ─────────────────────────────── */}
+      {mostrarModalAportacion && planSeleccionado && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 12, padding: 24, width: 420, boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.n700, marginBottom: 4 }}>Añadir aportación</div>
+            <div style={{ fontSize: 12, color: C.n500, marginBottom: 20 }}>{planSeleccionado.nombre}</div>
+
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 5 }}>Fecha *</label>
+              <input
+                type="date"
+                value={apFecha}
+                onChange={e => setApFecha(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.n300}`, borderRadius: 8, fontSize: 13, fontFamily: "'IBM Plex Mono', monospace", boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+              <div>
+                <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 5 }}>Titular (€)</label>
+                <input
+                  type="number"
+                  value={apTitular}
+                  onChange={e => setApTitular(e.target.value)}
+                  placeholder="—"
+                  step="0.01"
+                  style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.n300}`, borderRadius: 8, fontSize: 13, fontFamily: "'IBM Plex Mono', monospace", boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: C.n500, display: 'block', marginBottom: 5 }}>Empresa (€)</label>
+                <input
+                  type="number"
+                  value={apEmpresa}
+                  onChange={e => setApEmpresa(e.target.value)}
+                  placeholder="—"
+                  step="0.01"
+                  style={{ width: '100%', padding: '9px 12px', border: `1px solid ${C.n300}`, borderRadius: 8, fontSize: 13, fontFamily: "'IBM Plex Mono', monospace", boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.n500, marginBottom: 20 }}>Al menos uno de los dos importes es necesario.</div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={() => setMostrarModalAportacion(false)} style={{ padding: '8px 16px', border: `1px solid ${C.n300}`, borderRadius: 8, background: 'transparent', cursor: 'pointer', fontSize: 13 }}>
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (!apFecha) return;
+                  const titular = apTitular !== '' ? parseFloat(apTitular) : undefined;
+                  const empresa = apEmpresa !== '' ? parseFloat(apEmpresa) : undefined;
+                  if (titular === undefined && empresa === undefined) return;
+
+                  const año = new Date(apFecha).getFullYear();
+                  const total = (titular ?? 0) + (empresa ?? 0);
+                  const historialActual = planSeleccionado.historialAportaciones ?? {};
+                  const historialActualizado = {
+                    ...historialActual,
+                    [año]: {
+                      titular: titular ?? 0,
+                      empresa: empresa ?? 0,
+                      total,
+                      fuente: 'manual' as const,
+                    },
+                  };
+
+                  const personalData = await personalDataService.getPersonalData();
+                  if (!personalData?.id) return;
+                  await planesInversionService.updatePlan(planSeleccionado.id!, {
+                    ...planSeleccionado,
+                    historialAportaciones: historialActualizado,
+                  });
+                  setMostrarModalAportacion(false);
+                  const planes = await planesInversionService.getPlanes(personalData.id);
+                  setPlanesPension(planes);
+                  toast.success('Aportación añadida');
+                }}
+                style={{ padding: '8px 16px', background: C.blue, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
