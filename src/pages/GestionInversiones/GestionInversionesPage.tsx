@@ -705,6 +705,22 @@ const GestionInversionesPage: React.FC = () => {
                           >
                             <Plus size={14} />
                           </button>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`¿Eliminar "${plan.nombre}"? Esta acción no se puede deshacer.`)) return;
+                              const personalData = await personalDataService.getPersonalData();
+                              if (!personalData?.id) return;
+                              await planesInversionService.deletePlan(plan.id!);
+                              const planes = await planesInversionService.getPlanes(personalData.id);
+                              setPlanesPension(planes);
+                              toast.success(`"${plan.nombre}" eliminado`);
+                            }}
+                            title="Eliminar plan"
+                            aria-label={`Eliminar ${plan.nombre}`}
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
