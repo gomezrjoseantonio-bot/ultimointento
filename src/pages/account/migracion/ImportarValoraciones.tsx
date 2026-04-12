@@ -143,6 +143,52 @@ type NameValidation = {
   rowCount: number;
 };
 
+/**
+ * Fuzzy name matcher — normalizes both strings (lowercase, no accents, collapsed spaces)
+ * then checks for containment or significant token overlap.
+ * Returns the best DB candidate name, or undefined if no clear match.
+ * Only returns a match when it is unambiguous (exactly one strong candidate).
+ */
+const fuzzyFindName = (excelName: string, dbNames: string[]): string | undefined => {
+  const norm = (s: string) =>
+    s.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      // Canonicalize legal suffix variants before stripping punctuation
+      .replace(/\bs\s*\.?\s*a\s*\.?\b/g, ' sa ')
+      .replace(/\bs\s*\.?\s*l\s*\.?\s*u\s*\.?\b/g, ' slu ')
+      .replace(/\bs\s*\.?\s*l\s*\.?\b/g, ' sl ')
+      // Strip non-alphanumeric so punctuation (commas, dots, hyphens) doesn't break tokens
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const normalizedExcel = norm(excelName);
+  // Significant words: length > 2, not generic stop words
+  const STOP = new Set(['the', 'los', 'las', 'del', 'de', 'la', 'el', 'sa', 'sl', 'slu']);
+  const words = normalizedExcel.split(' ').filter((w) => w.length > 2 && !STOP.has(w));
+  if (!words.length) return undefined;
+
+  const containmentMatches: string[] = [];
+  const candidates: Array<{ name: string; score: number }> = [];
+  for (const name of dbNames) {
+    const normalizedDb = norm(name);
+    // Containment: one is a substring of the other — collect all, disambiguate after loop
+    if (normalizedDb.includes(normalizedExcel) || normalizedExcel.includes(normalizedDb)) {
+      containmentMatches.push(name);
+      continue;
+    }
+    // Token overlap: how many significant words from Excel appear in the DB name
+    const score = words.filter((w) => normalizedDb.includes(w)).length / words.length;
+    if (score >= 0.6) candidates.push({ name, score });
+  }
+  // Prefer containment only when unambiguous; multiple hits → skip to avoid false positives
+  if (containmentMatches.length === 1) return containmentMatches[0];
+  if (containmentMatches.length > 1) return undefined;
+  // Auto-match on token overlap only when exactly one candidate
+  if (candidates.length === 1) return candidates[0].name;
+  return undefined;
+};
+
 const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete, onBack }) => {
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [importing, setImporting] = useState(false);
@@ -173,14 +219,25 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         else counts.set(key, { tipo: r.tipo_activo, nombre: r.activo_nombre, count: 1 });
       });
 
+      // Pre-compute flat name lists for fuzzy matching
+      const inmuebleNames: string[] = (properties as any[])
+        .map((p) => p.alias || p.address)
+        .filter(Boolean);
+      const planNames: string[] = (planes as any[]).flatMap((p: any) => {
+        const n = p.nombre as string | undefined;
+        if (!n) return [];
+        return p.entidad ? [n, `${n} (${p.entidad})`] : [n];
+      });
+      const inversionNames: string[] = (inversiones as any[])
+        .map((i: any) => i.nombre)
+        .filter(Boolean);
+
       const validations: Record<string, NameValidation> = {};
       for (const [key, { tipo, nombre, count }] of counts) {
         const lower = nombre.toLowerCase();
         let matched = false;
         if (tipo === 'inmueble') {
-          matched = (properties as any[]).some(
-            (p) => (p.alias || p.address)?.toLowerCase() === lower
-          );
+          matched = inmuebleNames.some((n) => n.toLowerCase() === lower);
         } else if (tipo === 'plan_pensiones') {
           matched = (planes as any[]).some((p: any) => {
             const n = (p.nombre as string)?.toLowerCase();
@@ -191,12 +248,18 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           });
         } else {
           // Match without filtering by active state — same as importarHistorico in valoracionesService
-          matched = (inversiones as any[]).some(
-            (i) => i.nombre?.toLowerCase() === lower
-          );
+          matched = inversionNames.some((n) => n.toLowerCase() === lower);
         }
         if (!matched) {
-          validations[key] = { correctedName: nombre, status: 'not_found', rowCount: count };
+          // Exact match failed — try fuzzy match to auto-fill and auto-verify
+          const candidateNames =
+            tipo === 'inmueble' ? inmuebleNames : tipo === 'plan_pensiones' ? planNames : inversionNames;
+          const fuzzyMatch = fuzzyFindName(nombre, candidateNames);
+          validations[key] = {
+            correctedName: fuzzyMatch ?? nombre,
+            status: fuzzyMatch ? 'matched' : 'not_found',
+            rowCount: count,
+          };
         }
       }
       setNameValidations(validations);
@@ -648,8 +711,41 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             )}
           </div>
 
-          {/* Unmatched names section */}
-          {Object.keys(nameValidations).length > 0 && (
+          {/* Auto-matched names info section — fuzzy resolved, no action needed */}
+          {Object.entries(nameValidations).some(([, v]) => v.status === 'matched') && (
+            <div
+              style={{
+                marginTop: '16px',
+                border: '1px solid var(--ok)',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                backgroundColor: 'var(--ok-light, #f0fdf4)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <CheckCircle2 size={15} strokeWidth={1.5} style={{ color: 'var(--ok)', flexShrink: 0 }} aria-hidden="true" />
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
+                  Nombres auto-corregidos
+                </span>
+              </div>
+              {Object.entries(nameValidations)
+                .filter(([, v]) => v.status === 'matched')
+                .map(([key, v]) => {
+                  const [, nombre] = key.split('||');
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', marginBottom: '4px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>"{nombre}"</span>
+                      <span style={{ color: 'var(--text-gray)' }}>→</span>
+                      <span style={{ fontWeight: 600, color: 'var(--ok)' }}>{v.correctedName}</span>
+                      <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem' }}>({v.rowCount} fila{v.rowCount !== 1 ? 's' : ''})</span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {/* Unmatched names section — requires user correction */}
+          {Object.entries(nameValidations).some(([, v]) => v.status !== 'matched') && (
             <div
               style={{
                 marginTop: '16px',
@@ -665,92 +761,76 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                   Nombres no encontrados en ATLAS — corrígelos antes de importar
                 </span>
               </div>
-              {Object.entries(nameValidations).map(([key, v]) => {
-                const [tipo, nombre] = key.split('||');
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      marginBottom: '10px',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-gray)', minWidth: '90px', flexShrink: 0 }}>
-                      {v.rowCount} fila{v.rowCount !== 1 ? 's' : ''} · <em>{tipo}</em>
-                    </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', fontWeight: 500, flexShrink: 0 }}>
-                      "{nombre}"
-                    </span>
-                    <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem', flexShrink: 0 }}>→</span>
-                    {v.status === 'matched' ? (
-                      <span
+              {Object.entries(nameValidations)
+                .filter(([, v]) => v.status !== 'matched')
+                .map(([key, v]) => {
+                  const [tipo, nombre] = key.split('||');
+                  return (
+                    <div
+                      key={key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginBottom: '10px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-gray)', minWidth: '90px', flexShrink: 0 }}>
+                        {v.rowCount} fila{v.rowCount !== 1 ? 's' : ''} · <em>{tipo}</em>
+                      </span>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', fontWeight: 500, flexShrink: 0 }}>
+                        "{nombre}"
+                      </span>
+                      <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem', flexShrink: 0 }}>→</span>
+                      <input
+                        type="text"
+                        value={v.correctedName}
+                        onChange={(e) =>
+                          setNameValidations((prev) => ({
+                            ...prev,
+                            [key]: { ...prev[key], correctedName: e.target.value },
+                          }))
+                        }
+                        placeholder="Nombre exacto en ATLAS"
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          color: 'var(--ok)',
+                          flex: 1,
+                          minWidth: '180px',
+                          padding: '6px 10px',
+                          border: '1px solid var(--hz-neutral-300)',
+                          borderRadius: '6px',
+                          fontSize: '0.8125rem',
+                          fontFamily: 'var(--font-inter)',
+                          color: 'var(--atlas-navy-1)',
+                        }}
+                      />
+                      <button
+                        onClick={() => void handleVerifyName(key, tipo)}
+                        disabled={v.status === 'verifying' || !v.correctedName.trim()}
+                        style={{
+                          padding: '6px 14px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          backgroundColor:
+                            v.status === 'verifying' || !v.correctedName.trim()
+                              ? 'var(--hz-neutral-300)'
+                              : 'var(--atlas-blue)',
+                          color: '#fff',
                           fontSize: '0.8125rem',
                           fontWeight: 600,
+                          cursor:
+                            v.status === 'verifying' || !v.correctedName.trim()
+                              ? 'not-allowed'
+                              : 'pointer',
+                          fontFamily: 'var(--font-inter)',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <CheckCircle2 size={14} strokeWidth={2} aria-hidden="true" />
-                        {v.correctedName}
-                      </span>
-                    ) : (
-                      <>
-                        <input
-                          type="text"
-                          value={v.correctedName}
-                          onChange={(e) =>
-                            setNameValidations((prev) => ({
-                              ...prev,
-                              [key]: { ...prev[key], correctedName: e.target.value },
-                            }))
-                          }
-                          placeholder="Nombre exacto en ATLAS"
-                          style={{
-                            flex: 1,
-                            minWidth: '180px',
-                            padding: '6px 10px',
-                            border: '1px solid var(--hz-neutral-300)',
-                            borderRadius: '6px',
-                            fontSize: '0.8125rem',
-                            fontFamily: 'var(--font-inter)',
-                            color: 'var(--atlas-navy-1)',
-                          }}
-                        />
-                        <button
-                          onClick={() => void handleVerifyName(key, tipo)}
-                          disabled={v.status === 'verifying' || !v.correctedName.trim()}
-                          style={{
-                            padding: '6px 14px',
-                            border: 'none',
-                            borderRadius: '6px',
-                            backgroundColor:
-                              v.status === 'verifying' || !v.correctedName.trim()
-                                ? 'var(--hz-neutral-300)'
-                                : 'var(--atlas-blue)',
-                            color: '#fff',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                            cursor:
-                              v.status === 'verifying' || !v.correctedName.trim()
-                                ? 'not-allowed'
-                                : 'pointer',
-                            fontFamily: 'var(--font-inter)',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {v.status === 'verifying' ? 'Verificando...' : 'Verificar'}
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                        {v.status === 'verifying' ? 'Verificando...' : 'Verificar'}
+                      </button>
+                    </div>
+                  );
+                })}
             </div>
           )}
 
