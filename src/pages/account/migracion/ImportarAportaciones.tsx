@@ -1,10 +1,15 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Download, TrendingUp, Upload, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Download, TrendingUp, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   AportacionesImportPreview,
+  AportacionImportPreviewRow,
+  BusquedaPosicionResult,
+  FilaCorregida,
+  buscarPosicionPorNombre,
   descargarPlantillaImportacionAportaciones,
   importarAportacionesHistoricasMasivas,
+  importarFilasCorregidas,
   previsualizarImportacionAportaciones,
 } from '../../../services/inversionesAportacionesImportService';
 
@@ -23,18 +28,31 @@ const formatCurrency = (value: number): string =>
     maximumFractionDigits: 2,
   }).format(value);
 
+// Per-row override state for inline editing
+interface RowOverride {
+  posicionNombre: string;
+  entidad: string;
+  status: 'editing' | 'verified' | 'not_found';
+  match?: BusquedaPosicionResult;
+}
+
 const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete, onBack }) => {
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<AportacionesImportPreview | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewPage, setPreviewPage] = useState(1);
+  const [rowOverrides, setRowOverrides] = useState<Record<number, RowOverride>>({});
+  const [verifying, setVerifying] = useState<Record<number, boolean>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const totalPreviewPages = preview ? Math.max(1, Math.ceil(preview.rows.length / PREVIEW_ROW_LIMIT)) : 1;
   const paginatedRows = preview
     ? preview.rows.slice((previewPage - 1) * PREVIEW_ROW_LIMIT, previewPage * PREVIEW_ROW_LIMIT)
     : [];
+
+  const verifiedCount = Object.values(rowOverrides).filter((v) => v.status === 'verified').length;
+  const totalToImport = (preview?.totalValidas ?? 0) + verifiedCount;
 
   const runPreview = useCallback(async (file: File) => {
     setImporting(true);
@@ -44,7 +62,20 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
       setSelectedFile(file);
       setPreviewPage(1);
 
-      if (data.totalValidas === 0) {
+      // Initialize inline-edit state for each error row
+      const initialOverrides: Record<number, RowOverride> = {};
+      data.rows
+        .filter((r) => r.estado === 'error')
+        .forEach((r) => {
+          initialOverrides[r.fila] = {
+            posicionNombre: r.posicionNombre,
+            entidad: r.entidad,
+            status: 'editing',
+          };
+        });
+      setRowOverrides(initialOverrides);
+
+      if (data.totalValidas === 0 && data.totalConError === 0) {
         toast('No hay aportaciones válidas para importar.', { icon: 'ℹ️' });
       }
     } catch (error) {
@@ -55,29 +86,81 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
     }
   }, []);
 
+  const handleVerifyRow = useCallback(async (row: AportacionImportPreviewRow) => {
+    const override = rowOverrides[row.fila];
+    if (!override) return;
+
+    setVerifying((v) => ({ ...v, [row.fila]: true }));
+    try {
+      const result = await buscarPosicionPorNombre(override.posicionNombre, override.entidad);
+      setRowOverrides((prev) => ({
+        ...prev,
+        [row.fila]: {
+          ...prev[row.fila],
+          status: result ? 'verified' : 'not_found',
+          match: result ?? undefined,
+        },
+      }));
+      if (!result) toast(`No se encontró "${override.posicionNombre}" (${override.entidad})`, { icon: '⚠️' });
+    } catch {
+      toast.error('Error al verificar la posición');
+    } finally {
+      setVerifying((v) => ({ ...v, [row.fila]: false }));
+    }
+  }, [rowOverrides]);
+
   const handleImport = useCallback(async () => {
     if (!selectedFile) return;
-
     setImporting(true);
     try {
+      // 1. Import valid rows from file
       const result = await importarAportacionesHistoricasMasivas(selectedFile);
 
-      if (result.imported > 0) {
-        toast.success(`Importadas ${result.imported} aportaciones históricas.`);
+      // 2. Import inline-corrected rows
+      const correctedPayload: FilaCorregida[] = [];
+      if (preview) {
+        preview.rows
+          .filter((r) => r.estado === 'error' && rowOverrides[r.fila]?.status === 'verified')
+          .forEach((r) => {
+            const override = rowOverrides[r.fila]!;
+            correctedPayload.push({
+              fecha: r.fecha,
+              importe: r.importe,
+              notas: r.notas,
+              targetKind: override.match!.kind,
+              targetId: override.match!.id,
+              importeEmpresa: r.importeEmpresa,
+              importeIndividuo: r.importeIndividuo,
+            });
+          });
       }
 
-      if (result.errors.length > 0) {
+      let correctedImported = 0;
+      if (correctedPayload.length > 0) {
+        const correctedResult = await importarFilasCorregidas(correctedPayload);
+        correctedImported = correctedResult.imported;
+        if (correctedResult.errors.length > 0) {
+          toast(correctedResult.errors[0], { icon: '⚠️' });
+        }
+      }
+
+      const totalImported = result.imported + correctedImported;
+
+      if (totalImported > 0) {
+        toast.success(`Importadas ${totalImported} aportaciones históricas.`);
+      }
+      if (result.errors.length > 0 && correctedImported === 0) {
         toast(result.errors[0], { icon: '⚠️' });
       }
-
-      if (result.imported === 0 && result.errors.length === 0) {
+      if (totalImported === 0 && result.errors.length === 0) {
         toast('No se detectaron filas para importar.', { icon: 'ℹ️' });
       }
 
-      if (result.imported > 0) {
+      if (totalImported > 0) {
         setPreview(null);
         setSelectedFile(null);
         setPreviewPage(1);
+        setRowOverrides({});
         onComplete();
       }
     } catch (error) {
@@ -86,7 +169,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
     } finally {
       setImporting(false);
     }
-  }, [onComplete, selectedFile]);
+  }, [onComplete, preview, rowOverrides, selectedFile]);
 
   const handleDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -100,6 +183,128 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
     if (file) runPreview(file);
     event.target.value = '';
   };
+
+  const renderErrorRow = (row: AportacionImportPreviewRow, index: number) => {
+    const override = rowOverrides[row.fila];
+    if (!override) return null;
+
+    const isVerified = override.status === 'verified';
+    const isNotFound = override.status === 'not_found';
+    const isVerifying = verifying[row.fila] ?? false;
+
+    return (
+      <tr
+        key={`${row.fila}-${index}`}
+        style={{
+          borderBottom: '1px solid var(--hz-neutral-300)',
+          backgroundColor: isVerified ? 'color-mix(in srgb, var(--ok, #22c55e) 8%, white)' : '#fff9f9',
+        }}
+      >
+        <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fila}</td>
+        <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fecha}</td>
+        <td style={{ padding: '6px 8px' }}>
+          {isVerified ? (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>{override.match!.nombre}</span>
+          ) : (
+            <input
+              value={override.posicionNombre}
+              onChange={(e) =>
+                setRowOverrides((prev) => ({
+                  ...prev,
+                  [row.fila]: { ...prev[row.fila], posicionNombre: e.target.value, status: 'editing', match: undefined },
+                }))
+              }
+              placeholder="Nombre de la posición"
+              style={{
+                width: '100%',
+                padding: '5px 8px',
+                border: `1px solid ${isNotFound ? 'var(--error, #ef4444)' : 'var(--hz-neutral-300)'}`,
+                borderRadius: 6,
+                fontSize: '0.8125rem',
+                fontFamily: 'inherit',
+              }}
+            />
+          )}
+        </td>
+        <td style={{ padding: '6px 8px' }}>
+          {isVerified ? (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>{override.match!.entidad}</span>
+          ) : (
+            <input
+              value={override.entidad}
+              onChange={(e) =>
+                setRowOverrides((prev) => ({
+                  ...prev,
+                  [row.fila]: { ...prev[row.fila], entidad: e.target.value, status: 'editing', match: undefined },
+                }))
+              }
+              placeholder="Entidad"
+              style={{
+                width: '100%',
+                padding: '5px 8px',
+                border: `1px solid ${isNotFound ? 'var(--error, #ef4444)' : 'var(--hz-neutral-300)'}`,
+                borderRadius: 6,
+                fontSize: '0.8125rem',
+                fontFamily: 'inherit',
+              }}
+            />
+          )}
+        </td>
+        <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '0.8125rem' }}>{formatCurrency(row.importe)}</td>
+        <td style={{ padding: '8px 12px' }}>
+          {isVerified ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--ok, #16a34a)', fontSize: '0.8125rem', fontWeight: 500 }}>
+              <Check size={13} />
+              Corregida
+            </span>
+          ) : (
+            <button
+              onClick={() => handleVerifyRow(row)}
+              disabled={isVerifying || !override.posicionNombre.trim()}
+              style={{
+                padding: '4px 10px',
+                border: '1px solid var(--atlas-blue)',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--atlas-blue)',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: isVerifying || !override.posicionNombre.trim() ? 'not-allowed' : 'pointer',
+                opacity: !override.posicionNombre.trim() ? 0.5 : 1,
+                fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {isVerifying ? 'Buscando…' : isNotFound ? 'Reintentar' : 'Verificar'}
+            </button>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
+  const renderValidRow = (row: AportacionImportPreviewRow, index: number) => (
+    <tr
+      key={`${row.fila}-${index}`}
+      style={{
+        borderBottom: '1px solid var(--hz-neutral-300)',
+        backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+      }}
+    >
+      <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fila}</td>
+      <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.fecha}</td>
+      <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.posicionNombre || row.posicionId}</td>
+      <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{row.entidad}</td>
+      <td style={{ padding: '8px 12px', textAlign: 'right', fontSize: '0.8125rem' }}>{formatCurrency(row.importe)}</td>
+      <td style={{ padding: '8px 12px', color: 'var(--ok, #16a34a)', fontSize: '0.8125rem' }}>Lista para importar</td>
+    </tr>
+  );
+
+  // Header columns differ: error rows have editable Posición + Entidad (separate), valid rows collapse them
+  const hasErrorRows = preview ? preview.rows.some((r) => r.estado === 'error') : false;
+  const tableHeaders = hasErrorRows
+    ? ['Fila', 'Fecha', 'Posición', 'Entidad', 'Importe', 'Estado']
+    : ['Fila', 'Fecha', 'Posición', 'Entidad', 'Importe', 'Estado'];
 
   return (
     <div style={{ fontFamily: 'var(--font-inter)' }}>
@@ -254,6 +459,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
                 setPreview(null);
                 setSelectedFile(null);
                 setPreviewPage(1);
+                setRowOverrides({});
               }}
               aria-label="Cancelar importación"
               style={{
@@ -285,7 +491,12 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
           >
             <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--atlas-navy-1)' }}>
-              Detectadas {preview.totalValidas} válidas y {preview.totalConError} con error. Se guardarán solo las filas válidas.
+              Detectadas {preview.totalValidas} válidas
+              {preview.totalConError > 0 && ` y ${preview.totalConError} con error`}
+              {verifiedCount > 0 && ` · ${verifiedCount} corregidas inline`}.
+              {preview.totalConError > 0 && verifiedCount < preview.totalConError && (
+                <> Edita los campos marcados en rojo y pulsa <strong>Verificar</strong> para incluirlas.</>
+              )}
             </p>
           </div>
 
@@ -293,7 +504,7 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--hz-neutral-300)' }}>
-                  {['Fila', 'Fecha', 'Posición', 'Entidad', 'Importe', 'Estado'].map((col) => (
+                  {tableHeaders.map((col) => (
                     <th
                       key={col}
                       style={{
@@ -312,24 +523,11 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
                 </tr>
               </thead>
               <tbody>
-                {paginatedRows.map((row, index) => (
-                  <tr
-                    key={`${row.fila}-${index}`}
-                    style={{
-                      borderBottom: '1px solid var(--hz-neutral-300)',
-                      backgroundColor: index % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
-                    }}
-                  >
-                    <td style={{ padding: '8px 12px' }}>{row.fila}</td>
-                    <td style={{ padding: '8px 12px' }}>{row.fecha}</td>
-                    <td style={{ padding: '8px 12px' }}>{row.posicionNombre || row.posicionId}</td>
-                    <td style={{ padding: '8px 12px' }}>{row.entidad}</td>
-                    <td style={{ padding: '8px 12px', textAlign: 'right' }}>{formatCurrency(row.importe)}</td>
-                    <td style={{ padding: '8px 12px', color: row.estado === 'valida' ? 'var(--ok)' : 'var(--error)' }}>
-                      {row.estado === 'valida' ? 'Lista para importar' : row.error}
-                    </td>
-                  </tr>
-                ))}
+                {paginatedRows.map((row, index) =>
+                  row.estado === 'error'
+                    ? renderErrorRow(row, index)
+                    : renderValidRow(row, index)
+                )}
               </tbody>
             </table>
             {preview.rows.length > PREVIEW_ROW_LIMIT && (
@@ -386,20 +584,20 @@ const ImportarAportaciones: React.FC<ImportarAportacionesProps> = ({ onComplete,
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button
               onClick={handleImport}
-              disabled={importing || preview.totalValidas === 0}
+              disabled={importing || totalToImport === 0}
               style={{
                 padding: '10px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: importing || preview.totalValidas === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
+                backgroundColor: importing || totalToImport === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
                 color: '#fff',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                cursor: importing || preview.totalValidas === 0 ? 'not-allowed' : 'pointer',
+                cursor: importing || totalToImport === 0 ? 'not-allowed' : 'pointer',
                 fontFamily: 'var(--font-inter)',
               }}
             >
-              {importing ? 'Importando...' : `Importar ${preview.totalValidas} aportaciones`}
+              {importing ? 'Importando...' : `Importar ${totalToImport} aportaciones`}
             </button>
           </div>
         </div>
