@@ -267,11 +267,15 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
             return false;
           });
-          // Also check inversiones with plan tipo (legacy data stored there)
+          // Also check inversiones with plan tipo (legacy data stored there) — mirror entidad logic
           if (!matched) {
-            matched = inversionesPlan.some(
-              (i: any) => i.nombre?.toLowerCase() === lower
-            );
+            matched = inversionesPlan.some((i: any) => {
+              const n = (i.nombre as string)?.toLowerCase();
+              if (!n) return false;
+              if (lower === n) return true;
+              if (i.entidad) return lower === `${n} (${(i.entidad as string).toLowerCase()})`;
+              return false;
+            });
           }
         } else {
           // Match without filtering by active state — same as importarHistorico in valoracionesService
@@ -318,14 +322,21 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         const props = await db.getAll('properties');
         matched = (props as any[]).some((p) => (p.alias || p.address)?.toLowerCase() === lower);
       } else if (tipo === 'plan_pensiones') {
-        const planes = await db.getAll('planesPensionInversion');
-        matched = (planes as any[]).some((p: any) => {
-          const n = (p.nombre as string)?.toLowerCase();
+        const [planes, invs] = await Promise.all([
+          db.getAll('planesPensionInversion'),
+          db.getAll('inversiones'),
+        ]);
+        const matchEntry = (entry: any) => {
+          const n = (entry.nombre as string)?.toLowerCase();
           if (!n) return false;
           if (lower === n) return true;
-          if (p.entidad) return lower === `${n} (${(p.entidad as string).toLowerCase()})`;
+          if (entry.entidad) return lower === `${n} (${(entry.entidad as string).toLowerCase()})`;
           return false;
-        });
+        };
+        const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones']);
+        matched =
+          (planes as any[]).some(matchEntry) ||
+          (invs as any[]).filter((i: any) => PLAN_TIPOS_INV.has(i.tipo)).some(matchEntry);
       } else {
         // Match without filtering by active state — same as importarHistorico in valoracionesService
         const invs = await db.getAll('inversiones');
