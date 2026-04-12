@@ -195,6 +195,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
   const [dragging, setDragging] = useState(false);
   const [nameValidations, setNameValidations] = useState<Record<string, NameValidation>>({});
   const [validatingNames, setValidatingNames] = useState(false);
+  const [dbNamesByTipo, setDbNamesByTipo] = useState<Record<string, string[]>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Validate names against DB ───────────────────────────────────────────────
@@ -263,6 +264,11 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         }
       }
       setNameValidations(validations);
+      setDbNamesByTipo({
+        inmueble: inmuebleNames,
+        inversion: inversionNames,
+        plan_pensiones: planNames,
+      });
     } catch (err) {
       console.error('Error validating names:', err);
     } finally {
@@ -716,16 +722,17 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             <div
               style={{
                 marginTop: '16px',
-                border: '1px solid var(--ok)',
-                borderRadius: '10px',
+                border: '1px solid var(--hz-neutral-300)',
+                borderLeft: '3px solid var(--atlas-blue)',
+                borderRadius: '8px',
                 padding: '12px 16px',
-                backgroundColor: 'var(--ok-light, #f0fdf4)',
+                backgroundColor: 'var(--s-positive-bg, var(--atlas-blue-light, #EBF3FF))',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <CheckCircle2 size={15} strokeWidth={1.5} style={{ color: 'var(--ok)', flexShrink: 0 }} aria-hidden="true" />
+                <CheckCircle2 size={15} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)', flexShrink: 0 }} aria-hidden="true" />
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-                  Nombres auto-corregidos
+                  Nombres corregidos automáticamente
                 </span>
               </div>
               {Object.entries(nameValidations)
@@ -736,7 +743,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                     <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', color: 'var(--atlas-navy-1)', marginBottom: '4px' }}>
                       <span style={{ color: 'var(--text-gray)' }}>"{nombre}"</span>
                       <span style={{ color: 'var(--text-gray)' }}>→</span>
-                      <span style={{ fontWeight: 600, color: 'var(--ok)' }}>{v.correctedName}</span>
+                      <span style={{ fontWeight: 600 }}>{v.correctedName}</span>
                       <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem' }}>({v.rowCount} fila{v.rowCount !== 1 ? 's' : ''})</span>
                     </div>
                   );
@@ -749,14 +756,15 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             <div
               style={{
                 marginTop: '16px',
-                border: '1px solid #f59e0b',
-                borderRadius: '10px',
+                border: '1px solid var(--hz-neutral-300)',
+                borderLeft: '3px solid var(--s-warn, var(--warn))',
+                borderRadius: '8px',
                 padding: '16px',
-                backgroundColor: '#fffbeb',
+                backgroundColor: 'var(--s-warn-bg)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                <AlertCircle size={16} strokeWidth={1.5} style={{ color: '#f59e0b', flexShrink: 0 }} aria-hidden="true" />
+                <AlertCircle size={16} strokeWidth={1.5} style={{ color: 'var(--s-warn)', flexShrink: 0 }} aria-hidden="true" />
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
                   Nombres no encontrados en ATLAS — corrígelos antes de importar
                 </span>
@@ -765,6 +773,10 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                 .filter(([, v]) => v.status !== 'matched')
                 .map(([key, v]) => {
                   const [tipo, nombre] = key.split('||');
+                  // Deduplicate and sort without mutating state array
+                  const options = [...new Set(dbNamesByTipo[tipo] ?? [])].sort((a, b) => a.localeCompare(b));
+                  // Show placeholder when correctedName is not a valid DB option yet
+                  const selectValue = options.includes(v.correctedName) ? v.correctedName : '';
                   return (
                     <div
                       key={key}
@@ -783,51 +795,87 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                         "{nombre}"
                       </span>
                       <span style={{ color: 'var(--text-gray)', fontSize: '0.75rem', flexShrink: 0 }}>→</span>
-                      <input
-                        type="text"
-                        value={v.correctedName}
-                        onChange={(e) =>
-                          setNameValidations((prev) => ({
-                            ...prev,
-                            [key]: { ...prev[key], correctedName: e.target.value },
-                          }))
-                        }
-                        placeholder="Nombre exacto en ATLAS"
-                        style={{
-                          flex: 1,
-                          minWidth: '180px',
-                          padding: '6px 10px',
-                          border: '1px solid var(--hz-neutral-300)',
-                          borderRadius: '6px',
-                          fontSize: '0.8125rem',
-                          fontFamily: 'var(--font-inter)',
-                          color: 'var(--atlas-navy-1)',
-                        }}
-                      />
-                      <button
-                        onClick={() => void handleVerifyName(key, tipo)}
-                        disabled={v.status === 'verifying' || !v.correctedName.trim()}
-                        style={{
-                          padding: '6px 14px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          backgroundColor:
-                            v.status === 'verifying' || !v.correctedName.trim()
-                              ? 'var(--hz-neutral-300)'
-                              : 'var(--atlas-blue)',
-                          color: '#fff',
-                          fontSize: '0.8125rem',
-                          fontWeight: 600,
-                          cursor:
-                            v.status === 'verifying' || !v.correctedName.trim()
-                              ? 'not-allowed'
-                              : 'pointer',
-                          fontFamily: 'var(--font-inter)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {v.status === 'verifying' ? 'Verificando...' : 'Verificar'}
-                      </button>
+                      {options.length > 0 ? (
+                        <select
+                          value={selectValue}
+                          onChange={(e) => {
+                            const selected = e.target.value;
+                            setNameValidations((prev) => ({
+                              ...prev,
+                              [key]: {
+                                ...prev[key],
+                                correctedName: selected,
+                                status: selected ? 'matched' : 'not_found',
+                              },
+                            }));
+                          }}
+                          style={{
+                            flex: 1,
+                            minWidth: '200px',
+                            padding: '6px 10px',
+                            border: '1px solid var(--hz-neutral-300)',
+                            borderRadius: '6px',
+                            fontSize: '0.8125rem',
+                            fontFamily: 'var(--font-inter)',
+                            color: 'var(--atlas-navy-1)',
+                            backgroundColor: '#fff',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">— Selecciona el activo correcto —</option>
+                          {options.map((name, i) => (
+                            <option key={`${name}-${i}`} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <>
+                          <input
+                            type="text"
+                            value={v.correctedName}
+                            onChange={(e) =>
+                              setNameValidations((prev) => ({
+                                ...prev,
+                                [key]: { ...prev[key], correctedName: e.target.value },
+                              }))
+                            }
+                            placeholder="Nombre exacto en ATLAS"
+                            style={{
+                              flex: 1,
+                              minWidth: '180px',
+                              padding: '6px 10px',
+                              border: '1px solid var(--hz-neutral-300)',
+                              borderRadius: '6px',
+                              fontSize: '0.8125rem',
+                              fontFamily: 'var(--font-inter)',
+                              color: 'var(--atlas-navy-1)',
+                            }}
+                          />
+                          <button
+                            onClick={() => void handleVerifyName(key, tipo)}
+                            disabled={v.status === 'verifying' || !v.correctedName.trim()}
+                            style={{
+                              padding: '6px 14px',
+                              border: 'none',
+                              borderRadius: '6px',
+                              backgroundColor:
+                                v.status === 'verifying' || !v.correctedName.trim()
+                                  ? 'var(--hz-neutral-300)'
+                                  : 'var(--atlas-blue)',
+                              color: '#fff',
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              cursor:
+                                v.status === 'verifying' || !v.correctedName.trim()
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              fontFamily: 'var(--font-inter)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {v.status === 'verifying' ? 'Verificando...' : 'Verificar'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   );
                 })}
