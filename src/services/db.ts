@@ -2516,9 +2516,8 @@ export const migrarPlanesDuplicados = async (): Promise<void> => {
         // Fusionar historialAportaciones existente si el registro ya tenía uno
         if (plan.historialAportaciones) {
           for (const [yearKey, entry] of Object.entries(plan.historialAportaciones)) {
-            const año = Number(yearKey);
-            if (!principal.historialAportaciones[año]) {
-              principal.historialAportaciones[año] = entry as {
+            if (!principal.historialAportaciones[yearKey]) {
+              principal.historialAportaciones[yearKey] = entry as {
                 titular: number; empresa: number; total: number; fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
               };
             }

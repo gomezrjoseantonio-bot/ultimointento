@@ -453,11 +453,14 @@ export async function importarAportacionesHistoricasMasivas(
         });
       }
       const plan = planAccum.get(planId)!;
-      const año = new Date(row.aportacion.fecha).getFullYear();
-      const existing = plan.historialAportaciones?.[año] ?? { titular: 0, empresa: 0, total: 0 };
+      // Use YYYY-MM key for monthly granularity (falls back to YYYY if no month)
+      const mesKey = row.aportacion.fecha.length >= 7
+        ? row.aportacion.fecha.slice(0, 7)
+        : String(new Date(row.aportacion.fecha).getFullYear());
+      const existing = plan.historialAportaciones?.[mesKey] ?? { titular: 0, empresa: 0, total: 0 };
       plan.historialAportaciones = {
         ...plan.historialAportaciones,
-        [año]: {
+        [mesKey]: {
           titular: (existing.titular ?? 0) + (row.importeIndividuo ?? 0),
           empresa: (existing.empresa ?? 0) + (row.importeEmpresa ?? 0),
           total: (existing.total ?? 0) + row.aportacion.importe,
@@ -565,11 +568,13 @@ export async function importarFilasCorregidas(
         });
       }
       const plan = planAccum.get(row.targetId)!;
-      const año = new Date(row.fecha).getFullYear();
-      const existing = plan.historialAportaciones?.[año] ?? { titular: 0, empresa: 0, total: 0 };
+      const mesKey = row.fecha.length >= 7
+        ? row.fecha.slice(0, 7)
+        : String(new Date(row.fecha).getFullYear());
+      const existing = plan.historialAportaciones?.[mesKey] ?? { titular: 0, empresa: 0, total: 0 };
       plan.historialAportaciones = {
         ...plan.historialAportaciones,
-        [año]: {
+        [mesKey]: {
           titular: (existing.titular ?? 0) + (row.importeIndividuo ?? 0),
           empresa: (existing.empresa ?? 0) + (row.importeEmpresa ?? 0),
           total: (existing.total ?? 0) + row.importe,

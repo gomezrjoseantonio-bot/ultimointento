@@ -201,7 +201,8 @@ function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionI
     (p.entidad && posicion.entidad && p.entidad.toLowerCase() === posicion.entidad.toLowerCase())
   );
   const historial = matchingPlan?.historialAportaciones ?? {};
-  const years = Object.keys(historial).map(Number).sort((a, b) => b - a);
+  // Keys can be 'YYYY' (annual) or 'YYYY-MM' (monthly) — sort descending as strings
+  const years = Object.keys(historial).sort((a, b) => b.localeCompare(a));
 
   const aportacionesPorAño: Record<number, number> = {};
   posicion.aportaciones.forEach(a => {
@@ -234,18 +235,22 @@ function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionI
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH(false)}>Año</th>
+                <th style={TH(false)}>Periodo</th>
                 <th style={TH()}>Titular</th>
                 <th style={TH()}>Empresa</th>
                 <th style={TH()}>Total</th>
               </tr>
             </thead>
             <tbody>
-              {years.map((year, idx) => {
-                const row = historial[year];
+              {years.map((period, idx) => {
+                const row = historial[period];
+                // Format label: 'YYYY-MM' → 'Mar 2024', 'YYYY' → '2024'
+                const periodLabel = period.length === 7
+                  ? new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(new Date(period + '-01'))
+                  : period;
                 return (
-                  <tr key={year} style={{ borderBottom: idx < years.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
-                    <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.n700 }}>{year}</td>
+                  <tr key={period} style={{ borderBottom: idx < years.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
+                    <td style={{ padding: '8px 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.n700 }}>{periodLabel}</td>
                     <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(row.titular)}</td>
                     <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(row.empresa)}</td>
                     <td style={{ padding: '8px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: C.blue }}>{fmt(row.total)}</td>
@@ -708,9 +713,12 @@ const GestionInversionesPage: React.FC = () => {
                   const totalAportado = Object.values(historial).reduce(
                     (s, row) => s + (row.total ?? (row.titular ?? 0) + (row.empresa ?? 0)), 0
                   );
-                  const años = Object.keys(historial).map(Number).sort((a, b) => b - a);
-                  const ultimoAño = años[0];
-                  const ultimaAp = ultimoAño ? historial[ultimoAño] : null;
+                  const periodos = Object.keys(historial).sort((a, b) => b.localeCompare(a));
+                  const ultimoPeriodo = periodos[0];
+                  const ultimaAp = ultimoPeriodo ? historial[ultimoPeriodo] : null;
+                  const ultimoPeriodoLabel = ultimoPeriodo?.length === 7
+                    ? new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(new Date(ultimoPeriodo + '-01'))
+                    : ultimoPeriodo;
 
                   return (
                     <tr key={plan.id ?? plan.nombre} style={{ borderBottom: i < planesPension.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
@@ -730,8 +738,8 @@ const GestionInversionesPage: React.FC = () => {
                         {fmt(totalAportado)}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                        {ultimaAp && ultimoAño
-                          ? `${fmt(ultimaAp.total ?? (ultimaAp.titular ?? 0) + (ultimaAp.empresa ?? 0))} · ${ultimoAño}`
+                        {ultimaAp && ultimoPeriodoLabel
+                          ? `${fmt(ultimaAp.total ?? (ultimaAp.titular ?? 0) + (ultimaAp.empresa ?? 0))} · ${ultimoPeriodoLabel}`
                           : '—'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -970,12 +978,13 @@ const GestionInversionesPage: React.FC = () => {
                   const empresa = apEmpresa !== '' ? parseFloat(apEmpresa) : undefined;
                   if (titular === undefined && empresa === undefined) return;
 
-                  const año = new Date(apFecha).getFullYear();
+                  // Use YYYY-MM key for monthly granularity
+                  const mesKey = apFecha.slice(0, 7);
                   const total = (titular ?? 0) + (empresa ?? 0);
                   const historialActual = planSeleccionado.historialAportaciones ?? {};
                   const historialActualizado = {
                     ...historialActual,
-                    [año]: {
+                    [mesKey]: {
                       titular: titular ?? 0,
                       empresa: empresa ?? 0,
                       total,

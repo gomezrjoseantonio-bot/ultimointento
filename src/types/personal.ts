@@ -281,10 +281,11 @@ export interface PlanPensionInversion {
   aportacionPeriodica?: AportacionPeriodica;
   esHistorico: boolean; // true for historical investments without periodic contributions
 
-  // historial de aportaciones por año
-  historialAportaciones?: Record<number, {
-    titular: number;      // aportación del titular en el año
-    empresa: number;      // aportación de la empresa en el año
+  // historial de aportaciones por año o mes
+  // Clave: 'YYYY' para granularidad anual o 'YYYY-MM' para mensual
+  historialAportaciones?: Record<string, {
+    titular: number;      // aportación del titular en el periodo
+    empresa: number;      // aportación de la empresa en el periodo
     total: number;        // titular + empresa
     fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
   }>;
