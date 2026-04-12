@@ -235,7 +235,7 @@ function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionI
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={TH(false)}>Año</th>
+                <th style={TH(false)}>Periodo</th>
                 <th style={TH()}>Titular</th>
                 <th style={TH()}>Empresa</th>
                 <th style={TH()}>Total</th>

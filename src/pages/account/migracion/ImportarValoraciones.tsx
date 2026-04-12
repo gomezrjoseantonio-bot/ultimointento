@@ -148,11 +148,13 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [nameValidations, setNameValidations] = useState<Record<string, NameValidation>>({});
+  const [validatingNames, setValidatingNames] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Validate names against DB ───────────────────────────────────────────────
 
   const validateNamesAsync = useCallback(async (rows: PreviewRow[]) => {
+    setValidatingNames(true);
     try {
       const db = await initDB();
       const [properties, inversiones, planes] = await Promise.all([
@@ -188,8 +190,9 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             return false;
           });
         } else {
+          // Match without filtering by active state — same as importarHistorico in valoracionesService
           matched = (inversiones as any[]).some(
-            (i) => i.nombre?.toLowerCase() === lower && i.activo !== false
+            (i) => i.nombre?.toLowerCase() === lower
           );
         }
         if (!matched) {
@@ -199,6 +202,8 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       setNameValidations(validations);
     } catch (err) {
       console.error('Error validating names:', err);
+    } finally {
+      setValidatingNames(false);
     }
   }, []);
 
@@ -209,7 +214,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
     }));
     try {
       const correctedName = nameValidations[key]?.correctedName ?? '';
-      const lower = correctedName.toLowerCase();
+      const lower = correctedName.trim().toLowerCase();
       const db = await initDB();
       let matched = false;
       if (tipo === 'inmueble') {
@@ -225,9 +230,10 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           return false;
         });
       } else {
+        // Match without filtering by active state — same as importarHistorico in valoracionesService
         const invs = await db.getAll('inversiones');
         matched = (invs as any[]).some(
-          (i) => i.nombre?.toLowerCase() === lower && i.activo !== false
+          (i) => i.nombre?.toLowerCase() === lower
         );
       }
       setNameValidations((prev) => ({
@@ -752,20 +758,20 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button
               onClick={handleImportar}
-              disabled={importing || importableCount === 0}
+              disabled={importing || validatingNames || importableCount === 0}
               style={{
                 padding: '10px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: importing || importableCount === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
+                backgroundColor: importing || validatingNames || importableCount === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
                 color: '#fff',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                cursor: importing || importableCount === 0 ? 'not-allowed' : 'pointer',
+                cursor: importing || validatingNames || importableCount === 0 ? 'not-allowed' : 'pointer',
                 fontFamily: 'var(--font-inter)',
               }}
             >
-              {importing ? 'Importando...' : `Importar ${importableCount} valoraciones`}
+              {importing ? 'Importando...' : validatingNames ? 'Validando nombres...' : `Importar ${importableCount} valoraciones`}
             </button>
           </div>
         </div>
