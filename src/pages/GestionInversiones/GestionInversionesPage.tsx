@@ -393,6 +393,7 @@ const GestionInversionesPage: React.FC = () => {
   const [apTitular, setApTitular] = useState('');
   const [apEmpresa, setApEmpresa] = useState('');
   const [evolucionDatos, setEvolucionDatos] = useState<Array<{ mes: string; valor: number }>>([]);
+  const [evolucionHeader, setEvolucionHeader] = useState<{ nombre: string; entidad?: string } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -494,6 +495,19 @@ const GestionInversionesPage: React.FC = () => {
       const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id);
       setEvolucionDatos(datos.map(d => ({ mes: d.fecha_valoracion, valor: d.valor })));
       setPlanSeleccionado(plan);
+      setEvolucionHeader({ nombre: plan.nombre, entidad: plan.entidad });
+      setMostrarModalEvolucion(true);
+    } catch {
+      toast.error('Error al cargar el histórico de valoraciones');
+    }
+  };
+
+  const handleVerEvolucionPosicion = async (p: PosicionInversion) => {
+    if (!p.id) return;
+    try {
+      const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', p.id);
+      setEvolucionDatos(datos.map(d => ({ mes: d.fecha_valoracion, valor: d.valor })));
+      setEvolucionHeader({ nombre: p.nombre, entidad: p.entidad ?? undefined });
       setMostrarModalEvolucion(true);
     } catch {
       toast.error('Error al cargar el histórico de valoraciones');
@@ -648,6 +662,16 @@ const GestionInversionesPage: React.FC = () => {
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      {p.tipo === 'plan_pensiones' && (
+                        <button
+                          onClick={() => handleVerEvolucionPosicion(p)}
+                          title="Ver evolución histórica"
+                          aria-label={`Ver evolución de ${p.nombre}`}
+                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                        >
+                          <BarChart2 size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleViewDetail(p.id)}
                         title="Ver detalle y aportaciones"
@@ -1012,14 +1036,14 @@ const GestionInversionesPage: React.FC = () => {
         </div>
       )}
       {/* ── Modal: evolución histórica del plan ──────────────────── */}
-      {mostrarModalEvolucion && planSeleccionado && (
+      {mostrarModalEvolucion && evolucionHeader && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }}>
           <div style={{ background: 'white', border: `1px solid ${C.n300}`, borderRadius: 14, padding: 28, width: '100%', maxWidth: 720, boxShadow: '0 12px 40px rgba(0,0,0,0.18)', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
                 <div style={{ fontSize: 17, fontWeight: 700, color: C.n700 }}>Evolución histórica</div>
                 <div style={{ fontSize: 12, color: C.n500, marginTop: 2 }}>
-                  {planSeleccionado.nombre}{planSeleccionado.entidad ? ` · ${planSeleccionado.entidad}` : ''}
+                  {evolucionHeader.nombre}{evolucionHeader.entidad ? ` · ${evolucionHeader.entidad}` : ''}
                 </div>
               </div>
               <button
