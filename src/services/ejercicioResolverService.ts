@@ -366,6 +366,37 @@ export async function bootstrapEjercicios(): Promise<void> {
   }
 }
 
+/**
+ * Elimina del store ejerciciosFiscalesCoord cualquier año que sea
+ * mayor que el año actual. Son registros basura generados por un bug anterior
+ * (bootstrap creaba entradas marcadas como 'declarado' para años futuros).
+ *
+ * A diferencia de bootstrapEjercicios, elimina incluso entradas con snapshot
+ * AEAT, ya que para años futuros no puede existir una declaración AEAT real.
+ *
+ * Safe to run multiple times (idempotent).
+ */
+export async function limpiarEjerciciosCoordBasura(): Promise<{ eliminados: number }> {
+  const db = await initDB();
+  const añoActual = new Date().getFullYear();
+
+  const todos = await db.getAll('ejerciciosFiscalesCoord');
+  let eliminados = 0;
+
+  for (const registro of todos) {
+    const año = typeof registro?.año === 'number' ? registro.año : NaN;
+    if (Number.isFinite(año) && año > añoActual) {
+      await db.delete('ejerciciosFiscalesCoord', año);
+      eliminados++;
+    }
+  }
+
+  if (eliminados > 0) {
+    console.log(`[ejerciciosFiscalesCoord] Limpieza: ${eliminados} registros basura eliminados`);
+  }
+  return { eliminados };
+}
+
 // ═══════════════════════════════════════════════
 // HELPERS INTERNOS
 // ═══════════════════════════════════════════════
