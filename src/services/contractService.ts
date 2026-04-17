@@ -281,6 +281,75 @@ export const getRentaMensual = async (contratoId: number): Promise<RentaMensual[
   return allEntries.filter(entry => entry.contratoId === contratoId);
 };
 
+/**
+ * Para cualquier rentaMensual cuyo año pertenezca a un ejercicio fiscal con
+ * estado 'declarado', marcar el registro como cobrado automáticamente.
+ *
+ * Se consideran ejercicios declarados los del store legacy `ejerciciosFiscales`
+ * (keyPath: `ejercicio`) y los del coordinador `ejerciciosFiscalesCoord`
+ * (keyPath: `año`). Se unen ambas fuentes para mayor robustez.
+ *
+ * Reglas:
+ * - Solo afecta a registros cuyo estado no sea ya 'cobrada'.
+ * - sin_identificar contratos nunca generan rentaMensual (ya implementado aguas arriba).
+ * - Idempotente: ejecutar múltiples veces no altera registros ya cobrados.
+ */
+export const autoConfirmarRentaMensualDeclarada = async (): Promise<{ confirmados: number }> => {
+  const db = await initDB();
+
+  const añosDeclarados = new Set<number>();
+
+  try {
+    const coord = await db.getAll('ejerciciosFiscalesCoord');
+    for (const ej of coord) {
+      if (ej?.estado === 'declarado' && typeof ej.año === 'number') {
+        añosDeclarados.add(ej.año);
+      }
+    }
+  } catch {
+    // Store may not exist in older DB versions
+  }
+
+  try {
+    const legacy = await db.getAll('ejerciciosFiscales');
+    for (const ej of legacy) {
+      const año = (ej as any).ejercicio ?? (ej as any).año;
+      if (ej?.estado === 'declarado' && typeof año === 'number') {
+        añosDeclarados.add(año);
+      }
+    }
+  } catch {
+    // Store may not exist in older DB versions
+  }
+
+  if (añosDeclarados.size === 0) return { confirmados: 0 };
+
+  const todas = await db.getAll('rentaMensual');
+  let confirmados = 0;
+
+  for (const renta of todas) {
+    if (!renta?.periodo || typeof renta.periodo !== 'string') continue;
+    const año = parseInt(renta.periodo.slice(0, 4), 10);
+    if (!Number.isFinite(año) || !añosDeclarados.has(año)) continue;
+    if (renta.estado === 'cobrada') continue;
+
+    const actualizado: RentaMensual = {
+      ...renta,
+      estado: 'cobrada',
+      importeCobradoAcum: renta.importePrevisto,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.put('rentaMensual', actualizado);
+    confirmados++;
+  }
+
+  if (confirmados > 0) {
+    console.log(`[rentaMensual] Auto-confirmación ejercicios declarados: ${confirmados} registros marcados como cobrados`);
+  }
+  return { confirmados };
+};
+
 export type SignatureStatus = 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';
 
 export const updateSignatureStatus = async (
