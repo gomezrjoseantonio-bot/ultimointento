@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 46; // V4.6: GAP-3 — Añadir índices año/certeza/generadoPor a treasuryEvents
+const DB_VERSION = 47; // V4.7: cleanup — eliminar store huérfano importLogs
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -938,37 +938,6 @@ export interface Movement {
   updatedAt: string;
 }
 
-// ATLAS HORIZON: Import logging interface per problem statement (section 11)
-export interface ImportLog {
-  id?: number;
-  fileName: string;
-  fileSize: number;
-  importedAt: string;
-  account_id?: number;
-  detected_iban?: string;
-  
-  // Results summary
-  totalRows: number;
-  created: number;
-  conciliated: number;
-  unplanned: number;
-  skipped: number;
-  transfers: number;
-  errors: number;
-  
-  // Error details
-  errorDetails?: Array<{
-    line: number;
-    error: string;
-    data?: any;
-  }>;
-  
-  // Source information
-  source: 'treasury_import' | 'inbox_auto';
-  batchId: string;
-  userId?: string;
-}
-
 // ATLAS HORIZON: Matching configuration per problem statement (section 6)
 export interface MatchingConfiguration {
   id?: number;
@@ -1874,7 +1843,6 @@ interface AtlasHorizonDB {
   gastos: Gasto; // H10: Treasury expense records
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
-  importLogs: ImportLog; // ATLAS HORIZON: Import logging for banking movements pipeline
   matchingConfiguration: MatchingConfiguration; // ATLAS HORIZON: Matching rules configuration
   reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
@@ -2147,14 +2115,9 @@ export const initDB = async () => {
           presupuestoLineasStore.createIndex('prestamoId', 'prestamoId', { unique: false });
         }
 
-        // ATLAS HORIZON: Import logs store for banking movements pipeline
-        if (!db.objectStoreNames.contains('importLogs')) {
-          const importLogsStore = db.createObjectStore('importLogs', { keyPath: 'id', autoIncrement: true });
-          importLogsStore.createIndex('fileName', 'fileName', { unique: false });
-          importLogsStore.createIndex('importedAt', 'importedAt', { unique: false });
-          importLogsStore.createIndex('source', 'source', { unique: false });
-          importLogsStore.createIndex('batchId', 'batchId', { unique: false });
-          importLogsStore.createIndex('account_id', 'account_id', { unique: false });
+        // V4.7: importLogs store removed — orphan (no reads/writes)
+        if (oldVersion < 47 && db.objectStoreNames.contains('importLogs')) {
+          db.deleteObjectStore('importLogs');
         }
 
         // ATLAS HORIZON: Matching configuration store

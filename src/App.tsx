@@ -443,20 +443,6 @@ function App() {
                   <DeclaracionCompletaPage />
                 </React.Suspense>
               } />
-              {/* Legacy routes — redirect to new supervision view */}
-              <Route path="mi-irpf" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="historial" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="estado" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="resumen" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="dashboard" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="simulador" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="declaracion" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="pre-declaracion" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="pagos" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="historico" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="entidades" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="detalle" element={<Navigate to="/fiscalidad" replace />} />
-              <Route path="declaraciones" element={<Navigate to="/fiscalidad" replace />} />
             </Route>
             
             {/* Financing Module - Standalone loan management */}
@@ -526,16 +512,6 @@ function App() {
                   <PersonalSupervision />
                 </React.Suspense>
               } />
-              {/* Legacy routes — redirect to supervision */}
-              <Route path="resumen" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="estado" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="ingresos" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="gastos" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="nomina" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="autonomo" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="pension" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="pensiones-inversiones" element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="otros-ingresos" element={<Navigate to="/personal/supervision" replace />} />
             </Route>
             
             {/* Gestión Personal + Gestión Inversiones */}
