@@ -309,7 +309,7 @@ export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Prom
   } else {
     let inmuebleIds: number[] = [];
     try {
-      inmuebleIds = (await getEjercicio(currentYear)).inmuebleIds;
+      inmuebleIds = (await getEjercicio(currentYear))?.inmuebleIds ?? [];
     } catch { /* resolver unavailable */ }
 
     if (inmuebleIds.length > 0) {
