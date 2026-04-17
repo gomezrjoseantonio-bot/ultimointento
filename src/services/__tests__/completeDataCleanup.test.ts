@@ -80,14 +80,14 @@ describe('Complete Data Cleanup', () => {
         'rentaMensual', 'accounts', 'movements', 'importBatches',
         'treasuryEvents', 'treasuryRecommendations',
         'ingresos', 'budgets', 'budgetLines',
-        'presupuestos', 'presupuestoLineas', 'importLogs', 'matchingConfiguration',
+        'presupuestos', 'presupuestoLineas', 'matchingConfiguration',
         'aeatCarryForwards', 'propertyDays',
         'kpiConfigurations', 'keyval',
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
-      // Verify we have a comprehensive list of stores (currently 23 stores)
-      expect(expectedStores.length).toBe(23);
+      // Verify we have a comprehensive list of stores (currently 22 stores)
+      expect(expectedStores.length).toBe(22);
       expect(expectedStores).toContain('accounts');
       expect(expectedStores).toContain('movements');
       expect(expectedStores).toContain('properties');
