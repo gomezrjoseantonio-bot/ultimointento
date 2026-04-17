@@ -303,7 +303,7 @@ export interface GastoInmueble {
   fecha: string;
   concepto: string;
   categoria: GastoCategoria;
-  casillaAEAT: '0105'|'0106'|'0109'|'0112'|'0113'|'0114'|'0115'|'0117';
+  casillaAEAT: AEATBox;
   importe: number;
   origen: GastoOrigen;
   origenId?: string;
@@ -711,7 +711,7 @@ export type AEATFiscalType =
   | 'amortizacion-muebles'   // Furniture amortization (10 years)
   | 'capex-mejora-ampliacion'; // Mejora/Ampliación (valor catastral)
 
-export type AEATBox = 
+export type AEATBox =
   | '0105' // Interests/financing
   | '0106' // R&C
   | '0109' // Community
@@ -719,7 +719,10 @@ export type AEATBox =
   | '0113' // Utilities
   | '0114' // Insurance
   | '0115' // Local taxes
-  | '0117'; // Furniture amortization
+  | '0117' // Furniture amortization
+  | '0129' // Mejoras realizadas en el ejercicio
+  | '0130' // Base de amortización del inmueble
+  | '0131'; // Amortización del inmueble
 
 export type ProrationMethod = 'metros-cuadrados' | 'unidades' | 'porcentaje-manual' | 'ocupacion';
 
@@ -1373,6 +1376,9 @@ export interface FiscalSummary {
   box0114: number; // Insurance
   box0115: number; // Local taxes
   box0117: number; // Furniture amortization
+  box0129?: number; // Mejoras realizadas en el ejercicio
+  box0130?: number; // Base de amortización del inmueble
+  box0131?: number; // Amortización del inmueble
   mejorasTotal: number; // Construction value increase
   // Calculated fields
   deductibleExcess?: number; // 0105+0106 excess over income

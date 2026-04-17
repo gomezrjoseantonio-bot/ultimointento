@@ -1092,11 +1092,11 @@ async function escribirFiscalSummaries(
     const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string; categoria: GastoCategoria }[] = [
       { campo: 'interesesFinanciacion', casilla: '0105', categoria: 'intereses' },
       { campo: 'reparacionConservacion', casilla: '0106', categoria: 'reparacion' },
-      { campo: 'comunidad', casilla: '0114', categoria: 'comunidad' },
-      { campo: 'serviciosTerceros', casilla: '0108', categoria: 'gestion' },
+      { campo: 'comunidad', casilla: '0109', categoria: 'comunidad' },
+      { campo: 'serviciosTerceros', casilla: '0112', categoria: 'gestion' },
       { campo: 'suministros', casilla: '0113', categoria: 'suministro' },
-      { campo: 'seguros', casilla: '0109', categoria: 'seguro' },
-      { campo: 'ibiTasas', casilla: '0110', categoria: 'ibi' },
+      { campo: 'seguros', casilla: '0114', categoria: 'seguro' },
+      { campo: 'ibiTasas', casilla: '0115', categoria: 'ibi' },
       { campo: 'amortizacionMobiliario', casilla: '0117', categoria: 'otro' },
     ];
     for (const { campo, casilla, categoria } of GASTOS_DECL) {
@@ -1109,6 +1109,42 @@ async function escribirFiscalSummaries(
         concepto: `Declaración AEAT ${decl.meta.ejercicio}`,
         categoria,
         casillaAEAT: casilla as any,
+        importe,
+        origen: 'xml_aeat',
+        origenId: `${property.id}-${decl.meta.ejercicio}-${casilla}`,
+        estado: 'declarado',
+        proveedorNIF: 'AEAT',
+        proveedorNombre: 'Declaración AEAT',
+      });
+    }
+
+    // ── Mejoras del ejercicio (casilla 0129), base y amortización del inmueble (0130/0131) ──
+    const EXTRAS: { casilla: '0129' | '0130' | '0131'; importe: number; concepto: string }[] = [
+      {
+        casilla: '0129',
+        importe: (inm.mejorasEjercicio || []).reduce((sum, m) => sum + (m.importe || 0), 0),
+        concepto: `Declaración AEAT ${decl.meta.ejercicio} — Mejoras ejercicio`,
+      },
+      {
+        casilla: '0130',
+        importe: inm.baseAmortizacion || 0,
+        concepto: `Declaración AEAT ${decl.meta.ejercicio} — Base amortización`,
+      },
+      {
+        casilla: '0131',
+        importe: inm.amortizacionAnualInmueble || 0,
+        concepto: `Declaración AEAT ${decl.meta.ejercicio} — Amortización inmueble`,
+      },
+    ];
+    for (const { casilla, importe, concepto } of EXTRAS) {
+      if (importe <= 0) continue;
+      await gastosInmuebleService.add({
+        inmuebleId: property.id,
+        ejercicio: decl.meta.ejercicio,
+        fecha: `${decl.meta.ejercicio}-12-31`,
+        concepto,
+        categoria: 'otro',
+        casillaAEAT: casilla,
         importe,
         origen: 'xml_aeat',
         origenId: `${property.id}-${decl.meta.ejercicio}-${casilla}`,
@@ -1317,26 +1353,4 @@ export function acortarDireccion(dir: string): string {
     .split(' ')
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(' ');
-}
-
-/**
- * Migración única: elimina gastosInmueble importados desde XML AEAT con casillas
- * incorrectas (versión anterior del distribuidor). El usuario deberá re-importar
- * sus declaraciones para que se reescriban con las casillas correctas.
- */
-export async function limpiarGastosDeclaracionConCasillasErroneas(): Promise<{ eliminados: number }> {
-  const db = await initDB();
-
-  const todos = await db.getAll('gastosInmueble');
-  let eliminados = 0;
-
-  for (const gasto of todos) {
-    if (gasto.origen === 'xml_aeat' && gasto.concepto?.startsWith('Declaración AEAT')) {
-      await db.delete('gastosInmueble', gasto.id as number);
-      eliminados++;
-    }
-  }
-
-  console.log(`[gastosInmueble] Limpieza casillas erróneas: ${eliminados} gastos eliminados`);
-  return { eliminados };
 }

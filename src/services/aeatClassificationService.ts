@@ -166,13 +166,16 @@ export const formatPercentage = (value: number): string => {
 export const getAEATBoxDisplayName = (box: AEATBox): string => {
   const names: Record<AEATBox, string> = {
     '0105': 'Intereses financiación',
-    '0106': 'Reparación/conservación', 
+    '0106': 'Reparación/conservación',
     '0109': 'Comunidad',
     '0112': 'Servicios de terceros',
     '0113': 'Suministros',
     '0114': 'Seguros',
     '0115': 'Tributos locales',
-    '0117': 'Amortización muebles'
+    '0117': 'Amortización muebles',
+    '0129': 'Mejoras del ejercicio',
+    '0130': 'Base amortización inmueble',
+    '0131': 'Amortización inmueble'
   };
   return names[box];
 };

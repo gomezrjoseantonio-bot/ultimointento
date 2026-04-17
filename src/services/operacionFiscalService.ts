@@ -20,6 +20,8 @@ function mapCasillaToCategoria(casilla: string): GastoCategoria {
 }
 
 export function mapBoxToFiscalType(box: AEATBox): AEATFiscalType {
+  // 0129/0130/0131 (mejoras, base amort. inmueble, amort. inmueble) no tienen
+  // un AEATFiscalType propio; se representan como capex-mejora-ampliacion.
   const map: Record<AEATBox, AEATFiscalType> = {
     '0105': 'financiacion',
     '0106': 'reparacion-conservacion',
@@ -29,6 +31,9 @@ export function mapBoxToFiscalType(box: AEATBox): AEATFiscalType {
     '0114': 'seguros',
     '0115': 'tributos-locales',
     '0117': 'amortizacion-muebles',
+    '0129': 'capex-mejora-ampliacion',
+    '0130': 'capex-mejora-ampliacion',
+    '0131': 'capex-mejora-ampliacion',
   };
   return map[box];
 }
