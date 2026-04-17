@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
@@ -9,6 +9,7 @@ import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB, migrarPlanesDuplicados } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { limpiarEjerciciosCoordBasura } from './services/ejercicioResolverService';
+import { runMigrationIfNeeded as fixGastosDeclaracionCasillas } from './services/migrations/fixGastosDeclaracionCasillas';
 import { autoConfirmarRentaMensualDeclarada } from './services/contractService';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
@@ -168,6 +169,16 @@ function App() {
             }
           })
           .then(() => limpiarEjerciciosCoordBasura())
+          .then(() => fixGastosDeclaracionCasillas())
+          .then((result) => {
+            if (result?.ejecutada && result.eliminados > 0) {
+              console.info(`[ATLAS] Gastos con casillas AEAT erróneas eliminados: ${result.eliminados}`);
+              toast('Se han eliminado gastos con casillas incorrectas. Re-importa tus declaraciones para corregirlos.', {
+                duration: 8000,
+                icon: 'ℹ️',
+              });
+            }
+          })
           .then(() => autoConfirmarRentaMensualDeclarada())
           .catch((error) => {
             console.error('[ATLAS] Error inicializando migración fiscal:', error);

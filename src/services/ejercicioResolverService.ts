@@ -42,17 +42,29 @@ export type {
 // ═══════════════════════════════════════════════
 
 /**
- * Obtiene el ejercicio fiscal para un año.
- * Si no existe, lo crea con estado inferido.
+ * Obtiene el ejercicio fiscal para un año. LECTURA PURA: devuelve null si no
+ * existe, NUNCA crea registros. Usar en código que solo CONSULTA (proyecciones,
+ * cálculos IRPF, dashboards). Para garantizar existencia usar
+ * {@link getOrCreateEjercicio}.
  */
-export async function getEjercicio(año: number): Promise<EjercicioFiscalCoord> {
+export async function getEjercicio(año: number): Promise<EjercicioFiscalCoord | null> {
   const db = await initDB();
-  let ej = await db.get('ejerciciosFiscalesCoord', año);
-  if (!ej) {
-    ej = crearEjercicioInicial(año);
-    await db.put('ejerciciosFiscalesCoord', ej);
-  }
-  return ej;
+  const existing = await db.get('ejerciciosFiscalesCoord', año);
+  return existing ?? null;
+}
+
+/**
+ * Obtiene el ejercicio fiscal para un año, creándolo si no existe.
+ * Usar solo cuando el código va a ESCRIBIR datos en el ejercicio (importar
+ * declaración, guardar arrastres, actualizar estado).
+ */
+export async function getOrCreateEjercicio(año: number): Promise<EjercicioFiscalCoord> {
+  const existing = await getEjercicio(año);
+  if (existing) return existing;
+  const db = await initDB();
+  const creado = crearEjercicioInicial(año);
+  await db.put('ejerciciosFiscalesCoord', creado);
+  return creado;
 }
 
 /**
@@ -75,6 +87,9 @@ export async function getDeclaracion(año: number): Promise<{
   resumen: ResumenFiscal | null;
 }> {
   const ej = await getEjercicio(año);
+  if (!ej) {
+    return { fuente: 'ninguno', snapshot: null, resumen: null };
+  }
 
   // Ejercicio con AEAT → devolver snapshot congelado
   if ((ej.estado === 'declarado' || ej.estado === 'prescrito') && ej.aeat) {
@@ -105,16 +120,17 @@ export async function getDeclaracion(año: number): Promise<{
  */
 export async function getArrastresParaAño(año: number): Promise<ArrastresEjercicioCoord> {
   const ej = await getEjercicio(año);
+  if (!ej) return arrastresVacios();
 
   // Si ya tiene arrastresIn con datos, usarlos
   if (ej.arrastresIn.fuente !== 'ninguno') {
     return ej.arrastresIn;
   }
 
-  // Intentar propagar desde año anterior
+  // Intentar propagar desde año anterior (solo lectura)
   try {
     const ejAnterior = await getEjercicio(año - 1);
-    if (ejAnterior.arrastresOut) {
+    if (ejAnterior?.arrastresOut) {
       const propagados: ArrastresEjercicioCoord = {
         fuente: ejAnterior.arrastresOut.fuente,
         gastosPendientes: ejAnterior.arrastresOut.gastosPendientes,
@@ -140,6 +156,7 @@ export async function getArrastresParaAño(año: number): Promise<ArrastresEjerc
  */
 export async function getInmueblesDelEjercicio(año: number): Promise<number[]> {
   const ej = await getEjercicio(año);
+  if (!ej) return [];
   return ej.inmuebleIds;
 }
 
@@ -164,7 +181,7 @@ export async function importarDeclaracionAEAT(params: {
   inmuebleIds?: number[];
 }): Promise<EjercicioFiscalCoord> {
   const { año, casillas, pdfDocumentId, inmuebleIds } = params;
-  const ej = await getEjercicio(año);
+  const ej = await getOrCreateEjercicio(año);
 
   // 1. Guardar snapshot AEAT
   ej.aeat = {
@@ -215,7 +232,7 @@ export async function guardarCalculoATLAS(params: {
   resumen: ResumenFiscal;
   hashInputs: string;
 }): Promise<void> {
-  const ej = await getEjercicio(params.año);
+  const ej = await getOrCreateEjercicio(params.año);
 
   // No sobreescribir AEAT con cálculo ATLAS
   if (ej.estado === 'declarado' || ej.estado === 'prescrito') {
@@ -237,7 +254,7 @@ export async function guardarCalculoATLAS(params: {
  * Actualizar la lista de inmuebles de un ejercicio.
  */
 export async function setInmueblesDelEjercicio(año: number, inmuebleIds: number[]): Promise<void> {
-  const ej = await getEjercicio(año);
+  const ej = await getOrCreateEjercicio(año);
   ej.inmuebleIds = inmuebleIds;
   ej.updatedAt = new Date().toISOString();
   await actualizarEjercicio(ej);
@@ -251,7 +268,7 @@ export async function setArrastresManuales(
   año: number,
   arrastres: Omit<ArrastresEjercicioCoord, 'fuente'>
 ): Promise<boolean> {
-  const ej = await getEjercicio(año);
+  const ej = await getOrCreateEjercicio(año);
   const prioridad: Record<string, number> = { 'aeat': 3, 'atlas': 2, 'manual': 1, 'ninguno': 0 };
 
   if ((prioridad[ej.arrastresIn.fuente] || 0) > 1) {
@@ -450,9 +467,11 @@ async function actualizarEjercicio(ej: EjercicioFiscalCoord): Promise<void> {
  */
 async function propagarArrastres(añoOrigen: number): Promise<void> {
   const ejOrigen = await getEjercicio(añoOrigen);
-  if (!ejOrigen.arrastresOut) return;
+  if (!ejOrigen?.arrastresOut) return;
 
-  const ejDestino = await getEjercicio(añoOrigen + 1);
+  // El ejercicio destino se crea explícitamente porque vamos a escribirle
+  // los arrastresIn propagados.
+  const ejDestino = await getOrCreateEjercicio(añoOrigen + 1);
   const prioridad: Record<string, number> = { 'aeat': 3, 'atlas': 2, 'manual': 1, 'ninguno': 0 };
 
   const prioridadActual = prioridad[ejDestino.arrastresIn.fuente] || 0;
