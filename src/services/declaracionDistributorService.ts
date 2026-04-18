@@ -14,6 +14,7 @@ import { initDB } from './db';
 import type { Property, EjercicioFiscalCoord, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { invalidateCachedStores } from './indexedDbCacheService';
+import { CCAA_LIST } from '../utils/locationUtils';
 import type {
   InformeDistribucion,
   InmuebleDistribuido,
@@ -57,6 +58,32 @@ function toISODate(dateStr: string): string {
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   // Already ISO or unknown format — return as-is
   return dateStr;
+}
+
+/**
+ * Tipos de ITP por CCAA para transmisión onerosa de vivienda usada.
+ *
+ * Fuente única de verdad: `CCAA_LIST` en `src/utils/locationUtils.ts`
+ * (también consumido por el formulario de inmueble). Aquí solo añadimos
+ * un alias para mapear el nombre que devuelve `extraerUbicacion`
+ * ('Comunidad Valenciana') al canónico de CCAA_LIST ('Valencia').
+ *
+ * IMPORTANTE: el ITP inferido se DESCUENTA del total AEAT (C_TRIBUAD),
+ * nunca se suma. El total de coste de adquisición es invariante.
+ */
+const CCAA_ALIAS_PARA_ITP: Record<string, string> = {
+  'Comunidad Valenciana': 'Valencia',
+};
+
+function inferirITP(precio: number, ccaa: string | undefined): number {
+  if (!ccaa || precio <= 0) return 0;
+  const canonical = CCAA_ALIAS_PARA_ITP[ccaa] ?? ccaa;
+  const ccaaData = CCAA_LIST.find(
+    c => c.name.toLowerCase() === canonical.toLowerCase(),
+  );
+  // CCAA desconocida → no inferir (no caer al default del 8% del helper).
+  if (!ccaaData) return 0;
+  return Math.round(precio * (ccaaData.itpRate / 100) * 100) / 100;
 }
 
 /**
@@ -565,20 +592,74 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         camposNuevos.push('Precio adquisición');
         modificado = true;
       }
-      // AEAT gastosAdquisicion already includes ITP+notaría+registro+gestoría as a single total.
-      // Always clear any auto-calculated ITP to avoid double-counting, even on re-import.
-      if (next.acquisitionCosts.itp) {
-        delete next.acquisitionCosts.itp;
-        delete next.acquisitionCosts.itpIsManual;
-        modificado = true;
-      }
-      if (!sumGastosAdquisicion(next.acquisitionCosts) && inm.gastosAdquisicion) {
-        delete next.acquisitionCosts.notary;
-        delete next.acquisitionCosts.registry;
-        delete next.acquisitionCosts.management;
-        next.acquisitionCosts.other = [{ concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }];
-        camposNuevos.push('Gastos adquisición');
-        modificado = true;
+      // --- ITP y gastos de adquisición ---
+      // Reglas de decisión al re-importar:
+      //  1. Edición manual del usuario (itpIsManual === true) → no tocar.
+      //  2. Si el desglose actual cuadra con el total AEAT (±1€) → no tocar.
+      //  3. Si no cuadra → re-inferir ITP (si usada + CCAA) o meter todo en Otros.
+      if (next.acquisitionCosts.itpIsManual) {
+        // El usuario decidió el desglose. Sagrado.
+      } else {
+        // sumGastosAdquisicion ya excluye `price`: suma itp + iva + notary +
+        // registry + management + psi + realEstate + other. Ese es el total
+        // de gastos a comparar contra C_TRIBUAD (inm.gastosAdquisicion).
+        const sumaActual = sumGastosAdquisicion(next.acquisitionCosts);
+        const totalAEAT = inm.gastosAdquisicion || 0;
+        const yaEstaDesglosado = totalAEAT > 0 && Math.abs(sumaActual - totalAEAT) <= 1;
+
+        if (!yaEstaDesglosado && totalAEAT > 0) {
+          const precio = next.acquisitionCosts.price || inm.precioAdquisicion || 0;
+          // Prioridad: transmissionRegime guardado > tipoAdquisicion del XML.
+          // No asumir 'onerosa' por defecto si tipoAdquisicion es undefined.
+          const esUsada = next.transmissionRegime != null
+            ? next.transmissionRegime === 'usada'
+            : inm.tipoAdquisicion === 'onerosa';
+
+          if (esUsada && precio > 0 && next.ccaa) {
+            const itpInferido = inferirITP(precio, next.ccaa);
+            const restoOtros = Math.round((totalAEAT - itpInferido) * 100) / 100;
+
+            if (itpInferido > 0 && restoOtros >= 0) {
+              // Limpiar IVA y desglose previo para evitar doble conteo.
+              delete next.acquisitionCosts.iva;
+              delete next.acquisitionCosts.ivaIsManual;
+              delete next.acquisitionCosts.notary;
+              delete next.acquisitionCosts.registry;
+              delete next.acquisitionCosts.management;
+
+              next.acquisitionCosts.itp = itpInferido;
+              next.acquisitionCosts.itpIsManual = false;
+              next.acquisitionCosts.other = restoOtros > 0
+                ? [{ concept: 'Notaría + registro + gestoría (inferido)', amount: restoOtros }]
+                : [];
+              camposNuevos.push('ITP inferido');
+              modificado = true;
+            } else {
+              delete next.acquisitionCosts.itp;
+              delete next.acquisitionCosts.itpIsManual;
+              delete next.acquisitionCosts.iva;
+              delete next.acquisitionCosts.ivaIsManual;
+              delete next.acquisitionCosts.notary;
+              delete next.acquisitionCosts.registry;
+              delete next.acquisitionCosts.management;
+              next.acquisitionCosts.other = [{ concept: 'Gastos adquisición AEAT', amount: totalAEAT }];
+              camposNuevos.push('Gastos adquisición');
+              modificado = true;
+            }
+          } else {
+            delete next.acquisitionCosts.itp;
+            delete next.acquisitionCosts.itpIsManual;
+            delete next.acquisitionCosts.iva;
+            delete next.acquisitionCosts.ivaIsManual;
+            delete next.acquisitionCosts.notary;
+            delete next.acquisitionCosts.registry;
+            delete next.acquisitionCosts.management;
+            next.acquisitionCosts.other = [{ concept: 'Gastos adquisición AEAT', amount: totalAEAT }];
+            camposNuevos.push('Gastos adquisición');
+            modificado = true;
+          }
+        }
+        // yaEstaDesglosado === true → no tocar, el desglose cuadra con AEAT.
       }
 
       // Enriquecer campos de amortización AEAT solo si están vacíos
@@ -745,6 +826,44 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
 
 function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Property, 'id'> {
   const ubicacion = extraerUbicacion(inm.direccion || '');
+  const precio = inm.precioAdquisicion || 0;
+  const totalGastosAEAT = inm.gastosAdquisicion || 0;
+  const esUsada = (inm.tipoAdquisicion ?? 'onerosa') === 'onerosa';
+
+  // El ITP inferido se DESCUENTA del total AEAT, nunca se suma.
+  // Total invariante: precio + itp + resto === precio + totalGastosAEAT.
+  const acquisitionCosts: Property['acquisitionCosts'] = (() => {
+    if (!esUsada) {
+      return {
+        price: precio,
+        other: totalGastosAEAT > 0
+          ? [{ concept: 'Gastos adquisición AEAT', amount: totalGastosAEAT }]
+          : [],
+      };
+    }
+
+    const itpInferido = inferirITP(precio, ubicacion.ccaa);
+    const restoOtros = Math.round((totalGastosAEAT - itpInferido) * 100) / 100;
+
+    if (itpInferido <= 0 || restoOtros < 0) {
+      return {
+        price: precio,
+        other: totalGastosAEAT > 0
+          ? [{ concept: 'Gastos adquisición AEAT', amount: totalGastosAEAT }]
+          : [],
+      };
+    }
+
+    return {
+      price: precio,
+      itp: itpInferido,
+      itpIsManual: false,
+      other: restoOtros > 0
+        ? [{ concept: 'Notaría + registro + gestoría (inferido)', amount: restoOtros }]
+        : [],
+    };
+  })();
+
   return {
     alias: acortarDireccion(inm.direccion) || inm.refCatastral,
     address: inm.direccion || inm.refCatastral,
@@ -756,14 +875,11 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     cadastralReference: normalizeRef(inm.refCatastral) || undefined,
     squareMeters: 0,
     bedrooms: 0,
-    transmissionRegime: 'usada',
+    transmissionRegime: esUsada ? 'usada' : 'obra-nueva',
     state: 'activo',
     porcentajePropiedad: inm.porcentajePropiedad > 0 ? inm.porcentajePropiedad : undefined,
     esUrbana: inm.esUrbana,
-    acquisitionCosts: {
-      price: inm.precioAdquisicion || 0,
-      other: inm.gastosAdquisicion ? [{ concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }] : [],
-    },
+    acquisitionCosts,
     documents: [],
     fiscalData: {
       cadastralValue: inm.valorCatastral || 0,
