@@ -183,11 +183,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
   const getLogoPreviewUrl = (file: File) => URL.createObjectURL(file);
 
-  // Projection calculators
-  const calcBrutoAnual = (): number => {
-    const baseCalculo = base === 'fijo' ? (importeFijo || 0) : 10000;
-    return baseCalculo * (tinAnual || 0) / 100;
-  };
+  // Projection calculators — base saldo usa el saldo inicial introducido, no un placeholder
+  const calcBaseCalculo = (): number =>
+    base === 'fijo' ? (importeFijo || 0) : (parseFloat(formData.openingBalance) || 0);
+
+  const calcBrutoAnual = (): number => calcBaseCalculo() * (tinAnual || 0) / 100;
 
   const calcRetencion = (): number => calcBrutoAnual() * (retencion || 0) / 100;
 
@@ -302,20 +302,26 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50"
       style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}
     >
+      {/* Modal con header y footer fijos — solo el cuerpo hace scroll */}
       <div
         className="bg-white w-full max-w-md"
-        style={{ padding: 24, maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', borderRadius: 8 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-atlas-navy-1">
-            {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
+        {/* Header fijo */}
+        <div style={{ padding: '20px 24px 16px', flexShrink: 0, borderBottom: '1px solid var(--grey-200)' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-atlas-navy-1">
+              {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
+            </h2>
+            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* Cuerpo scrollable */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
           <div className="space-y-4">
             {/* Alias — obligatorio */}
             <div>
@@ -534,7 +540,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                       onChange={(e) => setBase(e.target.value as typeof base)}
                       className="input"
                     >
-                      <option value="saldo">Saldo medio de la cuenta</option>
+                      <option value="saldo">Saldo medio</option>
                       <option value="fijo">Importe fijo</option>
                     </select>
                   </div>
@@ -598,7 +604,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   padding: '10px 14px',
                 }}>
                   <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, marginBottom: 6 }}>
-                    Proyección estimada · {base === 'fijo' ? `base ${importeFijo?.toLocaleString('es-ES')} €` : 'base saldo actual'}
+                    Proyección estimada · base {calcBaseCalculo().toLocaleString('es-ES')} €
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
                     <span style={{ color: 'var(--grey-500)' }}>Interés bruto anual</span>
@@ -623,9 +629,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               </div>
             )}
           </div>
+          </div>{/* fin cuerpo scrollable */}
 
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-3 mt-6">
+          {/* Footer fijo con botones siempre visibles */}
+          <div style={{ padding: '14px 24px', flexShrink: 0, borderTop: '1px solid var(--grey-200)' }}
+               className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
