@@ -25,14 +25,16 @@ const TabCartera: React.FC<TabCarteraProps> = ({
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const hasActiveFilter = normalizedQuery.length > 0;
+
   const filtered = useMemo(() => {
-    const q = query.toLowerCase();
     return positions
       .filter(
         (p) =>
-          p.alias.toLowerCase().includes(q) ||
-          p.broker.toLowerCase().includes(q) ||
-          p.tipo.toLowerCase().includes(q)
+          p.alias.toLowerCase().includes(normalizedQuery) ||
+          p.broker.toLowerCase().includes(normalizedQuery) ||
+          p.tipo.toLowerCase().includes(normalizedQuery)
       )
       .sort((a: any, b: any) =>
         sortAsc
@@ -43,15 +45,19 @@ const TabCartera: React.FC<TabCarteraProps> = ({
           ? 1
           : -1
       );
-  }, [query, sortKey, sortAsc, positions]);
-
-  const hasActiveFilter = query.trim().length > 0;
+  }, [normalizedQuery, sortKey, sortAsc, positions]);
   const groupedSections = useMemo(() => {
     if (hasActiveFilter) return [];
-    return GRUPOS.map((g) => ({
+    const coveredTipos = new Set(GRUPOS.flatMap((g) => g.tipos));
+    const sections = GRUPOS.map((g) => ({
       label: g.label,
       items: filtered.filter((p) => g.tipos.includes(p.tipo)),
     })).filter((g) => g.items.length > 0);
+    const unmatched = filtered.filter((p) => !coveredTipos.has(p.tipo));
+    if (unmatched.length > 0) {
+      sections.push({ label: 'Otros', items: unmatched });
+    }
+    return sections;
   }, [filtered, hasActiveFilter]);
 
   const handleSort = (key: keyof PositionRow) => {
@@ -368,6 +374,7 @@ const TabCartera: React.FC<TabCarteraProps> = ({
                   color: '#6C757D',
                   textTransform: 'uppercase',
                   letterSpacing: '0.06em',
+                  margin: 0,
                   marginBottom: 12,
                 }}
               >

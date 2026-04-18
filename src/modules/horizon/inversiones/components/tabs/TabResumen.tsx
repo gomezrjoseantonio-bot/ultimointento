@@ -109,6 +109,7 @@ const TabResumen: React.FC<TabResumenProps> = ({ positions, planesPension }) => 
             color: '#6C757D',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
+            margin: 0,
             marginBottom: 6,
           }}
         >
@@ -120,6 +121,7 @@ const TabResumen: React.FC<TabResumenProps> = ({ positions, planesPension }) => 
             fontWeight: 700,
             fontFamily: "'IBM Plex Mono', monospace",
             color: '#042C5E',
+            margin: 0,
             marginBottom: 2,
           }}
         >
@@ -131,6 +133,7 @@ const TabResumen: React.FC<TabResumenProps> = ({ positions, planesPension }) => 
             fontFamily: "'IBM Plex Mono', monospace",
             color: '#042C5E',
             fontWeight: 600,
+            margin: 0,
           }}
         >
           {best.rentAnual >= 0 ? '+' : ''}

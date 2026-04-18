@@ -76,9 +76,11 @@ const TabIndividual: React.FC<TabIndividualProps> = ({
     const tasa = pos.rentAnual / 100;
 
     const labelFor = (años: number, meses: number | null) => {
-      if (meses != null) return `En ${meses} meses`;
+      if (meses != null) {
+        return `En ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+      }
       const a = Math.round(años);
-      return `En ${a} años · ${currentYear + a}`;
+      return `En ${a} ${a === 1 ? 'año' : 'años'} · ${currentYear + a}`;
     };
 
     if (horizonte.años <= 2) {
@@ -93,9 +95,12 @@ const TabIndividual: React.FC<TabIndividualProps> = ({
       ];
     }
 
-    const mediaAños = horizonte.años / 2;
+    // Mitad del horizonte: si el producto tiene meses, calculamos en meses;
+    // si no, redondeamos años para que etiqueta y cálculo coincidan.
     const mediaMeses =
       horizonte.meses != null ? Math.round(horizonte.meses / 2) : null;
+    const mediaAños =
+      mediaMeses != null ? mediaMeses / 12 : Math.round(horizonte.años / 2);
     const halfVal = Math.round(pos.valor * Math.pow(1 + tasa, mediaAños));
     const fullVal = Math.round(pos.valor * Math.pow(1 + tasa, horizonte.años));
     return [
