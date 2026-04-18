@@ -313,8 +313,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             <h2 className="text-lg font-semibold text-atlas-navy-1">
               {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
             </h2>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
-              <X className="w-5 h-5" />
+            <button type="button" onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
