@@ -1228,6 +1228,10 @@ async function escribirFiscalSummaries(
     for (const { campo, casilla, categoria } of GASTOS_DECL) {
       const importe = (inm.gastos as any)[campo] || 0;
       if (importe <= 0) continue;
+      // Para casilla 0106, también guardamos el importe bruto (C_GRCEA) — el coste real
+      // del gasto antes del tope fiscal. El usuario verá el coste real en el presupuesto,
+      // no la deducción aplicada tras el tope (C_INTGRCEA) que se guarda en `importe`.
+      const importeBruto = casilla === '0106' ? (inm.gastos.reparacionConservacion || 0) : undefined;
       await gastosInmuebleService.add({
         inmuebleId: property.id,
         ejercicio: decl.meta.ejercicio,
@@ -1236,6 +1240,7 @@ async function escribirFiscalSummaries(
         categoria,
         casillaAEAT: casilla as any,
         importe,
+        ...(typeof importeBruto === 'number' && importeBruto > 0 ? { importeBruto } : {}),
         origen: 'xml_aeat',
         origenId: `${property.id}-${decl.meta.ejercicio}-${casilla}`,
         estado: 'declarado',

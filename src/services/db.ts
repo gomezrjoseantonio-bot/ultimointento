@@ -305,11 +305,13 @@ export interface GastoInmueble {
   categoria: GastoCategoria;
   casillaAEAT: AEATBox;
   importe: number;
+  importeBruto?: number;
   origen: GastoOrigen;
   origenId?: string;
   estado: GastoEstadoNuevo;
   proveedorNombre?: string;
   proveedorNIF?: string;
+  cuentaBancaria?: string;
   documentId?: number;
   movimientoId?: string;
   createdAt: string;
