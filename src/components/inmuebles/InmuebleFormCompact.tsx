@@ -238,7 +238,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
             ccaa: prevFormData.ccaa || ccaa,
           };
           if (next.precioCompra > 0) {
-            calculateTaxes(next.precioCompra, next.tipo, ccaa);
+            calculateTaxes(next.precioCompra, next.tipo, next.ccaa || ccaa);
           }
           return next;
         });
@@ -271,18 +271,20 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   // Handle price change
   const handlePrecioChange = (precio: number) => {
     setFormData(prev => ({ ...prev, precioCompra: precio }));
-    
-    if (locationInfo && precio > 0) {
-      calculateTaxes(precio, formData.tipo, locationInfo.ccaa);
+
+    const ccaa = formData.ccaa || locationInfo?.ccaa;
+    if (ccaa && precio > 0) {
+      calculateTaxes(precio, formData.tipo, ccaa);
     }
   };
-  
+
   // Handle type change
   const handleTipoChange = (tipo: 'USADA_ITP' | 'NUEVA_IVA_AJD') => {
     setFormData(prev => ({ ...prev, tipo }));
-    
-    if (locationInfo && formData.precioCompra > 0) {
-      calculateTaxes(formData.precioCompra, tipo, locationInfo.ccaa);
+
+    const ccaa = formData.ccaa || locationInfo?.ccaa;
+    if (ccaa && formData.precioCompra > 0) {
+      calculateTaxes(formData.precioCompra, tipo, ccaa);
     }
   };
   
@@ -353,7 +355,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       transmissionRegime: formData.tipo === 'USADA_ITP' ? 'usada' : 'obra-nueva',
       state: 'activo',
       porcentajePropiedad:
-        formData.porcentajePropiedad > 0 && formData.porcentajePropiedad <= 100
+        formData.porcentajePropiedad >= 0 && formData.porcentajePropiedad <= 100
           ? formData.porcentajePropiedad
           : 100,
       esUrbana: formData.esUrbana,
@@ -851,12 +853,17 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                       min={0}
                       max={100}
                       step="0.01"
-                      value={formData.porcentajePropiedad || ''}
+                      value={Number.isFinite(formData.porcentajePropiedad) ? formData.porcentajePropiedad : ''}
                       onChange={(e) => {
-                        const raw = parseFloat(e.target.value);
-                        const clamped = Number.isFinite(raw)
-                          ? Math.max(0, Math.min(100, raw))
-                          : 0;
+                        const raw = e.target.value;
+                        if (raw === '') {
+                          setFormData(prev => ({ ...prev, porcentajePropiedad: NaN }));
+                          return;
+                        }
+                        const parsed = parseFloat(raw);
+                        const clamped = Number.isFinite(parsed)
+                          ? Math.max(0, Math.min(100, parsed))
+                          : NaN;
                         setFormData(prev => ({ ...prev, porcentajePropiedad: clamped }));
                       }}
                       className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
