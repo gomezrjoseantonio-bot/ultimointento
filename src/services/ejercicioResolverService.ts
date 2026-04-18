@@ -57,10 +57,26 @@ export async function getEjercicio(año: number): Promise<EjercicioFiscalCoord |
  * Obtiene el ejercicio fiscal para un año, creándolo si no existe.
  * Usar solo cuando el código va a ESCRIBIR datos en el ejercicio (importar
  * declaración, guardar arrastres, actualizar estado).
+ *
+ * Rechaza años futuros (> añoActual) salvo que se pase `allowFuture: true`.
+ * Solo flujos legítimos como `importarDeclaracionAEAT` y `propagarArrastres`
+ * deben usar el flag; cualquier otra creación de año futuro se considera bug.
  */
-export async function getOrCreateEjercicio(año: number): Promise<EjercicioFiscalCoord> {
+export async function getOrCreateEjercicio(
+  año: number,
+  opts: { allowFuture?: boolean } = {}
+): Promise<EjercicioFiscalCoord> {
   const existing = await getEjercicio(año);
   if (existing) return existing;
+
+  const añoActual = new Date().getFullYear();
+  if (año > añoActual && !opts.allowFuture) {
+    throw new Error(
+      `[ejerciciosFiscalesCoord] No se puede crear ejercicio para año futuro ${año}. ` +
+      `Solo importarDeclaracionAEAT y propagarArrastres pueden crear años > ${añoActual}.`
+    );
+  }
+
   const db = await initDB();
   const creado = crearEjercicioInicial(año);
   await db.put('ejerciciosFiscalesCoord', creado);
@@ -181,7 +197,7 @@ export async function importarDeclaracionAEAT(params: {
   inmuebleIds?: number[];
 }): Promise<EjercicioFiscalCoord> {
   const { año, casillas, pdfDocumentId, inmuebleIds } = params;
-  const ej = await getOrCreateEjercicio(año);
+  const ej = await getOrCreateEjercicio(año, { allowFuture: true });
 
   // 1. Guardar snapshot AEAT
   ej.aeat = {
@@ -384,16 +400,23 @@ export async function bootstrapEjercicios(): Promise<void> {
 }
 
 /**
- * Elimina del store ejerciciosFiscalesCoord cualquier año que sea
- * mayor que el año actual. Son registros basura generados por un bug anterior
- * (bootstrap creaba entradas marcadas como 'declarado' para años futuros).
+ * Elimina de los stores fiscales cualquier año mayor que el año actual.
+ * Son registros basura generados por un bug anterior en el que getEjercicio
+ * auto-creaba entradas al consultarse desde proyecciones a 20 años.
+ *
+ * Limpia ambos stores:
+ * - `ejerciciosFiscalesCoord` (modelo coordinador actual, keyPath: `año`).
+ * - `ejerciciosFiscales`      (store legacy, keyPath: `ejercicio`).
  *
  * A diferencia de bootstrapEjercicios, elimina incluso entradas con snapshot
  * AEAT, ya que para años futuros no puede existir una declaración AEAT real.
  *
  * Safe to run multiple times (idempotent).
  */
-export async function limpiarEjerciciosCoordBasura(): Promise<{ eliminados: number }> {
+export async function limpiarEjerciciosCoordBasura(): Promise<{
+  eliminados: number;
+  eliminadosLegacy: number;
+}> {
   const db = await initDB();
   const añoActual = new Date().getFullYear();
 
@@ -408,10 +431,28 @@ export async function limpiarEjerciciosCoordBasura(): Promise<{ eliminados: numb
     }
   }
 
-  if (eliminados > 0) {
-    console.log(`[ejerciciosFiscalesCoord] Limpieza: ${eliminados} registros basura eliminados`);
+  // Limpieza paralela del store legacy `ejerciciosFiscales` con la misma regla.
+  let eliminadosLegacy = 0;
+  try {
+    const legacy = await db.getAll('ejerciciosFiscales');
+    for (const registro of legacy) {
+      const año = (registro as { ejercicio?: number; año?: number })?.ejercicio
+        ?? (registro as { ejercicio?: number; año?: number })?.año;
+      if (typeof año === 'number' && Number.isFinite(año) && año > añoActual) {
+        await db.delete('ejerciciosFiscales', año);
+        eliminadosLegacy++;
+      }
+    }
+  } catch {
+    // El store legacy puede no existir en versiones antiguas de la DB.
   }
-  return { eliminados };
+
+  if (eliminados > 0 || eliminadosLegacy > 0) {
+    console.log(
+      `[ejerciciosFiscalesCoord] Limpieza: ${eliminados} coord + ${eliminadosLegacy} legacy eliminados`
+    );
+  }
+  return { eliminados, eliminadosLegacy };
 }
 
 // ═══════════════════════════════════════════════
@@ -470,8 +511,9 @@ async function propagarArrastres(añoOrigen: number): Promise<void> {
   if (!ejOrigen?.arrastresOut) return;
 
   // El ejercicio destino se crea explícitamente porque vamos a escribirle
-  // los arrastresIn propagados.
-  const ejDestino = await getOrCreateEjercicio(añoOrigen + 1);
+  // los arrastresIn propagados. allowFuture porque la propagación legítima
+  // puede alcanzar año+1 futuro cuando se importa AEAT del año actual.
+  const ejDestino = await getOrCreateEjercicio(añoOrigen + 1, { allowFuture: true });
   const prioridad: Record<string, number> = { 'aeat': 3, 'atlas': 2, 'manual': 1, 'ninguno': 0 };
 
   const prioridadActual = prioridad[ejDestino.arrastresIn.fuente] || 0;
