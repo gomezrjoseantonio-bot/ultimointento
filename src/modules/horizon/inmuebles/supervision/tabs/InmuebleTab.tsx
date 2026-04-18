@@ -118,7 +118,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           <Pencil size={14} /> Editar
         </button>
         <button
-          onClick={() => navigate('/inmuebles/gastos-capex')}
+          onClick={() => navigate(`/inmuebles/cartera/${inm.id}?tab=presupuesto`)}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', borderRadius: 'var(--r-md)',

@@ -359,7 +359,7 @@ const InvestorDashboardV2: React.FC<InvestorDashboardV2Props> = ({
       {/* ACCIONES RÁPIDAS */}
       <QuickActions
         onRegistrarIngreso={() => onNavigate('/tesoreria')}
-        onAñadirGasto={() => onNavigate('/inmuebles/gastos-capex')}
+        onAñadirGasto={() => onNavigate('/inmuebles/cartera')}
         onVerTodo={() => {
           // Navigate to a route that will trigger the parent to switch to full view
           // The parent component will handle the view mode switch

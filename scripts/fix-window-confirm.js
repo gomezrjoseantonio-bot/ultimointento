@@ -10,8 +10,6 @@ const path = require('path');
 // Files that need fixing
 const filesToFix = [
   'src/components/fiscalidad/PropertyImprovements.tsx',
-  'src/modules/horizon/inmuebles/gastos-capex/components/GastosTab.tsx',
-  'src/modules/horizon/inmuebles/gastos-capex/components/CapexTab.tsx',
   'src/modules/horizon/inmuebles/prestamos/components/PrestamosList.tsx',
   'src/modules/horizon/inmuebles/cartera/Cartera.tsx',
   'src/modules/horizon/inmuebles/contratos/components/ContractsListaEnhanced.tsx',

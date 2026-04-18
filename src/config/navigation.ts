@@ -49,7 +49,6 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Supervisión', href: '/inmuebles/supervision' },
       { name: 'Cartera', href: '/inmuebles/cartera' },
       { name: 'Contratos', href: '/inmuebles/contratos' },
-      { name: 'Gastos', href: '/inmuebles/gastos-capex' },
     ]
   },
   {

@@ -95,9 +95,29 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   // Crear/actualizar contratos automáticamente desde los arrendamientos
   const todasProperties = await db.getAll('properties');
   const porRefCatastral = new Map<string, Property>();
+  const porDireccionNorm = new Map<string, Property>();
   for (const property of todasProperties) {
     const ref = normalizeRef(property.cadastralReference);
     if (ref) porRefCatastral.set(ref, property);
+    const dirN = normalizeDireccion(property.address);
+    if (dirN) porDireccionNorm.set(dirN, property);
+    const aliasN = normalizeDireccion(property.alias);
+    if (aliasN && aliasN !== dirN) porDireccionNorm.set(aliasN, property);
+  }
+  // Fallback por dirección: para cada inmueble del XML cuya refCatastral no
+  // esté ya resuelta, buscar la property por dirección normalizada y registrarla
+  // bajo su refCatastral. Evita que escribirMejoras/Proveedores/FiscalSummaries
+  // pierdan datos cuando la property no tiene cadastralReference poblada.
+  for (const inm of decl.inmuebles) {
+    const rc = normalizeRef(inm.refCatastral);
+    if (!rc || porRefCatastral.has(rc) || !inm.direccion) continue;
+    const dirXml = normalizeDireccion(inm.direccion);
+    const aliasXml = normalizeDireccion(acortarDireccion(inm.direccion));
+    const match = porDireccionNorm.get(dirXml) || porDireccionNorm.get(aliasXml);
+    if (match) {
+      porRefCatastral.set(rc, match);
+      console.log(`[distribuidor] Fallback dirección: ${rc} → property id=${match.id} (${match.alias})`);
+    }
   }
 
   for (const inm of decl.inmuebles) {
@@ -1232,7 +1252,10 @@ async function escribirMejoras(
 
     const rc = normalizeRef(inm.refCatastral);
     const property = porRefCatastral.get(rc);
-    if (!property?.id) continue;
+    if (!property?.id) {
+      console.warn(`[escribirMejoras] property no resuelta para RC=${rc} dirección="${inm.direccion ?? ''}" — mejora(s) del ejercicio ${decl.meta.ejercicio} no escritas`);
+      continue;
+    }
 
     const { mejorasInmuebleService } = await import('./mejorasInmuebleService');
     const existentes = await mejorasInmuebleService.getPorInmueble(property.id);
