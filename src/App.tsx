@@ -13,6 +13,7 @@ import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migraci
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
 import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/migrations/limpiarGastosReparacionCasilla0106';
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
+import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import MainLayout from './layouts/MainLayout';
@@ -145,6 +146,7 @@ function App() {
       .then(() => fixReparacionesDuplicadas())
       .then(() => limpiarGastosReparacion0106())
       .then(() => backfillImporteBruto0106())
+      .then(() => cleanStaleCPAndInferITP())
       .then(() => migrarPlanesDuplicados())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
