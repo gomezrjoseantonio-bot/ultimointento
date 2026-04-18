@@ -255,7 +255,11 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       setImprovements(mejoras);
       setFurniture(mobiliario);
       setGastosReparacion(
-        todosGastos.filter((g) => g.categoria === 'reparacion' || g.casillaAEAT === '0106')
+        todosGastos.filter(
+          (g) =>
+            g.casillaAEAT !== '0108' &&
+            (g.categoria === 'reparacion' || g.casillaAEAT === '0106')
+        )
       );
     } catch (error) {
       console.error('Error loading budget expenses:', error);
@@ -363,9 +367,9 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       businessType: 'reparacion',
       categoryLabel: CATEGORY_LABELS.reparacion,
       concept: g.concepto || 'Reparación y conservación',
-      amount: g.importe,
+      amount: g.importeBruto ?? g.importe,
       frequencyLabel: `${FREQUENCY_LABELS.puntual} · ${g.ejercicio}`,
-      accountLabel: g.origen === 'xml_aeat' ? 'XML AEAT' : '—',
+      accountLabel: g.cuentaBancaria || '—',
       dateLabel: formatDateLabel(g.fecha),
       providerNIF: g.proveedorNIF,
       providerName: g.proveedorNombre,
@@ -377,11 +381,6 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
   }, [rules, repairOperations, improvements, furniture, gastosReparacion, getAccountName]);
 
   const handleEdit = (row: BudgetExpenseRow) => {
-    if (row.source === 'gastoInmueble') {
-      toast('Los gastos sincronizados del XML AEAT se gestionan desde Fiscalidad.');
-      return;
-    }
-
     if (row.source === 'opexRule') {
       const rule = row.raw as OpexRule;
       const type = detectExpenseBusinessType(rule);
@@ -429,6 +428,17 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
         accountId: getAccountIdFromLabel(mejora.cuentaBancaria),
         proveedorNIF: mejora.proveedorNIF,
         proveedorNombre: mejora.proveedorNombre || '',
+        vidaUtil: 10,
+      });
+    } else if (row.source === 'gastoInmueble') {
+      const gasto = row.raw as GastoInmueble;
+      setOneOffForm({
+        concepto: gasto.concepto || '',
+        amount: String(gasto.importeBruto ?? gasto.importe),
+        date: gasto.fecha || '',
+        accountId: getAccountIdFromLabel(gasto.cuentaBancaria),
+        proveedorNIF: gasto.proveedorNIF || '',
+        proveedorNombre: gasto.proveedorNombre || '',
         vidaUtil: 10,
       });
     } else {
@@ -506,7 +516,18 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
 
     try {
       if (selectedType === 'reparacion') {
-        if (editingEntry?.source === 'operacionFiscal' && editingEntry.id) {
+        if (editingEntry?.source === 'gastoInmueble' && editingEntry.id) {
+          await gastosInmuebleService.update(editingEntry.id, {
+            fecha: date,
+            concepto: oneOffForm.concepto.trim(),
+            importe: amount,
+            importeBruto: amount,
+            proveedorNIF: oneOffForm.proveedorNIF.trim(),
+            proveedorNombre: oneOffForm.proveedorNombre.trim() || undefined,
+            cuentaBancaria: accountLabel,
+          });
+          toast.success('Gasto de reparación actualizado');
+        } else if (editingEntry?.source === 'operacionFiscal' && editingEntry.id) {
           await actualizarOperacionFiscal(editingEntry.id, {
             fecha: date,
             concepto: oneOffForm.concepto.trim(),
@@ -602,7 +623,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
     reparacion:
       repairOperations.reduce((sum, op) => sum + op.total, 0)
       + improvements.filter((m) => m.tipo === 'reparacion').reduce((sum, m) => sum + m.importe, 0)
-      + gastosReparacion.reduce((sum, g) => sum + (g.importe || 0), 0),
+      + gastosReparacion.reduce((sum, g) => sum + ((g.importeBruto ?? g.importe) || 0), 0),
     mejora: improvements.filter((m) => m.tipo !== 'reparacion').reduce((sum, mejora) => sum + mejora.importe, 0),
     mobiliario: furniture.filter((item) => item.activo).reduce((sum, item) => sum + item.importe, 0),
   };
@@ -717,8 +738,8 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
                       <button onClick={() => handleDelete(row)} className="p-1 text-gray-400 hover:text-red-500 transition-colors" title="Eliminar gasto">
                         <Trash2 className="h-4 w-4" />
                       </button>
-                      {(row.source === 'mejoraActivo' || row.source === 'mobiliarioActivo') && (() => {
-                        const docId = (row.raw as MejoraActivo | MobiliarioActivo).documentId;
+                      {(row.source === 'mejoraActivo' || row.source === 'mobiliarioActivo' || row.source === 'gastoInmueble') && (() => {
+                        const docId = (row.raw as MejoraActivo | MobiliarioActivo | GastoInmueble).documentId;
                         return (
                           <button
                             onClick={() => {
