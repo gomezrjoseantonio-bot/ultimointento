@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cuentasService, CreateAccountData, UpdateAccountData } from '../../../../../services/cuentasService';
@@ -181,13 +181,20 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     setFormErrors((prev) => { const n = { ...prev }; delete n.logoFile; return n; });
   };
 
-  const getLogoPreviewUrl = (file: File) => URL.createObjectURL(file);
+  // Memoizar el object URL para evitar fugas de memoria en cada render
+  const logoPreviewUrl = useMemo(
+    () => (formData.logoFile ? URL.createObjectURL(formData.logoFile) : null),
+    [formData.logoFile],
+  );
+  useEffect(() => {
+    return () => { if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl); };
+  }, [logoPreviewUrl]);
 
-  // Projection calculators
-  const calcBrutoAnual = (): number => {
-    const baseCalculo = base === 'fijo' ? (importeFijo || 0) : 10000;
-    return baseCalculo * (tinAnual || 0) / 100;
-  };
+  // Projection calculators — base saldo usa el saldo inicial introducido, no un placeholder
+  const calcBaseCalculo = (): number =>
+    base === 'fijo' ? (importeFijo || 0) : (parseFloat(formData.openingBalance) || 0);
+
+  const calcBrutoAnual = (): number => calcBaseCalculo() * (tinAnual || 0) / 100;
 
   const calcRetencion = (): number => calcBrutoAnual() * (retencion || 0) / 100;
 
@@ -302,20 +309,26 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50"
       style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}
     >
+      {/* Modal con header y footer fijos — solo el cuerpo hace scroll */}
       <div
         className="bg-white w-full max-w-md"
-        style={{ padding: 24, maxHeight: '90vh', overflowY: 'auto' }}
+        style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', borderRadius: 8 }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-atlas-navy-1">
-            {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
+        {/* Header fijo */}
+        <div style={{ padding: '20px 24px 16px', flexShrink: 0, borderBottom: '1px solid var(--grey-200)' }}>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-atlas-navy-1">
+              {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
+            </h2>
+            <button type="button" onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+          {/* Cuerpo scrollable */}
+          <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
           <div className="space-y-4">
             {/* Alias — obligatorio */}
             <div>
@@ -419,10 +432,10 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               <p className="mt-1 text-xs text-gray-500">
                 Se detectará automáticamente el logo del banco. Puedes subir uno personalizado (máx. 2MB).
               </p>
-              {formData.logoFile && (
+              {formData.logoFile && logoPreviewUrl && (
                 <div className="mt-2 flex items-center gap-3">
                   <img
-                    src={getLogoPreviewUrl(formData.logoFile)}
+                    src={logoPreviewUrl}
                     alt="Vista previa del logo"
                     className="w-8 h-8 object-cover border border-gray-300"
                   />
@@ -534,7 +547,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                       onChange={(e) => setBase(e.target.value as typeof base)}
                       className="input"
                     >
-                      <option value="saldo">Saldo medio de la cuenta</option>
+                      <option value="saldo">Saldo medio</option>
                       <option value="fijo">Importe fijo</option>
                     </select>
                   </div>
@@ -598,7 +611,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   padding: '10px 14px',
                 }}>
                   <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, marginBottom: 6 }}>
-                    Proyección estimada · {base === 'fijo' ? `base ${importeFijo?.toLocaleString('es-ES')} €` : 'base saldo actual'}
+                    Proyección estimada · base {calcBaseCalculo().toLocaleString('es-ES')} €
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
                     <span style={{ color: 'var(--grey-500)' }}>Interés bruto anual</span>
@@ -615,7 +628,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0', borderTop: '1px solid var(--grey-200)', marginTop: 4, paddingTop: 6 }}>
                     <span style={{ color: 'var(--grey-500)' }}>Cobro neto por período ({frecuencia})</span>
                     <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
-                      {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
                 </div>
@@ -623,9 +636,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               </div>
             )}
           </div>
+          </div>{/* fin cuerpo scrollable */}
 
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-3 mt-6">
+          {/* Footer fijo con botones siempre visibles */}
+          <div style={{ padding: '14px 24px', flexShrink: 0, borderTop: '1px solid var(--grey-200)' }}
+               className="flex justify-end space-x-3">
             <button
               type="button"
               onClick={onClose}
