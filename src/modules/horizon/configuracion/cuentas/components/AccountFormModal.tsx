@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cuentasService, CreateAccountData, UpdateAccountData } from '../../../../../services/cuentasService';
@@ -181,7 +181,14 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     setFormErrors((prev) => { const n = { ...prev }; delete n.logoFile; return n; });
   };
 
-  const getLogoPreviewUrl = (file: File) => URL.createObjectURL(file);
+  // Memoizar el object URL para evitar fugas de memoria en cada render
+  const logoPreviewUrl = useMemo(
+    () => (formData.logoFile ? URL.createObjectURL(formData.logoFile) : null),
+    [formData.logoFile],
+  );
+  useEffect(() => {
+    return () => { if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl); };
+  }, [logoPreviewUrl]);
 
   // Projection calculators — base saldo usa el saldo inicial introducido, no un placeholder
   const calcBaseCalculo = (): number =>
@@ -425,10 +432,10 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               <p className="mt-1 text-xs text-gray-500">
                 Se detectará automáticamente el logo del banco. Puedes subir uno personalizado (máx. 2MB).
               </p>
-              {formData.logoFile && (
+              {formData.logoFile && logoPreviewUrl && (
                 <div className="mt-2 flex items-center gap-3">
                   <img
-                    src={getLogoPreviewUrl(formData.logoFile)}
+                    src={logoPreviewUrl}
                     alt="Vista previa del logo"
                     className="w-8 h-8 object-cover border border-gray-300"
                   />
