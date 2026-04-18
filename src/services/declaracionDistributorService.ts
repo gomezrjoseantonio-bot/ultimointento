@@ -14,6 +14,7 @@ import { initDB } from './db';
 import type { Property, EjercicioFiscalCoord, Document, VinculoAccesorio as VinculoAccesorioDB, GastoCategoria } from './db';
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { invalidateCachedStores } from './indexedDbCacheService';
+import { CCAA_LIST } from '../utils/locationUtils';
 import type {
   InformeDistribucion,
   InmuebleDistribuido,
@@ -61,40 +62,28 @@ function toISODate(dateStr: string): string {
 
 /**
  * Tipos de ITP por CCAA para transmisión onerosa de vivienda usada.
- * Valores de referencia aprox. 2024–2026; algunas CCAA tienen tipos reducidos
- * por circunstancias (joven, familia numerosa, zona rural). Se aplica el
- * general; si el usuario tuvo un tipo reducido, edita manualmente.
+ *
+ * Fuente única de verdad: `CCAA_LIST` en `src/utils/locationUtils.ts`
+ * (también consumido por el formulario de inmueble). Aquí solo añadimos
+ * un alias para mapear el nombre que devuelve `extraerUbicacion`
+ * ('Comunidad Valenciana') al canónico de CCAA_LIST ('Valencia').
  *
  * IMPORTANTE: el ITP inferido se DESCUENTA del total AEAT (C_TRIBUAD),
  * nunca se suma. El total de coste de adquisición es invariante.
  */
-const TIPO_ITP_POR_CCAA: Record<string, number> = {
-  'Andalucía': 0.07,
-  'Aragón': 0.08,
-  'Asturias': 0.08,
-  'Baleares': 0.08,
-  'Canarias': 0.065,
-  'Cantabria': 0.09,
-  'Castilla-La Mancha': 0.09,
-  'Castilla y León': 0.08,
-  'Cataluña': 0.10,
-  'Ceuta': 0.06,
-  'Melilla': 0.06,
-  'Comunidad Valenciana': 0.10,
-  'Extremadura': 0.08,
-  'Galicia': 0.09,
-  'La Rioja': 0.07,
-  'Madrid': 0.06,
-  'Murcia': 0.08,
-  'Navarra': 0.06,
-  'País Vasco': 0.04,
+const CCAA_ALIAS_PARA_ITP: Record<string, string> = {
+  'Comunidad Valenciana': 'Valencia',
 };
 
 function inferirITP(precio: number, ccaa: string | undefined): number {
   if (!ccaa || precio <= 0) return 0;
-  const tipo = TIPO_ITP_POR_CCAA[ccaa];
-  if (!tipo) return 0;
-  return Math.round(precio * tipo * 100) / 100;
+  const canonical = CCAA_ALIAS_PARA_ITP[ccaa] ?? ccaa;
+  const ccaaData = CCAA_LIST.find(
+    c => c.name.toLowerCase() === canonical.toLowerCase(),
+  );
+  // CCAA desconocida → no inferir (no caer al default del 8% del helper).
+  if (!ccaaData) return 0;
+  return Math.round(precio * (ccaaData.itpRate / 100) * 100) / 100;
 }
 
 /**
@@ -616,18 +605,24 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         // de gastos a comparar contra C_TRIBUAD (inm.gastosAdquisicion).
         const sumaActual = sumGastosAdquisicion(next.acquisitionCosts);
         const totalAEAT = inm.gastosAdquisicion || 0;
-        const yaEstaDesglosado = totalAEAT > 0 && Math.abs(sumaActual - totalAEAT) < 1;
+        const yaEstaDesglosado = totalAEAT > 0 && Math.abs(sumaActual - totalAEAT) <= 1;
 
         if (!yaEstaDesglosado && totalAEAT > 0) {
           const precio = next.acquisitionCosts.price || inm.precioAdquisicion || 0;
-          const esUsada = (inm.tipoAdquisicion ?? 'onerosa') === 'onerosa'
-            || next.transmissionRegime === 'usada';
+          // Prioridad: transmissionRegime guardado > tipoAdquisicion del XML.
+          // No asumir 'onerosa' por defecto si tipoAdquisicion es undefined.
+          const esUsada = next.transmissionRegime != null
+            ? next.transmissionRegime === 'usada'
+            : inm.tipoAdquisicion === 'onerosa';
 
           if (esUsada && precio > 0 && next.ccaa) {
             const itpInferido = inferirITP(precio, next.ccaa);
             const restoOtros = Math.round((totalAEAT - itpInferido) * 100) / 100;
 
             if (itpInferido > 0 && restoOtros >= 0) {
+              // Limpiar IVA y desglose previo para evitar doble conteo.
+              delete next.acquisitionCosts.iva;
+              delete next.acquisitionCosts.ivaIsManual;
               delete next.acquisitionCosts.notary;
               delete next.acquisitionCosts.registry;
               delete next.acquisitionCosts.management;
@@ -642,6 +637,8 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
             } else {
               delete next.acquisitionCosts.itp;
               delete next.acquisitionCosts.itpIsManual;
+              delete next.acquisitionCosts.iva;
+              delete next.acquisitionCosts.ivaIsManual;
               delete next.acquisitionCosts.notary;
               delete next.acquisitionCosts.registry;
               delete next.acquisitionCosts.management;
@@ -652,6 +649,8 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
           } else {
             delete next.acquisitionCosts.itp;
             delete next.acquisitionCosts.itpIsManual;
+            delete next.acquisitionCosts.iva;
+            delete next.acquisitionCosts.ivaIsManual;
             delete next.acquisitionCosts.notary;
             delete next.acquisitionCosts.registry;
             delete next.acquisitionCosts.management;

@@ -151,7 +151,10 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         gestoria: property.acquisitionCosts.management || 0,
         otros: property.acquisitionCosts.other?.reduce((sum: number, item: { concept: string; amount: number }) => sum + item.amount, 0) || 0,
         impuestos: (property.acquisitionCosts.itp || property.acquisitionCosts.iva || 0),
-        impuestosIsManual: property.acquisitionCosts.itpIsManual ?? false,
+        impuestosIsManual:
+          (property.transmissionRegime === 'usada'
+            ? property.acquisitionCosts.itpIsManual
+            : property.acquisitionCosts.ivaIsManual) ?? false,
         m2: property.squareMeters || 0,
         habitaciones: property.bedrooms || 0,
         banos: property.bathrooms || 0,
@@ -286,8 +289,11 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   
   // Handle type change
   const handleTipoChange = (tipo: 'USADA_ITP' | 'NUEVA_IVA_AJD') => {
-    setFormData(prev => ({ ...prev, tipo }));
-    
+    // Cambio de USADA↔NUEVA cambia el significado de "Impuestos" (ITP↔IVA+AJD).
+    // Resetear el flag manual para que el auto-cálculo vuelva a aplicarse en el
+    // nuevo régimen y no se quede un importe del régimen anterior.
+    setFormData(prev => ({ ...prev, tipo, impuestosIsManual: false }));
+
     if (locationInfo && formData.precioCompra > 0) {
       calculateTaxes(formData.precioCompra, tipo, locationInfo.ccaa);
     }
@@ -383,7 +389,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       }
     };
     
-    // Add tax based on type. Persist manual-edit flag only for ITP (usada).
+    // Add tax based on type. Persist the corresponding manual-edit flag.
     if (formData.tipo === 'USADA_ITP') {
       property.acquisitionCosts.itp = formData.impuestos;
       if (formData.impuestosIsManual) {
@@ -391,6 +397,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       }
     } else {
       property.acquisitionCosts.iva = formData.impuestos;
+      if (formData.impuestosIsManual) {
+        property.acquisitionCosts.ivaIsManual = true;
+      }
     }
 
     return property;
