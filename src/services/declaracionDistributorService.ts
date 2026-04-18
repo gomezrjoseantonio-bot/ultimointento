@@ -84,6 +84,8 @@ function extraerUbicacion(direccion: string): { province: string; municipality: 
 export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<InformeDistribucion> {
   const db = await initDB();
 
+  reportarArrastresRecibidos(decl);
+
   await guardarEjercicioFiscal(db, decl);
   await archivarDocumentoImportado(db, decl);
 
@@ -292,7 +294,9 @@ async function guardarEjercicioFiscal(db: DB, decl: DeclaracionCompleta): Promis
       inmuebleAlias: g.refCatastral,
       importePendiente: g.importePendiente,
       añoOrigen: g.añoOrigen === 0 ? año : año - g.añoOrigen,
-      casilla: '0106',
+      // BUG-2: el arrastre generado (C_INTGRCEF) es el exceso no aplicado,
+      // que en el Modelo 100 vive en la casilla 0108, no en la 0106.
+      casilla: '0108',
     })),
     perdidasPatrimoniales: decl.arrastres.perdidasPatrimoniales.map((p) => ({
       tipo: p.tipo === 'ahorro' ? 'ahorro_general' : 'patrimonial',
@@ -600,6 +604,40 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
       next.fiscalData.constructionCadastralValue = inm.accesorio.valorCatastralConstruccion || 0;
       next.fiscalData.constructionPercentage = inm.accesorio.porcentajeConstruccion || 0;
       modificado = true;
+    }
+
+    // BUG-4: C_BASEAMORACC y C_AMORTACC se leían en el parser pero no se
+    // escribían en properties.aeatAmortization del accesorio. Sin esto el
+    // parking/trastero aparece sin amortización calculada por AEAT.
+    const baseAmortAcc = inm.accesorio.baseAmortizacion || 0;
+    const amortAnualAcc = inm.accesorio.amortizacionAnual || 0;
+    if (baseAmortAcc > 0 || amortAnualAcc > 0) {
+      const amortActual = next.aeatAmortization;
+      const nuevaAmort = {
+        acquisitionType: (amortActual?.acquisitionType ?? 'onerosa') as 'onerosa' | 'lucrativa' | 'mixta',
+        firstAcquisitionDate:
+          amortActual?.firstAcquisitionDate || toISODate(inm.accesorio.fechaAdquisicion || ''),
+        cadastralValue: amortActual?.cadastralValue || inm.accesorio.valorCatastral || 0,
+        constructionCadastralValue:
+          amortActual?.constructionCadastralValue || inm.accesorio.valorCatastralConstruccion || 0,
+        constructionPercentage:
+          amortActual?.constructionPercentage || inm.accesorio.porcentajeConstruccion || 0,
+        onerosoAcquisition: amortActual?.onerosoAcquisition ?? {
+          acquisitionAmount: inm.accesorio.precioAdquisicion || 0,
+          acquisitionExpenses: inm.accesorio.gastosAdquisicion || 0,
+        },
+        baseAmortizacion: amortActual?.baseAmortizacion || baseAmortAcc || undefined,
+        amortizacionAnualInmueble:
+          amortActual?.amortizacionAnualInmueble || amortAnualAcc || undefined,
+      };
+      const cambio =
+        !amortActual ||
+        !amortActual.baseAmortizacion ||
+        !amortActual.amortizacionAnualInmueble;
+      if (cambio) {
+        next.aeatAmortization = nuevaAmort;
+        modificado = true;
+      }
     }
 
     if (modificado) {
@@ -1025,6 +1063,32 @@ function construirInforme(decl: DeclaracionCompleta, ri: ResultadoInmuebles): In
   };
 }
 
+/**
+ * BUG-5: IMP4GCPEA (casilla 0103) — arrastre recibido de años anteriores.
+ *
+ * El parser ya lo extrae como `inm.arrastresRecibidos`. La propagación formal
+ * contra `ejerciciosFiscalesCoord.arrastresIn.gastosPendientes` (marcándolos
+ * como aplicados por AEAT) requiere un servicio `confirmarArrastreAplicado`
+ * que HOY NO EXISTE. Es un gap de arquitectura — la reconciliación
+ * importePendiente ↔ importeAplicado necesita decisión de producto sobre si
+ * el XML AEAT debe pisar manualmente los arrastres ATLAS, o solo validarlos.
+ *
+ * De momento, registramos el valor leído para que quede en los logs de la
+ * importación. El dato está disponible en `decl.inmuebles[i].arrastresRecibidos`
+ * para futuras integraciones.
+ */
+function reportarArrastresRecibidos(decl: DeclaracionCompleta): void {
+  for (const inm of decl.inmuebles) {
+    const recibido = inm.arrastresRecibidos;
+    if (typeof recibido === 'number' && recibido > 0) {
+      console.log(
+        `[distribuidor] IMP4GCPEA ${decl.meta.ejercicio} — ${inm.refCatastral}: ` +
+          `arrastre recibido AEAT = €${recibido}. Pendiente reconciliar con arrastresIn ATLAS.`,
+      );
+    }
+  }
+}
+
 function pushGasto(
   opexRecurrentes: GastoRecurrentePropuesto[],
   refCatastral: string,
@@ -1091,7 +1155,9 @@ async function escribirFiscalSummaries(
     // ── Write to gastosInmueble con origen xml_aeat ──
     const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string; categoria: GastoCategoria }[] = [
       { campo: 'interesesFinanciacion', casilla: '0105', categoria: 'intereses' },
-      { campo: 'reparacionConservacion', casilla: '0106', categoria: 'reparacion' },
+      // BUG-1: casilla 0106 es el importe APLICADO en el ejercicio tras el tope
+      // (C_INTGRCEA), no el bruto antes del tope (C_GRCEA). Usar gastosAplicados.
+      { campo: 'gastosAplicados', casilla: '0106', categoria: 'reparacion' },
       { campo: 'comunidad', casilla: '0109', categoria: 'comunidad' },
       { campo: 'serviciosTerceros', casilla: '0112', categoria: 'gestion' },
       { campo: 'suministros', casilla: '0113', categoria: 'suministro' },

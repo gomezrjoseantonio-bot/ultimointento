@@ -1790,7 +1790,9 @@ export interface ArrastreGasto {
   inmuebleAlias?: string;
   importePendiente: number;
   añoOrigen: number;
-  casilla: '0105' | '0106';
+  // 0105/0106 = casilla de origen del gasto; 0108 = exceso que se arrastra
+  // (C_INTGRCEF en XML AEAT) cuando los gastos > ingresos del inmueble.
+  casilla: '0105' | '0106' | '0108';
 }
 
 export interface ArrastrePerdida {

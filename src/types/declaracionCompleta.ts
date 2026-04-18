@@ -178,6 +178,8 @@ export interface InmuebleDeclarado {
   gastos: GastosInmueble;
   gastosPendientesPrevios: number;
   gastosPendientesPreviosAplicados: number;
+  // IMP4GCPEA — arrastre recibido de ejercicios anteriores (casilla 0103 Modelo 100)
+  arrastresRecibidos?: number;
   rendimientoNeto: number;
   reduccionVivienda: number;
   rendimientoNetoReducido: number;
