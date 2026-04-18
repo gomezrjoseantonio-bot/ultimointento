@@ -257,7 +257,10 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       setGastosReparacion(
         todosGastos.filter(
           (g) =>
-            g.casillaAEAT !== '0108' &&
+            // Excluir arrastres (C_INTGRCEF) que puedan haberse escrito con casilla
+            // 0108 — son concepto fiscal, no un gasto real. Cast necesario porque
+            // AEATBox no tipa 0108 pero los escritores usan `as any`.
+            (g.casillaAEAT as string) !== '0108' &&
             (g.categoria === 'reparacion' || g.casillaAEAT === '0106')
         )
       );
