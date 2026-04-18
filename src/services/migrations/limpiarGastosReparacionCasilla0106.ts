@@ -8,33 +8,57 @@ import { initDB } from '../db';
 
 const MIGRATION_KEY = 'migration_limpiar_gastos_reparacion_0106_v1';
 
+/** Safe localStorage.getItem — returns null when storage is unavailable */
+function safeGetItem(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+/** Safe localStorage.setItem — best-effort, ignores storage errors */
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Best-effort: if storage is unavailable the migration will re-run next time
+  }
+}
+
 export async function limpiarGastosReparacionCasillasErroneas(): Promise<{ eliminados: number }> {
   const db = await initDB();
-  const todos = await db.getAll('gastosInmueble');
-  let eliminados = 0;
-  for (const g of todos) {
+  // Usa el índice 'casillaAEAT' para no cargar toda la tabla en memoria.
+  const candidatos = await db.getAllFromIndex('gastosInmueble', 'casillaAEAT', '0106');
+
+  const ids: number[] = [];
+  for (const g of candidatos) {
     if (
       g.origen === 'xml_aeat' &&
-      g.casillaAEAT === '0106' &&
       typeof g.concepto === 'string' &&
       g.concepto.startsWith('Declaración AEAT') &&
       g.id != null
     ) {
-      await db.delete('gastosInmueble', g.id);
-      eliminados++;
+      ids.push(g.id);
     }
   }
-  if (eliminados > 0) {
-    console.log(`[gastosInmueble] Limpieza reparaciones 0106: ${eliminados} eliminados`);
-  }
-  return { eliminados };
+
+  if (ids.length === 0) return { eliminados: 0 };
+
+  // Batch delete en una sola transacción readwrite.
+  const tx = db.transaction('gastosInmueble', 'readwrite');
+  await Promise.all(ids.map((id) => tx.store.delete(id)));
+  await tx.done;
+
+  console.log(`[gastosInmueble] Limpieza reparaciones 0106: ${ids.length} eliminados`);
+  return { eliminados: ids.length };
 }
 
 export async function runMigrationIfNeeded(): Promise<void> {
-  if (localStorage.getItem(MIGRATION_KEY)) return;
   try {
+    if (safeGetItem(MIGRATION_KEY)) return;
     await limpiarGastosReparacionCasillasErroneas();
-    localStorage.setItem(MIGRATION_KEY, 'done');
+    safeSetItem(MIGRATION_KEY, 'done');
   } catch (e) {
     console.error('[Migración] limpiarGastosReparacionCasillasErroneas falló:', e);
   }
