@@ -9,6 +9,42 @@ import {
   validateIbanEs,
 } from '../../../../../utils/accountHelpers';
 
+// Simple toggle — navy-900 cuando activo, grey-300 cuando inactivo
+const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    onClick={() => onChange(!checked)}
+    style={{
+      width: 44,
+      height: 24,
+      borderRadius: 12,
+      background: checked ? 'var(--navy-900)' : 'var(--grey-200)',
+      border: 'none',
+      cursor: 'pointer',
+      position: 'relative',
+      flexShrink: 0,
+      transition: 'background .2s',
+      padding: 0,
+    }}
+  >
+    <span
+      style={{
+        position: 'absolute',
+        top: 3,
+        left: checked ? 23 : 3,
+        width: 18,
+        height: 18,
+        borderRadius: '50%',
+        background: 'var(--white)',
+        transition: 'left .2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+      }}
+    />
+  </button>
+);
+
 interface AccountFormData {
   alias: string;
   iban: string;
@@ -38,6 +74,13 @@ const defaultFormData = (): AccountFormData => ({
   openingBalanceDate: new Date().toISOString().split('T')[0],
 });
 
+const FRECUENCIA_PAGOS: Record<string, number> = {
+  mensual: 12,
+  trimestral: 4,
+  semestral: 2,
+  anual: 1,
+};
+
 const AccountFormModal: React.FC<AccountFormModalProps> = ({
   open,
   onClose,
@@ -50,6 +93,15 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Remuneración state
+  const [esRemunerada, setEsRemunerada] = useState(false);
+  const [tinAnual, setTinAnual] = useState(2.5);
+  const [frecuencia, setFrecuencia] = useState<'mensual' | 'trimestral' | 'semestral' | 'anual'>('mensual');
+  const [base, setBase] = useState<'saldo' | 'fijo'>('saldo');
+  const [importeFijo, setImporteFijo] = useState(10000);
+  const [retencion, setRetencion] = useState(19);
+  const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
 
   // Load accounts for TARJETA_CREDITO charge account selector
   useEffect(() => {
@@ -74,8 +126,22 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
             ? editingAccount.openingBalanceDate.split('T')[0]
             : new Date().toISOString().split('T')[0],
         });
+        setEsRemunerada(editingAccount.esRemunerada ?? false);
+        setTinAnual(editingAccount.remuneracion?.tinAnual ?? 2.5);
+        setFrecuencia(editingAccount.remuneracion?.frecuenciaPagos ?? 'mensual');
+        setBase(editingAccount.remuneracion?.base ?? 'saldo');
+        setImporteFijo(editingAccount.remuneracion?.importeFijo ?? 10000);
+        setRetencion(editingAccount.remuneracion?.retencionFiscal ?? 19);
+        setFechaInicio(editingAccount.remuneracion?.fechaInicio ?? new Date().toISOString().split('T')[0]);
       } else {
         setFormData(defaultFormData());
+        setEsRemunerada(false);
+        setTinAnual(2.5);
+        setFrecuencia('mensual');
+        setBase('saldo');
+        setImporteFijo(10000);
+        setRetencion(19);
+        setFechaInicio(new Date().toISOString().split('T')[0]);
       }
       setFormErrors({});
     }
@@ -90,6 +156,13 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  const handleTipoChange = (tipo: AccountFormData['tipo']) => {
+    setFormData((prev) => ({ ...prev, tipo }));
+    if (tipo === 'AHORRO' && !esRemunerada) {
+      setEsRemunerada(true);
+    }
+  };
 
   const uploadLogoFile = async (file: File): Promise<string> => {
     if (!file.type.startsWith('image/')) throw new Error('Solo se permiten archivos de imagen');
@@ -110,13 +183,30 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
   const getLogoPreviewUrl = (file: File) => URL.createObjectURL(file);
 
+  // Projection calculators
+  const calcBrutoAnual = (): number => {
+    const baseCalculo = base === 'fijo' ? (importeFijo || 0) : 10000;
+    return baseCalculo * (tinAnual || 0) / 100;
+  };
+
+  const calcRetencion = (): number => calcBrutoAnual() * (retencion || 0) / 100;
+
+  const calcNetoPeriodo = (): number => {
+    const pagosAnuales = FRECUENCIA_PAGOS[frecuencia] || 12;
+    return (calcBrutoAnual() - calcRetencion()) / pagosAnuales;
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
+    if (!formData.alias.trim()) {
+      errors.alias = 'El alias es obligatorio';
+    } else if (formData.alias.trim().length > 40) {
+      errors.alias = 'El alias no puede superar 40 caracteres';
+    }
+
     if (formData.tipo !== 'TARJETA_CREDITO') {
-      if (!formData.iban.trim()) {
-        errors.iban = 'El IBAN es obligatorio';
-      } else {
+      if (formData.iban.trim()) {
         const ibanValidation = validateIbanEs(formData.iban);
         if (!ibanValidation.ok) errors.iban = ibanValidation.message || 'IBAN inválido';
       }
@@ -126,10 +216,6 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       const day = parseInt(formData.cardSettlementDay || '0', 10);
       if (!day || day < 1 || day > 31) errors.cardSettlementDay = 'Indica un día de cargo entre 1 y 31';
       if (!formData.cardChargeAccountId) errors.cardChargeAccountId = 'Selecciona la cuenta bancaria de cargo del recibo';
-    }
-
-    if (formData.alias.trim() && formData.alias.trim().length > 40) {
-      errors.alias = 'El alias no puede superar 40 caracteres';
     }
 
     if (formData.logoFile) {
@@ -165,7 +251,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
       const accountData: CreateAccountData | UpdateAccountData = {
         alias: formData.alias.trim() || undefined,
-        iban: formData.tipo === 'TARJETA_CREDITO' ? undefined : formData.iban,
+        iban: formData.tipo === 'TARJETA_CREDITO' ? undefined : (formData.iban || undefined),
         tipo: formData.tipo,
         cardConfig: formData.tipo === 'TARJETA_CREDITO'
           ? {
@@ -177,6 +263,17 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         openingBalance: parseFloat(formData.openingBalance || '0') || 0,
         openingBalanceDate: formData.openingBalanceDate
           ? new Date(formData.openingBalanceDate).toISOString()
+          : undefined,
+        esRemunerada,
+        remuneracion: esRemunerada
+          ? {
+              tinAnual,
+              frecuenciaPagos: frecuencia,
+              base,
+              importeFijo: base === 'fijo' ? importeFijo : undefined,
+              retencionFiscal: retencion,
+              fechaInicio,
+            }
           : undefined,
       };
 
@@ -205,7 +302,10 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50"
       style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}
     >
-      <div className="bg-white p-6 w-full max-w-md">
+      <div
+        className="bg-white w-full max-w-md"
+        style={{ padding: 24, maxHeight: '90vh', overflowY: 'auto' }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-atlas-navy-1">
             {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
@@ -217,16 +317,16 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* Alias field - Optional */}
+            {/* Alias — obligatorio */}
             <div>
               <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                Alias (opcional)
+                Alias <span style={{ color: 'var(--teal-600)' }}>*</span>
               </label>
               <input
                 type="text"
                 value={formData.alias}
                 onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                className="input"
                 placeholder="ej. Cuenta principal, Nómina..."
                 maxLength={40}
               />
@@ -237,8 +337,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Tipo de cuenta</label>
               <select
                 value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as AccountFormData['tipo'] })}
-                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                onChange={(e) => handleTipoChange(e.target.value as AccountFormData['tipo'])}
+                className="input"
                 disabled={!!editingAccount}
               >
                 <option value="CORRIENTE">Cuenta corriente</option>
@@ -258,7 +358,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                     max={31}
                     value={formData.cardSettlementDay}
                     onChange={(e) => setFormData({ ...formData, cardSettlementDay: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    className="input"
                   />
                   {formErrors.cardSettlementDay && <p className="mt-1 text-sm text-error-600">{formErrors.cardSettlementDay}</p>}
                 </div>
@@ -268,7 +368,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   <select
                     value={formData.cardChargeAccountId}
                     onChange={(e) => setFormData({ ...formData, cardChargeAccountId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                    className="input"
                   >
                     <option value="">Selecciona una cuenta</option>
                     {accounts
@@ -282,26 +382,28 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               </>
             )}
 
-            {/* IBAN field - Required */}
+            {/* IBAN — opcional */}
             {formData.tipo !== 'TARJETA_CREDITO' && (
               <div>
                 <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  IBAN <span className="text-error-500">*</span>
+                  IBAN
                 </label>
                 <input
                   type="text"
                   value={formData.iban}
                   onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                  className="input"
                   placeholder="ES91 0049 1500 0512 3456 7892"
-                  required
                   disabled={!!editingAccount}
                 />
                 {formErrors.iban && <p className="mt-1 text-sm text-error-600">{formErrors.iban}</p>}
+                <p className="mt-1" style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)' }}>
+                  Opcional — ayuda a vincular movimientos automáticamente
+                </p>
               </div>
             )}
 
-            {/* Logo upload - Optional */}
+            {/* Logo upload — opcional */}
             <div>
               <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
                 Logo personalizado (opcional)
@@ -311,7 +413,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={handleLogoFileChange}
-                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                className="input"
               />
               {formErrors.logoFile && <p className="mt-1 text-sm text-error-600">{formErrors.logoFile}</p>}
               <p className="mt-1 text-xs text-gray-500">
@@ -341,7 +443,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   type="number"
                   value={formData.openingBalance}
                   onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                  className="input"
                   placeholder="0,00"
                   step="0.01"
                 />
@@ -354,10 +456,172 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   type="date"
                   value={formData.openingBalanceDate}
                   onChange={(e) => setFormData({ ...formData, openingBalanceDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-atlas-blue focus:border-transparent"
+                  className="input"
                 />
               </div>
             </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: '1px solid var(--grey-200)', margin: '8px 0' }} />
+
+            {/* Toggle cuenta remunerada */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+              <div>
+                <p style={{ fontSize: 'var(--t-base)', color: 'var(--grey-900)', fontWeight: 500 }}>
+                  Cuenta remunerada
+                </p>
+                <p style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)', marginTop: 2 }}>
+                  Esta cuenta genera intereses periódicos
+                </p>
+              </div>
+              <Toggle checked={esRemunerada} onChange={setEsRemunerada} />
+            </div>
+
+            {/* Campos de remuneración */}
+            {esRemunerada && (
+              <div style={{
+                background: 'var(--grey-50)',
+                border: '1px solid var(--grey-200)',
+                borderRadius: 8,
+                padding: 16,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+              }}>
+
+                {/* Fila 1: TIN + Frecuencia */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                      TIN anual (%) <span style={{ color: 'var(--teal-600)' }}>*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="20"
+                      value={tinAnual}
+                      onChange={(e) => setTinAnual(parseFloat(e.target.value) || 0)}
+                      className="input"
+                      style={{ fontFamily: "'IBM Plex Mono'" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                      Frecuencia de cobro <span style={{ color: 'var(--teal-600)' }}>*</span>
+                    </label>
+                    <select
+                      value={frecuencia}
+                      onChange={(e) => setFrecuencia(e.target.value as typeof frecuencia)}
+                      className="input"
+                    >
+                      <option value="mensual">Mensual</option>
+                      <option value="trimestral">Trimestral</option>
+                      <option value="semestral">Semestral</option>
+                      <option value="anual">Anual</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Fila 2: Base + Importe fijo */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                      Base de cálculo <span style={{ color: 'var(--teal-600)' }}>*</span>
+                    </label>
+                    <select
+                      value={base}
+                      onChange={(e) => setBase(e.target.value as typeof base)}
+                      className="input"
+                    >
+                      <option value="saldo">Saldo medio de la cuenta</option>
+                      <option value="fijo">Importe fijo</option>
+                    </select>
+                  </div>
+                  {base === 'fijo' ? (
+                    <div>
+                      <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                        Importe fijo (€) <span style={{ color: 'var(--teal-600)' }}>*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={importeFijo}
+                        onChange={(e) => setImporteFijo(parseFloat(e.target.value) || 0)}
+                        className="input"
+                        style={{ fontFamily: "'IBM Plex Mono'" }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ paddingTop: 20 }}>
+                      <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>
+                        ATLAS usará el saldo real para calcular los intereses
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Fila 3: Retención + Fecha inicio */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div>
+                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                      Retención fiscal (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="100"
+                      value={retencion}
+                      onChange={(e) => setRetencion(parseFloat(e.target.value) || 0)}
+                      className="input"
+                      style={{ fontFamily: "'IBM Plex Mono'" }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
+                      Inicio de remuneración
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)}
+                      className="input"
+                    />
+                  </div>
+                </div>
+
+                {/* Proyección */}
+                <div style={{
+                  background: 'var(--white)',
+                  border: '1px solid var(--grey-200)',
+                  borderRadius: 8,
+                  padding: '10px 14px',
+                }}>
+                  <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, marginBottom: 6 }}>
+                    Proyección estimada · {base === 'fijo' ? `base ${importeFijo?.toLocaleString('es-ES')} €` : 'base saldo actual'}
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
+                    <span style={{ color: 'var(--grey-500)' }}>Interés bruto anual</span>
+                    <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
+                      {calcBrutoAnual().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
+                    <span style={{ color: 'var(--grey-500)' }}>Retención ({retencion}%)</span>
+                    <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--grey-700)' }}>
+                      {calcRetencion().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0', borderTop: '1px solid var(--grey-200)', marginTop: 4, paddingTop: 6 }}>
+                    <span style={{ color: 'var(--grey-500)' }}>Cobro neto por período ({frecuencia})</span>
+                    <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
+                      {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
 
           {/* Form Actions */}

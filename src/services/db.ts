@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 47; // V4.7: cleanup — eliminar store huérfano importLogs
+const DB_VERSION = 48; // V4.8: cuenta remunerada — campos opcionales en Account
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -835,6 +835,16 @@ export interface Account {
   isAtRisk?: boolean;
   usage_scope?: AccountUsageScope;
   logo_url?: string; // Maps to banco.brand.logoUrl
+
+  esRemunerada?: boolean;
+  remuneracion?: {
+    tinAnual: number;
+    frecuenciaPagos: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+    base: 'saldo' | 'fijo';
+    importeFijo?: number;
+    retencionFiscal: number;
+    fechaInicio: string;
+  };
 }
 
 // H8: Movement types - enhanced to match treasury_transactions requirements
@@ -2432,6 +2442,12 @@ export const initDB = async () => {
             db.deleteObjectStore(store);
           }
         }
+
+        // ═══════════════════════════════════════════════════
+        // V4.8 — Cuenta remunerada: campos opcionales en accounts
+        // Sin cambios estructurales — los campos esRemunerada y
+        // remuneracion son opcionales y no requieren migración.
+        // ═══════════════════════════════════════════════════
       },
       blocked() {
         console.warn('[DB] Upgrade blocked by another connection. Recarga las otras pestañas de ATLAS para completar la migración.');

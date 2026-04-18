@@ -10,6 +10,15 @@ import { validateIbanEs, normalizeIban, detectBankByIBAN } from '../utils/accoun
 // Logging prefix for Treasury operations
 const LOG_PREFIX = '[TESO-ACCOUNTS]';
 
+type RemuneracionData = {
+  tinAnual: number;
+  frecuenciaPagos: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+  base: 'saldo' | 'fijo';
+  importeFijo?: number;
+  retencionFiscal: number;
+  fechaInicio: string;
+};
+
 export interface CreateAccountData {
   alias?: string;  // ATLAS: alias is now optional
   iban?: string;
@@ -22,6 +31,8 @@ export interface CreateAccountData {
   logoUser?: string; // User uploaded logo
   openingBalance?: number;      // Saldo a fecha de referencia (default 0)
   openingBalanceDate?: string;  // Fecha ISO del saldo (default = now)
+  esRemunerada?: boolean;
+  remuneracion?: RemuneracionData;
 }
 
 export interface UpdateAccountData {
@@ -37,6 +48,8 @@ export interface UpdateAccountData {
   logoUser?: string; // User uploaded logo
   openingBalance?: number;
   openingBalanceDate?: string;
+  esRemunerada?: boolean;
+  remuneracion?: RemuneracionData;
 }
 
 class CuentasService {
@@ -107,6 +120,8 @@ class CuentasService {
         includeInConsolidated: true,
         usage_scope: 'mixto',
         deleted_at: account.deleted_at, // Preserve deletion status
+        esRemunerada: account.esRemunerada ?? false,
+        remuneracion: account.remuneracion,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt
       };
@@ -237,12 +252,8 @@ class CuentasService {
       }
     }
 
-    if (!isCreditCard && !data.iban) {
-      throw new Error('El IBAN es obligatorio');
-    }
-
-    if (!isCreditCard) {
-      const ibanValidation = validateIbanEs(data.iban!);
+    if (!isCreditCard && data.iban) {
+      const ibanValidation = validateIbanEs(data.iban);
       if (!ibanValidation.ok) {
         throw new Error(ibanValidation.message);
       }
@@ -250,7 +261,9 @@ class CuentasService {
 
     const normalizedIban = isCreditCard
       ? `CARD-${Date.now()}`
-      : normalizeIban(data.iban!);
+      : data.iban
+        ? normalizeIban(data.iban)
+        : `NONIAN-${Date.now()}`;
     
     // Check for duplicates - also verify against IndexedDB to avoid orphaned localStorage entries
     const existingInMemory = this.accounts.find(
@@ -298,6 +311,8 @@ class CuentasService {
       openingBalance: data.openingBalance ?? 0,
       balance: data.openingBalance ?? 0,
       openingBalanceDate: data.openingBalanceDate ?? new Date().toISOString(),
+      esRemunerada: data.esRemunerada ?? false,
+      remuneracion: data.esRemunerada ? data.remuneracion : undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -419,6 +434,10 @@ class CuentasService {
     }
     if (data.cardConfig !== undefined) {
       account.cardConfig = data.cardConfig;
+    }
+    if (data.esRemunerada !== undefined) {
+      account.esRemunerada = data.esRemunerada;
+      account.remuneracion = data.esRemunerada ? data.remuneracion : undefined;
     }
 
     account.updatedAt = new Date().toISOString();
