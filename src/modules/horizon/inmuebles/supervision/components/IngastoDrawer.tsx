@@ -713,7 +713,7 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
               if (tipo === 'rentas') {
                 navigate(`/inmuebles/contratos?inmuebleId=${inmuebleId}`);
               } else if (tipo === 'gastos_op' || tipo === 'reparaciones') {
-                navigate(`/inmuebles/gastos-capex?inmuebleId=${inmuebleId}`);
+                navigate(`/inmuebles/cartera/${inmuebleId}?tab=presupuesto`);
               } else if (tipo === 'intereses') {
                 navigate('/financiacion');
               }

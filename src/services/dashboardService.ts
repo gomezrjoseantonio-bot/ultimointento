@@ -1806,7 +1806,7 @@ class DashboardService {
           urgencia: diasHastaVencimiento <= 3 ? 'alta' : 'media',
           diasVencimiento: diasHastaVencimiento,
           importe: expense.importe || undefined,
-          link: '/inmuebles/gastos-capex'
+          link: '/inmuebles/cartera'
         });
       });
 

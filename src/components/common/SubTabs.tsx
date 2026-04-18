@@ -20,7 +20,6 @@ const SUBTABS: SubTabsConfig = {
     { label: 'Supervisión', path: '/inmuebles/supervision' },
     { label: 'Cartera', path: '/inmuebles/cartera' },
     { label: 'Contratos', path: '/inmuebles/contratos' },
-    { label: 'Gastos', path: '/inmuebles/gastos-capex' },
   ],
   inversiones: [
     { label: 'Resumen', path: '/inversiones/resumen' },

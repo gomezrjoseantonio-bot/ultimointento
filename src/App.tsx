@@ -116,8 +116,6 @@ const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pe
 
 // Legacy Pulse (Personal) Module Components - Keep for migration
 const HorizonPreferenciasDatos = lazyWithPreload(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
-const GastosCapex = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos-capex/GastosCapex'));
-
 // Development only imports
 const ProfileSeederPage = lazyWithPreload(() =>
   (import.meta as any).env?.DEV 
@@ -363,11 +361,6 @@ function App() {
               <Route path="contratos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <Contratos />
-                </React.Suspense>
-              } />
-              <Route path="gastos-capex" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <GastosCapex />
                 </React.Suspense>
               } />
               <Route path="evolucion" element={
