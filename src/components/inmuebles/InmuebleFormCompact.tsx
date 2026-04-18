@@ -26,6 +26,11 @@ interface FormData {
   direccion: string;
   refCatastral: string;
 
+  // Ubicación (editable)
+  municipality: string;
+  province: string;
+  ccaa: string;
+
   // Compra
   fechaCompra: string;
   precioCompra: number;
@@ -43,6 +48,8 @@ interface FormData {
   habitaciones: number;
   banos: number;
   anioConstruccion: number;
+  porcentajePropiedad: number;
+  esUrbana: boolean;
 
   // Fiscal
   valorCatastralTotal: number;
@@ -59,6 +66,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
     identificacion: true,
+    ubicacion: true,
     compra: true,
     caracteristicas: true
   });
@@ -72,6 +80,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     cp: '',
     direccion: '',
     refCatastral: '',
+    municipality: '',
+    province: '',
+    ccaa: '',
     fechaCompra: '',
     precioCompra: 0,
     tipo: 'USADA_ITP',
@@ -84,6 +95,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     habitaciones: 0,
     banos: 0,
     anioConstruccion: 0,
+    porcentajePropiedad: 100,
+    esUrbana: true,
     valorCatastralTotal: 0,
     valorCatastralConstruccion: 0,
     cadastralRevised: false,
@@ -125,6 +138,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         cp: property.postalCode,
         direccion: property.address,
         refCatastral: property.cadastralReference || '',
+        municipality: property.municipality || '',
+        province: property.province || '',
+        ccaa: property.ccaa || '',
         fechaCompra: property.purchaseDate,
         precioCompra: property.acquisitionCosts.price,
         tipo: property.transmissionRegime === 'usada' ? 'USADA_ITP' : 'NUEVA_IVA_AJD',
@@ -137,6 +153,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         habitaciones: property.bedrooms || 0,
         banos: property.bathrooms || 0,
         anioConstruccion: 0,
+        porcentajePropiedad: property.porcentajePropiedad ?? 100,
+        esUrbana: property.esUrbana ?? true,
         valorCatastralTotal: property.fiscalData?.cadastralValue || 0,
         valorCatastralConstruccion: property.fiscalData?.constructionCadastralValue || 0,
         cadastralRevised: property.fiscalData?.cadastralRevised ?? false,
@@ -201,20 +219,28 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
           ccaa: location.ccaa,
           isInferred
         });
-        
+
         if (isInferred) {
           toast(`Ubicación inferida: ${location.province}. Puedes editarla manualmente.`);
         }
-        
+
         // Capture ccaa to ensure it's non-null in the callback
         const ccaa = location.ccaa;
+        const municipality = location.municipalities[0] || '';
+        const province = location.province;
 
-        // Auto-calculate taxes when CP is available
+        // Auto-fill ubicación fields (only if empty, don't overwrite user edits)
         setFormData(prevFormData => {
-          if (prevFormData.precioCompra > 0) {
-            calculateTaxes(prevFormData.precioCompra, prevFormData.tipo, ccaa);
+          const next: FormData = {
+            ...prevFormData,
+            municipality: prevFormData.municipality || municipality,
+            province: prevFormData.province || province,
+            ccaa: prevFormData.ccaa || ccaa,
+          };
+          if (next.precioCompra > 0) {
+            calculateTaxes(next.precioCompra, next.tipo, ccaa);
           }
-          return prevFormData;
+          return next;
         });
       } else {
         setLocationInfo(null);
@@ -308,21 +334,17 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   
   // Map form data to Property model
   const mapToProperty = (): Omit<Property, 'id'> => {
-    // Use detected location or fallback to empty values
-    // Madrid is used as fallback for CCAA only when no location is detected
-    const location = locationInfo || {
-      municipality: '',
-      province: '',
-      ccaa: 'Madrid' // Default fallback for CCAA (most common region in Spain)
-    };
-    
+    // User-edited ubicación fields win; fallback to auto-detected location,
+    // and finally to 'Madrid' for CCAA (most common region) if still empty.
+    const ccaaFallback = formData.ccaa || locationInfo?.ccaa || 'Madrid';
+
     const property: Omit<Property, 'id'> = {
       alias: formData.alias,
       address: formData.direccion || '',
       postalCode: formData.cp,
-      municipality: location.municipality,
-      province: location.province,
-      ccaa: location.ccaa,
+      municipality: formData.municipality || locationInfo?.municipality || '',
+      province: formData.province || locationInfo?.province || '',
+      ccaa: ccaaFallback,
       purchaseDate: formData.fechaCompra,
       cadastralReference: formData.refCatastral || undefined,
       squareMeters: formData.m2 || 0,
@@ -330,6 +352,11 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       bathrooms: formData.banos || undefined,
       transmissionRegime: formData.tipo === 'USADA_ITP' ? 'usada' : 'obra-nueva',
       state: 'activo',
+      porcentajePropiedad:
+        formData.porcentajePropiedad > 0 && formData.porcentajePropiedad <= 100
+          ? formData.porcentajePropiedad
+          : 100,
+      esUrbana: formData.esUrbana,
       acquisitionCosts: {
         price: formData.precioCompra,
         notary: formData.notaria || 0,
@@ -456,9 +483,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
             
             {expandedSections.identificacion && (
               <div className="p-4 pt-0 space-y-3">
-                {/* Row 1 */}
+                {/* Row 1: Alias */}
                 <div className="grid grid-cols-12 gap-3">
-                  <div className="col-span-6">
+                  <div className="col-span-12">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Alias *
                     </label>
@@ -471,31 +498,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                       placeholder="Piso Centro"
                     />
                   </div>
-                  <div className="col-span-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      CP *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cp}
-                      onChange={(e) => handleCpChange(e.target.value)}
-                      maxLength={5}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
-                      placeholder="28001"
-                    />
-                  </div>
-                  <div className="col-span-3 flex items-end">
-                    {locationInfo && (
-                      <span className={`text-xs pb-2 ${locationInfo.isInferred ? 'text-orange-500' : 'text-gray-600'}`}>
-                        <span aria-hidden="true">{locationInfo.isInferred ? '🔍 ' : '🎯 '}</span>
-                        <span>{locationInfo.municipality || locationInfo.province}</span>
-                        {locationInfo.isInferred && <span className="sr-only">(inferido)</span>}
-                      </span>
-                    )}
-                  </div>
                 </div>
-                
-                {/* Row 2 */}
+
+                {/* Row 2: Dirección + Ref. Catastral */}
                 <div className="grid grid-cols-12 gap-3">
                   <div className="col-span-9">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -526,8 +531,100 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
               </div>
             )}
           </section>
-          
-          {/* Section 2: COMPRA Y COSTE */}
+
+          {/* Section 2: UBICACIÓN */}
+          <section className="border border-gray-200 rounded-lg bg-white">
+            <button
+              onClick={() => toggleSection('ubicacion')}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors section-header"
+            >
+              <h3 className="font-medium text-gray-900 flex items-center">
+                {expandedSections.ubicacion ? (
+                  <ChevronDown className="w-4 h-4 mr-2 text-gray-500" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 mr-2 text-gray-500" />
+                )}
+                UBICACIÓN
+              </h3>
+            </button>
+
+            {expandedSections.ubicacion && (
+              <div className="p-4 pt-0 space-y-3">
+                {/* Row 1: CP + Municipio + Provincia */}
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      CP *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cp}
+                      onChange={(e) => handleCpChange(e.target.value)}
+                      maxLength={5}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="28001"
+                    />
+                  </div>
+                  <div className="col-span-5">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Población
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.municipality}
+                      onChange={(e) => setFormData(prev => ({ ...prev, municipality: e.target.value }))}
+                      maxLength={80}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="Madrid"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Provincia
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.province}
+                      onChange={(e) => setFormData(prev => ({ ...prev, province: e.target.value }))}
+                      maxLength={60}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="Madrid"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Comunidad Autónoma */}
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-6">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Comunidad Autónoma
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.ccaa}
+                      onChange={(e) => setFormData(prev => ({ ...prev, ccaa: e.target.value }))}
+                      maxLength={60}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="Comunidad de Madrid"
+                    />
+                  </div>
+                  <div className="col-span-6 flex items-end pb-2">
+                    {locationInfo && (
+                      <span className={`text-xs ${locationInfo.isInferred ? 'text-orange-500' : 'text-gray-600'}`}>
+                        <span aria-hidden="true">{locationInfo.isInferred ? '🔍 ' : '🎯 '}</span>
+                        <span>
+                          Detectado por CP: {locationInfo.municipality || locationInfo.province}
+                        </span>
+                        {locationInfo.isInferred && <span className="sr-only">(inferido)</span>}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Section 3: COMPRA Y COSTE */}
           <section className="border border-gray-200 rounded-lg bg-white">
             <button
               onClick={() => toggleSection('compra')}
@@ -742,7 +839,54 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                     {/* Empty space */}
                   </div>
                 </div>
-                
+
+                {/* Row: % Propiedad + Urbana/Rústica */}
+                <div className="grid grid-cols-12 gap-3">
+                  <div className="col-span-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      % Propiedad
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.01"
+                      value={formData.porcentajePropiedad || ''}
+                      onChange={(e) => {
+                        const raw = parseFloat(e.target.value);
+                        const clamped = Number.isFinite(raw)
+                          ? Math.max(0, Math.min(100, raw))
+                          : 0;
+                        setFormData(prev => ({ ...prev, porcentajePropiedad: clamped }));
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      placeholder="100"
+                    />
+                  </div>
+                  <div className="col-span-9 flex items-end pb-2 space-x-6">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="esUrbana"
+                        checked={formData.esUrbana === true}
+                        onChange={() => setFormData(prev => ({ ...prev, esUrbana: true }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Urbana</span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="esUrbana"
+                        checked={formData.esUrbana === false}
+                        onChange={() => setFormData(prev => ({ ...prev, esUrbana: false }))}
+                        className="mr-2"
+                      />
+                      <span className="text-sm text-gray-700">Rústica</span>
+                    </label>
+                  </div>
+                </div>
+
                 {/* Separator */}
                 <hr className="border-gray-200" />
                 

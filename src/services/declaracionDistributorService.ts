@@ -62,11 +62,26 @@ function toISODate(dateStr: string): string {
 /**
  * F5: Extrae el código postal de 5 dígitos de una dirección AEAT.
  * Formato típico: "CL FUERTES ACEVEDO 32 1 2 DR 33006 OVIEDO (ASTURIAS)"
+ *
+ * En las direcciones AEAT el CP aparece justo antes del municipio (al final),
+ * pero a veces hay otros números de 5 dígitos antes (bloque, ref. interna).
+ * Estrategia: recoger TODOS los grupos de 5 dígitos y quedarse con el último
+ * que caiga en el rango de CP español (01000–52999).
  */
 function extraerCodigoPostal(direccion: string): string {
   if (!direccion) return '';
-  const m = direccion.match(/\b(\d{5})\b/);
-  return m ? m[1] : '';
+  const matches = direccion.match(/\b\d{5}\b/g);
+  if (!matches || matches.length === 0) return '';
+
+  const esCpEspañol = (cp: string) => {
+    const n = parseInt(cp, 10);
+    return n >= 1000 && n <= 52999;
+  };
+
+  for (let i = matches.length - 1; i >= 0; i--) {
+    if (esCpEspañol(matches[i])) return matches[i];
+  }
+  return '';
 }
 
 function extraerUbicacion(direccion: string): { province: string; municipality: string; ccaa: string } {
