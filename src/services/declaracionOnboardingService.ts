@@ -1072,8 +1072,12 @@ export async function crearContratoPendienteIdentificar(params: {
   dias: number;
   tipoArrendamiento?: 'vivienda' | 'no_vivienda';
   fechaContrato?: string;
+  nifsDetectados?: string[];
 }): Promise<void> {
-  const { propertyId, ejercicio, importeDeclarado, dias, tipoArrendamiento, fechaContrato } = params;
+  const {
+    propertyId, ejercicio, importeDeclarado, dias,
+    tipoArrendamiento, fechaContrato, nifsDetectados,
+  } = params;
 
   if (!propertyId || importeDeclarado <= 0) return;
 
@@ -1084,17 +1088,40 @@ export async function crearContratoPendienteIdentificar(params: {
   );
 
   if (yaExiste) {
-    // Actualizar el existente con los nuevos datos (puede haber múltiples arrendamientos sin NIF)
     const ejerciciosFiscales = yaExiste.ejerciciosFiscales ?? {};
-    // Si ya existe ese ejercicio, sumar el importe (pueden ser varios arrendamientos sin NIF mismo año)
-    const existenteEjercicio = ejerciciosFiscales[ejercicio];
-    ejerciciosFiscales[ejercicio] = {
-      estado: 'declarado',
-      importeDeclarado: (existenteEjercicio?.importeDeclarado ?? 0) + importeDeclarado,
-      dias: (existenteEjercicio?.dias ?? 0) + dias,
-      fuente: 'xml_aeat',
-      fechaImportacion: new Date().toISOString(),
-    };
+    const existenteAño = ejerciciosFiscales[ejercicio];
+    const ahora = new Date();
+    const fechaExistente = existenteAño?.fechaImportacion
+      ? new Date(existenteAño.fechaImportacion)
+      : null;
+
+    // F2: Diferenciar entre "mismo XML, múltiples <Arrendamiento>" (sumar)
+    // y "re-importación" (sobreescribir) por timestamp < 60s.
+    const mismaImportacion = fechaExistente
+      && (ahora.getTime() - fechaExistente.getTime()) < 60_000;
+
+    if (mismaImportacion && existenteAño) {
+      const nifsExistentes = existenteAño.nifsDetectados ?? [];
+      const nifsNuevos = (nifsDetectados ?? []).filter(n => n && !nifsExistentes.includes(n));
+      ejerciciosFiscales[ejercicio] = {
+        estado: 'declarado',
+        importeDeclarado: (existenteAño.importeDeclarado ?? 0) + importeDeclarado,
+        dias: Math.min((existenteAño.dias ?? 0) + dias, 366),
+        fuente: 'xml_aeat',
+        fechaImportacion: ahora.toISOString(),
+        nifsDetectados: [...nifsExistentes, ...nifsNuevos],
+      };
+    } else {
+      ejerciciosFiscales[ejercicio] = {
+        estado: 'declarado',
+        importeDeclarado,
+        dias: Math.min(dias, 366),
+        fuente: 'xml_aeat',
+        fechaImportacion: ahora.toISOString(),
+        nifsDetectados: nifsDetectados ?? [],
+      };
+    }
+
     await updateContract(yaExiste.id!, { ejerciciosFiscales });
     return;
   }
@@ -1146,9 +1173,10 @@ export async function crearContratoPendienteIdentificar(params: {
       [ejercicio]: {
         estado: 'declarado',
         importeDeclarado,
-        dias,
+        dias: Math.min(dias, 366),
         fuente: 'xml_aeat',
         fechaImportacion: new Date().toISOString(),
+        nifsDetectados: nifsDetectados ?? [],
       },
     },
     documentoContrato: {

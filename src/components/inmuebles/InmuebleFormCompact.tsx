@@ -25,28 +25,29 @@ interface FormData {
   cp: string;
   direccion: string;
   refCatastral: string;
-  
+
   // Compra
   fechaCompra: string;
   precioCompra: number;
   tipo: 'USADA_ITP' | 'NUEVA_IVA_AJD';
-  
+
   // Gastos
   notaria: number;
   registro: number;
   gestoria: number;
   otros: number;
   impuestos: number;
-  
+
   // Características
   m2: number;
   habitaciones: number;
   banos: number;
   anioConstruccion: number;
-  
+
   // Fiscal
   valorCatastralTotal: number;
   valorCatastralConstruccion: number;
+  cadastralRevised: boolean;
 }
 
 const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propertyId, embedded = false, onCancel, onSaved }) => {
@@ -84,7 +85,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     banos: 0,
     anioConstruccion: 0,
     valorCatastralTotal: 0,
-    valorCatastralConstruccion: 0
+    valorCatastralConstruccion: 0,
+    cadastralRevised: false,
   });
   
   // Auto-detected location from postal code
@@ -136,7 +138,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         banos: property.bathrooms || 0,
         anioConstruccion: 0,
         valorCatastralTotal: property.fiscalData?.cadastralValue || 0,
-        valorCatastralConstruccion: property.fiscalData?.constructionCadastralValue || 0
+        valorCatastralConstruccion: property.fiscalData?.constructionCadastralValue || 0,
+        cadastralRevised: property.fiscalData?.cadastralRevised ?? false,
       });
       
       // Set location info
@@ -338,10 +341,11 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       fiscalData: {
         cadastralValue: formData.valorCatastralTotal || undefined,
         constructionCadastralValue: formData.valorCatastralConstruccion || undefined,
-        constructionPercentage: 
+        constructionPercentage:
           formData.valorCatastralTotal > 0 && formData.valorCatastralConstruccion > 0
             ? (formData.valorCatastralConstruccion / formData.valorCatastralTotal) * 100
-            : undefined
+            : undefined,
+        cadastralRevised: formData.cadastralRevised,
       }
     };
     
@@ -776,6 +780,18 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                     )}
                   </div>
                 </div>
+
+                <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.cadastralRevised}
+                    onChange={(e) => setFormData(prev => ({ ...prev, cadastralRevised: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs text-gray-700">
+                    Valor catastral revisado (Hacienda ha revisado el valor catastral en el último año)
+                  </span>
+                </label>
               </div>
             )}
           </section>

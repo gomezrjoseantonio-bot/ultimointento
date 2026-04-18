@@ -287,6 +287,27 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                 </div>
               </div>
 
+              {/* NIFs detectados (F-drawer) */}
+              {propuesta.nifsDetectados.length > 0 && (
+                <div
+                  style={{
+                    background: 'var(--teal-50, #E6F7FA)',
+                    border: '1px solid var(--teal-200, #A8E0EB)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    marginBottom: 16,
+                    fontSize: 12,
+                    color: 'var(--navy-900)',
+                  }}
+                >
+                  Hacienda declaró este año con{' '}
+                  {propuesta.nifsDetectados.length === 1 ? 'el NIF' : 'los NIFs'}:{' '}
+                  <strong style={{ fontFamily: 'IBM Plex Mono, monospace' }}>
+                    {propuesta.nifsDetectados.join(', ')}
+                  </strong>
+                </div>
+              )}
+
               {/* Aviso diferencia */}
               {diferencia !== 0 && (
                 <div
@@ -343,16 +364,25 @@ const VinculacionDrawer: React.FC<VinculacionDrawerProps> = ({
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {propuesta.contratos.map((c: ContratoPropuesta) => (
-                    <ContratoCard
-                      key={c.contratoId}
-                      contrato={c}
-                      importeAsignado={asignaciones[c.contratoId] ?? c.importeAsignado}
-                      incluido={incluidos.has(c.contratoId)}
-                      onToggleIncluido={() => handleToggleIncluido(c.contratoId)}
-                      onChange={(val) => handleAsignacionChange(c.contratoId, val)}
-                    />
-                  ))}
+                  {propuesta.contratos.map((c: ContratoPropuesta) => {
+                    const nifCoincide = Boolean(
+                      c.inquilinoDni &&
+                      propuesta.nifsDetectados.some(
+                        (nif) => nif.toUpperCase() === (c.inquilinoDni ?? '').toUpperCase(),
+                      ),
+                    );
+                    return (
+                      <ContratoCard
+                        key={c.contratoId}
+                        contrato={c}
+                        importeAsignado={asignaciones[c.contratoId] ?? c.importeAsignado}
+                        incluido={incluidos.has(c.contratoId)}
+                        onToggleIncluido={() => handleToggleIncluido(c.contratoId)}
+                        onChange={(val) => handleAsignacionChange(c.contratoId, val)}
+                        nifCoincide={nifCoincide}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -453,6 +483,7 @@ interface ContratoCardProps {
   incluido: boolean;
   onToggleIncluido: () => void;
   onChange: (value: string) => void;
+  nifCoincide?: boolean;
 }
 
 const ContratoCard: React.FC<ContratoCardProps> = ({
@@ -461,10 +492,11 @@ const ContratoCard: React.FC<ContratoCardProps> = ({
   incluido,
   onToggleIncluido,
   onChange,
+  nifCoincide,
 }) => (
   <div
     style={{
-      border: '1px solid var(--grey-200)',
+      border: `1px solid ${nifCoincide ? 'var(--teal-600, #1DA0BA)' : 'var(--grey-200)'}`,
       borderRadius: 10,
       padding: 12,
       display: 'flex',

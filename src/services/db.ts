@@ -71,6 +71,8 @@ export interface Property {
   transmissionRegime: 'usada' | 'obra-nueva';
   state: 'activo' | 'vendido' | 'baja';
   notes?: string;
+  porcentajePropiedad?: number;
+  esUrbana?: boolean;
   acquisitionCosts: {
     price: number;
     itp?: number;
@@ -520,6 +522,7 @@ export interface EjercicioFiscalContrato {
   dias?: number;
   fuente?: 'xml_aeat' | 'atlas' | 'manual';
   fechaImportacion?: string;
+  nifsDetectados?: string[];
 }
 
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification

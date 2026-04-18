@@ -9,7 +9,6 @@ import { initializeAccountMigration } from './services/accountMigrationService';
 import { initDB, migrarPlanesDuplicados } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { limpiarEjerciciosCoordBasura } from './services/ejercicioResolverService';
-import { autoConfirmarRentaMensualDeclarada } from './services/contractService';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
 import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/migrations/limpiarGastosReparacionCasilla0106';
@@ -172,7 +171,6 @@ function App() {
               console.log(`[ATLAS] Ejercicios cerrados automáticamente: ${migration.ejerciciosCerrados.join(', ')}`);
             }
           })
-          .then(() => autoConfirmarRentaMensualDeclarada())
           .catch((error) => {
             console.error('[ATLAS] Error inicializando migración fiscal:', error);
           });

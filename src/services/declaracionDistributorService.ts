@@ -28,12 +28,10 @@ import type {
   DeclaracionCompleta,
   InmuebleDeclarado,
 } from '../types/declaracionCompleta';
-import { crearOActualizarContrato, crearContratoPendienteIdentificar } from './declaracionOnboardingService';
+import { crearContratoPendienteIdentificar } from './declaracionOnboardingService';
 import { ejecutarOnboardingPersonal } from './personalOnboardingService';
 import type { SituacionLaboral } from '../types/personal';
 import { cuentasService } from './cuentasService';
-import { prestamosService } from './prestamosService';
-import type { Prestamo } from '../types/prestamos';
 
 interface ResultadoInmuebles {
   distribuidos: InmuebleDistribuido[];
@@ -59,6 +57,16 @@ function toISODate(dateStr: string): string {
   if (m) return `${m[3]}-${m[2]}-${m[1]}`;
   // Already ISO or unknown format — return as-is
   return dateStr;
+}
+
+/**
+ * F5: Extrae el código postal de 5 dígitos de una dirección AEAT.
+ * Formato típico: "CL FUERTES ACEVEDO 32 1 2 DR 33006 OVIEDO (ASTURIAS)"
+ */
+function extraerCodigoPostal(direccion: string): string {
+  if (!direccion) return '';
+  const m = direccion.match(/\b(\d{5})\b/);
+  return m ? m[1] : '';
 }
 
 function extraerUbicacion(direccion: string): { province: string; municipality: string; ccaa: string } {
@@ -167,32 +175,17 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     if (!property?.id) continue;
 
     for (const arr of inm.arrendamientos) {
-      if (arr.nifArrendatarios.length > 0) {
-        // CON NIF: comportamiento actual + registrar ejercicio fiscal
-        await crearOActualizarContrato({
-          propertyId: property.id,
-          nifArrendatario: arr.nifArrendatarios[0],
-          nifArrendatario2: arr.nifArrendatarios[1],
-          fechaContrato: arr.fechaContrato,
-          ingresosAnuales: arr.ingresos,
-          tipoArrendamiento: arr.tipoArrendamiento,
-          tieneReduccion: inm.reduccionVivienda > 0,
-          ejercicio: decl.meta.ejercicio,
-          // NUEVO: datos para el ejercicio fiscal
-          importeDeclarado: arr.ingresos,
-          diasDeclarados: arr.diasArrendado,
-        });
-      } else {
-        // SIN NIF: crear contrato sin_identificar
-        await crearContratoPendienteIdentificar({
-          propertyId: property.id,
-          ejercicio: decl.meta.ejercicio,
-          importeDeclarado: arr.ingresos,
-          dias: arr.diasArrendado ?? 0,
-          tipoArrendamiento: arr.tipoArrendamiento === 'no_vivienda' ? 'no_vivienda' : 'vivienda',
-          fechaContrato: arr.fechaContrato,
-        });
-      }
+      // F1: Todos los arrendamientos van a sin_identificar.
+      // Los NIFs del XML se guardan como metadato para sugerir al vincular.
+      await crearContratoPendienteIdentificar({
+        propertyId: property.id,
+        ejercicio: decl.meta.ejercicio,
+        importeDeclarado: arr.ingresos,
+        dias: arr.diasArrendado ?? 0,
+        tipoArrendamiento: arr.tipoArrendamiento === 'no_vivienda' ? 'no_vivienda' : 'vivienda',
+        fechaContrato: arr.fechaContrato,
+        nifsDetectados: (arr.nifArrendatarios ?? []).filter(n => n && n.trim().length > 0),
+      });
     }
   }
   invalidateCachedStores(['contracts']);
@@ -227,9 +220,6 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
       }
     }
   }
-
-  // Persistir préstamos detectados al store de préstamos
-  await persistirPrestamosDetectados(resultadoInmuebles.prestamos, porRefCatastral, decl.meta.ejercicio);
 
   // Persistir vínculos accesorio (parking/trastero) al store vinculosAccesorio
   await persistirVinculosAccesorio(db, decl, porRefCatastral);
@@ -493,33 +483,61 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         camposNuevos.push('Fecha de compra');
         modificado = true;
       }
-      if (!next.province && inm.direccion) {
+      // F5: Ubicación SIEMPRE se re-extrae del XML (sobreescribe con el más reciente)
+      if (inm.direccion) {
         const ubicacion = extraerUbicacion(inm.direccion);
-        if (ubicacion.province) {
+        const cp = extraerCodigoPostal(inm.direccion);
+        if (ubicacion.province && next.province !== ubicacion.province) {
           next.province = ubicacion.province;
+          camposNuevos.push('Provincia');
+          modificado = true;
+        }
+        if (ubicacion.municipality && next.municipality !== ubicacion.municipality) {
           next.municipality = ubicacion.municipality;
+          camposNuevos.push('Municipio');
+          modificado = true;
+        }
+        if (ubicacion.ccaa && next.ccaa !== ubicacion.ccaa) {
           next.ccaa = ubicacion.ccaa;
-          camposNuevos.push('Ubicación');
+          modificado = true;
+        }
+        if (cp && next.postalCode !== cp) {
+          next.postalCode = cp;
+          camposNuevos.push('Código postal');
           modificado = true;
         }
       }
-      if (!next.fiscalData.cadastralValue && inm.valorCatastral) {
+      // F5: Datos catastrales SIEMPRE se actualizan si el XML trae datos
+      if (inm.valorCatastral && inm.valorCatastral > 0 && next.fiscalData.cadastralValue !== inm.valorCatastral) {
         next.fiscalData.cadastralValue = inm.valorCatastral;
+        if (next.aeatAmortization) next.aeatAmortization.cadastralValue = inm.valorCatastral;
         camposNuevos.push('Valor catastral');
         modificado = true;
       }
-      if (!next.fiscalData.constructionCadastralValue && inm.valorCatastralConstruccion) {
+      if (inm.valorCatastralConstruccion && inm.valorCatastralConstruccion > 0 && next.fiscalData.constructionCadastralValue !== inm.valorCatastralConstruccion) {
         next.fiscalData.constructionCadastralValue = inm.valorCatastralConstruccion;
+        if (next.aeatAmortization) next.aeatAmortization.constructionCadastralValue = inm.valorCatastralConstruccion;
         camposNuevos.push('VC construcción');
         modificado = true;
       }
-      if (!next.fiscalData.constructionPercentage && inm.porcentajeConstruccion) {
+      if (inm.porcentajeConstruccion && inm.porcentajeConstruccion > 0 && next.fiscalData.constructionPercentage !== inm.porcentajeConstruccion) {
         next.fiscalData.constructionPercentage = inm.porcentajeConstruccion;
+        if (next.aeatAmortization) next.aeatAmortization.constructionPercentage = inm.porcentajeConstruccion;
         camposNuevos.push('% construcción');
         modificado = true;
       }
-      if (next.fiscalData.cadastralRevised === undefined && inm.catastralRevisado !== undefined) {
+      if (inm.catastralRevisado !== undefined && next.fiscalData.cadastralRevised !== inm.catastralRevisado) {
         next.fiscalData.cadastralRevised = inm.catastralRevisado;
+        modificado = true;
+      }
+      // F5: Campos nuevos: % propiedad y urbana
+      if (inm.porcentajePropiedad > 0 && next.porcentajePropiedad !== inm.porcentajePropiedad) {
+        next.porcentajePropiedad = inm.porcentajePropiedad;
+        camposNuevos.push('% propiedad');
+        modificado = true;
+      }
+      if (inm.esUrbana !== undefined && next.esUrbana !== inm.esUrbana) {
+        next.esUrbana = inm.esUrbana;
         modificado = true;
       }
       if (!next.fiscalData.acquisitionDate && inm.fechaAdquisicion) {
@@ -710,77 +728,12 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
   return { distribuidos, contratos, opexRecurrentes, prestamos, proveedores };
 }
 
-/**
- * Persiste préstamos detectados desde la declaración XML al store de préstamos.
- * Deduplicación estricta: un préstamo por inmueble (por refCatastral o alias/direccionCorta).
- */
-async function persistirPrestamosDetectados(
-  prestamosDetectados: PrestamoDetectado[],
-  porRefCatastral: Map<string, Property>,
-  ejercicio: number,
-): Promise<void> {
-  if (prestamosDetectados.length === 0) return;
-
-  const todosLosPrestamos = await prestamosService.getAllPrestamos();
-
-  for (const det of prestamosDetectados) {
-    // Buscar el inmuebleId real desde properties por refCatastral
-    const property = porRefCatastral.get(normalizeRef(det.refCatastral));
-    const inmuebleId = property?.id?.toString() ?? det.refCatastral;
-    const alias = det.direccionCorta || det.refCatastral;
-
-    // Buscar préstamo existente para este inmueble (por inmuebleId o por nombre/alias)
-    const existente = todosLosPrestamos.find(
-      (p) =>
-        p.inmuebleId === inmuebleId ||
-        p.nombre === alias,
-    );
-
-    if (existente) {
-      // Solo actualizar interesesAnualesDeclarados añadiendo el año correspondiente
-      const interesesActualizados: Record<number, number> = {
-        ...(existente.interesesAnualesDeclarados || {}),
-        [ejercicio]: det.interesesAnuales,
-      };
-      await prestamosService.updatePrestamo(existente.id, {
-        interesesAnualesDeclarados: interesesActualizados,
-      });
-      console.log(`[distribuidor] Préstamo existente actualizado para ${alias}: intereses ${ejercicio} = €${det.interesesAnuales}`);
-    } else {
-      // Crear préstamo pendiente de completar
-      const nuevoPrestamo: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
-        ambito: 'INMUEBLE',
-        inmuebleId,
-        nombre: alias,
-        principalInicial: 0,
-        principalVivo: 0,
-        fechaFirma: '',
-        fechaPrimerCargo: '',
-        plazoMesesTotal: 0,
-        diaCargoMes: 1,
-        esquemaPrimerRecibo: 'NORMAL',
-        tipo: 'FIJO',
-        sistema: 'FRANCES',
-        carencia: 'NINGUNA',
-        cuentaCargoId: '',
-        cuotasPagadas: 0,
-        estado: 'pendiente_completar',
-        origenCreacion: 'IMPORTACION',
-        activo: true,
-        interesesAnualesDeclarados: { [ejercicio]: det.interesesAnuales },
-      };
-      await prestamosService.createPrestamo(nuevoPrestamo);
-      console.log(`[distribuidor] Préstamo creado (pendiente_completar) para ${alias}: intereses ${ejercicio} = €${det.interesesAnuales}`);
-    }
-  }
-}
-
 function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Property, 'id'> {
   const ubicacion = extraerUbicacion(inm.direccion || '');
   return {
     alias: acortarDireccion(inm.direccion) || inm.refCatastral,
     address: inm.direccion || inm.refCatastral,
-    postalCode: '',
+    postalCode: extraerCodigoPostal(inm.direccion || ''),
     province: ubicacion.province,
     municipality: ubicacion.municipality,
     ccaa: ubicacion.ccaa,
@@ -790,6 +743,8 @@ function construirPropertyDesdeDeclaracion(inm: InmuebleDeclarado): Omit<Propert
     bedrooms: 0,
     transmissionRegime: 'usada',
     state: 'activo',
+    porcentajePropiedad: inm.porcentajePropiedad > 0 ? inm.porcentajePropiedad : undefined,
+    esUrbana: inm.esUrbana,
     acquisitionCosts: {
       price: inm.precioAdquisicion || 0,
       other: inm.gastosAdquisicion ? [{ concept: 'Gastos adquisición AEAT', amount: inm.gastosAdquisicion }] : [],
@@ -1211,6 +1166,18 @@ async function escribirFiscalSummaries(
     const rc = normalizeRef(inm.refCatastral);
     const property = porRefCatastral.get(rc);
     if (!property?.id) continue;
+
+    // F2: Borrar filas xml_aeat previas para este {inmueble, ejercicio}
+    // antes de re-escribir. Re-import idempotente.
+    const existentes = await gastosInmuebleService.getByInmuebleYEjercicio(
+      property.id,
+      decl.meta.ejercicio,
+    );
+    for (const g of existentes) {
+      if (g.origen === 'xml_aeat' && g.id != null) {
+        await gastosInmuebleService.delete(g.id);
+      }
+    }
 
     // ── Write to gastosInmueble con origen xml_aeat ──
     const GASTOS_DECL: { campo: keyof typeof inm.gastos; casilla: string; categoria: GastoCategoria }[] = [
