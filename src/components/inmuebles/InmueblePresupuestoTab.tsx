@@ -517,15 +517,25 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
     try {
       if (selectedType === 'reparacion') {
         if (editingEntry?.source === 'gastoInmueble' && editingEntry.id) {
-          await gastosInmuebleService.update(editingEntry.id, {
+          // En gastos de origen xml_aeat, `importe` es C_INTGRCEA (aplicado tras el
+          // tope fiscal) y `importeBruto` es C_GRCEA (coste real antes del tope).
+          // Al editar desde el presupuesto, el usuario modifica el coste real
+          // (bruto). Preservamos `importe` para no distorsionar los cálculos que
+          // suman por casilla (getSumaPorCasilla, fiscalSummary, etc.).
+          const gasto = editingEntry.raw as GastoInmueble;
+          const updates: Partial<GastoInmueble> = {
             fecha: date,
+            ejercicio: new Date(date).getFullYear(),
             concepto: oneOffForm.concepto.trim(),
-            importe: amount,
             importeBruto: amount,
             proveedorNIF: oneOffForm.proveedorNIF.trim(),
             proveedorNombre: oneOffForm.proveedorNombre.trim() || undefined,
             cuentaBancaria: accountLabel,
-          });
+          };
+          if (gasto.origen !== 'xml_aeat') {
+            updates.importe = amount;
+          }
+          await gastosInmuebleService.update(editingEntry.id, updates);
           toast.success('Gasto de reparación actualizado');
         } else if (editingEntry?.source === 'operacionFiscal' && editingEntry.id) {
           await actualizarOperacionFiscal(editingEntry.id, {

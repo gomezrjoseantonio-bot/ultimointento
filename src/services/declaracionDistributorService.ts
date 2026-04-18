@@ -1240,7 +1240,7 @@ async function escribirFiscalSummaries(
         categoria,
         casillaAEAT: casilla as any,
         importe,
-        ...(importeBruto && importeBruto > 0 ? { importeBruto } : {}),
+        ...(typeof importeBruto === 'number' && importeBruto > 0 ? { importeBruto } : {}),
         origen: 'xml_aeat',
         origenId: `${property.id}-${decl.meta.ejercicio}-${casilla}`,
         estado: 'declarado',
