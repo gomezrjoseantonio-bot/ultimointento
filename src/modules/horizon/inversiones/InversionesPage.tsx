@@ -3,7 +3,7 @@
 // Uses PageHeader (mandatory) with 4 tabs: Resumen, Cartera, Rendimientos, Individual
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, TrendingUp, AlertCircle } from 'lucide-react';
+import { Plus, TrendingUp } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton } from '../../../components/shared/PageHeader';
 import { inversionesService } from '../../../services/inversionesService';
 import { rendimientosService } from '../../../services/rendimientosService';
@@ -14,7 +14,6 @@ import type { PlanPensionInversion } from '../../../types/personal';
 import PosicionForm from './components/PosicionForm';
 import PosicionDetailModal from './components/PosicionDetailModal';
 import AportacionForm from './components/AportacionForm';
-import RendimientosTab from './components/RendimientosTab';
 import { TabResumen, TabCartera, TabRendimientos, TabIndividual } from './components/tabs';
 import { PositionRow, Tab } from './components/types';
 import { mapPosicionesToRows, POSITION_COLORS } from './components/utils';
@@ -39,7 +38,6 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
   const [editingPosicion, setEditingPosicion] = useState<PosicionInversion | undefined>();
   const [detailPosicion, setDetailPosicion] = useState<PosicionInversion | undefined>();
   const [loading, setLoading] = useState(true);
-  const [pendingRendimientos, setPendingRendimientos] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
@@ -89,11 +87,6 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
       if (allRowsConPeso.length && !allRowsConPeso.some((p) => p.id === selectedPositionId)) {
         setSelectedPositionId(allRowsConPeso[0].id);
       }
-
-      // Count pending rendimientos
-      const allRendimientos = await rendimientosService.getAllRendimientos();
-      const pending = allRendimientos.filter(r => r.estado === 'pendiente').length;
-      setPendingRendimientos(pending);
     } catch (error) {
       console.error('Error loading inversiones:', error);
       toast.error('Error al cargar las inversiones');
@@ -226,38 +219,13 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
           tabs={[
             { id: 'resumen', label: 'Resumen' },
             { id: 'cartera', label: 'Cartera' },
-            { id: 'rendimientos', label: pendingRendimientos > 0 ? `Rendimientos (${pendingRendimientos})` : 'Rendimientos' },
+            { id: 'rendimientos', label: 'Rendimientos' },
             { id: 'individual', label: 'Individual' },
           ]}
           activeTab={activeTab}
           onTabChange={(id) => setActiveTab(id as Tab)}
           actions={<HeaderPrimaryButton icon={Plus} label="Nueva posición" onClick={handleNewPosicion} />}
         />
-
-        {/* Pending rendimientos alert */}
-        {pendingRendimientos > 0 && activeTab !== 'rendimientos' && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: '12px 16px',
-            background: 'var(--grey-100)',
-            border: '1px solid var(--grey-300)',
-            borderRadius: 8,
-            marginBottom: 20,
-          }}>
-            <AlertCircle size={18} style={{ color: 'var(--grey-500)', flexShrink: 0 }} />
-            <p style={{ fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', color: 'var(--grey-700)', margin: 0 }}>
-              Tienes <strong>{pendingRendimientos}</strong> {pendingRendimientos === 1 ? 'rendimiento pendiente' : 'rendimientos pendientes'} de cobrar.{' '}
-              <button
-                onClick={() => setActiveTab('rendimientos')}
-                style={{ background: 'none', border: 'none', color: 'var(--navy-900)', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'var(--font-base)', fontSize: 'var(--t-base)', padding: 0 }}
-              >
-                Ver rendimientos
-              </button>
-            </p>
-          </div>
-        )}
 
         {/* Tab content */}
         {activeTab === 'resumen' && (
@@ -275,38 +243,7 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
         )}
         
         {activeTab === 'rendimientos' && (
-          <div>
-            {/* Analytics charts */}
-            <TabRendimientos positions={positions} />
-            
-            {/* Operational rendimientos table */}
-            <div style={{ marginTop: 24 }}>
-              <h3 style={{ 
-                fontSize: 15, 
-                fontWeight: 600, 
-                color: 'var(--grey-700, #303A4C)', 
-                marginBottom: 16,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}>
-                Rendimientos pendientes
-                {pendingRendimientos > 0 && (
-                  <span style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: 'var(--grey-500)',
-                    background: 'var(--grey-100)',
-                    borderRadius: 12,
-                    padding: '2px 8px',
-                  }}>
-                    {pendingRendimientos}
-                  </span>
-                )}
-              </h3>
-              <RendimientosTab />
-            </div>
-          </div>
+          <TabRendimientos positions={positions} />
         )}
         
         {activeTab === 'individual' && (

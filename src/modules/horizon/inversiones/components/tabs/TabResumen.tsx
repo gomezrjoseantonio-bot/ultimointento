@@ -91,64 +91,51 @@ const TabResumen: React.FC<TabResumenProps> = ({ positions, planesPension }) => 
 
   return (
     <div>
-      {/* Hero banner */}
+      {/* Mejor posición (card neutra, sin hero navy) */}
       <div
         style={{
-          background: `linear-gradient(135deg, ${CHART_COLORS.navy900} 0%, #0D4A8A 100%)`,
+          background: '#FFFFFF',
+          border: '1px solid #DDE3EC',
           borderRadius: 12,
-          padding: '20px 24px',
+          padding: 20,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           marginBottom: 16,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          color: '#fff',
         }}
       >
-        <div>
-          <div
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '.1em',
-              textTransform: 'uppercase',
-              opacity: 0.7,
-              marginBottom: 6,
-            }}
-          >
-            Mejor posición · {best.alias}
-          </div>
-          <div
-            style={{
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 38,
-              fontWeight: 600,
-              lineHeight: 1,
-              marginBottom: 4,
-            }}
-          >
-            {formatPercent(best.rentAnual)}
-          </div>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>
-            Rentabilidad anual · {best.broker} · {best.tipo}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, opacity: 0.7, marginBottom: 4 }}>
-            Valor posición
-          </div>
-          <div
-            style={{
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 26,
-              fontWeight: 600,
-            }}
-          >
-            {formatCurrency(best.valor)}
-          </div>
-          <div style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>
-            Aportado: {formatCurrency(best.aportado)}
-          </div>
-        </div>
+        <p
+          style={{
+            fontSize: 11,
+            fontWeight: 500,
+            color: '#6C757D',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 6,
+          }}
+        >
+          Mejor posición
+        </p>
+        <p
+          style={{
+            fontSize: 18,
+            fontWeight: 700,
+            fontFamily: "'IBM Plex Mono', monospace",
+            color: '#042C5E',
+            marginBottom: 2,
+          }}
+        >
+          {best.alias}
+        </p>
+        <p
+          style={{
+            fontSize: 13,
+            fontFamily: "'IBM Plex Mono', monospace",
+            color: '#042C5E',
+            fontWeight: 600,
+          }}
+        >
+          {best.rentAnual >= 0 ? '+' : ''}
+          {best.rentAnual.toFixed(2)}% / año
+        </p>
       </div>
 
       {/* KPI row 1 */}
