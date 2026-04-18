@@ -406,6 +406,11 @@ function extraerInmuebles(tda: Element): InmuebleDeclarado[] {
       },
       gastosPendientesPrevios: num(nodo, 'C_GEA'),
       gastosPendientesPreviosAplicados: num(nodo, 'C_GD'),
+      // BUG-5: IMP4GCPEA = arrastre recibido de años anteriores (casilla 0103).
+      // El valor oficial AEAT del arrastre entrante. Permite validar que el
+      // arrastresOut.gastosPendientes propagado desde año-1 coincide con lo
+      // que AEAT ha aplicado realmente en este ejercicio.
+      arrastresRecibidos: num(nodo, 'IMP4GCPEA') || undefined,
       rendimientoNeto: num(nodo, 'C_RN'),
       reduccionVivienda: num(nodo, 'C_REDARR'),
       rendimientoNetoReducido: num(nodo, 'C_RNR'),
@@ -468,11 +473,12 @@ function extraerArrendamientos(nodo: Element): ArrendamientoDeclarado[] {
     const provs: ProveedorDetectado[] = [];
     const grc = bloque.querySelector('GastosReparacionConservacionEjercicio');
     if (grc) {
-      for (let i = 0; i <= 3; i++) {
-        const nifKey = `NIF${i === 0 ? '1' : String(i)}GCEM0`;
-        const impKey = `IMP${i === 0 ? '1' : String(i)}GCEM0`;
-        const nifProv = txt(grc, nifKey);
-        const impProv = num(grc, impKey);
+      // BUG-3: el loop anterior iteraba i=0..3 con una rama especial en i=0 que
+      // volvía a leer NIF1/IMP1, duplicando el primer proveedor. Los campos en
+      // el XML AEAT son NIF1GCEM0..NIF3GCEM0, así que iteramos 1..3 directo.
+      for (let i = 1; i <= 3; i++) {
+        const nifProv = txt(grc, `NIF${i}GCEM0`);
+        const impProv = num(grc, `IMP${i}GCEM0`);
         if (nifProv && impProv > 0) {
           provs.push({ nif: nifProv, concepto: 'reparacion', importe: impProv });
         }

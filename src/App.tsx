@@ -12,6 +12,7 @@ import { limpiarEjerciciosCoordBasura } from './services/ejercicioResolverServic
 import { autoConfirmarRentaMensualDeclarada } from './services/contractService';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
 import { runMigrationIfNeeded as fixReparacionesDuplicadas } from './services/migrations/fixReparacionesDuplicadas';
+import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/migrations/limpiarGastosReparacionCasilla0106';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import MainLayout from './layouts/MainLayout';
@@ -144,6 +145,7 @@ function App() {
     void initDB()
       .then(() => ejecutarMigracionGastos())
       .then(() => fixReparacionesDuplicadas())
+      .then(() => limpiarGastosReparacion0106())
       .then(() => migrarPlanesDuplicados())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
