@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { X } from 'lucide-react';
+import { X, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cuentasService, CreateAccountData, UpdateAccountData } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
+import { useFocusTrap } from '../../../../../hooks/useFocusTrap';
 import {
   formatIban,
   maskIban,
   validateIbanEs,
 } from '../../../../../utils/accountHelpers';
 
-// Simple toggle — navy-900 cuando activo, grey-300 cuando inactivo
 const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = ({ checked, onChange }) => (
   <button
     type="button"
@@ -17,31 +17,18 @@ const Toggle: React.FC<{ checked: boolean; onChange: (v: boolean) => void }> = (
     aria-checked={checked}
     onClick={() => onChange(!checked)}
     style={{
-      width: 44,
-      height: 24,
-      borderRadius: 12,
+      width: 44, height: 24, borderRadius: 12,
       background: checked ? 'var(--navy-900)' : 'var(--grey-200)',
-      border: 'none',
-      cursor: 'pointer',
-      position: 'relative',
-      flexShrink: 0,
-      transition: 'background .2s',
-      padding: 0,
+      border: 'none', cursor: 'pointer', position: 'relative', flexShrink: 0,
+      transition: 'background .2s', padding: 0,
     }}
   >
-    <span
-      style={{
-        position: 'absolute',
-        top: 3,
-        left: checked ? 23 : 3,
-        width: 18,
-        height: 18,
-        borderRadius: '50%',
-        background: 'var(--white)',
-        transition: 'left .2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-      }}
-    />
+    <span style={{
+      position: 'absolute', top: 3, left: checked ? 23 : 3,
+      width: 18, height: 18, borderRadius: '50%',
+      background: 'var(--white)', transition: 'left .2s',
+      boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+    }} />
   </button>
 );
 
@@ -75,17 +62,16 @@ const defaultFormData = (): AccountFormData => ({
 });
 
 const FRECUENCIA_PAGOS: Record<string, number> = {
-  mensual: 12,
-  trimestral: 4,
-  semestral: 2,
-  anual: 1,
+  mensual: 12, trimestral: 4, semestral: 2, anual: 1,
+};
+
+const lbl: React.CSSProperties = {
+  fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500,
+  display: 'block', marginBottom: 3,
 };
 
 const AccountFormModal: React.FC<AccountFormModalProps> = ({
-  open,
-  onClose,
-  onSuccess,
-  editingAccount,
+  open, onClose, onSuccess, editingAccount,
 }) => {
   const [formData, setFormData] = useState<AccountFormData>(defaultFormData());
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -93,8 +79,8 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useFocusTrap(open);
 
-  // Remuneración state
   const [esRemunerada, setEsRemunerada] = useState(false);
   const [tinAnual, setTinAnual] = useState(2.5);
   const [frecuencia, setFrecuencia] = useState<'mensual' | 'trimestral' | 'semestral' | 'anual'>('mensual');
@@ -103,14 +89,10 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [retencion, setRetencion] = useState(19);
   const [fechaInicio, setFechaInicio] = useState(new Date().toISOString().split('T')[0]);
 
-  // Load accounts for TARJETA_CREDITO charge account selector
   useEffect(() => {
-    cuentasService.list().then(setAccounts).catch((err) => {
-      console.error('Error loading accounts for modal:', err);
-    });
+    cuentasService.list().then(setAccounts).catch(console.error);
   }, [open]);
 
-  // Populate form when editing an account
   useEffect(() => {
     if (open) {
       if (editingAccount) {
@@ -147,21 +129,16 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     }
   }, [open, editingAccount]);
 
-  // Close on Escape key
   useEffect(() => {
     if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    const fn = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', fn);
+    return () => document.removeEventListener('keydown', fn);
   }, [open, onClose]);
 
   const handleTipoChange = (tipo: AccountFormData['tipo']) => {
     setFormData((prev) => ({ ...prev, tipo }));
-    if (tipo === 'AHORRO' && !esRemunerada) {
-      setEsRemunerada(true);
-    }
+    if (tipo === 'AHORRO' && !esRemunerada) setEsRemunerada(true);
   };
 
   const uploadLogoFile = async (file: File): Promise<string> => {
@@ -181,7 +158,6 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     setFormErrors((prev) => { const n = { ...prev }; delete n.logoFile; return n; });
   };
 
-  // Memoizar el object URL para evitar fugas de memoria en cada render
   const logoPreviewUrl = useMemo(
     () => (formData.logoFile ? URL.createObjectURL(formData.logoFile) : null),
     [formData.logoFile],
@@ -190,49 +166,29 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     return () => { if (logoPreviewUrl) URL.revokeObjectURL(logoPreviewUrl); };
   }, [logoPreviewUrl]);
 
-  // Projection calculators — base saldo usa el saldo inicial introducido, no un placeholder
   const calcBaseCalculo = (): number =>
     base === 'fijo' ? (importeFijo || 0) : (parseFloat(formData.openingBalance) || 0);
-
   const calcBrutoAnual = (): number => calcBaseCalculo() * (tinAnual || 0) / 100;
-
   const calcRetencion = (): number => calcBrutoAnual() * (retencion || 0) / 100;
-
-  const calcNetoPeriodo = (): number => {
-    const pagosAnuales = FRECUENCIA_PAGOS[frecuencia] || 12;
-    return (calcBrutoAnual() - calcRetencion()) / pagosAnuales;
-  };
+  const calcNetoPeriodo = (): number => (calcBrutoAnual() - calcRetencion()) / (FRECUENCIA_PAGOS[frecuencia] || 12);
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-
-    if (!formData.alias.trim()) {
-      errors.alias = 'El alias es obligatorio';
-    } else if (formData.alias.trim().length > 40) {
-      errors.alias = 'El alias no puede superar 40 caracteres';
+    if (!formData.alias.trim()) errors.alias = 'El alias es obligatorio';
+    else if (formData.alias.trim().length > 40) errors.alias = 'El alias no puede superar 40 caracteres';
+    if (formData.tipo !== 'TARJETA_CREDITO' && formData.iban.trim()) {
+      const v = validateIbanEs(formData.iban);
+      if (!v.ok) errors.iban = v.message || 'IBAN inválido';
     }
-
-    if (formData.tipo !== 'TARJETA_CREDITO') {
-      if (formData.iban.trim()) {
-        const ibanValidation = validateIbanEs(formData.iban);
-        if (!ibanValidation.ok) errors.iban = ibanValidation.message || 'IBAN inválido';
-      }
-    }
-
     if (formData.tipo === 'TARJETA_CREDITO') {
       const day = parseInt(formData.cardSettlementDay || '0', 10);
-      if (!day || day < 1 || day > 31) errors.cardSettlementDay = 'Indica un día de cargo entre 1 y 31';
-      if (!formData.cardChargeAccountId) errors.cardChargeAccountId = 'Selecciona la cuenta bancaria de cargo del recibo';
+      if (!day || day < 1 || day > 31) errors.cardSettlementDay = 'Día entre 1 y 31';
+      if (!formData.cardChargeAccountId) errors.cardChargeAccountId = 'Selecciona la cuenta de cargo';
     }
-
     if (formData.logoFile) {
-      if (!formData.logoFile.type.startsWith('image/')) {
-        errors.logoFile = 'Solo se permiten archivos de imagen';
-      } else if (formData.logoFile.size > 2 * 1024 * 1024) {
-        errors.logoFile = 'El archivo no puede superar 2MB';
-      }
+      if (!formData.logoFile.type.startsWith('image/')) errors.logoFile = 'Solo imágenes';
+      else if (formData.logoFile.size > 2 * 1024 * 1024) errors.logoFile = 'Máx. 2MB';
     }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -240,50 +196,34 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     setSaving(true);
     try {
       let logoUser: string | undefined;
-
       if (formData.logoFile) {
         try {
           setUploadingLogo(true);
           logoUser = await uploadLogoFile(formData.logoFile);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : 'Error al subir el logo. Se guardará la cuenta sin logo personalizado.');
+          toast.error('No se pudo subir el logo. La cuenta se guardará sin logo personalizado.');
         } finally {
           setUploadingLogo(false);
         }
       }
-
       const accountData: CreateAccountData | UpdateAccountData = {
         alias: formData.alias.trim() || undefined,
         iban: formData.tipo === 'TARJETA_CREDITO' ? undefined : (formData.iban || undefined),
         tipo: formData.tipo,
         cardConfig: formData.tipo === 'TARJETA_CREDITO'
-          ? {
-              settlementDay: parseInt(formData.cardSettlementDay || '1', 10),
-              chargeAccountId: parseInt(formData.cardChargeAccountId, 10),
-            }
+          ? { settlementDay: parseInt(formData.cardSettlementDay || '1', 10), chargeAccountId: parseInt(formData.cardChargeAccountId, 10) }
           : undefined,
         logoUser,
         openingBalance: parseFloat(formData.openingBalance || '0') || 0,
-        openingBalanceDate: formData.openingBalanceDate
-          ? new Date(formData.openingBalanceDate).toISOString()
-          : undefined,
+        openingBalanceDate: formData.openingBalanceDate ? new Date(formData.openingBalanceDate).toISOString() : undefined,
         esRemunerada,
         remuneracion: esRemunerada
-          ? {
-              tinAnual,
-              frecuenciaPagos: frecuencia,
-              base,
-              importeFijo: base === 'fijo' ? importeFijo : undefined,
-              retencionFiscal: retencion,
-              fechaInicio,
-            }
+          ? { tinAnual, frecuenciaPagos: frecuencia, base, importeFijo: base === 'fijo' ? importeFijo : undefined, retencionFiscal: retencion, fechaInicio }
           : undefined,
       };
-
       if (editingAccount) {
         await cuentasService.update(editingAccount.id!, accountData as UpdateAccountData);
         toast.success('Cuenta actualizada correctamente');
@@ -291,11 +231,9 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
         await cuentasService.create(accountData as CreateAccountData);
         toast.success('Cuenta creada correctamente');
       }
-
       onClose();
       onSuccess?.();
     } catch (error) {
-      console.error('Error saving account:', error);
       toast.error(error instanceof Error ? error.message : 'Error al guardar la cuenta');
     } finally {
       setSaving(false);
@@ -304,102 +242,92 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
 
   if (!open) return null;
 
+  const g12 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
+
   return (
     <div
-      className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50"
-      style={{ backgroundColor: 'var(--bg)', opacity: 0.95 }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-modal-title"
+      className="fixed inset-0 backdrop-blur-sm flex items-start justify-center z-50"
+      style={{ backgroundColor: 'var(--bg)', opacity: 0.95, overflowY: 'auto', padding: '24px 0' }}
     >
-      {/* Modal con header y footer fijos — solo el cuerpo hace scroll */}
-      <div
-        className="bg-white w-full max-w-md"
-        style={{ display: 'flex', flexDirection: 'column', maxHeight: '90vh', borderRadius: 8 }}
-      >
-        {/* Header fijo */}
-        <div style={{ padding: '20px 24px 16px', flexShrink: 0, borderBottom: '1px solid var(--grey-200)' }}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-atlas-navy-1">
-              {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
-            </h2>
-            <button type="button" onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
-              <X className="w-5 h-5" aria-hidden="true" />
-            </button>
-          </div>
+      <div ref={dialogRef} className="bg-white w-full max-w-md" style={{ borderRadius: 8, display: 'flex', flexDirection: 'column' }}>
+
+        {/* Header */}
+        <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--grey-200)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 id="account-modal-title" style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
+            {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          {/* Cuerpo scrollable */}
-          <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px' }}>
-          <div className="space-y-4">
-            {/* Alias — obligatorio */}
-            <div>
-              <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                Alias <span style={{ color: 'var(--teal-600)' }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.alias}
-                onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
-                className="input"
-                placeholder="ej. Cuenta principal, Nómina..."
-                maxLength={40}
-              />
-              {formErrors.alias && <p className="mt-1 text-sm text-error-600">{formErrors.alias}</p>}
+        {/* Cuerpo — sin overflow, el modal crece a su altura natural */}
+        <form onSubmit={handleSubmit}>
+          <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            {/* Fila 1: Alias + Tipo */}
+            <div style={g12}>
+              <div>
+                <label style={lbl}>Alias <span style={{ color: 'var(--teal-600)' }}>*</span></label>
+                <input
+                  type="text"
+                  value={formData.alias}
+                  onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+                  className="input"
+                  placeholder="Cuenta principal"
+                  maxLength={40}
+                />
+                {formErrors.alias && <p className="mt-1 text-sm text-error-600">{formErrors.alias}</p>}
+              </div>
+              <div>
+                <label style={lbl}>Tipo</label>
+                <select
+                  value={formData.tipo}
+                  onChange={(e) => handleTipoChange(e.target.value as AccountFormData['tipo'])}
+                  className="input"
+                  disabled={!!editingAccount}
+                >
+                  <option value="CORRIENTE">Corriente</option>
+                  <option value="AHORRO">Ahorro</option>
+                  <option value="OTRA">Otra</option>
+                  <option value="TARJETA_CREDITO">Tarjeta crédito</option>
+                </select>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Tipo de cuenta</label>
-              <select
-                value={formData.tipo}
-                onChange={(e) => handleTipoChange(e.target.value as AccountFormData['tipo'])}
-                className="input"
-                disabled={!!editingAccount}
-              >
-                <option value="CORRIENTE">Cuenta corriente</option>
-                <option value="AHORRO">Cuenta ahorro</option>
-                <option value="OTRA">Otra cuenta</option>
-                <option value="TARJETA_CREDITO">Tarjeta de crédito</option>
-              </select>
-            </div>
-
+            {/* Campos tarjeta de crédito */}
             {formData.tipo === 'TARJETA_CREDITO' && (
-              <>
+              <div style={g12}>
                 <div>
-                  <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Día de cargo del recibo (1-31)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={formData.cardSettlementDay}
+                  <label style={lbl}>Día de cargo (1-31)</label>
+                  <input type="number" min={1} max={31} value={formData.cardSettlementDay}
                     onChange={(e) => setFormData({ ...formData, cardSettlementDay: e.target.value })}
-                    className="input"
-                  />
+                    className="input" />
                   {formErrors.cardSettlementDay && <p className="mt-1 text-sm text-error-600">{formErrors.cardSettlementDay}</p>}
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-atlas-navy-1 mb-1">Cuenta bancaria de cargo del recibo</label>
-                  <select
-                    value={formData.cardChargeAccountId}
+                  <label style={lbl}>Cuenta de cargo</label>
+                  <select value={formData.cardChargeAccountId}
                     onChange={(e) => setFormData({ ...formData, cardChargeAccountId: e.target.value })}
-                    className="input"
-                  >
-                    <option value="">Selecciona una cuenta</option>
-                    {accounts
-                      .filter((acc) => acc.tipo !== 'TARJETA_CREDITO')
-                      .map((acc) => (
-                        <option key={acc.id} value={acc.id}>{acc.alias || maskIban(acc.iban)}</option>
-                      ))}
+                    className="input">
+                    <option value="">Selecciona...</option>
+                    {accounts.filter((a) => a.tipo !== 'TARJETA_CREDITO').map((a) => (
+                      <option key={a.id} value={a.id}>{a.alias || maskIban(a.iban)}</option>
+                    ))}
                   </select>
                   {formErrors.cardChargeAccountId && <p className="mt-1 text-sm text-error-600">{formErrors.cardChargeAccountId}</p>}
                 </div>
-              </>
+              </div>
             )}
 
             {/* IBAN — opcional */}
             {formData.tipo !== 'TARJETA_CREDITO' && (
               <div>
-                <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  IBAN
+                <label style={lbl}>
+                  IBAN <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— opcional</span>
                 </label>
                 <input
                   type="text"
@@ -410,124 +338,79 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   disabled={!!editingAccount}
                 />
                 {formErrors.iban && <p className="mt-1 text-sm text-error-600">{formErrors.iban}</p>}
-                <p className="mt-1" style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)' }}>
-                  Opcional — ayuda a vincular movimientos automáticamente
-                </p>
               </div>
             )}
 
-            {/* Logo upload — opcional */}
-            <div>
-              <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                Logo personalizado (opcional)
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleLogoFileChange}
-                className="input"
-              />
-              {formErrors.logoFile && <p className="mt-1 text-sm text-error-600">{formErrors.logoFile}</p>}
-              <p className="mt-1 text-xs text-gray-500">
-                Se detectará automáticamente el logo del banco. Puedes subir uno personalizado (máx. 2MB).
-              </p>
-              {formData.logoFile && logoPreviewUrl && (
-                <div className="mt-2 flex items-center gap-3">
-                  <img
-                    src={logoPreviewUrl}
-                    alt="Vista previa del logo"
-                    className="w-8 h-8 object-cover border border-gray-300"
-                  />
-                  <div className="text-xs">
-                    <p className="text-success-600 font-medium">{formData.logoFile.name}</p>
-                    <p className="text-gray-500">{(formData.logoFile.size / 1024).toFixed(1)} KB</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+            {/* Saldo inicial + Fecha + Logo en una fila */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
               <div>
-                <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  Saldo inicial (€)
-                </label>
-                <input
-                  type="number"
-                  value={formData.openingBalance}
+                <label style={lbl}>Saldo inicial (€)</label>
+                <input type="number" value={formData.openingBalance}
                   onChange={(e) => setFormData({ ...formData, openingBalance: e.target.value })}
-                  className="input"
-                  placeholder="0,00"
-                  step="0.01"
-                />
+                  className="input" placeholder="0,00" step="0.01" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-atlas-navy-1 mb-1">
-                  Fecha saldo inicial
-                </label>
-                <input
-                  type="date"
-                  value={formData.openingBalanceDate}
+                <label style={lbl}>Fecha saldo</label>
+                <input type="date" value={formData.openingBalanceDate}
                   onChange={(e) => setFormData({ ...formData, openingBalanceDate: e.target.value })}
-                  className="input"
-                />
+                  className="input" />
+              </div>
+              {/* Logo: botón compacto que dispara el input oculto */}
+              <div style={{ paddingBottom: 1 }}>
+                <input ref={fileInputRef} type="file" accept="image/*"
+                  onChange={handleLogoFileChange} style={{ display: 'none' }} />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={formData.logoFile ? `Logo seleccionado: ${formData.logoFile.name}. Cambiar` : 'Subir logo del banco (opcional)'}
+                  title={formData.logoFile ? formData.logoFile.name : 'Subir logo del banco (opcional, máx. 2MB)'}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, borderRadius: 6,
+                    border: '1.5px solid var(--grey-300)',
+                    background: formData.logoFile ? 'var(--grey-50)' : 'var(--white)',
+                    cursor: 'pointer', color: formData.logoFile ? 'var(--teal-600)' : 'var(--grey-400)',
+                  }}
+                >
+                  {logoPreviewUrl
+                    ? <img src={logoPreviewUrl} alt="" style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3 }} />
+                    : <Paperclip size={15} aria-hidden="true" />}
+                </button>
+                {formErrors.logoFile && <p className="mt-1 text-sm text-error-600">{formErrors.logoFile}</p>}
               </div>
             </div>
 
-            {/* Separador */}
-            <div style={{ borderTop: '1px solid var(--grey-200)', margin: '8px 0' }} />
-
-            {/* Toggle cuenta remunerada */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0' }}>
+            {/* Separador + Toggle */}
+            <div style={{ borderTop: '1px solid var(--grey-200)', marginTop: 2 }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <p style={{ fontSize: 'var(--t-base)', color: 'var(--grey-900)', fontWeight: 500 }}>
+                <p style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-900)', fontWeight: 500, margin: 0 }}>
                   Cuenta remunerada
                 </p>
-                <p style={{ fontSize: 'var(--t-sm)', color: 'var(--grey-500)', marginTop: 2 }}>
-                  Esta cuenta genera intereses periódicos
+                <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', margin: '2px 0 0' }}>
+                  Genera intereses periódicos
                 </p>
               </div>
               <Toggle checked={esRemunerada} onChange={setEsRemunerada} />
             </div>
 
-            {/* Campos de remuneración */}
+            {/* Sección remuneración */}
             {esRemunerada && (
               <div style={{
-                background: 'var(--grey-50)',
-                border: '1px solid var(--grey-200)',
-                borderRadius: 8,
-                padding: 16,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 14,
+                background: 'var(--grey-50)', border: '1px solid var(--grey-200)',
+                borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10,
               }}>
-
-                {/* Fila 1: TIN + Frecuencia */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                {/* TIN + Frecuencia */}
+                <div style={g12}>
                   <div>
-                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                      TIN anual (%) <span style={{ color: 'var(--teal-600)' }}>*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="20"
-                      value={tinAnual}
+                    <label style={lbl}>TIN anual (%) <span style={{ color: 'var(--teal-600)' }}>*</span></label>
+                    <input type="number" step="0.01" min="0" max="20" value={tinAnual}
                       onChange={(e) => setTinAnual(parseFloat(e.target.value) || 0)}
-                      className="input"
-                      style={{ fontFamily: "'IBM Plex Mono'" }}
-                    />
+                      className="input" style={{ fontFamily: "'IBM Plex Mono'" }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                      Frecuencia de cobro <span style={{ color: 'var(--teal-600)' }}>*</span>
-                    </label>
-                    <select
-                      value={frecuencia}
-                      onChange={(e) => setFrecuencia(e.target.value as typeof frecuencia)}
-                      className="input"
-                    >
+                    <label style={lbl}>Frecuencia <span style={{ color: 'var(--teal-600)' }}>*</span></label>
+                    <select value={frecuencia} onChange={(e) => setFrecuencia(e.target.value as typeof frecuencia)} className="input">
                       <option value="mensual">Mensual</option>
                       <option value="trimestral">Trimestral</option>
                       <option value="semestral">Semestral</option>
@@ -536,123 +419,72 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   </div>
                 </div>
 
-                {/* Fila 2: Base + Importe fijo */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <div>
-                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                      Base de cálculo <span style={{ color: 'var(--teal-600)' }}>*</span>
-                    </label>
-                    <select
-                      value={base}
-                      onChange={(e) => setBase(e.target.value as typeof base)}
-                      className="input"
-                    >
+                {/* Base + Importe fijo / Retención + Fecha en una sola fila de 4 */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+                  <div style={{ gridColumn: base === 'fijo' ? '1' : '1 / 3' }}>
+                    <label style={lbl}>Base <span style={{ color: 'var(--teal-600)' }}>*</span></label>
+                    <select value={base} onChange={(e) => setBase(e.target.value as typeof base)} className="input">
                       <option value="saldo">Saldo medio</option>
                       <option value="fijo">Importe fijo</option>
                     </select>
                   </div>
-                  {base === 'fijo' ? (
+                  {base === 'fijo' && (
                     <div>
-                      <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                        Importe fijo (€) <span style={{ color: 'var(--teal-600)' }}>*</span>
-                      </label>
-                      <input
-                        type="number"
-                        value={importeFijo}
+                      <label style={lbl}>Importe (€) <span style={{ color: 'var(--teal-600)' }}>*</span></label>
+                      <input type="number" value={importeFijo}
                         onChange={(e) => setImporteFijo(parseFloat(e.target.value) || 0)}
-                        className="input"
-                        style={{ fontFamily: "'IBM Plex Mono'" }}
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ paddingTop: 20 }}>
-                      <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-400)' }}>
-                        ATLAS usará el saldo real para calcular los intereses
-                      </p>
+                        className="input" style={{ fontFamily: "'IBM Plex Mono'" }} />
                     </div>
                   )}
-                </div>
-
-                {/* Fila 3: Retención + Fecha inicio */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                   <div>
-                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                      Retención fiscal (%)
-                    </label>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="100"
-                      value={retencion}
+                    <label style={lbl}>Retención (%)</label>
+                    <input type="number" step="1" min="0" max="100" value={retencion}
                       onChange={(e) => setRetencion(parseFloat(e.target.value) || 0)}
-                      className="input"
-                      style={{ fontFamily: "'IBM Plex Mono'" }}
-                    />
+                      className="input" style={{ fontFamily: "'IBM Plex Mono'" }} />
                   </div>
                   <div>
-                    <label style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, display: 'block', marginBottom: 4 }}>
-                      Inicio de remuneración
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaInicio}
-                      onChange={(e) => setFechaInicio(e.target.value)}
-                      className="input"
-                    />
+                    <label style={lbl}>Inicio</label>
+                    <input type="date" value={fechaInicio}
+                      onChange={(e) => setFechaInicio(e.target.value)} className="input" />
                   </div>
                 </div>
 
                 {/* Proyección */}
-                <div style={{
-                  background: 'var(--white)',
-                  border: '1px solid var(--grey-200)',
-                  borderRadius: 8,
-                  padding: '10px 14px',
-                }}>
-                  <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, marginBottom: 6 }}>
-                    Proyección estimada · base {calcBaseCalculo().toLocaleString('es-ES')} €
+                <div style={{ background: 'var(--white)', border: '1px solid var(--grey-200)', borderRadius: 6, padding: '8px 12px' }}>
+                  <p style={{ fontSize: 'var(--t-xs)', color: 'var(--grey-500)', fontWeight: 500, marginBottom: 4 }}>
+                    Proyección · base {calcBaseCalculo().toLocaleString('es-ES')} €
                   </p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '1px 0' }}>
                     <span style={{ color: 'var(--grey-500)' }}>Interés bruto anual</span>
                     <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
-                      {calcBrutoAnual().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      {calcBrutoAnual().toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '1px 0' }}>
                     <span style={{ color: 'var(--grey-500)' }}>Retención ({retencion}%)</span>
-                    <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--grey-700)' }}>
-                      {calcRetencion().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                    <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--grey-500)' }}>
+                      {calcRetencion().toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0', borderTop: '1px solid var(--grey-200)', marginTop: 4, paddingTop: 6 }}>
-                    <span style={{ color: 'var(--grey-500)' }}>Cobro neto por período ({frecuencia})</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '3px 0 1px', borderTop: '1px solid var(--grey-200)', marginTop: 3 }}>
+                    <span style={{ color: 'var(--grey-500)' }}>Neto por período ({frecuencia})</span>
                     <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
                       {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
                 </div>
-
               </div>
             )}
           </div>
-          </div>{/* fin cuerpo scrollable */}
 
-          {/* Footer fijo con botones siempre visibles */}
-          <div style={{ padding: '14px 24px', flexShrink: 0, borderTop: '1px solid var(--grey-200)' }}
-               className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue"
-            >
+          {/* Footer */}
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--grey-200)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue">
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={saving || uploadingLogo}
-              className="px-4 py-2 text-sm font-medium text-white bg-atlas-blue border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50"
-            >
+            <button type="submit" disabled={saving || uploadingLogo}
+              className="px-4 py-2 text-sm font-medium text-white bg-atlas-blue border border-transparent rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue disabled:opacity-50">
               {uploadingLogo ? 'Subiendo logo...' : saving ? 'Guardando...' : editingAccount ? 'Actualizar' : 'Crear cuenta'}
             </button>
           </div>
