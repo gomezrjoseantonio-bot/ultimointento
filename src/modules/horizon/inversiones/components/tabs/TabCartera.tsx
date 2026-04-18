@@ -7,6 +7,13 @@ import { TabCarteraProps, PositionRow } from '../types';
 import { Chip } from '../cards';
 import { formatCurrency, formatPercent, CHART_COLORS } from '../utils';
 
+const GRUPOS: { tipos: string[]; label: string }[] = [
+  { tipos: ['cuenta_remunerada'], label: 'Cuentas remuneradas' },
+  { tipos: ['prestamo_p2p', 'deposito_plazo', 'deposito'], label: 'Préstamos y depósitos' },
+  { tipos: ['fondo_inversion', 'etf', 'reit', 'accion', 'crypto', 'otro'], label: 'Fondos, acciones y crypto' },
+  { tipos: ['plan_pensiones', 'plan_empleo'], label: 'Planes de pensiones' },
+];
+
 const TabCartera: React.FC<TabCarteraProps> = ({
   onSelectPosition,
   onViewAportaciones,
@@ -18,14 +25,16 @@ const TabCartera: React.FC<TabCarteraProps> = ({
   const [sortKey, setSortKey] = useState<keyof PositionRow>('alias');
   const [sortAsc, setSortAsc] = useState(true);
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const hasActiveFilter = normalizedQuery.length > 0;
+
   const filtered = useMemo(() => {
-    const q = query.toLowerCase();
     return positions
       .filter(
         (p) =>
-          p.alias.toLowerCase().includes(q) ||
-          p.broker.toLowerCase().includes(q) ||
-          p.tipo.toLowerCase().includes(q)
+          p.alias.toLowerCase().includes(normalizedQuery) ||
+          p.broker.toLowerCase().includes(normalizedQuery) ||
+          p.tipo.toLowerCase().includes(normalizedQuery)
       )
       .sort((a: any, b: any) =>
         sortAsc
@@ -36,7 +45,20 @@ const TabCartera: React.FC<TabCarteraProps> = ({
           ? 1
           : -1
       );
-  }, [query, sortKey, sortAsc, positions]);
+  }, [normalizedQuery, sortKey, sortAsc, positions]);
+  const groupedSections = useMemo(() => {
+    if (hasActiveFilter) return [];
+    const coveredTipos = new Set(GRUPOS.flatMap((g) => g.tipos));
+    const sections = GRUPOS.map((g) => ({
+      label: g.label,
+      items: filtered.filter((p) => g.tipos.includes(p.tipo)),
+    })).filter((g) => g.items.length > 0);
+    const unmatched = filtered.filter((p) => !coveredTipos.has(p.tipo));
+    if (unmatched.length > 0) {
+      sections.push({ label: 'Otros', items: unmatched });
+    }
+    return sections;
+  }, [filtered, hasActiveFilter]);
 
   const handleSort = (key: keyof PositionRow) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -48,6 +70,193 @@ const TabCartera: React.FC<TabCarteraProps> = ({
 
   const SortIcon = ({ k }: { k: keyof PositionRow }) =>
     sortKey === k ? sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} /> : null;
+
+  const renderCard = (p: PositionRow) => (
+    <div
+      key={p.id}
+      onClick={() => onSelectPosition(p.id)}
+      style={{
+        border: '1.5px solid var(--grey-200, #DDE3EC)',
+        borderRadius: 12,
+        padding: 18,
+        cursor: 'pointer',
+        transition: 'box-shadow 120ms',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.boxShadow = '0 4px 16px rgba(4,44,94,.08)')
+      }
+      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          background: p.color,
+        }}
+      />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          marginBottom: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--grey-700, #303A4C)',
+            }}
+          >
+            {p.alias}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'var(--grey-500, #6C757D)',
+              marginTop: 2,
+            }}
+          >
+            {p.broker} · {p.tipo}
+          </div>
+        </div>
+        {p.tag && (
+          <span
+            style={{
+              padding: '2px 8px',
+              borderRadius: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              background: 'rgba(4,44,94,.08)',
+              color: CHART_COLORS.navy900,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <Star size={10} />
+            {p.tag}
+          </span>
+        )}
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 12,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '.06em',
+              color: 'var(--grey-500, #6C757D)',
+              marginBottom: 2,
+            }}
+          >
+            Valor actual
+          </div>
+          <div
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 20,
+              fontWeight: 600,
+              color: 'var(--grey-700, #303A4C)',
+            }}
+          >
+            {formatCurrency(p.valor)}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--grey-500, #6C757D)',
+              marginTop: 1,
+            }}
+          >
+            Aportado: {formatCurrency(p.aportado)}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '.06em',
+              color: 'var(--grey-500, #6C757D)',
+              marginBottom: 2,
+            }}
+          >
+            Rentabilidad
+          </div>
+          <div
+            style={{
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 20,
+              fontWeight: 600,
+              color:
+                p.rentPct > 0
+                  ? 'var(--s-pos, #042C5E)'
+                  : 'var(--s-neg, #303A4C)',
+            }}
+          >
+            {formatPercent(p.rentPct)}
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--grey-500, #6C757D)',
+              marginTop: 1,
+            }}
+          >
+            {p.rentAnual.toFixed(2)}% / año
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: 10,
+            color: 'var(--grey-500, #6C757D)',
+            marginBottom: 4,
+          }}
+        >
+          <span>Peso portfolio</span>
+          <span style={{ fontWeight: 600 }}>{p.peso}%</span>
+        </div>
+        <div
+          style={{
+            background: 'var(--grey-100, #EEF1F5)',
+            borderRadius: 4,
+            height: 6,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${p.peso}%`,
+              background: p.color,
+              borderRadius: 4,
+              transition: 'width 600ms ease',
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -143,201 +352,47 @@ const TabCartera: React.FC<TabCarteraProps> = ({
       )}
 
       {/* Position cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 16,
-          padding: 20,
-        }}
-      >
-        {filtered.map((p) => (
-          <div
-            key={p.id}
-            onClick={() => onSelectPosition(p.id)}
-            style={{
-              border: '1.5px solid var(--grey-200, #DDE3EC)',
-              borderRadius: 12,
-              padding: 18,
-              cursor: 'pointer',
-              transition: 'box-shadow 120ms',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.boxShadow = '0 4px 16px rgba(4,44,94,.08)')
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 3,
-                background: p.color,
-              }}
-            />
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                marginBottom: 12,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 700,
-                    color: 'var(--grey-700, #303A4C)',
-                  }}
-                >
-                  {p.alias}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--grey-500, #6C757D)',
-                    marginTop: 2,
-                  }}
-                >
-                  {p.broker} · {p.tipo}
-                </div>
-              </div>
-              {p.tag && (
-                <span
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(4,44,94,.08)',
-                    color: CHART_COLORS.navy900,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <Star size={10} />
-                  {p.tag}
-                </span>
-              )}
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                    color: 'var(--grey-500, #6C757D)',
-                    marginBottom: 2,
-                  }}
-                >
-                  Valor actual
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 20,
-                    fontWeight: 600,
-                    color: 'var(--grey-700, #303A4C)',
-                  }}
-                >
-                  {formatCurrency(p.valor)}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--grey-500, #6C757D)',
-                    marginTop: 1,
-                  }}
-                >
-                  Aportado: {formatCurrency(p.aportado)}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '.06em',
-                    color: 'var(--grey-500, #6C757D)',
-                    marginBottom: 2,
-                  }}
-                >
-                  Rentabilidad
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 20,
-                    fontWeight: 600,
-                    color:
-                      p.rentPct > 0
-                        ? 'var(--s-pos, #042C5E)'
-                        : 'var(--s-neg, #303A4C)',
-                  }}
-                >
-                  {formatPercent(p.rentPct)}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--grey-500, #6C757D)',
-                    marginTop: 1,
-                  }}
-                >
-                  {p.rentAnual.toFixed(2)}% / año
-                </div>
-              </div>
-            </div>
-            <div style={{ marginTop: 12 }}>
-              <div
+      {hasActiveFilter ? (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: 16,
+            padding: 20,
+          }}
+        >
+          {filtered.map((p) => renderCard(p))}
+        </div>
+      ) : (
+        <div style={{ padding: 20 }}>
+          {groupedSections.map((grupo) => (
+            <div key={grupo.label} style={{ marginBottom: 24 }}>
+              <p
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 10,
-                  color: 'var(--grey-500, #6C757D)',
-                  marginBottom: 4,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#6C757D',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  margin: 0,
+                  marginBottom: 12,
                 }}
               >
-                <span>Peso portfolio</span>
-                <span style={{ fontWeight: 600 }}>{p.peso}%</span>
-              </div>
+                {grupo.label}
+              </p>
               <div
                 style={{
-                  background: 'var(--grey-100, #EEF1F5)',
-                  borderRadius: 4,
-                  height: 6,
-                  overflow: 'hidden',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: 16,
                 }}
               >
-                <div
-                  style={{
-                    height: '100%',
-                    width: `${p.peso}%`,
-                    background: p.color,
-                    borderRadius: 4,
-                    transition: 'width 600ms ease',
-                  }}
-                />
+                {grupo.items.map((p) => renderCard(p))}
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Table */}
       <div

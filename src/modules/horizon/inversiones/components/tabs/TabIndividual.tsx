@@ -1,7 +1,7 @@
 // TabIndividual.tsx
 // ATLAS HORIZON: Individual position analysis tab
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -20,6 +20,28 @@ import {
   buildIndividualEvolucion,
   CHART_COLORS,
 } from '../utils';
+
+function calcularHorizonteProyeccion(pos: PositionRow): {
+  años: number;
+  meses: number | null;
+} {
+  switch (pos.tipo) {
+    case 'prestamo_p2p':
+    case 'deposito_plazo':
+    case 'deposito':
+      if (pos.duracionMeses && pos.duracionMeses > 0) {
+        return { años: pos.duracionMeses / 12, meses: pos.duracionMeses };
+      }
+      return { años: 5, meses: null };
+    case 'plan_pensiones':
+    case 'plan_empleo':
+      return { años: 20, meses: null };
+    case 'cuenta_remunerada':
+      return { años: 10, meses: null };
+    default:
+      return { años: 10, meses: null };
+  }
+}
 
 const TabIndividual: React.FC<TabIndividualProps> = ({
   selectedId,
@@ -46,6 +68,56 @@ const TabIndividual: React.FC<TabIndividualProps> = ({
   const safePositions = positions.length ? positions : [emptyRow];
   const pos = safePositions.find((p) => p.id === posId) ?? safePositions[0];
   const evolData = buildIndividualEvolucion(pos);
+
+  const proyeccionCards = useMemo(() => {
+    const horizonte = calcularHorizonteProyeccion(pos);
+    const currentYear = new Date().getFullYear();
+    const subMeta = `A ${pos.rentAnual.toFixed(2)}% anual`;
+    const tasa = pos.rentAnual / 100;
+
+    const labelFor = (años: number, meses: number | null) => {
+      if (meses != null) {
+        return `En ${meses} ${meses === 1 ? 'mes' : 'meses'}`;
+      }
+      const a = Math.round(años);
+      return `En ${a} ${a === 1 ? 'año' : 'años'} · ${currentYear + a}`;
+    };
+
+    if (horizonte.años <= 2) {
+      const val = Math.round(pos.valor * Math.pow(1 + tasa, horizonte.años));
+      return [
+        {
+          label: labelFor(horizonte.años, horizonte.meses),
+          val: `~${formatCurrency(val)}`,
+          sub: subMeta,
+          cls: 'future' as const,
+        },
+      ];
+    }
+
+    // Mitad del horizonte: si el producto tiene meses, calculamos en meses;
+    // si no, redondeamos años para que etiqueta y cálculo coincidan.
+    const mediaMeses =
+      horizonte.meses != null ? Math.round(horizonte.meses / 2) : null;
+    const mediaAños =
+      mediaMeses != null ? mediaMeses / 12 : Math.round(horizonte.años / 2);
+    const halfVal = Math.round(pos.valor * Math.pow(1 + tasa, mediaAños));
+    const fullVal = Math.round(pos.valor * Math.pow(1 + tasa, horizonte.años));
+    return [
+      {
+        label: labelFor(mediaAños, mediaMeses),
+        val: `~${formatCurrency(halfVal)}`,
+        sub: subMeta,
+        cls: 'future' as const,
+      },
+      {
+        label: labelFor(horizonte.años, horizonte.meses),
+        val: `~${formatCurrency(fullVal)}`,
+        sub: subMeta,
+        cls: 'future' as const,
+      },
+    ];
+  }, [pos]);
 
   return (
     <div>
@@ -125,7 +197,7 @@ const TabIndividual: React.FC<TabIndividualProps> = ({
             label: 'Aportado',
             val: formatCurrency(pos.aportado),
             sub: 'Capital invertido total',
-            cls: 'past',
+            cls: 'past' as const,
           },
           {
             label: 'Hoy',
@@ -134,24 +206,9 @@ const TabIndividual: React.FC<TabIndividualProps> = ({
               month: 'short',
               year: 'numeric',
             })}`,
-            cls: 'present',
+            cls: 'present' as const,
           },
-          {
-            label: 'Proyección 5 años',
-            val: `~${formatCurrency(
-              Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 5))
-            )}`,
-            sub: `A ${pos.rentAnual.toFixed(2)}% anual`,
-            cls: 'future',
-          },
-          {
-            label: 'Proyección 10 años',
-            val: `~${formatCurrency(
-              Math.round(pos.valor * Math.pow(1 + pos.rentAnual / 100, 10))
-            )}`,
-            sub: `A ${pos.rentAnual.toFixed(2)}% anual`,
-            cls: 'future',
-          },
+          ...proyeccionCards,
         ].map((t) => (
           <div
             key={t.label}
