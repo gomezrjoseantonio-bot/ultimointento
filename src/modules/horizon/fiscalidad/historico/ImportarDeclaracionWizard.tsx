@@ -3,7 +3,6 @@ import toast from 'react-hot-toast';
 import { Upload, CheckCircle2 } from 'lucide-react';
 import { parseIrpfXml } from '../../../../services/irpfXmlParserService';
 import { distribuirDeclaracion, acortarDireccion } from '../../../../services/declaracionDistributorService';
-import { cuentasService } from '../../../../services/cuentasService';
 import type { DeclaracionCompleta, InmuebleDeclarado } from '../../../../types/declaracionCompleta';
 import type { InformeDistribucion } from '../../../../types/informeDistribucion';
 
@@ -273,43 +272,6 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
         {value}
       </div>
       <div style={{ fontSize: '0.75rem', color: GREY_700, marginTop: '0.25rem' }}>{label}</div>
-    </div>
-  );
-}
-
-// ─── PropuestaRow ─────────────────────────────────────────────────────────────
-function PropuestaRow({ text, buttonLabel, onAction }: { text: string; buttonLabel: string; onAction: () => void }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '1rem',
-        padding: '0.6rem 0',
-        borderBottom: `1px solid ${GREY_100}`,
-        fontFamily: fontSans,
-        fontSize: '0.85rem',
-      }}
-    >
-      <span style={{ color: GREY_700, flex: 1 }}>{text}</span>
-      <button
-        onClick={onAction}
-        style={{
-          padding: '0.35rem 0.85rem',
-          border: `1px solid ${GREY_300}`,
-          borderRadius: 8,
-          background: 'white',
-          color: NAVY,
-          fontSize: '0.78rem',
-          fontWeight: 500,
-          cursor: 'pointer',
-          fontFamily: fontSans,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {buttonLabel}
-      </button>
     </div>
   );
 }
@@ -812,122 +774,145 @@ function Paso2({
 // ─── PASO 3 ───────────────────────────────────────────────────────────────────
 function Paso3({
   informe,
-  onConfirm,
-  confirming,
 }: {
   informe: InformeDistribucion;
   onConfirm: () => void;
   confirming: boolean;
 }) {
-  const { stats, contratosDetectados, prestamosDetectados, proveedores, cuentaBancaria, vinculosAccesorio } = informe;
+  const {
+    stats,
+    prestamosDetectados,
+    proveedores,
+    cuentaBancaria,
+    vinculosAccesorio,
+  } = informe;
 
-  const contratosConNif = contratosDetectados.filter((c) => c.nifInquilinos.length > 0);
-  const prestamosConIntereses = prestamosDetectados.filter((p) => p.interesesAnuales > 0);
+  const hayInmuebles = stats.inmueblesCreados + stats.inmueblesActualizados > 0;
+  const hayIntereses = prestamosDetectados.some((p) => p.interesesAnuales > 0);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', fontFamily: fontSans }}>
       {/* Stat cards */}
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <StatCard label="Inmuebles creados" value={stats.inmueblesCreados} />
+        <StatCard
+          label="Inmuebles procesados"
+          value={stats.inmueblesCreados + stats.inmueblesActualizados}
+        />
         <StatCard label="Arrastres guardados" value={stats.arrastresGuardados} />
         <StatCard label="Proveedores" value={stats.proveedoresNuevos} />
         <StatCard label="Ejercicio" value="Declarado" />
       </div>
 
-      {/* Contratos */}
-      {contratosConNif.length > 0 && (
-        <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Contratos de alquiler
-          </div>
-          {contratosConNif.map((c, i) => (
-            <PropuestaRow
-              key={i}
-              text={`${c.direccionCorta} · NIF ${c.nifInquilinos.join(', ')} · desde ${c.fechaContrato ?? '\u2014'} · ${fmt(c.ingresosAnuales)} €/año · ${c.tipoArrendamiento ?? '\u2014'}`}
-              buttonLabel="Crear contrato"
-              onAction={() => toast('Próximamente: esta acción creará el contrato en Alquileres')}
-            />
-          ))}
-        </div>
-      )}
+      {/* Banner confirmando que TODO está hecho */}
+      <div
+        style={{
+          background: TEAL_100,
+          border: `1px solid ${TEAL}`,
+          borderRadius: 12,
+          padding: '1rem 1.25rem',
+          fontSize: '0.9rem',
+          color: NAVY,
+          fontFamily: fontSans,
+        }}
+      >
+        <strong>Todo listo.</strong> ATLAS ha guardado la declaración, los inmuebles,
+        los arrastres y los ingresos declarados por año. No hace falta que hagas nada
+        más en este wizard.
+      </div>
 
-      {/* Préstamos */}
-      {prestamosConIntereses.length > 0 && (
+      {/* Próximos pasos manuales (informativos, sin botones) */}
+      {hayInmuebles && (
         <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Préstamos de inversión
-          </div>
-          {prestamosConIntereses.map((p, i) => (
-            <PropuestaRow
-              key={i}
-              text={`${p.direccionCorta} · ${fmt(p.interesesAnuales)} €/año en intereses`}
-              buttonLabel="Crear préstamo"
-              onAction={() => toast('Próximamente: esta acción creará el préstamo en Financiación')}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Proveedores */}
-      {proveedores.length > 0 && (
-        <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Proveedores
-          </div>
-          {proveedores.map((p, i) => (
-            <PropuestaRow
-              key={i}
-              text={`NIF ${p.nif} · ${p.concepto} · ${fmt(p.importe)} €${p.inmuebleRef ? ` · ${p.inmuebleRef}` : ''}`}
-              buttonLabel="Registrar proveedor"
-              onAction={() => toast('Próximamente: esta acción registrará el proveedor')}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Cuenta bancaria */}
-      {cuentaBancaria && (
-        <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Cuenta bancaria
-          </div>
-          <PropuestaRow
-            text={`${cuentaBancaria} (cuenta de devolución/ingreso)`}
-            buttonLabel="Crear en Cuentas"
-            onAction={async () => {
-              try {
-                await cuentasService.create({ iban: cuentaBancaria });
-                toast.success('Cuenta bancaria creada');
-              } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : 'Error al crear la cuenta';
-                toast.error(msg);
-              }
+          <div
+            style={{
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              color: GREY_700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '0.5rem',
             }}
-          />
-        </div>
-      )}
-
-      {/* Vínculos accesorio */}
-      {vinculosAccesorio.length > 0 && (
-        <div>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: GREY_700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-            Vínculos accesorio
+          >
+            Próximos pasos sugeridos
           </div>
-          {vinculosAccesorio.map((v, i) => (
-            <PropuestaRow
-              key={i}
-              text={`El parking ${v.refAccesorio} (${v.direccionAccesorio}) aparece como accesorio de ${v.direccionPrincipal} (${v.refPrincipal}) en la declaración. ¿Quieres vincularlo?`}
-              buttonLabel="Vincular"
-              onAction={() => toast('Próximamente: esta acción vinculará el accesorio en Alquileres')}
-            />
-          ))}
+          <ul
+            style={{
+              paddingLeft: '1.25rem',
+              margin: 0,
+              color: GREY_700,
+              fontSize: '0.85rem',
+              lineHeight: 1.7,
+            }}
+          >
+            <li>
+              Ve a <strong>Alquileres → Sin identificar</strong> para vincular los
+              ingresos declarados a tus contratos reales (o crearlos si aún no
+              existen).
+            </li>
+            {hayIntereses && (
+              <li>
+                Se detectaron intereses de préstamo en la declaración. Si quieres
+                que ATLAS proyecte cuotas y amortización, crea los préstamos
+                manualmente en <strong>Financiación → Nuevo préstamo</strong>. Los
+                intereses declarados ya están en los gastos fiscales del inmueble.
+              </li>
+            )}
+            {vinculosAccesorio.length > 0 && (
+              <li>
+                Parking/trasteros detectados como accesorios: ya vinculados
+                automáticamente a sus inmuebles principales.
+              </li>
+            )}
+            {proveedores.length > 0 && (
+              <li>
+                {proveedores.length} proveedores registrados automáticamente con sus
+                operaciones.
+              </li>
+            )}
+            {cuentaBancaria && (
+              <li>
+                IBAN de la declaración (
+                <span style={{ fontFamily: fontMono }}>{cuentaBancaria}</span>)
+                registrado en Cuentas.
+              </li>
+            )}
+          </ul>
         </div>
       )}
 
-      {/* Footer note */}
-      <p style={{ fontSize: '0.78rem', color: GREY_400, fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>
-        Nada de lo anterior se crea automáticamente. Pulsa cada botón para activar lo que quieras. Puedes importar otra declaración para seguir enriqueciendo ATLAS.
-      </p>
+      {/* Detalle informativo de intereses detectados (solo lectura, sin botones) */}
+      {hayIntereses && (
+        <details style={{ fontSize: '0.82rem', color: GREY_700 }}>
+          <summary
+            style={{
+              cursor: 'pointer',
+              fontWeight: 600,
+              color: NAVY,
+              fontSize: '0.85rem',
+            }}
+          >
+            Intereses de préstamo detectados (detalle)
+          </summary>
+          <div style={{ marginTop: '0.5rem', paddingLeft: '0.5rem' }}>
+            {prestamosDetectados
+              .filter((p) => p.interesesAnuales > 0)
+              .map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '0.25rem 0',
+                    borderBottom: `1px solid ${GREY_100}`,
+                  }}
+                >
+                  {p.direccionCorta}:{' '}
+                  <span style={{ fontFamily: fontMono }}>
+                    {fmt(p.interesesAnuales)} €/año
+                  </span>
+                </div>
+              ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

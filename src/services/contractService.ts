@@ -233,22 +233,32 @@ export const generateRentaMensual = async (contratoId: number, contract: Omit<Co
 
   const periods = calculateRentPeriodsNew(contractParaCalculo);
 
-  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods.map(period => {
-    // Periods belonging to a declared fiscal year are confirmed income (from XML).
-    const añoPeriodo = parseInt(period.periodo.slice(0, 4), 10);
-    const yearDeclarado = contract.ejerciciosFiscales?.[añoPeriodo]?.estado === 'declarado';
+  // F3: saltar meses de años con ejercicio fiscal declarado
+  // (ese importe es verdad consumada, no lo generamos mensualmente)
+  const añosDeclarados = new Set<number>();
+  if (contract.ejerciciosFiscales) {
+    for (const [año, data] of Object.entries(contract.ejerciciosFiscales)) {
+      if (data?.estado === 'declarado') {
+        añosDeclarados.add(parseInt(año, 10));
+      }
+    }
+  }
 
-    return {
+  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods
+    .filter(period => {
+      const añoPeriodo = parseInt(period.periodo.slice(0, 4), 10);
+      return !añosDeclarados.has(añoPeriodo);
+    })
+    .map(period => ({
       contratoId,
       periodo: period.periodo,
       importePrevisto: period.importe,
-      importeCobradoAcum: yearDeclarado ? period.importe : 0,
-      estado: yearDeclarado ? 'cobrada' : 'pendiente',
+      importeCobradoAcum: 0,
+      estado: 'pendiente' as const,
       movimientosVinculados: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
-  });
+    }));
 
   // Clear existing entries and regenerate within the new time window
   await clearRentaMensual(contratoId);
@@ -279,75 +289,6 @@ export const getRentaMensual = async (contratoId: number): Promise<RentaMensual[
   const db = await initDB();
   const allEntries = await db.getAll('rentaMensual');
   return allEntries.filter(entry => entry.contratoId === contratoId);
-};
-
-/**
- * Para cualquier rentaMensual cuyo año pertenezca a un ejercicio fiscal con
- * estado 'declarado', marcar el registro como cobrado automáticamente.
- *
- * Se consideran ejercicios declarados los del store legacy `ejerciciosFiscales`
- * (keyPath: `ejercicio`) y los del coordinador `ejerciciosFiscalesCoord`
- * (keyPath: `año`). Se unen ambas fuentes para mayor robustez.
- *
- * Reglas:
- * - Solo afecta a registros cuyo estado no sea ya 'cobrada'.
- * - sin_identificar contratos nunca generan rentaMensual (ya implementado aguas arriba).
- * - Idempotente: ejecutar múltiples veces no altera registros ya cobrados.
- */
-export const autoConfirmarRentaMensualDeclarada = async (): Promise<{ confirmados: number }> => {
-  const db = await initDB();
-
-  const añosDeclarados = new Set<number>();
-
-  try {
-    const coord = await db.getAll('ejerciciosFiscalesCoord');
-    for (const ej of coord) {
-      if (ej?.estado === 'declarado' && typeof ej.año === 'number') {
-        añosDeclarados.add(ej.año);
-      }
-    }
-  } catch {
-    // Store may not exist in older DB versions
-  }
-
-  try {
-    const legacy = await db.getAll('ejerciciosFiscales');
-    for (const ej of legacy) {
-      const año = (ej as any).ejercicio ?? (ej as any).año;
-      if (ej?.estado === 'declarado' && typeof año === 'number') {
-        añosDeclarados.add(año);
-      }
-    }
-  } catch {
-    // Store may not exist in older DB versions
-  }
-
-  if (añosDeclarados.size === 0) return { confirmados: 0 };
-
-  const todas = await db.getAll('rentaMensual');
-  let confirmados = 0;
-
-  for (const renta of todas) {
-    if (!renta?.periodo || typeof renta.periodo !== 'string') continue;
-    const año = parseInt(renta.periodo.slice(0, 4), 10);
-    if (!Number.isFinite(año) || !añosDeclarados.has(año)) continue;
-    if (renta.estado === 'cobrada') continue;
-
-    const actualizado: RentaMensual = {
-      ...renta,
-      estado: 'cobrada',
-      importeCobradoAcum: renta.importePrevisto,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await db.put('rentaMensual', actualizado);
-    confirmados++;
-  }
-
-  if (confirmados > 0) {
-    console.log(`[rentaMensual] Auto-confirmación ejercicios declarados: ${confirmados} registros marcados como cobrados`);
-  }
-  return { confirmados };
 };
 
 export type SignatureStatus = 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';

@@ -28,6 +28,7 @@ function parseUTCDate(dateStr: string): Date {
 export interface ContratoPropuesta {
   contratoId: number;
   inquilinoNombre: string;
+  inquilinoDni?: string;
   habitacionId?: string;
   fechaInicio: string;
   fechaFin: string;
@@ -45,6 +46,7 @@ export interface PropuestaDistribucion {
   contratos: ContratoPropuesta[];
   totalPropuesto: number;
   diferencia: number;
+  nifsDetectados: string[];
 }
 
 export async function calcularPropostaDistribucion(
@@ -58,7 +60,9 @@ export async function calcularPropostaDistribucion(
     throw new Error('Contrato sin_identificar no encontrado');
   }
 
-  const importeDeclarado = sinId.ejerciciosFiscales?.[ejercicio]?.importeDeclarado ?? 0;
+  const ejercicioData = sinId.ejerciciosFiscales?.[ejercicio];
+  const importeDeclarado = ejercicioData?.importeDeclarado ?? 0;
+  const nifsDetectados = ejercicioData?.nifsDetectados ?? [];
   if (importeDeclarado === 0) {
     return {
       inmuebleId: sinId.inmuebleId,
@@ -67,6 +71,7 @@ export async function calcularPropostaDistribucion(
       contratos: [],
       totalPropuesto: 0,
       diferencia: 0,
+      nifsDetectados,
     };
   }
 
@@ -94,12 +99,20 @@ export async function calcularPropostaDistribucion(
     const diasActivos =
       Math.round((finEfectivo.getTime() - inicioEfectivo.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const rentaAnual = contrato.rentaMensual * 12;
-    // Full leap year rule: divisible by 4 AND (not by 100 OR divisible by 400)
+    // F-drawer: leer importe real del contrato para ese año,
+    // sumando sus rentaMensual del ejercicio.
+    const todasRentas = await db.getAllFromIndex('rentaMensual', 'contratoId', contrato.id!);
+    const importeRealAño = todasRentas
+      .filter(r => r.periodo.startsWith(String(ejercicio)))
+      .reduce((sum, r) => sum + (r.importePrevisto || 0), 0);
+
+    // Si el contrato no tiene rentaMensual en ese año (porque el año está declarado
+    // y F3 impide generarlas), caer al cálculo clásico: rentaMensual × 12 × días/365
     const esBisiesto = (ejercicio % 4 === 0 && ejercicio % 100 !== 0) || ejercicio % 400 === 0;
     const diasEjercicio = esBisiesto ? 366 : 365;
-    const importePropuesto =
-      Math.round((rentaAnual / diasEjercicio) * diasActivos * 100) / 100;
+    const importePropuesto = importeRealAño > 0
+      ? Math.round(importeRealAño * 100) / 100
+      : Math.round((contrato.rentaMensual * 12) * (diasActivos / diasEjercicio) * 100) / 100;
 
     // Effective end date: contract's real fechaFin or end of ejercicio, whichever is earlier
     const fechaFinEfectiva = fin <= finEjercicio ? contrato.fechaFin : finEjercicioStr;
@@ -117,6 +130,7 @@ export async function calcularPropostaDistribucion(
       diasActivosEnEjercicio: diasActivos,
       importePropuesto,
       importeAsignado: importePropuesto,
+      inquilinoDni: contrato.inquilino?.dni ?? contrato.tenant?.nif ?? '',
     });
   }
 
@@ -129,6 +143,7 @@ export async function calcularPropostaDistribucion(
     contratos: propuestas,
     totalPropuesto: Math.round(totalPropuesto * 100) / 100,
     diferencia: Math.round((importeDeclarado - totalPropuesto) * 100) / 100,
+    nifsDetectados,
   };
 }
 
