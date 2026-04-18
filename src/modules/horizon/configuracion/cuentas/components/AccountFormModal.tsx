@@ -3,6 +3,7 @@ import { X, Paperclip } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cuentasService, CreateAccountData, UpdateAccountData } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
+import { useFocusTrap } from '../../../../../hooks/useFocusTrap';
 import {
   formatIban,
   maskIban,
@@ -78,6 +79,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useFocusTrap(open);
 
   const [esRemunerada, setEsRemunerada] = useState(false);
   const [tinAnual, setTinAnual] = useState(2.5);
@@ -202,7 +204,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
           setUploadingLogo(true);
           logoUser = await uploadLogoFile(formData.logoFile);
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : 'Error al subir el logo');
+          toast.error('No se pudo subir el logo. La cuenta se guardará sin logo personalizado.');
         } finally {
           setUploadingLogo(false);
         }
@@ -243,16 +245,18 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
   const g12 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 };
 
   return (
-    // Overlay — overflowY:auto en el overlay para cubrir pantallas muy pequeñas sin scroll interno en el modal
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-modal-title"
       className="fixed inset-0 backdrop-blur-sm flex items-start justify-center z-50"
       style={{ backgroundColor: 'var(--bg)', opacity: 0.95, overflowY: 'auto', padding: '24px 0' }}
     >
-      <div className="bg-white w-full max-w-md" style={{ borderRadius: 8, display: 'flex', flexDirection: 'column' }}>
+      <div ref={dialogRef} className="bg-white w-full max-w-md" style={{ borderRadius: 8, display: 'flex', flexDirection: 'column' }}>
 
         {/* Header */}
         <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--grey-200)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
+          <h2 id="account-modal-title" style={{ fontSize: 'var(--t-base)', fontWeight: 600, color: 'var(--grey-900)', margin: 0 }}>
             {editingAccount ? 'Editar cuenta' : 'Nueva cuenta bancaria'}
           </h2>
           <button type="button" onClick={onClose} aria-label="Cerrar" className="text-gray-400 hover:text-gray-600">
@@ -358,6 +362,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  aria-label={formData.logoFile ? `Logo seleccionado: ${formData.logoFile.name}. Cambiar` : 'Subir logo del banco (opcional)'}
                   title={formData.logoFile ? formData.logoFile.name : 'Subir logo del banco (opcional, máx. 2MB)'}
                   style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
