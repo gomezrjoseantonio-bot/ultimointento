@@ -75,7 +75,7 @@ const CCAA_ALIAS_PARA_ITP: Record<string, string> = {
   'Comunidad Valenciana': 'Valencia',
 };
 
-function inferirITP(precio: number, ccaa: string | undefined): number {
+export function inferirITP(precio: number, ccaa: string | undefined): number {
   if (!ccaa || precio <= 0) return 0;
   const canonical = CCAA_ALIAS_PARA_ITP[ccaa] ?? ccaa;
   const ccaaData = CCAA_LIST.find(
@@ -605,7 +605,20 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         // de gastos a comparar contra C_TRIBUAD (inm.gastosAdquisicion).
         const sumaActual = sumGastosAdquisicion(next.acquisitionCosts);
         const totalAEAT = inm.gastosAdquisicion || 0;
-        const yaEstaDesglosado = totalAEAT > 0 && Math.abs(sumaActual - totalAEAT) <= 1;
+        // "Ya desglosado" exige además un desglose REAL: algún importe
+        // concreto en itp/iva/notary/registry/management. Un único cubo
+        // legacy en `other` con concepto "Gastos adquisición AEAT" NO cuenta;
+        // en ese caso re-inferimos aunque la suma cuadre.
+        const tieneDesgloseReal =
+          (next.acquisitionCosts.itp ?? 0) > 0 ||
+          (next.acquisitionCosts.iva ?? 0) > 0 ||
+          (next.acquisitionCosts.notary ?? 0) > 0 ||
+          (next.acquisitionCosts.registry ?? 0) > 0 ||
+          (next.acquisitionCosts.management ?? 0) > 0;
+        const yaEstaDesglosado =
+          totalAEAT > 0 &&
+          Math.abs(sumaActual - totalAEAT) <= 1 &&
+          tieneDesgloseReal;
 
         if (!yaEstaDesglosado && totalAEAT > 0) {
           const precio = next.acquisitionCosts.price || inm.precioAdquisicion || 0;
