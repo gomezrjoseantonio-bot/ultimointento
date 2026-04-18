@@ -621,7 +621,7 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--t-xs)', padding: '2px 0', borderTop: '1px solid var(--grey-200)', marginTop: 4, paddingTop: 6 }}>
                     <span style={{ color: 'var(--grey-500)' }}>Cobro neto por período ({frecuencia})</span>
                     <span style={{ fontFamily: "'IBM Plex Mono'", color: 'var(--navy-900)', fontWeight: 600 }}>
-                      {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                      {calcNetoPeriodo().toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </span>
                   </div>
                 </div>
