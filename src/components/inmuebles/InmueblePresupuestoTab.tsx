@@ -25,7 +25,9 @@ import {
   OperacionFiscal,
   MejoraActivo,
   MobiliarioActivo,
+  GastoInmueble,
 } from '../../services/db';
+import { gastosInmuebleService } from '../../services/gastosInmuebleService';
 import {
   getOpexRulesForProperty,
   generateBaseOpexForProperty,
@@ -68,7 +70,7 @@ interface OneOffExpenseFormData {
 }
 
 type ExpenseFilter = 'todos' | ExpenseBusinessType;
-type ExpenseSource = 'opexRule' | 'operacionFiscal' | 'mejoraActivo' | 'mobiliarioActivo';
+type ExpenseSource = 'opexRule' | 'operacionFiscal' | 'mejoraActivo' | 'mobiliarioActivo' | 'gastoInmueble';
 
 type BudgetExpenseRow = {
   id: number;
@@ -82,7 +84,7 @@ type BudgetExpenseRow = {
   dateLabel: string;
   providerNIF?: string;
   providerName?: string;
-  raw: OpexRule | OperacionFiscal | MejoraActivo | MobiliarioActivo;
+  raw: OpexRule | OperacionFiscal | MejoraActivo | MobiliarioActivo | GastoInmueble;
 };
 
 const currentExerciseYear = new Date().getFullYear();
@@ -191,6 +193,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
   const [repairOperations, setRepairOperations] = useState<OperacionFiscal[]>([]);
   const [improvements, setImprovements] = useState<MejoraActivo[]>([]);
   const [furniture, setFurniture] = useState<MobiliarioActivo[]>([]);
+  const [gastosReparacion, setGastosReparacion] = useState<GastoInmueble[]>([]);
   const [propertyAlias, setPropertyAlias] = useState('');
   const [loading, setLoading] = useState(true);
   const [editingRule, setEditingRule] = useState<OpexRule | undefined>(undefined);
@@ -241,15 +244,19 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
 
       await generarOperacionesDesdeRecurrentes(propertyId, currentExerciseYear);
 
-      const [operaciones, mejoras, mobiliario] = await Promise.all([
+      const [operaciones, mejoras, mobiliario, todosGastos] = await Promise.all([
         getOperacionesPorInmuebleYEjercicio(propertyId, currentExerciseYear),
         getMejorasPorInmueble(propertyId),
         getMobiliarioPorInmueble(propertyId),
+        gastosInmuebleService.getByInmueble(propertyId),
       ]);
 
       setRepairOperations(operaciones.filter((op) => op.casillaAEAT === '0106'));
       setImprovements(mejoras);
       setFurniture(mobiliario);
+      setGastosReparacion(
+        todosGastos.filter((g) => g.categoria === 'reparacion' || g.casillaAEAT === '0106')
+      );
     } catch (error) {
       console.error('Error loading budget expenses:', error);
       toast.error('Error al cargar los gastos');
@@ -350,11 +357,31 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       raw: mueble,
     }));
 
-    return [...recurrentRows, ...repairRows, ...improvementRows, ...furnitureRows]
+    const gastoInmuebleRows: BudgetExpenseRow[] = gastosReparacion.map((g) => ({
+      id: g.id || 0,
+      source: 'gastoInmueble',
+      businessType: 'reparacion',
+      categoryLabel: CATEGORY_LABELS.reparacion,
+      concept: g.concepto || 'Reparación y conservación',
+      amount: g.importe,
+      frequencyLabel: `${FREQUENCY_LABELS.puntual} · ${g.ejercicio}`,
+      accountLabel: g.origen === 'xml_aeat' ? 'XML AEAT' : '—',
+      dateLabel: formatDateLabel(g.fecha),
+      providerNIF: g.proveedorNIF,
+      providerName: g.proveedorNombre,
+      raw: g,
+    }));
+
+    return [...recurrentRows, ...repairRows, ...improvementRows, ...furnitureRows, ...gastoInmuebleRows]
       .sort((a, b) => b.dateLabel.localeCompare(a.dateLabel));
-  }, [rules, repairOperations, improvements, furniture, getAccountName]);
+  }, [rules, repairOperations, improvements, furniture, gastosReparacion, getAccountName]);
 
   const handleEdit = (row: BudgetExpenseRow) => {
+    if (row.source === 'gastoInmueble') {
+      toast('Los gastos sincronizados del XML AEAT se gestionan desde Fiscalidad.');
+      return;
+    }
+
     if (row.source === 'opexRule') {
       const rule = row.raw as OpexRule;
       const type = detectExpenseBusinessType(rule);
@@ -430,6 +457,8 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
         await eliminarOperacionFiscal(row.id);
       } else if (row.source === 'mejoraActivo') {
         await eliminarMejora(row.id);
+      } else if (row.source === 'gastoInmueble') {
+        await gastosInmuebleService.delete(row.id);
       } else {
         await eliminarMobiliario(row.id);
       }
@@ -570,7 +599,10 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
   const activeRules = rules.filter((r) => r.activo);
   const annualTotalsByType = {
     recurrente: activeRules.reduce((sum, rule) => sum + getAnnualAmount(rule), 0),
-    reparacion: repairOperations.reduce((sum, op) => sum + op.total, 0) + improvements.filter((m) => m.tipo === 'reparacion').reduce((sum, m) => sum + m.importe, 0),
+    reparacion:
+      repairOperations.reduce((sum, op) => sum + op.total, 0)
+      + improvements.filter((m) => m.tipo === 'reparacion').reduce((sum, m) => sum + m.importe, 0)
+      + gastosReparacion.reduce((sum, g) => sum + (g.importe || 0), 0),
     mejora: improvements.filter((m) => m.tipo !== 'reparacion').reduce((sum, mejora) => sum + mejora.importe, 0),
     mobiliario: furniture.filter((item) => item.activo).reduce((sum, item) => sum + item.importe, 0),
   };
