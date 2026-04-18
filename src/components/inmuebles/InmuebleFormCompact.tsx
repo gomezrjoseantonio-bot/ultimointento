@@ -42,6 +42,7 @@ interface FormData {
   gestoria: number;
   otros: number;
   impuestos: number;
+  impuestosIsManual: boolean;
 
   // Características
   m2: number;
@@ -91,6 +92,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     gestoria: 0,
     otros: 0,
     impuestos: 0,
+    impuestosIsManual: false,
     m2: 0,
     habitaciones: 0,
     banos: 0,
@@ -149,6 +151,7 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         gestoria: property.acquisitionCosts.management || 0,
         otros: property.acquisitionCosts.other?.reduce((sum: number, item: { concept: string; amount: number }) => sum + item.amount, 0) || 0,
         impuestos: (property.acquisitionCosts.itp || property.acquisitionCosts.iva || 0),
+        impuestosIsManual: property.acquisitionCosts.itpIsManual ?? false,
         m2: property.squareMeters || 0,
         habitaciones: property.bedrooms || 0,
         banos: property.bathrooms || 0,
@@ -254,9 +257,9 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   // Calculate taxes based on type and price
   const calculateTaxes = (precio: number, tipo: 'USADA_ITP' | 'NUEVA_IVA_AJD', ccaa: string) => {
     if (precio <= 0 || !ccaa) return;
-    
+
     let taxAmount = 0;
-    
+
     if (tipo === 'USADA_ITP') {
       taxAmount = calculateITP(precio, ccaa);
     } else {
@@ -264,8 +267,12 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       const ajd = precio * (AJD_RATE / 100); // Use imported constant
       taxAmount = iva + ajd;
     }
-    
-    setFormData(prev => ({ ...prev, impuestos: Math.round(taxAmount * 100) / 100 }));
+
+    setFormData(prev => {
+      // Respetar edición manual: no pisar un valor que el usuario editó.
+      if (prev.impuestosIsManual) return prev;
+      return { ...prev, impuestos: Math.round(taxAmount * 100) / 100 };
+    });
   };
   
   // Handle price change
@@ -376,13 +383,16 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       }
     };
     
-    // Add tax based on type
+    // Add tax based on type. Persist manual-edit flag only for ITP (usada).
     if (formData.tipo === 'USADA_ITP') {
       property.acquisitionCosts.itp = formData.impuestos;
+      if (formData.impuestosIsManual) {
+        property.acquisitionCosts.itpIsManual = true;
+      }
     } else {
       property.acquisitionCosts.iva = formData.impuestos;
     }
-    
+
     return property;
   };
   
@@ -754,8 +764,17 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                     </label>
                     <input
                       type="number"
+                      step="0.01"
                       value={formData.impuestos || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, impuestos: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const parsed = raw === '' ? 0 : parseFloat(raw) || 0;
+                        setFormData(prev => ({
+                          ...prev,
+                          impuestos: parsed,
+                          impuestosIsManual: true,
+                        }));
+                      }}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
                       placeholder="€"
                     />
