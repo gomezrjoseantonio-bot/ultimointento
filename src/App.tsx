@@ -154,6 +154,9 @@ function App() {
         }
       })
       .then(() => migrateFinanciacionV2())
+      // Limpieza de ejercicios fiscales basura — eager para evitar que la UI
+      // muestre años futuros residuales durante los primeros 2.5s.
+      .then(() => limpiarEjerciciosCoordBasura())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales:', error);
       });
@@ -169,7 +172,6 @@ function App() {
               console.log(`[ATLAS] Ejercicios cerrados automáticamente: ${migration.ejerciciosCerrados.join(', ')}`);
             }
           })
-          .then(() => limpiarEjerciciosCoordBasura())
           .then(() => autoConfirmarRentaMensualDeclarada())
           .catch((error) => {
             console.error('[ATLAS] Error inicializando migración fiscal:', error);
