@@ -17,10 +17,22 @@ export const gastosInmuebleService = {
   async add(gasto: Omit<GastoInmueble, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
     const db = await initDB();
     const now = new Date().toISOString();
-    // Dedup por origen+origenId si existe
+    // Upsert por origen+origenId: si ya existe, actualiza los campos en vez de
+    // crear un duplicado. Esto permite que reimportar un XML refresque campos
+    // como importeBruto que pueden no estar presentes en datos antiguos.
     if (gasto.origenId && gasto.origen) {
       const existentes = await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [gasto.origen, gasto.origenId]);
-      if (existentes.length > 0) return existentes[0].id!;
+      if (existentes.length > 0) {
+        const existing = existentes[0];
+        await db.put('gastosInmueble', {
+          ...existing,
+          ...gasto,
+          id: existing.id,
+          createdAt: existing.createdAt,
+          updatedAt: now,
+        });
+        return existing.id!;
+      }
     }
     return db.add('gastosInmueble', { ...gasto, createdAt: now, updatedAt: now } as any) as unknown as number;
   },

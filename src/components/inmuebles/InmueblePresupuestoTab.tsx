@@ -255,14 +255,21 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       setImprovements(mejoras);
       setFurniture(mobiliario);
       setGastosReparacion(
-        todosGastos.filter(
-          (g) =>
-            // Excluir arrastres (C_INTGRCEF) que puedan haberse escrito con casilla
-            // 0108 — son concepto fiscal, no un gasto real. Cast necesario porque
-            // AEATBox no tipa 0108 pero los escritores usan `as any`.
-            (g.casillaAEAT as string) !== '0108' &&
-            (g.categoria === 'reparacion' || g.casillaAEAT === '0106')
-        )
+        todosGastos.filter((g) => {
+          // Excluir arrastres (C_INTGRCEF) que puedan haberse escrito con casilla
+          // 0108 — son concepto fiscal, no un gasto real. Cast necesario porque
+          // AEATBox no tipa 0108 pero los escritores usan `as any`.
+          if ((g.casillaAEAT as string) === '0108') return false;
+          if (g.categoria !== 'reparacion' && g.casillaAEAT !== '0106') return false;
+          // En gastos xml_aeat de casilla 0106, importeBruto = 0 marca una fila que
+          // solo es aplicación de arrastre de un año previo (reparacionConservacion=0,
+          // gastosAplicados>0). El presupuesto muestra gastos reales, no aplicaciones
+          // fiscales, así que la ocultamos.
+          if (g.origen === 'xml_aeat' && g.casillaAEAT === '0106' && g.importeBruto === 0) {
+            return false;
+          }
+          return true;
+        })
       );
     } catch (error) {
       console.error('Error loading budget expenses:', error);
