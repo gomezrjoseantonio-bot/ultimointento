@@ -96,28 +96,68 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
   const todasProperties = await db.getAll('properties');
   const porRefCatastral = new Map<string, Property>();
   const porDireccionNorm = new Map<string, Property>();
+  const direccionesConflictivas = new Set<string>();
+  const registrarDireccionNormalizada = (clave: string | undefined, property: Property) => {
+    if (!clave || direccionesConflictivas.has(clave)) return;
+    const existente = porDireccionNorm.get(clave);
+    if (!existente) {
+      porDireccionNorm.set(clave, property);
+      return;
+    }
+    if (existente.id !== property.id) {
+      porDireccionNorm.delete(clave);
+      direccionesConflictivas.add(clave);
+    }
+  };
   for (const property of todasProperties) {
     const ref = normalizeRef(property.cadastralReference);
-    if (ref) porRefCatastral.set(ref, property);
+    if (ref) {
+      porRefCatastral.set(ref, property);
+      continue;
+    }
+    // Solo properties sin RC se indexan por dirección: evita que un RC del XML
+    // se empareje con una property ya vinculada a otro RC distinto.
     const dirN = normalizeDireccion(property.address);
-    if (dirN) porDireccionNorm.set(dirN, property);
+    registrarDireccionNormalizada(dirN, property);
     const aliasN = normalizeDireccion(property.alias);
-    if (aliasN && aliasN !== dirN) porDireccionNorm.set(aliasN, property);
+    if (aliasN && aliasN !== dirN) registrarDireccionNormalizada(aliasN, property);
   }
   // Fallback por dirección: para cada inmueble del XML cuya refCatastral no
   // esté ya resuelta, buscar la property por dirección normalizada y registrarla
   // bajo su refCatastral. Evita que escribirMejoras/Proveedores/FiscalSummaries
   // pierdan datos cuando la property no tiene cadastralReference poblada.
+  // Persiste la vinculación (db.put) para que futuras importaciones resuelvan
+  // directamente por RC.
   for (const inm of decl.inmuebles) {
     const rc = normalizeRef(inm.refCatastral);
     if (!rc || porRefCatastral.has(rc) || !inm.direccion) continue;
     const dirXml = normalizeDireccion(inm.direccion);
     const aliasXml = normalizeDireccion(acortarDireccion(inm.direccion));
     const match = porDireccionNorm.get(dirXml) || porDireccionNorm.get(aliasXml);
-    if (match) {
-      porRefCatastral.set(rc, match);
-      console.log(`[distribuidor] Fallback dirección: ${rc} → property id=${match.id} (${match.alias})`);
+    if (!match) continue;
+
+    const matchRc = normalizeRef(match.cadastralReference);
+    if (matchRc && matchRc !== rc) {
+      // Defensa en profundidad: aunque el indexado arriba ya excluye properties
+      // con RC, evita vincular si la property estuviera marcada con otro RC.
+      console.warn(
+        `[distribuidor] Fallback dirección ignorado: XML rc=${rc} pero property id=${match.id} ya está vinculada a rc=${matchRc} (${match.alias})`
+      );
+      continue;
     }
+
+    let propertyForRc = match;
+    if (!matchRc) {
+      propertyForRc = { ...match, cadastralReference: rc };
+      await db.put('properties', propertyForRc);
+      const dirN = normalizeDireccion(propertyForRc.address);
+      if (dirN) porDireccionNorm.set(dirN, propertyForRc);
+      const aliasN = normalizeDireccion(propertyForRc.alias);
+      if (aliasN && aliasN !== dirN) porDireccionNorm.set(aliasN, propertyForRc);
+    }
+
+    porRefCatastral.set(rc, propertyForRc);
+    console.log(`[distribuidor] Fallback dirección: ${rc} → property id=${propertyForRc.id} (${propertyForRc.alias})`);
   }
 
   for (const inm of decl.inmuebles) {
