@@ -8,88 +8,58 @@
 //  - CP: si postalCode existe pero pertenece a otra provincia distinta de la
 //    de la property, se borra (queda '').
 //  - ITP: si transmissionRegime === 'usada', hay precio y ccaa conocida, y el
-//    desglose actual es el cubo legacy "Gastos adquisición AEAT" (o está
-//    vacío), se re-infiere ITP descontándolo del total. Invariante: el total
+//    desglose actual es el cubo legacy "Gastos adquisición AEAT", se
+//    re-infiere ITP descontándolo del total. Invariante: el total
 //    price + itp + otros se mantiene idéntico.
 //
 // Idempotente por bandera en localStorage.
 
 import { initDB, Property } from '../db';
 import { inferirITP } from '../declaracionDistributorService';
+import { getProvinceFromPostalCode } from '../../utils/locationUtils';
 
 const MIGRATION_KEY = 'migration_clean_stale_cp_and_infer_itp_v1';
 
-// Rango aproximado de CP por provincia según el primer par de dígitos.
-// Se usa solo para detectar un CP claramente incompatible con la provincia
-// guardada (p. ej. "28001" en una property de Asturias).
-const CP_PREFIX_POR_PROVINCIA: Record<string, string[]> = {
-  'Álava': ['01'],
-  'Albacete': ['02'],
-  'Alicante': ['03'],
-  'Almería': ['04'],
-  'Ávila': ['05'],
-  'Badajoz': ['06'],
-  'Baleares': ['07'],
-  'Barcelona': ['08'],
-  'Burgos': ['09'],
-  'Cáceres': ['10'],
-  'Cádiz': ['11'],
-  'Castellón': ['12'],
-  'Ciudad Real': ['13'],
-  'Córdoba': ['14'],
-  'A Coruña': ['15'],
-  'Coruña': ['15'],
-  'Cuenca': ['16'],
-  'Girona': ['17'],
-  'Gerona': ['17'],
-  'Granada': ['18'],
-  'Guadalajara': ['19'],
-  'Guipúzcoa': ['20'],
-  'Gipuzkoa': ['20'],
-  'Huelva': ['21'],
-  'Huesca': ['22'],
-  'Jaén': ['23'],
-  'León': ['24'],
-  'Lleida': ['25'],
-  'Lérida': ['25'],
-  'La Rioja': ['26'],
-  'Rioja': ['26'],
-  'Lugo': ['27'],
-  'Madrid': ['28'],
-  'Málaga': ['29'],
-  'Murcia': ['30'],
-  'Navarra': ['31'],
-  'Ourense': ['32'],
-  'Orense': ['32'],
-  'Asturias': ['33'],
-  'Palencia': ['34'],
-  'Las Palmas': ['35'],
-  'Pontevedra': ['36'],
-  'Salamanca': ['37'],
-  'Santa Cruz de Tenerife': ['38'],
-  'Tenerife': ['38'],
-  'Cantabria': ['39'],
-  'Segovia': ['40'],
-  'Sevilla': ['41'],
-  'Soria': ['42'],
-  'Tarragona': ['43'],
-  'Teruel': ['44'],
-  'Toledo': ['45'],
-  'Valencia': ['46'],
-  'Valladolid': ['47'],
-  'Vizcaya': ['48'],
-  'Bizkaia': ['48'],
-  'Zamora': ['49'],
-  'Zaragoza': ['50'],
-  'Ceuta': ['51'],
-  'Melilla': ['52'],
+// Normaliza un nombre de provincia ignorando acentos, case y variantes
+// (p. ej. "Orense"/"Ourense", "Tenerife"/"Santa Cruz de Tenerife").
+function normalizarProvincia(nombre: string): string {
+  return nombre
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
+}
+
+const ALIAS_PROVINCIA: Record<string, string> = {
+  coruna: 'acoruna',
+  acoruna: 'acoruna',
+  gerona: 'girona',
+  girona: 'girona',
+  guipuzcoa: 'guipuzcoa',
+  gipuzkoa: 'guipuzcoa',
+  lerida: 'lleida',
+  lleida: 'lleida',
+  rioja: 'larioja',
+  larioja: 'larioja',
+  orense: 'ourense',
+  ourense: 'ourense',
+  tenerife: 'santacruzdetenerife',
+  santacruzdetenerife: 'santacruzdetenerife',
+  vizcaya: 'vizcaya',
+  bizkaia: 'vizcaya',
 };
+
+function canonicalizarProvincia(nombre: string): string {
+  const n = normalizarProvincia(nombre);
+  return ALIAS_PROVINCIA[n] ?? n;
+}
 
 function cpEsIncompatibleConProvincia(cp: string, provincia: string): boolean {
   if (!cp || cp.length !== 5 || !provincia) return false;
-  const prefijosEsperados = CP_PREFIX_POR_PROVINCIA[provincia];
-  if (!prefijosEsperados) return false;
-  return !prefijosEsperados.some(p => cp.startsWith(p));
+  const provDelCP = getProvinceFromPostalCode(cp);
+  // Si el CP no está en el mapa canónico 01–52, no asumimos nada (no limpiar).
+  if (!provDelCP) return false;
+  return canonicalizarProvincia(provDelCP) !== canonicalizarProvincia(provincia);
 }
 
 function safeGetItem(key: string): string | null {
