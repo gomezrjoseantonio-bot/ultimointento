@@ -1,4 +1,5 @@
 import { initDB, MejoraInmueble } from './db';
+import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
 
 const sortByDateDesc = (a: MejoraInmueble, b: MejoraInmueble) =>
   (b.fecha ?? `${b.ejercicio}-01-01`).localeCompare(a.fecha ?? `${a.ejercicio}-01-01`);
@@ -13,12 +14,12 @@ export const mejorasInmuebleService = {
   },
 
   async actualizar(id: number, updates: Partial<Omit<MejoraInmueble, 'id' | 'createdAt'>>): Promise<MejoraInmueble> {
-    const db = await initDB();
-    const actual = await db.get('mejorasInmueble', id);
-    if (!actual) throw new Error('MejoraInmueble no encontrada');
-    const mejora: MejoraInmueble = { ...actual, ...updates, updatedAt: new Date().toISOString() };
-    await db.put('mejorasInmueble', mejora);
-    return mejora;
+    // PR5.5: propaga cambios al treasuryEvent y movement asociados (si existen).
+    const updated = (await updateLineaInmueble('mejorasInmueble', id, updates as Record<string, unknown>)) as
+      | MejoraInmueble
+      | null;
+    if (!updated) throw new Error('MejoraInmueble no encontrada');
+    return updated;
   },
 
   async getPorInmueble(inmuebleId: number): Promise<MejoraInmueble[]> {
@@ -54,7 +55,7 @@ export const mejorasInmuebleService = {
   },
 
   async eliminar(id: number): Promise<void> {
-    const db = await initDB();
-    await db.delete('mejorasInmueble', id);
+    // PR5.5: borra en cascada event + movement asociados.
+    await deleteLineaInmueble('mejorasInmueble', id);
   },
 };

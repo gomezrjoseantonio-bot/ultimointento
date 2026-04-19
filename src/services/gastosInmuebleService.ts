@@ -1,4 +1,5 @@
 import { initDB, GastoInmueble, GastoCategoria } from './db';
+import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
 
 // Mapa categoria → casillaAEAT
 export const CATEGORIA_A_CASILLA: Record<GastoCategoria, string> = {
@@ -38,15 +39,14 @@ export const gastosInmuebleService = {
   },
 
   async update(id: number, updates: Partial<GastoInmueble>): Promise<void> {
-    const db = await initDB();
-    const existing = await db.get('gastosInmueble', id);
-    if (!existing) return;
-    await db.put('gastosInmueble', { ...existing, ...updates, updatedAt: new Date().toISOString() });
+    // PR5.5: delega en lineasInmuebleService para propagar los cambios al
+    // treasuryEvent y movement asociados (si existen).
+    await updateLineaInmueble('gastosInmueble', id, updates as Record<string, unknown>);
   },
 
   async delete(id: number): Promise<void> {
-    const db = await initDB();
-    await db.delete('gastosInmueble', id);
+    // PR5.5: borra en cascada event + movement asociados.
+    await deleteLineaInmueble('gastosInmueble', id);
   },
 
   async getByInmueble(inmuebleId: number): Promise<GastoInmueble[]> {
@@ -72,8 +72,11 @@ export const gastosInmuebleService = {
   async deleteByOrigenId(origen: string, origenId: string): Promise<void> {
     const db = await initDB();
     const existentes = await db.getAllFromIndex('gastosInmueble', 'origen-origenId', [origen, origenId]);
+    // PR5.5: cascada via lineasInmuebleService para mantener coherencia
+    // bidireccional (si el gasto venía de tesorería, borra también event +
+    // movement asociados).
     for (const g of existentes) {
-      if (g.id != null) await db.delete('gastosInmueble', g.id);
+      if (g.id != null) await deleteLineaInmueble('gastosInmueble', g.id);
     }
   },
 

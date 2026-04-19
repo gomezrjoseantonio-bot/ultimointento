@@ -1,4 +1,5 @@
 import { initDB, MuebleInmueble } from './db';
+import { updateLineaInmueble, deleteLineaInmueble } from './lineasInmuebleService';
 
 const DAY_MS = 86400000;
 
@@ -15,12 +16,12 @@ export const mueblesInmuebleService = {
   },
 
   async actualizar(id: number, updates: Partial<Omit<MuebleInmueble, 'id' | 'createdAt'>>): Promise<MuebleInmueble> {
-    const db = await initDB();
-    const actual = await db.get('mueblesInmueble', id);
-    if (!actual) throw new Error('MuebleInmueble no encontrado');
-    const mueble: MuebleInmueble = { ...actual, ...updates, updatedAt: new Date().toISOString() };
-    await db.put('mueblesInmueble', mueble);
-    return mueble;
+    // PR5.5: propaga cambios al treasuryEvent y movement asociados (si existen).
+    const updated = (await updateLineaInmueble('mueblesInmueble', id, updates as Record<string, unknown>)) as
+      | MuebleInmueble
+      | null;
+    if (!updated) throw new Error('MuebleInmueble no encontrado');
+    return updated;
   },
 
   async getPorInmueble(inmuebleId: number): Promise<MuebleInmueble[]> {
@@ -87,7 +88,7 @@ export const mueblesInmuebleService = {
   },
 
   async eliminar(id: number): Promise<void> {
-    const db = await initDB();
-    await db.delete('mueblesInmueble', id);
+    // PR5.5: borra en cascada event + movement asociados.
+    await deleteLineaInmueble('mueblesInmueble', id);
   },
 };
