@@ -68,11 +68,16 @@ interface LineaUI {
   estado: string;
   documentId?: number;          // factura vinculada del Inbox
   movimientoId?: number;        // movimiento Tesorería vinculado
+  accountId?: number;           // cuenta resuelta (del movimiento o cuentaBancaria)
   estadoTesoreria?: 'conciliado' | 'pendiente' | null;
   vidaUtil?: number;            // mobiliario
   amortizacionAnual?: number;   // mobiliario
   raw: GastoInmueble | MejoraInmueble | MuebleInmueble;
 }
+
+// Resuelve la cuenta para precargar el formulario al editar.
+// Preferimos el accountId ya cacheado en la línea (resuelto al cargar).
+const resolveEditingAccountId = (linea: LineaUI): number | undefined => linea.accountId;
 
 interface Props {
   propertyId: number;
@@ -97,6 +102,22 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
       const allAccounts = (await db.getAll('accounts')) as Account[];
       setAccounts(allAccounts);
 
+      // Cache de accountId por movimiento para poder cruzar al cargar líneas.
+      // Hacemos un solo getAll('movements') en lugar de fetch por línea.
+      const allMovements = (await db.getAll('movements').catch(() => [])) as any[];
+      const movementAccountById = new Map<number, number>();
+      for (const mv of allMovements) {
+        if (typeof mv?.id === 'number' && typeof mv?.accountId === 'number') {
+          movementAccountById.set(mv.id, mv.accountId);
+        }
+      }
+
+      const parseCuentaBancaria = (raw: unknown): number | undefined => {
+        if (raw == null) return undefined;
+        const n = Number(raw);
+        return Number.isFinite(n) ? n : undefined;
+      };
+
       let years = new Set<number>();
       let declaradoAnual = 0;
       const ui: LineaUI[] = [];
@@ -113,6 +134,11 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
           if (g.casillaAEAT !== '0106') continue;
           if (g.ejercicio !== year) continue;
           const movimientoIdNum = g.movimientoId ? Number(g.movimientoId) : undefined;
+          const fromMovement =
+            movimientoIdNum != null && Number.isFinite(movimientoIdNum)
+              ? movementAccountById.get(movimientoIdNum)
+              : undefined;
+          const accountId = fromMovement ?? parseCuentaBancaria(g.cuentaBancaria);
           ui.push({
             id: g.id!,
             fecha: g.fecha,
@@ -123,6 +149,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
             estado: g.estado,
             documentId: g.documentId,
             movimientoId: Number.isFinite(movimientoIdNum) ? movimientoIdNum : undefined,
+            accountId,
             estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
             raw: g,
           });
@@ -133,6 +160,10 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
           years.add(m.ejercicio);
           if (m.ejercicio === year && m.tipo !== 'reparacion') {
             const movimientoIdNum = m.movimientoId ? Number(m.movimientoId) : undefined;
+            const accountId =
+              movimientoIdNum != null && Number.isFinite(movimientoIdNum)
+                ? movementAccountById.get(movimientoIdNum)
+                : undefined;
             ui.push({
               id: m.id!,
               fecha: m.fecha,
@@ -143,6 +174,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
               estado: 'conciliado',
               documentId: m.documentId,
               movimientoId: Number.isFinite(movimientoIdNum) ? movimientoIdNum : undefined,
+              accountId,
               estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
               raw: m,
             });
@@ -155,6 +187,10 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
           years.add(ejercicio);
           if (ejercicio === year) {
             const movimientoIdNum = mu.movimientoId ? Number(mu.movimientoId) : undefined;
+            const accountId =
+              movimientoIdNum != null && Number.isFinite(movimientoIdNum)
+                ? movementAccountById.get(movimientoIdNum)
+                : undefined;
             ui.push({
               id: mu.id!,
               fecha: mu.fechaAlta,
@@ -165,6 +201,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
               estado: mu.activo ? 'activo' : 'baja',
               documentId: mu.documentId,
               movimientoId: Number.isFinite(movimientoIdNum) ? movimientoIdNum : undefined,
+              accountId,
               estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
               vidaUtil: mu.vidaUtil,
               amortizacionAnual: mu.importe / (mu.vidaUtil || 10),
@@ -593,7 +630,19 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
         <LineaAnualForm
           categoria={categoria}
           accounts={accounts}
-          initial={editing}
+          initial={
+            editing
+              ? {
+                  id: editing.id,
+                  concepto: editing.concepto,
+                  fecha: editing.fecha,
+                  proveedorNIF: editing.proveedorNIF,
+                  importe: editing.importe,
+                  vidaUtil: editing.vidaUtil,
+                  accountId: resolveEditingAccountId(editing),
+                }
+              : null
+          }
           pendiente={pendiente}
           onCancel={() => {
             setShowForm(false);
@@ -796,20 +845,25 @@ async function syncLinkedMovement(
   const db = await initDB();
   if (editing.movimientoId != null) {
     const existing: any = await db.get('movements', editing.movimientoId);
-    if (!existing) return;
-    await db.put('movements', {
-      ...existing,
-      accountId: data.accountId,
-      date: data.fecha,
-      valueDate: data.fecha,
-      amount: -Math.abs(data.importe),
-      description: `${config.prefix} ${inmuebleAlias} · ${data.concepto}`,
-      counterparty: data.proveedorNIF || existing.counterparty || config.prefix,
-      updatedAt: now,
-    });
-    return;
+    if (existing) {
+      await db.put('movements', {
+        ...existing,
+        accountId: data.accountId,
+        date: data.fecha,
+        valueDate: data.fecha,
+        amount: -Math.abs(data.importe),
+        description: `${config.prefix} ${inmuebleAlias} · ${data.concepto}`,
+        counterparty: data.proveedorNIF || existing.counterparty || config.prefix,
+        updatedAt: now,
+      });
+      return;
+    }
+    // Movimiento huérfano (fue borrado desde Tesorería): caemos en la rama
+    // de "sin movimiento" para recrearlo y re-anclar el movimientoId de la
+    // línea, manteniendo la bidireccionalidad.
   }
-  // No había movimiento: creamos uno nuevo y guardamos id.
+  // No había movimiento o el vinculado era huérfano: creamos uno nuevo y
+  // guardamos id cruzado en la línea.
   const movementId = await createExpenseMovement({
     categoria,
     accountId: data.accountId,

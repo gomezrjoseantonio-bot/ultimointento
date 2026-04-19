@@ -5,6 +5,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Search, FileText, Link2Off } from 'lucide-react';
 import { initDB, type Document } from '../../../services/db';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 
 const C = {
   navy900: 'var(--navy-900, #042C5E)',
@@ -43,6 +44,16 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  // Accesibilidad: foco atrapado + Escape cierra (patrón repo via evento
+  // `modal-escape`).
+  const focusTrapRef = useFocusTrap(true);
+  useEffect(() => {
+    const node = focusTrapRef.current;
+    if (!node) return;
+    const handler = () => onCancel();
+    node.addEventListener('modal-escape', handler);
+    return () => node.removeEventListener('modal-escape', handler);
+  }, [focusTrapRef, onCancel]);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,8 +114,6 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       onClick={onCancel}
       style={{
         position: 'fixed',
@@ -119,7 +128,12 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
       }}
     >
       <div
+        ref={focusTrapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="factura-selector-modal-title"
         onClick={(e) => e.stopPropagation()}
+        tabIndex={-1}
         style={{
           background: C.white,
           borderRadius: 12,
@@ -129,6 +143,7 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          outline: 'none',
         }}
       >
         <header
@@ -141,7 +156,7 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
           }}
         >
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.grey900 }}>
+            <h2 id="factura-selector-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.grey900 }}>
               {linea.currentDocumentId ? 'Cambiar factura vinculada' : 'Asociar factura del Inbox'}
             </h2>
             <div style={{ fontSize: 12, color: C.grey500, marginTop: 4 }}>

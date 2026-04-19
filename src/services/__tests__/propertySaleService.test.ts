@@ -46,7 +46,6 @@ describe('propertySaleService', () => {
       db.clear('contracts'),
       db.clear('movements'),
       db.clear('opexRules'),
-      db.clear('ingresos'),
       db.clear('gastosInmueble'),
       db.clear('treasuryEvents'),
     ]);
@@ -827,5 +826,78 @@ describe('propertySaleService', () => {
       salePrice: 180000,
       source: 'cartera',
     })).rejects.toThrow('Selecciona una cuenta de tesorería para registrar la venta');
+  });
+
+  // Regresión · detección de préstamos con modelo v2 (destinos[] / garantias[]).
+  // Ver fix BUG A: PR #1115.
+  it('detecta préstamo vinculado por destinos[tipo=ADQUISICION, inmuebleId]', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({
+      alias: 'Sant Joan',
+    })));
+    const accountId = Number(await db.add('accounts', createAccount()));
+
+    await db.add('prestamos', {
+      id: 'loan-v2-destinos',
+      activo: true,
+      principalVivo: 63705,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+      destinos: [
+        { id: 'd1', tipo: 'ADQUISICION', inmuebleId: String(propertyId), importe: 63705, porcentaje: 100 },
+      ],
+    } as any);
+
+    const prepared = await preparePropertySale(propertyId, '2026-02-10');
+    expect(prepared.automationPreview.linkedLoansCount).toBe(1);
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-02-10',
+      salePrice: 130000,
+      settlementAccountId: accountId,
+      source: 'wizard',
+      loanPayoffAmount: 63705,
+    });
+
+    const updatedLoan = await db.get('prestamos', 'loan-v2-destinos') as any;
+    expect(updatedLoan).toBeTruthy();
+    // El préstamo ha quedado marcado como pendiente de cancelación por venta.
+    expect(updatedLoan.cancelacionPendienteVenta).toBe(true);
+  });
+
+  it('detecta préstamo vinculado por garantias[tipo=HIPOTECARIA, inmuebleId]', async () => {
+    const db = await initDB();
+    const propertyId = Number(await db.add('properties', createProperty({
+      alias: 'Buigas 15',
+    })));
+    const accountId = Number(await db.add('accounts', createAccount()));
+
+    await db.add('prestamos', {
+      id: 'loan-v2-garantias',
+      activo: true,
+      principalVivo: 50000,
+      estado: 'vivo',
+      ambito: 'INMUEBLE',
+      garantias: [
+        { tipo: 'HIPOTECARIA', inmuebleId: String(propertyId), descripcion: 'Hipoteca sobre Buigas 15' },
+      ],
+    } as any);
+
+    const prepared = await preparePropertySale(propertyId, '2026-02-10');
+    expect(prepared.automationPreview.linkedLoansCount).toBe(1);
+
+    await confirmPropertySale({
+      propertyId,
+      saleDate: '2026-02-10',
+      salePrice: 150000,
+      settlementAccountId: accountId,
+      source: 'wizard',
+      loanPayoffAmount: 50000,
+    });
+
+    const updatedLoan = await db.get('prestamos', 'loan-v2-garantias') as any;
+    expect(updatedLoan).toBeTruthy();
+    expect(updatedLoan.cancelacionPendienteVenta).toBe(true);
   });
 });

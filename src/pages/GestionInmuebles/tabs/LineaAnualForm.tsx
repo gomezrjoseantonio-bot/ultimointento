@@ -1,7 +1,7 @@
 // src/pages/GestionInmuebles/tabs/LineaAnualForm.tsx
 // Modal compartido para crear/editar líneas de reparación / mejora / mobiliario
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { Account } from '../../../services/db';
 import type { Categoria } from './LineasAnualesTab';
@@ -36,6 +36,8 @@ interface Initial {
   proveedorNIF?: string;
   importe: number;
   vidaUtil?: number;
+  // Cuenta resuelta previamente (movimiento vinculado o cuentaBancaria del gasto)
+  accountId?: number;
 }
 
 interface Props {
@@ -64,11 +66,35 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
   );
   // La cuenta de pago es obligatoria: sin cuenta no podemos crear el
   // movimiento conciliado en Tesorería que exige la bidireccionalidad.
-  // Si el usuario tiene una única cuenta activa la preseleccionamos.
-  const [accountId, setAccountId] = useState<string>(() => {
+  const [accountId, setAccountId] = useState<string>(
+    initial?.accountId != null ? String(initial.accountId) : '',
+  );
+
+  // Preselección: si el usuario no la cambió todavía, preferimos
+  // `initial.accountId` (modo edición con cuenta resuelta del movimiento
+  // vinculado o cuentaBancaria del gasto). Si no hay `initial`, caemos a la
+  // única cuenta activa cuando `accounts` se popula. Cualquier interacción
+  // del usuario (tracked por `userTouchedAccountRef`) bloquea la
+  // sobrescritura para no pisar su elección explícita.
+  const userTouchedAccountRef = useRef(false);
+  useEffect(() => {
+    if (userTouchedAccountRef.current) return;
+
+    const preferredAccountId =
+      initial?.accountId != null ? String(initial.accountId) : '';
+
+    if (preferredAccountId && accountId !== preferredAccountId) {
+      setAccountId(preferredAccountId);
+      return;
+    }
+
+    if (accountId) return;
+
     const activos = accounts.filter((a) => a.activa !== false && a.status !== 'DELETED');
-    return activos.length === 1 && activos[0].id != null ? String(activos[0].id) : '';
-  });
+    if (activos.length === 1 && activos[0].id != null) {
+      setAccountId(String(activos[0].id));
+    }
+  }, [accounts, initial?.accountId, accountId]);
   const [vidaUtil, setVidaUtil] = useState<number>(initial?.vidaUtil ?? 10);
 
   const title = initial
@@ -205,7 +231,10 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
           <Field label="Cuenta de pago *">
             <select
               value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
+              onChange={(e) => {
+                userTouchedAccountRef.current = true;
+                setAccountId(e.target.value);
+              }}
               required
               style={inputStyle}
             >
