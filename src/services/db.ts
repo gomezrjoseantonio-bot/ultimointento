@@ -11,7 +11,8 @@ import type {
   OtrosIngresos,
   PatronGastoPersonal,
   GastoPersonalReal,
-  PensionIngreso
+  PensionIngreso,
+  TraspasoPlan
 } from '../types/personal';
 import type {
   ArrastreManual,
@@ -23,7 +24,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 51; // V5.1: PR5 — campos facturaId/justificanteId/*NoAplica en treasuryEvents/movements/gastosInmueble/mejorasInmueble/mueblesInmueble
+const DB_VERSION = 52; // V5.2: traspasosPlanes — entidad propia para traspasos entre planes de pensiones
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1980,6 +1981,7 @@ interface AtlasHorizonDB {
   nominas: Nomina; // V1.2: Salary data
   autonomos: Autonomo; // V1.2: Self-employed data
   planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
+  traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
   otrosIngresos: OtrosIngresos; // V1.2: Other income
   pensiones: PensionIngreso; // V2.5: Pension income records
   patronGastosPersonales: PatronGastoPersonal; // V4.3: spending pattern (was personalExpenses)
@@ -2340,6 +2342,15 @@ export const initDB = async () => {
           planesStore.createIndex('titularidad', 'titularidad', { unique: false });
           planesStore.createIndex('esHistorico', 'esHistorico', { unique: false });
           planesStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
+        // V5.2: Traspasos entre planes de pensiones
+        if (!db.objectStoreNames.contains('traspasosPlanes')) {
+          const traspasosStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
+          traspasosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          traspasosStore.createIndex('planOrigenId', 'planOrigenId', { unique: false });
+          traspasosStore.createIndex('planDestinoId', 'planDestinoId', { unique: false });
+          traspasosStore.createIndex('fecha', 'fecha', { unique: false });
         }
 
         if (!db.objectStoreNames.contains('otrosIngresos')) {

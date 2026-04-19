@@ -287,7 +287,7 @@ export interface PlanPensionInversion {
     titular: number;      // aportación del titular en el periodo
     empresa: number;      // aportación de la empresa en el periodo
     total: number;        // titular + empresa
-    fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
+    fuente: 'xml_aeat' | 'manual' | 'atlas_nativo' | 'traspaso_entrada' | 'traspaso_salida';
   }>;
 
   // vinculación a nómina y empresa
@@ -305,6 +305,30 @@ export interface AportacionPeriodica {
   cuentaAbono: number;
   reglasDia: ReglaDia;
   activa: boolean;
+}
+
+// Traspaso de planes de pensiones (movimiento patrimonial sin tributación —
+// art. 8.8 LRPFP). No computa como aportación deducible ni como rescate.
+// El evento se guarda como entidad propia para mantener trazabilidad del
+// recorrido del dinero entre planes: el histórico de valoraciones sigue
+// ligado al plan donde ocurrió (activo_id en valoraciones_historicas).
+export interface TraspasoPlan {
+  id?: number;
+  personalDataId: number;
+  planOrigenId: number;
+  planDestinoId: number;
+  // Snapshot de nombre/entidad al momento del traspaso para no perder
+  // trazabilidad si el plan origen/destino se elimina más adelante.
+  planOrigenNombre: string;
+  planOrigenEntidad?: string;
+  planDestinoNombre: string;
+  planDestinoEntidad?: string;
+  fecha: string;       // YYYY-MM-DD
+  importe: number;     // importe bruto traspasado en €
+  esTotal: boolean;    // true si el traspaso fue por el saldo completo del origen
+  unidadesTraspasadas?: number;
+  notas?: string;
+  fechaCreacion: string;
 }
 
 // Other Income Types
