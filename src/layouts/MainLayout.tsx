@@ -1,12 +1,49 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
-import CommandPalette from '../components/common/CommandPalette';
-import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { preloadRouteResources } from '../services/navigationPerformanceService';
+
+// Ambos overlays sólo aparecen bajo demanda (Cmd+K / ?). Los mantenemos fuera
+// del bundle principal para no sumar lucide-react + handlers al arranque.
+const CommandPalette = lazy(() => import('../components/common/CommandPalette'));
+const KeyboardShortcutsModal = lazy(() => import('../components/common/KeyboardShortcutsModal'));
+
+/**
+ * Fallback mínimo mientras se descarga el chunk del overlay. Muestra un
+ * backdrop semitransparente y permite cancelar con Escape o clic fuera, de
+ * modo que el usuario nunca queda "atrapado" si el chunk tarda en llegar.
+ */
+const OverlayFallback: React.FC<{ onClose: () => void; label: string }> = ({
+  onClose,
+  label,
+}) => {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      aria-busy="true"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+      }}
+    />
+  );
+};
 
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,11 +70,30 @@ const MainLayout: React.FC = () => {
   
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-      {/* Sprint 5: Command Palette (Cmd+K) */}
-      <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
-      
-      {/* Sprint 5: Keyboard Shortcuts Help Modal */}
-      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      {/* Sprint 5: Command Palette (Cmd+K) — montaje perezoso sólo al abrir */}
+      {isCommandPaletteOpen && (
+        <Suspense
+          fallback={
+            <OverlayFallback onClose={closeCommandPalette} label="Cargando paleta de comandos" />
+          }
+        >
+          <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
+        </Suspense>
+      )}
+
+      {/* Sprint 5: Keyboard Shortcuts Help Modal — montaje perezoso sólo al abrir */}
+      {showShortcuts && (
+        <Suspense
+          fallback={
+            <OverlayFallback
+              onClose={() => setShowShortcuts(false)}
+              label="Cargando atajos de teclado"
+            />
+          }
+        >
+          <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+        </Suspense>
+      )}
       
       {/* Skip Link - Sprint 3: Accessibility improvement */}
       <a

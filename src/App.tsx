@@ -18,7 +18,6 @@ import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphane
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import CopilotWidget from './components/common/CopilotWidget';
 
 // Loading component for better UX - ATLAS compliant
 const LoadingSpinner = () => (
@@ -143,7 +142,14 @@ const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/
 const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
 const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'));
 
+// CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
+// dashboardService → proyeccionMensualService y toda la cadena de servicios
+// (≈ +15 servicios) al bundle principal, inflando Script Evaluation/TBT.
+// Lo diferimos a idle para que no bloquee FCP/TTI.
+const CopilotWidget = React.lazy(() => import('./components/common/CopilotWidget'));
+
 function App() {
+  const [showCopilot, setShowCopilot] = React.useState(false);
   // Initialize bank profiles and performance monitoring on app start
   useEffect(() => {
     void initDB()
@@ -188,6 +194,30 @@ function App() {
       runWhenIdle(() => {
         bankProfilesService.loadProfiles().catch(console.error);
       }, 1800),
+      // CopilotWidget: garantizamos un mínimo real de 3 s tras el primer paint
+      // antes de montarlo (runWhenIdle capea el fallback a ~800 ms, no sirve).
+      // Una vez pasado el umbral, si el navegador soporta requestIdleCallback,
+      // esperamos al siguiente hueco idle para no competir con el hilo.
+      (() => {
+        let idleHandle: number | null = null;
+        const timeoutHandle = window.setTimeout(() => {
+          const idle = (window as Window & {
+            requestIdleCallback?: (cb: IdleRequestCallback) => number;
+          }).requestIdleCallback;
+          if (idle) {
+            idleHandle = idle(() => setShowCopilot(true));
+          } else {
+            setShowCopilot(true);
+          }
+        }, 3000);
+        return () => {
+          window.clearTimeout(timeoutHandle);
+          const cancelIdle = (window as Window & {
+            cancelIdleCallback?: (handle: number) => void;
+          }).cancelIdleCallback;
+          if (idleHandle !== null) cancelIdle?.(idleHandle);
+        };
+      })(),
     ];
 
     // Performance monitoring setup
@@ -269,7 +299,11 @@ function App() {
               },
             }}
           />
-          <CopilotWidget />
+          {showCopilot && (
+            <React.Suspense fallback={null}>
+              <CopilotWidget />
+            </React.Suspense>
+          )}
           <Routes>
             {/* Auth por email desactivada temporalmente */}
             <Route path="/login" element={<Navigate to="/" replace />} />
