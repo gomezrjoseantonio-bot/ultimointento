@@ -14,6 +14,7 @@ interface ParentRentRowProps {
   onDelete: (row: SingleRow) => void;
   onOpenDocPopover: (row: SingleRow, slot: DocIconType, anchor: HTMLElement) => void;
   onBulkConfirm: (children: SingleRow[]) => void;
+  onBulkRevert: (children: SingleRow[]) => void;
 }
 
 const ParentRentRow: React.FC<ParentRentRowProps> = ({
@@ -24,6 +25,7 @@ const ParentRentRow: React.FC<ParentRentRowProps> = ({
   onDelete,
   onOpenDocPopover,
   onBulkConfirm,
+  onBulkRevert,
 }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -34,8 +36,15 @@ const ParentRentRow: React.FC<ParentRentRowProps> = ({
       ? 'indeterminate'
       : 'empty';
 
+  // PR5.6 · all confirmadas + click → despuntear todas. En none/some sólo
+  // confirma las pendientes (comportamiento previo).
   const handleParentCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (checkState === 'checked') {
+      const confirmed = group.children.filter((c) => c.state === 'confirmed');
+      if (confirmed.length > 0) onBulkRevert(confirmed);
+      return;
+    }
     const pending = group.children.filter((c) => c.state === 'predicted');
     if (pending.length > 0) onBulkConfirm(pending);
   };
@@ -51,7 +60,11 @@ const ParentRentRow: React.FC<ParentRentRowProps> = ({
         <CheckCircle
           state={checkState}
           onClick={handleParentCheck}
-          ariaLabel="Puntear todas las rentas pendientes"
+          ariaLabel={
+            checkState === 'checked'
+              ? 'Despuntear todas las rentas confirmadas'
+              : 'Puntear todas las rentas pendientes'
+          }
         />
         <span className={`cv2-chevron ${expanded ? 'cv2-chevron--open' : ''}`}>
           <ChevronRight size={14} />

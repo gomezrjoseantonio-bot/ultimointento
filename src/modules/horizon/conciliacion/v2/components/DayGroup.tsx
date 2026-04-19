@@ -13,6 +13,7 @@ interface DayGroupProps {
   onDelete: (row: SingleRow) => void;
   onOpenDocPopover: (row: SingleRow, slot: DocIconType, anchor: HTMLElement) => void;
   onBulkConfirm: (children: SingleRow[]) => void;
+  onBulkRevert: (children: SingleRow[]) => void;
 }
 
 const DayGroup: React.FC<DayGroupProps> = ({
@@ -23,6 +24,7 @@ const DayGroup: React.FC<DayGroupProps> = ({
   onDelete,
   onOpenDocPopover,
   onBulkConfirm,
+  onBulkRevert,
 }) => (
   <div className="cv2-day-group">
     <DayHeader bucket={bucket} />
@@ -50,6 +52,7 @@ const DayGroup: React.FC<DayGroupProps> = ({
             onDelete={onDelete}
             onOpenDocPopover={onOpenDocPopover}
             onBulkConfirm={onBulkConfirm}
+            onBulkRevert={onBulkRevert}
           />
         );
       }

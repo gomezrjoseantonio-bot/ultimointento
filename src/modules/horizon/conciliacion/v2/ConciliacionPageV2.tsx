@@ -154,6 +154,33 @@ const ConciliacionPageV2: React.FC = () => {
     [reload],
   );
 
+  // PR5.6 · check del padre en estado "all" despuntea las hijas ya conciliadas.
+  const handleBulkRevert = useCallback(
+    async (children: SingleRow[]) => {
+      let ok = 0;
+      let fail = 0;
+      for (const child of children) {
+        if (!child.movementId) {
+          // Fila conciliada sin movementId · caso degenerado (no debería ocurrir
+          // en datos sanos). Se cuenta como fallo para que el feedback refleje
+          // el total de hijas que el usuario pretendía revertir.
+          fail++;
+          continue;
+        }
+        try {
+          await revertTreasuryConfirmation(child.movementId);
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      if (ok > 0) toast.success(`${ok} rentas desconciliadas`);
+      if (fail > 0) toast.error(`${fail} rentas no se pudieron desconciliar`);
+      await reload();
+    },
+    [reload],
+  );
+
   const handleDelete = useCallback(
     async (row: SingleRow) => {
       try {
@@ -213,6 +240,7 @@ const ConciliacionPageV2: React.FC = () => {
               onDelete={(row) => setDeletingRow(row)}
               onOpenDocPopover={handleOpenDocPopover}
               onBulkConfirm={handleBulkConfirm}
+              onBulkRevert={handleBulkRevert}
             />
           ))
         )}
