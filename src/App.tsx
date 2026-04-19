@@ -104,6 +104,10 @@ const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/pers
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
 const GestionInversionesPage = lazyWithPreload(() => import('./pages/GestionInversiones/GestionInversionesPage'));
+
+// Gestión Inmuebles hub
+const GestionInmueblesList = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmueblesList'));
+const GestionInmuebleDetail = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmuebleDetail'));
 const NominaWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/NominaWizard'));
 const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/AutonomoWizard'));
 const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
@@ -517,8 +521,28 @@ function App() {
               } />
             </Route>
             
-            {/* Gestión Personal + Gestión Inversiones */}
+            {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
             <Route path="gestion">
+              <Route path="inmuebles" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <GestionInmueblesList />
+                </React.Suspense>
+              } />
+              <Route path="inmuebles/nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="create" />
+                </React.Suspense>
+              } />
+              <Route path="inmuebles/:id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <GestionInmuebleDetail />
+                </React.Suspense>
+              } />
+              <Route path="inmuebles/:id/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PropertyForm mode="edit" />
+                </React.Suspense>
+              } />
               <Route path="inversiones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <GestionInversionesPage />
