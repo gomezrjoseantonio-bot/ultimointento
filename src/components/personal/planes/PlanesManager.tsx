@@ -2,9 +2,12 @@ import { confirmDelete } from '../../../services/confirmationService';
 import React, { useState, useEffect, useCallback } from 'react';
 import { planesInversionService } from '../../../services/planesInversionService';
 import { personalDataService } from '../../../services/personalDataService';
-import { PlanPensionInversion } from '../../../types/personal';
+import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
+import { PlanPensionInversion, TraspasoPlan } from '../../../types/personal';
 import PlanForm from './PlanForm';
-import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, PiggyBank, Target, Users, User, Heart } from 'lucide-react';
+import TraspasoForm from './TraspasoForm';
+import TraspasosHistorial from './TraspasosHistorial';
+import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, PiggyBank, Target, Users, User, Heart, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const PlanesManager: React.FC = () => {
@@ -13,6 +16,9 @@ const PlanesManager: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlanPensionInversion | null>(null);
   const [activeFilter, setActiveFilter] = useState<'todos' | 'activos' | 'historicos'>('todos');
+  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
+  const [traspasoOrigen, setTraspasoOrigen] = useState<PlanPensionInversion | null>(null);
   const [portfolioSummary, setPortfolioSummary] = useState({
     totalInvertido: 0,
     valorActualTotal: 0,
@@ -26,11 +32,15 @@ const PlanesManager: React.FC = () => {
     try {
       const personalData = await personalDataService.getPersonalData();
       if (personalData?.id) {
+        setPersonalDataId(personalData.id);
         const planesData = await planesInversionService.getPlanes(personalData.id);
         setPlanes(planesData);
-        
+
         const summary = await planesInversionService.calculatePortfolioSummary(personalData.id);
         setPortfolioSummary(summary);
+
+        const traspasosData = await traspasosPlanesService.getTraspasosByPersonal(personalData.id);
+        setTraspasos(traspasosData);
       }
     } catch (error) {
       console.error('Error loading planes:', error);
@@ -325,6 +335,16 @@ const PlanesManager: React.FC = () => {
                     </div>
 
                     <div className="flex items-center space-x-2 ml-4">
+                      {plan.tipo === 'plan-pensiones' && (
+                        <button
+                          onClick={() => setTraspasoOrigen(plan)}
+                          className="p-2 text-gray-400 hover:text-indigo-600"
+                          title="Traspasar a otro plan de pensiones"
+                          aria-label="Traspasar plan"
+                        >
+                          <ArrowLeftRight className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEditPlan(plan)}
                         className="p-2 text-gray-400 hover:text-atlas-blue"
@@ -348,6 +368,9 @@ const PlanesManager: React.FC = () => {
         )}
       </div>
 
+      {/* Traspasos */}
+      <TraspasosHistorial traspasos={traspasos} onChanged={loadData} />
+
       {/* Plan Form Modal */}
       <PlanForm
         isOpen={showForm}
@@ -358,6 +381,17 @@ const PlanesManager: React.FC = () => {
         plan={editingPlan}
         onSaved={handlePlanSaved}
       />
+
+      {/* Traspaso Modal */}
+      {personalDataId !== null && (
+        <TraspasoForm
+          isOpen={traspasoOrigen !== null}
+          onClose={() => setTraspasoOrigen(null)}
+          personalDataId={personalDataId}
+          planOrigen={traspasoOrigen}
+          onSaved={loadData}
+        />
+      )}
     </div>
   );
 };
