@@ -829,7 +829,7 @@ describe('propertySaleService', () => {
   });
 
   // Regresión · detección de préstamos con modelo v2 (destinos[] / garantias[]).
-  // Ver fix BUG A: https://github.com/... PR #1115.
+  // Ver fix BUG A: PR #1115.
   it('detecta préstamo vinculado por destinos[tipo=ADQUISICION, inmuebleId]', async () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({

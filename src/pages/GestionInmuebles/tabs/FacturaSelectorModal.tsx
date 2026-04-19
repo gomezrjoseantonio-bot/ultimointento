@@ -114,8 +114,6 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
       onClick={onCancel}
       style={{
         position: 'fixed',
@@ -131,6 +129,9 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
     >
       <div
         ref={focusTrapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="factura-selector-modal-title"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         style={{
@@ -155,7 +156,7 @@ const FacturaSelectorModal: React.FC<Props> = ({ linea, onCancel, onAssociate })
           }}
         >
           <div>
-            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.grey900 }}>
+            <h2 id="factura-selector-modal-title" style={{ margin: 0, fontSize: 16, fontWeight: 600, color: C.grey900 }}>
               {linea.currentDocumentId ? 'Cambiar factura vinculada' : 'Asociar factura del Inbox'}
             </h2>
             <div style={{ fontSize: 12, color: C.grey500, marginTop: 4 }}>

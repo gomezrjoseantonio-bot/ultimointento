@@ -70,18 +70,26 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
     initial?.accountId != null ? String(initial.accountId) : '',
   );
 
-  // Preselección: si el usuario no la cambió todavía, preseleccionamos la
-  // única cuenta activa cuando `accounts` cambia (carga async) o cuando
-  // abrimos el modal en modo edición con un `initial.accountId` que llega
-  // después del primer render. No sobrescribimos una elección del usuario.
+  // Preselección: si el usuario no la cambió todavía, preferimos
+  // `initial.accountId` (modo edición con cuenta resuelta del movimiento
+  // vinculado o cuentaBancaria del gasto). Si no hay `initial`, caemos a la
+  // única cuenta activa cuando `accounts` se popula. Cualquier interacción
+  // del usuario (tracked por `userTouchedAccountRef`) bloquea la
+  // sobrescritura para no pisar su elección explícita.
   const userTouchedAccountRef = useRef(false);
   useEffect(() => {
     if (userTouchedAccountRef.current) return;
-    if (accountId) return;
-    if (initial?.accountId != null) {
-      setAccountId(String(initial.accountId));
+
+    const preferredAccountId =
+      initial?.accountId != null ? String(initial.accountId) : '';
+
+    if (preferredAccountId && accountId !== preferredAccountId) {
+      setAccountId(preferredAccountId);
       return;
     }
+
+    if (accountId) return;
+
     const activos = accounts.filter((a) => a.activa !== false && a.status !== 'DELETED');
     if (activos.length === 1 && activos[0].id != null) {
       setAccountId(String(activos[0].id));
