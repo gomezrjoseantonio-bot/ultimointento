@@ -5,7 +5,7 @@ import { initDB } from '../../../../../services/db';
 import type { Account, Property, TreasuryEvent } from '../../../../../services/db';
 import {
   confirmTreasuryEvent,
-  revertTreasuryConfirmation,
+  updateConfirmedMovement,
 } from '../../../../../services/treasuryConfirmationService';
 import {
   computeDocFlags,
@@ -86,30 +86,50 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
   const handleSaveOnly = async () => {
     setBusy(true);
     try {
-      const db = await initDB();
-      const event = (await db.get('treasuryEvents', row.eventId)) as TreasuryEvent | undefined;
-      if (!event) throw new Error('Evento no encontrado');
       const parsedAmount = parseFloat(amount.replace(',', '.'));
-      const updated: TreasuryEvent = {
-        ...event,
-        predictedDate: date,
-        amount: Number.isFinite(parsedAmount) ? Math.abs(parsedAmount) : event.amount,
-        accountId,
-        description: concept,
-        counterparty: counterparty || undefined,
-        notes: notes || undefined,
-        ambito,
-        inmuebleId,
-        categoryLabel: categoryLabel || undefined,
-        updatedAt: new Date().toISOString(),
-      };
-      await db.put('treasuryEvents', updated);
-      toast.success('Movimiento guardado');
+      const finalAmount = Number.isFinite(parsedAmount) ? parsedAmount : undefined;
+
+      if (row.state === 'confirmed') {
+        // PR5.6 · Propaga a event + movement + línea de inmueble en una
+        // sola transacción. El gesto de desconciliar vive en el círculo.
+        await updateConfirmedMovement(row.eventId, {
+          amount: finalAmount,
+          date,
+          accountId,
+          description: concept,
+          counterparty: counterparty || undefined,
+          notes: notes || undefined,
+          categoryLabel: categoryLabel || undefined,
+          ambito,
+          inmuebleId,
+        });
+        toast.success('Movimiento actualizado');
+      } else {
+        const db = await initDB();
+        const event = (await db.get('treasuryEvents', row.eventId)) as TreasuryEvent | undefined;
+        if (!event) throw new Error('Evento no encontrado');
+        const updated: TreasuryEvent = {
+          ...event,
+          predictedDate: date,
+          amount: finalAmount != null ? Math.abs(finalAmount) : event.amount,
+          accountId,
+          description: concept,
+          counterparty: counterparty || undefined,
+          notes: notes || undefined,
+          ambito,
+          inmuebleId,
+          categoryLabel: categoryLabel || undefined,
+          updatedAt: new Date().toISOString(),
+        };
+        await db.put('treasuryEvents', updated);
+        toast.success('Previsión actualizada');
+      }
       await onChanged();
       onClose();
     } catch (err) {
       console.error('[EditMovementModal] save failed', err);
-      toast.error('No se pudo guardar');
+      const msg = err instanceof Error ? err.message : 'No se pudo guardar';
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -188,22 +208,6 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
       console.error('[EditMovementModal] confirm failed', err);
       const msg = err instanceof Error ? err.message : 'No se pudo confirmar';
       toast.error(msg);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleRevert = async () => {
-    if (!row.movementId) return;
-    setBusy(true);
-    try {
-      await revertTreasuryConfirmation(row.movementId);
-      toast.success('Movimiento desconciliado');
-      await onChanged();
-      onClose();
-    } catch (err) {
-      console.error('[EditMovementModal] revert failed', err);
-      toast.error('No se pudo desconciliar');
     } finally {
       setBusy(false);
     }
@@ -431,24 +435,14 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
               Cancelar
             </button>
             {row.state === 'confirmed' ? (
-              <>
-                <button
-                  type="button"
-                  className="cv2-btn cv2-btn-secondary"
-                  onClick={handleSaveOnly}
-                  disabled={busy}
-                >
-                  Guardar cambios
-                </button>
-                <button
-                  type="button"
-                  className="cv2-btn cv2-btn-secondary"
-                  onClick={handleRevert}
-                  disabled={busy}
-                >
-                  Desconciliar
-                </button>
-              </>
+              <button
+                type="button"
+                className="cv2-btn cv2-btn-primary"
+                onClick={handleSaveOnly}
+                disabled={busy}
+              >
+                Guardar
+              </button>
             ) : (
               <>
                 <button
@@ -457,7 +451,7 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
                   onClick={handleSaveOnly}
                   disabled={busy}
                 >
-                  Guardar sin confirmar
+                  Guardar
                 </button>
                 <button
                   type="button"
@@ -466,7 +460,7 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
                   disabled={busy}
                 >
                   <Check size={14} />
-                  Confirmar
+                  Guardar y confirmar
                 </button>
               </>
             )}

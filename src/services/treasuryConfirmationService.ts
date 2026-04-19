@@ -517,6 +517,329 @@ export async function revertTreasuryConfirmation(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// PR5.6 · Edición y borrado en cascada de eventos confirmados
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface UpdateConfirmedUpdates {
+  amount?: number;
+  date?: string;
+  accountId?: number;
+  description?: string;
+  counterparty?: string;
+  notes?: string;
+  categoryLabel?: string;
+  ambito?: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: number;
+  facturaId?: number;
+  facturaNoAplica?: boolean;
+  justificanteId?: number;
+  justificanteNoAplica?: boolean;
+}
+
+type LineMatch = {
+  linea: any;
+  storeName: CategoriaStoreName;
+};
+
+/**
+ * Busca la primera línea (gastosInmueble/mejorasInmueble/mueblesInmueble)
+ * asociada a un event/movement. Match defensivo:
+ *   1. `treasuryEventId === eventId` (vínculo directo PR3)
+ *   2. fallback: `movimientoId === movementId` (string o number)
+ *
+ * Recorre las 3 stores dentro de la misma transacción. Devuelve la primera
+ * coincidencia · no espera duplicados entre stores.
+ */
+async function findLinkedLineInTx(
+  tx: any,
+  eventId: number,
+  movementId: number | null | undefined,
+): Promise<LineMatch | null> {
+  for (const storeName of ALL_LINE_STORES) {
+    const store = tx.objectStore(storeName);
+    const all = (await store.getAll()) as any[];
+    const linea = all.find((l) => {
+      if (!l) return false;
+      const matchByEvent =
+        l.treasuryEventId != null && Number(l.treasuryEventId) === eventId;
+      const matchByMovement =
+        movementId != null &&
+        l.movimientoId != null &&
+        Number(l.movimientoId) === Number(movementId);
+      return matchByEvent || matchByMovement;
+    });
+    if (linea) return { linea, storeName };
+  }
+  return null;
+}
+
+/**
+ * PR5.6 · Borra un treasuryEvent con cascada completa: event + movement
+ * asociado (si estaba confirmado) + línea de inmueble vinculada (gastos/
+ * mejoras/muebles). Reemplaza el flujo viejo que solo llamaba a
+ * `revertTreasuryConfirmation` + `delete(event)`, que dejaba la línea viva.
+ *
+ * Match defensivo de la línea por `treasuryEventId` y fallback por
+ * `movimientoId` · cubre líneas legacy cuyo índice pudiera no estar presente.
+ */
+export async function deleteTreasuryEventCompletely(
+  eventId: number,
+): Promise<void> {
+  const db = await initDB();
+
+  const event = (await db.get('treasuryEvents', eventId)) as
+    | TreasuryEvent
+    | undefined;
+  if (!event) return;
+
+  const movementId = event.executedMovementId ?? event.movementId ?? null;
+
+  const stores = ['treasuryEvents', 'movements', ...ALL_LINE_STORES];
+  const tx = db.transaction(stores as any, 'readwrite');
+
+  // 1. Borrar líneas asociadas en las 3 stores (match por treasuryEventId
+  //    o por movimientoId · cubre líneas legacy sin doble vínculo).
+  for (const storeName of ALL_LINE_STORES) {
+    const store = tx.objectStore(storeName) as any;
+    const all = (await store.getAll()) as any[];
+    const lineas = all.filter((l) => {
+      if (!l) return false;
+      const matchByEvent =
+        l.treasuryEventId != null && Number(l.treasuryEventId) === eventId;
+      const matchByMovement =
+        movementId != null &&
+        l.movimientoId != null &&
+        Number(l.movimientoId) === Number(movementId);
+      return matchByEvent || matchByMovement;
+    });
+    for (const linea of lineas) {
+      if (linea?.id != null) await store.delete(linea.id);
+    }
+  }
+
+  // 2. Borrar movement asociado si existía.
+  if (movementId != null) {
+    await (tx.objectStore('movements') as any).delete(movementId);
+  }
+
+  // 3. Borrar el event.
+  await (tx.objectStore('treasuryEvents') as any).delete(eventId);
+
+  await tx.done;
+}
+
+/**
+ * PR5.6 · Edita un treasuryEvent confirmado propagando los cambios a:
+ *   - treasuryEvents[eventId]
+ *   - movements[event.executedMovementId] (con signo correcto según type)
+ *   - línea vinculada en gastosInmueble/mejorasInmueble/mueblesInmueble
+ *
+ * Mantiene la conciliación · no desconcilia. Los campos del movement y la
+ * línea se derivan de `updates`, respetando las convenciones de cada store
+ * (gastosInmueble usa `concepto/fecha`, mejoras/muebles usan `descripcion`
+ * y `fecha`/`fechaAlta` respectivamente).
+ *
+ * NOTA sobre migración entre stores: si `categoryLabel` cambia a una categoría
+ * que apuntaría a un store distinto (ej. Reparación → Mejora), la línea
+ * existente NO se migra entre stores. Solo se actualizan sus campos. El
+ * usuario debe eliminar y recrear el movimiento para un cambio de tipo.
+ */
+export async function updateConfirmedMovement(
+  eventId: number,
+  updates: UpdateConfirmedUpdates,
+): Promise<void> {
+  const db = await initDB();
+
+  const event = (await db.get('treasuryEvents', eventId)) as
+    | TreasuryEvent
+    | undefined;
+  if (!event) throw new Error('Evento no encontrado');
+
+  const movementId = event.executedMovementId ?? event.movementId ?? null;
+  const now = new Date().toISOString();
+
+  const stores = ['treasuryEvents', 'movements', ...ALL_LINE_STORES];
+  const tx = db.transaction(stores as any, 'readwrite');
+
+  // 1. Actualizar event (magnitud positiva · el signo se deriva del type).
+  const updatedEvent: TreasuryEvent = {
+    ...event,
+    amount:
+      updates.amount != null ? Math.abs(updates.amount) : event.amount,
+    predictedDate: updates.date ?? event.predictedDate,
+    actualDate: updates.date ?? event.actualDate,
+    actualAmount:
+      updates.amount != null
+        ? Math.abs(updates.amount)
+        : event.actualAmount,
+    accountId: updates.accountId ?? event.accountId,
+    description: updates.description ?? event.description,
+    counterparty:
+      updates.counterparty !== undefined
+        ? updates.counterparty || undefined
+        : event.counterparty,
+    notes:
+      updates.notes !== undefined
+        ? updates.notes || undefined
+        : event.notes,
+    categoryLabel: updates.categoryLabel ?? event.categoryLabel,
+    ambito: updates.ambito ?? event.ambito,
+    inmuebleId:
+      updates.ambito === 'PERSONAL'
+        ? undefined
+        : updates.inmuebleId ?? event.inmuebleId,
+    facturaId:
+      updates.facturaId !== undefined ? updates.facturaId : event.facturaId,
+    facturaNoAplica:
+      updates.facturaNoAplica !== undefined
+        ? updates.facturaNoAplica
+        : event.facturaNoAplica,
+    justificanteId:
+      updates.justificanteId !== undefined
+        ? updates.justificanteId
+        : event.justificanteId,
+    justificanteNoAplica:
+      updates.justificanteNoAplica !== undefined
+        ? updates.justificanteNoAplica
+        : event.justificanteNoAplica,
+    updatedAt: now,
+  };
+  await (tx.objectStore('treasuryEvents') as any).put(updatedEvent);
+
+  // 2. Actualizar movement si existe (importe con signo según type).
+  if (movementId != null) {
+    const movementsStore = tx.objectStore('movements') as any;
+    const movement = (await movementsStore.get(movementId)) as
+      | Movement
+      | undefined;
+    if (movement) {
+      const signedAmount =
+        updates.amount != null
+          ? event.type === 'income'
+            ? Math.abs(updates.amount)
+            : -Math.abs(updates.amount)
+          : movement.amount;
+      const nextInmuebleId =
+        updates.ambito === 'PERSONAL'
+          ? undefined
+          : updates.inmuebleId != null
+          ? String(updates.inmuebleId)
+          : movement.inmuebleId;
+      await movementsStore.put({
+        ...movement,
+        amount: signedAmount,
+        date: updates.date ?? movement.date,
+        valueDate: updates.date ?? movement.valueDate,
+        description: updates.description ?? movement.description,
+        counterparty:
+          updates.counterparty !== undefined
+            ? updates.counterparty || undefined
+            : movement.counterparty,
+        ambito: updates.ambito ?? movement.ambito,
+        inmuebleId: nextInmuebleId,
+        category: updates.categoryLabel
+          ? { ...movement.category, tipo: updates.categoryLabel }
+          : movement.category,
+        facturaId:
+          updates.facturaId !== undefined
+            ? updates.facturaId
+            : movement.facturaId,
+        facturaNoAplica:
+          updates.facturaNoAplica !== undefined
+            ? updates.facturaNoAplica
+            : movement.facturaNoAplica,
+        justificanteId:
+          updates.justificanteId !== undefined
+            ? updates.justificanteId
+            : movement.justificanteId,
+        justificanteNoAplica:
+          updates.justificanteNoAplica !== undefined
+            ? updates.justificanteNoAplica
+            : movement.justificanteNoAplica,
+        updatedAt: now,
+      });
+    }
+  }
+
+  // 3. Actualizar línea vinculada (primera coincidencia en las 3 stores).
+  const linked = await findLinkedLineInTx(tx, eventId, movementId);
+  if (linked?.linea?.id != null) {
+    const { linea, storeName } = linked;
+    const store = tx.objectStore(storeName) as any;
+
+    const commonPatch: Record<string, any> = {
+      importe:
+        updates.amount != null ? Math.abs(updates.amount) : linea.importe,
+      inmuebleId: updates.inmuebleId ?? linea.inmuebleId,
+      proveedorNombre:
+        updates.counterparty !== undefined
+          ? updates.counterparty || undefined
+          : linea.proveedorNombre,
+      facturaId:
+        updates.facturaId !== undefined
+          ? updates.facturaId
+          : linea.facturaId,
+      facturaNoAplica:
+        updates.facturaNoAplica !== undefined
+          ? updates.facturaNoAplica
+          : linea.facturaNoAplica,
+      justificanteId:
+        updates.justificanteId !== undefined
+          ? updates.justificanteId
+          : linea.justificanteId,
+      justificanteNoAplica:
+        updates.justificanteNoAplica !== undefined
+          ? updates.justificanteNoAplica
+          : linea.justificanteNoAplica,
+      updatedAt: now,
+    };
+
+    if (storeName === 'gastosInmueble') {
+      const newDate = updates.date ?? linea.fecha;
+      await store.put({
+        ...linea,
+        ...commonPatch,
+        fecha: newDate,
+        ejercicio: newDate
+          ? Number(String(newDate).slice(0, 4))
+          : linea.ejercicio,
+        concepto: updates.description ?? linea.concepto,
+        categoria: updates.categoryLabel
+          ? resolveGastoCategoria(updates.categoryLabel)
+          : linea.categoria,
+        casillaAEAT: updates.categoryLabel
+          ? resolveCasillaAEAT(updates.categoryLabel) ?? linea.casillaAEAT
+          : linea.casillaAEAT,
+      });
+    } else if (storeName === 'mejorasInmueble') {
+      const newDate = updates.date ?? linea.fecha;
+      await store.put({
+        ...linea,
+        ...commonPatch,
+        fecha: newDate,
+        ejercicio: newDate
+          ? Number(String(newDate).slice(0, 4))
+          : linea.ejercicio,
+        descripcion: updates.description ?? linea.descripcion,
+      });
+    } else if (storeName === 'mueblesInmueble') {
+      const newDate = updates.date ?? linea.fechaAlta;
+      await store.put({
+        ...linea,
+        ...commonPatch,
+        fechaAlta: newDate,
+        ejercicio: newDate
+          ? Number(String(newDate).slice(0, 4))
+          : linea.ejercicio,
+        descripcion: updates.description ?? linea.descripcion,
+      });
+    }
+  }
+
+  await tx.done;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // PR5 · Propagación bidireccional de documentos (factura + justificante)
 // ═══════════════════════════════════════════════════════════════════════
 

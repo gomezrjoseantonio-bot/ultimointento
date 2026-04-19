@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { initDB } from '../../../../services/db';
 import {
   confirmTreasuryEvent,
+  deleteTreasuryEventCompletely,
   revertTreasuryConfirmation,
 } from '../../../../services/treasuryConfirmationService';
 
@@ -132,13 +132,8 @@ const ConciliacionPageV2: React.FC = () => {
   const handleDelete = useCallback(
     async (row: SingleRow) => {
       try {
-        const db = await initDB();
-        // Si está punteada, primero desconciliar (borra movement + líneas)
-        if (row.movementId) {
-          await revertTreasuryConfirmation(row.movementId);
-        }
-        // Borra la previsión
-        await db.delete('treasuryEvents', row.eventId);
+        // PR5.6 · cascada completa: event + movement + línea de inmueble.
+        await deleteTreasuryEventCompletely(row.eventId);
         toast.success('Movimiento eliminado');
         setDeletingRow(null);
         await reload();
