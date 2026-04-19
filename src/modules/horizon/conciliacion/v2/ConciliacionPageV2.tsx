@@ -160,7 +160,13 @@ const ConciliacionPageV2: React.FC = () => {
       let ok = 0;
       let fail = 0;
       for (const child of children) {
-        if (!child.movementId) continue;
+        if (!child.movementId) {
+          // Fila conciliada sin movementId · caso degenerado (no debería ocurrir
+          // en datos sanos). Se cuenta como fallo para que el feedback refleje
+          // el total de hijas que el usuario pretendía revertir.
+          fail++;
+          continue;
+        }
         try {
           await revertTreasuryConfirmation(child.movementId);
           ok++;
