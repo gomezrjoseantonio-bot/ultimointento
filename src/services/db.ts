@@ -338,6 +338,11 @@ export interface GastoInmueble {
   cuentaBancaria?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5.5: estado respecto a la materialización en tesorería, independiente
+  // del `estado` fiscal. Tras desconciliar, la línea se conserva pero pasa a
+  // 'predicted'.
+  estadoTesoreria?: 'predicted' | 'confirmed';
+  treasuryEventId?: number;
   // PR5: documentación detallada (factura proveedor + justificante bancario)
   facturaId?: number;
   facturaNoAplica?: boolean;
@@ -359,6 +364,9 @@ export interface MejoraInmueble {
   proveedorNombre?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5.5: estado tesorería
+  estadoTesoreria?: 'predicted' | 'confirmed';
+  treasuryEventId?: number;
   // PR5: documentación detallada
   facturaId?: number;
   facturaNoAplica?: boolean;
@@ -382,6 +390,9 @@ export interface MuebleInmueble {
   proveedorNombre?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5.5: estado tesorería
+  estadoTesoreria?: 'predicted' | 'confirmed';
+  treasuryEventId?: number;
   // PR5: documentación detallada
   facturaId?: number;
   facturaNoAplica?: boolean;

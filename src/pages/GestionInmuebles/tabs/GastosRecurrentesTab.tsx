@@ -9,6 +9,7 @@ import { initDB } from '../../../services/db';
 import { getOpexRulesForProperty, deleteOpexRule, saveOpexRule } from '../../../services/opexService';
 import { confirmDelete } from '../../../services/confirmationService';
 import OpexRuleForm from '../../../components/inmuebles/OpexRuleForm';
+import EjecucionesRecurrentesSection from './sections/EjecucionesRecurrentesSection';
 
 const C = {
   navy900: 'var(--navy-900, #042C5E)',
@@ -247,7 +248,15 @@ const GastosRecurrentesTab: React.FC<Props> = ({ propertyId }) => {
         <Kpi label="Cuentas vinculadas" value={String(accountsLinked)} />
       </div>
 
-      {/* Table */}
+      {/* Sección 1 · Plantillas configuradas */}
+      <div style={{ marginBottom: 8 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: C.grey900, margin: 0 }}>
+          Plantillas configuradas
+        </h3>
+        <p style={{ fontSize: 12, color: C.grey500, margin: '2px 0 12px 0' }}>
+          Reglas recurrentes que generan previsiones automáticas de tesorería.
+        </p>
+      </div>
       <div
         style={{
           background: C.white,
@@ -309,6 +318,9 @@ const GastosRecurrentesTab: React.FC<Props> = ({ propertyId }) => {
           </table>
         )}
       </div>
+
+      {/* Sección 2 · Ejecuciones del año (PR5.5) */}
+      <EjecucionesRecurrentesSection propertyId={propertyId} />
 
       {showForm && (
         <OpexRuleForm

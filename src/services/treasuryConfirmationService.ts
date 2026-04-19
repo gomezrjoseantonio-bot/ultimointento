@@ -118,6 +118,34 @@ function resolveGastoCategoria(label?: string): string {
   return 'otro';
 }
 
+/**
+ * Busca en un store de línea (gastosInmueble / mejorasInmueble / mueblesInmueble)
+ * la primera línea vinculada a un treasuryEvent. Usa el índice
+ * `treasuryEventId` si está disponible (PR3, DB_VERSION>=50) y cae a un
+ * full-scan sólo para BDs muy antiguas.
+ */
+async function findLineByTreasuryEventId(
+  store: IDBPObjectStoreLike,
+  eventId: number,
+): Promise<any | null> {
+  try {
+    const index = store.index('treasuryEventId');
+    const matches = (await (index as any).getAll(eventId)) as any[];
+    if (matches.length > 0) return matches[0];
+  } catch {
+    // índice no disponible → fallback
+  }
+  const all = (await store.getAll()) as any[];
+  return all.find((l) => l?.treasuryEventId === eventId) ?? null;
+}
+
+// Tipo estructural para object stores dentro de transacciones — evita
+// importar tipos estrictos de idb aquí.
+type IDBPObjectStoreLike = {
+  index: (name: string) => unknown;
+  getAll: () => Promise<any[]>;
+};
+
 function buildMovementPayload({
   event,
   overrides,
@@ -231,6 +259,13 @@ export async function confirmTreasuryEvent(
     const accountIdForLinea =
       overrides?.accountId ?? existingEvent.accountId ?? undefined;
 
+    // PR5.5 · Si ya existe una línea vinculada al event (por haber
+    // desconciliado antes), la reutilizamos en lugar de crear un duplicado.
+    const existingLine = await findLineByTreasuryEventId(
+      tx.objectStore(lineaStore) as any,
+      eventId,
+    );
+
     if (lineaStore === 'gastosInmueble') {
       const linea = {
         inmuebleId: existingEvent.inmuebleId,
@@ -246,15 +281,25 @@ export async function confirmTreasuryEvent(
         // desde Conciliación (ver propertyExpenses.test y fiscal services).
         origen: 'tesoreria' as const,
         estado: 'confirmado' as const,
+        estadoTesoreria: 'confirmed' as const,
         proveedorNIF: finalCounterparty || undefined,
         cuentaBancaria:
           accountIdForLinea != null ? String(accountIdForLinea) : undefined,
         movimientoId: String(movementId),
         treasuryEventId: eventId,
-        createdAt: now,
+        createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
-      lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      if (existingLine?.id != null) {
+        await (tx.objectStore(lineaStore) as any).put({
+          ...existingLine,
+          ...linea,
+          id: existingLine.id,
+        });
+        lineaId = existingLine.id;
+      } else {
+        lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      }
     } else if (lineaStore === 'mejorasInmueble') {
       const linea = {
         inmuebleId: existingEvent.inmuebleId,
@@ -266,10 +311,20 @@ export async function confirmTreasuryEvent(
         proveedorNIF: finalCounterparty || undefined,
         movimientoId: String(movementId),
         treasuryEventId: eventId,
-        createdAt: now,
+        estadoTesoreria: 'confirmed' as const,
+        createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
-      lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      if (existingLine?.id != null) {
+        await (tx.objectStore(lineaStore) as any).put({
+          ...existingLine,
+          ...linea,
+          id: existingLine.id,
+        });
+        lineaId = existingLine.id;
+      } else {
+        lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      }
     } else if (lineaStore === 'mueblesInmueble') {
       const linea = {
         inmuebleId: existingEvent.inmuebleId,
@@ -282,10 +337,20 @@ export async function confirmTreasuryEvent(
         proveedorNIF: finalCounterparty || undefined,
         movimientoId: String(movementId),
         treasuryEventId: eventId,
-        createdAt: now,
+        estadoTesoreria: 'confirmed' as const,
+        createdAt: existingLine?.createdAt ?? now,
         updatedAt: now,
       };
-      lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      if (existingLine?.id != null) {
+        await (tx.objectStore(lineaStore) as any).put({
+          ...existingLine,
+          ...linea,
+          id: existingLine.id,
+        });
+        lineaId = existingLine.id;
+      } else {
+        lineaId = Number(await (tx.objectStore(lineaStore) as any).add(linea));
+      }
     }
   }
 
@@ -335,9 +400,18 @@ export async function confirmTreasuryEvent(
  *
  * Recibe el `movementId` creado por confirmTreasuryEvent. El eventId se
  * extrae automáticamente del campo `reference` del movement (formato
- * `treasury_event:{id}`). Si el movement no existe lanza; si no tiene
- * event asociado, simplemente borra el movement + las líneas vinculadas
- * sin tocar treasuryEvents.
+ * `treasury_event:{id}`).
+ *
+ * PR5.5: la línea de inmueble asociada se CONSERVA (la reparación/mejora/
+ * mobiliario sigue existiendo), pero pasa a `estadoTesoreria: 'predicted'`
+ * con `movimientoId: undefined` para que el usuario pueda volver a puntear
+ * sin perder datos. El vínculo `treasuryEventId` se mantiene.
+ *
+ * Previsto al revertir:
+ *   1. Borra el movement.
+ *   2. Conserva la línea de inmueble con estadoTesoreria='predicted' y
+ *      (solo GastoInmueble) estado='previsto'.
+ *   3. Revierte el treasuryEvent a 'predicted'.
  */
 export async function revertTreasuryConfirmation(
   movementId: number,
@@ -364,11 +438,10 @@ export async function revertTreasuryConfirmation(
 
   await (tx.objectStore('movements') as any).delete(movementId);
 
-  // PR3 · Usa el índice `movimientoId` (creado en DB_VERSION=50) para
-  // localizar la línea sin cargar toda la tabla. Soportamos tanto el
-  // valor string (GastoInmueble/MejoraInmueble/MuebleInmueble declaran
-  // movimientoId como string) como el valor numérico por si se hubiese
-  // guardado ya como número en datos legacy.
+  // PR5.5 · Localiza las líneas vinculadas usando el índice `movimientoId`
+  // (PR3, DB_VERSION>=50) y las conserva en lugar de borrarlas, marcándolas
+  // como pendientes de tesorería de nuevo.
+  const now = new Date().toISOString();
   const movementIdVariants: Array<string | number> = [
     String(movementId),
     movementId,
@@ -382,12 +455,12 @@ export async function revertTreasuryConfirmation(
       index = null;
     }
 
-    const seenIds = new Set<number>();
+    const matchedLines = new Map<number, any>();
     if (index) {
       for (const key of movementIdVariants) {
         const matches = (await (index as any).getAll(key)) as any[];
         for (const linea of matches) {
-          if (linea?.id != null) seenIds.add(linea.id);
+          if (linea?.id != null) matchedLines.set(linea.id, linea);
         }
       }
     } else {
@@ -399,13 +472,25 @@ export async function revertTreasuryConfirmation(
           (linea.movimientoId === String(movementId) ||
             linea.movimientoId === movementId)
         ) {
-          seenIds.add(linea.id);
+          matchedLines.set(linea.id, linea);
         }
       }
     }
 
-    for (const lineaId of seenIds) {
-      await store.delete(lineaId);
+    for (const [, linea] of matchedLines) {
+      const reverted: any = {
+        ...linea,
+        movimientoId: undefined,
+        estadoTesoreria: 'predicted',
+        updatedAt: now,
+      };
+      // GastoInmueble tiene además un `estado` fiscal propio que se puso a
+      // 'confirmado' en confirmTreasuryEvent. Al desconciliar, debe volver
+      // a 'previsto' para no falsear las casillas AEAT.
+      if (storeName === 'gastosInmueble' && linea.estado === 'confirmado') {
+        reverted.estado = 'previsto';
+      }
+      await store.put(reverted);
     }
   }
 
@@ -422,7 +507,7 @@ export async function revertTreasuryConfirmation(
         movementId: undefined,
         actualDate: undefined,
         actualAmount: undefined,
-        updatedAt: new Date().toISOString(),
+        updatedAt: now,
       };
       await (tx.objectStore('treasuryEvents') as any).put(reverted);
     }
