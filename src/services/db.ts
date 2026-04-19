@@ -172,10 +172,32 @@ export interface PropertySale {
   grossProceeds: number;
   netProceeds: number;
   status: 'draft' | 'confirmed' | 'reverted';
-  source: 'cartera' | 'detalle' | 'analisis';
+  source: 'cartera' | 'detalle' | 'analisis' | 'wizard';
   notes?: string;
   createdAt: string;
   updatedAt: string;
+
+  // Snapshot fiscal congelado en el momento de la venta.
+  // Presente para ventas confirmadas desde el wizard; ausente en ventas
+  // anteriores al PR2 (FichaTab muestra "—" si falta).
+  fiscalSnapshot?: {
+    precioAdquisicion: number;
+    gastosAdquisicion: number;
+    mejorasCapexAcumuladas: number;
+    amortizacionAcumuladaDeclarada: number;
+    amortizacionAcumuladaAtlas: number;
+    costeFiscalAdquisicion: number;
+
+    gastosVenta: number;
+    valorNetoTransmision: number;
+
+    gananciaPatrimonial: number;
+    irpfEstimado: number;
+
+    anosDeclaradosXml: number[];
+    anosCalculadosAtlas: number[];
+    calculatedAt: string;
+  };
 }
 
 export interface LoanSettlement {

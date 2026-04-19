@@ -4,6 +4,10 @@ import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { getAllocationFactor, prestamosService } from './prestamosService';
+import {
+  calcularGananciaPatrimonial,
+  type GananciaPatrimonialResult,
+} from './gananciaPatrimonialService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -18,10 +22,14 @@ export interface SaleSimulationInput {
 export interface ConfirmPropertySaleInput extends SaleSimulationInput {
   propertyId: number;
   saleDate: string;
-  source: 'cartera' | 'detalle' | 'analisis';
+  source: 'cartera' | 'detalle' | 'analisis' | 'wizard';
   settlementAccountId?: number;
   notes?: string;
   autoTerminateContracts?: boolean;
+  // Snapshot fiscal ya calculado por el wizard (step 3). Si está presente
+  // se persiste en el registro de venta y se usa su irpfEstimado para el
+  // treasuryEvent de previsión IRPF.
+  fiscalSnapshot?: GananciaPatrimonialResult;
 }
 
 export interface PrepareSaleResult {
@@ -61,7 +69,7 @@ const normalizeToken = (value: unknown): string =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '');
 
-const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
+export const isLoanLinkedToProperty = (loan: any, property: Property): boolean => {
   if (!loan || typeof loan !== 'object') return false;
   const propertyIdAsString = String(property.id ?? '').trim();
 
@@ -308,7 +316,7 @@ const resolveAccruedInterestUntilDate = (
   return Number(accruedInterest.toFixed(2));
 };
 
-const resolveProjectedLoanPayoffAmount = (
+export const resolveProjectedLoanPayoffAmount = (
   loan: any,
   paymentPlan: PlanPagos | undefined,
   saleDate: string
@@ -318,29 +326,78 @@ const resolveProjectedLoanPayoffAmount = (
   return Number((outstandingPrincipal + accruedInterest).toFixed(2));
 };
 
-const calculateTotalAcquisitionCost = (property: Property): number => {
-  const costs = property.acquisitionCosts;
-  return costs.price +
-    (costs.itp || 0) +
-    (costs.iva || 0) +
-    (costs.notary || 0) +
-    (costs.registry || 0) +
-    (costs.management || 0) +
-    (costs.psi || 0) +
-    (costs.realEstate || 0) +
-    (costs.other?.reduce((sum, item) => sum + item.amount, 0) || 0);
+export interface LinkedLoanInfo {
+  loanId: string;
+  alias: string;
+  banco?: string;
+  outstandingPrincipal: number;        // proyectado a saleDate, aplicando allocationFactor
+  comisionContrato: number;            // comisión de cancelación contractual informativa (0 si no se puede inferir)
+}
+
+/**
+ * Devuelve los préstamos vinculados al inmueble con su saldo vivo proyectado a
+ * la fecha de venta. Se usa por el wizard step 2 para mostrar los préstamos a
+ * cancelar y editar la comisión final aplicada por el usuario.
+ */
+export const getLinkedLoansForPropertySale = async (
+  propertyId: number,
+  saleDate: string,
+): Promise<LinkedLoanInfo[]> => {
+  const db = await initDB();
+  const property = await db.get('properties', propertyId);
+  if (!property) return [];
+
+  const allLoans = await db.getAll('prestamos');
+  const linked = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
+
+  const rows: LinkedLoanInfo[] = [];
+  for (const loan of linked as Prestamo[]) {
+    if (!loan?.id) continue;
+    if (loan.activo === false) continue;
+
+    const allocationFactor = resolveLoanAllocationFactorForProperty(loan, property);
+    if (allocationFactor <= 0) continue;
+
+    const paymentPlan = (await db.get('keyval', `planpagos_${loan.id}`)) as PlanPagos | undefined;
+    const payoff = resolveProjectedLoanPayoffAmount(loan, paymentPlan, saleDate) * allocationFactor;
+
+    const anyLoan = loan as any;
+    const comisionRate = Number(
+      anyLoan.comisionCancelacionTotal ?? anyLoan.comisionCancelacion ?? anyLoan.comisionAmortizacion ?? 0,
+    );
+    // Normalizamos para cubrir tanto rates decimales (0.01 = 1% como los usa
+    // LoanSettlementModal) como porcentajes "humanos" (1 = 1%). Si el valor
+    // parece un importe fijo en euros (>100) lo dejamos tal cual.
+    const normalizedRate =
+      Number.isFinite(comisionRate) && comisionRate > 0
+        ? comisionRate <= 1
+          ? comisionRate
+          : comisionRate <= 100
+          ? comisionRate / 100
+          : null
+        : null;
+    const comisionContrato =
+      normalizedRate !== null
+        ? Number((payoff * normalizedRate).toFixed(2))
+        : Number.isFinite(comisionRate) && comisionRate > 0
+        ? comisionRate
+        : 0;
+
+    rows.push({
+      loanId: String(loan.id),
+      alias: String(anyLoan.alias || anyLoan.globalAlias || anyLoan.nombre || `Préstamo ${loan.id}`),
+      banco: anyLoan.banco || anyLoan.entidad || anyLoan.bancoNombre || undefined,
+      outstandingPrincipal: Number(payoff.toFixed(2)),
+      comisionContrato,
+    });
+  }
+  return rows;
 };
 
 const getSaleIrpfPredictionDate = (saleDate: string): string => {
   const parsed = new Date(saleDate);
   const fiscalYear = Number.isNaN(parsed.getTime()) ? new Date().getFullYear() : parsed.getFullYear();
   return `${fiscalYear + 1}-06-30`;
-};
-
-const estimateSaleIrpf = (property: Property, salePrice: number): number => {
-  const gain = salePrice - calculateTotalAcquisitionCost(property);
-  if (gain <= 0) return 0;
-  return Number((gain * 0.19).toFixed(2));
 };
 
 const isActiveContract = (contract: Contract, referenceDateIso?: string): boolean => {
@@ -695,6 +752,45 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   ].filter((item) => item.amount > 0);
   const now = new Date().toISOString();
 
+  // Snapshot fiscal: si el caller (wizard) lo aporta, se usa; si no (callers
+  // legacy, tests), se calcula al vuelo con el servicio de ganancia
+  // patrimonial para mantener compatibilidad y no perder la previsión IRPF.
+  let resolvedSnapshot: GananciaPatrimonialResult | undefined = input.fiscalSnapshot;
+  if (!resolvedSnapshot) {
+    try {
+      resolvedSnapshot = await calcularGananciaPatrimonial({
+        propertyId: input.propertyId,
+        sellDate: input.saleDate,
+        salePrice: Number(input.salePrice || 0),
+        agencyCommission: Number(input.agencyCommission || 0),
+        municipalTax: Number(input.municipalTax || 0),
+        saleNotaryCosts: Number(input.saleNotaryCosts || 0),
+        otherCosts: Number(input.otherCosts || 0),
+      });
+    } catch (err) {
+      console.warn('No se pudo calcular fiscalSnapshot al confirmar la venta:', err);
+      resolvedSnapshot = undefined;
+    }
+  }
+
+  const fiscalSnapshot = resolvedSnapshot
+    ? {
+        precioAdquisicion: resolvedSnapshot.precioAdquisicion,
+        gastosAdquisicion: resolvedSnapshot.gastosAdquisicion,
+        mejorasCapexAcumuladas: resolvedSnapshot.mejorasCapexAcumuladas,
+        amortizacionAcumuladaDeclarada: resolvedSnapshot.amortizacionAcumuladaDeclarada,
+        amortizacionAcumuladaAtlas: resolvedSnapshot.amortizacionAcumuladaAtlas,
+        costeFiscalAdquisicion: resolvedSnapshot.costeFiscalAdquisicion,
+        gastosVenta: resolvedSnapshot.gastosVenta,
+        valorNetoTransmision: resolvedSnapshot.valorNetoTransmision,
+        gananciaPatrimonial: resolvedSnapshot.gananciaPatrimonial,
+        irpfEstimado: resolvedSnapshot.irpfEstimado,
+        anosDeclaradosXml: resolvedSnapshot.anosDeclaradosXml,
+        anosCalculadosAtlas: resolvedSnapshot.anosCalculadosAtlas,
+        calculatedAt: now,
+      }
+    : undefined;
+
   const sale: Omit<PropertySale, 'id'> = {
     propertyId: input.propertyId,
     saleDate: input.saleDate,
@@ -717,6 +813,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     notes: input.notes,
     createdAt: now,
     updatedAt: now,
+    fiscalSnapshot,
   };
 
   const rawSaleId = await tx.objectStore('property_sales').add(sale);
@@ -888,7 +985,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
 
-  const estimatedIrpf = estimateSaleIrpf(property, input.salePrice);
+  const estimatedIrpf = fiscalSnapshot?.irpfEstimado ?? 0;
   if (estimatedIrpf > 0) {
     const treasuryEventId = await tx.objectStore('treasuryEvents').add({
       type: 'expense',
