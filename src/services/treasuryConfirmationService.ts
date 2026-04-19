@@ -93,11 +93,29 @@ export function resolveCasillaAEAT(label?: string): string | undefined {
   if (!label) return undefined;
   const n = normalize(label);
   if (n.includes('reparacion')) return '0106';
-  if (n.includes('comunidad')) return '0114';
-  if (n.includes('seguro')) return '0109';
+  // Casillas alineadas con aeatClassificationService / rendimientoActivoService:
+  //   0109 = comunidad, 0114 = seguros.
+  if (n.includes('comunidad')) return '0109';
+  if (n.includes('seguro')) return '0114';
   if (n.includes('ibi') || n.includes('tribut')) return '0115';
   if (n.includes('suministro')) return '0113';
   return undefined;
+}
+
+/**
+ * Deriva el valor de `GastoInmueble.categoria` a partir del categoryLabel
+ * del treasuryEvent. Mantiene alineación con aeatClassificationService.
+ */
+function resolveGastoCategoria(label?: string): string {
+  if (!label) return 'otro';
+  const n = normalize(label);
+  if (n.includes('reparacion')) return 'reparacion';
+  if (n.includes('comunidad')) return 'comunidad';
+  if (n.includes('seguro')) return 'seguro';
+  if (n.includes('ibi') || n.includes('tribut')) return 'ibi';
+  if (n.includes('suministro')) return 'suministro';
+  if (n.includes('gestion')) return 'gestion';
+  return 'otro';
 }
 
 function buildMovementPayload({
@@ -121,12 +139,11 @@ function buildMovementPayload({
     );
   }
 
+  // Financing events (pagos/cancelaciones de préstamo) salen como 'Gasto'
+  // para no contaminar los filtros de transferencias internas — consistente
+  // con loanSettlementService.
   const type: Movement['type'] =
-    event.type === 'income'
-      ? 'Ingreso'
-      : event.type === 'financing'
-        ? 'Transferencia'
-        : 'Gasto';
+    event.type === 'income' ? 'Ingreso' : 'Gasto';
 
   const signedAmount =
     event.type === 'income' ? Math.abs(finalAmount) : -Math.abs(finalAmount);
@@ -220,10 +237,14 @@ export async function confirmTreasuryEvent(
         ejercicio,
         fecha: finalDate,
         concepto: finalDescription,
-        categoria: 'reparacion',
+        // Categoría derivada del categoryLabel para no perder la
+        // clasificación fiscal real (comunidad/seguro/ibi/suministro/…).
+        categoria: resolveGastoCategoria(existingEvent.categoryLabel),
         casillaAEAT: resolveCasillaAEAT(existingEvent.categoryLabel) ?? '0106',
         importe: Math.abs(finalAmount),
-        origen: 'manual' as const,
+        // origen: 'tesoreria' alinea con el resto de servicios que inyectan
+        // desde Conciliación (ver propertyExpenses.test y fiscal services).
+        origen: 'tesoreria' as const,
         estado: 'confirmado' as const,
         proveedorNIF: finalCounterparty || undefined,
         cuentaBancaria:
@@ -274,7 +295,12 @@ export async function confirmTreasuryEvent(
     executedMovementId: movementId,
     executedAt: now,
     actualDate: overrides?.date ?? existingEvent.actualDate ?? existingEvent.predictedDate,
-    actualAmount: overrides?.amount ?? existingEvent.actualAmount ?? existingEvent.amount,
+    // actualAmount se persiste como magnitud positiva — el signo siempre
+    // se deriva de event.type en el resto del flujo (alineado con
+    // reconcileTreasuryEvent).
+    actualAmount: Math.abs(
+      overrides?.amount ?? existingEvent.actualAmount ?? existingEvent.amount,
+    ),
     notes: overrides?.notes ?? existingEvent.notes,
     movementId,
     updatedAt: now,
@@ -292,11 +318,13 @@ export async function confirmTreasuryEvent(
 
 /**
  * Desconfirmar (revertir) un punteo: borra el movement, borra la línea de
- * inmueble si existía, y devuelve el treasuryEvent a 'predicted'.
+ * inmueble asociada si existía, y devuelve el treasuryEvent a 'predicted'.
  *
- * Acepta o un movementId o un treasuryEventId ya confirmado (busca el
- * movement vinculado). Si no encuentra vinculación no arroja — se comporta
- * como "best effort" para permitir limpieza de estados inconsistentes.
+ * Recibe el `movementId` creado por confirmTreasuryEvent. El eventId se
+ * extrae automáticamente del campo `reference` del movement (formato
+ * `treasury_event:{id}`). Si el movement no existe lanza; si no tiene
+ * event asociado, simplemente borra el movement + las líneas vinculadas
+ * sin tocar treasuryEvents.
  */
 export async function revertTreasuryConfirmation(
   movementId: number,
