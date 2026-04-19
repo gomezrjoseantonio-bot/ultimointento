@@ -678,9 +678,226 @@
 }
 
 .cv2-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.cv2-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .cv2-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .cv2-field { display: flex; flex-direction: column; gap: 4px; }
 .cv2-field--col-2 { grid-column: span 2; }
+.cv2-field--col-4 { grid-column: span 4; }
+
+/* ═════════ PR5-HOTFIX v2 · Modal Añadir movimiento ═════════ */
+.cv2-required-mark { color: var(--cv2-teal-600); font-size: 11px; font-weight: 500; }
+
+/* Tipo · 4 pills horizontales */
+.cv2-tipo-pills {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.cv2-tipo-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--cv2-grey-200);
+  background: var(--cv2-white);
+  color: var(--cv2-grey-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cv2-tipo-pill:hover { border-color: var(--cv2-grey-400); color: var(--cv2-grey-900); }
+.cv2-tipo-pill.active {
+  background: var(--cv2-navy-900);
+  color: var(--cv2-white);
+  border-color: var(--cv2-navy-900);
+}
+.cv2-tipo-pill svg { width: 14px; height: 14px; }
+
+/* Ámbito · toggle pills */
+.cv2-ambito-pills {
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--cv2-grey-100);
+}
+.cv2-ambito-pill {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--cv2-grey-700);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cv2-ambito-pill.active {
+  background: var(--cv2-white);
+  color: var(--cv2-navy-900);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Grid de categorías · cards estilo OPEX */
+.cv2-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.cv2-cat-grid--cols-5 { grid-template-columns: repeat(5, 1fr); }
+.cv2-cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border: 1.5px solid var(--cv2-grey-200);
+  border-radius: 10px;
+  background: var(--cv2-white);
+  color: var(--cv2-grey-700);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+}
+.cv2-cat-card:hover {
+  border-color: var(--cv2-grey-400);
+  color: var(--cv2-grey-900);
+  background: var(--cv2-grey-50);
+}
+.cv2-cat-card.active {
+  border-color: var(--cv2-navy-900);
+  background: var(--cv2-navy-900);
+  color: var(--cv2-white);
+}
+.cv2-cat-card svg {
+  width: 20px;
+  height: 20px;
+  color: var(--cv2-grey-500);
+}
+.cv2-cat-card:hover svg { color: var(--cv2-grey-700); }
+.cv2-cat-card.active svg { color: var(--cv2-white); }
+
+/* Sub-tipo · pills secundarias */
+.cv2-subtipo-pills {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cv2-subtipo-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--cv2-grey-200);
+  background: var(--cv2-white);
+  color: var(--cv2-grey-700);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cv2-subtipo-pill:hover { border-color: var(--cv2-grey-400); color: var(--cv2-grey-900); }
+.cv2-subtipo-pill.active {
+  background: var(--cv2-teal-100);
+  color: var(--cv2-teal-600);
+  border-color: var(--cv2-teal-600);
+}
+.cv2-subtipo-pill svg { width: 14px; height: 14px; }
+
+/* Selectores de ancho completo para inmueble / préstamo / cuenta destino */
+.cv2-field-full select,
+.cv2-field-full input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--cv2-grey-300);
+  border-radius: 6px;
+  background: var(--cv2-white);
+  color: var(--cv2-grey-900);
+  height: 36px;
+}
+.cv2-field-full select:focus,
+.cv2-field-full input:focus {
+  outline: none;
+  border-color: var(--cv2-navy-900);
+}
+
+/* Hint inline bajo un campo */
+.cv2-hint {
+  font-size: 11px;
+  color: var(--cv2-grey-500);
+  margin-top: 6px;
+  font-style: italic;
+}
+.cv2-hint--link { color: var(--cv2-teal-600); }
+.cv2-hint--link a {
+  color: var(--cv2-teal-600);
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+/* Card resumen del préstamo seleccionado */
+.cv2-prestamo-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--cv2-navy-50);
+  border: 1px solid var(--cv2-navy-100);
+  border-radius: 8px;
+}
+.cv2-prestamo-card svg { flex-shrink: 0; margin-top: 2px; color: var(--cv2-navy-900); }
+.cv2-prestamo-card-body {
+  flex: 1;
+  font-size: 12px;
+  color: var(--cv2-grey-700);
+  line-height: 1.6;
+}
+.cv2-prestamo-card-title {
+  font-weight: 600;
+  color: var(--cv2-grey-900);
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.cv2-prestamo-card-body .cv2-mono { color: var(--cv2-navy-900); font-weight: 500; }
+
+/* Toggle amortización parcial · borde teal destacado */
+.cv2-toggle-block {
+  border: 1.5px solid var(--cv2-teal-600);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--cv2-teal-100);
+}
+.cv2-toggle-block label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+.cv2-toggle-block input[type='checkbox'] { margin-top: 2px; }
+.cv2-toggle-block-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cv2-grey-900);
+}
+.cv2-toggle-block-subtitle {
+  font-size: 11px;
+  color: var(--cv2-grey-600);
+  margin-top: 2px;
+}
 .cv2-field label {
   font-size: 11px;
   color: var(--cv2-grey-500);

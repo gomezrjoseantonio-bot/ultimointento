@@ -5,6 +5,7 @@ import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
 } from '../../../../services/treasuryConfirmationService';
+import { regenerateMonthForecast } from '../../../../services/treasuryForecastService';
 
 import ConciliacionHeader from './components/ConciliacionHeader';
 import KpiRow from './components/KpiRow';
@@ -46,6 +47,30 @@ const ConciliacionPageV2: React.FC = () => {
   const [deletingRow, setDeletingRow] = useState<SingleRow | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [popover, setPopover] = useState<PopoverState | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+
+  const handleRegenerate = useCallback(async () => {
+    try {
+      setRegenerating(true);
+      const result = await regenerateMonthForecast({
+        year: filters.year,
+        month: filters.month0,
+      });
+      const total = result.rentalsCreated + result.opexCreated + result.loansCreated;
+      if (total === 0) {
+        toast('Sin cambios — las previsiones ya estaban al día', { icon: 'ℹ️' });
+      } else {
+        toast.success(`${total} previsiones generadas`);
+      }
+      await reload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudieron regenerar las previsiones';
+      console.error('[ConciliacionPageV2] regenerate failed', err);
+      toast.error(msg);
+    } finally {
+      setRegenerating(false);
+    }
+  }, [filters.year, filters.month0, reload]);
 
   // Re-sync editingRow/popover.row con datos frescos tras cada reload (así el
   // modal o popover refleja cambios aplicados sin cerrarse).
@@ -168,7 +193,8 @@ const ConciliacionPageV2: React.FC = () => {
       <div className="cv2-container">
         <ConciliacionHeader
           onAddMovement={() => setShowAddModal(true)}
-          onRegeneratePredictions={undefined /* fuera del alcance de este PR */}
+          onRegeneratePredictions={handleRegenerate}
+          regenerating={regenerating}
         />
 
         <KpiRow kpis={kpis} year={filters.year} month0={filters.month0} />

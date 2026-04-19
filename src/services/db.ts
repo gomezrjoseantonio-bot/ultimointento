@@ -348,6 +348,9 @@ export interface GastoInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
+  // PR5-HOTFIX v2: identificador canónico del catálogo + sub-tipo
+  categoryKey?: string;
+  subtypeKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -372,6 +375,8 @@ export interface MejoraInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
+  // PR5-HOTFIX v2: identificador canónico del catálogo
+  categoryKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -398,6 +403,8 @@ export interface MuebleInmueble {
   facturaNoAplica?: boolean;
   justificanteId?: number;
   justificanteNoAplica?: boolean;
+  // PR5-HOTFIX v2: identificador canónico del catálogo
+  categoryKey?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1006,6 +1013,16 @@ export interface Movement {
   justificanteId?: number;
   justificanteNoAplica?: boolean;
 
+  // PR5-HOTFIX v2: categoría canónica + sub-tipo + metadatos de traspaso
+  // (mismo esquema que TreasuryEvent para propagación 1:1).
+  categoryKey?: string;
+  subtypeKey?: string;
+  transferMetadata?: {
+    targetAccountId: number;
+    pairEventId?: number;
+    esAmortizacionParcial?: boolean;
+  };
+
   createdAt: string;
   updatedAt: string;
 }
@@ -1097,6 +1114,20 @@ export interface TreasuryEvent {
   // PR3: unified treasury architecture — ámbito + categoría
   ambito?: 'PERSONAL' | 'INMUEBLE';
   categoryLabel?: string;         // e.g. "Reparación inmueble" | "Mejora inmueble" | "Mobiliario inmueble" | "Gasto recurrente" | etc.
+  // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
+  // (src/services/categoryCatalog.ts). Reemplaza el uso ambiguo de
+  // `categoryLabel` en toda la UI nueva. `categoryLabel` se mantiene por
+  // compatibilidad con datos previos.
+  categoryKey?: string;
+  // Sub-tipo para categorías con variantes (p. ej. Suministro → luz/agua/gas/internet).
+  subtypeKey?: string;
+  // PR5-HOTFIX v2: metadatos de traspaso entre cuentas propias (dos events
+  // espejo ligados por `pairEventId`; `targetAccountId` identifica la otra cuenta).
+  transferMetadata?: {
+    targetAccountId: number;
+    pairEventId?: number;
+    esAmortizacionParcial?: boolean;
+  };
   counterparty?: string;          // NIF proveedor / pagador
   notes?: string;
   // PR3: tras puntear ("executed"), apunta al movement generado
@@ -1777,6 +1808,11 @@ export interface OpexRule {
   proveedorNIF?: string;
   proveedorNombre?: string;
   activo: boolean;
+  // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
+  // (src/services/categoryCatalog.ts). Cuando `categoryKey === 'suministro_inmueble'`
+  // se acompaña de `subtypeKey` (luz/agua/gas/internet).
+  categoryKey?: string;
+  subtypeKey?: string;
   createdAt: string;
   updatedAt: string;
 }

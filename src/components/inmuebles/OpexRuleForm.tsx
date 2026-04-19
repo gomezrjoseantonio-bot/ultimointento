@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sun, Snowflake, Minus, Zap, Landmark, Building, Shield, Wrench, Settings, MoreHorizontal } from 'lucide-react';
+import { X, Sun, Snowflake, Minus } from 'lucide-react';
 import {
   OpexRule,
   OpexCategory,
@@ -9,6 +9,11 @@ import {
   Account,
   initDB,
 } from '../../services/db';
+import {
+  getOpexCategories,
+  SUMINISTRO_SUBTYPES,
+  type CategoryDef,
+} from '../../services/categoryCatalog';
 
 interface OpexRuleFormProps {
   propertyId: number;
@@ -17,15 +22,33 @@ interface OpexRuleFormProps {
   onCancel: () => void;
 }
 
-const CATEGORY_OPTIONS: { value: OpexCategory; label: string; Icon: React.ElementType }[] = [
-  { value: 'impuesto', label: 'Impuesto', Icon: Landmark },
-  { value: 'suministro', label: 'Suministro', Icon: Zap },
-  { value: 'comunidad', label: 'Comunidad', Icon: Building },
-  { value: 'seguro', label: 'Seguro', Icon: Shield },
-  { value: 'servicio', label: 'Servicio', Icon: Wrench },
-  { value: 'gestion', label: 'Gestión', Icon: Settings },
-  { value: 'otro', label: 'Otro', Icon: MoreHorizontal },
-];
+// PR5-HOTFIX v2 · las 6 categorías de OPEX vienen del catálogo canónico.
+// Las opciones previas "Impuesto", "Gestión", "Otro" genéricas se eliminan;
+// IBI y Basuras (ambas del catálogo) se persisten con `categoria: 'impuesto'`
+// para no romper la fiscalidad existente, pero con `categoryKey` distinto.
+const OPEX_CATEGORY_OPTIONS: CategoryDef[] = getOpexCategories();
+
+/**
+ * Mapea un `categoryKey` del catálogo al enum interno `OpexCategory` usado
+ * por OpexRule. Mantiene retrocompatibilidad con datos existentes.
+ */
+function categoryKeyToOpexCategoria(categoryKey: string): OpexCategory {
+  switch (categoryKey) {
+    case 'comunidad_inmueble':
+      return 'comunidad';
+    case 'seguro_inmueble':
+      return 'seguro';
+    case 'suministro_inmueble':
+      return 'suministro';
+    case 'ibi_inmueble':
+    case 'basuras_inmueble':
+      return 'impuesto';
+    case 'servicio_inmueble':
+      return 'servicio';
+    default:
+      return 'otro';
+  }
+}
 
 const FREQUENCY_LABELS: Record<OpexFrequency, string> = {
   semanal: 'Semanal',
@@ -87,6 +110,20 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleCategoryCardClick = (cat: CategoryDef) => {
+    setForm((prev) => ({
+      ...prev,
+      categoryKey: cat.key,
+      categoria: categoryKeyToOpexCategoria(cat.key),
+      // Auto-rellenar casilla AEAT si el catálogo la provee y aún no hay una.
+      casillaAEAT: prev.casillaAEAT || cat.casillaAEAT,
+      // Al cambiar categoría, resetear sub-tipo.
+      subtypeKey: cat.hasSubtype ? prev.subtypeKey : undefined,
+      // Auto-rellenar concepto si está vacío.
+      concepto: prev.concepto?.trim() ? prev.concepto : cat.label,
+    }));
+  };
+
   const toggleMes = (mes: number) => {
     const current = form.mesesCobro ?? [];
     const next = current.includes(mes)
@@ -109,6 +146,8 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
   const inputClass =
     'w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue';
   const labelClass = 'block text-sm font-medium text-gray-700 mb-1';
+
+  const selectedCategory = OPEX_CATEGORY_OPTIONS.find((c) => c.key === form.categoryKey);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color:var(--n-300)]/60">
@@ -138,27 +177,59 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
             />
           </div>
 
-          {/* Categoría */}
+          {/* Categoría · cards del catálogo canónico */}
           <div>
             <label className={labelClass}>Categoría</label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {CATEGORY_OPTIONS.map(({ value, label, Icon }) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => handleChange('categoria', value)}
-                  className={`flex flex-col items-center gap-1 px-2 py-2 text-xs rounded-md border transition-colors ${
-                    form.categoria === value
-                      ? 'bg-[color:var(--n-700)] text-white border-[color:var(--n-700)]'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
+            <div className="grid grid-cols-3 gap-1.5">
+              {OPEX_CATEGORY_OPTIONS.map((cat) => {
+                const Icon = cat.icon;
+                const isActive = form.categoryKey === cat.key;
+                return (
+                  <button
+                    type="button"
+                    key={cat.key}
+                    onClick={() => handleCategoryCardClick(cat)}
+                    className={`flex flex-col items-center gap-1 px-2 py-2 text-xs rounded-md border transition-colors ${
+                      isActive
+                        ? 'bg-[color:var(--n-700)] text-white border-[color:var(--n-700)]'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {cat.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Sub-tipo de suministro · solo si categoría = suministro_inmueble */}
+          {selectedCategory?.hasSubtype && (
+            <div>
+              <label className={labelClass}>Tipo de suministro</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {SUMINISTRO_SUBTYPES.map((st) => {
+                  const Icon = st.icon;
+                  const isActive = form.subtypeKey === st.key;
+                  return (
+                    <button
+                      type="button"
+                      key={st.key}
+                      onClick={() => handleChange('subtypeKey', st.key)}
+                      className={`flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded-md border transition-colors ${
+                        isActive
+                          ? 'bg-atlas-blue/10 border-atlas-blue text-atlas-blue'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-gray-500'
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {st.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Importe */}
           <div>

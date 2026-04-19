@@ -1,5 +1,9 @@
 import { initDB, TreasuryEvent, Document, Movement } from './db';
+import type { OpexRule, Contract } from './db';
 import { isCapexType } from './aeatClassificationService';
+import { calculateRentPeriodsFromContract } from './contractService';
+import { prestamosCalculationService } from './prestamosCalculationService';
+import type { Prestamo } from '../types/prestamos';
 
 /**
  * Create treasury forecast event from confirmed document
@@ -416,3 +420,305 @@ export const findEventMovementMatches = async (): Promise<Array<{
   
   return matches.sort((a, b) => b.score - a.score);
 };
+
+// ═══════════════════════════════════════════════════════════════════════
+// PR5-HOTFIX v2 · Regeneración de previsiones para un mes dado.
+//
+// Orquesta las tres fuentes automáticas de previsiones de Conciliación:
+//   1. Rentas de contratos activos
+//   2. Gastos recurrentes de opexRules activas
+//   3. Cuotas de préstamos activos
+//
+// Reglas:
+//   - No se tocan events con status='executed' (son verdad consumada).
+//   - Se deduplica por (sourceType, sourceId, mes) — si ya existe un event
+//     para esa combinación, no se vuelve a crear.
+//   - Solo se regenera el rango [primer día del mes, último día del mes].
+// ═══════════════════════════════════════════════════════════════════════
+
+interface RegenerateParams {
+  year: number;
+  month: number; // 0-11 (mismo formato que Filters del hook)
+}
+
+interface RegenerateResult {
+  rentalsCreated: number;
+  opexCreated: number;
+  loansCreated: number;
+}
+
+function monthRange(year: number, month: number): { start: string; end: string } {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const m = month + 1;
+  const lastDay = new Date(year, m, 0).getDate();
+  return {
+    start: `${year}-${pad(m)}-01`,
+    end: `${year}-${pad(m)}-${pad(lastDay)}`,
+  };
+}
+
+function isInMonth(iso: string | undefined, year: number, month: number): boolean {
+  if (!iso) return false;
+  const y = Number(iso.slice(0, 4));
+  const m = Number(iso.slice(5, 7)) - 1;
+  return y === year && m === month;
+}
+
+// Mapa key natural → event ya existente para ese mes, usado en dedupe.
+// Contempla dos esquemas: (sourceType, sourceId, month) y, para préstamos,
+// (prestamoId, numeroCuota).
+function buildExistingIndex(events: TreasuryEvent[], year: number, month: number): Set<string> {
+  const idx = new Set<string>();
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  for (const ev of events) {
+    if (!isInMonth(ev.predictedDate, year, month)) continue;
+    if (ev.sourceType && ev.sourceId != null) {
+      idx.add(`${ev.sourceType}:${ev.sourceId}:${monthKey}`);
+    }
+    if (ev.prestamoId != null && ev.numeroCuota != null) {
+      idx.add(`prestamo:${ev.prestamoId}:${ev.numeroCuota}`);
+    }
+    // Fallback para préstamos viejos que solo usaron prestamoId sin numeroCuota.
+    if (ev.prestamoId != null) {
+      idx.add(`prestamo:${ev.prestamoId}:${monthKey}`);
+    }
+  }
+  return idx;
+}
+
+async function regenerateRentalsForecast(
+  params: RegenerateParams,
+  existingIndex: Set<string>,
+): Promise<number> {
+  const { year, month } = params;
+  const db = await initDB();
+  const contracts = (await (db as any).getAll('contracts').catch(() => [])) as Contract[];
+
+  const activeContracts = contracts.filter((c) => c.estadoContrato === 'activo');
+  const now = new Date().toISOString();
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  let created = 0;
+
+  for (const contract of activeContracts) {
+    const periods = calculateRentPeriodsFromContract(contract);
+    const period = periods.find((p) => p.periodo === monthKey);
+    if (!period || period.importe <= 0) continue;
+
+    const contractId = contract.id!;
+    const key = `contract:${contractId}:${monthKey}`;
+    if (existingIndex.has(key)) continue;
+
+    // Día de cobro: diaPago del contrato (1-28). Día clamped al mes.
+    const lastDay = new Date(year, month + 1, 0).getDate();
+    const day = Math.min(Math.max(contract.diaPago ?? 1, 1), lastDay);
+    const predictedDate = `${monthKey}-${String(day).padStart(2, '0')}`;
+
+    const event: Omit<TreasuryEvent, 'id'> = {
+      type: 'income',
+      amount: period.importe,
+      predictedDate,
+      description: `Renta ${monthKey} · ${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim(),
+      sourceType: 'contract',
+      sourceId: contractId,
+      contratoId: contractId,
+      status: 'predicted',
+      ambito: 'INMUEBLE',
+      inmuebleId: contract.inmuebleId,
+      categoryLabel: 'Alquiler',
+      categoryKey: 'alquiler',
+      counterparty: `${contract.inquilino?.nombre ?? ''} ${contract.inquilino?.apellidos ?? ''}`.trim() || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await (db as any).add('treasuryEvents', event);
+    created++;
+  }
+
+  return created;
+}
+
+function opexRuleAppliesToMonth(rule: OpexRule, month: number): boolean {
+  const m = month + 1; // 1-12
+  switch (rule.frecuencia) {
+    case 'mensual':
+      return true;
+    case 'anual': {
+      // Sin mesInicio: aplica en enero por defecto.
+      const start = rule.mesInicio ?? 1;
+      return m === start;
+    }
+    case 'bimestral': {
+      const start = rule.mesInicio ?? 1;
+      return ((m - start + 12) % 2) === 0;
+    }
+    case 'trimestral': {
+      const start = rule.mesInicio ?? 1;
+      return ((m - start + 12) % 3) === 0;
+    }
+    case 'semestral': {
+      const start = rule.mesInicio ?? 1;
+      return ((m - start + 12) % 6) === 0;
+    }
+    case 'meses_especificos': {
+      return (rule.mesesCobro ?? []).includes(m);
+    }
+    case 'semanal':
+      // Semanal se expande en varias fechas del mes; omitido en este MVP.
+      return false;
+    default:
+      return false;
+  }
+}
+
+function opexRuleAmount(rule: OpexRule, month: number): number {
+  const m = month + 1;
+  if (rule.frecuencia === 'meses_especificos' && rule.asymmetricPayments) {
+    const entry = rule.asymmetricPayments.find((p) => p.mes === m);
+    if (entry) return entry.importe;
+  }
+  return rule.importeEstimado;
+}
+
+// Mapa opex categoria → CategoryKey canónico para nuevos events.
+const OPEX_CAT_TO_KEY: Record<string, string> = {
+  impuesto: 'ibi_inmueble',
+  suministro: 'suministro_inmueble',
+  comunidad: 'comunidad_inmueble',
+  seguro: 'seguro_inmueble',
+  servicio: 'servicio_inmueble',
+  gestion: 'servicio_inmueble', // Gestión de alquiler → servicio
+  otro: 'otros_inmueble',
+};
+
+async function regenerateOpexForecast(
+  params: RegenerateParams,
+  existingIndex: Set<string>,
+): Promise<number> {
+  const { year, month } = params;
+  const db = await initDB();
+  const rules = (await db.getAll('opexRules')) as OpexRule[];
+  const activeRules = rules.filter((r) => r.activo);
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const now = new Date().toISOString();
+  let created = 0;
+
+  for (const rule of activeRules) {
+    if (!rule.id) continue;
+    if (!opexRuleAppliesToMonth(rule, month)) continue;
+
+    const key = `opex_rule:${rule.id}:${monthKey}`;
+    if (existingIndex.has(key)) continue;
+
+    const amount = opexRuleAmount(rule, month);
+    if (!amount || amount <= 0) continue;
+
+    const day = Math.min(Math.max(rule.diaCobro ?? 1, 1), lastDay);
+    const predictedDate = `${monthKey}-${String(day).padStart(2, '0')}`;
+
+    const categoryKey = OPEX_CAT_TO_KEY[rule.categoria] ?? 'otros_inmueble';
+
+    const event: Omit<TreasuryEvent, 'id'> = {
+      type: 'expense',
+      amount,
+      predictedDate,
+      description: rule.concepto || 'Gasto recurrente',
+      sourceType: 'opex_rule',
+      sourceId: rule.id,
+      accountId: rule.accountId,
+      status: 'predicted',
+      ambito: 'INMUEBLE',
+      inmuebleId: rule.propertyId,
+      categoryLabel: rule.concepto || 'Gasto recurrente',
+      categoryKey,
+      counterparty: rule.proveedorNombre || undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await (db as any).add('treasuryEvents', event);
+    created++;
+  }
+
+  return created;
+}
+
+async function regenerateLoansForecast(
+  params: RegenerateParams,
+  existingIndex: Set<string>,
+): Promise<number> {
+  const { year, month } = params;
+  const db = await initDB();
+  const prestamos = (await (db as any).getAll('prestamos').catch(() => [])) as Prestamo[];
+  const activos = prestamos.filter((p) => p.activo && p.estado !== 'cancelado');
+  const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const now = new Date().toISOString();
+  let created = 0;
+
+  for (const prestamo of activos) {
+    try {
+      const plan = prestamosCalculationService.generatePaymentSchedule(prestamo);
+      const periodo = plan.periodos.find(
+        (p) => p.fechaCargo && p.fechaCargo.slice(0, 7) === monthKey,
+      );
+      if (!periodo || periodo.cuota <= 0) continue;
+
+      const keyByCuota = `prestamo:${prestamo.id}:${periodo.periodo}`;
+      const keyByMonth = `prestamo:${prestamo.id}:${monthKey}`;
+      if (existingIndex.has(keyByCuota) || existingIndex.has(keyByMonth)) continue;
+
+      // Resolver inmueble desde destinos (si aplica).
+      const inmuebleDestino = prestamo.destinos?.find((d) => d.inmuebleId)?.inmuebleId
+        ?? prestamo.inmuebleId;
+
+      const event: Omit<TreasuryEvent, 'id'> = {
+        type: 'financing',
+        amount: periodo.cuota,
+        predictedDate: periodo.fechaCargo,
+        description: `Cuota ${periodo.periodo} · ${prestamo.nombre}`,
+        sourceType: 'prestamo',
+        prestamoId: prestamo.id,
+        numeroCuota: periodo.periodo,
+        status: 'predicted',
+        ambito: inmuebleDestino ? 'INMUEBLE' : 'PERSONAL',
+        inmuebleId: inmuebleDestino != null ? Number(inmuebleDestino) : undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await (db as any).add('treasuryEvents', event);
+      created++;
+    } catch (err) {
+      console.warn('[regenerateLoansForecast] no se pudo procesar préstamo', prestamo.id, err);
+    }
+  }
+
+  return created;
+}
+
+/**
+ * Regenera las previsiones automáticas de tesorería para un mes dado.
+ * Crea events `predicted` para contratos, opexRules y préstamos que no tengan
+ * ya un event en el mes. NO toca events `executed` (ya confirmados por el
+ * usuario) ni borra events manuales.
+ */
+export async function regenerateMonthForecast(
+  params: RegenerateParams,
+): Promise<RegenerateResult> {
+  const { year, month } = params;
+  const { start, end } = monthRange(year, month);
+
+  const db = await initDB();
+  const allEvents = (await db.getAll('treasuryEvents')) as TreasuryEvent[];
+  const monthEvents = allEvents.filter((e) => {
+    const iso = e.actualDate ?? e.predictedDate;
+    return iso != null && iso >= start && iso <= end;
+  });
+  const existingIndex = buildExistingIndex(monthEvents, year, month);
+
+  const [rentalsCreated, opexCreated, loansCreated] = await Promise.all([
+    regenerateRentalsForecast({ year, month }, existingIndex),
+    regenerateOpexForecast({ year, month }, existingIndex),
+    regenerateLoansForecast({ year, month }, existingIndex),
+  ]);
+
+  return { rentalsCreated, opexCreated, loansCreated };
+}

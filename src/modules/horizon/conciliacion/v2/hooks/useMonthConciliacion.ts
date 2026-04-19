@@ -12,6 +12,7 @@ import {
   getDocDefaultsForCategory,
   type DocRequirement,
 } from '../../../../../services/documentRequirementsService';
+import { isTransferKey } from '../../../../../services/categoryCatalog';
 import { dayOfMonth, extractDate, weekdayLabel } from '../utils/conciliacionFormatters';
 
 export type AmountType = 'income' | 'expense' | 'financing';
@@ -43,6 +44,8 @@ export interface SingleRow {
   amountType: AmountType;
 
   categoryLabel: string;
+  categoryKey?: string;
+  isTransfer: boolean;
   ambito: 'PERSONAL' | 'INMUEBLE';
   inmuebleId?: number;
   inmuebleAlias?: string;
@@ -224,6 +227,8 @@ function eventToSingleRow(
     amount,
     amountType,
     categoryLabel: event.categoryLabel ?? '',
+    categoryKey: event.categoryKey,
+    isTransfer: isTransferKey(event.categoryKey),
     ambito: event.ambito ?? 'PERSONAL',
     inmuebleId: event.inmuebleId,
     inmuebleAlias: property?.alias,
@@ -376,6 +381,10 @@ function computeKpis(rows: SingleRow[]): MonthKpis {
   };
 
   for (const r of rows) {
+    // PR5-HOTFIX v2 · Los traspasos entre cuentas propias NO se computan en
+    // los KPIs: son movimientos de caja internos, no generan flujo neto.
+    if (r.isTransfer) continue;
+
     const confirmed = r.state === 'confirmed';
 
     // Totales previstos = TODOS los eventos del mes, con o sin punteo (la
