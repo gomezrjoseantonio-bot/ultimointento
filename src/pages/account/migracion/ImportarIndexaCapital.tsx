@@ -6,11 +6,11 @@ import { AlertCircle, ArrowLeft, Upload, X, TrendingUp, CheckCircle2 } from 'luc
 import toast from 'react-hot-toast';
 import {
   IndexaImportPreview,
+  PlanObjetivo,
   getPlanesObjetivo,
   importarIndexaCapital,
   previsualizarImportacionIndexa,
 } from '../../../services/indexaCapitalImportService';
-import type { PlanPensionInversion } from '../../../types/personal';
 
 interface ImportarIndexaCapitalProps {
   onComplete: () => void;
@@ -38,17 +38,20 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState<IndexaImportPreview | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const [planes, setPlanes] = useState<PlanPensionInversion[]>([]);
+  const [selectedPlanKey, setSelectedPlanKey] = useState<string>('');
+  const [planes, setPlanes] = useState<PlanObjetivo[]>([]);
   const [loadingPlanes, setLoadingPlanes] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const planKey = (p: PlanObjetivo): string => `${p.store}|${p.id}`;
+  const selectedPlan = planes.find((p) => planKey(p) === selectedPlanKey) ?? null;
 
   useEffect(() => {
     (async () => {
       try {
         const list = await getPlanesObjetivo();
         setPlanes(list);
-        if (list.length === 1 && list[0].id) setSelectedPlanId(list[0].id);
+        if (list.length === 1) setSelectedPlanKey(planKey(list[0]));
       } catch (e) {
         console.error('Error loading planes:', e);
         toast.error('Error cargando planes de pensiones');
@@ -75,10 +78,10 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
   }, []);
 
   const handleImport = useCallback(async () => {
-    if (!preview || !selectedPlanId) return;
+    if (!preview || !selectedPlan) return;
     setImporting(true);
     try {
-      const result = await importarIndexaCapital(preview, selectedPlanId);
+      const result = await importarIndexaCapital(preview, selectedPlan);
       if (result.errors.length > 0) {
         toast(result.errors[0], { icon: '⚠️' });
       }
@@ -97,7 +100,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
     } finally {
       setImporting(false);
     }
-  }, [onComplete, preview, selectedPlanId]);
+  }, [onComplete, preview, selectedPlan]);
 
   const handleDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -112,7 +115,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
     event.target.value = '';
   };
 
-  const canUpload = selectedPlanId !== null;
+  const canUpload = selectedPlan !== null;
   const monthlyToShow = preview?.monthly.slice(0, MONTHLY_PREVIEW_LIMIT) ?? [];
   const extraMonths = Math.max(0, (preview?.monthly.length ?? 0) - MONTHLY_PREVIEW_LIMIT);
 
@@ -199,8 +202,8 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
           </div>
         ) : (
           <select
-            value={selectedPlanId ?? ''}
-            onChange={(e) => setSelectedPlanId(e.target.value ? Number(e.target.value) : null)}
+            value={selectedPlanKey}
+            onChange={(e) => setSelectedPlanKey(e.target.value)}
             style={{
               width: '100%',
               maxWidth: '420px',
@@ -216,7 +219,7 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
           >
             <option value="">— Selecciona un plan —</option>
             {planes.map((p) => (
-              <option key={p.id} value={p.id}>
+              <option key={planKey(p)} value={planKey(p)}>
                 {p.nombre}{p.entidad ? ` (${p.entidad})` : ''}
               </option>
             ))}
@@ -435,16 +438,16 @@ const ImportarIndexaCapital: React.FC<ImportarIndexaCapitalProps> = ({ onComplet
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
             <button
               onClick={handleImport}
-              disabled={importing || !selectedPlanId}
+              disabled={importing || !selectedPlan}
               style={{
                 padding: '10px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                backgroundColor: importing || !selectedPlanId ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
+                backgroundColor: importing || !selectedPlan ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
                 color: '#fff',
                 fontSize: '0.875rem',
                 fontWeight: 600,
-                cursor: importing || !selectedPlanId ? 'not-allowed' : 'pointer',
+                cursor: importing || !selectedPlan ? 'not-allowed' : 'pointer',
                 fontFamily: 'var(--font-inter)',
               }}
             >
