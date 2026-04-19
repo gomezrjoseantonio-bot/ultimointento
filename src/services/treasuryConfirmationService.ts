@@ -309,6 +309,19 @@ export async function confirmTreasuryEvent(
 
   await tx.done;
 
+  // PR3 · Si el event confirmado era la línea "Cancelación deuda" de una
+  // venta de inmueble (propertySaleService), finaliza el cierre del
+  // préstamo en prestamosService. El import es dinámico para no crear un
+  // ciclo de dependencias (propertySaleService depende de este servicio
+  // indirectamente vía loan settlement).
+  try {
+    const { finalizePropertySaleLoanCancellationFromTreasuryEvent } =
+      await import('./propertySaleService');
+    await finalizePropertySaleLoanCancellationFromTreasuryEvent(eventId);
+  } catch (err) {
+    console.warn('[treasuryConfirmation] finalizePropertySaleLoanCancellation falló:', err);
+  }
+
   return {
     movementId,
     lineaId,
