@@ -13,8 +13,16 @@ const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const MESES_CORTO = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-const SS_TOPE = getBaseMaxima(new Date().getFullYear());
-const SS_DEFAULTS = getSSDefaults(new Date().getFullYear());
+// Evaluated lazily so a long-lived session keeps picking up the current year
+// (e.g. a tab kept open across a Jan 1 rollover uses the new year's defaults).
+const currentSSYear = () => new Date().getFullYear();
+const currentSSTope = () => getBaseMaxima(currentSSYear());
+const currentSSDefaults = () => getSSDefaults(currentSSYear());
+const sumTrabajadorPct = (d: ReturnType<typeof getSSDefaults>) =>
+  d.contingenciasComunes.trabajador
+  + d.desempleo.trabajador
+  + d.formacionProfesional.trabajador
+  + d.mei.trabajador;
 
 // ── Tipos internos del wizard ────────────────────────────────────────────────
 interface WizardVariable {
@@ -174,6 +182,13 @@ const NominaWizard: React.FC = () => {
   const titularParam = (searchParams.get('titular') || 'yo') as 'yo' | 'pareja';
   const isEditing = nominaId !== null;
 
+  // SS tope and worker rates for the current year, memoised once per mount.
+  // `handleSave` re-reads them directly so a tab kept open across Jan 1 still
+  // persists that year's defaults instead of the cached ones.
+  const ssTope = useMemo(() => currentSSTope(), []);
+  const ssDefaults = useMemo(() => currentSSDefaults(), []);
+  const ssPct = useMemo(() => sumTrabajadorPct(ssDefaults), [ssDefaults]);
+
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -181,7 +196,6 @@ const NominaWizard: React.FC = () => {
   const [pid, setPid] = useState<number | null>(null);
   const [titularNombre, setTitularNombre] = useState('');
   const [editingTitular, setEditingTitular] = useState<'yo' | 'pareja'>(titularParam);
-  const [originalNomina, setOriginalNomina] = useState<import('../../../types/personal').Nomina | null>(null);
 
   // Step 1 state
   const [empresa, setEmpresa] = useState('');
@@ -192,7 +206,6 @@ const NominaWizard: React.FC = () => {
   const [brutoAnual, setBrutoAnual] = useState(0);
   const [irpf, setIrpf] = useState(0);
   const [irpfAuto, setIrpfAuto] = useState(true);
-  const [ssPct] = useState(6.50);
   const [solidaridadAnual, setSolidaridadAnual] = useState(91.80);
 
   // Step 2 state
@@ -220,7 +233,6 @@ const NominaWizard: React.FC = () => {
           // Edit mode: load existing nomina and populate all fields
           const nom = await nominaService.getNominaById(nominaId);
           if (nom) {
-            setOriginalNomina(nom);
             setEditingTitular(nom.titular);
             setTitularNombre(
               nom.titular === 'pareja' ? (perfil.spouseName || 'Pareja') : `${perfil.nombre} ${perfil.apellidos}`.trim()
@@ -301,7 +313,7 @@ const NominaWizard: React.FC = () => {
   }, [brutoAnual, varTotal, irpfAuto]);
 
   const pagaNormal = brutoAnual > 0 ? brutoAnual / pagas : 0;
-  const baseSSMes = Math.min(pagaNormal, SS_TOPE);
+  const baseSSMes = Math.min(pagaNormal, ssTope);
   const irpfMes = pagaNormal * irpf / 100;
   const ssMes = baseSSMes * ssPct / 100;
   const solidaridadMes = solidaridadAnual / 12;
@@ -315,7 +327,7 @@ const NominaWizard: React.FC = () => {
     return MESES.map((mes, i) => {
       const esExtra = mesesExtra.includes(i);
       const brutoMes = esExtra ? pagaNormal * 2 : pagaNormal;
-      const baseS = Math.min(brutoMes, SS_TOPE);
+      const baseS = Math.min(brutoMes, ssTope);
       const ssM = baseS * ssPct / 100;
       const solM = solidaridadAnual / 12;
       const varsEste = variables.filter(v => v.mes === mes);
@@ -325,7 +337,7 @@ const NominaWizard: React.FC = () => {
       const liq = brutoMes + brutoVar - irpfM - ssM - solM - ppM;
       return { mes, idx: i, brutoMes, brutoVar, liq, esExtra, hasVar: varsEste.length > 0, varTipos: varsEste.map(v => v.tipo) } satisfies CalendarioItem;
     });
-  }, [brutoAnual, pagas, pagaNormal, irpf, ssPct, solidaridadAnual, variables, tienePP, ppEmpleado]);
+  }, [brutoAnual, pagas, pagaNormal, irpf, ssPct, ssTope, solidaridadAnual, variables, tienePP, ppEmpleado]);
 
   const handleSave = useCallback(async () => {
     if (!pid) return;
@@ -381,20 +393,24 @@ const NominaWizard: React.FC = () => {
           // so the stored nomina matches what the form displays (stale legacy
           // values would make nominaService.calculateSalary diverge from the
           // wizard preview and propagate different numbers to other pages).
-          ss: {
-            baseCotizacionMensual: SS_TOPE,
-            contingenciasComunes: SS_DEFAULTS.contingenciasComunes.trabajador,
-            desempleo: SS_DEFAULTS.desempleo.trabajador,
-            formacionProfesional: SS_DEFAULTS.formacionProfesional.trabajador,
-            mei: SS_DEFAULTS.mei.trabajador,
-            overrideManual: false,
-          },
+          // Re-read the year here in case the session spans Jan 1.
+          ss: (() => {
+            const defs = currentSSDefaults();
+            return {
+              baseCotizacionMensual: currentSSTope(),
+              contingenciasComunes: defs.contingenciasComunes.trabajador,
+              desempleo: defs.desempleo.trabajador,
+              formacionProfesional: defs.formacionProfesional.trabajador,
+              mei: defs.mei.trabajador,
+              overrideManual: false,
+            };
+          })(),
           cuotaSolidaridadMensual: solidaridadAnual / 12,
         },
         planPensiones: pp,
         // The wizard does not expose "deducciones adicionales"; preserving stale
         // values from an old import would create hidden deductions that the
-        // summary cannot show. Always save the set the user can see: empty.
+        // summary cannot show. Always persist an empty array here.
         deduccionesAdicionales: [],
         cuentaAbono: cuentaId || 0,
         reglaCobroDia: diaCobro === 31 ? { tipo: 'ultimo-habil' as const } : { tipo: 'fijo' as const, dia: diaCobro },
@@ -411,7 +427,7 @@ const NominaWizard: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [pid, titularParam, editingTitular, isEditing, nominaId, originalNomina, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate]);
+  }, [pid, titularParam, editingTitular, isEditing, nominaId, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate]);
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -523,9 +539,9 @@ const NominaWizard: React.FC = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
           <div>
             <label style={labelSt}>% SS empleado total</label>
-            <input style={{ ...inputSt, fontFamily: MONO }} value={ssPct} readOnly />
+            <input style={{ ...inputSt, fontFamily: MONO }} value={ssPct.toFixed(2)} readOnly />
             <div style={{ fontSize: 11, color: 'var(--grey-400)', marginTop: 4, fontFamily: FONT }}>
-              SS 4,70% + Desempleo 1,55% + FP 0,10% + MEI 0,15%
+              SS {ssDefaults.contingenciasComunes.trabajador.toFixed(2).replace('.', ',')}% + Desempleo {ssDefaults.desempleo.trabajador.toFixed(2).replace('.', ',')}% + FP {ssDefaults.formacionProfesional.trabajador.toFixed(2).replace('.', ',')}% + MEI {ssDefaults.mei.trabajador.toFixed(2).replace('.', ',')}%
             </div>
           </div>
           <div>
@@ -755,7 +771,7 @@ const NominaWizard: React.FC = () => {
     const totalNeto = calendario.reduce((s, m) => s + m.liq, 0);
     const totalBrutoVar = calendario.reduce((s, m) => s + m.brutoVar, 0);
     const totalIRPF = calendario.reduce((s, m) => s + (m.brutoMes + m.brutoVar) * irpf / 100, 0);
-    const totalSS = calendario.reduce((s, m) => s + Math.min(m.brutoMes, SS_TOPE) * ssPct / 100 + solidaridadAnual / 12, 0);
+    const totalSS = calendario.reduce((s, m) => s + Math.min(m.brutoMes, ssTope) * ssPct / 100 + solidaridadAnual / 12, 0);
     const totalPP = tienePP ? ppEmpleado * 12 : 0;
     const totalPPTotal = tienePP ? (ppEmpleado + ppEmpresa) * 12 : 0;
     return (
