@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
-import { Account, MovementType, MovementState } from '../../../../services/db';
+import { Account, MovementType, MovementState, Property, TreasuryEvent } from '../../../../services/db';
 import { showSuccess, showError } from '../../../../services/toastService';
 import { trackMovementCreation } from '../../../../utils/treasuryAnalytics';
 import { useFocusTrap } from '../../../../hooks/useFocusTrap';
@@ -23,7 +23,22 @@ interface NewMovementForm {
   state: MovementState;
   // Transfer specific fields
   transferToAccountId: string;
+  // PR3: ámbito del movimiento (Personal / Inmueble)
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId: string;
+  categoryLabel: string;
 }
+
+const INMUEBLE_CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'Reparación inmueble', label: 'Reparación' },
+  { value: 'Mejora inmueble', label: 'Mejora' },
+  { value: 'Mobiliario inmueble', label: 'Mobiliario' },
+  { value: 'Comunidad', label: 'Comunidad' },
+  { value: 'Seguro inmueble', label: 'Seguro' },
+  { value: 'IBI', label: 'IBI / tributos' },
+  { value: 'Suministros', label: 'Suministros' },
+  { value: 'Gasto recurrente', label: 'Gasto recurrente (otros)' },
+];
 
 const CATEGORIES = [
   'Suministros › Luz',
@@ -58,11 +73,38 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     category: '',
     counterparty: '',
     state: 'Previsto',
-    transferToAccountId: ''
+    transferToAccountId: '',
+    ambito: 'PERSONAL',
+    inmuebleId: '',
+    categoryLabel: '',
   });
 
   const [saving, setSaving] = useState(false);
+  const [properties, setProperties] = useState<Property[]>([]);
   const containerRef = useFocusTrap(isOpen);
+
+  // PR3: cargar inmuebles activos para el selector
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { initDB } = await import('../../../../services/db');
+        const db = await initDB();
+        const all = (await db.getAll('properties')) as Property[];
+        if (!cancelled) {
+          setProperties(
+            all.filter((p) => p.state !== 'vendido' && (p as any).id != null),
+          );
+        }
+      } catch (err) {
+        console.warn('[NewMovementModal] error cargando inmuebles:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   const handleInputChange = (field: keyof NewMovementForm, value: string) => {
     setForm(prev => ({
@@ -107,7 +149,12 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     if (!form.description.trim()) return 'Introduce una descripción';
     if (form.type === 'Transferencia' && !form.transferToAccountId) return 'Selecciona la cuenta de destino';
     if (form.type === 'Transferencia' && form.accountId === form.transferToAccountId) return 'Las cuentas de origen y destino deben ser diferentes';
-    
+    // PR3: si ámbito inmueble, validar inmueble + categoría
+    if (form.type !== 'Transferencia' && form.ambito === 'INMUEBLE') {
+      if (!form.inmuebleId) return 'Selecciona un inmueble';
+      if (!form.categoryLabel) return 'Selecciona una categoría de inmueble';
+    }
+
     return null;
   };
 
@@ -121,7 +168,10 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
       category: '',
       counterparty: '',
       state: 'Previsto',
-      transferToAccountId: ''
+      transferToAccountId: '',
+      ambito: 'PERSONAL',
+      inmuebleId: '',
+      categoryLabel: '',
     });
     setSaving(false);
     onClose();
@@ -135,141 +185,109 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
     }
 
     setSaving(true);
-    
+
     try {
-      // FIX PACK v1.0: Implement actual movement creation with optimistic insertion
+      // PR3: todo nace como treasuryEvent predicted. El movement real se
+      // crea sólo al puntear (ver treasuryConfirmationService). Así la
+      // creación desde Tesorería sigue el mismo flujo que Gestión Inmuebles.
       const { initDB } = await import('../../../../services/db');
       const db = await initDB();
-      
+
       const amount = parseFloat(form.amount);
       const now = new Date().toISOString();
-      
+
       if (form.type === 'Transferencia') {
-        // Create two linked movements for transfers
-        const transferGroupId = `transfer_${Date.now()}`;
+        // Transferencias: dos events predicted (uno por cada pata).
         const sourceAccountName = accounts.find(a => a.id?.toString() === form.accountId)?.name || 'cuenta';
         const targetAccountName = accounts.find(a => a.id?.toString() === form.transferToAccountId)?.name || 'cuenta';
         const transferDescription = form.description.trim();
-        
-        // Movement from source account (negative)
-        const fromMovement = {
-          accountId: Number(form.accountId),
-          date: form.date,
-          amount: -Math.abs(amount), // Always negative for outgoing
-          description: transferDescription || `Transferencia a ${targetAccountName}`,
-          counterparty: form.counterparty || 'Transferencia interna',
-          type: 'Transferencia' as 'Transferencia',
-          category: { tipo: 'Transferencias', subtipo: 'Interna' },
-          origin: 'Manual' as 'Manual',
-          movementState: form.state,
-          transferGroupId,
-          tags: ['transferencia'],
-          isAutoTagged: true,
-          // ATLAS HORIZON: Required fields
-          unifiedStatus: 'conciliado' as any, // Transfers are auto-reconciled
-          source: 'manual' as any,
-          createdAt: now,
-          updatedAt: now,
-          status: 'pendiente' as 'pendiente'
-        };
-        
-        // Movement to destination account (positive)
-        const toMovement = {
-          accountId: Number(form.transferToAccountId),
-          date: form.date,
-          amount: Math.abs(amount), // Always positive for incoming
-          description: transferDescription || `Transferencia desde ${sourceAccountName}`,
-          counterparty: form.counterparty || 'Transferencia interna',
-          type: 'Transferencia' as 'Transferencia',
-          category: { tipo: 'Transferencias', subtipo: 'Interna' },
-          origin: 'Manual' as 'Manual',
-          movementState: form.state,
-          transferGroupId,
-          tags: ['transferencia'],
-          isAutoTagged: true,
-          // ATLAS HORIZON: Required fields  
-          unifiedStatus: 'conciliado' as any, // Transfers are auto-reconciled
-          source: 'manual' as any,
-          createdAt: now,
-          updatedAt: now,
-          status: 'pendiente' as 'pendiente'
-        };
-        
-        // Save both movements
-        await db.add('movements', fromMovement);
-        await db.add('movements', toMovement);
 
-        // Recalculate balances for both affected accounts so Treasury cards reflect transfer immediately
-        const { recalculateAccountBalance } = await import('../../../../services/treasuryEventsService');
-        const affectedAccountIds = Array.from(new Set([
-          Number(form.accountId),
-          Number(form.transferToAccountId)
-        ]));
-        await Promise.all(affectedAccountIds.map((accountId) => recalculateAccountBalance(accountId)));
-        
-        // Track analytics
-        trackMovementCreation('manual', 2, { 
+        const fromEvent: Omit<TreasuryEvent, 'id'> = {
+          type: 'expense',
+          amount: Math.abs(amount),
+          predictedDate: form.date,
+          description: transferDescription || `Transferencia a ${targetAccountName}`,
+          sourceType: 'manual',
+          accountId: Number(form.accountId),
+          status: 'predicted',
+          counterparty: form.counterparty || 'Transferencia interna',
+          createdAt: now,
+          updatedAt: now,
+        };
+        const toEvent: Omit<TreasuryEvent, 'id'> = {
+          type: 'income',
+          amount: Math.abs(amount),
+          predictedDate: form.date,
+          description: transferDescription || `Transferencia desde ${sourceAccountName}`,
+          sourceType: 'manual',
+          accountId: Number(form.transferToAccountId),
+          status: 'predicted',
+          counterparty: form.counterparty || 'Transferencia interna',
+          createdAt: now,
+          updatedAt: now,
+        };
+        await db.add('treasuryEvents', fromEvent as any);
+        await db.add('treasuryEvents', toEvent as any);
+
+        trackMovementCreation('manual', 2, {
           type: 'transfer',
           amount: Math.abs(amount),
           accountFrom: form.accountId,
-          accountTo: form.transferToAccountId
+          accountTo: form.transferToAccountId,
         });
-        
-        showSuccess(`Transferencia de ${Math.abs(amount).toFixed(2)}€ creada correctamente`, {
-          actionLabel: 'Ver movimientos',
-          actionHandler: () => {
-            console.log('Navigate to movements with transfer filter');
-          }
-        });
+
+        showSuccess(
+          `Transferencia prevista de ${Math.abs(amount).toFixed(2)}€ creada. Confírmala en Conciliación.`,
+          {
+            actionLabel: 'Ver movimientos',
+            actionHandler: () => {
+              console.log('Navigate to conciliacion with pending filter');
+            },
+          },
+        );
 
         onMovementCreated();
         handleClose();
-        
       } else {
-        // Create single movement
-        const categoryParts = form.category ? form.category.split(' › ') : [form.type === 'Ingreso' ? 'Ingresos' : 'Gastos'];
-        const movement = {
-          accountId: Number(form.accountId),
-          date: form.date,
-          amount: amount,
+        // Gasto/Ingreso/Ajuste → treasuryEvent predicted.
+        const eventType: 'income' | 'expense' =
+          form.type === 'Ingreso' || amount >= 0 ? 'income' : 'expense';
+
+        const isInmueble = form.ambito === 'INMUEBLE';
+        const event: Omit<TreasuryEvent, 'id'> = {
+          type: eventType,
+          amount: Math.abs(amount),
+          predictedDate: form.date,
           description: form.description,
+          sourceType: 'manual',
+          accountId: Number(form.accountId),
+          status: 'predicted',
           counterparty: form.counterparty || undefined,
-          type: form.type,
-          category: { 
-            tipo: categoryParts[0], 
-            subtipo: categoryParts[1] 
-          },
-          origin: 'Manual' as 'Manual',
-          movementState: form.state,
-          tags: form.category ? [categoryParts[0]] : [],
-          isAutoTagged: !!form.category,
-          // ATLAS HORIZON: Required fields
-          unifiedStatus: 'confirmado' as any, // Manual entries are confirmed
-          source: 'manual' as any,
+          ambito: isInmueble ? 'INMUEBLE' : 'PERSONAL',
+          inmuebleId: isInmueble ? Number(form.inmuebleId) : undefined,
+          categoryLabel: isInmueble ? form.categoryLabel : form.category || undefined,
           createdAt: now,
           updatedAt: now,
-          status: 'pendiente' as 'pendiente'
         };
-        
-        await db.add('movements', movement);
-        
-        // Track analytics
-        trackMovementCreation('manual', 1, { 
+
+        await db.add('treasuryEvents', event as any);
+
+        trackMovementCreation('manual', 1, {
           type: form.type.toLowerCase(),
           amount: Math.abs(amount),
           category: form.category,
-          hasCounterparty: !!form.counterparty
+          hasCounterparty: !!form.counterparty,
         });
-        
-        showSuccess(`${form.type} de ${Math.abs(amount).toFixed(2)}€ ${form.type === 'Ingreso' ? 'registrado' : 'creado'} correctamente`);
-        
-        // Optimistic update - pass the new movement to avoid flicker
-        onMovementCreated(movement);
+
+        showSuccess(
+          `${form.type} de ${Math.abs(amount).toFixed(2)}€ añadido como previsto. Confírmalo desde Conciliación.`,
+        );
+
+        onMovementCreated();
         handleClose();
       }
-      
     } catch (error) {
-      console.error('Error creating movement:', error);
+      console.error('Error creating treasury event:', error);
       showError('Error al crear el movimiento', 'Revisa los datos e inténtalo de nuevo');
     } finally {
       setSaving(false);
@@ -356,6 +374,77 @@ const NewMovementModal: React.FC<NewMovementModalProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* PR3: Ámbito Personal / Inmueble */}
+            {form.type !== 'Transferencia' && (
+              <div>
+                <label className="block text-sm font-medium text-hz-text mb-2">
+                  Ámbito *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['PERSONAL', 'INMUEBLE'] as const).map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setForm((prev) => ({
+                        ...prev,
+                        ambito: val,
+                        inmuebleId: val === 'INMUEBLE' ? prev.inmuebleId : '',
+                        categoryLabel: val === 'INMUEBLE' ? prev.categoryLabel : '',
+                      }))}
+                      className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
+                        form.ambito === val
+                          ? 'bg-hz-primary-dark text-white border-hz-primary-dark'
+                          : 'border-hz-neutral-300 text-hz-text hover:border-hz-primary'
+                      }`}
+                    >
+                      {val === 'PERSONAL' ? 'Personal' : 'Inmueble'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {form.type !== 'Transferencia' && form.ambito === 'INMUEBLE' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-hz-text mb-1">
+                    Inmueble *
+                  </label>
+                  <select
+                    value={form.inmuebleId}
+                    onChange={(e) => handleInputChange('inmuebleId', e.target.value)}
+                    className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Seleccionar inmueble…</option>
+                    {properties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.alias}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-hz-text mb-1">
+                    Categoría de inmueble *
+                  </label>
+                  <select
+                    value={form.categoryLabel}
+                    onChange={(e) => handleInputChange('categoryLabel', e.target.value)}
+                    className="w-full border border-hz-neutral-300 rounded-lg px-3 py-2 text-sm"
+                    required
+                  >
+                    <option value="">Seleccionar categoría…</option>
+                    {INMUEBLE_CATEGORY_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             {/* Transfer destination account */}
             {form.type === 'Transferencia' && (
