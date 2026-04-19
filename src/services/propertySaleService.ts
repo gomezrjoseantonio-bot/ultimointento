@@ -51,7 +51,9 @@ interface SaleExecutionJournal {
   autoTerminatedContracts: Array<{ id: number; previous: Contract }>;
   updatedLoans: Array<{ id: string; previous: Prestamo }>;
   deactivatedOpexRules: Array<{ id: number; previous: Record<string, unknown> }>;
-  updatedIngresos: Array<{ id: number; previous: Record<string, unknown> }>;
+  // Legacy field kept for backward compatibility while decoding existing
+  // journals from already-confirmed sales. New sales no longer populate it.
+  updatedIngresos?: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedGastos: Array<{ id: number; previous: Record<string, unknown> }>;
   updatedPaymentPlans: Array<{ key: string; previous: PlanPagos }>;
   deletedLoanForecastEvents: Array<{ id: number; previous: TreasuryEvent }>;
@@ -87,6 +89,33 @@ export const isLoanLinkedToProperty = (loan: any, property: Property): boolean =
 
   if (Array.isArray(loan.afectacionesInmueble)) {
     linkedIds.push(...loan.afectacionesInmueble.map((item: any) => item?.inmuebleId));
+  }
+
+  // V2 Financiación model: destinos[].inmuebleId for ADQUISICION/REFORMA
+  // destinations, and garantias[].inmuebleId for HIPOTECARIA guarantees.
+  // These are the canonical links for modern loans created after the V2
+  // migration; legacy loans continue to use the fields above.
+  if (Array.isArray(loan.destinos)) {
+    for (const destino of loan.destinos as any[]) {
+      if (!destino) continue;
+      const tipo = String(destino.tipo ?? '').toUpperCase();
+      if (tipo === 'ADQUISICION' || tipo === 'REFORMA') {
+        if (destino.inmuebleId !== undefined && destino.inmuebleId !== null) {
+          linkedIds.push(destino.inmuebleId);
+        }
+      }
+    }
+  }
+  if (Array.isArray(loan.garantias)) {
+    for (const garantia of loan.garantias as any[]) {
+      if (!garantia) continue;
+      const tipo = String(garantia.tipo ?? '').toUpperCase();
+      if (tipo === 'HIPOTECARIA') {
+        if (garantia.inmuebleId !== undefined && garantia.inmuebleId !== null) {
+          linkedIds.push(garantia.inmuebleId);
+        }
+      }
+    }
   }
 
   const propertyAliasToken = normalizeToken(property.alias);
@@ -636,9 +665,9 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
 
   const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
-  const [allOpexRules, allIngresos, allGastosRaw] = await Promise.all([
+  const [allOpexRules, allRentaMensual, allGastosRaw] = await Promise.all([
     db.getAll('opexRules').catch(() => []),
-    db.getAll('ingresos').catch(() => []),
+    db.getAll('rentaMensual').catch(() => []),
     gastosInmuebleService.getAll().catch(() => []),
   ]);
   const allGastos = allGastosRaw.map((g: any) => ({ id: g.id, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', fecha_pago_prevista: g.fecha }));
@@ -646,12 +675,23 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const activeOpexRulesCount = allOpexRules.filter(
     (rule: any) => rule.propertyId === propertyId && rule.activo !== false
   ).length;
-  const futureIncomeCount = allIngresos.filter((ingreso: any) =>
-    ingreso.destino === 'inmueble_id' &&
-    ingreso.destino_id === propertyId &&
-    ingreso.estado === 'previsto' &&
-    ingreso.fecha_prevista_cobro >= referenceDate
+
+  // Future rental income counted from rentaMensual via contracts of this
+  // property (rentaMensual is indexed by contratoId, not inmuebleId).
+  const propertyContractIds = new Set(
+    contracts
+      .filter((c) => c.inmuebleId === propertyId || c.propertyId === propertyId)
+      .map((c) => c.id)
+      .filter((id): id is number => typeof id === 'number'),
+  );
+  const referenceMonth = referenceDate.slice(0, 7);
+  const futureIncomeCount = (allRentaMensual as any[]).filter((r) =>
+    propertyContractIds.has(r?.contratoId) &&
+    typeof r?.periodo === 'string' &&
+    r.periodo >= referenceMonth &&
+    r.estado !== 'cobrada',
   ).length;
+
   const futureExpenseCount = allGastos.filter((gasto: any) =>
     gasto.destino === 'inmueble_id' &&
     gasto.destino_id === propertyId &&
@@ -682,7 +722,24 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   const db = await initDB();
-  const tx = db.transaction(['properties', 'contracts', 'property_sales', 'accounts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
+
+  // Defensive pre-check: if a required store is missing the IDB transaction
+  // fails with the opaque "One of the specified object stores was not found".
+  // We surface a friendlier error and bail out before opening the tx.
+  const REQUIRED_STORES = [
+    'properties', 'contracts', 'property_sales', 'accounts', 'movements',
+    'prestamos', 'opexRules', 'gastosInmueble', 'treasuryEvents', 'keyval',
+  ] as const;
+  const existingStores = new Set(Array.from(db.objectStoreNames));
+  const missingStores = REQUIRED_STORES.filter((name) => !existingStores.has(name));
+  if (missingStores.length > 0) {
+    throw new Error(
+      `La base de datos local no tiene los siguientes stores necesarios: ${missingStores.join(', ')}. ` +
+      `Recarga la página para forzar la migración.`,
+    );
+  }
+
+  const tx = db.transaction([...REQUIRED_STORES], 'readwrite');
 
   const property = await tx.objectStore('properties').get(input.propertyId);
   if (!property) {
@@ -826,7 +883,6 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     autoTerminatedContracts,
     updatedLoans: [],
     deactivatedOpexRules: [],
-    updatedIngresos: [],
     updatedGastos: [],
     updatedPaymentPlans: [],
     deletedLoanForecastEvents: [],
@@ -946,25 +1002,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
 
-  const ingresoStore = tx.objectStore('ingresos');
-  const allIngresos = await ingresoStore.getAll();
-  for (const ingreso of allIngresos as any[]) {
-    if (
-      ingreso?.destino !== 'inmueble_id' ||
-      ingreso?.destino_id !== input.propertyId ||
-      ingreso?.estado !== 'previsto' ||
-      ingreso?.fecha_prevista_cobro < input.saleDate ||
-      typeof ingreso.id !== 'number'
-    ) {
-      continue;
-    }
-    executionJournal.updatedIngresos.push({ id: ingreso.id, previous: ingreso });
-    await ingresoStore.put({
-      ...ingreso,
-      estado: 'incompleto',
-      updatedAt: new Date().toISOString(),
-    });
-  }
+  // NOTE: el bloque antiguo de `ingresos` se elimina: el store nunca existió
+  // en la DB (el nombre real es `rentaMensual`, indexado por contratoId no
+  // por inmuebleId). Las rentas futuras quedan cubiertas por el cierre
+  // automático de los contratos del inmueble (autoTerminateContracts).
 
   const gastoStore = tx.objectStore('gastosInmueble');
   const allGastosInm = await gastoStore.getAll();
@@ -1112,7 +1153,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'ingresos', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -1207,11 +1248,9 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
-  if (journal?.updatedIngresos?.length) {
-    for (const snapshot of journal.updatedIngresos) {
-      await tx.objectStore('ingresos').put(snapshot.previous as any);
-    }
-  }
+  // journal.updatedIngresos: se omite adrede — el store `ingresos` nunca
+  // existió, así que no hay nada que revertir en ese store. Los journals
+  // antiguos con este campo se ignoran sin error.
 
   if (journal?.updatedGastos?.length) {
     for (const snapshot of journal.updatedGastos) {
