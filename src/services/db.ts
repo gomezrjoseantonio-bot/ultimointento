@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 50; // V5.0: PR3 — índices movimientoId/treasuryEventId en gastosInmueble/mejorasInmueble/mueblesInmueble
+const DB_VERSION = 51; // V5.1: PR5 — campos facturaId/justificanteId/*NoAplica en treasuryEvents/movements/gastosInmueble/mejorasInmueble/mueblesInmueble
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -338,6 +338,11 @@ export interface GastoInmueble {
   cuentaBancaria?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5: documentación detallada (factura proveedor + justificante bancario)
+  facturaId?: number;
+  facturaNoAplica?: boolean;
+  justificanteId?: number;
+  justificanteNoAplica?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -354,6 +359,11 @@ export interface MejoraInmueble {
   proveedorNombre?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5: documentación detallada
+  facturaId?: number;
+  facturaNoAplica?: boolean;
+  justificanteId?: number;
+  justificanteNoAplica?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -372,6 +382,11 @@ export interface MuebleInmueble {
   proveedorNombre?: string;
   documentId?: number;
   movimientoId?: string;
+  // PR5: documentación detallada
+  facturaId?: number;
+  facturaNoAplica?: boolean;
+  justificanteId?: number;
+  justificanteNoAplica?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -974,6 +989,12 @@ export interface Movement {
   learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
   isOpeningBalance?: boolean; // Marks the system-generated opening balance movement
 
+  // PR5: documentación asociada al movement (mismo esquema que TreasuryEvent)
+  facturaId?: number;
+  facturaNoAplica?: boolean;
+  justificanteId?: number;
+  justificanteNoAplica?: boolean;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -1070,6 +1091,11 @@ export interface TreasuryEvent {
   // PR3: tras puntear ("executed"), apunta al movement generado
   executedMovementId?: number;
   executedAt?: string;
+  // PR5: documentación asociada al evento
+  facturaId?: number;              // documentId del Inbox (factura / recibo del proveedor)
+  facturaNoAplica?: boolean;
+  justificanteId?: number;         // documentId del Inbox (justificante bancario / cargo)
+  justificanteNoAplica?: boolean;
   // Metadata
   createdAt: string;
   updatedAt: string;
