@@ -1,8 +1,17 @@
 // PR5 · Requisitos documentales por categoría
 //
+// PR5-HOTFIX v2 · actualizado para usar `categoryKey` del catálogo canónico.
+// Mantiene compatibilidad con datos previos que solo tengan `categoryLabel`
+// gracias a `inferCategoryFromLegacyLabel` en categoryCatalog.
+//
 // Nota: el nombre `documentClassificationService.ts` ya estaba ocupado por un servicio
 // distinto (ML · clasificación OCR). Este módulo cubre los defaults de factura y
 // justificante bancario en la pantalla de Conciliación.
+
+import {
+  resolveCategoryFromRecord,
+  TRANSFER_KEYS,
+} from './categoryCatalog';
 
 export type DocRequirement = 'requerido' | 'no_aplica' | 'opcional';
 
@@ -11,55 +20,76 @@ export interface CategoryDocDefaults {
   justificante: DocRequirement;
 }
 
-const DEFAULTS_BY_CATEGORY: Record<string, CategoryDocDefaults> = {
-  // Ingresos de alquiler
-  'Alquiler':               { factura: 'requerido',  justificante: 'requerido' },
-
-  // Gastos de inmueble deducibles
-  'Reparación inmueble':    { factura: 'requerido',  justificante: 'requerido' },
-  'Mejora inmueble':        { factura: 'requerido',  justificante: 'requerido' },
-  'Mobiliario inmueble':    { factura: 'requerido',  justificante: 'requerido' },
-  'Comunidad':              { factura: 'requerido',  justificante: 'requerido' },
-  'Comunidad inmueble':     { factura: 'requerido',  justificante: 'requerido' },
-  'Seguro':                 { factura: 'requerido',  justificante: 'requerido' },
-  'Seguro inmueble':        { factura: 'requerido',  justificante: 'requerido' },
-  'Suministro':             { factura: 'requerido',  justificante: 'requerido' },
-  'Suministro inmueble':    { factura: 'requerido',  justificante: 'requerido' },
-  'IBI':                    { factura: 'requerido',  justificante: 'requerido' },
-  'IBI inmueble':           { factura: 'requerido',  justificante: 'requerido' },
-  'Basuras':                { factura: 'requerido',  justificante: 'requerido' },
-  'Tributo':                { factura: 'requerido',  justificante: 'requerido' },
-
-  // Financiación: no hay factura, solo justificante del cargo
-  'Financiación':           { factura: 'no_aplica',  justificante: 'requerido' },
-  'Hipoteca':               { factura: 'no_aplica',  justificante: 'requerido' },
-
-  // Nómina: no hay factura
-  'Nómina':                 { factura: 'no_aplica',  justificante: 'requerido' },
-
-  // Personal y otros
-  'Gasto personal':         { factura: 'no_aplica',  justificante: 'opcional' },
-  'Personal':               { factura: 'no_aplica',  justificante: 'opcional' },
-  'Traspaso interno':       { factura: 'no_aplica',  justificante: 'no_aplica' },
-};
-
 const DEFAULT_FALLBACK: CategoryDocDefaults = { factura: 'opcional', justificante: 'opcional' };
 
-export function getDocDefaultsForCategory(categoryLabel: string | undefined | null): CategoryDocDefaults {
-  if (!categoryLabel) return DEFAULT_FALLBACK;
-  const normalized = categoryLabel.trim();
-  return DEFAULTS_BY_CATEGORY[normalized] ?? DEFAULT_FALLBACK;
+// Defaults por `key` del catálogo canónico.
+const DEFAULTS_BY_KEY: Record<string, CategoryDocDefaults> = {
+  // ── Ingresos ────────────────────────────────────────
+  alquiler:              { factura: 'requerido',  justificante: 'requerido' },
+  otros_ingresos:        { factura: 'opcional',   justificante: 'requerido' },
+
+  // ── Gastos de inmueble deducibles ───────────────────
+  reparacion_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
+  mejora_inmueble:       { factura: 'requerido',  justificante: 'requerido' },
+  mobiliario_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
+  comunidad_inmueble:    { factura: 'requerido',  justificante: 'requerido' },
+  seguro_inmueble:       { factura: 'requerido',  justificante: 'requerido' },
+  suministro_inmueble:   { factura: 'requerido',  justificante: 'requerido' },
+  ibi_inmueble:          { factura: 'requerido',  justificante: 'requerido' },
+  basuras_inmueble:      { factura: 'requerido',  justificante: 'requerido' },
+  servicio_inmueble:     { factura: 'requerido',  justificante: 'requerido' },
+  otros_inmueble:        { factura: 'opcional',   justificante: 'requerido' },
+
+  // ── Gasto personal ──────────────────────────────────
+  gasto_personal:        { factura: 'no_aplica',  justificante: 'opcional' },
+
+  // ── Traspasos internos (keys especiales, no en catálogo) ──
+  [TRANSFER_KEYS.SALIDA]:  { factura: 'no_aplica', justificante: 'no_aplica' },
+  [TRANSFER_KEYS.ENTRADA]: { factura: 'no_aplica', justificante: 'no_aplica' },
+};
+
+// Defaults por `label` legado — solo para datos antiguos donde no existe
+// `categoryKey`. Se usa como fallback tras `resolveCategoryFromRecord`.
+const LEGACY_LABEL_FALLBACKS: Record<string, CategoryDocDefaults> = {
+  'Financiación':          { factura: 'no_aplica',  justificante: 'requerido' },
+  'Hipoteca':              { factura: 'no_aplica',  justificante: 'requerido' },
+  'Nómina':                { factura: 'no_aplica',  justificante: 'requerido' },
+  'Traspaso interno':      { factura: 'no_aplica',  justificante: 'no_aplica' },
+};
+
+/**
+ * Devuelve los defaults documentales para una categoría dada. Acepta tanto
+ * `categoryKey` (nuevo) como `categoryLabel` (legado).
+ */
+export function getDocDefaultsForCategory(
+  categoryLabelOrKey: string | undefined | null,
+): CategoryDocDefaults {
+  if (!categoryLabelOrKey) return DEFAULT_FALLBACK;
+  const trimmed = categoryLabelOrKey.trim();
+  if (!trimmed) return DEFAULT_FALLBACK;
+
+  // Match directo por key (caso común en datos nuevos).
+  if (DEFAULTS_BY_KEY[trimmed]) return DEFAULTS_BY_KEY[trimmed];
+
+  // Resolver via catálogo (infiere desde label legado).
+  const def = resolveCategoryFromRecord({ categoryLabel: trimmed });
+  if (def && DEFAULTS_BY_KEY[def.key]) return DEFAULTS_BY_KEY[def.key];
+
+  // Fallback por label legado fuera del catálogo (financiación / nómina / traspaso).
+  if (LEGACY_LABEL_FALLBACKS[trimmed]) return LEGACY_LABEL_FALLBACKS[trimmed];
+
+  return DEFAULT_FALLBACK;
 }
 
 /**
  * Devuelve las flags `*NoAplica` a aplicar por defecto al crear o recategorizar un movimiento,
  * en función de su categoría.
  */
-export function computeDocFlags(categoryLabel: string | undefined | null): {
+export function computeDocFlags(categoryLabelOrKey: string | undefined | null): {
   facturaNoAplica: boolean;
   justificanteNoAplica: boolean;
 } {
-  const d = getDocDefaultsForCategory(categoryLabel);
+  const d = getDocDefaultsForCategory(categoryLabelOrKey);
   return {
     facturaNoAplica: d.factura === 'no_aplica',
     justificanteNoAplica: d.justificante === 'no_aplica',
@@ -71,13 +101,13 @@ export function computeDocFlags(categoryLabel: string | undefined | null): {
  * para pintar el conjunto de iconos en la fila de Conciliación.
  */
 export function computeDocStatus(
-  categoryLabel: string | undefined | null,
+  categoryLabelOrKey: string | undefined | null,
   hasFactura: boolean,
   facturaNoAplica: boolean,
   hasJustificante: boolean,
   justificanteNoAplica: boolean,
 ): 'complete' | 'incomplete' {
-  const d = getDocDefaultsForCategory(categoryLabel);
+  const d = getDocDefaultsForCategory(categoryLabelOrKey);
   const facturaOk = d.factura !== 'requerido' || hasFactura || facturaNoAplica;
   const justificanteOk = d.justificante !== 'requerido' || hasJustificante || justificanteNoAplica;
   return (facturaOk && justificanteOk) ? 'complete' : 'incomplete';
