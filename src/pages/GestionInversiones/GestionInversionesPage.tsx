@@ -14,6 +14,7 @@ import type { PlanPensionInversion } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
+import PlanForm from '../../components/personal/planes/PlanForm';
 import toast from 'react-hot-toast';
 
 const C = {
@@ -384,6 +385,8 @@ const GestionInversionesPage: React.FC = () => {
   const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
 
   const [planSeleccionado, setPlanSeleccionado] = useState<PlanPensionInversion | null>(null);
+  const [planEnEdicion, setPlanEnEdicion] = useState<PlanPensionInversion | null>(null);
+  const [mostrarFormularioPlan, setMostrarFormularioPlan] = useState(false);
   const [mostrarModalValor, setMostrarModalValor] = useState(false);
   const [mostrarModalAportacion, setMostrarModalAportacion] = useState(false);
   const [mostrarModalEvolucion, setMostrarModalEvolucion] = useState(false);
@@ -448,6 +451,25 @@ const GestionInversionesPage: React.FC = () => {
       await refresh();
     } catch {
       toast.error('Error al eliminar la posición');
+    }
+  };
+
+  const handleEditPlanPension = (plan: PlanPensionInversion) => {
+    setPlanEnEdicion(plan);
+    setMostrarFormularioPlan(true);
+  };
+
+  const handlePlanSaved = async () => {
+    setMostrarFormularioPlan(false);
+    setPlanEnEdicion(null);
+    try {
+      const personalData = await personalDataService.getPersonalData();
+      if (personalData?.id) {
+        const planes = await planesInversionService.getPlanes(personalData.id);
+        setPlanesPension(planes);
+      }
+    } catch {
+      // If reload fails the list keeps its previous state; the save itself already succeeded.
     }
   };
 
@@ -802,6 +824,14 @@ const GestionInversionesPage: React.FC = () => {
                             <Plus size={14} />
                           </button>
                           <button
+                            onClick={() => handleEditPlanPension(plan)}
+                            title="Editar plan"
+                            aria-label={`Editar ${plan.nombre}`}
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
                             onClick={() => handleDeletePlanPension(plan)}
                             title="Eliminar plan"
                             aria-label={`Eliminar ${plan.nombre}`}
@@ -913,6 +943,18 @@ const GestionInversionesPage: React.FC = () => {
           }}
         />
       )}
+
+      {/* ── Modal: editar plan de pensiones ───────────────────── */}
+      <PlanForm
+        isOpen={mostrarFormularioPlan}
+        plan={planEnEdicion}
+        onClose={() => {
+          setMostrarFormularioPlan(false);
+          setPlanEnEdicion(null);
+        }}
+        onSaved={() => { void handlePlanSaved(); }}
+      />
+
       {/* ── Modal: actualizar valor actual ─────────────────────── */}
       {mostrarModalValor && planSeleccionado && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>

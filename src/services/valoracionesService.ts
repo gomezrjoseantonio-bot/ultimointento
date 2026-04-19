@@ -410,23 +410,13 @@ export const valoracionesService = {
       importados++;
     }
 
-    // Actualizar valorActual de cada plan con la valoración más reciente importada
-    for (const [, { valor, id, store }] of latestFechaPorPlan) {
-      const plan = await db.get(store, id);
-      if (plan) {
-        await db.put(store, {
-          ...plan,
-          valorActual: valor,
-          fechaActualizacion: now,
-        });
-      }
-    }
-
-    // Recalcular snapshots mensuales agrupando por fecha
+    // Recalcular snapshots mensuales agrupando por fecha.
+    // IMPORTANTE: procesamos los meses en orden cronológico porque
+    // `guardarValoracionesMensual` reescribe `valorActual` del plan con el valor del mes
+    // procesado; si lo hiciéramos en otro orden, valorActual podría quedar desactualizado.
     const mesesSet = new Set<string>();
     datos.forEach((d) => mesesSet.add(d.fecha));
-    const meses: string[] = [];
-    mesesSet.forEach((m) => meses.push(m));
+    const meses = [...mesesSet].sort();
 
     for (const mes of meses) {
       const datosMes = datos.filter((d) => d.fecha === mes);
@@ -459,6 +449,22 @@ export const valoracionesService = {
 
       if (inputs.length > 0) {
         await this.guardarValoracionesMensual(mes, inputs);
+      }
+    }
+
+    // Actualizar `valorActual` de cada plan con la valoración más reciente importada.
+    // Se hace al final para que este valor tenga prioridad sobre los escritos intermedios
+    // de `guardarValoracionesMensual` y para cubrir planes legacy almacenados en `inversiones`
+    // (store que `guardarValoracionesMensual` no toca para tipo_activo=plan_pensiones).
+    const nowFinal = new Date().toISOString();
+    for (const [, { valor, id, store }] of latestFechaPorPlan) {
+      const plan = await db.get(store, id);
+      if (plan) {
+        await db.put(store, {
+          ...plan,
+          valorActual: valor,
+          fechaActualizacion: nowFinal,
+        });
       }
     }
 

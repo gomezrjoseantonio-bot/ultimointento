@@ -222,18 +222,22 @@ function mapRowsToAportaciones(
       : 'Importación histórica';
 
     // Detect if this refers to a pension plan — check both inversiones store type
-    // AND planesPensionInversion by name/entidad
+    // AND planesPensionInversion by name (entidad/proveedor is optional; we also match
+    // by empresaNombre for plans imported from the AEAT XML, which often leave
+    // `entidad` empty but record the plan sponsor in `empresaNombre`).
     const tipoPosicion = posicionId ? posicionesById.get(posicionId)?.tipo : undefined;
     const nombreNormLower = posicionNombre.toLowerCase();
     const entidadNormLower = entidad.toLowerCase();
     const esPlanPensiones =
       tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo' ||
-      planes.some(
-        (p) =>
-          p.tipo === 'plan-pensiones' &&
-          p.nombre.toLowerCase() === nombreNormLower &&
-          (!entidadNormLower || (p.entidad ?? '').toLowerCase() === entidadNormLower)
-      );
+      planes.some((p) => {
+        if (p.tipo !== 'plan-pensiones') return false;
+        if (p.nombre.toLowerCase() !== nombreNormLower) return false;
+        if (!entidadNormLower) return true;
+        const entidadPlan = (p.entidad ?? '').toLowerCase();
+        const empresaPlan = (p.empresaNombre ?? '').toLowerCase();
+        return entidadPlan === entidadNormLower || empresaPlan === entidadNormLower;
+      });
 
     if (esPlanPensiones) {
       const importeEmpresa = parseAmount(getRowValue(row, ['importe_empresa', 'aportacion_empresa', 'empresa']));
@@ -315,14 +319,28 @@ const findPosicionOrPlan = (
   });
   if (posMatches.length === 1) return { kind: 'posicion', value: posMatches[0] };
 
-  // 3. Try planesPensionInversion by name + entidad
-  const planMatches = planes.filter((p) => {
-    if (p.tipo !== 'plan-pensiones') return false;
-    if (p.nombre.toLowerCase() !== nombreNorm) return false;
-    if (!entidadNorm) return true;
-    return (p.entidad ?? '').toLowerCase() === entidadNorm;
-  });
-  if (planMatches.length === 1) return { kind: 'plan', value: planMatches[0] };
+  // 3. Try planesPensionInversion by name + entidad (or empresaNombre as fallback).
+  //    Plans created from AEAT XML often have `empresaNombre` set but not `entidad`,
+  //    so we also accept matches on empresaNombre when an entidad is provided.
+  const planMatchesByName = planes.filter(
+    (p) => p.tipo === 'plan-pensiones' && p.nombre.toLowerCase() === nombreNorm
+  );
+  if (planMatchesByName.length === 1) return { kind: 'plan', value: planMatchesByName[0] };
+  if (planMatchesByName.length > 1) {
+    // Multiple plans share the name: try to disambiguate by entidad/empresaNombre.
+    if (entidadNorm) {
+      const exact = planMatchesByName.filter((p) => {
+        const ent = (p.entidad ?? '').toLowerCase();
+        const emp = (p.empresaNombre ?? '').toLowerCase();
+        return ent === entidadNorm || emp === entidadNorm;
+      });
+      if (exact.length === 1) return { kind: 'plan', value: exact[0] };
+    } else {
+      // No entidad in the row — prefer a plan that also has no entidad (XML imports).
+      const sinEntidad = planMatchesByName.filter((p) => !p.entidad);
+      if (sinEntidad.length === 1) return { kind: 'plan', value: sinEntidad[0] };
+    }
+  }
 
   return null;
 };
@@ -518,14 +536,25 @@ export async function buscarPosicionPorNombre(
     return { kind: 'posicion', id: posMatches[0].id, nombre: posMatches[0].nombre, entidad: posMatches[0].entidad };
   }
 
-  const planMatches = planes.filter((p) => {
-    if (p.tipo !== 'plan-pensiones') return false;
-    if (p.nombre.toLowerCase() !== nombreNorm) return false;
-    if (!entidadNorm) return true;
-    return (p.entidad ?? '').toLowerCase() === entidadNorm;
-  });
-  if (planMatches.length === 1 && planMatches[0].id != null) {
-    return { kind: 'plan', id: planMatches[0].id!, nombre: planMatches[0].nombre, entidad: planMatches[0].entidad || '' };
+  const planMatchesByName = planes.filter(
+    (p) => p.tipo === 'plan-pensiones' && p.nombre.toLowerCase() === nombreNorm
+  );
+  const pickPlan = (p: PlanPensionInversion): BusquedaPosicionResult | null =>
+    p.id != null ? { kind: 'plan', id: p.id!, nombre: p.nombre, entidad: p.entidad || '' } : null;
+
+  if (planMatchesByName.length === 1) return pickPlan(planMatchesByName[0]);
+  if (planMatchesByName.length > 1) {
+    if (entidadNorm) {
+      const exact = planMatchesByName.filter((p) => {
+        const ent = (p.entidad ?? '').toLowerCase();
+        const emp = (p.empresaNombre ?? '').toLowerCase();
+        return ent === entidadNorm || emp === entidadNorm;
+      });
+      if (exact.length === 1) return pickPlan(exact[0]);
+    } else {
+      const sinEntidad = planMatchesByName.filter((p) => !p.entidad);
+      if (sinEntidad.length === 1) return pickPlan(sinEntidad[0]);
+    }
   }
 
   return null;
