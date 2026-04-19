@@ -62,7 +62,13 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
   const [importe, setImporte] = useState<string>(
     initial ? String(initial.importe) : '',
   );
-  const [accountId, setAccountId] = useState<string>('');
+  // La cuenta de pago es obligatoria: sin cuenta no podemos crear el
+  // movimiento conciliado en Tesorería que exige la bidireccionalidad.
+  // Si el usuario tiene una única cuenta activa la preseleccionamos.
+  const [accountId, setAccountId] = useState<string>(() => {
+    const activos = accounts.filter((a) => a.activa !== false && a.status !== 'DELETED');
+    return activos.length === 1 && activos[0].id != null ? String(activos[0].id) : '';
+  });
   const [vidaUtil, setVidaUtil] = useState<number>(initial?.vidaUtil ?? 10);
 
   const title = initial
@@ -73,12 +79,13 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
     e.preventDefault();
     const importeNum = parseFloat(importe.replace(',', '.'));
     if (!concepto.trim() || Number.isNaN(importeNum)) return;
+    if (!accountId) return;
     onSave({
       concepto: concepto.trim(),
       fecha,
       proveedorNIF: proveedorNIF.trim() || undefined,
       importe: importeNum,
-      accountId: accountId ? parseInt(accountId, 10) : undefined,
+      accountId: parseInt(accountId, 10),
       vidaUtil: categoria === 'mobiliario' ? vidaUtil : undefined,
     });
   };
@@ -195,24 +202,30 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
             )}
           </div>
 
-          <Field label="Cuenta de pago">
+          <Field label="Cuenta de pago *">
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
+              required
               style={inputStyle}
             >
-              <option value="">— Sin movimiento automático —</option>
-              {accounts.map((acc) => {
-                const name = acc.name || (acc as any).alias || (acc as any).nombre || 'Cuenta';
-                const iban = (acc as any).iban || '';
-                const last4 = iban ? iban.slice(-4) : '';
-                return (
-                  <option key={acc.id} value={acc.id}>
-                    {last4 ? `${name} ·${last4}` : name}
-                  </option>
-                );
-              })}
+              <option value="">— Selecciona cuenta —</option>
+              {accounts
+                .filter((a) => a.activa !== false && a.status !== 'DELETED')
+                .map((acc) => {
+                  const name = acc.alias || acc.name || acc.banco?.name || 'Cuenta';
+                  const iban = acc.iban ? acc.iban.replace(/\s+/g, '') : '';
+                  const last4 = iban ? iban.slice(-4) : '';
+                  return (
+                    <option key={acc.id} value={acc.id}>
+                      {last4 ? `${name} ·${last4}` : name}
+                    </option>
+                  );
+                })}
             </select>
+            <span style={{ fontSize: 11, color: 'var(--grey-500, #6C757D)', marginTop: 4, display: 'block' }}>
+              Se creará un movimiento conciliado en Tesorería
+            </span>
           </Field>
 
           {categoria === 'reparacion' && pendiente > 0 && !initial && (
@@ -261,9 +274,11 @@ const LineaAnualForm: React.FC<Props> = ({ categoria, accounts, initial, pendien
           </button>
           <button
             type="submit"
+            disabled={!accountId || !concepto.trim() || !importe}
             style={{
               padding: '8px 16px',
               border: 'none',
+              opacity: !accountId || !concepto.trim() || !importe ? 0.5 : 1,
               background: C.navy900,
               color: C.white,
               fontSize: 13,
