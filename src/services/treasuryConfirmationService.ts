@@ -132,9 +132,22 @@ function resolveEventCategory(event: TreasuryEvent): CategoryDef | undefined {
 /**
  * Deriva el valor de `GastoInmueble.categoria` (enum interno de fiscalidad)
  * a partir de la categoría canónica del event.
+ *
+ * Acepta tres formas de entrada:
+ *   - `TreasuryEvent`: caso principal, resuelve vía `categoryKey`/`categoryLabel`.
+ *   - `string`: `categoryLabel` o `categoryKey` suelto, usado por los flujos
+ *     que editan el movimiento sin recargar el TreasuryEvent completo
+ *     (p. ej. `updateConfirmedMovement` de PR5.6).
+ *   - `undefined`: devuelve `'otro'` como default seguro.
  */
-function resolveGastoCategoria(event: TreasuryEvent): string {
-  const def = resolveEventCategory(event);
+function resolveGastoCategoria(input: TreasuryEvent | string | undefined): string {
+  if (!input) return 'otro';
+
+  const def =
+    typeof input === 'string'
+      ? resolveCategoryFromRecord({ categoryLabel: input, categoryKey: input })
+      : resolveEventCategory(input);
+
   if (def) {
     // Los keys canónicos terminan en "_inmueble" para gastos de inmueble.
     // Quitamos el sufijo y mapeamos al enum fiscal `GastoCategoria`.
@@ -149,7 +162,9 @@ function resolveGastoCategoria(event: TreasuryEvent): string {
     // no pasa por aquí (su store es mueblesInmueble).
     return 'otro';
   }
-  const label = event.categoryLabel ?? '';
+
+  // Fallback heurístico sobre el label legado.
+  const label = typeof input === 'string' ? input : (input.categoryLabel ?? '');
   const n = normalize(label);
   if (n.includes('reparacion')) return 'reparacion';
   if (n.includes('comunidad')) return 'comunidad';
