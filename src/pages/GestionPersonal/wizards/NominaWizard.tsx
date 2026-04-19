@@ -5,7 +5,7 @@ import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
 import { planesInversionService } from '../../../services/planesInversionService';
-import { getBaseMaxima } from '../../../constants/cotizacionSS';
+import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
 import type { Account } from '../../../services/db';
 import type { PlanPensionInversion } from '../../../types/personal';
 
@@ -14,6 +14,7 @@ const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const MESES_CORTO = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 const SS_TOPE = getBaseMaxima(new Date().getFullYear());
+const SS_DEFAULTS = getSSDefaults(new Date().getFullYear());
 
 // ── Tipos internos del wizard ────────────────────────────────────────────────
 interface WizardVariable {
@@ -376,20 +377,25 @@ const NominaWizard: React.FC = () => {
         beneficiosSociales: beneficios,
         retencion: {
           irpfPorcentaje: irpf,
-          ss: isEditing && originalNomina
-            ? originalNomina.retencion.ss
-            : {
-                baseCotizacionMensual: SS_TOPE,
-                contingenciasComunes: 4.70,
-                desempleo: 1.55,
-                formacionProfesional: 0.10,
-                mei: 0.15,
-                overrideManual: false,
-              },
+          // Always rewrite SS retencion from the wizard's current source of truth
+          // so the stored nomina matches what the form displays (stale legacy
+          // values would make nominaService.calculateSalary diverge from the
+          // wizard preview and propagate different numbers to other pages).
+          ss: {
+            baseCotizacionMensual: SS_TOPE,
+            contingenciasComunes: SS_DEFAULTS.contingenciasComunes.trabajador,
+            desempleo: SS_DEFAULTS.desempleo.trabajador,
+            formacionProfesional: SS_DEFAULTS.formacionProfesional.trabajador,
+            mei: SS_DEFAULTS.mei.trabajador,
+            overrideManual: false,
+          },
           cuotaSolidaridadMensual: solidaridadAnual / 12,
         },
         planPensiones: pp,
-        deduccionesAdicionales: isEditing && originalNomina ? originalNomina.deduccionesAdicionales : [],
+        // The wizard does not expose "deducciones adicionales"; preserving stale
+        // values from an old import would create hidden deductions that the
+        // summary cannot show. Always save the set the user can see: empty.
+        deduccionesAdicionales: [],
         cuentaAbono: cuentaId || 0,
         reglaCobroDia: diaCobro === 31 ? { tipo: 'ultimo-habil' as const } : { tipo: 'fijo' as const, dia: diaCobro },
         activa: true,
