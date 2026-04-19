@@ -1,12 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import Header from '../components/navigation/Header';
-import CommandPalette from '../components/common/CommandPalette';
-import KeyboardShortcutsModal from '../components/common/KeyboardShortcutsModal';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { preloadRouteResources } from '../services/navigationPerformanceService';
+
+// Ambos overlays sólo aparecen bajo demanda (Cmd+K / ?). Los mantenemos fuera
+// del bundle principal para no sumar lucide-react + handlers al arranque.
+const CommandPalette = lazy(() => import('../components/common/CommandPalette'));
+const KeyboardShortcutsModal = lazy(() => import('../components/common/KeyboardShortcutsModal'));
 
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,11 +36,19 @@ const MainLayout: React.FC = () => {
   
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-      {/* Sprint 5: Command Palette (Cmd+K) */}
-      <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
-      
-      {/* Sprint 5: Keyboard Shortcuts Help Modal */}
-      <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      {/* Sprint 5: Command Palette (Cmd+K) — montaje perezoso sólo al abrir */}
+      {isCommandPaletteOpen && (
+        <Suspense fallback={null}>
+          <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
+        </Suspense>
+      )}
+
+      {/* Sprint 5: Keyboard Shortcuts Help Modal — montaje perezoso sólo al abrir */}
+      {showShortcuts && (
+        <Suspense fallback={null}>
+          <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+        </Suspense>
+      )}
       
       {/* Skip Link - Sprint 3: Accessibility improvement */}
       <a
