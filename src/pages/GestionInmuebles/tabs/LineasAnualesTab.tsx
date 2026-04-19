@@ -4,19 +4,21 @@
 // - Al guardar una línea dispara movimiento pagado conciliado en Tesorería
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Pencil, Paperclip, Trash2 } from 'lucide-react';
+import { Check, Pencil, Paperclip, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type {
   Account,
   GastoInmueble,
   MejoraInmueble,
   MuebleInmueble,
+  TreasuryEvent,
 } from '../../../services/db';
 import { initDB } from '../../../services/db';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
 import { mejorasInmuebleService } from '../../../services/mejorasInmuebleService';
 import { mueblesInmuebleService } from '../../../services/mueblesInmuebleService';
 import { confirmDelete } from '../../../services/confirmationService';
+import { confirmTreasuryEvent } from '../../../services/treasuryConfirmationService';
 import LineaAnualForm, { type LineaAnualFormData } from './LineaAnualForm';
 import FacturaSelectorModal from './FacturaSelectorModal';
 
@@ -58,8 +60,13 @@ const storeForCategoria = (categoria: Categoria): CategoriaStore => {
   return 'mueblesInmueble';
 };
 
+// PR3: una fila puede venir de una línea confirmada (gastos/mejoras/muebles)
+// o de una previsión en treasuryEvents (kind === 'prevision').
+type LineaKind = 'linea' | 'prevision';
+
 interface LineaUI {
-  id: number;
+  id: number;                    // id del store correspondiente (linea) o del treasuryEvent (prevision)
+  kind: LineaKind;
   fecha: string;
   concepto: string;
   proveedorNIF?: string;
@@ -67,17 +74,42 @@ interface LineaUI {
   origen: 'manual' | 'xml_aeat' | 'otro';
   estado: string;
   documentId?: number;          // factura vinculada del Inbox
-  movimientoId?: number;        // movimiento Tesorería vinculado
-  accountId?: number;           // cuenta resuelta (del movimiento o cuentaBancaria)
-  estadoTesoreria?: 'conciliado' | 'pendiente' | null;
+  movimientoId?: number;        // movimiento Tesorería vinculado (sólo lineas confirmadas)
+  accountId?: number;           // cuenta resuelta (del movimiento o cuentaBancaria / event.accountId)
+  estadoTesoreria?: 'conciliado' | 'predicted' | 'pendiente' | null;
   vidaUtil?: number;            // mobiliario
   amortizacionAnual?: number;   // mobiliario
-  raw: GastoInmueble | MejoraInmueble | MuebleInmueble;
+  // Para previsiones: el treasuryEventId (igual a id cuando kind==='prevision')
+  treasuryEventId?: number;
+  raw: GastoInmueble | MejoraInmueble | MuebleInmueble | TreasuryEvent;
 }
 
 // Resuelve la cuenta para precargar el formulario al editar.
 // Preferimos el accountId ya cacheado en la línea (resuelto al cargar).
 const resolveEditingAccountId = (linea: LineaUI): number | undefined => linea.accountId;
+
+// PR3 · etiqueta de categoryLabel por categoría (para treasuryEvents con
+// ambito INMUEBLE). Debe coincidir con lo que interpreta
+// treasuryConfirmationService.categoryLabelToStoreName.
+const CATEGORY_LABEL_FOR: Record<Categoria, string> = {
+  reparacion: 'Reparación inmueble',
+  mejora: 'Mejora inmueble',
+  mobiliario: 'Mobiliario inmueble',
+};
+
+// Dado el categoryLabel de un treasuryEvent, decide si pertenece a la tab
+// actual. "Reparación inmueble" → reparación tab, etc.
+const eventBelongsToCategoria = (
+  event: TreasuryEvent,
+  categoria: Categoria,
+): boolean => {
+  const label = (event.categoryLabel ?? '').toLowerCase();
+  if (categoria === 'reparacion') return label.includes('repar');
+  if (categoria === 'mejora') return label.includes('mejora');
+  if (categoria === 'mobiliario')
+    return label.includes('mobiliario') || label.includes('muebles');
+  return false;
+};
 
 interface Props {
   propertyId: number;
@@ -141,6 +173,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
           const accountId = fromMovement ?? parseCuentaBancaria(g.cuentaBancaria);
           ui.push({
             id: g.id!,
+            kind: 'linea',
             fecha: g.fecha,
             concepto: g.concepto,
             proveedorNIF: g.proveedorNIF,
@@ -151,6 +184,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
             movimientoId: Number.isFinite(movimientoIdNum) ? movimientoIdNum : undefined,
             accountId,
             estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
+            treasuryEventId: (g as any).treasuryEventId,
             raw: g,
           });
         }
@@ -166,6 +200,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                 : undefined;
             ui.push({
               id: m.id!,
+              kind: 'linea',
               fecha: m.fecha,
               concepto: m.descripcion,
               proveedorNIF: m.proveedorNIF,
@@ -176,6 +211,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
               movimientoId: Number.isFinite(movimientoIdNum) ? movimientoIdNum : undefined,
               accountId,
               estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
+              treasuryEventId: (m as any).treasuryEventId,
               raw: m,
             });
           }
@@ -193,6 +229,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                 : undefined;
             ui.push({
               id: mu.id!,
+              kind: 'linea',
               fecha: mu.fechaAlta,
               concepto: mu.descripcion,
               proveedorNIF: mu.proveedorNIF,
@@ -205,10 +242,48 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
               estadoTesoreria: Number.isFinite(movimientoIdNum) ? 'conciliado' : null,
               vidaUtil: mu.vidaUtil,
               amortizacionAnual: mu.importe / (mu.vidaUtil || 10),
+              treasuryEventId: (mu as any).treasuryEventId,
               raw: mu,
             });
           }
         }
+      }
+
+      // PR3: añadir previsiones (treasuryEvents predicted) como filas
+      // adicionales. Así la tab refleja la realidad de Conciliación.
+      const coveredTreasuryEventIds = new Set<number>();
+      for (const linea of ui) {
+        if (linea.treasuryEventId != null) {
+          coveredTreasuryEventIds.add(linea.treasuryEventId);
+        }
+      }
+      const allEvents = (await db.getAll('treasuryEvents').catch(() => [])) as TreasuryEvent[];
+      for (const ev of allEvents) {
+        if (ev.ambito !== 'INMUEBLE') continue;
+        if (ev.inmuebleId !== propertyId) continue;
+        if (!eventBelongsToCategoria(ev, categoria)) continue;
+        if (ev.status !== 'predicted') continue;
+        const evDate = ev.predictedDate ?? '';
+        const evYear = Number(evDate.slice(0, 4));
+        if (Number.isFinite(evYear)) years.add(evYear);
+        if (evYear !== year) continue;
+        if (ev.id != null && coveredTreasuryEventIds.has(ev.id)) continue;
+        ui.push({
+          id: ev.id!,
+          kind: 'prevision',
+          fecha: evDate,
+          concepto: ev.description,
+          proveedorNIF: ev.counterparty,
+          importe: Math.abs(ev.amount),
+          origen: 'manual',
+          estado: 'previsto',
+          accountId: typeof ev.accountId === 'number' ? ev.accountId : undefined,
+          estadoTesoreria: 'predicted',
+          treasuryEventId: ev.id,
+          vidaUtil: categoria === 'mobiliario' ? 10 : undefined,
+          amortizacionAnual: categoria === 'mobiliario' ? Math.abs(ev.amount) / 10 : undefined,
+          raw: ev,
+        });
       }
 
       ui.sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -250,21 +325,6 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
   const pendiente = Math.max(0, xmlDeclarado - desglosado);
   const pct = xmlDeclarado > 0 ? Math.min(100, (desglosado / xmlDeclarado) * 100) : 0;
 
-  const persistMovimientoId = useCallback(
-    async (lineaId: number, movimientoId: number) => {
-      const db = await initDB();
-      const store = storeForCategoria(categoria);
-      const existing: any = await db.get(store, lineaId);
-      if (!existing) return;
-      await db.put(store, {
-        ...existing,
-        movimientoId: String(movimientoId),
-        updatedAt: new Date().toISOString(),
-      });
-    },
-    [categoria],
-  );
-
   const inmuebleAlias = useMemo(() => {
     // Lazy: intentamos usar el alias desde la última línea raw; si no,
     // caemos al id. Evita un fetch extra para cada save.
@@ -278,11 +338,28 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
       return;
     }
     try {
-      const ejercicio = new Date(data.fecha).getFullYear();
-      let lineaId: number | undefined;
+      // PR3: Editar previsión (treasuryEvent predicted) — sólo actualiza el
+      // event, no toca movements ni crea línea. Se confirmará al puntear.
+      if (editing && editing.kind === 'prevision') {
+        await updatePredictedEvent(editing.id, {
+          amount: data.importe,
+          date: data.fecha,
+          accountId: data.accountId,
+          description: data.concepto,
+          counterparty: data.proveedorNIF,
+        });
+        toast.success('Previsión actualizada');
+        setShowForm(false);
+        setEditing(null);
+        void reload();
+        return;
+      }
 
-      if (categoria === 'reparacion') {
-        if (editing) {
+      // PR3: Editar línea confirmada — mantiene el flujo anterior
+      // (actualizar línea + movement vinculado).
+      if (editing && editing.kind === 'linea') {
+        const ejercicio = new Date(data.fecha).getFullYear();
+        if (categoria === 'reparacion') {
           await gastosInmuebleService.update(editing.id, {
             concepto: data.concepto,
             fecha: data.fecha,
@@ -290,24 +367,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
             proveedorNIF: data.proveedorNIF,
             ejercicio,
           });
-          await syncLinkedMovement(editing, data, propertyId, inmuebleAlias, categoria);
-        } else {
-          lineaId = (await gastosInmuebleService.add({
-            inmuebleId: propertyId,
-            ejercicio,
-            fecha: data.fecha,
-            concepto: data.concepto,
-            categoria: 'reparacion',
-            casillaAEAT: '0106',
-            importe: data.importe,
-            origen: 'manual',
-            estado: 'conciliado',
-            proveedorNIF: data.proveedorNIF,
-            cuentaBancaria: String(data.accountId),
-          } as any)) as unknown as number;
-        }
-      } else if (categoria === 'mejora') {
-        if (editing) {
+        } else if (categoria === 'mejora') {
           await mejorasInmuebleService.actualizar(editing.id, {
             descripcion: data.concepto,
             fecha: data.fecha,
@@ -315,21 +375,7 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
             proveedorNIF: data.proveedorNIF,
             ejercicio,
           });
-          await syncLinkedMovement(editing, data, propertyId, inmuebleAlias, categoria);
-        } else {
-          const created = await mejorasInmuebleService.crear({
-            inmuebleId: propertyId,
-            ejercicio,
-            descripcion: data.concepto,
-            tipo: 'mejora',
-            importe: data.importe,
-            fecha: data.fecha,
-            proveedorNIF: data.proveedorNIF,
-          });
-          lineaId = created.id;
-        }
-      } else if (categoria === 'mobiliario') {
-        if (editing) {
+        } else if (categoria === 'mobiliario') {
           await mueblesInmuebleService.actualizar(editing.id, {
             descripcion: data.concepto,
             fechaAlta: data.fecha,
@@ -337,41 +383,29 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
             vidaUtil: data.vidaUtil ?? 10,
             proveedorNIF: data.proveedorNIF,
           });
-          await syncLinkedMovement(editing, data, propertyId, inmuebleAlias, categoria);
-        } else {
-          const created = await mueblesInmuebleService.crear({
-            inmuebleId: propertyId,
-            ejercicio,
-            descripcion: data.concepto,
-            fechaAlta: data.fecha,
-            importe: data.importe,
-            vidaUtil: data.vidaUtil ?? 10,
-            activo: true,
-            proveedorNIF: data.proveedorNIF,
-          });
-          lineaId = created.id;
         }
+        await syncLinkedMovement(editing, data, propertyId, inmuebleAlias, categoria);
+        toast.success('Línea actualizada');
+        setShowForm(false);
+        setEditing(null);
+        void reload();
+        return;
       }
 
-      // Si es nueva línea, crea movimiento conciliado en Tesorería y guarda id cruzado
-      if (lineaId != null && !editing) {
-        const movementId = await createExpenseMovement({
-          categoria,
-          accountId: data.accountId,
-          date: data.fecha,
-          amount: data.importe,
-          concepto: data.concepto,
-          proveedorNIF: data.proveedorNIF,
-          propertyId,
-          inmuebleAlias,
-          lineaId,
-        });
-        if (movementId != null) {
-          await persistMovimientoId(lineaId, movementId);
-        }
-      }
-
-      toast.success(editing ? 'Línea actualizada' : 'Línea creada');
+      // PR3: Nueva línea → se crea sólo como previsión. Cuando el usuario
+      // puntea desde Conciliación (o desde esta misma tab con el botón ✓)
+      // se materializa el movement + la línea en gastosInmueble/… vía
+      // confirmTreasuryEvent.
+      await createExpensePrevision({
+        categoria,
+        accountId: data.accountId,
+        date: data.fecha,
+        amount: data.importe,
+        concepto: data.concepto,
+        proveedorNIF: data.proveedorNIF,
+        propertyId,
+      });
+      toast.success('Previsión creada. Confírmala al ver el cargo en el banco.');
       setShowForm(false);
       setEditing(null);
       void reload();
@@ -381,10 +415,31 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
     }
   };
 
+  // PR3: Puntear inline desde la tab del inmueble (botón ✓)
+  const handleQuickConfirm = async (eventId: number) => {
+    try {
+      await confirmTreasuryEvent(eventId);
+      toast.success('Confirmada y conciliada');
+      void reload();
+    } catch (err) {
+      console.error('Error confirmando previsión:', err);
+      toast.error(err instanceof Error ? err.message : 'Error al confirmar');
+    }
+  };
+
   const handleDelete = async (linea: LineaUI) => {
     const ok = await confirmDelete(`"${linea.concepto}"`);
     if (!ok) return;
     try {
+      // PR3: Borrar previsión — sólo elimina el treasuryEvent.
+      if (linea.kind === 'prevision') {
+        const db = await initDB();
+        await db.delete('treasuryEvents', linea.id);
+        toast.success('Previsión eliminada');
+        void reload();
+        return;
+      }
+
       // Elimina el movimiento Tesorería vinculado primero (si existe) para
       // que Conciliación quede consistente con la línea borrada.
       if (linea.movimientoId != null) {
@@ -414,6 +469,13 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
 
   const handleAssociateFactura = async (documentId: number | null) => {
     if (!facturaModalLinea) return;
+    // PR3: sólo las líneas confirmadas admiten factura. Previsiones no
+    // tienen registro físico en gastosInmueble/… hasta que se punteen.
+    if (facturaModalLinea.kind !== 'linea') {
+      toast.error('Confirma la previsión antes de asociar una factura');
+      setFacturaModalLinea(null);
+      return;
+    }
     try {
       const db = await initDB();
       const store = storeForCategoria(categoria);
@@ -514,26 +576,30 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
               </tr>
             </thead>
             <tbody>
-              {lineas.map((linea) => (
-                <tr key={linea.id} style={{ borderBottom: `1px solid ${C.grey200}` }}>
-                  <Td mono>{fmtDate(linea.fecha)}</Td>
-                  <Td bold>{linea.concepto}</Td>
-                  <Td mono>{linea.proveedorNIF || '—'}</Td>
-                  <Td align="right" mono>
+              {lineas.map((linea) => {
+                const esPrevision = linea.kind === 'prevision';
+                const rowBg = esPrevision ? C.grey50 : undefined;
+                const textColor = esPrevision ? C.grey500 : C.grey900;
+                return (
+                <tr key={`${linea.kind}-${linea.id}`} style={{ borderBottom: `1px solid ${C.grey200}`, background: rowBg }}>
+                  <Td mono color={textColor}>{fmtDate(linea.fecha)}</Td>
+                  <Td bold color={textColor}>{linea.concepto}</Td>
+                  <Td mono color={textColor}>{linea.proveedorNIF || '—'}</Td>
+                  <Td align="right" mono color={textColor}>
                     {fmtEuro(linea.importe)}
                   </Td>
                   {categoria === 'mobiliario' && (
                     <>
-                      <Td align="right" mono>
+                      <Td align="right" mono color={textColor}>
                         {linea.amortizacionAnual != null ? fmtEuro(linea.amortizacionAnual) : '—'}
                       </Td>
-                      <Td align="right" mono>
+                      <Td align="right" mono color={textColor}>
                         {linea.vidaUtil ? `${linea.vidaUtil} años` : '—'}
                       </Td>
                     </>
                   )}
                   {categoria !== 'mobiliario' && (
-                    <Td>{linea.origen === 'xml_aeat' ? 'XML AEAT' : 'Manual'}</Td>
+                    <Td color={textColor}>{linea.origen === 'xml_aeat' ? 'XML AEAT' : 'Manual'}</Td>
                   )}
                   <Td>
                     {linea.estadoTesoreria === 'conciliado' ? (
@@ -552,12 +618,28 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                       >
                         conciliado
                       </span>
+                    ) : linea.estadoTesoreria === 'predicted' ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          background: C.grey200,
+                          color: C.grey700,
+                          fontSize: 11,
+                          fontWeight: 500,
+                          letterSpacing: '.02em',
+                        }}
+                      >
+                        previsto
+                      </span>
                     ) : (
                       <span style={{ color: C.grey500 }}>—</span>
                     )}
                   </Td>
                   <Td align="center">
-                    {linea.origen === 'xml_aeat' ? (
+                    {linea.origen === 'xml_aeat' || esPrevision ? (
                       <span style={{ color: C.grey500 }}>—</span>
                     ) : (
                       <IconButton
@@ -573,6 +655,14 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                   </Td>
                   <Td align="right">
                     <div style={{ display: 'inline-flex', gap: 4 }}>
+                      {esPrevision && linea.treasuryEventId != null && (
+                        <IconButton
+                          title="Confirmar (puntear)"
+                          onClick={() => void handleQuickConfirm(linea.treasuryEventId as number)}
+                        >
+                          <Check size={14} color="var(--teal-600, #00A7B5)" />
+                        </IconButton>
+                      )}
                       {linea.origen !== 'xml_aeat' && (
                         <IconButton
                           title="Editar"
@@ -592,7 +682,8 @@ const LineasAnualesTab: React.FC<Props> = ({ propertyId, categoria }) => {
                     </div>
                   </Td>
                 </tr>
-              ))}
+              );
+              })}
               {categoria === 'reparacion' && pendiente > 0 && (
                 <tr style={{ borderBottom: `1px solid ${C.grey200}`, background: C.grey50 }}>
                   <Td mono>—</Td>
@@ -710,13 +801,14 @@ const Td: React.FC<{
   align?: 'left' | 'right' | 'center';
   mono?: boolean;
   bold?: boolean;
-}> = ({ children, align = 'left', mono, bold }) => (
+  color?: string;
+}> = ({ children, align = 'left', mono, bold, color }) => (
   <td
     style={{
       padding: '10px 16px',
       textAlign: align,
       fontSize: 13,
-      color: C.grey900,
+      color: color ?? C.grey900,
       fontWeight: bold ? 500 : 400,
       fontFamily: mono ? "'IBM Plex Mono', monospace" : undefined,
     }}
@@ -777,7 +869,7 @@ const CATEGORIA_TO_MOVEMENT: Record<
   },
 };
 
-interface CreateExpenseMovementInput {
+interface CreateExpensePrevisionInput {
   categoria: Categoria;
   accountId: number;
   date: string;
@@ -785,61 +877,84 @@ interface CreateExpenseMovementInput {
   concepto: string;
   proveedorNIF?: string;
   propertyId: number;
-  inmuebleAlias: string;
-  lineaId: number;
 }
 
-// Crea un movimiento conciliado en Tesorería con la misma forma que los
-// movimientos de venta (`createTreasuryMovement` en propertySaleService). Es
-// clave que todos los campos que consumen los filtros de Conciliación estén
-// presentes: unifiedStatus, movementState, ambito, inmuebleId, category.tipo.
-async function createExpenseMovement(
-  input: CreateExpenseMovementInput,
+// PR3 · Arquitectura unificada: una nueva reparación/mejora/mobiliario nace
+// como treasuryEvent predicted con ambito=INMUEBLE + categoryLabel. El
+// movement real y la línea en gastos/mejoras/muebles se crean sólo al
+// puntear (ver treasuryConfirmationService.confirmTreasuryEvent).
+async function createExpensePrevision(
+  input: CreateExpensePrevisionInput,
 ): Promise<number | null> {
   const config = CATEGORIA_TO_MOVEMENT[input.categoria];
   const now = new Date().toISOString();
   try {
     const db = await initDB();
-    const movement = {
+    const event: Omit<TreasuryEvent, 'id'> = {
+      type: 'expense',
+      amount: Math.abs(input.amount),
+      predictedDate: input.date,
+      description: input.concepto,
+      sourceType: 'manual',
       accountId: input.accountId,
-      date: input.date,
-      valueDate: input.date,
-      amount: -Math.abs(input.amount),
-      description: `${config.prefix} ${input.inmuebleAlias} · ${input.concepto}`,
-      counterparty: input.proveedorNIF || config.prefix,
-      reference: config.reference(input.lineaId),
-      status: 'conciliado' as const,
-      unifiedStatus: 'conciliado' as const,
-      source: 'manual' as const,
-      category: { tipo: config.tipoCategory },
-      type: 'Gasto' as const,
-      origin: 'Manual' as const,
-      movementState: 'Conciliado' as const,
-      ambito: 'INMUEBLE' as const,
-      inmuebleId: String(input.propertyId),
-      statusConciliacion: 'match_manual' as const,
-      tags: ['property_management', input.categoria],
+      status: 'predicted',
+      ambito: 'INMUEBLE',
+      inmuebleId: input.propertyId,
+      categoryLabel: config.tipoCategory,
+      counterparty: input.proveedorNIF,
       createdAt: now,
       updatedAt: now,
     };
-    const id = await db.add('movements', movement as any);
+    const id = await db.add('treasuryEvents', event as any);
     return typeof id === 'number' ? id : null;
   } catch (err) {
-    console.warn('No se pudo crear el movimiento en Tesorería:', err);
+    console.warn('No se pudo crear la previsión en Tesorería:', err);
     return null;
   }
 }
 
-// Al editar una línea con movimiento vinculado, mantenemos sincronizados
-// fecha, importe y descripción. Si no tenía movimiento, lo creamos.
+// PR3: editar campos de un treasuryEvent predicted (desde el form de edición
+// de la tab, cuando el usuario abre una fila "previsto").
+async function updatePredictedEvent(
+  eventId: number,
+  data: {
+    amount: number;
+    date: string;
+    accountId: number;
+    description: string;
+    counterparty?: string;
+  },
+): Promise<void> {
+  const db = await initDB();
+  const existing = (await db.get('treasuryEvents', eventId)) as
+    | TreasuryEvent
+    | undefined;
+  if (!existing) return;
+  if (existing.status !== 'predicted') return;
+  await db.put('treasuryEvents', {
+    ...existing,
+    amount: Math.abs(data.amount),
+    predictedDate: data.date,
+    description: data.description,
+    counterparty: data.counterparty,
+    accountId: data.accountId,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+// Al editar una línea ya confirmada con movimiento vinculado, mantenemos
+// sincronizados fecha, importe y descripción. Si el movimiento se borró por
+// fuera, se deja la línea sin movement (el usuario tendrá que volver a
+// conciliar manualmente). Sólo aplica a rows de kind === 'linea'.
 async function syncLinkedMovement(
   editing: LineaUI,
   data: LineaAnualFormData,
-  propertyId: number,
+  _propertyId: number,
   inmuebleAlias: string,
   categoria: Categoria,
 ): Promise<void> {
   if (!data.accountId) return;
+  if (editing.kind !== 'linea') return;
   const config = CATEGORIA_TO_MOVEMENT[categoria];
   const now = new Date().toISOString();
   const db = await initDB();
@@ -854,34 +969,6 @@ async function syncLinkedMovement(
         amount: -Math.abs(data.importe),
         description: `${config.prefix} ${inmuebleAlias} · ${data.concepto}`,
         counterparty: data.proveedorNIF || existing.counterparty || config.prefix,
-        updatedAt: now,
-      });
-      return;
-    }
-    // Movimiento huérfano (fue borrado desde Tesorería): caemos en la rama
-    // de "sin movimiento" para recrearlo y re-anclar el movimientoId de la
-    // línea, manteniendo la bidireccionalidad.
-  }
-  // No había movimiento o el vinculado era huérfano: creamos uno nuevo y
-  // guardamos id cruzado en la línea.
-  const movementId = await createExpenseMovement({
-    categoria,
-    accountId: data.accountId,
-    date: data.fecha,
-    amount: data.importe,
-    concepto: data.concepto,
-    proveedorNIF: data.proveedorNIF,
-    propertyId,
-    inmuebleAlias,
-    lineaId: editing.id,
-  });
-  if (movementId != null) {
-    const store = storeForCategoria(categoria);
-    const existing: any = await db.get(store, editing.id);
-    if (existing) {
-      await db.put(store, {
-        ...existing,
-        movimientoId: String(movementId),
         updatedAt: now,
       });
     }
