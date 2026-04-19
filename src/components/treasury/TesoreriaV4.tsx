@@ -487,23 +487,58 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
     if (!ev) return;
     const originalStatus = ev.status;
     const newStatus = originalStatus === 'previsto' ? 'confirmado' : 'previsto';
-    const dbStatus = newStatus === 'confirmado' ? 'confirmed' : 'predicted';
+    // PR3: usamos confirmTreasuryEvent / revertTreasuryConfirmation para
+    // mantener la arquitectura unificada. Al puntear se genera un movement
+    // real (y la línea de inmueble si aplica). Al despuntear se revierte.
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, status: newStatus } : e));
     try {
       if (ev.dbId) {
         const db = await initDB();
         const dbEvent = await db.get('treasuryEvents', ev.dbId);
+
+        if (newStatus === 'confirmado') {
+          const { confirmTreasuryEvent } = await import('../../services/treasuryConfirmationService');
+          try {
+            await confirmTreasuryEvent(ev.dbId);
+          } catch (confirmErr: any) {
+            // Si el event no tiene cuenta o falla por otro motivo,
+            // caemos al flujo legacy: poner status='confirmed' sin
+            // movement. Así mantenemos la UX previa para los casos que
+            // el servicio aún no cubre (events sin accountId, etc.).
+            console.warn('[TesoreriaV4] confirmTreasuryEvent falló, fallback a status=confirmed:', confirmErr);
+            if (dbEvent) {
+              await db.put('treasuryEvents', {
+                ...dbEvent,
+                status: 'confirmed',
+                actualDate: new Date().toISOString().substring(0, 10),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          }
+        } else {
+          // Despuntear: si había un movement asociado lo revertimos; si no,
+          // simplemente bajamos el status a predicted.
+          const executedMovementId = dbEvent?.executedMovementId;
+          if (typeof executedMovementId === 'number') {
+            const { revertTreasuryConfirmation } = await import('../../services/treasuryConfirmationService');
+            try { await revertTreasuryConfirmation(executedMovementId); }
+            catch (revertErr) {
+              console.warn('[TesoreriaV4] revertTreasuryConfirmation falló:', revertErr);
+            }
+          } else if (dbEvent) {
+            await db.put('treasuryEvents', {
+              ...dbEvent,
+              status: 'predicted',
+              actualDate: undefined,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
+
         if (dbEvent) {
-          await db.put('treasuryEvents', {
-            ...dbEvent, status: dbStatus,
-            actualDate: newStatus === 'confirmado' ? new Date().toISOString().substring(0, 10) : undefined,
-            updatedAt: new Date().toISOString(),
-          });
-          invalidateCachedStores(['treasuryEvents']);
+          invalidateCachedStores(['treasuryEvents', 'movements']);
 
           if (newStatus === 'confirmado') {
-            await finalizePropertySaleLoanCancellationFromTreasuryEvent(ev.dbId);
-
             if (dbEvent?.sourceType === 'personal_expense') {
               try {
                 const tesoreriaEventoId = String(ev.dbId);
