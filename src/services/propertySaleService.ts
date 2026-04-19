@@ -4,7 +4,10 @@ import { triggerTreasuryUpdate } from './treasuryEventsService';
 import { getFiscalSummary } from './fiscalSummaryService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { getAllocationFactor, prestamosService } from './prestamosService';
-import type { GananciaPatrimonialResult } from './gananciaPatrimonialService';
+import {
+  calcularGananciaPatrimonial,
+  type GananciaPatrimonialResult,
+} from './gananciaPatrimonialService';
 
 export interface SaleSimulationInput {
   salePrice: number;
@@ -362,11 +365,21 @@ export const getLinkedLoansForPropertySale = async (
     const comisionRate = Number(
       anyLoan.comisionCancelacionTotal ?? anyLoan.comisionCancelacion ?? anyLoan.comisionAmortizacion ?? 0,
     );
-    // Si la comisión está en % (<=100), la convertimos a euros sobre el saldo vivo; si ya es en euros, la dejamos.
+    // Normalizamos para cubrir tanto rates decimales (0.01 = 1% como los usa
+    // LoanSettlementModal) como porcentajes "humanos" (1 = 1%). Si el valor
+    // parece un importe fijo en euros (>100) lo dejamos tal cual.
+    const normalizedRate =
+      Number.isFinite(comisionRate) && comisionRate > 0
+        ? comisionRate <= 1
+          ? comisionRate
+          : comisionRate <= 100
+          ? comisionRate / 100
+          : null
+        : null;
     const comisionContrato =
-      Number.isFinite(comisionRate) && comisionRate > 0 && comisionRate <= 100
-        ? Number(((payoff * comisionRate) / 100).toFixed(2))
-        : Number.isFinite(comisionRate)
+      normalizedRate !== null
+        ? Number((payoff * normalizedRate).toFixed(2))
+        : Number.isFinite(comisionRate) && comisionRate > 0
         ? comisionRate
         : 0;
 
@@ -739,20 +752,41 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   ].filter((item) => item.amount > 0);
   const now = new Date().toISOString();
 
-  const fiscalSnapshot = input.fiscalSnapshot
+  // Snapshot fiscal: si el caller (wizard) lo aporta, se usa; si no (callers
+  // legacy, tests), se calcula al vuelo con el servicio de ganancia
+  // patrimonial para mantener compatibilidad y no perder la previsión IRPF.
+  let resolvedSnapshot: GananciaPatrimonialResult | undefined = input.fiscalSnapshot;
+  if (!resolvedSnapshot) {
+    try {
+      resolvedSnapshot = await calcularGananciaPatrimonial({
+        propertyId: input.propertyId,
+        sellDate: input.saleDate,
+        salePrice: Number(input.salePrice || 0),
+        agencyCommission: Number(input.agencyCommission || 0),
+        municipalTax: Number(input.municipalTax || 0),
+        saleNotaryCosts: Number(input.saleNotaryCosts || 0),
+        otherCosts: Number(input.otherCosts || 0),
+      });
+    } catch (err) {
+      console.warn('No se pudo calcular fiscalSnapshot al confirmar la venta:', err);
+      resolvedSnapshot = undefined;
+    }
+  }
+
+  const fiscalSnapshot = resolvedSnapshot
     ? {
-        precioAdquisicion: input.fiscalSnapshot.precioAdquisicion,
-        gastosAdquisicion: input.fiscalSnapshot.gastosAdquisicion,
-        mejorasCapexAcumuladas: input.fiscalSnapshot.mejorasCapexAcumuladas,
-        amortizacionAcumuladaDeclarada: input.fiscalSnapshot.amortizacionAcumuladaDeclarada,
-        amortizacionAcumuladaAtlas: input.fiscalSnapshot.amortizacionAcumuladaAtlas,
-        costeFiscalAdquisicion: input.fiscalSnapshot.costeFiscalAdquisicion,
-        gastosVenta: input.fiscalSnapshot.gastosVenta,
-        valorNetoTransmision: input.fiscalSnapshot.valorNetoTransmision,
-        gananciaPatrimonial: input.fiscalSnapshot.gananciaPatrimonial,
-        irpfEstimado: input.fiscalSnapshot.irpfEstimado,
-        anosDeclaradosXml: input.fiscalSnapshot.anosDeclaradosXml,
-        anosCalculadosAtlas: input.fiscalSnapshot.anosCalculadosAtlas,
+        precioAdquisicion: resolvedSnapshot.precioAdquisicion,
+        gastosAdquisicion: resolvedSnapshot.gastosAdquisicion,
+        mejorasCapexAcumuladas: resolvedSnapshot.mejorasCapexAcumuladas,
+        amortizacionAcumuladaDeclarada: resolvedSnapshot.amortizacionAcumuladaDeclarada,
+        amortizacionAcumuladaAtlas: resolvedSnapshot.amortizacionAcumuladaAtlas,
+        costeFiscalAdquisicion: resolvedSnapshot.costeFiscalAdquisicion,
+        gastosVenta: resolvedSnapshot.gastosVenta,
+        valorNetoTransmision: resolvedSnapshot.valorNetoTransmision,
+        gananciaPatrimonial: resolvedSnapshot.gananciaPatrimonial,
+        irpfEstimado: resolvedSnapshot.irpfEstimado,
+        anosDeclaradosXml: resolvedSnapshot.anosDeclaradosXml,
+        anosCalculadosAtlas: resolvedSnapshot.anosCalculadosAtlas,
         calculatedAt: now,
       }
     : undefined;

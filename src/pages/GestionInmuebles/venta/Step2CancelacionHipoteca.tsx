@@ -69,12 +69,13 @@ const Step2CancelacionHipoteca: React.FC<Step2Props> = ({
 
   const updateLoanCommission = (idx: number, raw: string) => {
     const parsed = parseFloat(raw.replace(',', '.'));
+    const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
     const next = state.loansToCancel.map((l, i) =>
       i === idx
         ? {
             ...l,
             comisionFinalAplicadaInput: raw,
-            comisionFinalAplicada: Number.isFinite(parsed) ? parsed : 0,
+            comisionFinalAplicada: sanitized,
           }
         : l,
     );

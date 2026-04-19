@@ -4,12 +4,11 @@
 // V4: sin rojos/amarillos/verdes; alert box usa teal-100 con borde teal-600.
 
 import React from 'react';
-import type { Account, Property } from '../../../services/db';
+import type { Account } from '../../../services/db';
 import { W, fontFamily, fmtEuro, inputStyle, labelStyle, sectionStyle, sectionTitleStyle, primaryButtonStyle, secondaryButtonStyle } from './wizardStyles';
 import type { VentaWizardState } from './wizardTypes';
 
 interface Step1Props {
-  property: Property;
   accounts: Account[];
   sinIdentificarCount: number;
   state: VentaWizardState;
@@ -21,7 +20,6 @@ interface Step1Props {
 const isPositive = (n: number): boolean => Number.isFinite(n) && n > 0;
 
 const Step1DatosVenta: React.FC<Step1Props> = ({
-  property,
   accounts,
   sinIdentificarCount,
   state,
@@ -91,10 +89,8 @@ const Step1DatosVenta: React.FC<Step1Props> = ({
               onChange={(e) => {
                 const raw = e.target.value;
                 const parsed = parseFloat(raw.replace(',', '.'));
-                onChange({
-                  salePriceInput: raw,
-                  salePrice: Number.isFinite(parsed) ? parsed : 0,
-                });
+                const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+                onChange({ salePriceInput: raw, salePrice: sanitized });
               }}
               required
               style={inputStyle}
@@ -230,8 +226,6 @@ const Step1DatosVenta: React.FC<Step1Props> = ({
         </button>
       </div>
 
-      {/* Reference to property for alias usage in Aviso */}
-      <div style={{ display: 'none' }}>{property.alias}</div>
     </div>
   );
 };
@@ -266,7 +260,8 @@ const NumberInput: React.FC<{
     onChange={(e) => {
       const raw = e.target.value;
       const parsed = parseFloat(raw.replace(',', '.'));
-      onChange(raw, Number.isFinite(parsed) ? parsed : 0);
+      const sanitized = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+      onChange(raw, sanitized);
     }}
     style={inputStyle}
   />

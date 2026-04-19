@@ -9,8 +9,6 @@
 //   IRPF        = aplicar tramos base ahorro 2025 sobre la ganancia (si > 0)
 
 import { initDB, type Contract, type GastoInmueble, type MejoraInmueble, type Property } from './db';
-import { gastosInmuebleService } from './gastosInmuebleService';
-import { mejorasInmuebleService } from './mejorasInmuebleService';
 
 export interface AmortizacionAcumuladaResult {
   declarada: number;              // suma de casilla 0131 con origen xml_aeat
@@ -51,18 +49,19 @@ export interface GananciaPatrimonialResult {
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-const getAllGastosInmueble = async (): Promise<GastoInmueble[]> => {
+const getGastosPorInmueble = async (propertyId: number): Promise<GastoInmueble[]> => {
+  const db = await initDB();
   try {
-    return await gastosInmuebleService.getAll();
+    return (await db.getAllFromIndex('gastosInmueble', 'inmuebleId', propertyId)) as GastoInmueble[];
   } catch {
     return [];
   }
 };
 
-const getAllMejoras = async (): Promise<MejoraInmueble[]> => {
+const getMejorasPorInmueble = async (propertyId: number): Promise<MejoraInmueble[]> => {
   const db = await initDB();
   try {
-    return (await db.getAll('mejorasInmueble')) as MejoraInmueble[];
+    return (await db.getAllFromIndex('mejorasInmueble', 'inmuebleId', propertyId)) as MejoraInmueble[];
   } catch {
     return [];
   }
@@ -139,12 +138,9 @@ export async function calcularAmortizacionAcumulada(
   const purchaseYear = yearFromIso(property.purchaseDate) ?? yearFromIso(sellDate) ?? new Date().getFullYear();
   const sellYear = yearFromIso(sellDate) ?? new Date().getFullYear();
 
-  const gastos = await getAllGastosInmueble();
+  const gastos = await getGastosPorInmueble(propertyId);
   const amortXml = gastos.filter(
-    (g) =>
-      g.inmuebleId === propertyId &&
-      g.casillaAEAT === '0131' &&
-      g.origen === 'xml_aeat',
+    (g) => g.casillaAEAT === '0131' && g.origen === 'xml_aeat',
   );
 
   const declarada = amortXml.reduce((sum, g) => sum + (g.importe || 0), 0);
@@ -239,9 +235,9 @@ export async function calcularGananciaPatrimonial(
     (costs.other?.reduce((s, o) => s + (o.amount || 0), 0) || 0);
 
   // 2. Mejoras CAPEX acumuladas (excluimos tipo='reparacion')
-  const todasMejoras = await getAllMejoras();
-  const mejorasCapexAcumuladas = todasMejoras
-    .filter((m) => m.inmuebleId === input.propertyId && m.tipo !== 'reparacion')
+  const mejoras = await getMejorasPorInmueble(input.propertyId);
+  const mejorasCapexAcumuladas = mejoras
+    .filter((m) => m.tipo !== 'reparacion')
     .reduce((s, m) => s + (m.importe || 0), 0);
 
   // 3. Amortización acumulada

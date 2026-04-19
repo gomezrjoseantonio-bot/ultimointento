@@ -2,6 +2,8 @@
 // Tokens y helpers compartidos por los 3 pasos del wizard de venta.
 // Paleta V4: navy-900 + teal-600 + escala grey, IBM Plex Sans/Mono.
 
+import type { CSSProperties } from 'react';
+
 export const W = {
   navy900: 'var(--navy-900, #042C5E)',
   navy800: 'var(--navy-800, #0A3F7A)',
@@ -43,7 +45,7 @@ export const fmtDate = (iso?: string): string => {
   return `${d}/${m}/${y}`;
 };
 
-export const inputStyle: React.CSSProperties = {
+export const inputStyle: CSSProperties = {
   width: '100%',
   height: 34,
   padding: '6px 10px',
@@ -57,7 +59,7 @@ export const inputStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
-export const labelStyle: React.CSSProperties = {
+export const labelStyle: CSSProperties = {
   fontSize: 11,
   fontWeight: 500,
   color: W.grey500,
@@ -67,7 +69,7 @@ export const labelStyle: React.CSSProperties = {
   display: 'block',
 };
 
-export const sectionStyle: React.CSSProperties = {
+export const sectionStyle: CSSProperties = {
   background: W.white,
   border: `1px solid ${W.grey200}`,
   borderRadius: 12,
@@ -75,7 +77,7 @@ export const sectionStyle: React.CSSProperties = {
   marginBottom: 16,
 };
 
-export const sectionTitleStyle: React.CSSProperties = {
+export const sectionTitleStyle: CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
   textTransform: 'uppercase',
@@ -84,7 +86,7 @@ export const sectionTitleStyle: React.CSSProperties = {
   marginBottom: 12,
 };
 
-export const primaryButtonStyle: React.CSSProperties = {
+export const primaryButtonStyle: CSSProperties = {
   padding: '10px 20px',
   border: 'none',
   background: W.navy900,
@@ -96,7 +98,7 @@ export const primaryButtonStyle: React.CSSProperties = {
   fontFamily,
 };
 
-export const secondaryButtonStyle: React.CSSProperties = {
+export const secondaryButtonStyle: CSSProperties = {
   padding: '10px 20px',
   border: `1.5px solid ${W.grey300}`,
   background: W.white,

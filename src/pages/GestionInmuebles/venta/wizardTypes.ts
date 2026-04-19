@@ -6,9 +6,9 @@ export interface LoanToCancel {
   alias: string;
   banco?: string;
   outstandingPrincipal: number;
-  comisionContrato: number;           // % o valor leído del préstamo (informativo)
+  comisionContrato: number;           // importe en euros leído del préstamo (informativo)
   comisionFinalAplicadaInput: string; // editable en el formulario
-  comisionFinalAplicada: number;      // parsed
+  comisionFinalAplicada: number;      // importe final aplicado en euros (parsed)
 }
 
 export interface VentaWizardState {

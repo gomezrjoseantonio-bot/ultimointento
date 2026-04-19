@@ -63,8 +63,13 @@ const VentaWizard: React.FC = () => {
           new Set(
             allGastos
               .filter((g) => g.inmuebleId === propertyId && g.origen === 'xml_aeat')
-              .map((g) => Number((g.fecha || '').slice(0, 4)))
-              .filter((y) => Number.isFinite(y)),
+              .map((g) => {
+                const yt = typeof g.fecha === 'string' ? g.fecha.slice(0, 4) : '';
+                if (!/^\d{4}$/.test(yt)) return null;
+                const y = parseInt(yt, 10);
+                return y >= 1900 ? y : null;
+              })
+              .filter((y): y is number => y !== null),
           ),
         );
         const allContracts = await db.getAll('contracts');
@@ -225,7 +230,6 @@ const VentaWizard: React.FC = () => {
         <div style={{ marginTop: 24 }}>
           {state.step === 1 && (
             <Step1DatosVenta
-              property={property}
               accounts={accounts}
               sinIdentificarCount={sinIdentificarCount}
               state={state}
