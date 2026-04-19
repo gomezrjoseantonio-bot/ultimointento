@@ -461,44 +461,9 @@ const isActiveContract = (contract: Contract, referenceDateIso?: string): boolea
   return !endDate;
 };
 
-const createTreasuryMovement = ({
-  accountId,
-  amount,
-  date,
-  description,
-  propertyId,
-  saleId,
-}: {
-  accountId: number;
-  amount: number;
-  date: string;
-  description: string;
-  propertyId: number;
-  saleId: number;
-}) => ({
-  accountId,
-  date,
-  valueDate: date,
-  amount,
-  description,
-  counterparty: 'Venta inmueble',
-  reference: `property_sale:${saleId}`,
-  status: 'conciliado' as const,
-  unifiedStatus: 'conciliado' as const,
-  source: 'manual' as const,
-  category: {
-    tipo: amount >= 0 ? 'Venta inmueble' : 'Costes venta inmueble',
-  },
-  type: amount >= 0 ? 'Ingreso' as const : 'Gasto' as const,
-  origin: 'Manual' as const,
-  movementState: 'Conciliado' as const,
-  ambito: 'INMUEBLE' as const,
-  inmuebleId: String(propertyId),
-  statusConciliacion: 'match_manual' as const,
-  tags: ['property_sale'],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});
+// PR3: `createTreasuryMovement` eliminado — la venta ya no crea movements
+// directamente. Los movements se generan al puntear cada treasuryEvent vía
+// treasuryConfirmationService.confirmTreasuryEvent.
 
 const encodeExecutionJournal = (journal: SaleExecutionJournal): string => {
   const payload = JSON.stringify(journal);
@@ -888,50 +853,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     deletedLoanForecastEvents: [],
   };
 
-  if (saleId) {
-    const loanSettlementTotal = simulation.totalLoanSettlement;
-    const movementStore = tx.objectStore('movements');
-
-    const movementsToCreate = [
-      createTreasuryMovement({
-        accountId: settlementAccountId,
-        amount: simulation.grossProceeds,
-        date: input.saleDate,
-        description: `Cobro venta ${propLabel}`,
-        propertyId: input.propertyId,
-        saleId,
-      }),
-      ...saleExpenseBreakdown.map((expense) =>
-        createTreasuryMovement({
-          accountId: settlementAccountId,
-          amount: -expense.amount,
-          date: input.saleDate,
-          description: expense.description,
-          propertyId: input.propertyId,
-          saleId,
-        })
-      ),
-      ...(loanSettlementTotal > 0
-        ? [
-            createTreasuryMovement({
-              accountId: settlementAccountId,
-              amount: -loanSettlementTotal,
-              date: input.saleDate,
-              description: `Cancelación deuda ${propLabel}`,
-              propertyId: input.propertyId,
-              saleId,
-            }),
-          ]
-        : []),
-    ];
-
-    for (const movement of movementsToCreate) {
-      const createdId = await movementStore.add(movement);
-      if (typeof createdId === 'number') {
-        executionJournal.movementIds.push(createdId);
-      }
-    }
-  }
+  // PR3: la venta ya no crea movements directamente. Los 5+ movimientos de
+  // venta (cobro bruto, gastos, cancelación préstamo) nacen como
+  // treasuryEvents predicted más abajo, con ambito=INMUEBLE + inmuebleId.
+  // El usuario los puntea desde Conciliación cuando llegan al banco, y
+  // entonces confirmTreasuryEvent genera el movement real. Así el flujo es
+  // coherente con el resto de la arquitectura unificada.
 
   const loanStore = tx.objectStore('prestamos');
   const allLoans = await loanStore.getAll();
@@ -1046,30 +973,35 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   }
 
   if (saleId) {
+    // PR3: cada línea de la venta nace como treasuryEvent predicted con
+    // ambito=INMUEBLE para que aparezca también en la ficha del inmueble
+    // y se puntee desde Conciliación cuando el usuario lo vea en el banco.
+    const baseMeta = {
+      sourceType: 'manual' as const,
+      sourceId: saleId,
+      accountId: settlementAccountId,
+      status: 'predicted' as const,
+      ambito: 'INMUEBLE' as const,
+      inmuebleId: input.propertyId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
     const saleTreasuryEvents: Array<Omit<TreasuryEvent, 'id'>> = [
       {
         type: 'income',
         amount: simulation.grossProceeds,
         predictedDate: input.saleDate,
         description: `Cobro venta ${propLabel}`,
-        sourceType: 'manual',
-        sourceId: saleId,
-        accountId: settlementAccountId,
-        status: 'confirmed',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        categoryLabel: 'Venta inmueble',
+        ...baseMeta,
       },
       ...saleExpenseBreakdown.map((expense) => ({
         type: 'expense' as const,
         amount: expense.amount,
         predictedDate: input.saleDate,
         description: expense.description,
-        sourceType: 'manual' as const,
-        sourceId: saleId,
-        accountId: settlementAccountId,
-        status: 'confirmed' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        categoryLabel: 'Gasto venta inmueble',
+        ...baseMeta,
       })),
       ...(simulation.totalLoanSettlement > 0
         ? [{
@@ -1077,12 +1009,8 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
             amount: simulation.totalLoanSettlement,
             predictedDate: input.saleDate,
             description: `Cancelación deuda ${propLabel}`,
-            sourceType: 'manual' as const,
-            sourceId: saleId,
-            accountId: settlementAccountId,
-            status: 'confirmed' as const,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            categoryLabel: 'Cancelación préstamo',
+            ...baseMeta,
           }]
         : []),
     ];
@@ -1113,9 +1041,11 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   await tx.done;
   prestamosService.clearCache();
 
-  if (saleId && simulation.totalLoanSettlement > 0) {
-    await finalizePropertySaleLoanCancellationBySaleId(saleId);
-  }
+  // PR3: la cancelación del préstamo no se finaliza automáticamente. El
+  // treasuryEvent 'Cancelación deuda' nace predicted y al puntearlo desde
+  // Conciliación (confirmTreasuryEvent) se cierra el movement y se llama
+  // a finalizePropertySaleLoanCancellationFromTreasuryEvent, que cancela
+  // el préstamo en prestamosService.
 
   await triggerTreasuryUpdate([settlementAccountId]);
   await ensureSaleTaxFiscalYearOpen(input.propertyId, input.saleDate);
@@ -1153,7 +1083,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'gastosInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -1189,18 +1119,55 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     }
   }
 
+  // PR3: si el usuario había punteado algunos events (executed), sus
+  // movements tienen reference `treasury_event:{eventId}`. Los buscamos
+  // y borramos, junto con las líneas de inmueble que hubiera creado
+  // confirmTreasuryEvent (gastosInmueble/mejorasInmueble/mueblesInmueble).
+  const eventIdsToCleanup = new Set<number>();
   if (journal?.treasuryEventIds?.length) {
     for (const eventId of journal.treasuryEventIds) {
-      await tx.objectStore('treasuryEvents').delete(eventId);
+      eventIdsToCleanup.add(eventId);
     }
   }
-
   if (typeof sale.id === 'number') {
     const linkedTreasuryEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
       .filter((event) => event.sourceId === sale.id && typeof event.id === 'number');
-
     for (const event of linkedTreasuryEvents) {
-      await tx.objectStore('treasuryEvents').delete(event.id as number);
+      eventIdsToCleanup.add(event.id as number);
+    }
+  }
+
+  if (eventIdsToCleanup.size > 0) {
+    const allMovements = await tx.objectStore('movements').getAll() as any[];
+    for (const mv of allMovements) {
+      const ref = String(mv?.reference || '');
+      const match = ref.match(/^treasury_event:(\d+)$/);
+      if (!match) continue;
+      const evId = Number(match[1]);
+      if (eventIdsToCleanup.has(evId) && typeof mv.id === 'number') {
+        await tx.objectStore('movements').delete(mv.id);
+      }
+    }
+
+    // Limpia las líneas de inmueble que confirmTreasuryEvent pudiera haber
+    // creado como efecto colateral de puntear la venta.
+    const lineStores: Array<'gastosInmueble' | 'mejorasInmueble' | 'mueblesInmueble'> = [
+      'gastosInmueble',
+      'mejorasInmueble',
+      'mueblesInmueble',
+    ];
+    for (const storeName of lineStores) {
+      const all = (await tx.objectStore(storeName).getAll()) as any[];
+      for (const linea of all) {
+        const tid = typeof linea?.treasuryEventId === 'number' ? linea.treasuryEventId : undefined;
+        if (tid != null && eventIdsToCleanup.has(tid) && typeof linea.id === 'number') {
+          await tx.objectStore(storeName).delete(linea.id);
+        }
+      }
+    }
+
+    for (const eventId of eventIdsToCleanup) {
+      await tx.objectStore('treasuryEvents').delete(eventId);
     }
   }
 
