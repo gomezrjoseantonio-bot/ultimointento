@@ -2,6 +2,8 @@ import { initDB, TreasuryEvent, Movement } from '../db';
 import {
   confirmTreasuryEvent,
   revertTreasuryConfirmation,
+  deleteTreasuryEventCompletely,
+  updateConfirmedMovement,
   categoryLabelToStoreName,
   resolveCasillaAEAT,
 } from '../treasuryConfirmationService';
@@ -320,7 +322,11 @@ describe('treasuryConfirmationService · PR3', () => {
   });
 
   describe('revertTreasuryConfirmation', () => {
-    it('borra el movement, borra la línea de inmueble y devuelve el event a predicted', async () => {
+    it('borra el movement, conserva la línea de inmueble (estado=previsto) y devuelve el event a predicted', async () => {
+      // PR5.5 · revertTreasuryConfirmation conserva la línea en gastosInmueble
+      // (marcada como estadoTesoreria=predicted y estado=previsto) para que el
+      // usuario pueda volver a puntear sin perder datos. El borrado completo
+      // vive en deleteTreasuryEventCompletely (PR5.6).
       const db = await initDB();
       const eventId = Number(
         await db.add('treasuryEvents', baseEvent({
@@ -336,7 +342,13 @@ describe('treasuryConfirmationService · PR3', () => {
       await revertTreasuryConfirmation(movementId);
 
       expect(await db.get('movements', movementId)).toBeUndefined();
-      expect(await db.get('gastosInmueble', lineaId as number)).toBeUndefined();
+
+      const linea = (await db.get('gastosInmueble', lineaId as number)) as any;
+      expect(linea).toBeDefined();
+      expect(linea.estadoTesoreria).toBe('predicted');
+      expect(linea.estado).toBe('previsto');
+      expect(linea.movimientoId).toBeUndefined();
+      expect(linea.treasuryEventId).toBe(eventId);
 
       const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
       expect(event.status).toBe('predicted');
@@ -383,6 +395,197 @@ describe('treasuryConfirmationService · PR3', () => {
 
       await expect(revertTreasuryConfirmation(movementId)).resolves.toBeUndefined();
       expect(await db.get('movements', movementId)).toBeUndefined();
+    });
+  });
+
+  describe('deleteTreasuryEventCompletely · PR5.6', () => {
+    it('borra event + movement + línea en cascada para un gasto confirmado', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'INMUEBLE',
+          inmuebleId: INMUEBLE_ID,
+          categoryLabel: 'Reparación inmueble',
+          amount: 150,
+        }) as any),
+      );
+
+      const { movementId, lineaId } = await confirmTreasuryEvent(eventId);
+
+      await deleteTreasuryEventCompletely(eventId);
+
+      expect(await db.get('treasuryEvents', eventId)).toBeUndefined();
+      expect(await db.get('movements', movementId)).toBeUndefined();
+      expect(await db.get('gastosInmueble', lineaId as number)).toBeUndefined();
+    });
+
+    it('borra event sin movement ni línea (previsión no confirmada)', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent() as any),
+      );
+
+      await deleteTreasuryEventCompletely(eventId);
+
+      expect(await db.get('treasuryEvents', eventId)).toBeUndefined();
+    });
+
+    it('borra la línea por fallback de movimientoId si treasuryEventId está roto', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'INMUEBLE',
+          inmuebleId: INMUEBLE_ID,
+          categoryLabel: 'Reparación inmueble',
+          amount: 80,
+        }) as any),
+      );
+      const { movementId, lineaId } = await confirmTreasuryEvent(eventId);
+
+      // Simula una línea legacy sin treasuryEventId (solo movimientoId).
+      const linea: any = await db.get('gastosInmueble', lineaId as number);
+      delete linea.treasuryEventId;
+      await db.put('gastosInmueble', linea);
+
+      await deleteTreasuryEventCompletely(eventId);
+
+      expect(await db.get('gastosInmueble', lineaId as number)).toBeUndefined();
+      expect(await db.get('movements', movementId)).toBeUndefined();
+      expect(await db.get('treasuryEvents', eventId)).toBeUndefined();
+    });
+
+    it('es no-op si el event no existe', async () => {
+      await expect(deleteTreasuryEventCompletely(99999)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('updateConfirmedMovement · PR5.6', () => {
+    it('propaga amount y date a event, movement y línea (signo correcto)', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'INMUEBLE',
+          inmuebleId: INMUEBLE_ID,
+          categoryLabel: 'Reparación inmueble',
+          amount: 35,
+        }) as any),
+      );
+      const { movementId, lineaId } = await confirmTreasuryEvent(eventId);
+
+      await updateConfirmedMovement(eventId, {
+        amount: 42,
+        date: '2026-04-15',
+      });
+
+      const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      const movement = (await db.get('movements', movementId)) as Movement;
+      const linea = (await db.get('gastosInmueble', lineaId as number)) as any;
+
+      expect(event.amount).toBe(42);
+      expect(event.predictedDate).toBe('2026-04-15');
+      expect(movement.amount).toBe(-42);
+      expect(movement.date).toBe('2026-04-15');
+      expect(linea.importe).toBe(42);
+      expect(linea.fecha).toBe('2026-04-15');
+    });
+
+    it('mantiene signo positivo en movement para events type=income', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          type: 'income',
+          amount: 500,
+          description: 'Renta',
+        }) as any),
+      );
+      const { movementId } = await confirmTreasuryEvent(eventId);
+
+      await updateConfirmedMovement(eventId, { amount: 600 });
+
+      const movement = (await db.get('movements', movementId)) as Movement;
+      expect(movement.amount).toBe(600);
+    });
+
+    it('propaga cambio de concepto/contraparte/notas a event + movement + línea', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'INMUEBLE',
+          inmuebleId: INMUEBLE_ID,
+          categoryLabel: 'Reparación inmueble',
+          counterparty: 'Viejo',
+        }) as any),
+      );
+      const { movementId, lineaId } = await confirmTreasuryEvent(eventId);
+
+      await updateConfirmedMovement(eventId, {
+        description: 'Nuevo concepto',
+        counterparty: 'Nuevo proveedor',
+        notes: 'Nueva nota',
+      });
+
+      const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      const movement = (await db.get('movements', movementId)) as Movement;
+      const linea = (await db.get('gastosInmueble', lineaId as number)) as any;
+
+      expect(event.description).toBe('Nuevo concepto');
+      expect(event.counterparty).toBe('Nuevo proveedor');
+      expect(event.notes).toBe('Nueva nota');
+      expect(movement.description).toBe('Nuevo concepto');
+      expect(movement.counterparty).toBe('Nuevo proveedor');
+      expect(linea.concepto).toBe('Nuevo concepto');
+      expect(linea.proveedorNombre).toBe('Nuevo proveedor');
+    });
+
+    it('propaga documentación (facturaId / *NoAplica) a event + movement + línea', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'INMUEBLE',
+          inmuebleId: INMUEBLE_ID,
+          categoryLabel: 'Reparación inmueble',
+        }) as any),
+      );
+      const { movementId, lineaId } = await confirmTreasuryEvent(eventId);
+
+      await updateConfirmedMovement(eventId, {
+        facturaId: 1001,
+        facturaNoAplica: false,
+        justificanteNoAplica: true,
+      });
+
+      const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      const movement = (await db.get('movements', movementId)) as Movement;
+      const linea = (await db.get('gastosInmueble', lineaId as number)) as any;
+
+      expect(event.facturaId).toBe(1001);
+      expect(event.justificanteNoAplica).toBe(true);
+      expect(movement.facturaId).toBe(1001);
+      expect(movement.justificanteNoAplica).toBe(true);
+      expect(linea.facturaId).toBe(1001);
+      expect(linea.justificanteNoAplica).toBe(true);
+    });
+
+    it('lanza si el event no existe', async () => {
+      await expect(updateConfirmedMovement(99999, { amount: 50 })).rejects.toThrow();
+    });
+
+    it('actualiza solo event/movement si no hay línea (event PERSONAL)', async () => {
+      const db = await initDB();
+      const eventId = Number(
+        await db.add('treasuryEvents', baseEvent({
+          ambito: 'PERSONAL',
+          amount: 100,
+        }) as any),
+      );
+      const { movementId } = await confirmTreasuryEvent(eventId);
+
+      await updateConfirmedMovement(eventId, { amount: 150 });
+
+      const event = (await db.get('treasuryEvents', eventId)) as TreasuryEvent;
+      const movement = (await db.get('movements', movementId)) as Movement;
+      expect(event.amount).toBe(150);
+      expect(movement.amount).toBe(-150);
     });
   });
 });

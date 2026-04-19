@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import CheckCircle from './CheckCircle';
 import CategoryIcon from './CategoryIcon';
 import DocIcon, { type DocIconType } from './DocIcon';
@@ -43,10 +43,6 @@ const MovementRow: React.FC<MovementRowProps> = ({
     onOpenDocPopover(row, slot, e.currentTarget);
   };
 
-  const handleRevert = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onQuickRevert(row);
-  };
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete(row);
@@ -90,16 +86,6 @@ const MovementRow: React.FC<MovementRowProps> = ({
       </div>
 
       <div className="cv2-row-actions">
-        {row.state === 'confirmed' && (
-          <button
-            type="button"
-            className="cv2-btn-icon"
-            title="Desconciliar"
-            onClick={handleRevert}
-          >
-            <RotateCcw size={13} />
-          </button>
-        )}
         <button
           type="button"
           className="cv2-btn-icon"
