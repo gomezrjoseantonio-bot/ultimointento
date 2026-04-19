@@ -109,6 +109,13 @@ export const navigationConfig: NavigationItem[] = [
     section: 'horizon'
   },
   {
+    name: 'Inmuebles',
+    href: '/gestion/inmuebles',
+    icon: Building2,
+    module: 'shared',
+    section: 'pulse'
+  },
+  {
     name: 'Alquileres',
     href: '/contratos',
     icon: Key,
