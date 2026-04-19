@@ -88,15 +88,6 @@ interface LineaUI {
 // Preferimos el accountId ya cacheado en la línea (resuelto al cargar).
 const resolveEditingAccountId = (linea: LineaUI): number | undefined => linea.accountId;
 
-// PR3 · etiqueta de categoryLabel por categoría (para treasuryEvents con
-// ambito INMUEBLE). Debe coincidir con lo que interpreta
-// treasuryConfirmationService.categoryLabelToStoreName.
-const CATEGORY_LABEL_FOR: Record<Categoria, string> = {
-  reparacion: 'Reparación inmueble',
-  mejora: 'Mejora inmueble',
-  mobiliario: 'Mobiliario inmueble',
-};
-
 // Dado el categoryLabel de un treasuryEvent, decide si pertenece a la tab
 // actual. "Reparación inmueble" → reparación tab, etc.
 const eventBelongsToCategoria = (
