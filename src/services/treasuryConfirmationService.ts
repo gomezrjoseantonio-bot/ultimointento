@@ -131,9 +131,14 @@ function resolveEventCategory(event: TreasuryEvent): CategoryDef | undefined {
 
 /**
  * Deriva el valor de `GastoInmueble.categoria` (enum interno de fiscalidad)
- * a partir de la categoría canónica del event. Acepta también un `categoryLabel`
- * suelto (string) para los flujos que editan el movimiento sin recargar el
- * TreasuryEvent completo (p. ej. `updateConfirmedMovement` de PR5.6).
+ * a partir de la categoría canónica del event.
+ *
+ * Acepta tres formas de entrada:
+ *   - `TreasuryEvent`: caso principal, resuelve vía `categoryKey`/`categoryLabel`.
+ *   - `string`: `categoryLabel` o `categoryKey` suelto, usado por los flujos
+ *     que editan el movimiento sin recargar el TreasuryEvent completo
+ *     (p. ej. `updateConfirmedMovement` de PR5.6).
+ *   - `undefined`: devuelve `'otro'` como default seguro.
  */
 function resolveGastoCategoria(input: TreasuryEvent | string | undefined): string {
   if (!input) return 'otro';
