@@ -1029,6 +1029,16 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
     if (!planExistente.empresaNif && pp.nifEmpleador) planExistente.empresaNif = pp.nifEmpleador;
     if (!planExistente.empresaNombre && pp.nombreEmpleador) planExistente.empresaNombre = pp.nombreEmpleador;
 
+    // Backfill esHistorico: versiones antiguas marcaban los planes XML como históricos ("solo seguimiento"),
+    // lo que los excluía del drawer de actualización de valores y de la pestaña "Con aportaciones".
+    // Sólo retiramos la marca si todo el historial procede de XML; si el usuario añadió entradas manuales
+    // y decidió marcarlo como histórico, respetamos su elección.
+    const entradasPrev = Object.values(planExistente.historialAportaciones ?? {}) as Array<{ fuente?: string }>;
+    const soloXml = entradasPrev.length > 0 && entradasPrev.every((e) => e.fuente === 'xml_aeat' || !e.fuente);
+    if (planExistente.esHistorico && soloXml) {
+      planExistente.esHistorico = false;
+    }
+
     // ACTUALIZAR: añadir/sobrescribir año en el historial
     if (!planExistente.historialAportaciones) {
       planExistente.historialAportaciones = {};
@@ -1061,7 +1071,9 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
       valorCompra: 0,
       valorActual: 0,
       titularidad: 'yo',
-      esHistorico: true,
+      // Un plan con aportaciones declaradas en la AEAT es un plan vivo; se trata igual que uno creado manualmente.
+      // El usuario puede marcarlo como "solo seguimiento" después desde el formulario de edición.
+      esHistorico: false,
       historialAportaciones: {
         [año]: {
           titular: pp.aportacionesTrabajador ?? 0,
