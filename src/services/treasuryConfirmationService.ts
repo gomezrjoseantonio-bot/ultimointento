@@ -430,3 +430,131 @@ export async function revertTreasuryConfirmation(
 
   await tx.done;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// PR5 · Propagación bidireccional de documentos (factura + justificante)
+// ═══════════════════════════════════════════════════════════════════════
+
+export type DocSlot = 'factura' | 'justificante';
+
+type DocUpdate = Partial<
+  Pick<
+    TreasuryEvent,
+    'facturaId' | 'facturaNoAplica' | 'justificanteId' | 'justificanteNoAplica'
+  >
+>;
+
+/**
+ * Aplica la misma mutación documental en:
+ *   - treasuryEvents[eventId]
+ *   - movements[event.executedMovementId] (si existe)
+ *   - todas las líneas de gastosInmueble/mejorasInmueble/mueblesInmueble
+ *     cuyo `treasuryEventId` apunte al event (índice PR3)
+ */
+async function applyDocUpdateToEventAndLinkedRows(
+  eventId: number,
+  update: DocUpdate,
+): Promise<void> {
+  const db = await initDB();
+  const now = new Date().toISOString();
+
+  const stores: string[] = ['treasuryEvents', 'movements', ...ALL_LINE_STORES];
+  const tx = db.transaction(stores as any, 'readwrite');
+
+  const eventsStore = tx.objectStore('treasuryEvents') as any;
+  const event = (await eventsStore.get(eventId)) as TreasuryEvent | undefined;
+  if (!event) {
+    await tx.done;
+    throw new Error('Previsión no encontrada');
+  }
+
+  const updatedEvent: TreasuryEvent = { ...event, ...update, updatedAt: now };
+  await eventsStore.put(updatedEvent);
+
+  // Propagar al movement que materializó este event (si ya fue punteado).
+  const movementId = event.executedMovementId ?? event.movementId;
+  if (movementId != null) {
+    const movementsStore = tx.objectStore('movements') as any;
+    const movement = (await movementsStore.get(movementId)) as
+      | Movement
+      | undefined;
+    if (movement) {
+      await movementsStore.put({ ...movement, ...update, updatedAt: now });
+    }
+  }
+
+  // Propagar a las líneas de inmueble vinculadas a este event.
+  for (const storeName of ALL_LINE_STORES) {
+    const store = tx.objectStore(storeName) as any;
+    let index: IDBIndex | null = null;
+    try {
+      index = store.index('treasuryEventId');
+    } catch {
+      index = null;
+    }
+
+    const matches: any[] = index
+      ? await (index as any).getAll(eventId)
+      : ((await store.getAll()) as any[]).filter(
+          (l: any) => l?.treasuryEventId === eventId,
+        );
+
+    for (const linea of matches) {
+      if (linea?.id != null) {
+        await store.put({ ...linea, ...update, updatedAt: now });
+      }
+    }
+  }
+
+  await tx.done;
+}
+
+/**
+ * Asocia un documento (del store `documents`) a un slot (factura o justificante)
+ * de un treasuryEvent. Propaga a movement y líneas de inmueble vinculadas.
+ *
+ * Al asociar, desmarca automáticamente el flag `*NoAplica` del mismo slot.
+ */
+export async function attachDocumentToEvent(
+  eventId: number,
+  slot: DocSlot,
+  documentId: number,
+): Promise<void> {
+  const update: DocUpdate =
+    slot === 'factura'
+      ? { facturaId: documentId, facturaNoAplica: false }
+      : { justificanteId: documentId, justificanteNoAplica: false };
+  await applyDocUpdateToEventAndLinkedRows(eventId, update);
+}
+
+/**
+ * Desvincula el documento de un slot. No toca el flag `*NoAplica` (el usuario
+ * puede mantener "no aplica" aunque retire el documento).
+ */
+export async function detachDocumentFromEvent(
+  eventId: number,
+  slot: DocSlot,
+): Promise<void> {
+  const update: DocUpdate =
+    slot === 'factura'
+      ? { facturaId: undefined }
+      : { justificanteId: undefined };
+  await applyDocUpdateToEventAndLinkedRows(eventId, update);
+}
+
+/**
+ * Marca / desmarca el flag `*NoAplica` del slot. Mantiene el documentId
+ * asociado si lo había (así el usuario no pierde la referencia si cambia
+ * de idea). Propaga a movement y líneas vinculadas.
+ */
+export async function setDocumentNoAplica(
+  eventId: number,
+  slot: DocSlot,
+  value: boolean,
+): Promise<void> {
+  const update: DocUpdate =
+    slot === 'factura'
+      ? { facturaNoAplica: value }
+      : { justificanteNoAplica: value };
+  await applyDocUpdateToEventAndLinkedRows(eventId, update);
+}
