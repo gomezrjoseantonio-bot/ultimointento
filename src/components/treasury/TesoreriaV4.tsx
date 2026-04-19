@@ -69,7 +69,26 @@ interface NewMovForm {
   targetAccountId: string;
   date: string;
   type: 'income' | 'expense' | 'transfer';
+  // PR3: ámbito + inmueble + categoría para que el event nazca con los
+  // datos necesarios para aparecer en la ficha del inmueble.
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId: string;
+  categoryLabel: string;
+  confirmNow: boolean;  // "Crear y confirmar a la vez"
 }
+
+// Opciones de categoría cuando el ámbito es INMUEBLE (alineado con
+// treasuryConfirmationService.categoryLabelToStoreName).
+const INMUEBLE_CATEGORY_OPTIONS_V4: Array<{ value: string; label: string }> = [
+  { value: 'Reparación inmueble', label: 'Reparación' },
+  { value: 'Mejora inmueble', label: 'Mejora' },
+  { value: 'Mobiliario inmueble', label: 'Mobiliario' },
+  { value: 'Comunidad', label: 'Comunidad' },
+  { value: 'Seguro inmueble', label: 'Seguro' },
+  { value: 'IBI', label: 'IBI / tributos' },
+  { value: 'Suministros', label: 'Suministros' },
+  { value: 'Gasto recurrente', label: 'Gasto recurrente (otros)' },
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -101,6 +120,8 @@ const getAccType = (acc: DBAccount): 'bank' | 'cash' | 'wallet' => {
 const DEFAULT_FORM: NewMovForm = {
   concept: '', amount: '', accountId: '', targetAccountId: '',
   date: new Date().toISOString().substring(0, 10), type: 'expense',
+  ambito: 'PERSONAL', inmuebleId: '', categoryLabel: '',
+  confirmNow: false,
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -146,6 +167,8 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
   const [rawAccounts, setRawAccounts] = useState<DBAccount[]>([]);
   const [allDbEvents, setAllDbEvents] = useState<any[]>([]);
   const [allDbMovements, setAllDbMovements] = useState<DBMovement[]>([]);
+  // PR3: properties usado por el drawer "Movimiento directo" (ámbito INMUEBLE).
+  const [properties, setProperties] = useState<any[]>([]);
   const [cardSettlementMap, setCardSettlementMap] = useState<Map<number, { chargeAccountId: number }>>(new Map());
   const [contractMap, setContractMap] = useState<Map<number, { unidadTipo: 'vivienda' | 'habitacion'; propertyAlias: string }>>(new Map());
 
@@ -218,6 +241,7 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
       setAllDbMovements(dbMovements);
       setCardSettlementMap(newCardMap);
       setContractMap(newContractMap);
+      setProperties(properties);
     } catch (err) {
       console.error('Error loading treasury data:', err);
       toast.error('Error al cargar datos de tesorería');
@@ -620,42 +644,76 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
       if (!accountId) { toast.error('Selecciona una cuenta'); return; }
     }
 
+    // PR3: validar ámbito inmueble
+    if (newMovForm.type !== 'transfer' && newMovForm.ambito === 'INMUEBLE') {
+      if (!newMovForm.inmuebleId) { toast.error('Selecciona un inmueble'); return; }
+      if (!newMovForm.categoryLabel) { toast.error('Selecciona una categoría'); return; }
+    }
+
     setSavingMovement(true);
     try {
       const db = await initDB();
       const now = new Date().toISOString();
       const baseConcept = newMovForm.concept.trim();
+      // PR3: crear events con status 'predicted'. Si el usuario pidió
+      // "Confirmar a la vez", se puntea acto seguido con
+      // confirmTreasuryEvent (crea movement + línea de inmueble si aplica).
       if (newMovForm.type === 'transfer') {
         const fromAcc = accounts.find(a => a.id === String(accountId));
         const toAcc = accounts.find(a => a.id === String(targetAccountId));
         const srcConcept = baseConcept || `Transferencia a ${toAcc?.name ?? 'cuenta destino'}`;
         const tgtConcept = baseConcept || `Transferencia desde ${fromAcc?.name ?? 'cuenta origen'}`;
         const [fromId, toId] = await Promise.all([
-          db.add('treasuryEvents', { type: 'expense' as const, amount, predictedDate: newMovForm.date, description: srcConcept, sourceType: 'manual' as const, accountId, status: 'confirmed' as const, actualDate: newMovForm.date, actualAmount: amount, createdAt: now, updatedAt: now }),
-          db.add('treasuryEvents', { type: 'income' as const, amount, predictedDate: newMovForm.date, description: tgtConcept, sourceType: 'manual' as const, accountId: targetAccountId, status: 'confirmed' as const, actualDate: newMovForm.date, actualAmount: amount, createdAt: now, updatedAt: now }),
+          db.add('treasuryEvents', { type: 'expense' as const, amount, predictedDate: newMovForm.date, description: srcConcept, sourceType: 'manual' as const, accountId, status: 'predicted' as const, createdAt: now, updatedAt: now }),
+          db.add('treasuryEvents', { type: 'income' as const, amount, predictedDate: newMovForm.date, description: tgtConcept, sourceType: 'manual' as const, accountId: targetAccountId, status: 'predicted' as const, createdAt: now, updatedAt: now }),
         ]);
-        invalidateCachedStores(['treasuryEvents']);
+        if (newMovForm.confirmNow) {
+          const { confirmTreasuryEvent } = await import('../../services/treasuryConfirmationService');
+          await confirmTreasuryEvent(fromId as number);
+          await confirmTreasuryEvent(toId as number);
+        }
+        invalidateCachedStores(['treasuryEvents', 'movements']);
+        const localStatus: 'previsto' | 'confirmado' = newMovForm.confirmNow ? 'confirmado' : 'previsto';
         const evDate = new Date(newMovForm.date);
         if (evDate.getFullYear() === año && evDate.getMonth() + 1 === mesActivo + 1) {
           setEvents(prev => ([...prev,
-            { id: String(fromId), dbId: fromId as number, accountId: String(accountId), concept: srcConcept, amount, date: newMovForm.date, type: 'expense', status: 'confirmado' },
-            { id: String(toId), dbId: toId as number, accountId: String(targetAccountId), concept: tgtConcept, amount, date: newMovForm.date, type: 'income', status: 'confirmado' },
+            { id: String(fromId), dbId: fromId as number, accountId: String(accountId), concept: srcConcept, amount, date: newMovForm.date, type: 'expense', status: localStatus },
+            { id: String(toId), dbId: toId as number, accountId: String(targetAccountId), concept: tgtConcept, amount, date: newMovForm.date, type: 'income', status: localStatus },
           ]));
         }
-        toast.success('Transferencia creada');
+        toast.success(newMovForm.confirmNow ? 'Transferencia creada y confirmada' : 'Transferencia prevista creada');
       } else {
         const eventType: 'income' | 'expense' = newMovForm.type as 'income' | 'expense';
-        const newId = await db.add('treasuryEvents', { type: eventType, amount, predictedDate: newMovForm.date, description: baseConcept, sourceType: 'manual' as const, accountId, status: 'confirmed' as const, actualDate: newMovForm.date, actualAmount: amount, createdAt: now, updatedAt: now });
-        invalidateCachedStores(['treasuryEvents']);
+        const isInmueble = newMovForm.ambito === 'INMUEBLE';
+        const newId = await db.add('treasuryEvents', {
+          type: eventType,
+          amount,
+          predictedDate: newMovForm.date,
+          description: baseConcept,
+          sourceType: 'manual' as const,
+          accountId,
+          status: 'predicted' as const,
+          ambito: isInmueble ? ('INMUEBLE' as const) : ('PERSONAL' as const),
+          inmuebleId: isInmueble ? Number(newMovForm.inmuebleId) : undefined,
+          categoryLabel: isInmueble ? newMovForm.categoryLabel : undefined,
+          createdAt: now,
+          updatedAt: now,
+        });
+        if (newMovForm.confirmNow) {
+          const { confirmTreasuryEvent } = await import('../../services/treasuryConfirmationService');
+          await confirmTreasuryEvent(newId as number);
+        }
+        invalidateCachedStores(['treasuryEvents', 'movements']);
+        const localStatus: 'previsto' | 'confirmado' = newMovForm.confirmNow ? 'confirmado' : 'previsto';
         const evDate = new Date(newMovForm.date);
         if (evDate.getFullYear() === año && evDate.getMonth() + 1 === mesActivo + 1) {
-          setEvents(prev => [...prev, { id: String(newId), dbId: newId as number, accountId: String(accountId ?? ''), concept: baseConcept, amount, date: newMovForm.date, type: eventType, status: 'confirmado' }]);
+          setEvents(prev => [...prev, { id: String(newId), dbId: newId as number, accountId: String(accountId ?? ''), concept: baseConcept, amount, date: newMovForm.date, type: eventType, status: localStatus }]);
         }
-        toast.success('Movimiento añadido');
+        toast.success(newMovForm.confirmNow ? 'Movimiento creado y confirmado' : 'Movimiento previsto creado');
       }
       setShowAddModal(false);
       setNewMovForm(prev => ({ ...DEFAULT_FORM, accountId: prev.accountId, targetAccountId: '' }));
-    } catch { toast.error('Error al guardar el movimiento'); }
+    } catch (err) { console.error(err); toast.error('Error al guardar el movimiento'); }
     finally { setSavingMovement(false); }
   };
 
@@ -1431,6 +1489,65 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
             </div>
           )}
 
+          {/* PR3: Ámbito */}
+          {newMovForm.type !== 'transfer' && (
+            <div>
+              <label className="tv3-field-label">Ámbito</label>
+              <div className="tv3-tipo-sel">
+                {(['PERSONAL', 'INMUEBLE'] as const).map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    className={`tv3-tipo-opt ${newMovForm.ambito === val ? 'tv3-tipo-opt--on' : ''}`}
+                    onClick={() => setNewMovForm(p => ({
+                      ...p,
+                      ambito: val,
+                      inmuebleId: val === 'INMUEBLE' ? p.inmuebleId : '',
+                      categoryLabel: val === 'INMUEBLE' ? p.categoryLabel : '',
+                    }))}
+                  >
+                    {val === 'PERSONAL' ? 'Personal' : 'Inmueble'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {newMovForm.type !== 'transfer' && newMovForm.ambito === 'INMUEBLE' && (
+            <>
+              <div>
+                <label className="tv3-field-label">Inmueble</label>
+                <select
+                  className="tv3-field-select"
+                  value={newMovForm.inmuebleId}
+                  onChange={e => setNewMovForm(p => ({ ...p, inmuebleId: e.target.value }))}
+                >
+                  <option value="">Seleccionar inmueble…</option>
+                  {properties
+                    .filter((p: any) => p && p.id != null && p.state !== 'vendido')
+                    .map((p: any) => (
+                      <option key={p.id} value={p.id}>
+                        {p.alias ?? `Inmueble ${p.id}`}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="tv3-field-label">Categoría</label>
+                <select
+                  className="tv3-field-select"
+                  value={newMovForm.categoryLabel}
+                  onChange={e => setNewMovForm(p => ({ ...p, categoryLabel: e.target.value }))}
+                >
+                  <option value="">Seleccionar categoría…</option>
+                  {INMUEBLE_CATEGORY_OPTIONS_V4.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
           {/* Fecha */}
           <div>
             <label className="tv3-field-label">Fecha</label>
@@ -1441,12 +1558,22 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
               onChange={e => setNewMovForm(p => ({ ...p, date: e.target.value }))}
             />
           </div>
+
+          {/* PR3: Confirmar a la vez (opcional) */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={newMovForm.confirmNow}
+              onChange={e => setNewMovForm(p => ({ ...p, confirmNow: e.target.checked }))}
+            />
+            Confirmar como real al instante (crear movement)
+          </label>
         </div>
 
         <div className="tv3-drawer-footer">
           <button className="tv3-btn tv3-btn--ghost" onClick={() => setShowAddModal(false)}>Cancelar</button>
           <button className="tv3-btn tv3-btn--primary" onClick={handleSaveNewMovement} disabled={savingMovement}>
-            {savingMovement ? 'Guardando…' : <><CheckCircle2 size={14} /> Confirmar</>}
+            {savingMovement ? 'Guardando…' : <><CheckCircle2 size={14} /> {newMovForm.confirmNow ? 'Crear y confirmar' : 'Crear previsión'}</>}
           </button>
         </div>
       </aside>
