@@ -194,9 +194,30 @@ function App() {
       runWhenIdle(() => {
         bankProfilesService.loadProfiles().catch(console.error);
       }, 1800),
-      runWhenIdle(() => {
-        setShowCopilot(true);
-      }, 3000),
+      // CopilotWidget: garantizamos un mínimo real de 3 s tras el primer paint
+      // antes de montarlo (runWhenIdle capea el fallback a ~800 ms, no sirve).
+      // Una vez pasado el umbral, si el navegador soporta requestIdleCallback,
+      // esperamos al siguiente hueco idle para no competir con el hilo.
+      (() => {
+        let idleHandle: number | null = null;
+        const timeoutHandle = window.setTimeout(() => {
+          const idle = (window as Window & {
+            requestIdleCallback?: (cb: IdleRequestCallback) => number;
+          }).requestIdleCallback;
+          if (idle) {
+            idleHandle = idle(() => setShowCopilot(true));
+          } else {
+            setShowCopilot(true);
+          }
+        }, 3000);
+        return () => {
+          window.clearTimeout(timeoutHandle);
+          const cancelIdle = (window as Window & {
+            cancelIdleCallback?: (handle: number) => void;
+          }).cancelIdleCallback;
+          if (idleHandle !== null) cancelIdle?.(idleHandle);
+        };
+      })(),
     ];
 
     // Performance monitoring setup

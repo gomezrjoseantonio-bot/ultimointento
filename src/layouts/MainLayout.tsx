@@ -11,6 +11,40 @@ import { preloadRouteResources } from '../services/navigationPerformanceService'
 const CommandPalette = lazy(() => import('../components/common/CommandPalette'));
 const KeyboardShortcutsModal = lazy(() => import('../components/common/KeyboardShortcutsModal'));
 
+/**
+ * Fallback mínimo mientras se descarga el chunk del overlay. Muestra un
+ * backdrop semitransparente y permite cancelar con Escape o clic fuera, de
+ * modo que el usuario nunca queda "atrapado" si el chunk tarda en llegar.
+ */
+const OverlayFallback: React.FC<{ onClose: () => void; label: string }> = ({
+  onClose,
+  label,
+}) => {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      aria-busy="true"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        backgroundColor: 'rgba(15, 23, 42, 0.4)',
+      }}
+    />
+  );
+};
+
 const MainLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -38,14 +72,25 @@ const MainLayout: React.FC = () => {
     <div className="flex h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       {/* Sprint 5: Command Palette (Cmd+K) — montaje perezoso sólo al abrir */}
       {isCommandPaletteOpen && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <OverlayFallback onClose={closeCommandPalette} label="Cargando paleta de comandos" />
+          }
+        >
           <CommandPalette isOpen={isCommandPaletteOpen} onClose={closeCommandPalette} />
         </Suspense>
       )}
 
       {/* Sprint 5: Keyboard Shortcuts Help Modal — montaje perezoso sólo al abrir */}
       {showShortcuts && (
-        <Suspense fallback={null}>
+        <Suspense
+          fallback={
+            <OverlayFallback
+              onClose={() => setShowShortcuts(false)}
+              label="Cargando atajos de teclado"
+            />
+          }
+        >
           <KeyboardShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
         </Suspense>
       )}
