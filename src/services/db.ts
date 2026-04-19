@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 48; // V4.8: cuenta remunerada — campos opcionales en Account
+const DB_VERSION = 49; // V4.9: PR3 — treasuryEvents con ambito/inmuebleId/categoryLabel + índices
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1062,6 +1062,14 @@ export interface TreasuryEvent {
   // Loan installment reference (for hipoteca / prestamo events)
   prestamoId?: string;
   numeroCuota?: number;
+  // PR3: unified treasury architecture — ámbito + categoría
+  ambito?: 'PERSONAL' | 'INMUEBLE';
+  categoryLabel?: string;         // e.g. "Reparación inmueble" | "Mejora inmueble" | "Mobiliario inmueble" | "Gasto recurrente" | etc.
+  counterparty?: string;          // NIF proveedor / pagador
+  notes?: string;
+  // PR3: tras puntear ("executed"), apunta al movement generado
+  executedMovementId?: number;
+  executedAt?: string;
   // Metadata
   createdAt: string;
   updatedAt: string;
@@ -2118,12 +2126,18 @@ export const initDB = async () => {
           ensureIndex(treasuryEventsStore, 'año', 'año', { unique: false });
           ensureIndex(treasuryEventsStore, 'generadoPor', 'generadoPor', { unique: false });
           ensureIndex(treasuryEventsStore, 'certeza', 'certeza', { unique: false });
+          // PR3: índices para ámbito + inmueble (unified treasury architecture)
+          ensureIndex(treasuryEventsStore, 'ambito', 'ambito', { unique: false });
+          ensureIndex(treasuryEventsStore, 'inmuebleId', 'inmuebleId', { unique: false });
         } else {
           // GAP-3: Añadir índices históricos a bases de datos existentes
           const treasuryEventsStore = transaction.objectStore('treasuryEvents');
           ensureIndex(treasuryEventsStore, 'año', 'año', { unique: false });
           ensureIndex(treasuryEventsStore, 'generadoPor', 'generadoPor', { unique: false });
           ensureIndex(treasuryEventsStore, 'certeza', 'certeza', { unique: false });
+          // PR3: índices para ámbito + inmueble
+          ensureIndex(treasuryEventsStore, 'ambito', 'ambito', { unique: false });
+          ensureIndex(treasuryEventsStore, 'inmuebleId', 'inmuebleId', { unique: false });
         }
 
         // H9: Treasury Recommendations store
