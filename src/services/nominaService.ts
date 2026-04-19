@@ -21,40 +21,51 @@ class NominaService {
   }
 
   /**
-   * Apply defaults to a nomina loaded from the database (backward compatibility)
+   * Apply defaults to a nomina loaded from the database (backward compatibility).
+   *
+   * The wizard UI only exposes a fixed SS retention breakdown (4 percentages
+   * for the current year + cuota solidaridad) and does not surface
+   * `deduccionesAdicionales`. If legacy records keep stale SS rates (e.g. MEI
+   * from a prior year) or hidden recurring deductions imported via XLSX,
+   * calculateSalary would diverge from what the wizard displays. To keep
+   * every screen consistent with the wizard, we refresh the SS rates (unless
+   * the user explicitly flagged `overrideManual`) and drop the hidden
+   * deductions on load.
    */
   private applyDefaults(nomina: any): Nomina {
     const now = new Date().toISOString();
     const currentYear = new Date().getFullYear();
     const ssConfig = getSSDefaults(currentYear);
 
+    const freshSs = {
+      baseCotizacionMensual: getBaseMaxima(currentYear),
+      contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
+      desempleo: ssConfig.desempleo.trabajador,
+      formacionProfesional: ssConfig.formacionProfesional.trabajador,
+      mei: ssConfig.mei.trabajador,
+      overrideManual: false,
+    };
+
     // Migrate old retencion format { irpfPorcentaje, cotizacionSS } → new RetencionNomina
     let retencion: RetencionNomina;
     if (nomina.retencion && typeof (nomina.retencion as any).cotizacionSS === 'number') {
       retencion = {
         irpfPorcentaje: nomina.retencion.irpfPorcentaje ?? 24,
-        ss: {
-          baseCotizacionMensual: getBaseMaxima(currentYear),
-          contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
-          desempleo: ssConfig.desempleo.trabajador,
-          formacionProfesional: ssConfig.formacionProfesional.trabajador,
-          mei: ssConfig.mei.trabajador,
-          overrideManual: false,
-        },
+        ss: freshSs,
       };
     } else if (nomina.retencion && nomina.retencion.ss) {
-      retencion = nomina.retencion as RetencionNomina;
+      const storedSs = nomina.retencion.ss;
+      retencion = {
+        ...(nomina.retencion as RetencionNomina),
+        // Keep user-provided values only when they explicitly opted out of
+        // automatic refresh. Otherwise normalise to current-year defaults so
+        // the wizard preview matches what calculateSalary computes.
+        ss: storedSs.overrideManual ? storedSs : freshSs,
+      };
     } else {
       retencion = {
         irpfPorcentaje: 24,
-        ss: {
-          baseCotizacionMensual: getBaseMaxima(currentYear),
-          contingenciasComunes: ssConfig.contingenciasComunes.trabajador,
-          desempleo: ssConfig.desempleo.trabajador,
-          formacionProfesional: ssConfig.formacionProfesional.trabajador,
-          mei: ssConfig.mei.trabajador,
-          overrideManual: false,
-        },
+        ss: freshSs,
       };
     }
 
@@ -63,7 +74,10 @@ class NominaService {
       titular: nomina.titular ?? 'yo',
       fechaAntiguedad: nomina.fechaAntiguedad ?? nomina.fechaCreacion ?? now,
       beneficiosSociales: nomina.beneficiosSociales ?? [],
-      deduccionesAdicionales: nomina.deduccionesAdicionales ?? [],
+      // The wizard does not expose these; drop hidden entries so the form and
+      // every downstream view (Gestión Personal, Supervisión, Presupuesto)
+      // compute the same liquid.
+      deduccionesAdicionales: [],
       retencion,
     } satisfies Nomina;
   }
