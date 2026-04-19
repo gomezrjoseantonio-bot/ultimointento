@@ -364,18 +364,48 @@ export async function revertTreasuryConfirmation(
 
   await (tx.objectStore('movements') as any).delete(movementId);
 
+  // PR3 · Usa el índice `movimientoId` (creado en DB_VERSION=50) para
+  // localizar la línea sin cargar toda la tabla. Soportamos tanto el
+  // valor string (GastoInmueble/MejoraInmueble/MuebleInmueble declaran
+  // movimientoId como string) como el valor numérico por si se hubiese
+  // guardado ya como número en datos legacy.
+  const movementIdVariants: Array<string | number> = [
+    String(movementId),
+    movementId,
+  ];
   for (const storeName of ALL_LINE_STORES) {
     const store = tx.objectStore(storeName) as any;
-    const all = (await store.getAll()) as any[];
-    for (const linea of all) {
-      if (
-        linea &&
-        (linea.movimientoId === String(movementId) ||
-          linea.movimientoId === movementId) &&
-        linea.id != null
-      ) {
-        await store.delete(linea.id);
+    let index: IDBIndex | null = null;
+    try {
+      index = store.index('movimientoId');
+    } catch {
+      index = null;
+    }
+
+    const seenIds = new Set<number>();
+    if (index) {
+      for (const key of movementIdVariants) {
+        const matches = (await (index as any).getAll(key)) as any[];
+        for (const linea of matches) {
+          if (linea?.id != null) seenIds.add(linea.id);
+        }
       }
+    } else {
+      // Fallback para BDs anteriores a la migración: recorrido completo.
+      const all = (await store.getAll()) as any[];
+      for (const linea of all) {
+        if (
+          linea?.id != null &&
+          (linea.movimientoId === String(movementId) ||
+            linea.movimientoId === movementId)
+        ) {
+          seenIds.add(linea.id);
+        }
+      }
+    }
+
+    for (const lineaId of seenIds) {
+      await store.delete(lineaId);
     }
   }
 

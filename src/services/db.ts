@@ -23,7 +23,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 49; // V4.9: PR3 — treasuryEvents con ambito/inmuebleId/categoryLabel + índices
+const DB_VERSION = 50; // V5.0: PR3 — índices movimientoId/treasuryEventId en gastosInmueble/mejorasInmueble/mueblesInmueble
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2031,6 +2031,13 @@ export const initDB = async () => {
           gastosStore.createIndex('origen', 'origen', { unique: false });
           gastosStore.createIndex('estado', 'estado', { unique: false });
           gastosStore.createIndex('origen-origenId', ['origen', 'origenId'], { unique: false });
+          // PR3 · índices para revert eficiente (treasuryConfirmationService)
+          ensureIndex(gastosStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(gastosStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
+        } else {
+          const gastosStore = transaction.objectStore('gastosInmueble');
+          ensureIndex(gastosStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(gastosStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
         }
 
         // V4.0: mejorasInmueble — mejoras/ampliaciones/reparaciones por inmueble
@@ -2039,6 +2046,12 @@ export const initDB = async () => {
           mejorasStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
           mejorasStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           mejorasStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+          ensureIndex(mejorasStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(mejorasStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
+        } else {
+          const mejorasStore = transaction.objectStore('mejorasInmueble');
+          ensureIndex(mejorasStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(mejorasStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
         }
 
         // V4.0: mueblesInmueble — mobiliario amortizable por inmueble
@@ -2047,6 +2060,12 @@ export const initDB = async () => {
           mueblesStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
           mueblesStore.createIndex('ejercicio', 'ejercicio', { unique: false });
           mueblesStore.createIndex('inmueble-ejercicio', ['inmuebleId', 'ejercicio'], { unique: false });
+          ensureIndex(mueblesStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(mueblesStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
+        } else {
+          const mueblesStore = transaction.objectStore('mueblesInmueble');
+          ensureIndex(mueblesStore, 'movimientoId', 'movimientoId', { unique: false });
+          ensureIndex(mueblesStore, 'treasuryEventId', 'treasuryEventId', { unique: false });
         }
 
         // V4.2+: Delete legacy stores — all runtime references removed
