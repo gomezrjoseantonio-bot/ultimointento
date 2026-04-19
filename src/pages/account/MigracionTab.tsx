@@ -7,6 +7,7 @@ import ImportarValoraciones from './migracion/ImportarValoraciones';
 import ImportarMovimientos from './migracion/ImportarMovimientos';
 import ImportarContratos from './migracion/ImportarContratos';
 import ImportarAportaciones from './migracion/ImportarAportaciones';
+import ImportarIndexaCapital from './migracion/ImportarIndexaCapital';
 import ImportarPrestamos from './migracion/ImportarPrestamos';
 import ImportarInmuebles from './migracion/ImportarInmuebles';
 import ImportarNominas from './migracion/ImportarNominas';
@@ -14,7 +15,7 @@ import ImportarCuentas from './migracion/ImportarCuentas';
 import ImportarDeclaracionWizard from '../../modules/horizon/fiscalidad/historico/ImportarDeclaracionWizard';
 import HistoricoWizard from '../../modules/horizon/tesoreria/HistoricoWizard';
 
-type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf' | 'cuentas';
+type MigracionView = 'menu' | 'valoraciones' | 'aportaciones' | 'indexa' | 'movimientos' | 'contratos' | 'prestamos' | 'inmuebles' | 'nominas' | 'irpf' | 'cuentas';
 
 const MigracionTab: React.FC = () => {
   const [view, setView] = useState<MigracionView>('menu');
@@ -59,6 +60,14 @@ const MigracionTab: React.FC = () => {
     return (
       <ImportarAportaciones
         onComplete={() => markCompleted('aportaciones')}
+        onBack={() => setView('menu')}
+      />
+    );
+  }
+  if (view === 'indexa') {
+    return (
+      <ImportarIndexaCapital
+        onComplete={() => markCompleted('indexa')}
         onBack={() => setView('menu')}
       />
     );
@@ -160,6 +169,14 @@ const MigracionTab: React.FC = () => {
           color="var(--atlas-blue)"
           completed={completados.has('aportaciones')}
           onClick={() => setView('aportaciones')}
+        />
+        <MigracionCard
+          icon={TrendingUp}
+          title="Plan de pensiones (Indexa Capital)"
+          description="Importa el Excel diario de Indexa Capital: valoraciones, aportaciones netas y rescates."
+          color="var(--atlas-blue)"
+          completed={completados.has('indexa')}
+          onClick={() => setView('indexa')}
         />
         <MigracionCard
           icon={Banknote}
