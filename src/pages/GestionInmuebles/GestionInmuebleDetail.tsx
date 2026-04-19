@@ -8,7 +8,6 @@ import { ArrowLeft, Building2, Pencil, Plus, CircleDollarSign } from 'lucide-rea
 import toast from 'react-hot-toast';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../../components/shared/PageHeader';
 import { initDB, type Property } from '../../services/db';
-import PropertySaleModal from '../../modules/horizon/inmuebles/components/PropertySaleModal';
 import FichaTab from './tabs/FichaTab';
 import GastosRecurrentesTab from './tabs/GastosRecurrentesTab';
 import LineasAnualesTab from './tabs/LineasAnualesTab';
@@ -41,7 +40,6 @@ const GestionInmuebleDetail: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSaleModal, setShowSaleModal] = useState(false);
 
   const activeTab: TabId = isTab(searchParams.get('tab')) ? (searchParams.get('tab') as TabId) : 'ficha';
 
@@ -141,7 +139,7 @@ const GestionInmuebleDetail: React.FC = () => {
         <HeaderSecondaryButton
           icon={CircleDollarSign}
           label="Vender inmueble"
-          onClick={() => setShowSaleModal(true)}
+          onClick={() => navigate(`/gestion/inmuebles/${property.id}/vender`)}
         />
       )}
       {primaryAction}
@@ -198,17 +196,6 @@ const GestionInmuebleDetail: React.FC = () => {
           <LineasAnualesTab propertyId={property.id!} categoria="mobiliario" />
         )}
       </div>
-
-      <PropertySaleModal
-        open={showSaleModal}
-        property={property}
-        source="detalle"
-        onClose={() => setShowSaleModal(false)}
-        onConfirmed={() => {
-          setShowSaleModal(false);
-          void loadProperty();
-        }}
-      />
     </div>
   );
 };

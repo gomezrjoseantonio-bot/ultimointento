@@ -24,7 +24,6 @@ import {
 import PageLayout from '../../../../components/common/PageLayout';
 import { Property, Contract, FiscalSummary, initDB } from '../../../../services/db';
 import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
-import PropertySaleModal from '../components/PropertySaleModal';
 import { formatEuro } from '../../../../utils/formatUtils';
 import toast from 'react-hot-toast';
 import { confirmAction, confirmDelete } from '../../../../services/confirmationService';
@@ -116,7 +115,6 @@ const Cartera: React.FC = () => {
   const [openMenuPropertyId, setOpenMenuPropertyId] = useState<number | null>(null);
   const actionMenuContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const [saleModalProperty, setSaleModalProperty] = useState<Property | null>(null);
   const [latestSaleByPropertyId, setLatestSaleByPropertyId] = useState<Record<number, number | null>>({});
 
   useEffect(() => {
@@ -459,7 +457,7 @@ const Cartera: React.FC = () => {
                             <button onClick={() => navigate(`/inmuebles/gastos?propertyId=${propId}`)} className="p-1.5 text-neutral-500 hover:text-brand-navy hover:bg-neutral-100 rounded transition-colors" title="Ver gastos"><TrendingDown className="h-4 w-4" /></button>
                             {property.state === 'activo' && (
                               <button
-                                onClick={() => setSaleModalProperty(property)}
+                                onClick={() => navigate(`/gestion/inmuebles/${propId}/vender`)}
                                 className="p-1.5 text-neutral-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
                                 title="Vender inmueble"
                               >
@@ -483,7 +481,7 @@ const Cartera: React.FC = () => {
                                 <button onClick={() => handleRowAction(() => navigate(`/inmuebles/gastos?propertyId=${propId}`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><TrendingDown className="h-4 w-4" /> Gastos</button>
                                 <button onClick={() => handleRowAction(() => navigate(`/inmuebles/cartera/${propId}?tab=fiscal`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><FileText className="h-4 w-4" /> Fiscal</button>
                                 {property.state === 'activo' && (
-                                  <button onClick={() => handleRowAction(() => setSaleModalProperty(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Vender inmueble</button>
+                                  <button onClick={() => handleRowAction(() => navigate(`/gestion/inmuebles/${propId}/vender`))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Vender inmueble</button>
                                 )}
                                 {property.state === 'vendido' && (
                                   <button onClick={() => handleRowAction(() => void handleRevertSale(property))} className="w-full px-3 py-2 text-left text-sm text-[var(--n-700)] hover:bg-[var(--n-100)] inline-flex items-center gap-2"><CircleDollarSign className="h-4 w-4" /> Revertir venta</button>
@@ -514,15 +512,6 @@ const Cartera: React.FC = () => {
         </div>
       </div>
 
-      <PropertySaleModal
-        open={Boolean(saleModalProperty)}
-        property={saleModalProperty}
-        source="cartera"
-        onClose={() => setSaleModalProperty(null)}
-        onConfirmed={() => {
-          void loadData();
-        }}
-      />
     </PageLayout>
   );
 };

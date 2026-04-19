@@ -82,7 +82,9 @@ const FichaTab: React.FC<FichaTabProps> = ({ property }) => {
     ? (costs.itp / costs.price) * 100
     : null;
 
-  const netGain = sale ? sale.netProceeds - totalAcquisition : null;
+  // Ganancia patrimonial: siempre desde el snapshot fiscal del wizard.
+  // Las ventas previas al PR2 no tenían snapshot y se muestran como "—".
+  const gananciaPatrimonial = sale?.fiscalSnapshot?.gananciaPatrimonial ?? null;
 
   const columns = isSold ? 5 : 4;
 
@@ -192,13 +194,19 @@ const FichaTab: React.FC<FichaTabProps> = ({ property }) => {
           <FichaRow
             label="Ganancia patrimonial"
             value={
-              netGain != null
-                ? (netGain >= 0 ? '+' : '') + fmtEuro(netGain)
+              gananciaPatrimonial != null
+                ? (gananciaPatrimonial >= 0 ? '+' : '') + fmtEuro(gananciaPatrimonial)
                 : '—'
             }
             mono
             bold
-            positiveColor={netGain != null ? (netGain >= 0 ? 'navy' : 'teal') : undefined}
+            positiveColor={
+              gananciaPatrimonial != null
+                ? gananciaPatrimonial >= 0
+                  ? 'navy'
+                  : 'teal'
+                : undefined
+            }
           />
         </FichaSection>
       )}

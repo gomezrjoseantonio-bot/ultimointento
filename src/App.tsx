@@ -108,6 +108,7 @@ const GestionInversionesPage = lazyWithPreload(() => import('./pages/GestionInve
 // Gestión Inmuebles hub
 const GestionInmueblesList = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmueblesList'));
 const GestionInmuebleDetail = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmuebleDetail'));
+const VentaWizard = lazyWithPreload(() => import('./pages/GestionInmuebles/VentaWizard'));
 const NominaWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/NominaWizard'));
 const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/AutonomoWizard'));
 const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
@@ -541,6 +542,11 @@ function App() {
               <Route path="inmuebles/:id/editar" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PropertyForm mode="edit" />
+                </React.Suspense>
+              } />
+              <Route path="inmuebles/:id/vender" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <VentaWizard />
                 </React.Suspense>
               } />
               <Route path="inversiones" element={

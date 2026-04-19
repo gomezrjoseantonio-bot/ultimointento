@@ -212,7 +212,8 @@ const InmuebleCard: React.FC<{
   const isSold = property.state === 'vendido';
   const totalCost = getTotalAcquisition(property);
   const purchaseYear = property.purchaseDate ? property.purchaseDate.slice(0, 4) : '—';
-  const netGain = sale ? sale.netProceeds - totalCost : null;
+  // Ganancia desde el snapshot fiscal del wizard. Las ventas previas al PR2 se muestran como "—".
+  const gananciaPatrimonial = sale?.fiscalSnapshot?.gananciaPatrimonial ?? null;
 
   return (
     <button
@@ -275,18 +276,23 @@ const InmuebleCard: React.FC<{
             </div>
             <div>
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: C.grey500, letterSpacing: '.05em' }}>
-                Ganancia neta
+                Ganancia patrimonial
               </div>
               <div
                 style={{
                   fontSize: 14,
                   fontWeight: 500,
                   fontFamily: "'IBM Plex Mono', monospace",
-                  color: netGain != null && netGain < 0 ? C.teal600 : C.navy900,
+                  color:
+                    gananciaPatrimonial != null && gananciaPatrimonial < 0
+                      ? C.teal600
+                      : C.navy900,
                   marginTop: 2,
                 }}
               >
-                {netGain != null ? (netGain >= 0 ? '+' : '') + fmtEuro(netGain) : '—'}
+                {gananciaPatrimonial != null
+                  ? (gananciaPatrimonial >= 0 ? '+' : '') + fmtEuro(gananciaPatrimonial)
+                  : '—'}
               </div>
             </div>
           </>

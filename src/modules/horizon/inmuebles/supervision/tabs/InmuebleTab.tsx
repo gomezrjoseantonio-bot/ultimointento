@@ -6,7 +6,6 @@ import Chart360 from '../components/Chart360';
 import MotoresGrid from '../components/MotoresGrid';
 import IngastoDrawer, { type DrawerTipo } from '../components/IngastoDrawer';
 import RendimientoActivo from '../components/RendimientoActivo';
-import PropertySaleModal from '../../components/PropertySaleModal';
 import { initDB, type Property } from '../../../../../services/db';
 import type { InmuebleSupervision, TotalesCartera } from '../hooks/useSupervisionData';
 
@@ -32,7 +31,6 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
   const [tasaRev, setTasaRev] = useState(3);
   const [crecRentas, setCrecRentas] = useState(3);
   const [horizonte, setHorizonte] = useState(10);
-  const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [drawerTipo, setDrawerTipo] = useState<DrawerTipo>(null);
   const [fullProperty, setFullProperty] = useState<Property | null>(null);
@@ -130,7 +128,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           <Receipt size={14} /> Gastos
         </button>
         <button
-          onClick={() => setShowSaleModal(true)}
+          onClick={() => navigate(`/gestion/inmuebles/${inm.id}/vender`)}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', borderRadius: 'var(--r-md)',
@@ -139,7 +137,7 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
             fontFamily: 'var(--font-base)', cursor: 'pointer', fontWeight: 500,
           }}
         >
-          <Calculator size={14} /> Simular venta
+          <Calculator size={14} /> Vender inmueble
         </button>
       </div>
 
@@ -294,15 +292,6 @@ const InmuebleTab: React.FC<InmuebleTabProps> = ({ inmuebles }) => {
           </div>
         </div>
       </div>
-
-      {/* Property Sale Modal */}
-      <PropertySaleModal
-        open={showSaleModal}
-        property={fullProperty}
-        source="analisis"
-        onClose={() => setShowSaleModal(false)}
-        onConfirmed={() => setShowSaleModal(false)}
-      />
 
       <IngastoDrawer
         open={drawerTipo !== null}
