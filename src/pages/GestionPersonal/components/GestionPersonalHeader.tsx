@@ -233,11 +233,16 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
     if (c) netNomPar += c.totalAnualNeto;
   }
 
-  // Autonomo
-  const autoEstimated = autonomos.length > 0
-    ? autonomoService.calculateEstimatedAnnualForAutonomos(autonomos)
+  // Autonomo. `calculateEstimatedAnnualForAutonomos` prioriza las actividades
+  // activas (si hay alguna activa, ignora las inactivas); alineamos aquí el
+  // mismo criterio para la retención de IRPF de forma que los dos términos
+  // (rendimientoNeto y retención) se apliquen al mismo subconjunto.
+  const autoActivos = autonomos.filter((a) => a.activo);
+  const autoSource = autoActivos.length > 0 ? autoActivos : autonomos;
+  const autoEstimated = autoSource.length > 0
+    ? autonomoService.calculateEstimatedAnnualForAutonomos(autoSource)
     : { facturacionBruta: 0, totalGastos: 0, rendimientoNeto: 0 };
-  const autoIrpfRet = autonomos.reduce((sum, a) => {
+  const autoIrpfRet = autoSource.reduce((sum, a) => {
     const est = autonomoService.calculateEstimatedAnnual(a);
     return sum + est.facturacionBruta * ((a.irpfRetencionPorcentaje || 0) / 100);
   }, 0);
@@ -250,9 +255,10 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   const otrosActivos = otrosIngresos.filter((o) => o.activo);
   const otrosAnual = otrosIngresosService.calculateAnnualIncome(otrosActivos);
 
-  // Autónomo neto: rendimientoNeto (facturación − gastos) menos la retención
-  // IRPF ya practicada. Si la actividad tiene pérdidas, esa cantidad sale
-  // realmente del bolsillo del titular y debe restar al KPI: no clampamos a 0.
+  // Autónomo neto: rendimientoNeto estimado por el servicio
+  // (facturación bruta − gastos recurrentes − cuota SS autónomos) menos la
+  // retención IRPF estimada a partir de irpfRetencionPorcentaje. Si la
+  // actividad arroja pérdidas, debe seguir restando al KPI: no clampamos a 0.
   const autoNetoAportacion = autoEstimated.rendimientoNeto - autoIrpfRet;
 
   // Total neto (nómina net already deducts SS, IRPF y PP empleado).
