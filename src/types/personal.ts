@@ -307,6 +307,11 @@ export interface AportacionPeriodica {
   activa: boolean;
 }
 
+// Stores donde puede vivir un plan de pensiones. Existen dos legacy:
+//   - `planesPensionInversion` (store dedicado en Personal → Planes)
+//   - `inversiones` con `tipo='plan_pensiones' | 'plan-pensiones' | 'plan_empleo'`
+export type PlanStore = 'planesPensionInversion' | 'inversiones';
+
 // Traspaso de planes de pensiones (movimiento patrimonial sin tributación —
 // art. 8.8 LRPFP). No computa como aportación deducible ni como rescate.
 // El evento se guarda como entidad propia para mantener trazabilidad del
@@ -317,6 +322,10 @@ export interface TraspasoPlan {
   personalDataId: number;
   planOrigenId: number;
   planDestinoId: number;
+  // Store de origen / destino — necesarios para desambiguar, ya que los IDs
+  // son auto-increment independientes por store y pueden colisionar.
+  planOrigenStore?: PlanStore;
+  planDestinoStore?: PlanStore;
   // Snapshot de nombre/entidad al momento del traspaso para no perder
   // trazabilidad si el plan origen/destino se elimina más adelante.
   planOrigenNombre: string;

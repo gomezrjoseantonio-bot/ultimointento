@@ -2,15 +2,36 @@ import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { planesInversionService } from '../../../services/planesInversionService';
-import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
-import type { PlanPensionInversion } from '../../../types/personal';
+import { initDB } from '../../../services/db';
+import {
+  PlanRef,
+  traspasosPlanesService,
+} from '../../../services/traspasosPlanesService';
+import type { PlanStore } from '../../../types/personal';
+import type { PosicionInversion } from '../../../types/inversiones';
+
+export interface PlanOrigenInput {
+  id: number;
+  store: PlanStore;
+  nombre: string;
+  entidad?: string;
+  saldo: number;
+}
 
 interface TraspasoFormProps {
   isOpen: boolean;
   onClose: () => void;
   personalDataId: number;
-  planOrigen: PlanPensionInversion | null;
+  planOrigen: PlanOrigenInput | null;
   onSaved: () => void;
+}
+
+interface DestinoOption {
+  key: string;           // store|id
+  store: PlanStore;
+  id: number;
+  nombre: string;
+  entidad?: string;
 }
 
 const today = (): string => {
@@ -21,6 +42,8 @@ const today = (): string => {
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
 
+const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
+
 const TraspasoForm: React.FC<TraspasoFormProps> = ({
   isOpen,
   onClose,
@@ -29,8 +52,8 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   onSaved,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [planesDestinoCandidatos, setPlanesDestinoCandidatos] = useState<PlanPensionInversion[]>([]);
-  const [planDestinoId, setPlanDestinoId] = useState<number | ''>('');
+  const [destinos, setDestinos] = useState<DestinoOption[]>([]);
+  const [destinoKey, setDestinoKey] = useState<string>('');
   const [tipo, setTipo] = useState<'total' | 'parcial'>('parcial');
   const [importe, setImporte] = useState<string>('');
   const [fecha, setFecha] = useState<string>(today());
@@ -38,8 +61,7 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
   useEffect(() => {
     if (!isOpen || !planOrigen) return;
-    // Reset al abrir
-    setPlanDestinoId('');
+    setDestinoKey('');
     setTipo('parcial');
     setImporte('');
     setFecha(today());
@@ -47,10 +69,38 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
     (async () => {
       try {
-        const todos = await planesInversionService.getPlanes(personalDataId);
-        setPlanesDestinoCandidatos(
-          todos.filter((p) => p.tipo === 'plan-pensiones' && p.id !== planOrigen.id)
-        );
+        const [planes, db] = await Promise.all([
+          planesInversionService.getPlanes(personalDataId),
+          initDB(),
+        ]);
+        const inversiones = (await db.getAll('inversiones')) as PosicionInversion[];
+
+        const options: DestinoOption[] = [];
+        for (const p of planes) {
+          if (p.tipo !== 'plan-pensiones' || p.id === undefined) continue;
+          const isSameAsOrigen = planOrigen.store === 'planesPensionInversion' && p.id === planOrigen.id;
+          if (isSameAsOrigen) continue;
+          options.push({
+            key: `planesPensionInversion|${p.id}`,
+            store: 'planesPensionInversion',
+            id: p.id,
+            nombre: p.nombre,
+            entidad: p.entidad,
+          });
+        }
+        for (const inv of inversiones) {
+          if (!PLAN_TIPOS_INV.has(inv.tipo)) continue;
+          const isSameAsOrigen = planOrigen.store === 'inversiones' && inv.id === planOrigen.id;
+          if (isSameAsOrigen) continue;
+          options.push({
+            key: `inversiones|${inv.id}`,
+            store: 'inversiones',
+            id: inv.id,
+            nombre: inv.nombre,
+            entidad: inv.entidad,
+          });
+        }
+        setDestinos(options);
       } catch (e) {
         console.error('Error cargando planes destino:', e);
       }
@@ -59,11 +109,12 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
   if (!planOrigen) return null;
 
-  const saldoOrigen = planOrigen.valorActual ?? 0;
+  const saldoOrigen = planOrigen.saldo;
+  const destinoSeleccionado = destinos.find((d) => d.key === destinoKey);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!planDestinoId) {
+    if (!destinoSeleccionado) {
       toast.error('Selecciona el plan de destino.');
       return;
     }
@@ -75,10 +126,12 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
     setLoading(true);
     try {
+      const origenRef: PlanRef = { id: planOrigen.id, store: planOrigen.store };
+      const destinoRef: PlanRef = { id: destinoSeleccionado.id, store: destinoSeleccionado.store };
       await traspasosPlanesService.createTraspaso({
         personalDataId,
-        planOrigenId: planOrigen.id!,
-        planDestinoId: Number(planDestinoId),
+        planOrigen: origenRef,
+        planDestino: destinoRef,
         fecha,
         importe: importeNum,
         esTotal: tipo === 'total',
@@ -126,23 +179,23 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           <label htmlFor="planDestino" className="block text-sm font-medium text-gray-700 mb-1">
             Plan destino *
           </label>
-          {planesDestinoCandidatos.length === 0 ? (
+          {destinos.length === 0 ? (
             <p className="text-sm text-gray-500">
               No tienes otro plan de pensiones registrado. Crea primero el plan de destino
-              (Personal → Planes → Nuevo Plan) y vuelve aquí.
+              (desde Gestión inversiones → Nueva posición, tipo plan_pensiones) y vuelve aquí.
             </p>
           ) : (
             <select
               id="planDestino"
-              value={planDestinoId}
-              onChange={(e) => setPlanDestinoId(e.target.value ? Number(e.target.value) : '')}
+              value={destinoKey}
+              onChange={(e) => setDestinoKey(e.target.value)}
               className="w-full border rounded-md px-3 py-2 text-sm"
               required
             >
               <option value="">— Selecciona un plan —</option>
-              {planesDestinoCandidatos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre}{p.entidad ? ` (${p.entidad})` : ''}
+              {destinos.map((d) => (
+                <option key={d.key} value={d.key}>
+                  {d.nombre}{d.entidad ? ` (${d.entidad})` : ''}
                 </option>
               ))}
             </select>
@@ -234,7 +287,7 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           </button>
           <button
             type="submit"
-            disabled={loading || planesDestinoCandidatos.length === 0}
+            disabled={loading || destinos.length === 0}
             className="px-4 py-2 text-sm font-medium text-white bg-brand-navy rounded-md disabled:opacity-60"
           >
             {loading ? 'Registrando…' : 'Registrar traspaso'}
