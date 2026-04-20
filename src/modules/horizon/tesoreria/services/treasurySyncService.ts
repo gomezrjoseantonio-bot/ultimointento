@@ -269,11 +269,13 @@ export async function generateMonthlyForecasts(
         sourceId: rule.id,
         accountId: rule.accountId,
         status: 'predicted' as const,
-        // PR5-HOTFIX v3 · copia del proveedor estructurado de la regla.
+        // PR5-HOTFIX v3 · copia del proveedor estructurado de la regla. El
+        // counterparty legacy cae al NIF si la regla sólo tiene NIF para no
+        // perder la referencia en lectores antiguos.
         providerName: rule.proveedorNombre,
         providerNif: rule.proveedorNIF,
         invoiceNumber: rule.invoiceNumber,
-        counterparty: rule.proveedorNombre,
+        counterparty: rule.proveedorNombre ?? rule.proveedorNIF,
         createdAt: now,
         updatedAt: now,
       });

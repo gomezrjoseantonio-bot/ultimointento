@@ -100,36 +100,25 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
       const trimmedInvoice = invoiceNumber.trim();
 
       if (row.state === 'confirmed') {
-        // PR5.6 · Propaga a event + movement + línea de inmueble en una
-        // sola transacción. El gesto de desconciliar vive en el círculo.
+        // PR5.6 + PR5-HOTFIX v3 · Una sola llamada atómica que propaga a
+        // event + movement + línea. `counterparty` se rellena con el nombre
+        // (o con el NIF si el usuario dejó el nombre en blanco) para que los
+        // lectores legacy sigan viendo la referencia.
+        const legacyCounterparty = trimmedName || trimmedNif || undefined;
         await updateConfirmedMovement(row.eventId, {
           amount: finalAmount,
           date,
           accountId,
           description: concept,
-          // PR5-HOTFIX v3 · `counterparty` sigue recibiendo el nombre del
-          // proveedor para que la cadena legacy event→movement→linea lo
-          // propague al campo `proveedorNombre`. Los nuevos campos
-          // estructurados se guardan directo en el event más abajo.
-          counterparty: trimmedName || undefined,
+          counterparty: legacyCounterparty,
+          providerName: trimmedName || undefined,
+          providerNif: trimmedNif || undefined,
+          invoiceNumber: trimmedInvoice || undefined,
           notes: notes || undefined,
           categoryLabel: categoryLabel || undefined,
           ambito,
           inmuebleId,
         });
-        // Actualiza también los campos estructurados directamente en el event
-        // (updateConfirmedMovement todavía no conoce los nuevos campos).
-        const db = await initDB();
-        const event = (await db.get('treasuryEvents', row.eventId)) as TreasuryEvent | undefined;
-        if (event) {
-          await db.put('treasuryEvents', {
-            ...event,
-            providerName: trimmedName || undefined,
-            providerNif: trimmedNif || undefined,
-            invoiceNumber: trimmedInvoice || undefined,
-            updatedAt: new Date().toISOString(),
-          });
-        }
         toast.success('Movimiento actualizado');
       } else {
         const db = await initDB();
@@ -141,7 +130,7 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
           amount: finalAmount != null ? Math.abs(finalAmount) : event.amount,
           accountId,
           description: concept,
-          counterparty: trimmedName || undefined,
+          counterparty: trimmedName || trimmedNif || undefined,
           providerName: trimmedName || undefined,
           providerNif: trimmedNif || undefined,
           invoiceNumber: trimmedInvoice || undefined,
@@ -176,10 +165,14 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
       const db = await initDB();
       const event = (await db.get('treasuryEvents', row.eventId)) as TreasuryEvent | undefined;
       if (!event) throw new Error('Evento no encontrado');
+      // PR5-HOTFIX v3 · si el usuario deja el nombre vacío pero aporta NIF,
+      // usamos el NIF como counterparty legacy para que lectores antiguos
+      // sigan mostrando algo en vez de '—'.
+      const legacyCounterparty = trimmedName || trimmedNif || undefined;
       await db.put('treasuryEvents', {
         ...event,
         description: concept,
-        counterparty: trimmedName || undefined,
+        counterparty: legacyCounterparty,
         providerName: trimmedName || undefined,
         providerNif: trimmedNif || undefined,
         invoiceNumber: trimmedInvoice || undefined,
@@ -199,7 +192,10 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
             date,
             accountId,
             description: concept,
-            counterparty: trimmedName || undefined,
+            counterparty: legacyCounterparty,
+            providerName: trimmedName || undefined,
+            providerNif: trimmedNif || undefined,
+            invoiceNumber: trimmedInvoice || undefined,
             notes: notes || undefined,
           });
           // Crea una nueva previsión con el remanente pendiente.
@@ -232,7 +228,7 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
           date,
           accountId,
           description: concept,
-          counterparty: trimmedName || undefined,
+          counterparty: legacyCounterparty,
           providerName: trimmedName || undefined,
           providerNif: trimmedNif || undefined,
           invoiceNumber: trimmedInvoice || undefined,

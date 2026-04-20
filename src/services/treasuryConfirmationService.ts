@@ -344,8 +344,6 @@ export async function confirmTreasuryEvent(
     const finalDate = overrides?.date ?? existingEvent.predictedDate;
     const finalAmount = overrides?.amount ?? existingEvent.amount;
     const finalDescription = overrides?.description ?? existingEvent.description;
-    const finalCounterparty =
-      overrides?.counterparty ?? existingEvent.counterparty ?? '';
     // PR5-HOTFIX v3 · proveedor estructurado para la línea de inmueble.
     const finalLineaProviderName =
       overrides?.providerName ??

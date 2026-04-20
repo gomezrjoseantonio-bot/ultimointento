@@ -336,7 +336,9 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
         providerName: providerNameTrimmed || undefined,
         providerNif: providerNifTrimmed || undefined,
         invoiceNumber: invoiceNumberTrimmed || undefined,
-        counterparty: providerNameTrimmed || undefined,
+        // Si el usuario rellena NIF sin nombre, el NIF es la mejor referencia
+        // visible para los lectores legacy que siguen usando counterparty.
+        counterparty: providerNameTrimmed || providerNifTrimmed || undefined,
         prestamoId: tipo === 'financiacion' ? prestamoId : undefined,
         transferMetadata:
           tipo === 'financiacion' && esAmortizacionParcial

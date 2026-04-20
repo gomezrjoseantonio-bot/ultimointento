@@ -58,7 +58,7 @@ const fmtDate = (iso: string): string => {
 
 function accountLabel(a: Account | undefined): string {
   if (!a) return '—';
-  const name = a.alias ?? a.banco?.name ?? (a as any).bank ?? `Cuenta ${a.id ?? ''}`;
+  const name = a.alias ?? a.banco?.name ?? a.bank ?? `Cuenta ${a.id ?? ''}`;
   const tail = a.iban ? a.iban.slice(-4) : '';
   return tail ? `${name} ·${tail}` : name;
 }
@@ -215,12 +215,15 @@ const EjecucionesRecurrentesSection: React.FC<Props> = ({ propertyId }) => {
                     </Td>
                     <Td align="right">
                       <div style={{ display: 'inline-flex', gap: 4 }}>
+                        {/* PR5-HOTFIX v3 · la edición en-tabla se ha retirado
+                            para evitar rutas paralelas a la cadena event ↔
+                            movement ↔ línea; el botón sigue clicable para
+                            informar al usuario con un toast. */}
                         <IconButton
-                          title="Editar"
+                          title="Editar desde Conciliación"
                           onClick={() => {
                             toast('Edita desde Conciliación para propagar cambios', { icon: 'ℹ️' });
                           }}
-                          disabled
                         >
                           <Pencil size={14} />
                         </IconButton>
