@@ -5,6 +5,7 @@ import { planesInversionService } from '../../../services/planesInversionService
 import { initDB } from '../../../services/db';
 import {
   PlanRef,
+  PLAN_PENSIONES_TIPOS_INVERSION,
   traspasosPlanesService,
 } from '../../../services/traspasosPlanesService';
 import type { PlanStore } from '../../../types/personal';
@@ -41,8 +42,6 @@ const today = (): string => {
 
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
-
-const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
 
 const TraspasoForm: React.FC<TraspasoFormProps> = ({
   isOpen,
@@ -89,7 +88,7 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           });
         }
         for (const inv of inversiones) {
-          if (!PLAN_TIPOS_INV.has(inv.tipo)) continue;
+          if (!PLAN_PENSIONES_TIPOS_INVERSION.has(inv.tipo)) continue;
           const isSameAsOrigen = planOrigen.store === 'inversiones' && inv.id === planOrigen.id;
           if (isSameAsOrigen) continue;
           options.push({
@@ -182,7 +181,8 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           {destinos.length === 0 ? (
             <p className="text-sm text-gray-500">
               No tienes otro plan de pensiones registrado. Crea primero el plan de destino
-              (desde Gestión inversiones → Nueva posición, tipo plan_pensiones) y vuelve aquí.
+              (desde Gestión inversiones → Nueva posición o desde Personal → Planes) y vuelve
+              aquí.
             </p>
           ) : (
             <select

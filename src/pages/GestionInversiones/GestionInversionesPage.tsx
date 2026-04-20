@@ -10,7 +10,7 @@ import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
 import { personalDataService } from '../../services/personalDataService';
-import { traspasosPlanesService } from '../../services/traspasosPlanesService';
+import { traspasosPlanesService, PLAN_PENSIONES_TIPOS_INVERSION } from '../../services/traspasosPlanesService';
 import type { PlanPensionInversion, TraspasoPlan } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
@@ -405,16 +405,6 @@ const GestionInversionesPage: React.FC = () => {
   const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
   const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
 
-  const recargarTraspasos = useCallback(async () => {
-    if (personalDataId == null) return;
-    try {
-      const list = await traspasosPlanesService.getTraspasosByPersonal(personalDataId);
-      setTraspasos(list);
-    } catch {
-      setTraspasos([]);
-    }
-  }, [personalDataId]);
-
   const refresh = useCallback(async () => {
     try {
       const { activas } = await inversionesService.getAllPosiciones();
@@ -749,7 +739,7 @@ const GestionInversionesPage: React.FC = () => {
                           <BarChart2 size={14} />
                         </button>
                       )}
-                      {(p.tipo === 'plan_pensiones' || p.tipo === 'plan_empleo') && (
+                      {PLAN_PENSIONES_TIPOS_INVERSION.has(p.tipo) && (
                         <button
                           onClick={() => setTraspasoOrigen({
                             id: p.id,

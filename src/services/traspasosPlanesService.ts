@@ -11,6 +11,7 @@
 //   - Soporta planes en ambos stores: `planesPensionInversion` (store
 //     dedicado) e `inversiones` (store legacy con `tipo=plan_pensiones`).
 import { initDB } from './db';
+import { inversionesService } from './inversionesService';
 import { planesInversionService } from './planesInversionService';
 import type { PlanPensionInversion, PlanStore, TraspasoPlan } from '../types/personal';
 import type { Aportacion, PosicionInversion } from '../types/inversiones';
@@ -36,10 +37,19 @@ export interface TraspasoValidationError {
   message: string;
 }
 
+/** Tipos del store `inversiones` reconocidos como plan de pensiones. Incluye la
+ *  forma canonical (`plan_pensiones`), la variante de plan empleo y la legacy
+ *  con guión (`plan-pensiones`) usada en algunos importadores / datos antiguos. */
+export const PLAN_PENSIONES_TIPOS_INVERSION: ReadonlySet<string> = new Set([
+  'plan_pensiones',
+  'plan-pensiones',
+  'plan_empleo',
+]);
+
 const mesKey = (fecha: string): string =>
   fecha.length >= 7 ? fecha.slice(0, 7) : String(new Date(fecha).getFullYear());
 
-const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
+const generateAportacionId = (): number => Date.now() + Math.floor(Math.random() * 1000);
 
 type HistorialEntry = NonNullable<PlanPensionInversion['historialAportaciones']>[string];
 
@@ -93,20 +103,34 @@ async function readPlanMeta(ref: PlanRef): Promise<PlanMeta | null> {
     nombre: inv.nombre,
     entidad: inv.entidad,
     saldo: inv.valor_actual ?? 0,
-    esPlanPensiones: PLAN_TIPOS_INV.has(inv.tipo),
+    esPlanPensiones: PLAN_PENSIONES_TIPOS_INVERSION.has(inv.tipo),
   };
 }
 
-async function applyOutgoing(
+async function updateInversionConAportacion(
   ref: PlanRef,
-  importe: number,
-  fecha: string,
-  meta: PlanMeta
+  nuevaAportacion: Aportacion,
+  nuevoValor: number,
+  fecha: string
 ): Promise<void> {
+  const db = await initDB();
+  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
+  const aportaciones = [...(inv.aportaciones ?? []), nuevaAportacion];
+  // Delegamos la recomposición de `total_aportado` y normalización en
+  // inversionesService para mantener los invariantes del store.
+  await inversionesService.updatePosicion(ref.id, {
+    ...inversionesService.recalculatePosition(aportaciones),
+    valor_actual: nuevoValor,
+    fecha_valoracion: fecha,
+  });
+}
+
+async function applyOutgoing(ref: PlanRef, importe: number, fecha: string): Promise<void> {
   const db = await initDB();
   if (ref.store === 'planesPensionInversion') {
     const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) return;
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
     const historial = mergeHistorialEntry(plan, mesKey(fecha), {
       titular: -importe,
       total: -importe,
@@ -121,45 +145,24 @@ async function applyOutgoing(
 
   // Store `inversiones`: registramos un reembolso con fuente 'traspaso_salida'
   const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
-  if (!inv) return;
-  const nextId = (inv.aportaciones ?? []).reduce((max, a) => Math.max(max, a.id ?? 0), 0) + 1;
+  if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportacionSalida: Aportacion = {
-    id: nextId,
+    id: generateAportacionId(),
     fecha,
     importe,
     tipo: 'reembolso',
     fuente: 'traspaso_salida',
-    notas: `Traspaso a otro plan de pensiones`,
+    notas: 'Traspaso a otro plan de pensiones',
   };
-  const nuevasAportaciones = [...(inv.aportaciones ?? []), aportacionSalida];
-  const totalAportado = Math.max(0, (inv.total_aportado ?? 0) - importe);
   const nuevoValor = Math.max(0, (inv.valor_actual ?? 0) - importe);
-  const rentabilidadEuros = nuevoValor - totalAportado;
-  const rentabilidadPct = totalAportado > 0 ? (rentabilidadEuros / totalAportado) * 100 : 0;
-  await db.put('inversiones', {
-    ...inv,
-    valor_actual: nuevoValor,
-    fecha_valoracion: fecha,
-    aportaciones: nuevasAportaciones,
-    total_aportado: totalAportado,
-    rentabilidad_euros: rentabilidadEuros,
-    rentabilidad_porcentaje: rentabilidadPct,
-    updated_at: new Date().toISOString(),
-  });
-  // meta is unused here; keep signature consistent with incoming
-  void meta;
+  await updateInversionConAportacion(ref, aportacionSalida, nuevoValor, fecha);
 }
 
-async function applyIncoming(
-  ref: PlanRef,
-  importe: number,
-  fecha: string,
-  meta: PlanMeta
-): Promise<void> {
+async function applyIncoming(ref: PlanRef, importe: number, fecha: string): Promise<void> {
   const db = await initDB();
   if (ref.store === 'planesPensionInversion') {
     const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) return;
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
     const historial = mergeHistorialEntry(plan, mesKey(fecha), {
       titular: importe,
       total: importe,
@@ -174,39 +177,24 @@ async function applyIncoming(
   }
 
   const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
-  if (!inv) return;
-  const nextId = (inv.aportaciones ?? []).reduce((max, a) => Math.max(max, a.id ?? 0), 0) + 1;
+  if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportacionEntrada: Aportacion = {
-    id: nextId,
+    id: generateAportacionId(),
     fecha,
     importe,
     tipo: 'aportacion',
     fuente: 'traspaso_entrada',
-    notas: `Traspaso procedente de otro plan de pensiones`,
+    notas: 'Traspaso procedente de otro plan de pensiones',
   };
-  const nuevasAportaciones = [...(inv.aportaciones ?? []), aportacionEntrada];
-  const totalAportado = (inv.total_aportado ?? 0) + importe;
   const nuevoValor = (inv.valor_actual ?? 0) + importe;
-  const rentabilidadEuros = nuevoValor - totalAportado;
-  const rentabilidadPct = totalAportado > 0 ? (rentabilidadEuros / totalAportado) * 100 : 0;
-  await db.put('inversiones', {
-    ...inv,
-    valor_actual: nuevoValor,
-    fecha_valoracion: fecha,
-    aportaciones: nuevasAportaciones,
-    total_aportado: totalAportado,
-    rentabilidad_euros: rentabilidadEuros,
-    rentabilidad_porcentaje: rentabilidadPct,
-    updated_at: new Date().toISOString(),
-  });
-  void meta;
+  await updateInversionConAportacion(ref, aportacionEntrada, nuevoValor, fecha);
 }
 
 async function revertOutgoing(ref: PlanRef, importe: number, fecha: string): Promise<void> {
   const db = await initDB();
   if (ref.store === 'planesPensionInversion') {
     const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) return;
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
     const historial = { ...(plan.historialAportaciones ?? {}) };
     const mes = mesKey(fecha);
     const prev = historial[mes];
@@ -226,22 +214,14 @@ async function revertOutgoing(ref: PlanRef, importe: number, fecha: string): Pro
     return;
   }
   const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
-  if (!inv) return;
+  if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportaciones = (inv.aportaciones ?? []).filter(
     (a) => !(a.fuente === 'traspaso_salida' && a.fecha === fecha && Math.abs(a.importe - importe) < 0.005)
   );
-  const totalAportado = (inv.total_aportado ?? 0) + importe;
   const nuevoValor = (inv.valor_actual ?? 0) + importe;
-  const rentabilidadEuros = nuevoValor - totalAportado;
-  const rentabilidadPct = totalAportado > 0 ? (rentabilidadEuros / totalAportado) * 100 : 0;
-  await db.put('inversiones', {
-    ...inv,
+  await inversionesService.updatePosicion(ref.id, {
+    ...inversionesService.recalculatePosition(aportaciones),
     valor_actual: nuevoValor,
-    aportaciones,
-    total_aportado: totalAportado,
-    rentabilidad_euros: rentabilidadEuros,
-    rentabilidad_porcentaje: rentabilidadPct,
-    updated_at: new Date().toISOString(),
   });
 }
 
@@ -249,7 +229,7 @@ async function revertIncoming(ref: PlanRef, importe: number, fecha: string): Pro
   const db = await initDB();
   if (ref.store === 'planesPensionInversion') {
     const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) return;
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
     const historial = { ...(plan.historialAportaciones ?? {}) };
     const mes = mesKey(fecha);
     const prev = historial[mes];
@@ -270,22 +250,14 @@ async function revertIncoming(ref: PlanRef, importe: number, fecha: string): Pro
     return;
   }
   const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
-  if (!inv) return;
+  if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportaciones = (inv.aportaciones ?? []).filter(
     (a) => !(a.fuente === 'traspaso_entrada' && a.fecha === fecha && Math.abs(a.importe - importe) < 0.005)
   );
-  const totalAportado = Math.max(0, (inv.total_aportado ?? 0) - importe);
   const nuevoValor = Math.max(0, (inv.valor_actual ?? 0) - importe);
-  const rentabilidadEuros = nuevoValor - totalAportado;
-  const rentabilidadPct = totalAportado > 0 ? (rentabilidadEuros / totalAportado) * 100 : 0;
-  await db.put('inversiones', {
-    ...inv,
+  await inversionesService.updatePosicion(ref.id, {
+    ...inversionesService.recalculatePosition(aportaciones),
     valor_actual: nuevoValor,
-    aportaciones,
-    total_aportado: totalAportado,
-    rentabilidad_euros: rentabilidadEuros,
-    rentabilidad_porcentaje: rentabilidadPct,
-    updated_at: new Date().toISOString(),
   });
 }
 
@@ -333,8 +305,10 @@ export const traspasosPlanesService = {
   },
 
   /**
-   * Ejecuta un traspaso: actualiza saldos y aportaciones de ambos planes y
-   * persiste el evento en `traspasosPlanes`.
+   * Ejecuta un traspaso de forma atómica (best-effort):
+   * 1) aplica salida, 2) aplica entrada, 3) persiste el evento.
+   * Si (2) o (3) fallan, intenta revertir (1) para no dejar el origen modificado
+   * sin traspaso registrado.
    */
   async createTraspaso(input: CreateTraspasoInput): Promise<TraspasoPlan> {
     const errors = await this.validate(input);
@@ -353,30 +327,44 @@ export const traspasosPlanesService = {
       throw new Error('No hay saldo disponible en el plan origen para traspasar.');
     }
 
-    await applyOutgoing(input.planOrigen, importe, input.fecha, origen);
-    await applyIncoming(input.planDestino, importe, input.fecha, destino);
+    await applyOutgoing(input.planOrigen, importe, input.fecha);
 
-    const now = new Date().toISOString();
-    const record: TraspasoPlan = {
-      personalDataId: input.personalDataId,
-      planOrigenId: origen.id,
-      planDestinoId: destino.id,
-      planOrigenStore: origen.store,
-      planDestinoStore: destino.store,
-      planOrigenNombre: origen.nombre,
-      planOrigenEntidad: origen.entidad,
-      planDestinoNombre: destino.nombre,
-      planDestinoEntidad: destino.entidad,
-      fecha: input.fecha,
-      importe,
-      esTotal: input.esTotal,
-      unidadesTraspasadas: input.unidadesTraspasadas,
-      notas: input.notas,
-      fechaCreacion: now,
-    };
-    const db = await initDB();
-    const id = await db.add('traspasosPlanes', record);
-    return { ...record, id: id as number };
+    // A partir de aquí, cualquier fallo debe intentar revertir la salida.
+    try {
+      await applyIncoming(input.planDestino, importe, input.fecha);
+
+      const now = new Date().toISOString();
+      const record: TraspasoPlan = {
+        personalDataId: input.personalDataId,
+        planOrigenId: origen.id,
+        planDestinoId: destino.id,
+        planOrigenStore: origen.store,
+        planDestinoStore: destino.store,
+        planOrigenNombre: origen.nombre,
+        planOrigenEntidad: origen.entidad,
+        planDestinoNombre: destino.nombre,
+        planDestinoEntidad: destino.entidad,
+        fecha: input.fecha,
+        importe,
+        esTotal: input.esTotal,
+        unidadesTraspasadas: input.unidadesTraspasadas,
+        notas: input.notas,
+        fechaCreacion: now,
+      };
+      try {
+        const db = await initDB();
+        const id = await db.add('traspasosPlanes', record);
+        return { ...record, id: id as number };
+      } catch (persistErr) {
+        // Revertir entrada y salida si no pudimos persistir el evento
+        try { await revertIncoming(input.planDestino, importe, input.fecha); } catch { /* noop */ }
+        try { await revertOutgoing(input.planOrigen, importe, input.fecha); } catch { /* noop */ }
+        throw persistErr;
+      }
+    } catch (incomingErr) {
+      try { await revertOutgoing(input.planOrigen, importe, input.fecha); } catch { /* noop */ }
+      throw incomingErr;
+    }
   },
 
   /** Lista todos los traspasos del usuario. */
