@@ -58,12 +58,21 @@ const MovementRow: React.FC<MovementRowProps> = ({
 
       <div className="cv2-concept">
         <CategoryIcon category={row.categoryLabel} />
-        {row.concept}
-        {row.fractional && (
-          <span className="cv2-badge-frac">
-            parcial {row.fractional.paid}/{row.fractional.total}
-          </span>
-        )}
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {row.concept}
+            {row.fractional && (
+              <span className="cv2-badge-frac">
+                parcial {row.fractional.paid}/{row.fractional.total}
+              </span>
+            )}
+          </div>
+          {/* PR5-HOTFIX v3 · segunda línea con alias del inmueble, visible sólo
+              cuando el ámbito es INMUEBLE y no es un traspaso. */}
+          {row.ambito === 'INMUEBLE' && !row.isTransfer && row.inmuebleAlias && (
+            <div className="cv2-concept-subline">{row.inmuebleAlias}</div>
+          )}
+        </div>
       </div>
 
       <div className="cv2-counterparty">{row.counterparty || '—'}</div>

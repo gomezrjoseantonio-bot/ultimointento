@@ -38,6 +38,8 @@ const PROPAGATABLE_FIELDS = [
   'descripcion',
   'proveedorNombre',
   'proveedorNIF',
+  // PR5-HOTFIX v3 · nº factura también se propaga event ↔ movement ↔ línea.
+  'invoiceNumber',
   'notas',
   'facturaId',
   'facturaNoAplica',
@@ -106,10 +108,15 @@ export async function updateLineaInmueble(
       const newDesc = buildDescription(updated, storeName);
       if (newDesc) eventPatch.description = newDesc;
       if ('proveedorNombre' in propagate || 'proveedorNIF' in propagate) {
-        eventPatch.counterparty =
-          (propagate.proveedorNombre as string | undefined) ??
-          (propagate.proveedorNIF as string | undefined) ??
-          event.counterparty;
+        // PR5-HOTFIX v3 · mantener counterparty legacy + nuevos campos.
+        const newName = propagate.proveedorNombre as string | undefined;
+        const newNif = propagate.proveedorNIF as string | undefined;
+        eventPatch.counterparty = newName ?? newNif ?? event.counterparty;
+        if ('proveedorNombre' in propagate) eventPatch.providerName = newName;
+        if ('proveedorNIF' in propagate) eventPatch.providerNif = newNif;
+      }
+      if ('invoiceNumber' in propagate) {
+        eventPatch.invoiceNumber = (propagate.invoiceNumber as string) || undefined;
       }
       if ('notas' in propagate) eventPatch.notes = (propagate.notas as string) || undefined;
       if ('facturaId' in propagate) eventPatch.facturaId = propagate.facturaId as number | undefined;
@@ -147,10 +154,15 @@ export async function updateLineaInmueble(
       const newDesc = buildDescription(updated, storeName);
       if (newDesc) movementPatch.description = newDesc;
       if ('proveedorNombre' in propagate || 'proveedorNIF' in propagate) {
-        movementPatch.counterparty =
-          (propagate.proveedorNombre as string | undefined) ??
-          (propagate.proveedorNIF as string | undefined) ??
-          movement.counterparty;
+        // PR5-HOTFIX v3 · mantener counterparty legacy + nuevos campos.
+        const newName = propagate.proveedorNombre as string | undefined;
+        const newNif = propagate.proveedorNIF as string | undefined;
+        movementPatch.counterparty = newName ?? newNif ?? movement.counterparty;
+        if ('proveedorNombre' in propagate) movementPatch.providerName = newName;
+        if ('proveedorNIF' in propagate) movementPatch.providerNif = newNif;
+      }
+      if ('invoiceNumber' in propagate) {
+        movementPatch.invoiceNumber = (propagate.invoiceNumber as string) || undefined;
       }
       if ('facturaId' in propagate) movementPatch.facturaId = propagate.facturaId as number | undefined;
       if ('facturaNoAplica' in propagate)

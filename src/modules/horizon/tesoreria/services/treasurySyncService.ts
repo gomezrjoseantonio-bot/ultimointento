@@ -269,6 +269,11 @@ export async function generateMonthlyForecasts(
         sourceId: rule.id,
         accountId: rule.accountId,
         status: 'predicted' as const,
+        // PR5-HOTFIX v3 · copia del proveedor estructurado de la regla.
+        providerName: rule.proveedorNombre,
+        providerNif: rule.proveedorNIF,
+        invoiceNumber: rule.invoiceNumber,
+        counterparty: rule.proveedorNombre,
         createdAt: now,
         updatedAt: now,
       });

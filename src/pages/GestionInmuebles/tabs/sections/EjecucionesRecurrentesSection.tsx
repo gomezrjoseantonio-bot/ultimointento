@@ -1,23 +1,22 @@
 // src/pages/GestionInmuebles/tabs/sections/EjecucionesRecurrentesSection.tsx
 //
 // PR5.5 · Sección "Ejecuciones del año" debajo de las plantillas recurrentes.
+// PR5-HOTFIX v3 · se elimina el modal inline `AddGastoPuntualModal` y se usa
+// el `AddMovementModal` unificado de Conciliación v2 con pre-fill + locked.
+// Además se añade la columna Cuenta a la tabla.
+//
 // Muestra todas las líneas de `gastosInmueble` del inmueble cuya casilla AEAT
 // sea 0109/0113/0114/0115, agrupadas por año.
-//
-// Permite:
-//   - Ver origen (Plantilla | Manual) y estado de tesorería (Pendiente | Conciliado).
-//   - Ver iconos de documentación (reutiliza DocIcon del PR5).
-//   - Añadir un gasto puntual con "+ Nuevo gasto puntual" — crea un
-//     treasuryEvent predicted + línea gastosInmueble con la casilla correcta.
-//   - Editar / eliminar la línea (cascada via gastosInmuebleService → lineasInmuebleService).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, FileText, Landmark, Pencil, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { Account, GastoCategoria, GastoInmueble, TreasuryEvent } from '../../../../services/db';
+import type { Account, GastoInmueble, Property } from '../../../../services/db';
 import { initDB } from '../../../../services/db';
 import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
 import { confirmDelete } from '../../../../services/confirmationService';
+import AddMovementModal from '../../../../modules/horizon/conciliacion/v2/components/AddMovementModal';
+import '../../../../modules/horizon/conciliacion/v2/conciliacion-v2.css';
 
 const C = {
   navy900: 'var(--navy-900, #042C5E)',
@@ -47,18 +46,6 @@ const CASILLA_TIPO_LABEL: Record<CasillaRecurrente, string> = {
   '0115': 'IBI/Tributo',
 };
 
-// Mapeo tipo → casilla + categoria fiscal para crear gastos puntuales.
-const TIPO_CONFIG: Array<{
-  value: CasillaRecurrente;
-  label: string;
-  categoria: GastoCategoria;
-}> = [
-  { value: '0109', label: 'Comunidad', categoria: 'comunidad' },
-  { value: '0113', label: 'Suministro', categoria: 'suministro' },
-  { value: '0114', label: 'Seguro', categoria: 'seguro' },
-  { value: '0115', label: 'IBI / Tributo', categoria: 'ibi' },
-];
-
 const fmtEuro = (n: number) =>
   new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) +
   ' €';
@@ -69,12 +56,12 @@ const fmtDate = (iso: string): string => {
   return `${d}/${m}/${y}`;
 };
 
-const parseAmount = (raw: string): number | null => {
-  if (!raw) return null;
-  const normalized = raw.replace(/\./g, '').replace(',', '.');
-  const n = Number(normalized);
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
+function accountLabel(a: Account | undefined): string {
+  if (!a) return '—';
+  const name = a.alias ?? a.banco?.name ?? (a as any).bank ?? `Cuenta ${a.id ?? ''}`;
+  const tail = a.iban ? a.iban.slice(-4) : '';
+  return tail ? `${name} ·${tail}` : name;
+}
 
 interface Props {
   propertyId: number;
@@ -86,20 +73,25 @@ const EjecucionesRecurrentesSection: React.FC<Props> = ({ propertyId }) => {
   const [ejecuciones, setEjecuciones] = useState<GastoInmueble[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingGasto, setEditingGasto] = useState<GastoInmueble | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [gastos, accs] = await Promise.all([
+      const [gastos, accs, props] = await Promise.all([
         gastosInmuebleService.getByInmueble(propertyId),
         (async () => {
           const db = await initDB();
           return (await db.getAll('accounts')) as Account[];
         })(),
+        (async () => {
+          const db = await initDB();
+          return (await db.getAll('properties')) as Property[];
+        })(),
       ]);
       setAccounts(accs);
+      setProperties(props);
       const filtered = gastos.filter(
         (g) =>
           CASILLAS_RECURRENTES.includes(g.casillaAEAT as CasillaRecurrente) &&
@@ -118,6 +110,15 @@ const EjecucionesRecurrentesSection: React.FC<Props> = ({ propertyId }) => {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // PR5-HOTFIX v3 · cache por-id para pintar la columna "Cuenta". La
+  // relación línea→cuenta vive en `cuentaBancaria` (string con el id
+  // numérico) · si falla, queda en '—'.
+  const accountsById = useMemo(() => {
+    const map = new Map<number, Account>();
+    for (const a of accounts) if (a.id != null) map.set(a.id, a);
+    return map;
+  }, [accounts]);
 
   const handleDelete = async (gasto: GastoInmueble) => {
     if (gasto.id == null) return;
@@ -179,6 +180,7 @@ const EjecucionesRecurrentesSection: React.FC<Props> = ({ propertyId }) => {
                 <Th>Fecha</Th>
                 <Th>Concepto</Th>
                 <Th>Proveedor</Th>
+                <Th>Cuenta</Th>
                 <Th align="right">Importe</Th>
                 <Th>Tipo</Th>
                 <Th>Origen</Th>
@@ -188,63 +190,75 @@ const EjecucionesRecurrentesSection: React.FC<Props> = ({ propertyId }) => {
               </tr>
             </thead>
             <tbody>
-              {ejecuciones.map((e) => (
-                <tr key={e.id} style={{ borderBottom: `1px solid ${C.grey100}` }}>
-                  <Td mono>{fmtDate(e.fecha)}</Td>
-                  <Td bold>{e.concepto}</Td>
-                  <Td>{e.proveedorNombre || e.proveedorNIF || '—'}</Td>
-                  <Td align="right" mono>{fmtEuro(e.importe)}</Td>
-                  <Td>{CASILLA_TIPO_LABEL[e.casillaAEAT as CasillaRecurrente] ?? '—'}</Td>
-                  <Td><OrigenBadge origen={e.origen} origenId={e.origenId} /></Td>
-                  <Td><TesoreriaBadge movimientoId={e.movimientoId} estadoTesoreria={e.estadoTesoreria} /></Td>
-                  <Td align="center">
-                    <DocIconsCompact
-                      facturaId={e.facturaId}
-                      facturaNoAplica={e.facturaNoAplica}
-                      justificanteId={e.justificanteId}
-                      justificanteNoAplica={e.justificanteNoAplica}
-                    />
-                  </Td>
-                  <Td align="right">
-                    <div style={{ display: 'inline-flex', gap: 4 }}>
-                      <IconButton
-                        title="Editar"
-                        onClick={() => setEditingGasto(e)}
-                      >
-                        <Pencil size={14} />
-                      </IconButton>
-                      <IconButton title="Eliminar" onClick={() => void handleDelete(e)}>
-                        <Trash2 size={14} />
-                      </IconButton>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
+              {ejecuciones.map((e) => {
+                const accountIdNum = e.cuentaBancaria ? Number(e.cuentaBancaria) : NaN;
+                const account = Number.isFinite(accountIdNum)
+                  ? accountsById.get(accountIdNum)
+                  : undefined;
+                return (
+                  <tr key={e.id} style={{ borderBottom: `1px solid ${C.grey100}` }}>
+                    <Td mono>{fmtDate(e.fecha)}</Td>
+                    <Td bold>{e.concepto}</Td>
+                    <Td>{e.proveedorNombre || e.proveedorNIF || '—'}</Td>
+                    <Td mono>{accountLabel(account)}</Td>
+                    <Td align="right" mono>{fmtEuro(e.importe)}</Td>
+                    <Td>{CASILLA_TIPO_LABEL[e.casillaAEAT as CasillaRecurrente] ?? '—'}</Td>
+                    <Td><OrigenBadge origen={e.origen} origenId={e.origenId} /></Td>
+                    <Td><TesoreriaBadge movimientoId={e.movimientoId} estadoTesoreria={e.estadoTesoreria} /></Td>
+                    <Td align="center">
+                      <DocIconsCompact
+                        facturaId={e.facturaId}
+                        facturaNoAplica={e.facturaNoAplica}
+                        justificanteId={e.justificanteId}
+                        justificanteNoAplica={e.justificanteNoAplica}
+                      />
+                    </Td>
+                    <Td align="right">
+                      <div style={{ display: 'inline-flex', gap: 4 }}>
+                        <IconButton
+                          title="Editar"
+                          onClick={() => {
+                            toast('Edita desde Conciliación para propagar cambios', { icon: 'ℹ️' });
+                          }}
+                          disabled
+                        >
+                          <Pencil size={14} />
+                        </IconButton>
+                        <IconButton title="Eliminar" onClick={() => void handleDelete(e)}>
+                          <Trash2 size={14} />
+                        </IconButton>
+                      </div>
+                    </Td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
       </div>
 
+      {/* PR5-HOTFIX v3 · modal unificado con el de Conciliación. Llega con
+          Tipo/Ámbito/Inmueble pre-rellenados y bloqueados + filtrado de
+          categorías a las 6 permitidas en OPEX. */}
       {showAddModal && (
-        <AddGastoPuntualModal
-          propertyId={propertyId}
-          defaultYear={year}
+        <AddMovementModal
           accounts={accounts}
-          onClose={() => setShowAddModal(false)}
-          onSaved={async () => {
-            await reload();
+          properties={properties}
+          defaultYear={year}
+          defaultMonth0={new Date().getMonth()}
+          prefill={{
+            tipo: 'gasto',
+            ambito: 'inmueble',
+            inmuebleId: propertyId,
           }}
-        />
-      )}
-
-      {editingGasto && (
-        <AddGastoPuntualModal
-          propertyId={propertyId}
-          defaultYear={year}
-          accounts={accounts}
-          gasto={editingGasto}
-          onClose={() => setEditingGasto(null)}
-          onSaved={async () => {
+          locked={{
+            tipo: true,
+            ambito: true,
+            inmueble: true,
+          }}
+          restrictCategoriesTo="opex"
+          onClose={() => setShowAddModal(false)}
+          onCreated={async () => {
             await reload();
           }}
         />
@@ -395,6 +409,7 @@ const Td: React.FC<{
       color: C.grey900,
       fontWeight: bold ? 500 : 400,
       fontFamily: mono ? "'IBM Plex Mono', monospace" : undefined,
+      whiteSpace: mono ? 'nowrap' : undefined,
     }}
   >
     {children}
@@ -405,25 +420,30 @@ const IconButton: React.FC<{
   title: string;
   onClick: () => void;
   children: React.ReactNode;
-}> = ({ title, onClick, children }) => (
+  disabled?: boolean;
+}> = ({ title, onClick, children, disabled }) => (
   <button
     title={title}
     onClick={onClick}
+    disabled={disabled}
     style={{
       padding: 6,
       background: 'transparent',
       border: 'none',
       borderRadius: 4,
-      cursor: 'pointer',
+      cursor: disabled ? 'not-allowed' : 'pointer',
       color: C.grey500,
       display: 'inline-flex',
       alignItems: 'center',
+      opacity: disabled ? 0.4 : 1,
     }}
     onMouseEnter={(e) => {
+      if (disabled) return;
       e.currentTarget.style.color = C.navy900;
       e.currentTarget.style.background = C.grey50;
     }}
     onMouseLeave={(e) => {
+      if (disabled) return;
       e.currentTarget.style.color = C.grey500;
       e.currentTarget.style.background = 'transparent';
     }}
@@ -433,230 +453,7 @@ const IconButton: React.FC<{
 );
 
 // ═══════════════════════════════════════════════════════════════════════
-// Modal "+ Nuevo gasto puntual"
-// ═══════════════════════════════════════════════════════════════════════
-
-interface AddModalProps {
-  propertyId: number;
-  defaultYear: number;
-  accounts: Account[];
-  gasto?: GastoInmueble;  // si viene, es edición
-  onClose: () => void;
-  onSaved: () => Promise<void>;
-}
-
-const AddGastoPuntualModal: React.FC<AddModalProps> = ({
-  propertyId,
-  defaultYear,
-  accounts,
-  gasto,
-  onClose,
-  onSaved,
-}) => {
-  const isEdit = gasto != null;
-  const defaultDate = gasto?.fecha
-    ? gasto.fecha.slice(0, 10)
-    : `${defaultYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
-
-  const [tipo, setTipo] = useState<CasillaRecurrente>(
-    (gasto?.casillaAEAT as CasillaRecurrente) ?? '0109',
-  );
-  const [concepto, setConcepto] = useState(gasto?.concepto ?? '');
-  const [proveedor, setProveedor] = useState(
-    gasto?.proveedorNombre ?? gasto?.proveedorNIF ?? '',
-  );
-  const [importe, setImporte] = useState(
-    gasto?.importe != null ? String(gasto.importe).replace('.', ',') : '',
-  );
-  const [fecha, setFecha] = useState(defaultDate);
-  const [accountId, setAccountId] = useState<number | undefined>(
-    gasto?.cuentaBancaria
-      ? Number(gasto.cuentaBancaria)
-      : accounts.length > 0
-      ? accounts[0].id
-      : undefined,
-  );
-  const [busy, setBusy] = useState(false);
-
-  const config = useMemo(() => TIPO_CONFIG.find((t) => t.value === tipo)!, [tipo]);
-
-  const handleSubmit = async () => {
-    const parsed = parseAmount(importe);
-    if (!parsed) {
-      toast.error('Importe no válido');
-      return;
-    }
-    if (!concepto.trim()) {
-      toast.error('Añade un concepto');
-      return;
-    }
-    setBusy(true);
-    try {
-      if (isEdit && gasto?.id != null) {
-        // Edición: gastosInmuebleService.update() propaga al event + movement
-        // vía lineasInmuebleService.
-        await gastosInmuebleService.update(gasto.id, {
-          fecha,
-          concepto: concepto.trim(),
-          importe: parsed,
-          categoria: config.categoria,
-          casillaAEAT: config.value,
-          proveedorNombre: proveedor.trim() || undefined,
-        });
-        toast.success('Gasto actualizado');
-      } else {
-        const now = new Date().toISOString();
-        const ejercicio = Number(fecha.slice(0, 4));
-        const db = await initDB();
-
-        // 1. Crear treasuryEvent predicted (para que aparezca en /conciliacion).
-        const eventPayload: Omit<TreasuryEvent, 'id'> = {
-          type: 'expense',
-          amount: parsed,
-          predictedDate: fecha,
-          description: concepto.trim(),
-          sourceType: 'manual',
-          accountId,
-          status: 'predicted',
-          ambito: 'INMUEBLE',
-          inmuebleId: propertyId,
-          categoryLabel: config.label,
-          counterparty: proveedor.trim() || undefined,
-          createdAt: now,
-          updatedAt: now,
-        };
-        const eventId = Number(await (db as any).add('treasuryEvents', eventPayload));
-
-        // 2. Crear línea gastosInmueble predicted.
-        await gastosInmuebleService.add({
-          inmuebleId: propertyId,
-          ejercicio,
-          fecha,
-          concepto: concepto.trim(),
-          categoria: config.categoria,
-          casillaAEAT: config.value,
-          importe: parsed,
-          origen: 'manual',
-          estado: 'previsto',
-          estadoTesoreria: 'predicted',
-          treasuryEventId: eventId,
-          proveedorNombre: proveedor.trim() || undefined,
-        } as any);
-
-        toast.success('Gasto creado');
-      }
-      await onSaved();
-      onClose();
-    } catch (err) {
-      console.error('[AddGastoPuntualModal] save failed', err);
-      toast.error(isEdit ? 'No se pudo actualizar el gasto' : 'No se pudo crear el gasto');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div style={modalBackdropStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-        <header style={modalHeaderStyle}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: C.grey900, margin: 0 }}>
-            {isEdit ? 'Editar gasto' : 'Nuevo gasto puntual'}
-          </h3>
-        </header>
-
-        <div style={{ padding: '18px 22px' }}>
-          <div style={gridTwoStyle}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Tipo</label>
-              <select
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value as CasillaRecurrente)}
-                style={inputStyle}
-              >
-                {TIPO_CONFIG.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Fecha</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <label style={labelStyle}>Concepto</label>
-            <input
-              type="text"
-              value={concepto}
-              onChange={(e) => setConcepto(e.target.value)}
-              placeholder={`Ej: ${config.label} ${defaultYear}`}
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={gridTwoStyle}>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Proveedor</label>
-              <input
-                type="text"
-                value={proveedor}
-                onChange={(e) => setProveedor(e.target.value)}
-                placeholder="Nombre o NIF"
-                style={inputStyle}
-              />
-            </div>
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Importe (€)</label>
-              <input
-                type="text"
-                value={importe}
-                onChange={(e) => setImporte(e.target.value)}
-                placeholder="0,00"
-                style={{ ...inputStyle, fontFamily: "'IBM Plex Mono', monospace" }}
-              />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <label style={labelStyle}>Cuenta</label>
-            <select
-              value={accountId ?? ''}
-              onChange={(e) =>
-                setAccountId(e.target.value ? Number(e.target.value) : undefined)
-              }
-              style={inputStyle}
-            >
-              <option value="">—</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.alias ?? a.banco?.name ?? (a as any).bank ?? `Cuenta ${a.id}`}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <footer style={modalFooterStyle}>
-          <button type="button" onClick={onClose} style={secondaryBtnStyle} disabled={busy}>
-            Cancelar
-          </button>
-          <button type="button" onClick={handleSubmit} style={primaryBtnStyle} disabled={busy}>
-            {isEdit ? 'Guardar cambios' : (<><Plus size={14} /> Crear gasto</>)}
-          </button>
-        </footer>
-      </div>
-    </div>
-  );
-};
-
-// ═══════════════════════════════════════════════════════════════════════
-// Estilos inline (consistentes con GastosRecurrentesTab)
+// Estilos inline
 // ═══════════════════════════════════════════════════════════════════════
 
 const headerStyle: React.CSSProperties = {
@@ -718,76 +515,6 @@ const primaryBtnStyle: React.CSSProperties = {
   background: C.navy900,
   color: C.white,
   fontFamily: 'inherit',
-};
-const secondaryBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '8px 14px',
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 500,
-  border: `1px solid ${C.grey300}`,
-  cursor: 'pointer',
-  background: C.white,
-  color: C.grey700,
-  fontFamily: 'inherit',
-};
-const modalBackdropStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(10, 22, 40, 0.5)',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'flex-start',
-  padding: '60px 20px',
-  zIndex: 100,
-};
-const modalStyle: React.CSSProperties = {
-  background: C.white,
-  borderRadius: 12,
-  width: 'min(560px, 100%)',
-  boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
-  overflow: 'hidden',
-  fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
-};
-const modalHeaderStyle: React.CSSProperties = {
-  padding: '16px 22px',
-  borderBottom: `1px solid ${C.grey200}`,
-};
-const modalFooterStyle: React.CSSProperties = {
-  padding: '12px 22px',
-  borderTop: `1px solid ${C.grey200}`,
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: 8,
-  background: C.grey50,
-};
-const gridTwoStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 10,
-  marginTop: 10,
-};
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-};
-const labelStyle: React.CSSProperties = {
-  fontSize: 11,
-  color: C.grey500,
-  fontWeight: 500,
-};
-const inputStyle: React.CSSProperties = {
-  fontFamily: 'inherit',
-  fontSize: 13,
-  padding: '6px 10px',
-  border: `1px solid ${C.grey300}`,
-  borderRadius: 6,
-  background: C.white,
-  color: C.grey900,
-  height: 32,
 };
 
 export default EjecucionesRecurrentesSection;
