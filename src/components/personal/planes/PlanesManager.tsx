@@ -5,7 +5,7 @@ import { personalDataService } from '../../../services/personalDataService';
 import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
 import { PlanPensionInversion, TraspasoPlan } from '../../../types/personal';
 import PlanForm from './PlanForm';
-import TraspasoForm from './TraspasoForm';
+import TraspasoForm, { PlanOrigenInput } from './TraspasoForm';
 import TraspasosHistorial from './TraspasosHistorial';
 import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, PiggyBank, Target, Users, User, Heart, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ const PlanesManager: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'todos' | 'activos' | 'historicos'>('todos');
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
   const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
-  const [traspasoOrigen, setTraspasoOrigen] = useState<PlanPensionInversion | null>(null);
+  const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
   const [portfolioSummary, setPortfolioSummary] = useState({
     totalInvertido: 0,
     valorActualTotal: 0,
@@ -337,7 +337,13 @@ const PlanesManager: React.FC = () => {
                     <div className="flex items-center space-x-2 ml-4">
                       {plan.tipo === 'plan-pensiones' && (
                         <button
-                          onClick={() => setTraspasoOrigen(plan)}
+                          onClick={() => setTraspasoOrigen({
+                            id: plan.id!,
+                            store: 'planesPensionInversion',
+                            nombre: plan.nombre,
+                            entidad: plan.entidad,
+                            saldo: plan.valorActual ?? 0,
+                          })}
                           className="p-2 text-gray-400 hover:text-indigo-600"
                           title="Traspasar a otro plan de pensiones"
                           aria-label="Traspasar plan"

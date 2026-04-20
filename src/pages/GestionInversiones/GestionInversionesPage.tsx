@@ -2,7 +2,7 @@
 // Página de GESTIÓN de inversiones: acciones CRUD sobre posiciones
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { TrendingUp, Eye, Edit2, Trash2, Plus, RefreshCw, BarChart2, X } from 'lucide-react';
+import { TrendingUp, Eye, Edit2, Trash2, Plus, RefreshCw, BarChart2, X, ArrowLeftRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import PageHeader, { HeaderPrimaryButton } from '../../components/shared/PageHeader';
 import { inversionesService } from '../../services/inversionesService';
@@ -10,11 +10,14 @@ import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
 import { personalDataService } from '../../services/personalDataService';
-import type { PlanPensionInversion } from '../../types/personal';
+import { traspasosPlanesService, PLAN_PENSIONES_TIPOS_INVERSION } from '../../services/traspasosPlanesService';
+import type { PlanPensionInversion, TraspasoPlan } from '../../types/personal';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
 import PlanForm from '../../components/personal/planes/PlanForm';
+import TraspasoForm, { PlanOrigenInput } from '../../components/personal/planes/TraspasoForm';
+import TraspasosHistorial from '../../components/personal/planes/TraspasosHistorial';
 import toast from 'react-hot-toast';
 
 const C = {
@@ -398,6 +401,10 @@ const GestionInversionesPage: React.FC = () => {
   const [evolucionDatos, setEvolucionDatos] = useState<Array<{ mes: string; valor: number }>>([]);
   const [evolucionHeader, setEvolucionHeader] = useState<{ nombre: string; entidad?: string } | null>(null);
 
+  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
+  const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
+  const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
+
   const refresh = useCallback(async () => {
     try {
       const { activas } = await inversionesService.getAllPosiciones();
@@ -410,11 +417,49 @@ const GestionInversionesPage: React.FC = () => {
   useEffect(() => { void refresh(); }, [refresh]);
 
   useEffect(() => {
-    personalDataService.getPersonalData()
-      .then(data => data?.id != null ? planesInversionService.getPlanes(data.id) : Promise.resolve([]))
-      .then(setPlanesPension)
-      .catch(() => setPlanesPension([]));
+    (async () => {
+      try {
+        const data = await personalDataService.getPersonalData();
+        if (data?.id == null) {
+          setPlanesPension([]);
+          setPersonalDataId(null);
+          setTraspasos([]);
+          return;
+        }
+        setPersonalDataId(data.id);
+        const [planes, tras] = await Promise.all([
+          planesInversionService.getPlanes(data.id),
+          traspasosPlanesService.getTraspasosByPersonal(data.id),
+        ]);
+        setPlanesPension(planes);
+        setTraspasos(tras);
+      } catch {
+        setPlanesPension([]);
+        setTraspasos([]);
+      }
+    })();
   }, []);
+
+  const handleTraspasoSaved = useCallback(async () => {
+    try {
+      const { activas } = await inversionesService.getAllPosiciones();
+      setPosiciones(activas);
+    } catch {
+      // keep previous posiciones state
+    }
+    if (personalDataId != null) {
+      try {
+        const [planes, tras] = await Promise.all([
+          planesInversionService.getPlanes(personalDataId),
+          traspasosPlanesService.getTraspasosByPersonal(personalDataId),
+        ]);
+        setPlanesPension(planes);
+        setTraspasos(tras);
+      } catch {
+        // keep previous state
+      }
+    }
+  }, [personalDataId]);
 
   const handleNewPosition = () => {
     setEditingPosicion(undefined);
@@ -694,6 +739,22 @@ const GestionInversionesPage: React.FC = () => {
                           <BarChart2 size={14} />
                         </button>
                       )}
+                      {PLAN_PENSIONES_TIPOS_INVERSION.has(p.tipo) && (
+                        <button
+                          onClick={() => setTraspasoOrigen({
+                            id: p.id,
+                            store: 'inversiones',
+                            nombre: p.nombre,
+                            entidad: p.entidad,
+                            saldo: p.valor_actual ?? 0,
+                          })}
+                          title="Traspasar a otro plan de pensiones"
+                          aria-label={`Traspasar ${p.nombre}`}
+                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                        >
+                          <ArrowLeftRight size={14} />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleViewDetail(p.id)}
                         title="Ver detalle y aportaciones"
@@ -824,6 +885,20 @@ const GestionInversionesPage: React.FC = () => {
                             <Plus size={14} />
                           </button>
                           <button
+                            onClick={() => setTraspasoOrigen({
+                              id: plan.id!,
+                              store: 'planesPensionInversion',
+                              nombre: plan.nombre,
+                              entidad: plan.entidad,
+                              saldo: plan.valorActual ?? 0,
+                            })}
+                            title="Traspasar a otro plan de pensiones"
+                            aria-label={`Traspasar ${plan.nombre}`}
+                            style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
+                          >
+                            <ArrowLeftRight size={14} />
+                          </button>
+                          <button
                             onClick={() => handleEditPlanPension(plan)}
                             title="Editar plan"
                             aria-label={`Editar ${plan.nombre}`}
@@ -886,6 +961,27 @@ const GestionInversionesPage: React.FC = () => {
             <ContenidoResumen posicion={selectedPosicion} />
           )}
         </div>
+      )}
+
+      {/* ── Historial de traspasos entre planes de pensiones ─────── */}
+      {traspasos.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <TraspasosHistorial
+            traspasos={traspasos}
+            onChanged={() => { void handleTraspasoSaved(); }}
+          />
+        </div>
+      )}
+
+      {/* ── Modal: traspaso entre planes ─────────────────────────── */}
+      {personalDataId != null && (
+        <TraspasoForm
+          isOpen={traspasoOrigen !== null}
+          onClose={() => setTraspasoOrigen(null)}
+          personalDataId={personalDataId}
+          planOrigen={traspasoOrigen}
+          onSaved={handleTraspasoSaved}
+        />
       )}
 
       {showForm && (
