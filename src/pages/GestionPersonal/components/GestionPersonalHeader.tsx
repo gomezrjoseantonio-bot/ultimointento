@@ -250,13 +250,10 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   const otrosActivos = otrosIngresos.filter((o) => o.activo);
   const otrosAnual = otrosIngresosService.calculateAnnualIncome(otrosActivos);
 
-  // Autónomo neto: only contributes when rendimiento neto is positive. A
-  // loss-making activity (gastos > facturación) shouldn't reduce the salary
-  // net shown in the KPI; we just leave it out of the sum.
-  const autoNetoAportacion =
-    autoEstimated.rendimientoNeto > 0
-      ? autoEstimated.rendimientoNeto - autoIrpfRet
-      : 0;
+  // Autónomo neto: rendimientoNeto (facturación − gastos) menos la retención
+  // IRPF ya practicada. Si la actividad tiene pérdidas, esa cantidad sale
+  // realmente del bolsillo del titular y debe restar al KPI: no clampamos a 0.
+  const autoNetoAportacion = autoEstimated.rendimientoNeto - autoIrpfRet;
 
   // Total neto (nómina net already deducts SS, IRPF y PP empleado).
   const totalNeto =
