@@ -413,6 +413,47 @@ const OpexRuleForm: React.FC<OpexRuleFormProps> = ({ propertyId, rule, onSave, o
             </div>
           )}
 
+          {/* PR5-HOTFIX v3 · Proveedor (opcional) — se copia a cada previsión
+              generada desde la regla. El nº de factura rara vez aplica a
+              recurrentes, pero se deja disponible. */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+              Proveedor (opcional)
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelClass}>Nombre</label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={form.proveedorNombre ?? ''}
+                  onChange={(e) => handleChange('proveedorNombre', e.target.value || undefined)}
+                  placeholder="Ej: Iberdrola"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>NIF</label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={form.proveedorNIF ?? ''}
+                  onChange={(e) => handleChange('proveedorNIF', e.target.value || undefined)}
+                  placeholder="Ej: B83275893"
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className={labelClass}>Nº de factura / contrato</label>
+              <input
+                type="text"
+                className={inputClass}
+                value={form.invoiceNumber ?? ''}
+                onChange={(e) => handleChange('invoiceNumber', e.target.value || undefined)}
+                placeholder="Opcional"
+              />
+            </div>
+          </div>
+
           {/* Cuenta bancaria */}
           <div>
             <label className={labelClass}>Cuenta bancaria</label>

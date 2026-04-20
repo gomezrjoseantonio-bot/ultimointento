@@ -13,6 +13,7 @@ import {
   type DocRequirement,
 } from '../../../../../services/documentRequirementsService';
 import { isTransferKey } from '../../../../../services/categoryCatalog';
+import { migrateCounterpartyAll } from '../../../../../services/providerFieldsMigration';
 import { dayOfMonth, extractDate, weekdayLabel } from '../utils/conciliacionFormatters';
 
 export type AmountType = 'income' | 'expense' | 'financing';
@@ -38,6 +39,9 @@ export interface SingleRow {
   state: RowState;
   concept: string;
   counterparty: string;
+  // PR5-HOTFIX v3 · proveedor estructurado (expuesto para el buscador global).
+  providerNif?: string;
+  invoiceNumber?: string;
   accountId?: number;
   accountLabel: string;
   amount: number;            // importe con signo (positivo = ingreso; negativo = gasto/financiación)
@@ -131,6 +135,11 @@ function resolveCounterpartyFromSource(
   contractsById: Map<number, any>,
   prestamosById: Map<string, any>,
 ): string {
+  // PR5-HOTFIX v3 · preferimos el campo estructurado providerName; si no,
+  // caemos al legado counterparty.
+  if (event.providerName && event.providerName.trim()) {
+    return event.providerName.trim();
+  }
   if (event.counterparty && event.counterparty.trim()) {
     return event.counterparty.trim();
   }
@@ -222,6 +231,8 @@ function eventToSingleRow(
     state: rowState,
     concept: event.description,
     counterparty,
+    providerNif: event.providerNif,
+    invoiceNumber: event.invoiceNumber,
     accountId: event.accountId,
     accountLabel: accountLabelOf(account),
     amount,
@@ -415,8 +426,18 @@ function applyFilters(rows: SingleRow[], filters: Filters): SingleRow[] {
     if (filters.stateFilter === 'pending' && row.state !== 'predicted') return false;
     if (filters.stateFilter === 'confirmed' && row.state !== 'confirmed') return false;
     if (q) {
-      const hay =
-        `${row.concept} ${row.counterparty} ${row.categoryLabel} ${row.inmuebleAlias ?? ''}`.toLowerCase();
+      // PR5-HOTFIX v3 · el buscador global encuentra por nombre proveedor,
+      // NIF y número de factura además de los campos existentes.
+      const hay = [
+        row.concept,
+        row.counterparty,
+        row.categoryLabel,
+        row.inmuebleAlias ?? '',
+        row.providerNif ?? '',
+        row.invoiceNumber ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
@@ -439,7 +460,7 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
       setLoading(true);
       const db = await initDB();
 
-      const [events, accountsAll, propertiesAll, documentsAll, contractsAll, prestamosAll] =
+      const [eventsRaw, accountsAll, propertiesAll, documentsAll, contractsAll, prestamosAll] =
         await Promise.all([
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           db.getAll('accounts') as Promise<Account[]>,
@@ -449,6 +470,9 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
           (db as any).getAll('contracts').catch(() => []),
           (db as any).getAll('prestamos').catch(() => []),
         ]);
+
+      // PR5-HOTFIX v3 · migración silenciosa counterparty → providerName al leer.
+      const events = migrateCounterpartyAll(eventsRaw);
 
       if (cancelled) return;
 

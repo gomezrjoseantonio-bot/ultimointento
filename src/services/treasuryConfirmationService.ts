@@ -37,6 +37,11 @@ export interface ConfirmOverrides {
   accountId?: number;
   description?: string;
   counterparty?: string;
+  // PR5-HOTFIX v3 · proveedor estructurado. Si se pasan aquí, se escriben
+  // también en el movement creado y en la línea de inmueble.
+  providerName?: string;
+  providerNif?: string;
+  invoiceNumber?: string;
   notes?: string;
 }
 
@@ -218,6 +223,12 @@ function buildMovementPayload({
   const finalAccountId = overrides?.accountId ?? event.accountId;
   const finalDescription = overrides?.description ?? event.description;
   const finalCounterparty = overrides?.counterparty ?? event.counterparty ?? '';
+  // PR5-HOTFIX v3 · campos estructurados (con fallback al legado counterparty
+  // para que el movement creado lleve siempre algún nombre).
+  const finalProviderName =
+    overrides?.providerName ?? event.providerName ?? event.counterparty ?? undefined;
+  const finalProviderNif = overrides?.providerNif ?? event.providerNif ?? undefined;
+  const finalInvoiceNumber = overrides?.invoiceNumber ?? event.invoiceNumber ?? undefined;
 
   if (finalAccountId == null) {
     throw new Error(
@@ -241,6 +252,10 @@ function buildMovementPayload({
     amount: signedAmount,
     description: finalDescription,
     counterparty: finalCounterparty || undefined,
+    // PR5-HOTFIX v3 · proveedor estructurado propagado al movement.
+    providerName: finalProviderName || undefined,
+    providerNif: finalProviderNif || undefined,
+    invoiceNumber: finalInvoiceNumber || undefined,
     reference: `treasury_event:${event.id}`,
     status: 'conciliado',
     unifiedStatus: 'conciliado',
@@ -329,8 +344,16 @@ export async function confirmTreasuryEvent(
     const finalDate = overrides?.date ?? existingEvent.predictedDate;
     const finalAmount = overrides?.amount ?? existingEvent.amount;
     const finalDescription = overrides?.description ?? existingEvent.description;
-    const finalCounterparty =
-      overrides?.counterparty ?? existingEvent.counterparty ?? '';
+    // PR5-HOTFIX v3 · proveedor estructurado para la línea de inmueble.
+    const finalLineaProviderName =
+      overrides?.providerName ??
+      existingEvent.providerName ??
+      existingEvent.counterparty ??
+      undefined;
+    const finalLineaProviderNif =
+      overrides?.providerNif ?? existingEvent.providerNif ?? undefined;
+    const finalLineaInvoiceNumber =
+      overrides?.invoiceNumber ?? existingEvent.invoiceNumber ?? undefined;
     const ejercicio = Number(String(finalDate).slice(0, 4));
     const accountIdForLinea =
       overrides?.accountId ?? existingEvent.accountId ?? undefined;
@@ -361,7 +384,10 @@ export async function confirmTreasuryEvent(
         origen: 'tesoreria' as const,
         estado: 'confirmado' as const,
         estadoTesoreria: 'confirmed' as const,
-        proveedorNIF: finalCounterparty || undefined,
+        // PR5-HOTFIX v3 · separamos nombre y NIF del proveedor.
+        proveedorNombre: finalLineaProviderName || undefined,
+        proveedorNIF: finalLineaProviderNif || undefined,
+        invoiceNumber: finalLineaInvoiceNumber || undefined,
         cuentaBancaria:
           accountIdForLinea != null ? String(accountIdForLinea) : undefined,
         movimientoId: String(movementId),
@@ -390,7 +416,9 @@ export async function confirmTreasuryEvent(
         tipo: 'mejora' as const,
         importe: Math.abs(finalAmount),
         fecha: finalDate,
-        proveedorNIF: finalCounterparty || undefined,
+        proveedorNombre: finalLineaProviderName || undefined,
+        proveedorNIF: finalLineaProviderNif || undefined,
+        invoiceNumber: finalLineaInvoiceNumber || undefined,
         movimientoId: String(movementId),
         treasuryEventId: eventId,
         estadoTesoreria: 'confirmed' as const,
@@ -418,7 +446,9 @@ export async function confirmTreasuryEvent(
         importe: Math.abs(finalAmount),
         vidaUtil: 10,
         activo: true,
-        proveedorNIF: finalCounterparty || undefined,
+        proveedorNombre: finalLineaProviderName || undefined,
+        proveedorNIF: finalLineaProviderNif || undefined,
+        invoiceNumber: finalLineaInvoiceNumber || undefined,
         movimientoId: String(movementId),
         treasuryEventId: eventId,
         estadoTesoreria: 'confirmed' as const,
@@ -691,6 +721,12 @@ export interface UpdateConfirmedUpdates {
   accountId?: number;
   description?: string;
   counterparty?: string;
+  // PR5-HOTFIX v3 · proveedor estructurado. Si cualquiera de estos campos
+  // llega definido (incluso string vacío), se propaga al event + movement +
+  // línea vinculada.
+  providerName?: string;
+  providerNif?: string;
+  invoiceNumber?: string;
   notes?: string;
   categoryLabel?: string;
   ambito?: 'PERSONAL' | 'INMUEBLE';
@@ -843,6 +879,18 @@ export async function updateConfirmedMovement(
       updates.counterparty !== undefined
         ? updates.counterparty || undefined
         : event.counterparty,
+    providerName:
+      updates.providerName !== undefined
+        ? updates.providerName || undefined
+        : event.providerName,
+    providerNif:
+      updates.providerNif !== undefined
+        ? updates.providerNif || undefined
+        : event.providerNif,
+    invoiceNumber:
+      updates.invoiceNumber !== undefined
+        ? updates.invoiceNumber || undefined
+        : event.invoiceNumber,
     notes:
       updates.notes !== undefined
         ? updates.notes || undefined
@@ -900,6 +948,18 @@ export async function updateConfirmedMovement(
           updates.counterparty !== undefined
             ? updates.counterparty || undefined
             : movement.counterparty,
+        providerName:
+          updates.providerName !== undefined
+            ? updates.providerName || undefined
+            : movement.providerName,
+        providerNif:
+          updates.providerNif !== undefined
+            ? updates.providerNif || undefined
+            : movement.providerNif,
+        invoiceNumber:
+          updates.invoiceNumber !== undefined
+            ? updates.invoiceNumber || undefined
+            : movement.invoiceNumber,
         ambito: updates.ambito ?? movement.ambito,
         inmuebleId: nextInmuebleId,
         category: updates.categoryLabel
@@ -936,10 +996,21 @@ export async function updateConfirmedMovement(
       importe:
         updates.amount != null ? Math.abs(updates.amount) : linea.importe,
       inmuebleId: updates.inmuebleId ?? linea.inmuebleId,
+      // PR5-HOTFIX v3 · priorizamos providerName sobre counterparty al propagar.
       proveedorNombre:
-        updates.counterparty !== undefined
+        updates.providerName !== undefined
+          ? updates.providerName || undefined
+          : updates.counterparty !== undefined
           ? updates.counterparty || undefined
           : linea.proveedorNombre,
+      proveedorNIF:
+        updates.providerNif !== undefined
+          ? updates.providerNif || undefined
+          : linea.proveedorNIF,
+      invoiceNumber:
+        updates.invoiceNumber !== undefined
+          ? updates.invoiceNumber || undefined
+          : linea.invoiceNumber,
       facturaId:
         updates.facturaId !== undefined
           ? updates.facturaId

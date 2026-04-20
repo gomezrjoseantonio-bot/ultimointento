@@ -336,6 +336,8 @@ export interface GastoInmueble {
   estado: GastoEstadoNuevo;
   proveedorNombre?: string;
   proveedorNIF?: string;
+  // PR5-HOTFIX v3: nº factura del proveedor (opcional, rellenable por OCR).
+  invoiceNumber?: string;
   cuentaBancaria?: string;
   documentId?: number;
   movimientoId?: string;
@@ -366,6 +368,8 @@ export interface MejoraInmueble {
   fecha: string;
   proveedorNIF?: string;
   proveedorNombre?: string;
+  // PR5-HOTFIX v3: nº factura del proveedor.
+  invoiceNumber?: string;
   documentId?: number;
   movimientoId?: string;
   // PR5.5: estado tesorería
@@ -394,6 +398,8 @@ export interface MuebleInmueble {
   fechaBaja?: string;
   proveedorNIF?: string;
   proveedorNombre?: string;
+  // PR5-HOTFIX v3: nº factura del proveedor.
+  invoiceNumber?: string;
   documentId?: number;
   movimientoId?: string;
   // PR5.5: estado tesorería
@@ -939,9 +945,14 @@ export interface Movement {
   amount: number;
   description: string;
   counterparty?: string;
+  // PR5-HOTFIX v3: campos estructurados de proveedor. `counterparty` se
+  // mantiene por compatibilidad; los nuevos flujos escriben `providerName`.
+  providerName?: string;
+  providerNif?: string;
+  invoiceNumber?: string;
   reference?: string;
   status: MovementStatus;
-  
+
   // ATLAS HORIZON: Enhanced fields per problem statement
   // Core identification fields
   bank_ref?: string;        // bank reference ID if exists
@@ -1129,7 +1140,11 @@ export interface TreasuryEvent {
     pairEventId?: number;
     esAmortizacionParcial?: boolean;
   };
-  counterparty?: string;          // NIF proveedor / pagador
+  counterparty?: string;          // NIF proveedor / pagador (legacy)
+  // PR5-HOTFIX v3: proveedor estructurado en 3 campos (se rellenan con OCR).
+  providerName?: string;
+  providerNif?: string;
+  invoiceNumber?: string;
   notes?: string;
   // PR3: tras puntear ("executed"), apunta al movement generado
   executedMovementId?: number;
@@ -1808,6 +1823,9 @@ export interface OpexRule {
   businessType?: ExpenseBusinessType;
   proveedorNIF?: string;
   proveedorNombre?: string;
+  // PR5-HOTFIX v3 · nº de factura recurrente (opcional; útil si el proveedor
+  // usa un número de cuenta/contrato fijo en cada factura).
+  invoiceNumber?: string;
   activo: boolean;
   // PR5-HOTFIX v2: identificador canónico del catálogo de categorías
   // (src/services/categoryCatalog.ts). Cuando `categoryKey === 'suministro_inmueble'`

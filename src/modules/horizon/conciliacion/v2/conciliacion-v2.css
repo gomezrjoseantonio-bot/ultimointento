@@ -367,6 +367,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* PR5-HOTFIX v3 · línea secundaria con alias del inmueble debajo del concepto.
+   Sólo visible en filas de ámbito=INMUEBLE (no en personal ni traspasos). */
+.cv2-concept-subline {
+  font-size: 11.5px;
+  color: var(--cv2-grey-500);
+  margin-top: 2px;
+  font-weight: 400;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .cv2-counterparty {
   font-size: 12px;
   color: var(--cv2-grey-600);
@@ -686,6 +698,7 @@
 
 /* ═════════ PR5-HOTFIX v2 · Modal Añadir movimiento ═════════ */
 .cv2-required-mark { color: var(--cv2-teal-600); font-size: 11px; font-weight: 500; }
+.cv2-optional-mark { color: var(--cv2-grey-500); font-size: 11px; font-weight: 400; }
 
 /* Tipo · 4 pills horizontales */
 .cv2-tipo-pills {

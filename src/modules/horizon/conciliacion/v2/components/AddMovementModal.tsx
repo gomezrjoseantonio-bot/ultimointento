@@ -14,6 +14,7 @@ import type { Account, Property, TreasuryEvent } from '../../../../../services/d
 import {
   getCategoriesForModal,
   getCategoryByKey,
+  getOpexCategories,
   SUMINISTRO_SUBTYPES,
   type Ambito,
   type CategoryDef,
@@ -24,6 +25,35 @@ import { confirmTreasuryEvent } from '../../../../../services/treasuryConfirmati
 import { createTransfer } from '../../../../../services/treasuryTransferService';
 import type { Prestamo } from '../../../../../types/prestamos';
 
+// PR5-HOTFIX v3 · validador suave de NIF español. No bloquea submit: solo
+// muestra un warning inline cuando el formato no cuadra. El OCR podría
+// corregirlo o puede tratarse de un proveedor extranjero.
+// Acepta: DNI (8 dígitos + letra), NIE (X/Y/Z + 7 dígitos + letra), CIF
+// (letra + 8 dígitos | letra + 7 dígitos + letra|dígito).
+const NIF_REGEX =
+  /^([A-HJ-NP-SUVW]\d{7}[0-9A-J]|[0-9]{8}[A-Z]|[XYZ]\d{7}[A-Z])$/i;
+
+function looksLikeSpanishNif(value: string): boolean {
+  if (!value) return true; // vacío: no molestamos al usuario.
+  return NIF_REGEX.test(value.replace(/[-\s.]/g, ''));
+}
+
+export interface AddMovementModalPrefill {
+  tipo?: MovementType;
+  ambito?: Ambito;
+  inmuebleId?: number;
+  categoryKey?: string;
+  subtypeKey?: string;
+  fecha?: string;
+}
+
+export interface AddMovementModalLocked {
+  tipo?: boolean;
+  ambito?: boolean;
+  inmueble?: boolean;
+  categoria?: boolean;
+}
+
 interface AddMovementModalProps {
   accounts: Account[];
   properties: Property[];
@@ -31,6 +61,11 @@ interface AddMovementModalProps {
   defaultMonth0: number;
   onClose: () => void;
   onCreated: () => Promise<void>;
+  // PR5-HOTFIX v3 · pre-fill + locked + filtrado de categorías al invocar
+  // desde tab Gastos recurrentes del inmueble (modal unificado).
+  prefill?: AddMovementModalPrefill;
+  locked?: AddMovementModalLocked;
+  restrictCategoriesTo?: 'opex' | 'all';
 }
 
 const TIPO_PILLS: { value: MovementType; label: string; Icon: React.ElementType }[] = [
@@ -64,25 +99,30 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   properties,
   onClose,
   onCreated,
+  prefill,
+  locked,
+  restrictCategoriesTo = 'all',
 }) => {
   // PR5-HOTFIX v2 · fecha default = hoy (no el primer día del mes navegado).
   const today = new Date().toISOString().slice(0, 10);
 
-  const [tipo, setTipo] = useState<MovementType>('gasto');
-  const [fecha, setFecha] = useState(today);
+  const [tipo, setTipo] = useState<MovementType>(prefill?.tipo ?? 'gasto');
+  const [fecha, setFecha] = useState(prefill?.fecha ?? today);
   const [importeStr, setImporteStr] = useState('');
   const [cuentaId, setCuentaId] = useState<number | undefined>(
     accounts.length > 0 ? accounts[0].id : undefined,
   );
-  const [ambito, setAmbito] = useState<Ambito | undefined>('inmueble');
-  const [inmuebleId, setInmuebleId] = useState<number | undefined>(undefined);
-  const [categoriaKey, setCategoriaKey] = useState<string | undefined>(undefined);
-  const [subtipoKey, setSubtipoKey] = useState<string | undefined>(undefined);
+  const [ambito, setAmbito] = useState<Ambito | undefined>(prefill?.ambito ?? 'inmueble');
+  const [inmuebleId, setInmuebleId] = useState<number | undefined>(prefill?.inmuebleId);
+  const [categoriaKey, setCategoriaKey] = useState<string | undefined>(prefill?.categoryKey);
+  const [subtipoKey, setSubtipoKey] = useState<string | undefined>(prefill?.subtypeKey);
   const [prestamoId, setPrestamoId] = useState<string | undefined>(undefined);
   const [esAmortizacionParcial, setEsAmortizacionParcial] = useState(false);
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | undefined>(undefined);
   const [concept, setConcept] = useState('');
-  const [counterparty, setCounterparty] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [providerName, setProviderName] = useState('');
+  const [providerNif, setProviderNif] = useState('');
   const [busy, setBusy] = useState(false);
 
   // Carga perezosa de préstamos activos (solo si el tipo es financiación).
@@ -102,6 +142,12 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     })();
   }, [tipo, prestamos]);
 
+  // Flags derivados de locked. Si el prop no trae valor, trato como "no locked".
+  const tipoLocked = !!locked?.tipo;
+  const ambitoLocked = !!locked?.ambito;
+  const inmuebleLocked = !!locked?.inmueble;
+  const categoriaLocked = !!locked?.categoria;
+
   // ── visibility FSM ────────────────────────────────────────────────────
   const showAmbito = tipo === 'ingreso' || tipo === 'gasto';
   const showInmueble = (showAmbito && ambito === 'inmueble');
@@ -109,12 +155,18 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   const showSubtipo = categoriaKey === 'suministro_inmueble';
   const showPrestamo = tipo === 'financiacion';
   const showCuentaDestino = tipo === 'traspaso';
+  // PR5-HOTFIX v3 · nº factura sólo para gastos + financiación.
+  const showInvoiceNumber = tipo === 'gasto' || tipo === 'financiacion';
   const showDescripcion = tipo !== 'financiacion' || !!prestamoId;
+  const showProveedor = tipo !== 'traspaso';
 
-  const categoriesToShow: CategoryDef[] = useMemo(
-    () => (showCategoria ? getCategoriesForModal(tipo, ambito) : []),
-    [showCategoria, tipo, ambito],
-  );
+  const categoriesToShow: CategoryDef[] = useMemo(() => {
+    if (!showCategoria) return [];
+    if (restrictCategoriesTo === 'opex') {
+      return getOpexCategories();
+    }
+    return getCategoriesForModal(tipo, ambito);
+  }, [showCategoria, tipo, ambito, restrictCategoriesTo]);
 
   const categoriaDef = categoriaKey ? getCategoryByKey(categoriaKey) : undefined;
 
@@ -133,9 +185,12 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
 
   // ── handlers de cambio de sección (reset campos dependientes) ─────────
   const handleTipoChange = (next: MovementType) => {
+    if (tipoLocked) return;
     setTipo(next);
-    setCategoriaKey(undefined);
-    setSubtipoKey(undefined);
+    if (!categoriaLocked) {
+      setCategoriaKey(undefined);
+      setSubtipoKey(undefined);
+    }
     setPrestamoId(undefined);
     setCuentaDestinoId(undefined);
     setEsAmortizacionParcial(false);
@@ -149,13 +204,17 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   };
 
   const handleAmbitoChange = (next: Ambito) => {
+    if (ambitoLocked) return;
     setAmbito(next);
-    setCategoriaKey(undefined);
-    setSubtipoKey(undefined);
+    if (!categoriaLocked) {
+      setCategoriaKey(undefined);
+      setSubtipoKey(undefined);
+    }
     if (next === 'personal') setInmuebleId(undefined);
   };
 
   const handleCategoriaChange = (key: string) => {
+    if (categoriaLocked) return;
     setCategoriaKey(key);
     setSubtipoKey(undefined); // reset sub-tipo al cambiar categoría
   };
@@ -165,15 +224,17 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     if (!id) return;
     const p = prestamos?.find((pp) => pp.id === id);
     if (p) {
-      // Pre-rellenar contraparte con el banco del préstamo (solo si el
+      // Pre-rellenar proveedor con el banco del préstamo (solo si el
       // usuario no ha escrito nada aún).
-      if (!counterparty.trim()) setCounterparty(p.nombre ?? '');
+      if (!providerName.trim()) setProviderName(p.nombre ?? '');
     }
   };
 
   // ── validación de submit ───────────────────────────────────────────────
   const parsedImporte = parseFloat(importeStr.replace(',', '.'));
   const importeOk = Number.isFinite(parsedImporte) && parsedImporte > 0;
+
+  const nifLooksOk = looksLikeSpanishNif(providerNif.trim());
 
   const submitDisabled = (() => {
     if (busy) return true;
@@ -246,6 +307,10 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
       // Calcular flags documentales por categoría canónica.
       const flags = computeDocFlags(categoriaKey ?? (tipo === 'financiacion' ? 'gasto_financiero' : undefined));
 
+      const providerNameTrimmed = providerName.trim();
+      const providerNifTrimmed = providerNif.trim();
+      const invoiceNumberTrimmed = invoiceNumber.trim();
+
       const eventPayload: Omit<TreasuryEvent, 'id'> = {
         type:
           tipo === 'ingreso'
@@ -265,7 +330,15 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
         categoryKey: categoriaKey,
         categoryLabel: categoriaDef?.label,
         subtypeKey: subtipoKey,
-        counterparty: counterparty.trim() || undefined,
+        // PR5-HOTFIX v3 · proveedor estructurado en 3 campos. `counterparty`
+        // se mantiene como copia del nombre por retrocompatibilidad (lectores
+        // legacy + learning rules).
+        providerName: providerNameTrimmed || undefined,
+        providerNif: providerNifTrimmed || undefined,
+        invoiceNumber: invoiceNumberTrimmed || undefined,
+        // Si el usuario rellena NIF sin nombre, el NIF es la mejor referencia
+        // visible para los lectores legacy que siguen usando counterparty.
+        counterparty: providerNameTrimmed || providerNifTrimmed || undefined,
         prestamoId: tipo === 'financiacion' ? prestamoId : undefined,
         transferMetadata:
           tipo === 'financiacion' && esAmortizacionParcial
@@ -297,6 +370,10 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
 
   const inmueblesList = properties.filter((p) => p.state !== 'baja');
   const accountsOtherThanOrigin = accounts.filter((a) => a.id !== cuentaId);
+  const lockedInmuebleAlias =
+    inmuebleLocked && inmuebleId != null
+      ? properties.find((p) => p.id === inmuebleId)?.alias ?? '—'
+      : null;
 
   const subtitleByTipo: Record<MovementType, string> = {
     ingreso: 'Alquiler u otros ingresos',
@@ -332,18 +409,22 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
           <div className="cv2-form-section">
             <h3>Tipo</h3>
             <div className="cv2-tipo-pills">
-              {TIPO_PILLS.map(({ value, label, Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`cv2-tipo-pill ${tipo === value ? 'active' : ''}`}
-                  onClick={() => handleTipoChange(value)}
-                  disabled={busy}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
+              {TIPO_PILLS.map(({ value, label, Icon }) => {
+                const active = tipo === value;
+                const disabled = busy || (tipoLocked && !active);
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`cv2-tipo-pill ${active ? 'active' : ''}`}
+                    onClick={() => handleTipoChange(value)}
+                    disabled={disabled}
+                  >
+                    <Icon size={14} />
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -398,7 +479,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                   type="button"
                   className={`cv2-ambito-pill ${ambito === 'personal' ? 'active' : ''}`}
                   onClick={() => handleAmbitoChange('personal')}
-                  disabled={busy}
+                  disabled={busy || (ambitoLocked && ambito !== 'personal')}
                 >
                   Personal
                 </button>
@@ -406,7 +487,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                   type="button"
                   className={`cv2-ambito-pill ${ambito === 'inmueble' ? 'active' : ''}`}
                   onClick={() => handleAmbitoChange('inmueble')}
-                  disabled={busy}
+                  disabled={busy || (ambitoLocked && ambito !== 'inmueble')}
                 >
                   Inmueble
                 </button>
@@ -420,20 +501,33 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
               <h3>
                 Inmueble <span className="cv2-required-mark">· requerido</span>
               </h3>
-              <select
-                value={inmuebleId ?? ''}
-                onChange={(e) =>
-                  setInmuebleId(e.target.value ? Number(e.target.value) : undefined)
-                }
-                disabled={busy}
-              >
-                <option value="">Seleccionar inmueble…</option>
-                {inmueblesList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.alias}
-                  </option>
-                ))}
-              </select>
+              {inmuebleLocked ? (
+                <input
+                  type="text"
+                  value={lockedInmuebleAlias ?? '—'}
+                  readOnly
+                  style={{
+                    background: 'var(--cv2-grey-100, #EEF1F5)',
+                    color: 'var(--cv2-grey-700, #303A4C)',
+                    cursor: 'not-allowed',
+                  }}
+                />
+              ) : (
+                <select
+                  value={inmuebleId ?? ''}
+                  onChange={(e) =>
+                    setInmuebleId(e.target.value ? Number(e.target.value) : undefined)
+                  }
+                  disabled={busy}
+                >
+                  <option value="">Seleccionar inmueble…</option>
+                  {inmueblesList.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.alias}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
@@ -444,18 +538,22 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
               <div
                 className={`cv2-cat-grid ${categoriesToShow.length >= 10 ? 'cv2-cat-grid--cols-5' : ''}`}
               >
-                {categoriesToShow.map((cat) => (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    className={`cv2-cat-card ${categoriaKey === cat.key ? 'active' : ''}`}
-                    onClick={() => handleCategoriaChange(cat.key)}
-                    disabled={busy}
-                  >
-                    <cat.icon size={20} />
-                    <span>{cat.label}</span>
-                  </button>
-                ))}
+                {categoriesToShow.map((cat) => {
+                  const active = categoriaKey === cat.key;
+                  const disabled = busy || (categoriaLocked && !active);
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      className={`cv2-cat-card ${active ? 'active' : ''}`}
+                      onClick={() => handleCategoriaChange(cat.key)}
+                      disabled={disabled}
+                    >
+                      <cat.icon size={20} />
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
               </div>
               {tipo === 'ingreso' && ambito === 'inmueble' && (
                 <div className="cv2-hint">
@@ -647,18 +745,57 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                       disabled={busy}
                     />
                   </div>
-                  <div className="cv2-field">
-                    <label>Contraparte</label>
-                    <input
-                      type="text"
-                      value={counterparty}
-                      onChange={(e) => setCounterparty(e.target.value)}
-                      placeholder="Ej: Iberdrola"
-                      disabled={busy}
-                    />
-                  </div>
+                  {showInvoiceNumber && (
+                    <div className="cv2-field">
+                      <label>Nº factura <span className="cv2-optional-mark">(opcional)</span></label>
+                      <input
+                        type="text"
+                        value={invoiceNumber}
+                        onChange={(e) => setInvoiceNumber(e.target.value)}
+                        placeholder="Ej: 2026-0412"
+                        disabled={busy}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ───── PROVEEDOR ───── */}
+          {showProveedor && showDescripcion && (
+            <div className="cv2-form-section">
+              <h3>Proveedor</h3>
+              <div className="cv2-grid-2">
+                <div className="cv2-field">
+                  <label>Nombre</label>
+                  <input
+                    type="text"
+                    value={providerName}
+                    onChange={(e) => setProviderName(e.target.value)}
+                    placeholder="Ej: Iberdrola"
+                    disabled={busy}
+                  />
+                </div>
+                <div className="cv2-field">
+                  <label>NIF <span className="cv2-optional-mark">(opcional)</span></label>
+                  <input
+                    type="text"
+                    value={providerNif}
+                    onChange={(e) => setProviderNif(e.target.value)}
+                    placeholder="Ej: B83275893"
+                    disabled={busy}
+                  />
+                  {!nifLooksOk && (
+                    <div className="cv2-hint" style={{ color: 'var(--cv2-warning-600, #B45309)' }}>
+                      El NIF no tiene formato español estándar. Puedes guardarlo igual.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="cv2-hint">
+                El NIF y el nº factura se completarán automáticamente cuando subas la factura con OCR.
+              </div>
             </div>
           )}
         </div>

@@ -49,7 +49,13 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
   const [amount, setAmount] = useState(Math.abs(row.amount).toFixed(2).replace('.', ','));
   const [accountId, setAccountId] = useState<number | undefined>(row.accountId);
   const [concept, setConcept] = useState(row.concept);
-  const [counterparty, setCounterparty] = useState(row.counterparty);
+  // PR5-HOTFIX v3 · proveedor estructurado. Mantenemos `counterparty` para
+  // escribir también en el campo legado (compatibilidad).
+  const [providerName, setProviderName] = useState(
+    row._event.providerName ?? row.counterparty ?? '',
+  );
+  const [providerNif, setProviderNif] = useState(row._event.providerNif ?? '');
+  const [invoiceNumber, setInvoiceNumber] = useState(row._event.invoiceNumber ?? '');
   const [notes, setNotes] = useState(row._event.notes ?? '');
   const [ambito, setAmbito] = useState<'PERSONAL' | 'INMUEBLE'>(row.ambito);
   const [inmuebleId, setInmuebleId] = useState<number | undefined>(row.inmuebleId);
@@ -89,15 +95,25 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
       const parsedAmount = parseFloat(amount.replace(',', '.'));
       const finalAmount = Number.isFinite(parsedAmount) ? parsedAmount : undefined;
 
+      const trimmedName = providerName.trim();
+      const trimmedNif = providerNif.trim();
+      const trimmedInvoice = invoiceNumber.trim();
+
       if (row.state === 'confirmed') {
-        // PR5.6 · Propaga a event + movement + línea de inmueble en una
-        // sola transacción. El gesto de desconciliar vive en el círculo.
+        // PR5.6 + PR5-HOTFIX v3 · Una sola llamada atómica que propaga a
+        // event + movement + línea. `counterparty` se rellena con el nombre
+        // (o con el NIF si el usuario dejó el nombre en blanco) para que los
+        // lectores legacy sigan viendo la referencia.
+        const legacyCounterparty = trimmedName || trimmedNif || undefined;
         await updateConfirmedMovement(row.eventId, {
           amount: finalAmount,
           date,
           accountId,
           description: concept,
-          counterparty: counterparty || undefined,
+          counterparty: legacyCounterparty,
+          providerName: trimmedName || undefined,
+          providerNif: trimmedNif || undefined,
+          invoiceNumber: trimmedInvoice || undefined,
           notes: notes || undefined,
           categoryLabel: categoryLabel || undefined,
           ambito,
@@ -114,7 +130,10 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
           amount: finalAmount != null ? Math.abs(finalAmount) : event.amount,
           accountId,
           description: concept,
-          counterparty: counterparty || undefined,
+          counterparty: trimmedName || trimmedNif || undefined,
+          providerName: trimmedName || undefined,
+          providerNif: trimmedNif || undefined,
+          invoiceNumber: trimmedInvoice || undefined,
           notes: notes || undefined,
           ambito,
           inmuebleId,
@@ -139,14 +158,24 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
     setBusy(true);
     try {
       const parsedAmount = parseFloat(amount.replace(',', '.'));
+      const trimmedName = providerName.trim();
+      const trimmedNif = providerNif.trim();
+      const trimmedInvoice = invoiceNumber.trim();
       // Guardar cambios en el event y después puntear.
       const db = await initDB();
       const event = (await db.get('treasuryEvents', row.eventId)) as TreasuryEvent | undefined;
       if (!event) throw new Error('Evento no encontrado');
+      // PR5-HOTFIX v3 · si el usuario deja el nombre vacío pero aporta NIF,
+      // usamos el NIF como counterparty legacy para que lectores antiguos
+      // sigan mostrando algo en vez de '—'.
+      const legacyCounterparty = trimmedName || trimmedNif || undefined;
       await db.put('treasuryEvents', {
         ...event,
         description: concept,
-        counterparty: counterparty || undefined,
+        counterparty: legacyCounterparty,
+        providerName: trimmedName || undefined,
+        providerNif: trimmedNif || undefined,
+        invoiceNumber: trimmedInvoice || undefined,
         notes: notes || undefined,
         ambito,
         inmuebleId,
@@ -163,7 +192,10 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
             date,
             accountId,
             description: concept,
-            counterparty: counterparty || undefined,
+            counterparty: legacyCounterparty,
+            providerName: trimmedName || undefined,
+            providerNif: trimmedNif || undefined,
+            invoiceNumber: trimmedInvoice || undefined,
             notes: notes || undefined,
           });
           // Crea una nueva previsión con el remanente pendiente.
@@ -196,7 +228,10 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
           date,
           accountId,
           description: concept,
-          counterparty: counterparty || undefined,
+          counterparty: legacyCounterparty,
+          providerName: trimmedName || undefined,
+          providerNif: trimmedNif || undefined,
+          invoiceNumber: trimmedInvoice || undefined,
           notes: notes || undefined,
         });
         toast.success('Movimiento confirmado');
@@ -290,11 +325,37 @@ const EditMovementModal: React.FC<EditMovementModalProps> = ({
                 />
               </div>
               <div className="cv2-field">
-                <label>Contraparte</label>
+                <label>Nº factura <span className="cv2-optional-mark">(opcional)</span></label>
                 <input
                   type="text"
-                  value={counterparty}
-                  onChange={(e) => setCounterparty(e.target.value)}
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  placeholder="Ej: 2026-0412"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* PR5-HOTFIX v3 · Proveedor estructurado en 2 campos (Nombre + NIF). */}
+          <div className="cv2-form-section">
+            <h3>Proveedor</h3>
+            <div className="cv2-grid-2">
+              <div className="cv2-field">
+                <label>Nombre</label>
+                <input
+                  type="text"
+                  value={providerName}
+                  onChange={(e) => setProviderName(e.target.value)}
+                  placeholder="Ej: Iberdrola"
+                />
+              </div>
+              <div className="cv2-field">
+                <label>NIF <span className="cv2-optional-mark">(opcional)</span></label>
+                <input
+                  type="text"
+                  value={providerNif}
+                  onChange={(e) => setProviderNif(e.target.value)}
+                  placeholder="Ej: B83275893"
                 />
               </div>
             </div>
