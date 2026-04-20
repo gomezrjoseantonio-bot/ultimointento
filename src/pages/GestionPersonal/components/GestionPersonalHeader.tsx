@@ -216,26 +216,21 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   }
 
   /* ── KPI calculations ── */
-  // Nomina bruto
+  // Nomina: use calculateSalary totals directly so the header and the per-nómina
+  // card (TabIngresos) show the same net. Previously this only subtracted
+  // SS+IRPF and omitted `ppEmpleado`, so the header reported ~1.473€/año más
+  // que la tarjeta (el importe del plan de pensiones).
   const nominaTitular = nominas.filter((n) => n.titular === 'yo');
   const nominaPareja = nominas.filter((n) => n.titular === 'pareja');
-  let brutNomTit = 0;
-  let retNomTit = 0;
+  let netNomTit = 0;
   for (const n of nominaTitular) {
     const c = n.id != null ? nominaCalcs.get(n.id) : undefined;
-    if (c) {
-      brutNomTit += c.totalAnualBruto;
-      retNomTit += c.distribucionMensual.reduce((s, m) => s + m.ssTotal + m.irpfImporte, 0);
-    }
+    if (c) netNomTit += c.totalAnualNeto;
   }
-  let brutNomPar = 0;
-  let retNomPar = 0;
+  let netNomPar = 0;
   for (const n of nominaPareja) {
     const c = n.id != null ? nominaCalcs.get(n.id) : undefined;
-    if (c) {
-      brutNomPar += c.totalAnualBruto;
-      retNomPar += c.distribucionMensual.reduce((s, m) => s + m.ssTotal + m.irpfImporte, 0);
-    }
+    if (c) netNomPar += c.totalAnualNeto;
   }
 
   // Autonomo
@@ -255,10 +250,12 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   const otrosActivos = otrosIngresos.filter((o) => o.activo);
   const otrosAnual = otrosIngresosService.calculateAnnualIncome(otrosActivos);
 
-  // Total bruto
-  const totalBruto = brutNomTit + brutNomPar + autoEstimated.facturacionBruta + pensionBruta + otrosAnual;
-  const totalRetenciones = retNomTit + retNomPar + autoIrpfRet + pensionRet;
-  const totalNeto = totalBruto - totalRetenciones;
+  // Total neto (nómina net already deducts SS, IRPF y PP empleado).
+  const totalNeto =
+    netNomTit + netNomPar
+    + (autoEstimated.facturacionBruta - autoIrpfRet)
+    + (pensionBruta - pensionRet)
+    + otrosAnual;
 
   // Gastos de vida
   const gastosMensual = expenses
@@ -281,8 +278,8 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
   const anoActual = new Date().getFullYear();
 
   // Individual net contributions (for matrimonio display)
-  const netoTitular = brutNomTit - retNomTit;
-  const netoPareja = brutNomPar - retNomPar;
+  const netoTitular = netNomTit;
+  const netoPareja = netNomPar;
   const iniTitular = perfil.nombre.split(' ').filter(Boolean).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
   const iniPareja = perfil.spouseName
     ? perfil.spouseName.split(' ').filter(Boolean).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
