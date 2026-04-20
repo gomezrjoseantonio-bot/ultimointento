@@ -217,9 +217,9 @@ const GestionPersonalHeader: React.FC<Props> = ({ data, tab, onTabChange }) => {
 
   /* ── KPI calculations ── */
   // Nomina: use calculateSalary totals directly so the header and the per-nómina
-  // card (TabIngresos) show the same net. Previously this only subtracted
-  // SS+IRPF and omitted `ppEmpleado`, so the header reported ~1.473€/año más
-  // que la tarjeta (el importe del plan de pensiones).
+  // card (TabIngresos) show the same net. The previous calculation only
+  // subtracted SS+IRPF and could omit other payroll deductions, including the
+  // employee pension plan contribution and any `otrasDeducciones`.
   const nominaTitular = nominas.filter((n) => n.titular === 'yo');
   const nominaPareja = nominas.filter((n) => n.titular === 'pareja');
   let netNomTit = 0;
