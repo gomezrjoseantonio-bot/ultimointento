@@ -1,5 +1,15 @@
 // Personal V1 Module Types
 // Types for the comprehensive personal finance management system
+//
+// ATLAS Personal v1.1 (sección 1.2) introduce dos stores nuevos cuyos tipos
+// viven en módulos dedicados para mantener este archivo legible:
+//   - `compromisosRecurrentes` → src/types/compromisosRecurrentes.ts
+//   - `viviendaHabitual`       → src/types/viviendaHabitual.ts
+// Re-exportamos para que los consumidores existentes mantengan un único
+// punto de import.
+
+export * from './compromisosRecurrentes';
+export * from './viviendaHabitual';
 
 export type EmploymentStatus = 'employed' | 'self_employed' | 'retired' | 'unemployed';
 export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed';
@@ -97,6 +107,72 @@ export interface Nomina {
   activa: boolean;
   fechaCreacion: string;
   fechaActualizacion: string;
+
+  // ─── ATLAS Personal v1.1 · ampliaciones (sección 5) ───────────────────────
+  // Campos opcionales · capturan una nómina española real para reproducir
+  // y proyectar futuras (15-17 eventos/año por nómina activa).
+  empresa?: NominaEmpresa;
+  contrato?: NominaContrato;
+  cuentaCobroIBAN?: NominaCuentaCobro; // IBAN + concepto bancario para conciliación
+  irpfDetalle?: NominaIRPFDetalle;
+  pagasExtra?: NominaPagasExtra; // mesesExtra + importe paga extra (G-06)
+  variableObjetivo?: NominaVariableObjetivo; // proyección al 100% (G-02)
+  bonusObjetivo?: NominaBonusObjetivo; // proyección al 100% (G-02)
+  cuotaSolidaridadMensual?: number; // G-04 · usuario lo rellena al alta (alias de retencion.cuotaSolidaridadMensual)
+  // Última nómina importada (PDF/CSV) · útil para validar el cálculo
+  ultimaNominaImportada?: {
+    mes: string; // YYYY-MM
+    pdfDocumentoId?: string;
+    irpfAcumuladoEjercicio?: number;
+  };
+}
+
+// ── Sub-objetos de la ampliación v1.1 ───────────────────────────────────────
+
+export interface NominaEmpresa {
+  nombre: string;          // "Orange España S.A.U."
+  cif: string;             // "A82009812"
+  centroTrabajo?: string;  // "La Finca Ed.05"
+  centroCoste?: string;    // "MP1000"
+}
+
+export interface NominaContrato {
+  tipo: 'indefinidoCompleta' | 'indefinidoParcial' | 'temporal' | 'practicas' | 'formacion';
+  fechaAlta: string;       // ISO date · antigüedad
+  grupoCotizacion: string; // "01"
+  grupoProfesional?: string;
+  posicion?: string;
+  area?: string;
+  horasJornada: number;    // 160 · 168 · 40
+}
+
+export interface NominaCuentaCobro {
+  iban: string;            // ES61 0049 0052 6322 1041 2715
+  diaAbono: number | 'ultimoHabil';
+  conceptoBancario: string; // "NOMINA ORANGE ESPAÑA SAU"
+}
+
+export interface NominaIRPFDetalle {
+  retencionAnualEstimada?: number;
+  retencionMensualMedia?: number;
+  irpfAcumuladoEjercicio?: number;
+}
+
+export interface NominaPagasExtra {
+  mesesExtra: number[];    // ej. [6, 12]
+  // Si se omite el importe · ATLAS lo calcula como (salarioBrutoAnual / numeroPagas)
+  importePorPagaExtra?: number; // bruto
+}
+
+export interface NominaVariableObjetivo {
+  objetivoAnual: number;        // bruto · se proyecta al 100% (G-02)
+  pagaderoEnMeses: number[];    // ej. [3] · variable Q4 cobrado en marzo
+  // No hay factorRealizacion · proyectamos íntegro y reconciliamos
+}
+
+export interface NominaBonusObjetivo {
+  importeAnual: number;
+  pagaderoEnMes: number; // 1=enero
 }
 
 export interface RetencionNomina {
