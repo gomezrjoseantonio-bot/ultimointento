@@ -14,6 +14,8 @@ import type {
   PensionIngreso,
   TraspasoPlan
 } from '../types/personal';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
+import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type {
   ArrastreManual,
   ArrastresEjercicio,
@@ -24,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 52; // V5.2: traspasosPlanes — entidad propia para traspasos entre planes de pensiones
+const DB_VERSION = 53; // V5.3 (ATLAS Personal v1.1): compromisosRecurrentes (unified opexRules + personal) + viviendaHabitual
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2031,6 +2033,9 @@ interface AtlasHorizonDB {
   entidadesAtribucion: EntidadAtribucionRentas; // V3.4: entidades en atribución de rentas
   ejerciciosFiscalesCoord: EjercicioFiscalCoord; // V3.7: Modelo fiscal coordinador (4 regímenes)
   vinculosAccesorio: VinculoAccesorio; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
+  // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
+  compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01)
+  viviendaHabitual: ViviendaHabitual;           // V5.3: ficha vivienda habitual del hogar · genera derivados (sección 6)
 }
 
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
@@ -2610,6 +2615,143 @@ export const initDB = async () => {
         // Sin cambios estructurales — los campos esRemunerada y
         // remuneracion son opcionales y no requieren migración.
         // ═══════════════════════════════════════════════════
+
+        // ═══════════════════════════════════════════════════
+        // V5.3 — ATLAS Personal v1.1 · modelo de datos exhaustivo
+        //   1. compromisosRecurrentes (decisión G-01) · catálogo único
+        //      con discriminador `ambito` (personal | inmueble).
+        //      Migración: copia los registros existentes de `opexRules`
+        //      conservando `ambito='inmueble'` y su `inmuebleId`.
+        //      `opexRules` se mantiene en lectura por ahora para no romper
+        //      la UI legacy de Inmuebles · futuras PRs deprecarán.
+        //   2. viviendaHabitual · ficha única que genera eventos derivados
+        //      directamente en `treasuryEvents` (no via compromiso).
+        // ═══════════════════════════════════════════════════
+        if (!db.objectStoreNames.contains('compromisosRecurrentes')) {
+          const compromisosStore = db.createObjectStore('compromisosRecurrentes', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          ensureIndex(compromisosStore, 'ambito', 'ambito', { unique: false });
+          ensureIndex(compromisosStore, 'personalDataId', 'personalDataId', { unique: false });
+          ensureIndex(compromisosStore, 'inmuebleId', 'inmuebleId', { unique: false });
+          ensureIndex(compromisosStore, 'tipo', 'tipo', { unique: false });
+          ensureIndex(compromisosStore, 'categoria', 'categoria', { unique: false });
+          ensureIndex(compromisosStore, 'cuentaCargo', 'cuentaCargo', { unique: false });
+          ensureIndex(compromisosStore, 'estado', 'estado', { unique: false });
+          ensureIndex(compromisosStore, 'fechaInicio', 'fechaInicio', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('viviendaHabitual')) {
+          const viviendaStore = db.createObjectStore('viviendaHabitual', {
+            keyPath: 'id',
+            autoIncrement: true,
+          });
+          ensureIndex(viviendaStore, 'personalDataId', 'personalDataId', { unique: false });
+          ensureIndex(viviendaStore, 'activa', 'activa', { unique: false });
+          ensureIndex(viviendaStore, 'vigenciaDesde', 'vigenciaDesde', { unique: false });
+        }
+
+        // Migración V5.3 · opexRules → compromisosRecurrentes (ambito='inmueble')
+        // Se ejecuta solo en la transición desde una versión < 53 y solo si
+        // ambos stores están disponibles dentro de la transacción de upgrade.
+        if (
+          oldVersion < 53 &&
+          db.objectStoreNames.contains('opexRules') &&
+          db.objectStoreNames.contains('compromisosRecurrentes')
+        ) {
+          const opexStore = transaction.objectStore('opexRules');
+          const targetStore = transaction.objectStore('compromisosRecurrentes');
+
+          opexStore.openCursor().then(async function migrate(cursor) {
+            while (cursor) {
+              const opex = cursor.value as OpexRule;
+              const ahora = new Date().toISOString();
+
+              // Mapea OpexFrequency → PatronRecurrente (best-effort)
+              let patron: any;
+              if (opex.frecuencia === 'mensual') {
+                patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
+              } else if (opex.frecuencia === 'meses_especificos' && opex.mesesCobro?.length) {
+                patron = {
+                  tipo: 'anualMesesConcretos',
+                  mesesPago: opex.mesesCobro,
+                  diaPago: opex.diaCobro ?? 5,
+                };
+              } else if (opex.frecuencia === 'trimestral') {
+                patron = {
+                  tipo: 'cadaNMeses',
+                  cadaNMeses: 3,
+                  mesAncla: opex.mesInicio ?? 1,
+                  dia: opex.diaCobro ?? 5,
+                };
+              } else if (opex.frecuencia === 'semestral') {
+                patron = {
+                  tipo: 'cadaNMeses',
+                  cadaNMeses: 6,
+                  mesAncla: opex.mesInicio ?? 1,
+                  dia: opex.diaCobro ?? 5,
+                };
+              } else if (opex.frecuencia === 'anual') {
+                patron = {
+                  tipo: 'anualMesesConcretos',
+                  mesesPago: [opex.mesInicio ?? 1],
+                  diaPago: opex.diaCobro ?? 5,
+                };
+              } else {
+                patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
+              }
+
+              // Mapea importe (asymmetric → porPago · resto → fijo)
+              let importe: any;
+              if (opex.asymmetricPayments?.length) {
+                const importesPorPago: Record<number, number> = {};
+                for (const p of opex.asymmetricPayments) {
+                  importesPorPago[p.mes] = p.importe;
+                }
+                importe = { modo: 'porPago', importesPorPago };
+              } else {
+                importe = { modo: 'fijo', importe: opex.importeEstimado };
+              }
+
+              const compromiso: CompromisoRecurrente = {
+                ambito: 'inmueble',
+                inmuebleId: opex.propertyId,
+                alias: opex.concepto,
+                tipo: 'otros',
+                subtipo: opex.subtypeKey,
+                proveedor: {
+                  nombre: opex.proveedorNombre || 'Sin proveedor',
+                  nif: opex.proveedorNIF,
+                  referencia: opex.invoiceNumber,
+                },
+                patron,
+                importe,
+                cuentaCargo: opex.accountId ?? 0,
+                conceptoBancario: opex.proveedorNombre || opex.concepto,
+                metodoPago: 'domiciliacion',
+                categoria: 'inmueble.opex',
+                bolsaPresupuesto: 'inmueble',
+                responsable: 'titular',
+                fechaInicio: opex.createdAt || ahora,
+                estado: opex.activo ? 'activo' : 'pausado',
+                derivadoDe: { fuente: 'opexRule', refId: opex.id, bloqueado: false },
+                createdAt: opex.createdAt || ahora,
+                updatedAt: ahora,
+              };
+
+              try {
+                await targetStore.add(compromiso);
+              } catch (err) {
+                console.warn('[DB V5.3] migración opexRule → compromisoRecurrente falló para id=', opex.id, err);
+              }
+
+              cursor = await cursor.continue();
+            }
+          }).catch((err) => {
+            console.warn('[DB V5.3] migración opexRules → compromisosRecurrentes interrumpida:', err);
+          });
+        }
       },
       blocked() {
         console.warn('[DB] Upgrade blocked by another connection. Recarga las otras pestañas de ATLAS para completar la migración.');
