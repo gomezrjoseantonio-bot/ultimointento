@@ -4,7 +4,7 @@
 
 ## 1. Resumen ejecutivo
 
-- **Diagnóstico general**: la DB tiene **59 stores**; 25 contienen datos y 34 están vacíos. La deuda real no es el volumen sino el solapamiento entre stores legacy, stores de roadmap aún sin UI y datos derivados persistidos.
+- **Diagnóstico general**: la DB tiene **59 stores**; 25 contienen datos y 34 están vacíos. La deuda real no es el volumen sino el overlap/solapamiento entre stores legacy, stores de roadmap aún sin UI y datos derivados persistidos.
 
 - **Diseño objetivo recomendado**: **48 stores**. Reducción propuesta **59 → 48** (**19%**), sin crear stores nuevos en esta fase.
 
@@ -858,8 +858,12 @@ El código ya declara `treasuryEvents = lo previsto/pendiente` y `movements = lo
 #### P2 · `compromisosRecurrentes`
 `opexService.ts:189-323` ya escribe y lee `compromisosRecurrentes` y marca `opexRules` como deprecated. Recomendación: híbrido controlado: primer arranque propone compromisos desde patrones repetidos de `gastosInmueble` histórico, pero los crea como borradores/confirmados por usuario; después la fuente viva es manual/UI o importes CSV, no `gastosInmueble`. Así se evita duplicar histórico fiscal con catálogo futuro y se aprovechan XMLs para acelerar onboarding.
 
+Flujo de estados recomendado: `gastosInmueble histórico` → detector de patrones → `compromiso sugerido` (`estado='borrador'`, `derivadoDe.fuente='gastosInmueble'`) → confirmación usuario → `compromiso activo` → generación de `treasuryEvents`. Si existe ya un compromiso manual con mismo `inmuebleId + proveedor/categoría + patrón`, gana el manual y el sugerido se marca como `descartado_por_conflicto`; nunca se reescribe un compromiso confirmado desde histórico fiscal.
+
 #### P3 · `accounts.balance`
 `accountBalanceService.ts:21-75` calcula saldo como `openingBalance + treasuryEvents comprometidos + movements`, y `rollForwardAccountBalancesToMonth` persiste `accounts.balance` como cache (`src/services/accountBalanceService.ts:97-123`). Recomendación: `openingBalance` y `openingBalanceDate` son persistidos; `balance` debe tratarse como cache derivada recalculable, nunca como fuente de verdad. Las pantallas pueden leerlo por rendimiento, pero cualquier discrepancia se resuelve recalculando desde movimientos/eventos. La invalidación debe dispararse tras importar o borrar `movements`, confirmar/revertir `treasuryEvents`, editar `openingBalance/openingBalanceDate` o cambiar el estado activo de una cuenta; si falla el recalculo, la UI debe mostrar el saldo calculado on-demand y marcar la cache como pendiente de sincronización.
+
+Patrón recomendado: servicio único `accountBalanceCacheService` con `markDirty(accountId, reason)` y `recompute(accountId|all)`. Ningún importador o componente debe escribir `accounts.balance` directamente; todos notifican dirty y el servicio recalcula. Estados mínimos de cache: `clean`, `dirty`, `recomputing`, `failed`; en `failed` se bloquea la persistencia de la cache pero no la lectura derivada on-demand.
 
 #### P4 · Renta mensual
 El mapeo Mi Plan definitivo indica que `contracts.rentaMensual` es el dato vigente y `rentaMensual` store está deprecated/0 registros. `contractService.ts:72-150` aún genera/regenera `rentaMensual`, pero `fiscalSummaryService.ts:118-138` calcula ingresos desde `contracts.rentaMensual`. Recomendación: mantener renta actual y términos vigentes en `contracts`; añadir histórico embebido `historicoRentas[]` dentro del contrato para revisiones/IPC/IRAV; eliminar store `rentaMensual` y generar `treasuryEvents` mensuales desde contrato + histórico.
@@ -1074,7 +1078,8 @@ No se recomienda crear stores nuevos en V60. La arquitectura objetivo se alcanza
 6. Generar catálogos futuros: contratos → rentas previstas; préstamos → cuotas; compromisos sugeridos desde histórico; nóminas/personal desde UI.
 7. Reconciliación manual: validar contratos vivos, préstamos liquidados, saldos iniciales, fondos/objetivos de Mi Plan.
 8. Recuperación ante fallo: cada ejercicio XML debe importarse dentro de un batch lógico idempotente; si falla un ejercicio, se revierte ese batch, se conserva el snapshot pre-wipe y no se avanza al ejercicio siguiente. Si falla la importación bancaria, se borra el `importBatch` parcial y sus `movements` asociados antes de reintentar. Si falla una fase posterior, se puede repetir desde DB vacía usando los mismos XML/CSV o restaurar el snapshot pre-wipe.
-9. Estado esperado: stores fiscal/históricos poblados por XML, tesorería real por CSV, Mi Plan y Personal gradual por UI.
+9. Mensajes operativos al usuario: XML fallido → “No se importó el ejercicio YYYY; no se ha escrito ningún dato parcial de ese ejercicio. Corrige el XML o reintenta.” CSV fallido → “El extracto no se completó; se ha eliminado el lote parcial y puedes volver a subirlo.” Reconciliación fallida → “Los datos importados siguen guardados; revisa las partidas marcadas y reintenta la conciliación.” Fallo crítico post-wipe → “Restaurar snapshot previo” debe estar disponible como acción visible.
+10. Estado esperado: stores fiscal/históricos poblados por XML, tesorería real por CSV, Mi Plan y Personal gradual por UI.
 
 ### 4.6 Tareas posteriores
 - **TAREA 7** · limpieza V60: eliminar fósiles/duplicados aprobados.
