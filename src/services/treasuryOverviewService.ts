@@ -178,7 +178,7 @@ export const treasuryOverviewService = {
       // helper.
       getAllLoanSettlements(),
       db.getAll('accounts'),
-      db.getAll('gastosPersonalesReal').catch(() => [] as any[]),
+      Promise.resolve([] as any[]),  // gastosPersonalesReal store eliminado en V62
     ]);
 
     // Build confirmed real personal expenses by year

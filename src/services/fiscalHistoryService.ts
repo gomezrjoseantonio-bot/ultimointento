@@ -142,6 +142,5 @@ export async function eliminarDeclaracionImportada(ejercicio: number): Promise<v
       .map((documento) => db.delete('documents', documento.id as number)),
   );
 
-  const ejercicioKey = ejercicioFiscal.ejercicio ?? ejercicioFiscal.año ?? ejercicio;
-  await db.delete('ejerciciosFiscales', ejercicioKey);
+  // ejerciciosFiscales store eliminado en V62 — nada que limpiar aquí
 }

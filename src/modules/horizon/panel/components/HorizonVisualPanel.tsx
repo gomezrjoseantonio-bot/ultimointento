@@ -55,7 +55,7 @@ const HorizonVisualPanel: React.FC = () => {
     // method hits the in-memory cache instead of making redundant IndexedDB reads.
     await warmCachedStores([
       'properties', 'inversiones', 'prestamos', 'contracts',
-      'accounts', 'treasuryEvents', 'rentaMensual',
+      'accounts', 'treasuryEvents',
       'valoraciones_historicas', 'patronGastosPersonales',
     ]);
 

@@ -45,7 +45,7 @@ describe('propertySaleService', () => {
       db.clear('prestamos'),
       db.clear('contracts'),
       db.clear('movements'),
-      db.clear('opexRules'),
+      db.clear('compromisosRecurrentes'),
       db.clear('gastosInmueble'),
       db.clear('treasuryEvents'),
     ]);
@@ -364,14 +364,15 @@ describe('propertySaleService', () => {
       notas: 'Configuración original | tramo variable',
     } as any);
 
-    const opexRuleId = Number(await db.add('opexRules', {
-      propertyId,
+    const opexRuleId = Number(await db.add('compromisosRecurrentes', {
+      ambito: 'inmueble',
+      inmuebleId: propertyId,
       categoria: 'impuesto',
       concepto: 'IBI | cuota anual',
-      importeEstimado: 1200,
-      frecuencia: 'anual',
-      activo: true,
-      accountId,
+      importe: 1200,
+      patron: 'anual',
+      estado: 'activo',
+      cuentaId: accountId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     } as any));
@@ -420,8 +421,8 @@ describe('propertySaleService', () => {
     expect(loanAfterSale?.activo).toBe(false);
     expect(loanAfterSale?.estado).toBe('cancelado');
 
-    const opexAfterSale = await db.get('opexRules', opexRuleId);
-    expect(opexAfterSale?.activo).toBe(false);
+    const opexAfterSale = await db.get('compromisosRecurrentes', opexRuleId);
+    expect(opexAfterSale?.estado).toBe('baja');
 
     const gastoAfterSale = await db.get('gastosInmueble', gastoId);
     expect(gastoAfterSale?.estado).toBe('previsto');
@@ -433,8 +434,8 @@ describe('propertySaleService', () => {
     expect(restoredLoan?.estado).toBe('vivo');
     expect(restoredLoan?.principalVivo).toBe(81234.56);
 
-    const restoredOpex = await db.get('opexRules', opexRuleId);
-    expect(restoredOpex?.activo).toBe(true);
+    const restoredOpex = await db.get('compromisosRecurrentes', opexRuleId);
+    expect(restoredOpex?.estado).toBe('activo');
 
     const restoredGasto = await db.get('gastosInmueble', gastoId);
     expect(restoredGasto?.estado).toBe('confirmado');

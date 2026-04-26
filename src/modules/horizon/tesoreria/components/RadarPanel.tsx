@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { initDB, Account } from '../../../../services/db';
-import { getTreasuryProjections, generateTreasuryRecommendations } from '../../../../services/treasuryForecastService';
+import { getTreasuryProjections } from '../../../../services/treasuryForecastService';
 import { formatEuro } from '../../../../services/aeatClassificationService';
 import { addEventListener, removeEventListener } from '../../../../services/treasuryEventsService';
 
@@ -128,9 +128,8 @@ const RadarPanel: React.FC = () => {
         return balance && balance.projected < minimumBalance;
       }).length;
 
-      // Get recommendations
-      await generateTreasuryRecommendations();
-      const recommendations = await db.getAll('treasuryRecommendations');
+      // treasuryRecommendations store eliminado en V62 — derivable runtime
+      const recommendations: any[] = [];
       const activeRecommendations = recommendations
         .filter(rec => rec.status === 'active')
         .map(rec => ({

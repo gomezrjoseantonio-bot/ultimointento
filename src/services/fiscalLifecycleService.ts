@@ -15,7 +15,7 @@ import * as ejercicioFiscalService from './ejercicioFiscalService';
 import { crearArrastreFiscal } from './arrastresFiscalesService';
 import type { DatosActivosExtraidos, InmuebleParsedFromPDF } from './declaracionFromCasillasService';
 
-const EJERCICIOS_STORE = 'ejerciciosFiscales';
+// EJERCICIOS_STORE = 'ejerciciosFiscales' eliminado en V62 — leer via ejercicioFiscalService.getAllEjercicios()
 const RESULTADOS_STORE = 'resultadosEjercicio';
 const ARRASTRES_STORE = 'arrastresIRPF';
 
@@ -516,7 +516,7 @@ export async function importarDeclaracionManual(input: {
 
 export async function obtenerHistoricoFiscalReal(): Promise<Array<{ ejercicio: number; estado: EjercicioFiscal['estado']; origen: OrigenEjercicio; fechaCierre?: string; fechaDeclaracion?: string; resultado: ResultadoEjercicio['resumen']; resultadoEjercicioId?: number }>> {
   const db = await initDB();
-  const ejercicios = (await db.getAll(EJERCICIOS_STORE)) as EjercicioFiscal[];
+  const ejercicios = await ejercicioFiscalService.getAllEjercicios();
 
   const filtered = ejercicios
     .filter((e) => e.estado === 'cerrado' || e.estado === 'declarado' || e.origen === 'importado' || e.origen === 'mixto')

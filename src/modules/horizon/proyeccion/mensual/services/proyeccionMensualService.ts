@@ -808,7 +808,7 @@ async function loadBaseData(): Promise<BaseData> {
     }
 
     // Load all OpexRules for use by forecastEngine functions (cached to avoid repeated DB reads)
-    opexRules = await getCachedStoreRecords<OpexRule>('opexRules');
+    opexRules = []; // opexRules store eliminado en V62 — migrado a compromisosRecurrentes
   } catch {
     // No property/contract data available
   }

@@ -354,20 +354,7 @@ export async function resolverDatosEjercicio(año: number): Promise<DatosFiscale
       }
     } catch { /* ignore */ }
 
-    // Fallback: try ejerciciosFiscales store (legacy)
-    try {
-      const db = await initDB();
-      const ejFiscal = await db.get('ejerciciosFiscales', año);
-      if (ejFiscal) {
-        const ejAny = ejFiscal as any;
-        if (ejAny.declaracionAeat?.basesYCuotas) {
-          return resolverDesdeLegacyDecl(año, ejAny.declaracionAeat, fuente, coordResumen);
-        }
-        if (ejAny.resumen) {
-          return resolverDesdeLegacyResumen(año, ejAny.resumen, fuente, coordResumen);
-        }
-      }
-    } catch { /* ignore */ }
+    // ejerciciosFiscales store eliminado en V62 — datos migrados a ejerciciosFiscalesCoord
 
     // Still no data — return empty
     const result = buildEmptyResult(año);

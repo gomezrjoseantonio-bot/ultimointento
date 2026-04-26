@@ -385,18 +385,7 @@ export async function bootstrapEjercicios(): Promise<void> {
     }
   }
 
-  // Limpiar ejerciciosFiscales (store legacy) de años futuros que pudieran haberse creado
-  try {
-    const todosLegacy = await db.getAll('ejerciciosFiscales');
-    for (const ej of todosLegacy) {
-      const añoEj = (ej as any).ejercicio ?? (ej as any).año;
-      if (typeof añoEj === 'number' && añoEj > añoActual + 1) {
-        await db.delete('ejerciciosFiscales', añoEj);
-      }
-    }
-  } catch {
-    // ejerciciosFiscales store might not exist in older DB versions
-  }
+  // ejerciciosFiscales store eliminado en V62 — nada que limpiar
 }
 
 /**
@@ -431,26 +420,11 @@ export async function limpiarEjerciciosCoordBasura(): Promise<{
     }
   }
 
-  // Limpieza paralela del store legacy `ejerciciosFiscales` con la misma regla.
-  let eliminadosLegacy = 0;
-  try {
-    const legacy = await db.getAll('ejerciciosFiscales');
-    for (const registro of legacy) {
-      const año = (registro as { ejercicio?: number; año?: number })?.ejercicio
-        ?? (registro as { ejercicio?: number; año?: number })?.año;
-      if (typeof año === 'number' && Number.isFinite(año) && año > añoActual) {
-        await db.delete('ejerciciosFiscales', año);
-        eliminadosLegacy++;
-      }
-    }
-  } catch {
-    // El store legacy puede no existir en versiones antiguas de la DB.
-  }
+  // ejerciciosFiscales store eliminado en V62 — sin limpieza legacy necesaria
+  const eliminadosLegacy = 0;
 
-  if (eliminados > 0 || eliminadosLegacy > 0) {
-    console.log(
-      `[ejerciciosFiscalesCoord] Limpieza: ${eliminados} coord + ${eliminadosLegacy} legacy eliminados`
-    );
+  if (eliminados > 0) {
+    console.log(`[ejerciciosFiscalesCoord] Limpieza: ${eliminados} coord eliminados`);
   }
   return { eliminados, eliminadosLegacy };
 }
@@ -494,65 +468,8 @@ export async function actualizarEstadoEjercicioCoord(
  * Se ejecuta UNA vez por sesión en el bootstrap (FiscalDashboard).
  */
 export async function syncAndCleanupLegacyStore(): Promise<{ migrados: number; errores: number }> {
-  const db = await initDB();
-  let migrados = 0;
-  let errores = 0;
-
-  try {
-    const legacyRecords = await db.getAll('ejerciciosFiscales');
-
-    for (const record of legacyRecords as any[]) {
-      // Ambiguity: legacy records used 'ejercicio' or 'año' as the key field depending on
-      // which code path created them (ejercicioLifecycleService used 'año', some UI paths
-      // may have used 'ejercicio'). Check both for backward compatibility.
-      const año: number = record?.ejercicio ?? record?.año;
-      if (!Number.isInteger(año) || año < 2010) continue;
-
-      const existeCoord = await db.get('ejerciciosFiscalesCoord', año);
-      if (existeCoord) continue; // Already in coord — skip
-
-      // Map legacy estado to coord estado
-      const estadoLegacy = String(record?.estado ?? '').toLowerCase();
-      const estadoCoord: EjercicioFiscalCoord['estado'] =
-        estadoLegacy === 'declarado' ? 'declarado'
-        : estadoLegacy === 'prescrito' ? 'prescrito'
-        : estadoLegacy === 'cerrado' || estadoLegacy === 'pendiente_cierre' ? 'pendiente'
-        : 'en_curso';
-
-      const now = new Date().toISOString();
-      const coordRecord: EjercicioFiscalCoord = {
-        año,
-        estado: estadoCoord,
-        fechaPrescripcion: `${año + 5}-06-30T00:00:00.000Z`,
-        arrastresIn: {
-          fuente: 'ninguno',
-          gastosPendientes: [],
-          perdidasPatrimoniales: [],
-          amortizacionesAcumuladas: [],
-          deduccionesPendientes: [],
-        },
-        inmuebleIds: [],
-        createdAt: record?.createdAt ?? now,
-        updatedAt: now,
-      };
-
-      try {
-        await db.add('ejerciciosFiscalesCoord', coordRecord);
-        migrados++;
-      } catch (err) {
-        console.warn('[syncAndCleanupLegacyStore] Error migrando año', año, err);
-        errores++;
-      }
-    }
-  } catch (err) {
-    console.warn('[syncAndCleanupLegacyStore] Error leyendo ejerciciosFiscales:', err);
-    errores++;
-  }
-
-  if (migrados > 0) {
-    console.log(`[syncAndCleanupLegacyStore] Migrados ${migrados} ejercicios a coord`);
-  }
-  return { migrados, errores };
+  // ejerciciosFiscales store eliminado en V62 — migración legacy completada, nada que sincronizar
+  return { migrados: 0, errores: 0 };
 }
 
 // ═══════════════════════════════════════════════

@@ -1,4 +1,4 @@
-import { initDB, SnapshotDeclaracion, EjercicioFiscal as DbEjercicioFiscal } from './db';
+import { initDB, SnapshotDeclaracion } from './db';
 import { calcularDeclaracionIRPF, DeclaracionIRPF } from './irpfCalculationService';
 
 export type FuenteDeclaracion = 'vivo' | 'declarado' | 'importado';
@@ -40,24 +40,7 @@ export async function obtenerDeclaracionParaEjercicio(
     };
   }
 
-  // 2. Check ejerciciosFiscales store (from declararEjercicio / PDF import)
-  try {
-    const ejFiscal = (await db.get('ejerciciosFiscales', ejercicio)) as DbEjercicioFiscal | undefined;
-    if (ejFiscal?.declaracionAeat) {
-      return {
-        declaracion: ejFiscal.declaracionAeat as unknown as DeclaracionIRPF,
-        fuente: 'importado',
-      };
-    }
-    if (ejFiscal?.calculoAtlas) {
-      return {
-        declaracion: ejFiscal.calculoAtlas as unknown as DeclaracionIRPF,
-        fuente: 'vivo',
-      };
-    }
-  } catch {
-    // Store may not exist in older DB versions — fall through
-  }
+  // ejerciciosFiscales store eliminado en V62 — datos migrados a ejerciciosFiscalesCoord
 
   const declaracion = await calcularDeclaracionIRPF(ejercicio);
   return { declaracion, fuente: 'vivo' };

@@ -131,7 +131,7 @@ export function useSupervisionData(): SupervisionData {
       // --- Batch-load shared tables once (performance) ---
       const [allContracts, allRentaRecords, allValoraciones] = await Promise.all([
         db.getAll('contracts') as Promise<Contract[]>,
-        db.getAll('rentaMensual') as Promise<RentaMensual[]>,
+        Promise.resolve([] as RentaMensual[]),  // rentaMensual store eliminado en V62
         db.getAll('valoraciones_historicas') as Promise<ValoracionHistorica[]>,
       ]);
 

@@ -27,14 +27,14 @@ async function calcularHashInputs(ejercicio: number): Promise<string> {
   const counts = await Promise.all([
     db.count('properties').catch(() => 0),
     db.count('contracts').catch(() => 0),
-    db.count('opexRules').catch(() => 0),
+    db.count('compromisosRecurrentes').catch(() => 0),  // opexRules eliminado en V62
     db.count('prestamos').catch(() => 0),
     db.count('gastosInmueble').catch(() => 0),
     // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
     // viven en `ingresos` con `tipo='autonomo'`.
     db.countFromIndex('ingresos', 'tipo', 'autonomo').catch(() => 0),
     db.count('inversiones').catch(() => 0),
-    db.count('rentaMensual').catch(() => 0),
+    Promise.resolve(0),  // rentaMensual store eliminado en V62
     db.count('gastosInmueble').catch(() => 0),
   ]);
 

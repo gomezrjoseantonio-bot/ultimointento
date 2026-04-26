@@ -218,7 +218,7 @@ const IngastoDrawer: React.FC<IngastoDrawerProps> = ({ open, tipo, ano, inmueble
         if (tipo === 'rentas') {
           const [contracts, rentasMensuales, treasuryEvents] = await Promise.all([
             db.getAll('contracts') as Promise<Contract[]>,
-            db.getAll('rentaMensual') as Promise<RentaMensual[]>,
+            Promise.resolve([] as RentaMensual[]),  // rentaMensual store eliminado en V62
             db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
           ]);
 
