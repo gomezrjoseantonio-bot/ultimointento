@@ -27,7 +27,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 59; // V5.9 (post-deploy fix): garantiza eliminación de objetivos_financieros tras merge defensivo en escenarios
+const DB_VERSION = 60; // V60 (TAREA 7 sub-tarea 1): schema extensions on surviving stores · non-destructive · prepara terreno para eliminación 19 stores en sub-tareas 2-8
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -511,7 +511,20 @@ export interface Document {
     contraparte?: string;
     counterpartyName?: string; // New counterparty field for enhanced classification
     proveedor?: string; // Backward compatibility
-    tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros';
+    /**
+     * Clasificación de documento.
+     *
+     * V60 (TAREA 7 sub-tarea 1): se amplía la unión para añadir el set
+     * normalizado coarse 'fiscal' | 'contrato' | 'bancario' | 'otro' que
+     * será el destino de la eliminación de `documentosFiscales` en
+     * sub-tarea 4 (un documento fiscal pasa a `documents` con
+     * `metadata.tipo='fiscal'`). El set capitalizado original
+     * ('Factura' | 'Contrato' | ...) se mantiene como valores válidos
+     * para no romper consumidores existentes. La normalización completa
+     * (decidir si fusionar ambos sets) se evaluará tras sub-tarea 4.
+     */
+    tipo?: 'Factura' | 'Contrato' | 'Mejora' | 'Extracto bancario' | 'Otros'
+      | 'fiscal' | 'contrato' | 'bancario' | 'otro';
     categoria?: string;
     destino?: 'Personal' | 'Inmueble';
     status?: 'Nuevo' | 'Procesado' | 'Asignado' | 'Archivado' | 'pendiente_vinculacion' | 'pendiente_asignacion';
@@ -590,6 +603,37 @@ export interface EjercicioFiscalContrato {
   nifsDetectados?: string[];
 }
 
+/**
+ * V60 (TAREA 7 sub-tarea 1): histórico de cambios de renta mensual de un
+ * contrato. Sustituye al store separado `rentaMensual` (eliminado en
+ * sub-tarea 3) absorbiendo sus datos en `contracts.historicoRentas[]`.
+ *
+ * Cada entrada representa el importe `rentaMensual` vigente desde
+ * `fechaDesde` hasta el siguiente cambio (o fin de contrato). El cambio
+ * suele provenir de una indexación (`origen='indexacion'`), de una
+ * renegociación con el inquilino (`'renegociacion'`), de la firma inicial
+ * (`'firma_inicial'`) o de un ajuste manual (`'manual'`).
+ *
+ * Las entradas se mantienen ordenadas por `fechaDesde` ascendente.
+ * `Contract.rentaMensual` siempre refleja el importe vigente (= último
+ * `importe` del histórico, si existe).
+ */
+export interface HistoricoRenta {
+  /** Fecha desde la que aplica este importe (ISO YYYY-MM-DD). */
+  fechaDesde: string;
+  /** Importe mensual en € desde `fechaDesde`. */
+  importe: number;
+  /** Por qué cambió la renta. */
+  origen: 'firma_inicial' | 'indexacion' | 'renegociacion' | 'manual';
+  /** Comentario opcional (e.g. "IPC 3,5%"). */
+  nota?: string;
+  /**
+   * Si `origen='indexacion'`, copia la fecha registrada en
+   * `historicoIndexaciones` para trazabilidad.
+   */
+  indexacionFecha?: string;
+}
+
 // Enhanced Contract interface according to CONTRATOS (HORIZON + PULSE) specification
 export interface Contract {
   id?: number;
@@ -635,6 +679,16 @@ export interface Contract {
     porcentajeAplicado: number; // Percentage applied
     rentaResultante: number; // Resulting rent amount
   }>;
+
+  /**
+   * V60 (TAREA 7 sub-tarea 1): histórico completo de cambios de renta
+   * mensual. Absorbe los datos del store eliminado `rentaMensual`
+   * (sub-tarea 3 elimina el store; sus consumidores se adaptan a leer
+   * de aquí). Ordenado por `fechaDesde` ascendente. Default `[]` para
+   * contratos pre-V60 — el campo es opcional para tolerar lecturas
+   * legacy.
+   */
+  historicoRentas?: HistoricoRenta[];
   
   // NEW FIELDS: Deposit information
   fianzaMeses: number; // Number of months (0..∞, default 1)
@@ -894,6 +948,16 @@ export interface Account {
   name?: string; // Maps to alias
   bank?: string; // Maps to banco.name
   destination?: AccountDestination;
+  /**
+   * Saldo cacheado de la cuenta · NO es fuente de verdad.
+   *
+   * V60 (TAREA 7 sub-tarea 1): documentado explícitamente como cache
+   * derivada. La fuente real de saldo es `openingBalance` + suma de
+   * `movements.amount` para esta `accountId`. Recalcular vía
+   * `accountBalanceService.recalculateBalance(accountId)` cuando los
+   * movimientos cambien. Mantenido para hot-paths de UI que necesitan
+   * lectura O(1) del saldo sin recorrer movements.
+   */
   balance?: number;
   openingBalance?: number;
   openingBalanceDate?: string;
@@ -1190,6 +1254,25 @@ export interface MovementLearningRule {
   updatedAt: string;
   appliedCount: number; // How many times this rule has been applied
   lastAppliedAt?: string;
+  /**
+   * V60 (TAREA 7 sub-tarea 1): historial de aplicaciones de la regla,
+   * absorbido del store eliminado `learningLogs` (sub-tarea 5). Cap de
+   * 50 entradas por regla en orden FIFO (las más antiguas se descartan
+   * cuando se inserta la entrada 51+). Mantenido sin PII (no se guarda
+   * descripción real del movimiento, sólo metadatos de la acción).
+   */
+  history?: HistoryEntry[];
+}
+
+/**
+ * V60 (TAREA 7 sub-tarea 1): entrada de historial para
+ * `MovementLearningRule.history[]`. Una por aplicación / creación / backfill
+ * de la regla. Sin PII.
+ */
+export interface HistoryEntry {
+  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
+  movimientoId?: number;
+  ts: string; // ISO timestamp
 }
 
 // V1.1: Learning log for audit trail (without PII)
@@ -1379,6 +1462,18 @@ export interface ArrastreIRPF {
   importePendiente: number;        // Importe aún no aplicado
   ejercicioCaducidad?: number;     // Año en que caduca (undefined/missing = sin caducidad)
   inmuebleId?: number;             // FK → properties.id (si aplica, e.g. exceso 0105+0106)
+  /**
+   * V60 (TAREA 7): origen del arrastre.
+   *  - 'aeat': importado de XML AEAT (default para registros V59 anteriores).
+   *  - 'manual': introducido manualmente por el usuario (sustituye al store
+   *    eliminado `arrastresManual` · ver sub-tarea 4).
+   *  - 'calculado': generado por motor de cálculo (futuro).
+   *
+   * Backfill V60: registros pre-V60 reciben `origen='aeat'` durante la
+   * migración. Campo opcional en TS para tolerar lecturas legacy en
+   * código de migración.
+   */
+  origen?: 'manual' | 'aeat' | 'calculado';
   aplicaciones: {                  // Historial FIFO de consumos
     ejercicio: number;
     importe: number;
@@ -2008,9 +2103,36 @@ interface AtlasHorizonDB {
   patronGastosPersonales: PatronGastoPersonal; // V4.3: spending pattern (was personalExpenses)
   gastosPersonalesReal: GastoPersonalReal; // V4.3: confirmed facts from Tesorería punteo
   prestamos: any; // Financiacion: Loan records
-  valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
+  /**
+   * Monthly valuation: Historical valuations per asset.
+   *
+   * V60 (TAREA 7 sub-tarea 1): este store absorbe las consultas mensuales
+   * que antes requerían el store separado `valoraciones_mensuales`
+   * (eliminado en sub-tarea 3). Para listar valoraciones de un mes
+   * concreto, usar el índice compuesto existente `tipo-activo-fecha`
+   * combinado con `IDBKeyRange.bound` sobre `fecha_valoracion`
+   * (`YYYY-MM-01` ≤ fecha ≤ `YYYY-MM-31`). Para snapshot mensual del
+   * patrimonio total, agregar runtime sobre los registros del rango.
+   */
+  valoraciones_historicas: any;
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
-  keyval: any; // General key-value store for application configuration
+  /**
+   * General key-value store for application configuration.
+   *
+   * V60 (TAREA 7 sub-tarea 1): claves estándar reservadas para destinos
+   * de stores eliminados:
+   *   - `'configFiscal'`           ← destino de `configuracion_fiscal`
+   *                                  (eliminado en sub-tarea 3).
+   *   - `'matchingConfig'`         ← destino de `matchingConfiguration`
+   *                                  (eliminado en sub-tarea 4).
+   *   - `'kpiConfig_horizon'`,
+   *     `'kpiConfig_pulse'`        ← destino de `kpiConfigurations`
+   *                                  (eliminado en sub-tarea 3, una clave
+   *                                  por id de configuración previa).
+   *
+   * Resto de claves: `'feature_*'`, `'preferences_*'`, etc. (libres).
+   */
+  keyval: any;
   // ⚠ DEPRECATED (V5.4): objetivos_financieros fue migrado a 'escenarios' · el store fue eliminado en la migración V5.4
   // Se mantiene en la interfaz TypeScript únicamente para que el código de migración compile.
   objetivos_financieros: {
@@ -3143,6 +3265,64 @@ export const initDB = async () => {
           } catch (err) {
             console.warn('[DB V5.9] deleteObjectStore objetivos_financieros falló:', err);
           }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V60 — TAREA 7 sub-tarea 1: Schema extensions on surviving stores
+        //   Cambios NO destructivos · sólo añade campos opcionales,
+        //   índices y backfill no rompedor sobre stores que SOBREVIVEN
+        //   en V60. Las eliminaciones de los 19 stores y el rename
+        //   nominas → ingresos se hacen en sub-tareas 2-8.
+        //
+        //   Stores afectados:
+        //     1. arrastresIRPF       · añadir índice 'origen' + backfill
+        //                              de 'aeat' para registros existentes.
+        //     2. documents           · sólo TS (unión metadata.tipo
+        //                              ampliada) · sin cambio runtime.
+        //     3. prestamos           · sólo TS (campo opcional
+        //                              `liquidacion`) · sin cambio runtime.
+        //     4. contracts           · sólo TS (campo opcional
+        //                              `historicoRentas[]`) · sin cambio
+        //                              runtime.
+        //     5. movementLearningRules · sólo TS (campo opcional
+        //                              `history[]`) · sin cambio runtime.
+        //     6. accounts            · sólo JSDoc sobre `balance`.
+        //     7. keyval              · sólo JSDoc sobre claves estándar.
+        //     8. valoraciones_historicas · sólo JSDoc · usa índice
+        //                              compuesto existente para queries
+        //                              mensuales.
+        //
+        //   Contrato: cualquier registro pre-V60 sigue siendo legible con
+        //   el nuevo schema (todos los campos nuevos son opcionales).
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 60) {
+          // 1. arrastresIRPF · índice 'origen' + backfill 'aeat'
+          if (db.objectStoreNames.contains('arrastresIRPF')) {
+            const arrastresStore = transaction.objectStore('arrastresIRPF');
+            ensureIndex(arrastresStore, 'origen', 'origen', { unique: false });
+
+            // Backfill: cada registro pre-V60 sin `origen` recibe 'aeat'.
+            // El `transaction` que entrega idb es un IDBPTransaction · sus
+            // cursores se consumen vía promesas (no IDBRequest.onsuccess).
+            // Iteramos con while + await cursor.continue() · mismo patrón
+            // que la migración V5.4 (opexRules → compromisosRecurrentes).
+            arrastresStore.openCursor().then(async function backfillArrastres(cursor) {
+              while (cursor) {
+                const value = cursor.value as { origen?: string };
+                if (!value.origen) {
+                  await cursor.update({ ...value, origen: 'aeat' });
+                }
+                cursor = await cursor.continue();
+              }
+            }).catch((err) => {
+              console.warn('[DB V60] backfill arrastresIRPF.origen falló:', err);
+            });
+          }
+
+          // 2-8. Resto de stores: cambios sólo en TS · IDB es schema-less
+          // por registro y trata los nuevos campos opcionales como
+          // `undefined` al leer registros pre-V60. No requieren acción
+          // en runtime de migración.
         }
       },
       blocked() {
