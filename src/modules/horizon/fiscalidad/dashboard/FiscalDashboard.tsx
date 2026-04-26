@@ -10,6 +10,7 @@ import {
   getInmueblesDelEjercicio,
   getTodosLosEjercicios,
   getArrastresParaAño,
+  syncAndCleanupLegacyStore,
 } from '../../../../services/ejercicioResolverService';
 import type { EjercicioFiscalCoord, ResumenFiscal } from '../../../../services/ejercicioResolverService';
 import { useFiscalData } from '../../../../contexts/FiscalContext';
@@ -81,6 +82,9 @@ const FiscalDashboard: React.FC = () => {
 
   // Load available years (with one-time cleanup of garbage records)
   useEffect(() => {
+    // BUG-08: syncAndCleanupLegacyStore runs once per session to migrate legacy ejerciciosFiscales → coord
+    syncAndCleanupLegacyStore()
+      .catch(() => { /* non-blocking: migration failures don't affect UI */ });
     bootstrapEjercicios()
       .catch(() => { /* non-blocking: cleanup failures don't affect UI */ })
       .finally(() => {

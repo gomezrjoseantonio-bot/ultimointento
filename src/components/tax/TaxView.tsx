@@ -97,7 +97,12 @@ function mapFiscalDeclaracionToTaxState(declaracion: FiscalDeclaracionIRPF): Omi
     baseLiquidableGeneral: declaracion.basesYCuotas.baseLiquidableGeneral ?? 0,
     baseLiquidableAhorro: declaracion.basesYCuotas.baseLiquidableAhorro ?? 0,
     cuotaIntegra: declaracion.basesYCuotas.cuotaIntegra ?? 0,
+    // GAP-D6: cuotaIntegraEstatal/Autonomica not in legacy FiscalDeclaracionIRPF; split evenly
+    cuotaIntegraEstatal: (declaracion.basesYCuotas.cuotaIntegra ?? 0) / 2,
+    cuotaIntegraAutonomica: (declaracion.basesYCuotas.cuotaIntegra ?? 0) / 2,
     cuotaLiquida: declaracion.basesYCuotas.cuotaLiquida ?? 0,
+    cuotaLiquidaEstatal: (declaracion.basesYCuotas.cuotaLiquida ?? 0) / 2,
+    cuotaLiquidaAutonomica: (declaracion.basesYCuotas.cuotaLiquida ?? 0) / 2,
     totalRetenciones: declaracion.basesYCuotas.retencionesTotal ?? 0,
     cuotaDiferencial: declaracion.basesYCuotas.cuotaDiferencial ?? declaracion.basesYCuotas.resultadoDeclaracion ?? 0,
   };

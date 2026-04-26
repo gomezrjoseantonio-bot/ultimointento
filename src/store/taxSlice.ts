@@ -127,7 +127,17 @@ export interface TaxState {
   baseLiquidableGeneral: number;
   baseLiquidableAhorro: number;
   cuotaIntegra: number;
+  /** GAP-D6: cuota íntegra atribuible a la parte estatal */
+  cuotaIntegraEstatal: number;
+  /** GAP-D6: cuota íntegra atribuible a la parte autonómica (fallback: Madrid/CCAA 13) */
+  cuotaIntegraAutonomica: number;
+  /** GAP-D6: cuota líquida = cuotaIntegra - deducciones (deducciones=0 en modelo básico) */
   cuotaLiquida: number;
+  /** GAP-D6: cuota líquida estatal = cuotaIntegraEstatal - deduccionesEstatal */
+  cuotaLiquidaEstatal: number;
+  /** GAP-D6: cuota líquida autonómica = cuotaIntegraAutonomica - deduccionesAutonomica
+   *  NOTA: fallback a tarifa Madrid si no se ha configurado CCAA — ver docs/CIERRE-DEUDAS-PRE-RESET.md */
+  cuotaLiquidaAutonomica: number;
   totalRetenciones: number;
   cuotaDiferencial: number;
 }
@@ -312,18 +322,35 @@ function recalcular(state: TaxState): void {
   state.baseLiquidableAhorro = state.baseImponibleAhorro;
 
   // Cuotas con mínimo personal (5.550 € estatal / 5.956,65 € Madrid)
+  // GAP-D6 NOTE: cuotaAutonomica uses Madrid (CCAA 13) tariff as default fallback.
+  //   Documented in docs/CIERRE-DEUDAS-PRE-RESET.md · GAP-D6.
   const minimoEstatal = 5550;
   const minimoAutonomico = 5956.65;
   const cuotaMinimoEstatal = calcCuotaEstatal(minimoEstatal);
   const cuotaMinimoAutonomico = calcCuotaAutonomica(minimoAutonomico);
 
-  const cuotaGeneral =
-    Math.max(0, calcCuotaEstatal(state.baseLiquidableGeneral) - cuotaMinimoEstatal) +
+  // GAP-D6: compute cuotaIntegra with separate Estatal/Autonomica parts
+  const cuotaIntegraEstatalBase =
+    Math.max(0, calcCuotaEstatal(state.baseLiquidableGeneral) - cuotaMinimoEstatal);
+  const cuotaIntegraAutonomicaBase =
     Math.max(0, calcCuotaAutonomica(state.baseLiquidableGeneral) - cuotaMinimoAutonomico);
   const cuotaAhorro = calcCuotaAhorro(state.baseLiquidableAhorro);
+  // Split cuotaAhorro evenly between state/autonomic (each tranche is 50/50 in Spanish IRPF)
+  const cuotaAhorroEstatal = cuotaAhorro / 2;
+  const cuotaAhorroAutonomico = cuotaAhorro / 2;
 
-  state.cuotaIntegra = cuotaGeneral + cuotaAhorro;
-  state.cuotaLiquida = state.cuotaIntegra; // sin deducciones adicionales por ahora
+  state.cuotaIntegraEstatal = cuotaIntegraEstatalBase + cuotaAhorroEstatal;
+  state.cuotaIntegraAutonomica = cuotaIntegraAutonomicaBase + cuotaAhorroAutonomico;
+  state.cuotaIntegra = state.cuotaIntegraEstatal + state.cuotaIntegraAutonomica;
+
+  // GAP-D6: cuotaLiquida = cuotaIntegra - deducciones de la cuota
+  // En este modelo básico no se introducen deducciones específicas (vivienda habitual,
+  // inversiones, doble imposición internacional), por lo que cuotaLiquida = cuotaIntegra.
+  // El motor irpfCalculationService aplica deduccionesDobleImposicion si aplica.
+  // TODO: añadir campo `deduccionesCuota` al estado cuando se implemente el módulo de deducciones.
+  state.cuotaLiquida = state.cuotaIntegra; // 0 deducciones en modelo básico
+  state.cuotaLiquidaEstatal = state.cuotaIntegraEstatal;
+  state.cuotaLiquidaAutonomica = state.cuotaIntegraAutonomica;
 
   // Retenciones
   state.totalRetenciones = n(state.workIncome.retencion)
@@ -373,7 +400,11 @@ const initialState: TaxState = {
   baseLiquidableGeneral: 0,
   baseLiquidableAhorro: 0,
   cuotaIntegra: 0,
+  cuotaIntegraEstatal: 0,
+  cuotaIntegraAutonomica: 0,
   cuotaLiquida: 0,
+  cuotaLiquidaEstatal: 0,
+  cuotaLiquidaAutonomica: 0,
   totalRetenciones: 0,
   cuotaDiferencial: 0,
 };
@@ -389,7 +420,23 @@ const taxSlice = createSlice({
       recalcular(state);
     },
 
-    hydrateFromCalculation(state, action: PayloadAction<Omit<TaxState, 'ejercicio'>>) {
+    hydrateFromCalculation(state, action: PayloadAction<Partial<Omit<TaxState, 'ejercicio'>> & {
+      workIncome: TaxState['workIncome'];
+      capitalMobiliario: TaxState['capitalMobiliario'];
+      inmuebles: TaxState['inmuebles'];
+      actividades: TaxState['actividades'];
+      ganancias: TaxState['ganancias'];
+      saldosNegativosBIA: TaxState['saldosNegativosBIA'];
+      previsionSocial: TaxState['previsionSocial'];
+      baseImponibleGeneral: number;
+      baseImponibleAhorro: number;
+      baseLiquidableGeneral: number;
+      baseLiquidableAhorro: number;
+      cuotaIntegra: number;
+      cuotaLiquida: number;
+      totalRetenciones: number;
+      cuotaDiferencial: number;
+    }>) {
       state.workIncome = action.payload.workIncome;
       state.capitalMobiliario = action.payload.capitalMobiliario;
       state.inmuebles = action.payload.inmuebles;
@@ -402,7 +449,11 @@ const taxSlice = createSlice({
       state.baseLiquidableGeneral = action.payload.baseLiquidableGeneral;
       state.baseLiquidableAhorro = action.payload.baseLiquidableAhorro;
       state.cuotaIntegra = action.payload.cuotaIntegra;
+      state.cuotaIntegraEstatal = action.payload.cuotaIntegraEstatal ?? action.payload.cuotaIntegra / 2;
+      state.cuotaIntegraAutonomica = action.payload.cuotaIntegraAutonomica ?? action.payload.cuotaIntegra / 2;
       state.cuotaLiquida = action.payload.cuotaLiquida;
+      state.cuotaLiquidaEstatal = action.payload.cuotaLiquidaEstatal ?? action.payload.cuotaLiquida / 2;
+      state.cuotaLiquidaAutonomica = action.payload.cuotaLiquidaAutonomica ?? action.payload.cuotaLiquida / 2;
       state.totalRetenciones = action.payload.totalRetenciones;
       state.cuotaDiferencial = action.payload.cuotaDiferencial;
     },

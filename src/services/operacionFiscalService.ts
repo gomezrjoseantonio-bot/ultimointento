@@ -3,10 +3,12 @@
 // Pendiente eliminar en fase de limpieza final
 
 import { initDB, type AEATBox, type AEATFiscalType, type OperacionFiscal, type OpexRule, type GastoInmueble, type GastoCategoria } from './db';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import { OPEX_CATEGORY_TO_AEAT_BOX } from './aeatClassificationService';
 import { prestamosService } from './prestamosService';
 import { prestamosCalculationService } from './prestamosCalculationService';
 import { gastosInmuebleService } from './gastosInmuebleService';
+import { mapCompromisoToOpexRule } from './opexService';
 
 // ── Mapping helpers ──
 
@@ -174,7 +176,11 @@ function getRecurringAmountForMonth(rule: OpexRule, month: number): number {
 
 export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, ejercicio: number): Promise<number> {
   const db = await initDB();
-  const rules = await db.getAllFromIndex('opexRules', 'propertyId', inmuebleId);
+  // V5.4+: read from compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
+  const compromisos = await db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', inmuebleId);
+  const rules = compromisos
+    .filter((c: CompromisoRecurrente) => c.ambito === 'inmueble' && c.estado === 'activo')
+    .map(mapCompromisoToOpexRule);
   let creadas = 0;
 
   for (const rule of rules.filter((item) => item.activo)) {
