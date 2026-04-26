@@ -2,7 +2,8 @@
 // Handles automatic routing of documents to their proper destinations following exact requirements
 
 import { RoutingDestinationResult, InboxItem, OCRExtractionResult, ClassificationResult, PropertyDetectionResult } from '../types/inboxTypes';
-import { importBankStatement, ImportOptions } from './bankStatementImportService';
+// NOTE: bank-statement routing is reintroduced in TAREA 17 sub-tarea 17.5 via the new
+// bankStatementOrchestrator. The legacy `importBankStatement` import was unused.
 
 export interface RoutingDestination {
   module: 'tesoreria' | 'fiscalidad' | 'inmuebles' | 'personal';
