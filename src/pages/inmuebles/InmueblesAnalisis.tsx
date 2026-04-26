@@ -265,10 +265,12 @@ const mapToSnapshot = (
     if (c.importe.modo === 'fijo') amount = c.importe.importe;
     else if (c.importe.modo === 'variable') amount = c.importe.importeMedio;
     else if (c.importe.modo === 'diferenciadoPorMes') {
-      return c.importe.importesPorMes.reduce((s, v) => s + v, 0) / 12;
+      // Use actual count of months with data instead of hardcoding 12
+      const meses = c.importe.importesPorMes.filter((v) => v > 0).length || 12;
+      return c.importe.importesPorMes.reduce((s, v) => s + v, 0) / meses;
     } else if (c.importe.modo === 'porPago') {
-      const vals = Object.values(c.importe.importesPorPago);
-      return vals.reduce((s, v) => s + v, 0) / 12;
+      const vals = Object.values(c.importe.importesPorPago).filter((v) => v > 0);
+      return vals.reduce((s, v) => s + v, 0) / (vals.length || 12);
     }
     const p = c.patron;
     if (p.tipo === 'mensualDiaFijo' || p.tipo === 'mensualDiaRelativo') return amount;

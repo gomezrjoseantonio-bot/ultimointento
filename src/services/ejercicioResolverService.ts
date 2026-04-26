@@ -502,6 +502,9 @@ export async function syncAndCleanupLegacyStore(): Promise<{ migrados: number; e
     const legacyRecords = await db.getAll('ejerciciosFiscales');
 
     for (const record of legacyRecords as any[]) {
+      // Ambiguity: legacy records used 'ejercicio' or 'año' as the key field depending on
+      // which code path created them (ejercicioLifecycleService used 'año', some UI paths
+      // may have used 'ejercicio'). Check both for backward compatibility.
       const año: number = record?.ejercicio ?? record?.año;
       if (!Number.isInteger(año) || año < 2010) continue;
 

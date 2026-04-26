@@ -197,8 +197,9 @@ const addRulesIfNotExist = async (rules: OpexRuleInput[]): Promise<void> => {
 
   for (const rule of rules) {
     const existing = await db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', rule.propertyId);
+    const ruleConceptoLower = rule.concepto.toLowerCase();
     const alreadyExists = existing.some(
-      (c) => c.ambito === 'inmueble' && c.alias.toLowerCase() === rule.concepto.toLowerCase()
+      (c) => c.ambito === 'inmueble' && c.alias.toLowerCase() === ruleConceptoLower
     );
     if (!alreadyExists) {
       const compromiso = mapOpexRuleToCompromiso(rule, now);

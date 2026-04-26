@@ -3073,7 +3073,7 @@ export const exportSnapshot = async (): Promise<void> => {
           const meta: unknown[] = [];
           for (const doc of records as any[]) {
             if (doc.content instanceof Blob) {
-              const extension = (doc.filename as string || '').split('.').pop() || 'bin';
+              const extension = (doc.filename ?? '').split('.').pop() || 'bin';
               const safeFilename = `${doc.id}.${extension}`;
               if (documentsFolder) {
                 documentsFolder.file(safeFilename, doc.content);
@@ -3168,6 +3168,8 @@ export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 're
       );
 
       // Process stores in batches of 6 to avoid overwhelming IndexedDB
+      // (IndexedDB transactions are limited in concurrent object stores per browser;
+      // 6 is a safe value tested with Chrome/Firefox/Safari without hitting limits)
       const BATCH_SIZE = 6;
       for (let i = 0; i < storesToRestore.length; i += BATCH_SIZE) {
         const batch = storesToRestore.slice(i, i + BATCH_SIZE);
