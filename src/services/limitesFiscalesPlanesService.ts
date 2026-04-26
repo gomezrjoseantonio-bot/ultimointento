@@ -24,9 +24,6 @@ const LIMITE_CONYUGE = 1_000;
 const LIMITE_DISCAPACIDAD = 24_250;
 const PORCENTAJE_RENDIMIENTOS = 0.30;
 
-// Suppress unused variable warning for empresa-only limit constant
-void LIMITE_PPE_EMPRESA;
-
 export const limitesFiscalesPlanesService = {
   getLimitesPorTipo(tipoAdministrativo: TipoAdministrativo, subtipoPPE?: SubtipoPPE, subtipoPPES?: SubtipoPPES, discapacidad?: boolean): LimitesFiscalesPlan {
     if (discapacidad) {
@@ -55,10 +52,11 @@ export const limitesFiscalesPlanesService = {
       case 'PPE':
         if (subtipoPPE === 'empleador_unico') {
           return {
-            limiteEconomico: LIMITE_PPE_CONJUNTO,
+            // empresa puede aportar hasta LIMITE_PPE_EMPRESA; el conjunto título+empresa hasta LIMITE_PPE_CONJUNTO
+            limiteEconomico: LIMITE_PPE_EMPRESA,
             limite30Rendimientos: PORCENTAJE_RENDIMIENTOS,
             limiteEfectivo: LIMITE_PPE_CONJUNTO,
-            descripcion: 'PPE empleador único — empresa: máx. 8.500 €; conjunto titular+empresa: máx. 10.000 €',
+            descripcion: `PPE empleador único — empresa: máx. ${LIMITE_PPE_EMPRESA} €; conjunto titular+empresa: máx. ${LIMITE_PPE_CONJUNTO} €`,
           };
         }
         return {
@@ -73,7 +71,7 @@ export const limitesFiscalesPlanesService = {
             limiteEconomico: LIMITE_PPES_AUTONOMOS_ADICIONAL,
             limite30Rendimientos: PORCENTAJE_RENDIMIENTOS,
             limiteEfectivo: LIMITE_PPES_AUTONOMOS_TOTAL,
-            descripcion: 'PPES autónomos — adicional 4.250 €; total con PPI/PPA: 5.750 €',
+            descripcion: `PPES autónomos — adicional ${LIMITE_PPES_AUTONOMOS_ADICIONAL} €; total con PPI/PPA: ${LIMITE_PPES_AUTONOMOS_TOTAL} €`,
           };
         }
         return {
@@ -99,7 +97,7 @@ export const limitesFiscalesPlanesService = {
       plan.tipoAdministrativo,
       plan.subtipoPPE,
       plan.subtipoPPES,
-      plan.partícipeConDiscapacidad,
+      plan.participeConDiscapacidad,
     );
 
     const totales = await aportacionesPlanService.getTotalesPorAño(planId, ejercicio);
@@ -129,7 +127,7 @@ export const limitesFiscalesPlanesService = {
         plan.tipoAdministrativo,
         plan.subtipoPPE,
         plan.subtipoPPES,
-        plan.partícipeConDiscapacidad,
+        plan.participeConDiscapacidad,
       );
       reduccionTotal += Math.min(totales.total, limites.limiteEfectivo);
     }
@@ -144,17 +142,17 @@ export const limitesFiscalesPlanesService = {
   ): string {
     // TODO: verificar casillas exactas en modelo IRPF vigente
     if (rolAportante === 'conyuge') {
-      return '0469'; // TODO casilla ~0469 aportaciones al plan del cónyuge (verificar en modelo IRPF)
+      return '0469';
     }
     switch (tipoAdministrativo) {
       case 'PPI':
-        return '0470'; // TODO casilla ~0470 PPI titular (verificar en modelo IRPF)
+        return '0470';
       case 'PPA':
-        return '0472'; // TODO casilla ~0472 PPA (verificar en modelo IRPF)
+        return '0472';
       case 'PPE':
-        return rolAportante === 'empresa' ? '0471' : '0470'; // TODO casilla ~0471 empresa, ~0470 trabajador (verificar)
+        return rolAportante === 'empresa' ? '0471' : '0470';
       case 'PPES':
-        return '0474'; // TODO casilla ~0474 PPES (verificar en modelo IRPF)
+        return '0474';
       default:
         return '0470';
     }

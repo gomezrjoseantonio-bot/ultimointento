@@ -78,13 +78,11 @@ export const aportacionesPlanService = {
         importeConyuge: importeConyugeMes > 0 ? importeConyugeMes : undefined,
         origen: aportacion.origen,
         granularidad: 'mensual',
-        mesesCubrios: 1,
+        mesesCubiertos: 1,
         notas: aportacion.notas,
         casillaAEAT: aportacion.casillaAEAT,
         ingresoIdNomina: aportacion.ingresoIdNomina,
         movementId: aportacion.movementId,
-        fechaCreacion: ahora,
-        fechaActualizacion: ahora,
       });
       nuevas.push(nueva);
     }

@@ -61,7 +61,7 @@ export interface PlanPensiones {
     ingresoIdVinculado?: string;
   };
 
-  partícipeConDiscapacidad?: boolean;
+  participeConDiscapacidad?: boolean;
 
   estado: EstadoPlan;
 
@@ -88,7 +88,7 @@ export interface AportacionPlan {
   movementId?: string;
 
   granularidad: GranularidadAportacion;
-  mesesCubrios?: number;
+  mesesCubiertos?: number;
 
   casillaAEAT?: string;
 
