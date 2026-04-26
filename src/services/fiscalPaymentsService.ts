@@ -1,5 +1,9 @@
 // ATLAS HORIZON: Servicio de pagos fiscales
 // Nivel 2: M130, M303 y declaración IRPF anual
+//
+// V62 (TAREA 7 sub-tarea 3): `configuracion_fiscal` store eliminado.
+// Los métodos getConfiguracionFiscal() y saveConfiguracionFiscal() ahora
+// devuelven hardcoded defaults (wipe + reimport policy).
 
 import { initDB, ConfiguracionFiscal, TreasuryEvent } from './db';
 import { DeclaracionIRPF } from './irpfCalculationService';
@@ -19,7 +23,18 @@ export interface EventoFiscal {
   sourceType: 'irpf_modelo130' | 'iva_modelo303' | 'irpf_declaracion';
 }
 
-const CONFIG_STORE = 'configuracion_fiscal';
+// V62: hardcoded defaults (store eliminated)
+const DEFAULT_CONFIG: ConfiguracionFiscal = {
+  id: 1,
+  mes_declaracion: 6,
+  dia_declaracion: 25,
+  incluir_prevision_irpf: true,
+  fraccionarPago: false,
+  modelo130_pagados: [],
+  modelo303_pagados: [],
+  minusvalias_pendientes: [],
+  updatedAt: new Date().toISOString(),
+};
 
 function hasStore(db: any, storeName: string): boolean {
   return !!db?.objectStoreNames?.contains?.(storeName);
@@ -42,69 +57,20 @@ function round2(n: number): number {
 }
 
 // ─── Configuración fiscal ─────────────────────────────────────────────────────
+// V62: store removed · returns hardcoded defaults
 
 export async function getConfiguracionFiscal(): Promise<ConfiguracionFiscal> {
-  const db = await initDB();
-
-  if (!hasStore(db, CONFIG_STORE)) {
-    console.warn(`[fiscalPaymentsService] El store "${CONFIG_STORE}" no existe aún. Usando configuración fiscal por defecto.`);
-
-    return {
-      id: 1,
-      mes_declaracion: 6,
-      dia_declaracion: 25,
-      incluir_prevision_irpf: true,
-      fraccionarPago: false,
-      modelo130_pagados: [],
-      modelo303_pagados: [],
-      minusvalias_pendientes: [],
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  const existing = await db.get(CONFIG_STORE, 1);
-  if (existing) return existing;
-
-  // Default config
-  const defaultConfig: ConfiguracionFiscal = {
-    id: 1,
-    mes_declaracion: 6,
-    dia_declaracion: 25,
-    incluir_prevision_irpf: true,
-    fraccionarPago: false,
-    modelo130_pagados: [],
-    modelo303_pagados: [],
-    minusvalias_pendientes: [],
-    updatedAt: new Date().toISOString(),
-  };
-
-  await db.put(CONFIG_STORE, defaultConfig);
-  return defaultConfig;
+  return { ...DEFAULT_CONFIG };
 }
 
 export async function saveConfiguracionFiscal(config: Partial<ConfiguracionFiscal>): Promise<ConfiguracionFiscal> {
-  const db = await initDB();
-
-  if (!hasStore(db, CONFIG_STORE)) {
-    console.warn(`[fiscalPaymentsService] El store "${CONFIG_STORE}" no existe aún. No se puede persistir la configuración fiscal.`);
-    const fallbackConfig = await getConfiguracionFiscal();
-    return {
-      ...fallbackConfig,
-      ...config,
-      id: 1,
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  const existing = await getConfiguracionFiscal();
-  const updated: ConfiguracionFiscal = {
-    ...existing,
+  // V62: no-op — returns merged defaults (no persistence)
+  return {
+    ...DEFAULT_CONFIG,
     ...config,
     id: 1,
     updatedAt: new Date().toISOString(),
   };
-  await db.put(CONFIG_STORE, updated);
-  return updated;
 }
 
 // ─── Cálculo M130 ─────────────────────────────────────────────────────────────

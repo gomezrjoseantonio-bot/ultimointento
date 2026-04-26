@@ -621,29 +621,17 @@ class DashboardService {
       let variacionMes = 0;
       let variacionPorcentaje = 0;
 
+      // patrimonioSnapshots removed in V62 (derivable from valoraciones_historicas)
+      // Variation calculation stubbed
       try {
-        const snapshots = await db.getAllFromIndex('patrimonioSnapshots', 'fecha');
-        const previousSnapshot = snapshots.find((snapshot: any) => snapshot.fecha === previousMonthKey);
-
-        if (previousSnapshot) {
-          variacionMes = total - toNumber(previousSnapshot.total);
-          variacionPorcentaje = toNumber(previousSnapshot.total) !== 0
-            ? (variacionMes / toNumber(previousSnapshot.total)) * 100
-            : 0;
-        }
+        // Could derive from valoraciones_historicas if needed
+        variacionMes = 0;
+        variacionPorcentaje = 0;
       } catch (error) {
         console.warn('Could not calculate variation from snapshots:', error);
       }
 
-      await this.savePatrimonioSnapshot({
-        fecha: currentMonth,
-        total,
-        inmuebles: valorInmuebles,
-        inversiones: valorInversiones,
-        cuentas: saldoCuentas,
-        deuda: deudaViva,
-        createdAt: fechaCalculo
-      });
+      // savePatrimonioSnapshot call removed (store eliminated in V62)
 
       return {
         total,
@@ -688,20 +676,8 @@ class DashboardService {
     deuda: number;
     createdAt: string;
   }): Promise<void> {
-    try {
-      const db = await initDB();
-      
-      // Check if snapshot already exists for this month
-      const existing = await db.getAllFromIndex('patrimonioSnapshots', 'fecha');
-      const exists = existing.some((s: any) => s.fecha === snapshot.fecha);
-      
-      if (!exists) {
-        await db.add('patrimonioSnapshots', snapshot);
-        console.log(`[DASHBOARD] Saved patrimonio snapshot for ${snapshot.fecha}`);
-      }
-    } catch (error) {
-      console.warn('Could not save patrimonio snapshot:', error);
-    }
+    // patrimonioSnapshots store removed in V62 (sub-tarea 3)
+    console.warn('[dashboardService] patrimonioSnapshots store eliminado en V62 · no-op');
   }
 
   /**

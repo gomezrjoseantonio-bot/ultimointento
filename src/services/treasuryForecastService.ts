@@ -249,13 +249,8 @@ export const getTreasuryProjections = async (
 export const generateTreasuryRecommendations = async (): Promise<void> => {
   const db = await initDB();
   
-  // Clear existing recommendations
-  const existingRecs = await db.getAll('treasuryRecommendations');
-  for (const rec of existingRecs) {
-    if (rec.status === 'active') {
-      await db.delete('treasuryRecommendations', rec.id!);
-    }
-  }
+  // treasuryRecommendations store removed in V62 (derivable runtime)
+  // Clear recommendations is now a no-op
 
   // Get 30-day projections
   const { accountBalances } = await getTreasuryProjections(30);
@@ -304,7 +299,8 @@ export const generateTreasuryRecommendations = async (): Promise<void> => {
           createdAt: new Date().toISOString()
         };
         
-        await db.add('treasuryRecommendations', recommendation);
+        // treasuryRecommendations store removed in V62 (sub-tarea 3)
+        // recommendation storage now no-op
       }
     }
   }

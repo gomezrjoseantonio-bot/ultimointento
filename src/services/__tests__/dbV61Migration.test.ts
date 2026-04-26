@@ -2,7 +2,7 @@
  * V61 migration tests · TAREA 7 sub-tarea 2
  *
  * Verifica el rename `nominas → ingresos`:
- *   - DB_VERSION = 61
+ *   - DB_VERSION actual = 62 (V62 elimina stores; V61 hizo el rename)
  *   - El nuevo store `ingresos` existe con los índices esperados
  *     (`personalDataId`, `tipo`, `fechaActualizacion`).
  *   - La migración V60→V61 copia cada registro de `nominas` a `ingresos`
@@ -76,10 +76,10 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
   });
 
   describe('DB_VERSION', () => {
-    test('está fijado a 61 en src/services/db.ts', async () => {
+    test('está fijado a 62 en src/services/db.ts (V61 hizo rename, V62 elimina stores)', async () => {
       const dbModule = await import('../db');
       const db = await dbModule.initDB();
-      expect(db.version).toBe(61);
+      expect(db.version).toBe(62);
       db.close();
     });
   });
@@ -133,7 +133,7 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
       const { initDB } = await import('../db');
       const db = await initDB();
 
-      expect(db.version).toBe(61);
+      expect(db.version).toBe(62);
 
       // El store `ingresos` debe contener los dos registros migrados con
       // `tipo='nomina'` y conservar el resto de campos.

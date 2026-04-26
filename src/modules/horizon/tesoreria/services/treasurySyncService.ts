@@ -1003,11 +1003,15 @@ export async function generateMonthlyForecasts(
     // ── Bloque ④ FISCALIDAD IRPF anual ────────────────────────────────────────
     // Generates a forecast expense/income event for the annual income tax declaration.
     // Only generated once per fiscal year, in the month of the tax filing.
+    // V62: configuracion_fiscal store removed · using hardcoded defaults
     try {
-      const configFiscalRecord = await db.get('configuracion_fiscal', 'default');
-      const configFiscal: ConfiguracionFiscal | undefined = configFiscalRecord;
+      const configFiscal = {
+        incluir_prevision_irpf: true,
+        mes_declaracion: 6,
+        dia_declaracion: 25,
+      };
 
-      if (configFiscal?.incluir_prevision_irpf) {
+      if (configFiscal.incluir_prevision_irpf) {
         const mesDeclaracion = configFiscal.mes_declaracion ?? 6;
         const diaDeclaracion = configFiscal.dia_declaracion ?? 25;
 

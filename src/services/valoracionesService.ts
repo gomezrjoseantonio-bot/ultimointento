@@ -253,45 +253,22 @@ export const valoracionesService = {
         ? (variacionEuros / anterior.patrimonio_total) * 100
         : 0;
 
-    // Guardar / actualizar snapshot mensual
-    const snapshots: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    const prevSnapshot = snapshots.find((s) => s.fecha_cierre === fechaCierre);
-
-    const snapshot: ValoracionesMensuales = {
-      anio,
-      mes,
-      fecha_cierre: fechaCierre,
-      patrimonio_total: patrimonioTotal,
-      inmuebles_total: inmueblesTotal,
-      inversiones_total: inversionesTotal,
-      variacion_euros: variacionEuros,
-      variacion_porcentaje: variacionPorcentaje,
-      total_valoraciones: valoraciones.length,
-      created_at: prevSnapshot?.created_at ?? now,
-    };
-
-    if (prevSnapshot?.id !== undefined) {
-      await db.put('valoraciones_mensuales', { ...snapshot, id: prevSnapshot.id });
-    } else {
-      await db.add('valoraciones_mensuales', snapshot);
-    }
+    // V62: valoraciones_mensuales store removed (derivable from valoraciones_historicas)
+    // Snapshot saving now a no-op
   },
 
   // ── Snapshots ─────────────────────────────────────────────────────────────
 
   /** Obtener snapshot de un mes específico (YYYY-MM) */
-  async getSnapshotMensual(fecha: string): Promise<ValoracionesMensuales | undefined> {
-    const db = await initDB();
-    const fechaCierre = `${fecha}-01`;
-    const all: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    return all.find((s) => s.fecha_cierre === fechaCierre);
+  async getSnapshotMensual(_fecha: string): Promise<ValoracionesMensuales | undefined> {
+    // V62: store removed
+    return undefined;
   },
 
   /** Obtener todos los snapshots ordenados cronológicamente */
   async getHistoricoCompleto(): Promise<ValoracionesMensuales[]> {
-    const db = await initDB();
-    const all: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    return all.sort((a, b) => a.fecha_cierre.localeCompare(b.fecha_cierre));
+    // V62: store removed · could derive from valoraciones_historicas
+    return [];
   },
 
   // ── Importación ───────────────────────────────────────────────────────────
