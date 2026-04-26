@@ -562,7 +562,7 @@ const GestionInversionesPage: React.FC = () => {
       const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id);
       setEvolucionDatos(datos.map(d => ({ mes: d.fecha_valoracion, valor: d.valor })));
       setPlanSeleccionado(plan);
-      setEvolucionHeader({ nombre: plan.nombre, entidad: plan.entidad });
+      setEvolucionHeader({ nombre: plan.nombre, entidad: (plan as any).gestoraActual });
       setMostrarModalEvolucion(true);
     } catch {
       toast.error('Error al cargar el histórico de valoraciones');
@@ -832,7 +832,7 @@ const GestionInversionesPage: React.FC = () => {
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{plan.nombre}</div>
                         <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>
-                          Plan de pensiones{plan.entidad ? ` · ${plan.entidad}` : ''}
+                          Plan de pensiones{(plan as any).gestoraActual ? ` · ${(plan as any).gestoraActual}` : ''}
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -889,7 +889,7 @@ const GestionInversionesPage: React.FC = () => {
                               id: plan.id!,
                               store: 'planesPensiones',
                               nombre: plan.nombre,
-                              entidad: plan.entidad,
+                              entidad: (plan as any).gestoraActual,
                               saldo: plan.valorActual ?? 0,
                             })}
                             title="Traspasar a otro plan de pensiones"

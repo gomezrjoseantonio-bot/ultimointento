@@ -341,7 +341,7 @@ const PlanesManager: React.FC = () => {
                             id: plan.id!,
                             store: 'planesPensiones',
                             nombre: plan.nombre,
-                            entidad: plan.entidad,
+                            entidad: (plan as any).gestoraActual,
                             saldo: plan.valorActual ?? 0,
                           })}
                           className="p-2 text-gray-400 hover:text-indigo-600"

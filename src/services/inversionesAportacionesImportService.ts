@@ -632,27 +632,28 @@ export async function importarFilasCorregidas(
   }
 
   // Flush pension plan contributions to aportacionesPlan store
-  const db2 = await initDB();
-  const ahora2 = new Date().toISOString();
-  const genUUID2 = (): string =>
+  const dbAport = await initDB();
+  const ahoraFlush = new Date().toISOString();
+  const genFlushUUID = (): string =>
     typeof crypto !== 'undefined' && crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
   for (const [planId, { entries }] of planAccum) {
     for (const entry of entries) {
-      await (db2 as any).add('aportacionesPlan', {
-        id: genUUID2(),
+      const fecha = entry.mesKey.length === 7 ? `${entry.mesKey}-01` : `${entry.mesKey}-01-01`;
+      await (dbAport as any).add('aportacionesPlan', {
+        id: genFlushUUID(),
         planId,
-        fecha: `${entry.mesKey.length === 7 ? entry.mesKey : entry.mesKey + '-01'}-01`.slice(0, 10),
+        fecha,
         ejercicioFiscal: parseInt(entry.mesKey.slice(0, 4)),
         importeTitular: entry.titular,
         importeEmpresa: entry.empresa,
         origen: 'manual' as const,
         granularidad: entry.mesKey.length === 7 ? 'mensual' as const : 'anual' as const,
         notas: 'Importado desde hoja de cálculo',
-        fechaCreacion: ahora2,
-        fechaActualizacion: ahora2,
+        fechaCreacion: ahoraFlush,
+        fechaActualizacion: ahoraFlush,
       });
     }
   }
