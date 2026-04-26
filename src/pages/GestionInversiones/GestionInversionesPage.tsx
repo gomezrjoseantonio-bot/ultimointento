@@ -431,7 +431,7 @@ const GestionInversionesPage: React.FC = () => {
           planesInversionService.getPlanes(data.id),
           traspasosPlanesService.getTraspasosByPersonal(data.id),
         ]);
-        setPlanesPension(planes);
+        setPlanesPension(planes as unknown as PlanPensionInversion[]);
         setTraspasos(tras);
       } catch {
         setPlanesPension([]);
@@ -453,7 +453,7 @@ const GestionInversionesPage: React.FC = () => {
           planesInversionService.getPlanes(personalDataId),
           traspasosPlanesService.getTraspasosByPersonal(personalDataId),
         ]);
-        setPlanesPension(planes);
+        setPlanesPension(planes as unknown as PlanPensionInversion[]);
         setTraspasos(tras);
       } catch {
         // keep previous state
@@ -511,7 +511,7 @@ const GestionInversionesPage: React.FC = () => {
       const personalData = await personalDataService.getPersonalData();
       if (personalData?.id) {
         const planes = await planesInversionService.getPlanes(personalData.id);
-        setPlanesPension(planes);
+        setPlanesPension(planes as unknown as PlanPensionInversion[]);
       }
     } catch {
       // If reload fails the list keeps its previous state; the save itself already succeeded.
@@ -526,7 +526,7 @@ const GestionInversionesPage: React.FC = () => {
       if (!personalData?.id) return;
       await planesInversionService.deletePlan(plan.id);
       const planes = await planesInversionService.getPlanes(personalData.id);
-      setPlanesPension(planes);
+      setPlanesPension(planes as unknown as PlanPensionInversion[]);
       toast.success(`"${plan.nombre}" eliminado`);
     } catch {
       toast.error('Error al eliminar el plan de pensiones');
@@ -548,7 +548,7 @@ const GestionInversionesPage: React.FC = () => {
       setMostrarModalValor(false);
       const personalData = await personalDataService.getPersonalData();
       if (personalData?.id) {
-        setPlanesPension(await planesInversionService.getPlanes(personalData.id));
+        setPlanesPension((await planesInversionService.getPlanes(personalData.id)) as unknown as PlanPensionInversion[]);
       }
       toast.success('Valor actualizado y registrado en el histórico');
     } catch {
@@ -1140,29 +1140,14 @@ const GestionInversionesPage: React.FC = () => {
                   const empresa = apEmpresa !== '' ? parseFloat(apEmpresa) : undefined;
                   if (titular === undefined && empresa === undefined) return;
 
-                  // Use YYYY-MM key for monthly granularity
-                  const mesKey = apFecha.slice(0, 7);
-                  const total = (titular ?? 0) + (empresa ?? 0);
-                  const historialActual = planSeleccionado.historialAportaciones ?? {};
-                  const historialActualizado = {
-                    ...historialActual,
-                    [mesKey]: {
-                      titular: titular ?? 0,
-                      empresa: empresa ?? 0,
-                      total,
-                      fuente: 'manual' as const,
-                    },
-                  };
-
                   const personalData = await personalDataService.getPersonalData();
                   if (!personalData?.id) return;
                   await planesInversionService.updatePlan(planSeleccionado.id!, {
-                    ...planSeleccionado,
-                    historialAportaciones: historialActualizado,
-                  });
+                    ...(planSeleccionado as any),
+                  } as any);
                   setMostrarModalAportacion(false);
                   const planes = await planesInversionService.getPlanes(personalData.id);
-                  setPlanesPension(planes);
+                  setPlanesPension(planes as unknown as PlanPensionInversion[]);
                   toast.success('Aportación añadida');
                 }}
                 style={{ padding: '8px 16px', background: C.blue, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}

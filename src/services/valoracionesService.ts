@@ -345,7 +345,7 @@ export const valoracionesService = {
         );
         activoId = prop?.id;
       } else if (dato.tipo_activo === 'plan_pensiones') {
-        activoId = matchPlanByNombre(dato.activo_nombre)?.id;
+        activoId = matchPlanByNombre(dato.activo_nombre)?.id as number | undefined;
       } else {
         const inv = (inversiones as any[]).find(
           (i) => i.nombre?.toLowerCase() === dato.activo_nombre.toLowerCase()
@@ -414,7 +414,7 @@ export const valoracionesService = {
             );
             activoId = prop?.id;
           } else if (d.tipo_activo === 'plan_pensiones') {
-            activoId = matchPlanByNombre(d.activo_nombre)?.id;
+            activoId = matchPlanByNombre(d.activo_nombre)?.id as number | undefined;
           } else {
             const inv = (inversiones as any[]).find(
               (i) => i.nombre?.toLowerCase() === d.activo_nombre.toLowerCase()

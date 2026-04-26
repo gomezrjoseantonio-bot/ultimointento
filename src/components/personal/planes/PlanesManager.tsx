@@ -34,7 +34,7 @@ const PlanesManager: React.FC = () => {
       if (personalData?.id) {
         setPersonalDataId(personalData.id);
         const planesData = await planesInversionService.getPlanes(personalData.id);
-        setPlanes(planesData);
+        setPlanes(planesData as unknown as PlanPensionInversion[]);
 
         const summary = await planesInversionService.calculatePortfolioSummary(personalData.id);
         setPortfolioSummary(summary);
@@ -267,8 +267,8 @@ const PlanesManager: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {filteredPlanes.map((plan) => {
-              const calculo = planesInversionService.calculateProfitLoss(plan);
-              const taxInfo = planesInversionService.getTaxImplications(plan);
+              const calculo = planesInversionService.calculateProfitLoss(plan as any);
+              const taxInfo = planesInversionService.getTaxImplications(plan as any);
               
               return (
                 <div key={plan.id} className="border p-4 rounded-lg">

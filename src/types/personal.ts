@@ -456,8 +456,8 @@ export type PlanStore = 'planesPensiones' | 'inversiones';
 export interface TraspasoPlan {
   id?: number;
   personalDataId: number;
-  planOrigenId: number;
-  planDestinoId: number;
+  planOrigenId: number | string;
+  planDestinoId: number | string;
   // Store de origen / destino — necesarios para desambiguar, ya que los IDs
   // son auto-increment independientes por store y pueden colisionar.
   planOrigenStore?: PlanStore;

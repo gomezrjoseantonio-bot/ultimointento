@@ -145,9 +145,9 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
 
       let savedPlan: PlanPensionInversion;
       if (plan?.id) {
-        savedPlan = await planesInversionService.updatePlan(plan.id, planData);
+        savedPlan = await planesInversionService.updatePlan(plan.id, planData as any) as unknown as PlanPensionInversion;
       } else {
-        savedPlan = await planesInversionService.savePlan(planData);
+        savedPlan = await planesInversionService.savePlan(planData as any) as unknown as PlanPensionInversion;
       }
 
       toast.success(plan ? 'Plan actualizado correctamente' : 'Plan creado correctamente');

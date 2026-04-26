@@ -227,7 +227,7 @@ const NominaWizard: React.FC = () => {
           planesInversionService.getPlanes(perfil.id),
         ]);
         setAccounts(accs.filter(a => !a.deleted_at && a.activa));
-        setPlanes(pls);
+        setPlanes(pls as unknown as PlanPensionInversion[]);
 
         if (isEditing && nominaId) {
           // Edit mode: load existing nomina and populate all fields

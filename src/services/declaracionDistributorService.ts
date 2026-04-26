@@ -1006,7 +1006,6 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
   if (!perfil?.id) return;
 
   const ahora = new Date().toISOString();
-  const totalAño = pp.totalConDerechoReduccion;
 
   const genUUID = (): string =>
     typeof crypto !== 'undefined' && crypto.randomUUID

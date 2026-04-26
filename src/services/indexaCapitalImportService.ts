@@ -15,7 +15,6 @@ import * as XLSX from 'xlsx';
 import { initDB } from './db';
 import { planesInversionService } from './planesInversionService';
 import { valoracionesService } from './valoracionesService';
-import type { PlanPensionInversion } from '../types/personal';
 import type { Aportacion, PosicionInversion } from '../types/inversiones';
 
 export interface IndexaDailyRow {

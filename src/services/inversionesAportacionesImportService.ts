@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { initDB } from './db';
 import { inversionesService } from './inversionesService';
 import { planesInversionService } from './planesInversionService';
 import { Aportacion, PosicionInversion } from '../types/inversiones';
@@ -13,7 +14,7 @@ export interface ImportAportacionesResult {
 export interface AportacionImportPreviewRow {
   fila: number;
   fecha: string;
-  posicionId?: number;
+  posicionId?: number | string;
   posicionNombre: string;
   entidad: string;
   importe: number;
@@ -36,7 +37,7 @@ export interface FilaCorregida {
   importe: number;
   notas: string;
   targetKind: 'posicion' | 'plan';
-  targetId: number;
+  targetId: number | string;
   importeEmpresa?: number;
   importeIndividuo?: number;
 }
@@ -393,7 +394,7 @@ export async function previsualizarImportacionAportaciones(
       fecha: row.aportacion.fecha,
       posicionId: matched.id,
       posicionNombre: row.posicionNombre || matched.nombre,
-      entidad: row.entidad || matched.entidad || '',
+      entidad: row.entidad || (matched as any).entidad || (matched as any).gestoraActual || '',
       importe: row.aportacion.importe,
       notas: row.aportacion.notas ?? '',
       importeEmpresa: row.importeEmpresa,
@@ -590,7 +591,7 @@ export async function importarFilasCorregidas(
 
   for (const row of rows) {
     if (row.targetKind === 'posicion') {
-      await inversionesService.addAportacion(row.targetId, {
+      await inversionesService.addAportacion(row.targetId as number, {
         fecha: row.fecha,
         importe: row.importe,
         tipo: 'aportacion',

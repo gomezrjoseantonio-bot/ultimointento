@@ -12,7 +12,7 @@ import type { PlanStore } from '../../../types/personal';
 import type { PosicionInversion } from '../../../types/inversiones';
 
 export interface PlanOrigenInput {
-  id: number;
+  id: number | string;
   store: PlanStore;
   nombre: string;
   entidad?: string;
@@ -30,7 +30,7 @@ interface TraspasoFormProps {
 interface DestinoOption {
   key: string;           // store|id
   store: PlanStore;
-  id: number;
+  id: number | string;
   nombre: string;
   entidad?: string;
 }

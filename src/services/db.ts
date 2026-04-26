@@ -5,7 +5,6 @@ import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
   PersonalModuleConfig,
-  PlanPensionInversion,
   TraspasoPlan,
   Ingreso as IngresoPersonal
 } from '../types/personal';
