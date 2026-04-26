@@ -1,4 +1,4 @@
-import { initDB, Movement, PresupuestoLinea, ReconciliationAuditLog } from './db';
+import { initDB, Movement, PresupuestoLinea } from './db';
 
 /**
  * V1.1 Treasury - Budget Reclassification Service
@@ -190,18 +190,6 @@ export async function reclassifyMovementsOnBudgetUpdate(periodo: { year: number;
         };
 
         await db.put('movements', updatedMovement);
-        
-        // Log the action
-        const auditLog: ReconciliationAuditLog = {
-          action: 'budget_trigger',
-          movimientoId: movement.id!,
-          categoria,
-          ambito,
-          inmuebleId,
-          timestamp: new Date().toISOString()
-        };
-        await db.add('reconciliationAuditLogs', auditLog);
-
         reclassifiedCount++;
       }
     }

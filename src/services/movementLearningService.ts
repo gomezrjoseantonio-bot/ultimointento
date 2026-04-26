@@ -1,5 +1,12 @@
-import { initDB, Movement, MovementLearningRule, ReconciliationAuditLog, LearningLog } from './db';
+import { initDB, Movement, MovementLearningRule, HistoryEntry } from './db';
 import { finalizePropertySaleLoanCancellation } from './propertySaleService';
+
+/** Append a HistoryEntry to a rule respecting the FIFO cap of 50. */
+function appendHistory(rule: MovementLearningRule, entry: HistoryEntry): void {
+  const prev = rule.history ?? [];
+  const updated = [...prev, entry];
+  rule.history = updated.length > 50 ? updated.slice(updated.length - 50) : updated;
+}
 
 /**
  * V1.1 Treasury - Movement Learning Service
@@ -145,22 +152,10 @@ export async function createLearningRule(
       rule.appliedCount = rule.appliedCount + 1;
       rule.updatedAt = new Date().toISOString();
       rule.lastAppliedAt = new Date().toISOString();
-      
+      appendHistory(rule, { action: 'CREATE_RULE', movimientoId: movement.id, ts: new Date().toISOString() });
+
       await db.put('movementLearningRules', rule);
-      
-      // Log the action
-      const learningLog: LearningLog = {
-        action: 'CREATE_RULE',
-        movimientoId: movement.id,
-        ruleId: rule.id,
-        learnKey,
-        categoria,
-        ambito,
-        inmuebleId,
-        ts: new Date().toISOString()
-      };
-      await db.add('learningLogs', learningLog);
-      
+
       console.log(`📚 Updated existing learning rule: ${learnKey}`);
       return rule;
     } else {
@@ -177,25 +172,13 @@ export async function createLearningRule(
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         appliedCount: 1,
-        lastAppliedAt: new Date().toISOString()
+        lastAppliedAt: new Date().toISOString(),
+        history: [{ action: 'CREATE_RULE', movimientoId: movement.id, ts: new Date().toISOString() }],
       };
-      
+
       const ruleId = await db.add('movementLearningRules', newRule);
       newRule.id = ruleId as number;
-      
-      // Log the action
-      const learningLog: LearningLog = {
-        action: 'CREATE_RULE',
-        movimientoId: movement.id,
-        ruleId: ruleId as number,
-        learnKey,
-        categoria,
-        ambito,
-        inmuebleId,
-        ts: new Date().toISOString()
-      };
-      await db.add('learningLogs', learningLog);
-      
+
       console.log(`📚 Created new learning rule: ${learnKey}`);
       return newRule;
     }
@@ -306,12 +289,13 @@ export async function applyRuleToGrays(params: {
     // Apply limit
     const movementsToUpdate = candidateMovements.slice(0, limit);
     let updated = 0;
+    const backfillEntries: HistoryEntry[] = [];
 
     // Process in batches to avoid blocking
     const batchSize = 100;
     for (let i = 0; i < movementsToUpdate.length; i += batchSize) {
       const batch = movementsToUpdate.slice(i, i + batchSize);
-      
+
       for (const movement of batch) {
         const updatedMovement: Movement = {
           ...movement,
@@ -324,32 +308,22 @@ export async function applyRuleToGrays(params: {
         };
 
         await db.put('movements', updatedMovement);
-        
-        // Log the action
-        const learningLog: LearningLog = {
-          action: 'BACKFILL',
-          movimientoId: movement.id,
-          ruleId: rule.id,
-          learnKey,
-          categoria: rule.categoria,
-          ambito: rule.ambito,
-          inmuebleId: rule.inmuebleId,
-          ts: new Date().toISOString()
-        };
-        await db.add('learningLogs', learningLog);
-
+        backfillEntries.push({ action: 'BACKFILL', movimientoId: movement.id, ts: new Date().toISOString() });
         updated++;
       }
-      
+
       // Small delay between batches to prevent blocking
       await new Promise(resolve => setTimeout(resolve, 10));
     }
 
-    // Update rule applied count
+    // Update rule applied count + history (FIFO cap applied once)
     if (updated > 0) {
       rule.appliedCount += updated;
       rule.lastAppliedAt = new Date().toISOString();
       rule.updatedAt = new Date().toISOString();
+      const prev = rule.history ?? [];
+      const merged = [...prev, ...backfillEntries];
+      rule.history = merged.length > 50 ? merged.slice(merged.length - 50) : merged;
       await db.put('movementLearningRules', rule);
     }
 
@@ -419,19 +393,8 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
         rule.appliedCount += 1;
         rule.lastAppliedAt = new Date().toISOString();
         rule.updatedAt = new Date().toISOString();
+        appendHistory(rule, { action: 'APPLY_RULE', ts: new Date().toISOString() });
         await db.put('movementLearningRules', rule);
-        
-        // Log each application
-        const learningLog: LearningLog = {
-          action: 'APPLY_RULE',
-          ruleId: rule.id,
-          learnKey,
-          categoria: rule.categoria,
-          ambito: rule.ambito,
-          inmuebleId: rule.inmuebleId,
-          ts: new Date().toISOString()
-        };
-        await db.add('learningLogs', learningLog);
       }
     }
 
@@ -531,18 +494,6 @@ export async function performManualReconciliation(
       // Continue even if backfill fails
     }
 
-    // Log the manual reconciliation
-    const auditLog: ReconciliationAuditLog = {
-      action: 'manual_reconcile',
-      movimientoId: movementId,
-      categoria,
-      ambito,
-      inmuebleId,
-      learnKey,
-      timestamp: new Date().toISOString()
-    };
-    await db.add('reconciliationAuditLogs', auditLog);
-
     console.log(`✅ Manual reconciliation completed for movement ${movementId}`);
     
     // TODO: Emit treasury:movementsUpdated event for UI refresh
@@ -604,15 +555,42 @@ export async function getLearningRulesStats(): Promise<{
   }
 }
 
+export type LearningLogEntry = {
+  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
+  movimientoId?: number;
+  ruleId?: number;
+  learnKey: string;
+  categoria: string;
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  ts: string;
+};
+
 /**
- * Get learning logs for audit purposes
+ * Get learning audit trail aggregated from movementLearningRules.history[].
  */
-export async function getLearningLogs(limit: number = 100): Promise<LearningLog[]> {
+export async function getLearningLogs(limit: number = 100): Promise<LearningLogEntry[]> {
   try {
     const db = await initDB();
-    const allLogs = await db.getAll('learningLogs');
-    
-    return allLogs
+    const allRules = await db.getAll('movementLearningRules');
+
+    const logs: LearningLogEntry[] = [];
+    for (const rule of allRules) {
+      for (const entry of (rule.history ?? [])) {
+        logs.push({
+          action: entry.action,
+          movimientoId: entry.movimientoId,
+          ruleId: rule.id,
+          learnKey: rule.learnKey,
+          categoria: rule.categoria,
+          ambito: rule.ambito,
+          inmuebleId: rule.inmuebleId,
+          ts: entry.ts,
+        });
+      }
+    }
+
+    return logs
       .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
       .slice(0, limit);
   } catch (error) {
