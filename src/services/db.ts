@@ -5,11 +5,7 @@ import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
   PersonalModuleConfig,
-  Nomina,
-  Autonomo,
   PlanPensionInversion,
-  OtrosIngresos,
-  PensionIngreso,
   TraspasoPlan,
   Ingreso as IngresoPersonal
 } from '../types/personal';
@@ -20,7 +16,6 @@ import type {
   ArrastresEjercicio,
   DeclaracionInmueble,
   DeclaracionIRPF,
-  DocumentoFiscal,
   OrigenDeclaracion,
 } from '../types/fiscal';
 
