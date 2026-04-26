@@ -3746,6 +3746,89 @@ export const resetAllData = async (): Promise<void> => {
   }
 };
 
+/**
+ * Versión JSON ligera del snapshot — útil para inspección manual y para el
+ * helper expuesto en `window.atlasDB`. Itera dinámicamente sobre TODOS los
+ * stores reales presentes en la DB (no hardcodeada) y serializa los blobs
+ * de `documents` como base64 in-memory.
+ *
+ * Para backups completos con ficheros adjuntos, seguir usando exportSnapshot
+ * (formato ZIP).
+ */
+export const exportSnapshotJSON = async (): Promise<{
+  metadata: {
+    dbName: string;
+    dbVersion: number;
+    exportedAt: string;
+    storeCount: number;
+    stores: string[];
+  };
+  stores: Record<string, unknown[]>;
+}> => {
+  const db = await initDB();
+  const storeNames = Array.from(db.objectStoreNames) as string[];
+  const stores: Record<string, unknown[]> = {};
+
+  for (const storeName of storeNames) {
+    try {
+      const records = await db.getAll(storeName as any);
+      // Strip Blob content (incompatible con JSON puro)
+      stores[storeName] = (records as any[]).map((r) => {
+        if (r && r.content instanceof Blob) {
+          return { ...r, content: null, _blobStripped: true };
+        }
+        return r;
+      });
+    } catch (err) {
+      console.warn(`[exportSnapshotJSON] Error reading store "${storeName}":`, err);
+      stores[storeName] = [];
+    }
+  }
+
+  return {
+    metadata: {
+      dbName: DB_NAME,
+      dbVersion: db.version,
+      exportedAt: new Date().toISOString(),
+      storeCount: storeNames.length,
+      stores: storeNames,
+    },
+    stores,
+  };
+};
+
+/**
+ * Helper de consola: expone `window.atlasDB` con las funciones de snapshot
+ * para que Jose pueda ejecutar `await window.atlasDB.exportSnapshot()` y
+ * `await window.atlasDB.exportSnapshotJSON()` desde DevTools.
+ *
+ * Idempotente y sin coste runtime: simplemente asigna referencias.
+ */
+const exposeAtlasDBHandle = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    (window as any).atlasDB = {
+      exportSnapshot,
+      exportSnapshotJSON,
+      importSnapshot,
+      resetAllData: () => resetAllData(),
+      getDBVersion: async () => {
+        const db = await initDB();
+        return db.version;
+      },
+      listStores: async () => {
+        const db = await initDB();
+        return Array.from(db.objectStoreNames);
+      },
+    };
+  } catch (err) {
+    console.warn('[atlasDB] No se pudo exponer window.atlasDB:', err);
+  }
+};
+
+// Auto-exposure: el handle queda disponible apenas se importa este módulo.
+exposeAtlasDBHandle();
+
 // Performance-optimized bulk data operations
 export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
   const db = await initDB();
