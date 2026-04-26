@@ -207,7 +207,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
       const [properties, inversiones, planes] = await Promise.all([
         db.getAll('properties'),
         db.getAll('inversiones'),
-        db.getAll('planesPensionInversion'),
+        (db as any).getAll('planesPensiones'),
       ]);
 
       // Count rows per unique tipo+nombre key
@@ -225,7 +225,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         .map((p) => p.alias || p.address)
         .filter(Boolean);
 
-      // Plans can live in planesPensionInversion OR in inversiones (legacy data with tipo plan_pensiones)
+      // Plans can live in planesPensiones OR in inversiones (legacy data with tipo plan_pensiones)
       const PLAN_TIPOS_INV = new Set(['plan_pensiones', 'plan-pensiones']);
       const inversionesPlan = (inversiones as any[]).filter((i: any) => PLAN_TIPOS_INV.has(i.tipo));
 
@@ -259,7 +259,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         if (tipo === 'inmueble') {
           matched = inmuebleNames.some((n) => n.toLowerCase() === lower);
         } else if (tipo === 'plan_pensiones') {
-          // Check planesPensionInversion (new store)
+          // Check planesPensiones (V65 store)
           matched = (planes as any[]).some((p: any) => {
             const n = (p.nombre as string)?.toLowerCase();
             if (!n) return false;
@@ -323,7 +323,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
         matched = (props as any[]).some((p) => (p.alias || p.address)?.toLowerCase() === lower);
       } else if (tipo === 'plan_pensiones') {
         const [planes, invs] = await Promise.all([
-          db.getAll('planesPensionInversion'),
+          (db as any).getAll('planesPensiones'),
           db.getAll('inversiones'),
         ]);
         const matchEntry = (entry: any) => {

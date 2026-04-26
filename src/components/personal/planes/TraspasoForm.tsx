@@ -76,15 +76,15 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
         const options: DestinoOption[] = [];
         for (const p of planes) {
-          if (p.tipo !== 'plan-pensiones' || p.id === undefined) continue;
-          const isSameAsOrigen = planOrigen.store === 'planesPensionInversion' && p.id === planOrigen.id;
+          if (p.id === undefined) continue;
+          const isSameAsOrigen = planOrigen.store === 'planesPensiones' && p.id === planOrigen.id;
           if (isSameAsOrigen) continue;
           options.push({
-            key: `planesPensionInversion|${p.id}`,
-            store: 'planesPensionInversion',
+            key: `planesPensiones|${p.id}`,
+            store: 'planesPensiones',
             id: p.id,
             nombre: p.nombre,
-            entidad: p.entidad,
+            entidad: (p as any).gestoraActual,
           });
         }
         for (const inv of inversiones) {

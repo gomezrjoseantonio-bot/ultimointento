@@ -313,7 +313,7 @@ export interface IndexaImportResult {
  * Persists the Indexa Capital preview into the target plan.
  * - Writes one monthly valuation per month in `valoraciones_historicas`.
  * - Replaces (merges) monthly keys in `plan.historialAportaciones` with the net contributions
- *   (only when the plan lives in `planesPensionInversion`; the legacy `inversiones` store does
+ *   (only when the plan lives in `planesPensiones`; the legacy `inversiones` store does
  *   not have that field, so we record the aggregate contributions as Aportacion rows instead).
  * - Updates the plan's current value (`valorActual` / `valor_actual`) with the last day's
  *   EN EUROS and the total contributions with the last day's cumulative net value.
@@ -330,11 +330,11 @@ export async function importarIndexaCapital(
 
   // Back-compat: legacy callers pass a bare id assuming the dedicated store.
   const planTarget: PlanObjetivo = typeof target === 'number'
-    ? { id: target, store: 'planesPensionInversion', nombre: '', entidad: '', valorActual: 0, aportacionesRealizadas: 0 }
+    ? { id: target, store: 'planesPensiones', nombre: '', entidad: '', valorActual: 0, aportacionesRealizadas: 0 }
     : target;
 
   const db = await initDB();
-  const rawPlan = await db.get(planTarget.store, planTarget.id);
+  const rawPlan = await (db as any).get(planTarget.store, planTarget.store === 'planesPensiones' ? String(planTarget.id) : planTarget.id);
   if (!rawPlan) {
     return { valoracionesImportadas: 0, mesesConAportaciones: 0, saldoActualizado: false, errors: [`Plan con id ${planTarget.id} no encontrado en ${planTarget.store}.`] };
   }
@@ -362,27 +362,46 @@ export async function importarIndexaCapital(
   const mesesConAportaciones = preview.monthly.filter((m) => m.aportacionNetaMes !== 0).length;
   const last = preview.rows[preview.rows.length - 1];
 
-  if (planTarget.store === 'planesPensionInversion') {
-    const plan = rawPlan as PlanPensionInversion;
+  if (planTarget.store === 'planesPensiones') {
+    // 2a. Write monthly contributions to aportacionesPlan store.
+    //     Replace existing Indexa contributions for this plan (by notas marker).
+    const genUUID = (): string =>
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-    // 2a. Historial de aportaciones — merge month keys (titular receives the net amount;
-    //     may be negative if the month had a net redemption).
-    type HistorialEntry = NonNullable<PlanPensionInversion['historialAportaciones']>[string];
-    const historial: Record<string, HistorialEntry> = { ...(plan.historialAportaciones ?? {}) };
+    const existingAportaciones = (await (db as any).getAll('aportacionesPlan')) as Array<{
+      id: string;
+      planId: string;
+      notas?: string;
+    }>;
+    // Remove previous Indexa-sourced aportaciones for this plan
+    for (const a of existingAportaciones) {
+      if (a.planId === String(planTarget.id) && a.notas?.includes('Indexa Capital')) {
+        await (db as any).delete('aportacionesPlan', a.id);
+      }
+    }
+    // Add new monthly aportaciones
+    const ahora = new Date().toISOString();
     for (const m of preview.monthly) {
-      if (m.aportacionNetaMes === 0 && historial[m.mes] === undefined) continue;
-      historial[m.mes] = {
-        titular: m.aportacionNetaMes,
-        empresa: 0,
-        total: m.aportacionNetaMes,
-        fuente: 'manual',
-      };
+      if (m.aportacionNetaMes === 0) continue;
+      await (db as any).add('aportacionesPlan', {
+        id: genUUID(),
+        planId: String(planTarget.id),
+        fecha: `${m.mes}-01`,
+        ejercicioFiscal: parseInt(m.mes.slice(0, 4)),
+        importeTitular: m.aportacionNetaMes > 0 ? m.aportacionNetaMes : 0,
+        importeEmpresa: 0,
+        origen: 'manual' as const,
+        granularidad: 'mensual' as const,
+        notas: 'Importado desde Indexa Capital',
+        fechaCreacion: ahora,
+        fechaActualizacion: ahora,
+      });
     }
 
-    await planesInversionService.updatePlan(planTarget.id, {
-      historialAportaciones: historial,
+    await planesInversionService.updatePlan(String(planTarget.id), {
       valorActual: last.valorEuros,
-      aportacionesRealizadas: last.aportacionNetaAcumulada,
     });
   } else {
     // 2b. Plan almacenado en `inversiones` (legacy). Replace any previous Indexa
@@ -438,7 +457,7 @@ export async function importarIndexaCapital(
 
 export interface PlanObjetivo {
   id: number;
-  store: 'planesPensionInversion' | 'inversiones';
+  store: 'planesPensiones' | 'inversiones';
   nombre: string;
   entidad?: string;
   valorActual: number;
@@ -446,7 +465,7 @@ export interface PlanObjetivo {
 }
 
 /** List of plans suitable as target for an Indexa import (tipo = plan-pensiones).
- *  Combines the dedicated `planesPensionInversion` store with legacy entries in
+ *  Combines the dedicated `planesPensiones` store (V65) with legacy entries in
  *  `inversiones` whose `tipo` is `plan_pensiones` / `plan-pensiones`. */
 export async function getPlanesObjetivo(): Promise<PlanObjetivo[]> {
   const db = await initDB();
@@ -456,15 +475,15 @@ export async function getPlanesObjetivo(): Promise<PlanObjetivo[]> {
   ]);
 
   const targets: PlanObjetivo[] = [];
-  for (const p of planes) {
-    if (p.tipo !== 'plan-pensiones' || p.id === undefined) continue;
+  for (const p of planes as any[]) {
+    if (p.id === undefined) continue;
     targets.push({
       id: p.id,
-      store: 'planesPensionInversion',
+      store: 'planesPensiones',
       nombre: p.nombre,
-      entidad: p.entidad,
+      entidad: p.gestoraActual,
       valorActual: p.valorActual ?? 0,
-      aportacionesRealizadas: p.aportacionesRealizadas ?? 0,
+      aportacionesRealizadas: 0, // tracked in aportacionesPlan
     });
   }
 
