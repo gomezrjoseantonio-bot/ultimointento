@@ -103,6 +103,53 @@ export async function onNominaConfirmada(
   plan.fechaActualizacion = new Date().toISOString();
 
   await db.put(STORE_PLANES, plan);
+
+  // V65 (TAREA 13): también escribe en planesPensiones/aportacionesPlan si existe
+  // el plan en el nuevo store (doble-escritura para transición gradual)
+  try {
+    const planesNuevos = (await db.getAll('planesPensiones' as any)) as Array<{
+      id: string;
+      empresaPagadora?: { ingresoIdVinculado?: string };
+      gestoraActual: string;
+    }>;
+    // Buscar por ingresoIdVinculado o por nombre de gestora
+    const planNuevo = planesNuevos.find(
+      (p) => p.empresaPagadora?.ingresoIdVinculado === String(nomina.planPensiones?.productoDestinoId ?? ''),
+    );
+    if (planNuevo) {
+      const genUUID2 = (): string =>
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const ingresoIdStr = String(evento.sourceId ?? '');
+      // Idempotencia: no duplicar si ya existe para este evento
+      const aportacionesExistentes = (await db.getAll('aportacionesPlan' as any)) as Array<{
+        ingresoIdNomina?: string;
+        planId: string;
+      }>;
+      const yaExiste = aportacionesExistentes.some(
+        (a) => a.planId === planNuevo.id && a.ingresoIdNomina === ingresoIdStr,
+      );
+      if (!yaExiste) {
+        const aportacionNueva = {
+          id: genUUID2(),
+          planId: planNuevo.id,
+          fecha: yearMonth + '-01',
+          ejercicioFiscal: fechaEvento.getFullYear(),
+          importeTitular: importeMensual,
+          importeEmpresa: importeEmpresaMensual,
+          origen: 'nomina_vinculada' as const,
+          granularidad: 'mensual' as const,
+          ingresoIdNomina: ingresoIdStr,
+          fechaCreacion: new Date().toISOString(),
+          fechaActualizacion: new Date().toISOString(),
+        };
+        await db.add('aportacionesPlan' as any, aportacionNueva as any);
+      }
+    }
+  } catch (e) {
+    console.warn('[onNominaConfirmada] escritura V65 planesPensiones falló (no crítico):', e);
+  }
 }
 
 /**
