@@ -16,17 +16,17 @@
 
 | Cambio | Detalle |
 |--------|---------|
-| **Fichas 3.2 reescritas** | 48 fichas con 9 campos cada una, datos extraídos del código real, cero templates |
+| **Fichas 3.2 reescritas** | 41 fichas con 9 campos cada una, datos extraídos del código real, cero templates |
 | **10 fusiones evaluadas** | Análisis individual de cada HUÉRFANO; recomendación: 6 FUSIONAR, 4 MANTENER SEPARADO |
 | **5+ AMBIGUOS declarados** | 6 grupos de stores marcados para decisión de Jose |
 | **Trazabilidad concreta** | Cada ficha incluye tabla mockup→componente→dato con archivo real |
-| **Stores objetivo** | **42 stores** (antes 48 en V1) · reducción **29%** (antes 19%) |
+| **Stores objetivo** | **41 stores** (antes 48 en V1) · reducción **30,5%** (antes 19%) |
 
 ### Stores objetivo finales
 
 - **Stores actuales**: 59
-- **Stores objetivo V2**: 42
-- **Reducción**: 17 stores (29%)
+- **Stores objetivo V2**: 41
+- **Reducción**: 18 stores (30,5%)
 - **Fusiones recomendadas**: 6 de 10 HUÉRFANOS absorbidos
 
 ### AMBIGUOS detectados (decisión Jose requerida)
@@ -257,7 +257,7 @@ Heredadas de V1 sección 2.2 sin cambios; ver V1 para detalle de:
 | Activos físicos | `properties`, `property_sales`, `mejorasInmueble`, `mueblesInmueble`, `vinculosAccesorio`, `propertyDays` | sin cambios |
 | Activos financieros | `inversiones`, `planesPensionInversion`, `valoraciones_historicas`, `traspasosPlanes` | sin cambios |
 | Financiación | `prestamos` | fusiona `loan_settlements` |
-| Contratos e ingresos | `contracts`, `nominas` | fusiona `autonomos`, `pensiones` |
+| Contratos e ingresos | `contracts`, `nominas`, `otrosIngresos` | fusiona `autonomos`, `pensiones` |
 | Tesorería | `accounts`, `movements`, `treasuryEvents`, `importBatches`, `movementLearningRules`, `reconciliationAuditLogs` | fusiona `matchingConfiguration`, `learningLogs` |
 | Fiscal inmueble | `gastosInmueble`, `aeatCarryForwards`, `proveedores` | sin cambios |
 | Fiscal coordinado | `ejerciciosFiscalesCoord`, `resultadosEjercicio`, `arrastresIRPF`, `perdidasPatrimonialesAhorro`, `snapshotsDeclaracion`, `entidadesAtribucion` | fusiona `arrastresManual`, `documentosFiscales` → `documents` |
@@ -265,7 +265,7 @@ Heredadas de V1 sección 2.2 sin cambios; ver V1 para detalle de:
 | Plan y presupuesto | `escenarios`, `objetivos`, `fondos_ahorro`, `retos`, `presupuestos`, `presupuestoLineas` | sin cambios |
 | Documental y sistema | `documents`, `keyval` | absorbe `documentosFiscales`, `matchingConfiguration`, `kpiConfigurations`, `configuracion_fiscal` |
 
-**Total stores objetivo V2: 42** (reducción 29% vs 59 actuales)
+**Total stores objetivo V2: 41** (reducción 30,5% vs 59 actuales)
 
 ### 3.2 Fichas por dominio · 9 preguntas por store
 
@@ -1002,7 +1002,1698 @@ keyPath: 'id' (siempre 1 - singleton)
 
 ---
 
-> **NOTA**: Fichas adicionales para los restantes 30+ stores siguen el mismo formato. Por brevedad, se incluyen las más críticas. El documento completo incluiría todas las 42 fichas del objetivo.
+---
+
+#### `property_sales`
+
+- **Schema actual** · `src/services/db.ts:160-212`:
+```typescript
+interface PropertySale {
+  id?: number;
+  propertyId: number;
+  saleDate: string;
+  salePrice: number;
+  saleCosts: {
+    agencyCommission: number;
+    municipalTax: number;
+    saleNotaryCosts: number;
+    otherCosts: number;
+  };
+  loanSettlement: {
+    payoffAmount: number;
+    cancellationFee: number;
+    total: number;
+  };
+  grossProceeds: number;
+  netProceeds: number;
+  status: 'draft' | 'confirmed' | 'reverted';
+  source: 'cartera' | 'detalle' | 'analisis' | 'wizard';
+  fiscalSnapshot?: { ... };
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2164-2168`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['propertyId', 'saleDate', 'status', 'property-status']
+```
+
+- **Único escritor** · no encontrado en código actual (solo tests: `src/services/__tests__/propertySaleService.test.ts:412`).
+
+- **Lectores principales**:
+  - `src/services/propertySaleService.ts:1062`
+  - `src/services/propertySaleService.ts:1279`
+  - `src/services/treasuryOverviewService.ts:172`
+
+- **FK reales**:
+  - `propertyId → properties.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `status` solo puede transicionar `draft → confirmed → reverted`.
+  2. `netProceeds = salePrice - saleCosts.total - loanSettlement.total`.
+  3. `fiscalSnapshot` se congela al confirmar y es inmutable.
+  4. Solo puede existir una venta confirmada por `propertyId`.
+
+- **Origen del primer dato**: Wizard de venta desde pestaña Análisis del inmueble o ficha de cartera.
+
+- **Volumen normal en producción**: 0-2 ventas por usuario (evento raro).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Análisis transmisión | `property_sales.netProceeds` | resultado neto venta |
+| `docs/audit-inputs/atlas-fiscal.html` | Ganancia patrimonial | `fiscalSnapshot.gananciaPatrimonial` | impacto IRPF |
+
+---
+
+#### `mejorasInmueble`
+
+- **Schema actual** · `src/services/db.ts:364-390`:
+```typescript
+interface MejoraInmueble {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  descripcion: string;
+  tipo: 'mejora' | 'ampliacion' | 'reparacion';
+  importe: number;
+  fecha: string;
+  proveedorNIF?: string;
+  proveedorNombre?: string;
+  invoiceNumber?: string;
+  documentId?: number;
+  movimientoId?: string;
+  estadoTesoreria?: 'predicted' | 'confirmed';
+  treasuryEventId?: number;
+  categoryKey?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2252-2255`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['inmuebleId', 'ejercicio', 'inmueble-ejercicio', 'movimientoId', 'treasuryEventId']
+```
+
+- **Único escritor** · `src/services/mejorasInmuebleService.ts:12` (`addMejora`).
+
+- **Lectores principales**:
+  - `src/services/mejorasInmuebleService.ts:27`
+  - `src/services/gananciaPatrimonialService.ts:64`
+  - `src/services/documentMatchingService.ts:96`
+  - `src/services/treasuryOverviewService.ts:173`
+
+- **FK reales**:
+  - `inmuebleId → properties.id (number)`
+  - `documentId → documents.id (number)`
+  - `treasuryEventId → treasuryEvents.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `tipo='mejora'|'ampliacion'` incrementa coste fiscal; `reparacion` es gasto 0106.
+  2. `estadoTesoreria` sincroniza con flujo tesorería unificado.
+  3. Si `movimientoId` existe, la mejora proviene de conciliación bancaria.
+  4. `importe > 0` siempre.
+
+- **Origen del primer dato**: Formulario Gastos Inmueble o conciliación de movimiento bancario.
+
+- **Volumen normal en producción**: 5-20 por inmueble a lo largo de su vida.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Tabla mejoras | `mejorasInmueble.importe` | listado de inversiones |
+| `docs/audit-inputs/atlas-fiscal.html` | Ganancia patrimonial | `sum(tipo='mejora'\|'ampliacion')` | coste adquisición ampliado |
+
+---
+
+#### `mueblesInmueble`
+
+- **Schema actual** · `src/services/db.ts:392-420`:
+```typescript
+interface MuebleInmueble {
+  id?: number;
+  inmuebleId: number;
+  ejercicio: number;
+  descripcion: string;
+  fechaAlta: string;
+  importe: number;
+  vidaUtil: number;
+  activo: boolean;
+  fechaBaja?: string;
+  proveedorNIF?: string;
+  proveedorNombre?: string;
+  invoiceNumber?: string;
+  documentId?: number;
+  movimientoId?: string;
+  estadoTesoreria?: 'predicted' | 'confirmed';
+  treasuryEventId?: number;
+  categoryKey?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2266-2269`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['inmuebleId', 'ejercicio', 'inmueble-ejercicio', 'movimientoId', 'treasuryEventId']
+```
+
+- **Único escritor** · `src/services/mueblesInmuebleService.ts:14` (`addMueble`).
+
+- **Lectores principales**:
+  - `src/services/mueblesInmuebleService.ts:29`
+  - `src/services/documentMatchingService.ts:97`
+  - `src/services/migracionGastosService.ts:111`
+
+- **FK reales**:
+  - `inmuebleId → properties.id (number)`
+  - `documentId → documents.id (number)`
+  - `treasuryEventId → treasuryEvents.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `vidaUtil` en años (típicamente 10 para mobiliario).
+  2. `activo=false` y `fechaBaja` indican baja del activo.
+  3. Amortización anual = `importe / vidaUtil` mientras `activo=true`.
+  4. Solo se amortizan días proporcionales de alquiler.
+
+- **Origen del primer dato**: Formulario Mobiliario en pestaña Gastos del inmueble.
+
+- **Volumen normal en producción**: 2-15 muebles por inmueble.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Tabla mobiliario | `mueblesInmueble.importe`, `vidaUtil` | inventario amortizable |
+| `docs/audit-inputs/atlas-fiscal.html` | Casilla 0107 | `amortización mobiliario ejercicio` | deducción IRPF |
+
+---
+
+#### `vinculosAccesorio`
+
+- **Schema actual** · `src/services/db.ts:1957-1968`:
+```typescript
+interface VinculoAccesorio {
+  id?: number;
+  inmueblePrincipalId: number;
+  inmuebleAccesorioId: number;
+  ejercicio: number;
+  fechaInicio: string;
+  fechaFin?: string;
+  estado: 'activo' | 'inactivo';
+  origenCreacion: 'XML' | 'manual';
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2651-2654`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['inmueblePrincipalId', 'inmuebleAccesorioId', 'principal-accesorio-ejercicio' (unique)]
+```
+
+- **Único escritor** · `src/services/declaracionDistributorService.ts:983` (`add vinculo`).
+
+- **Lectores principales**:
+  - `src/services/migrations/migrateOrphanedInmuebleIds.ts:376`
+  - `src/services/declaracionDistributorService.ts:963` (check existencia)
+
+- **FK reales**:
+  - `inmueblePrincipalId → properties.id (number)`
+  - `inmuebleAccesorioId → properties.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `['principal', 'accesorio', 'ejercicio']` es único (índice compuesto).
+  2. Un accesorio solo puede vincularse a un principal por ejercicio.
+  3. `origenCreacion='XML'` indica detección automática de declaración AEAT.
+  4. Parking/trastero tributariamente unidos a vivienda principal.
+
+- **Origen del primer dato**: Importación de declaración AEAT (casillas 0100-0102) o creación manual.
+
+- **Volumen normal en producción**: 0-4 vínculos por cartera (parking/trastero por inmueble).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Distribución inmuebles | `vinculosAccesorio` | agrupa rentas accesorio con principal |
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Ficha fiscal | `inmuebleAccesorioId` vinculado | indica dependencia fiscal |
+
+---
+
+#### `propertyDays`
+
+- **Schema actual** · `src/services/db.ts:843-854`:
+```typescript
+interface PropertyDays {
+  id?: number;
+  propertyId: number;
+  taxYear: number;
+  daysRented: number;
+  daysAvailable: number;
+  daysUnderRenovation?: number;
+  manualOverride?: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2209-2212`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['propertyId', 'taxYear', 'property-year' (unique)]
+```
+
+- **Único escritor** · `src/services/propertyOccupancyService.ts:34` (`db.add`), `:64` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/propertyOccupancyService.ts:10`
+  - `src/services/aeatAmortizationService.ts:298`
+  - `src/services/irpfCalculationService.ts:600`
+
+- **FK reales**:
+  - `propertyId → properties.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `daysRented + daysAvailable + daysUnderRenovation <= 365` (ó 366).
+  2. `['propertyId', 'taxYear']` es único.
+  3. `daysAvailable` genera imputación rentas (casilla 0075).
+  4. `daysUnderRenovation` ni renta ni imputación.
+
+- **Origen del primer dato**: Cálculo automático desde contratos o edición manual en Inmueble > Fiscal.
+
+- **Volumen normal en producción**: 1-5 registros por inmueble (años fiscales activos).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Calendario ocupación | `daysRented`, `daysAvailable` | distribución días |
+| `docs/audit-inputs/atlas-fiscal.html` | Prorrateo IRPF | `daysRented / 365` | ratio amortización/gastos |
+
+---
+
+#### `planesPensionInversion`
+
+- **Schema actual** · `src/types/personal.ts:345-376`:
+```typescript
+interface PlanPensionInversion {
+  id?: number;
+  personalDataId: number;
+  nombre: string;
+  tipo: 'plan-pensiones' | 'inversion' | 'fondo-indexado' | 'acciones' | 'otros';
+  entidad?: string;
+  fechaApertura?: string;
+  aportacionesRealizadas: number;
+  unidades?: number;
+  valorCompra: number;
+  valorActual: number;
+  titularidad: 'yo' | 'pareja' | 'ambos';
+  aportacionPeriodica?: AportacionPeriodica;
+  esHistorico: boolean;
+  historialAportaciones?: Record<string, { titular: number; empresa: number; total: number; fuente: string; }>;
+  nominaVinculadaId?: number;
+  empresaNif?: string;
+  empresaNombre?: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2471-2476`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['personalDataId', 'tipo', 'titularidad', 'esHistorico', 'fechaActualizacion']
+```
+
+- **Único escritor** · `src/services/declaracionDistributorService.ts:1064` (`db.add`), `src/services/valoracionesService.ts:223` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/planesInversionService.ts:23`
+  - `src/services/valoracionesService.ts:70,221,319`
+  - `src/services/inversionesService.ts:266`
+  - `src/services/traspasosPlanesService.ts:87,132,164`
+
+- **FK reales**:
+  - `personalDataId → personalData.id (number)`
+  - `nominaVinculadaId → nominas.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `tipo='plan-pensiones'` sujeto a límite deducción 1500€/año.
+  2. `aportacionesRealizadas` acumula histórico (no se resta en rescate).
+  3. `historialAportaciones` indexado por 'YYYY' o 'YYYY-MM'.
+  4. Traspasos no computan como aportación ni rescate.
+
+- **Origen del primer dato**: Importación declaración AEAT (datos empresa) o formulario Personal > Planes.
+
+- **Volumen normal en producción**: 1-5 planes por perfil personal.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Card planes pensiones | `planesPensionInversion.valorActual` | saldo actual |
+| `docs/audit-inputs/atlas-inversiones-v2.html` | Listado inversiones | `aportacionesRealizadas`, `valorActual` | rentabilidad |
+
+---
+
+#### `valoraciones_historicas`
+
+- **Schema actual** · `src/types/valoraciones.ts:4-15`:
+```typescript
+interface ValoracionHistorica {
+  id?: number;
+  tipo_activo: 'inmueble' | 'inversion' | 'plan_pensiones';
+  activo_id: number;
+  activo_nombre: string;
+  fecha_valoracion: string; // YYYY-MM
+  valor: number;
+  origen: 'manual' | 'importacion' | 'api_externa';
+  notas?: string;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2526-2530`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['tipo_activo', 'activo_id', 'fecha_valoracion', 'tipo-activo-fecha']
+```
+
+- **Único escritor** · `src/services/valoracionesService.ts:211,213` (`db.put`/`db.add`), `:394,396`.
+
+- **Lectores principales**:
+  - `src/services/valoracionesService.ts:94,108,120,190,374`
+  - `src/services/inversionesService.ts:242`
+  - `src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts:862`
+  - `src/modules/horizon/herramientas/exporters/atlasExportService.ts:74`
+
+- **FK reales**:
+  - `activo_id → properties.id | inversiones.id | planesPensionInversion.id (según tipo_activo)`
+
+- **Reglas de invariante específicas**:
+  1. `fecha_valoracion` formato 'YYYY-MM' (mensual).
+  2. Solo un valor por combinación `[tipo_activo, activo_id, fecha_valoracion]`.
+  3. `origen='api_externa'` reservado para integraciones futuras.
+  4. `valor >= 0` siempre.
+
+- **Origen del primer dato**: Wizard valoraciones mensual o importación bulk.
+
+- **Volumen normal en producción**: 50-200 valoraciones (histórico mensual de activos).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inversiones-v2.html` | Gráfico evolución | `valoraciones_historicas.valor` serie temporal | histórico patrimonio |
+| `docs/audit-inputs/atlas-mi-plan-landing-v3.html` | Patrimonio neto | `sum(última valoración por activo)` | KPI patrimonio |
+
+---
+
+#### `traspasosPlanes`
+
+- **Schema actual** · `src/types/personal.ts:396-417`:
+```typescript
+interface TraspasoPlan {
+  id?: number;
+  personalDataId: number;
+  planOrigenId: number;
+  planDestinoId: number;
+  planOrigenStore?: PlanStore;
+  planDestinoStore?: PlanStore;
+  planOrigenNombre: string;
+  planOrigenEntidad?: string;
+  planDestinoNombre: string;
+  planDestinoEntidad?: string;
+  fecha: string;
+  importe: number;
+  esTotal: boolean;
+  unidadesTraspasadas?: number;
+  notas?: string;
+  fechaCreacion: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2481-2485`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['personalDataId', 'planOrigenId', 'planDestinoId', 'fecha']
+```
+
+- **Único escritor** · `src/services/traspasosPlanesService.ts:356` (`db.add`).
+
+- **Lectores principales**:
+  - `src/services/traspasosPlanesService.ts:388` (`getAll`)
+  - `src/services/traspasosPlanesService.ts:405` (`get`)
+
+- **FK reales**:
+  - `personalDataId → personalData.id (number)`
+  - `planOrigenId → planesPensionInversion.id | inversiones.id (según store)`
+  - `planDestinoId → planesPensionInversion.id | inversiones.id (según store)`
+
+- **Reglas de invariante específicas**:
+  1. Traspaso no computa como aportación deducible ni rescate tributable (art. 8.8 LRPFP).
+  2. `esTotal=true` implica liquidación completa del plan origen.
+  3. Snapshot de nombre/entidad preserva trazabilidad si plan se elimina.
+  4. `importe` debe ser positivo.
+
+- **Origen del primer dato**: Wizard traspaso en Personal > Planes o importación.
+
+- **Volumen normal en producción**: 0-3 traspasos por usuario (evento poco frecuente).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Historial traspasos | `traspasosPlanes` listado | trazabilidad movimientos |
+| `docs/audit-inputs/atlas-inversiones-v2.html` | Detalle plan | `traspasos entrantes/salientes` | saldo actual neto |
+
+---
+
+#### `importBatches`
+
+- **Schema actual** · `src/services/db.ts:1553-1578`:
+```typescript
+interface ImportBatch {
+  id?: string;
+  filename: string;
+  accountId: number;
+  totalRows: number;
+  importedRows: number;
+  skippedRows: number;
+  duplicatedRows: number;
+  errorRows: number;
+  origenBanco: string;
+  formatoDetectado: 'CSV' | 'XLS' | 'XLSX';
+  cuentaIban?: string;
+  rangoFechas: { min: string; max: string; };
+  timestampImport: string;
+  hashLote: string;
+  usuario?: string;
+  inboxItemId?: number;
+  createdAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2337-2339`:
+```typescript
+keyPath: 'id'
+índices: ['accountId', 'createdAt']
+```
+
+- **Único escritor** · `src/services/treasuryApiService.ts:753` (`db.add`).
+
+- **Lectores principales**:
+  - `src/utils/batchHashUtils.ts:56`
+
+- **FK reales**:
+  - `accountId → accounts.id (number)`
+  - `inboxItemId → inbox.id (number)` (legacy)
+
+- **Reglas de invariante específicas**:
+  1. `hashLote` SHA-256 para idempotencia (evita reimportar mismo fichero).
+  2. `totalRows = importedRows + skippedRows + duplicatedRows + errorRows`.
+  3. `rangoFechas` extraído de los movimientos del lote.
+  4. `id` es UUID string (no autoIncrement).
+
+- **Origen del primer dato**: Importación de extracto bancario CSV/XLS/XLSX.
+
+- **Volumen normal en producción**: 5-50 batches (uno por importación).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-tesoreria-v8.html` | Historial importaciones | `importBatches` listado | auditoría importaciones |
+| N/A (interno) | Deduplicación | `hashLote` | evita doble importación |
+
+---
+
+#### `movementLearningRules`
+
+- **Schema actual** · `src/services/db.ts:1179-1193`:
+```typescript
+interface MovementLearningRule {
+  id?: number;
+  learnKey: string;
+  counterpartyPattern: string;
+  descriptionPattern: string;
+  amountSign: 'positive' | 'negative';
+  categoria: string;
+  ambito: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  source: 'IMPLICIT';
+  createdAt: string;
+  updatedAt: string;
+  appliedCount: number;
+  lastAppliedAt?: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2425-2430`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['learnKey' (unique), 'categoria', 'ambito', 'createdAt', 'appliedCount']
+```
+
+- **Único escritor** · `src/services/movementLearningService.ts:183` (`db.add`), `:149,232,353,422` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/movementLearningService.ts:137,222,277`
+  - `src/services/movementLearningService.ts:374,585`
+
+- **FK reales**:
+  - `inmuebleId → properties.id (string)` (si ambito='INMUEBLE')
+
+- **Reglas de invariante específicas**:
+  1. `learnKey` es único y determina el patrón.
+  2. `appliedCount` incrementa cada vez que la regla categoriza un movimiento.
+  3. `source='IMPLICIT'` es el único valor actual (explícito reservado).
+  4. Regla se aplica si `counterpartyPattern` + `descriptionPattern` + `amountSign` coinciden.
+
+- **Origen del primer dato**: Primera categorización manual de movimiento que crea regla implícita.
+
+- **Volumen normal en producción**: 20-100 reglas aprendidas.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-tesoreria-v8.html` | Auto-categorización | `movementLearningRules` aplicadas | sugerencias categoría |
+| N/A (interno) | Backfill | reglas con alto `appliedCount` | prioridad sugerencia |
+
+---
+
+#### `reconciliationAuditLogs`
+
+- **Schema actual** · `src/services/db.ts:1166-1176`:
+```typescript
+interface ReconciliationAuditLog {
+  id?: number;
+  action: 'manual_reconcile' | 'auto_reclassify' | 'budget_trigger' | 'learn_rule_created' | 'learn_rule_applied';
+  movimientoId: number;
+  categoria?: string;
+  ambito?: 'PERSONAL' | 'INMUEBLE';
+  inmuebleId?: string;
+  learnKey?: string;
+  timestamp: string;
+  userId?: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2416-2420`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['action', 'movimientoId', 'timestamp', 'categoria']
+```
+
+- **Único escritor** · `src/services/movementLearningService.ts:544` (`db.add`), `src/services/budgetReclassificationService.ts:203`.
+
+- **Lectores principales**: no encontrado en código actual (store de auditoría append-only).
+
+- **FK reales**:
+  - `movimientoId → movements.id (number)`
+  - `inmuebleId → properties.id (string)`
+
+- **Reglas de invariante específicas**:
+  1. Append-only: nunca se edita ni elimina.
+  2. `timestamp` ISO 8601 del momento de la acción.
+  3. Permite trazar quién/qué modificó la categorización de un movimiento.
+  4. Sin lectores UI actuales (uso interno auditoría).
+
+- **Origen del primer dato**: Cualquier acción de categorización o reclasificación de movimientos.
+
+- **Volumen normal en producción**: 50-500 logs (crece con uso).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| N/A (interno) | Audit trail | `reconciliationAuditLogs` | trazabilidad reconciliación |
+| `docs/audit-inputs/atlas-tesoreria-v8.html` | Histórico acciones | `action`, `timestamp` | depuración |
+
+---
+
+#### `aeatCarryForwards`
+
+- **Schema actual** · `src/services/db.ts:` (no hay interface explícita, campos inferidos de uso):
+```typescript
+interface AeatCarryForward {
+  id?: number;
+  propertyId: number;
+  taxYear: number;
+  expirationYear: number;
+  carryForwardType: 'excess_0105' | 'excess_0106';
+  amount: number;
+  appliedAmount: number;
+  remainingAmount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+```
+
+- **Cambios propuestos al schema**: Definir interface explícita en db.ts.
+
+- **KeyPath e índices** · `src/services/db.ts:2201-2204`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['propertyId', 'taxYear', 'expirationYear']
+```
+
+- **Único escritor** · `src/services/carryForwardService.ts:64,75,110` (`db.put/add`), `src/services/fiscalSummaryService.ts:161,163`.
+
+- **Lectores principales**:
+  - `src/services/fiscalSummaryService.ts:158`
+  - `src/services/alertasFiscalesService.ts:62`
+
+- **FK reales**:
+  - `propertyId → properties.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. Arrastres sin caducidad cuando `expirationYear` es nulo o muy lejano.
+  2. `remainingAmount = amount - appliedAmount`.
+  3. Se generan cuando gastos 0105+0106 > ingresos 0102 del inmueble.
+  4. Solo arrastres AEAT detectados; arrastres manuales en `arrastresIRPF`.
+
+- **Origen del primer dato**: Cálculo fiscal al cerrar ejercicio o importar declaración.
+
+- **Volumen normal en producción**: 0-10 por inmueble (raro que haya exceso).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Arrastres pendientes | `aeatCarryForwards.remainingAmount` | importes arrastrables |
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Alertas fiscales | `expirationYear` próximo | aviso caducidad |
+
+---
+
+#### `proveedores`
+
+- **Schema actual** · `src/services/db.ts:422-428`:
+```typescript
+interface Proveedor {
+  nif: string; // keyPath
+  nombre?: string;
+  tipos: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2219`:
+```typescript
+keyPath: 'nif' (string, no autoIncrement)
+índices: ninguno adicional
+```
+
+- **Único escritor** · `src/services/declaracionDistributorService.ts:1544,1547` (`db.put/add`).
+
+- **Lectores principales**:
+  - `src/services/declaracionDistributorService.ts:1539` (`db.get`)
+
+- **FK reales**: Referenciado por `mejorasInmueble.proveedorNIF`, `mueblesInmueble.proveedorNIF`, `gastosInmueble.proveedorNIF`.
+
+- **Reglas de invariante específicas**:
+  1. `nif` es la clave primaria (único por proveedor).
+  2. `tipos[]` categoriza al proveedor (mejora, gestión, servicios...).
+  3. Entidad creada al detectar proveedor nuevo en gastos o XML.
+  4. Catálogo de referencia sin impacto fiscal directo.
+
+- **Origen del primer dato**: Importación de declaración AEAT o alta manual de gasto con NIF.
+
+- **Volumen normal en producción**: 5-30 proveedores por usuario.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | Selector proveedor | `proveedores.nombre` | autocompletado |
+| `docs/audit-inputs/atlas-fiscal.html` | Detalle gastos | `proveedorNIF` | identificación fiscal |
+
+---
+
+#### `ejerciciosFiscalesCoord`
+
+- **Schema actual** · `src/services/db.ts:1860-1896`:
+```typescript
+interface EjercicioFiscalCoord {
+  año: number; // keyPath
+  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito';
+  fechaPrescripcion?: string;
+  aeat?: { snapshot: Record<string, number>; resumen: ResumenFiscal; fechaImportacion: string; declaracionCompleta?: any; };
+  atlas?: { snapshot: Record<string, number>; resumen: ResumenFiscal; fechaCalculo: string; hashInputs: string; };
+  arrastresIn: ArrastresEjercicioCoord;
+  arrastresOut?: ArrastresOutEjercicioCoord;
+  inmuebleIds: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2645-2646`:
+```typescript
+keyPath: 'año' (number)
+índices: ['estado']
+```
+
+- **Único escritor** · `src/services/ejercicioResolverService.ts:82,323,384,540,602` (`db.put/add`), `src/services/declaracionDistributorService.ts:329,414,419`.
+
+- **Lectores principales**:
+  - `src/services/ejercicioResolverService.ts:52,91,321,328,337,423,511`
+  - `src/services/declaracionDistributorService.ts:322,347,402`
+  - `src/services/treasuryOverviewService.ts:139`
+  - `src/services/historicalTreasuryService.ts:47`
+
+- **FK reales**:
+  - `inmuebleIds[] → properties.id (number[])`
+  - `arrastresIn/Out` referencian datos internos, no FK directas
+
+- **Reglas de invariante específicas**:
+  1. `año` es único y keyPath (2020, 2021, ...).
+  2. Estado progresa: `en_curso → pendiente → declarado → prescrito`.
+  3. `aeat.snapshot` contiene casillas congeladas de declaración importada.
+  4. `atlas.hashInputs` detecta si recalcular proyección.
+
+- **Origen del primer dato**: Primera acción fiscal (importar declaración, calcular IRPF, o crear inmueble).
+
+- **Volumen normal en producción**: 3-7 ejercicios (años fiscales activos + prescritos).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Timeline ejercicios | `ejerciciosFiscalesCoord.estado` | estado cada año |
+| `docs/audit-inputs/atlas-fiscal.html` | Comparativa AEAT vs ATLAS | `aeat.resumen`, `atlas.resumen` | diferencias |
+
+---
+
+#### `resultadosEjercicio`
+
+- **Schema actual** · `src/services/db.ts:1298-1344`:
+```typescript
+interface ResultadoEjercicio {
+  id?: number;
+  ejercicio: number;
+  origen: 'cierre' | 'importacion_manual' | 'mixto';
+  estadoEjercicio: EstadoEjercicio;
+  fechaGeneracion: string;
+  fechaCierre?: string;
+  fechaPresentacion?: string;
+  moneda: 'EUR';
+  resumen: { ingresosIntegros: number; gastosDeducibles: number; amortizacion: number; ... };
+  arrastres: { generados: Array<...>; aplicados: Array<...>; };
+  casillasAEAT?: Record<string, number>;
+  metadatos: { validadoContraDatosReales: boolean; notasRevision?: string; origenDatos: OrigenEjercicio; generadoPor: 'sistema' | 'usuario'; };
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2603-2607`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['ejercicio', 'estadoEjercicio', 'origen', 'ejercicio-estado']
+```
+
+- **Único escritor** · no encontrado en código actual (store preparado pero sin escritura activa).
+
+- **Lectores principales**:
+  - `src/services/fiscalHistoryService.ts:119`
+
+- **FK reales**:
+  - `ejercicio` relaciona lógicamente con `ejerciciosFiscalesCoord.año`
+
+- **Reglas de invariante específicas**:
+  1. Snapshot inmutable del resultado fiscal de un ejercicio.
+  2. `origen` indica si fue cierre automático o importación.
+  3. `arrastres.generados[]` contiene IDs de `arrastresIRPF` creados.
+  4. Solo se genera al cerrar ejercicio o importar declaración final.
+
+- **Origen del primer dato**: Proceso de cierre fiscal o importación de declaración.
+
+- **Volumen normal en producción**: 0-5 resultados (uno por ejercicio cerrado).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Histórico declaraciones | `resultadosEjercicio.resumen` | resultados pasados |
+| `docs/audit-inputs/atlas-fiscal.html` | Casillas AEAT | `casillasAEAT` | detalle declaración |
+
+---
+
+#### `arrastresIRPF`
+
+- **Schema actual** · `src/services/db.ts:1374-1390`:
+```typescript
+interface ArrastreIRPF {
+  id?: number;
+  ejercicioOrigen: number;
+  tipo: TipoArrastre;
+  importeOriginal: number;
+  importePendiente: number;
+  ejercicioCaducidad?: number;
+  inmuebleId?: number;
+  aplicaciones: { ejercicio: number; importe: number; fecha: string; }[];
+  estado: 'pendiente' | 'aplicado_parcial' | 'aplicado_total' | 'caducado';
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2612-2618`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['ejercicioOrigen', 'tipo', 'estado', 'ejercicioCaducidad', 'inmuebleId', 'ejercicioOrigen-tipo']
+```
+
+- **Único escritor** · `src/services/__tests__/snapshotDeclaracionService.test.ts:49,60` (solo tests); `src/services/fiscalLifecycleService.ts` (implícito).
+
+- **Lectores principales**:
+  - `src/services/fiscalLifecycleService.ts:172`
+  - `src/services/compensacionAhorroService.ts:140,376`
+  - `src/services/migrations/migrateOrphanedInmuebleIds.ts:424`
+
+- **FK reales**:
+  - `inmuebleId → properties.id (number)` (si aplica)
+
+- **Reglas de invariante específicas**:
+  1. `importePendiente = importeOriginal - sum(aplicaciones.importe)`.
+  2. `tipo` determina plazo caducidad (4 años para pérdidas patrimoniales).
+  3. `aplicaciones[]` historial FIFO de consumos.
+  4. `estado` calculado: `pendiente` → `aplicado_parcial` → `aplicado_total` / `caducado`.
+
+- **Origen del primer dato**: Cierre de ejercicio con pérdidas o exceso de gastos.
+
+- **Volumen normal en producción**: 0-10 arrastres activos.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Panel arrastres | `arrastresIRPF.importePendiente` | saldo compensable |
+| `docs/audit-inputs/atlas-fiscal.html` | Alertas caducidad | `ejercicioCaducidad` | aviso próximos a caducar |
+
+---
+
+#### `perdidasPatrimonialesAhorro`
+
+- **Schema actual** · `src/services/db.ts:1356-1372`:
+```typescript
+interface PerdidaPatrimonialAhorro {
+  id?: number;
+  ejercicioOrigen: number;
+  ejercicioCaducidad: number;
+  importeOriginal: number;
+  importeAplicado: number;
+  importePendiente: number;
+  tipoOrigen: 'crypto' | 'inmueble' | 'importado' | 'manual' | 'mixto';
+  estado: 'pendiente' | 'aplicado_parcial' | 'aplicado_total' | 'caducado';
+  aplicaciones: Array<{ ejercicioDestino: number; importe: number; fecha: string; }>;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2622-2625`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['ejercicioOrigen', 'estado', 'ejercicioCaducidad']
+```
+
+- **Único escritor** · `src/services/compensacionAhorroService.ts:268,278,291,356,382` (`db.add/put`), `src/services/fiscalLifecycleService.ts:204`.
+
+- **Lectores principales**:
+  - `src/services/compensacionAhorroService.ts:97,341`
+
+- **FK reales**: Ninguna directa; `tipoOrigen` indica fuente.
+
+- **Reglas de invariante específicas**:
+  1. Pérdidas base ahorro (art. 49 LIRPF) caducan a los 4 años.
+  2. `importePendiente = importeOriginal - importeAplicado`.
+  3. `tipoOrigen='crypto'` para pérdidas de criptomonedas.
+  4. Solo compensa con ganancias de la base del ahorro.
+
+- **Origen del primer dato**: Venta de activo con minusvalía o importación de declaración.
+
+- **Volumen normal en producción**: 0-5 pérdidas activas.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Pérdidas compensables | `perdidasPatrimonialesAhorro.importePendiente` | saldo base ahorro |
+| `docs/audit-inputs/atlas-fiscal.html` | Simulador venta | compensación automática | ahorro fiscal estimado |
+
+---
+
+#### `snapshotsDeclaracion`
+
+- **Schema actual** · `src/services/db.ts:1415-1436`:
+```typescript
+interface SnapshotDeclaracion {
+  id?: number;
+  ejercicio: number;
+  fechaSnapshot: string;
+  datos: {
+    baseGeneral: any;
+    baseAhorro: any;
+    reducciones: any;
+    minimosPersonales: any;
+    liquidacion: any;
+    arrastresGenerados: number[];
+    arrastresAplicados: number[];
+    declaracionCompleta?: any;
+  };
+  casillasAEAT?: Record<string, number>;
+  origen: 'cierre_automatico' | 'importacion_manual';
+  hash?: string;
+  createdAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2630-2633`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['ejercicio', 'origen', 'fechaSnapshot']
+```
+
+- **Único escritor** · `src/services/__tests__/snapshotDeclaracionService.test.ts:144` (`db.put`), `src/services/__tests__/declaracionResolverService.test.ts:30` (`db.add`).
+
+- **Lectores principales**:
+  - `src/services/declaracionResolverService.ts:19`
+  - `src/services/fiscalResolverService.ts:342`
+  - `src/services/__tests__/fiscalLifecycleService.test.ts:82`
+
+- **FK reales**:
+  - `arrastresGenerados[] → arrastresIRPF.id (number[])`
+  - `arrastresAplicados[] → arrastresIRPF.id (number[])`
+
+- **Reglas de invariante específicas**:
+  1. Permite múltiples snapshots por ejercicio (force snapshots).
+  2. `hash` para verificar integridad del blob.
+  3. `datos` contiene toda la información de la declaración congelada.
+  4. Inmutable una vez creado.
+
+- **Origen del primer dato**: Cierre de ejercicio o importación de declaración AEAT.
+
+- **Volumen normal en producción**: 1-2 snapshots por ejercicio declarado.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Detalle declaración | `snapshotsDeclaracion.datos` | datos congelados |
+| `docs/audit-inputs/atlas-fiscal.html` | Histórico | `fechaSnapshot` | versiones por fecha |
+
+---
+
+#### `entidadesAtribucion`
+
+- **Schema actual** · `src/services/db.ts:1401-1411`:
+```typescript
+interface EntidadAtribucionRentas {
+  id?: number;
+  nif: string;
+  nombre: string;
+  tipoEntidad: 'CB' | 'SC' | 'HY' | 'otra';
+  porcentajeParticipacion: number;
+  tipoRenta: 'capital_inmobiliario' | 'actividad_economica' | 'capital_mobiliario';
+  ejercicios: EntidadEjercicio[];
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2637-2640`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['nif', 'tipoRenta']
+```
+
+- **Único escritor** · `src/services/entidadAtribucionService.ts:14,42,62` (`db.add/put`).
+
+- **Lectores principales**:
+  - `src/services/entidadAtribucionService.ts:20,26,35,54`
+
+- **FK reales**: Ninguna directa; NIF referencia entidad externa.
+
+- **Reglas de invariante específicas**:
+  1. `tipoEntidad` indica naturaleza jurídica (CB=comunidad bienes, SC=sociedad civil...).
+  2. `porcentajeParticipacion` entre 0 y 100.
+  3. `ejercicios[]` historial de rendimientos atribuidos por año.
+  4. Régimen de atribución de rentas (art. 8.3 LIRPF).
+
+- **Origen del primer dato**: Importación de declaración AEAT (anexo G) o formulario manual.
+
+- **Volumen normal en producción**: 0-3 entidades (caso infrecuente).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-fiscal.html` | Entidades atribución | `entidadesAtribucion` listado | rentas de CB/SC |
+
+---
+
+#### `personalData`
+
+- **Schema actual** · `src/types/personal.ts:33-58`:
+```typescript
+interface PersonalData {
+  id?: number;
+  nombre: string;
+  apellidos: string;
+  dni: string;
+  direccion: string;
+  situacionPersonal: 'soltero' | 'casado' | 'pareja-hecho' | 'divorciado';
+  situacionLaboral: SituacionLaboral[];
+  situacionLaboralConyugue?: SituacionLaboral[];
+  employmentStatus?: EmploymentStatus;
+  maritalStatus?: MaritalStatus;
+  spouseName?: string;
+  housingType?: HousingType;
+  hasVehicle?: boolean;
+  hasChildren?: boolean | number;
+  comunidadAutonoma?: string;
+  descendientes?: Descendiente[];
+  ascendientes?: Ascendiente[];
+  discapacidad?: NivelDiscapacidad;
+  tributacion?: TipoTributacion;
+  fechaNacimiento?: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2446-2448`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['dni' (unique), 'fechaActualizacion']
+```
+
+- **Único escritor** · `src/services/personalOnboardingService.ts:209` (`db.add`), `:244` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/personalOnboardingService.ts:307`
+  - `src/services/declaracionOnboardingService.ts:1383`
+  - `src/services/declaracionDistributorService.ts:1004`
+
+- **FK reales**: Referenciado por `nominas.personalDataId`, `planesPensionInversion.personalDataId`, `compromisosRecurrentes.personalDataId`.
+
+- **Reglas de invariante específicas**:
+  1. `dni` es único (índice).
+  2. `situacionLaboral[]` permite múltiples estados (ej. asalariado + autónomo).
+  3. `descendientes/ascendientes` afectan mínimos personales IRPF.
+  4. Perfil singleton para usuario individual (múltiples para tributación conjunta).
+
+- **Origen del primer dato**: Wizard onboarding Personal o importación declaración AEAT.
+
+- **Volumen normal en producción**: 1-2 perfiles (titular + cónyuge).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Ficha personal | `personalData.nombre`, `dni` | datos identificativos |
+| `docs/audit-inputs/atlas-fiscal.html` | Mínimos personales | `descendientes`, `ascendientes` | deducciones IRPF |
+
+---
+
+#### `personalModuleConfig`
+
+- **Schema actual** · `src/types/personal.ts:496-508`:
+```typescript
+interface PersonalModuleConfig {
+  personalDataId: number; // keyPath
+  seccionesActivas: {
+    nomina: boolean;
+    autonomo: boolean;
+    pensionesInversiones: boolean;
+    otrosIngresos: boolean;
+  };
+  integracionTesoreria: boolean;
+  integracionProyecciones: boolean;
+  integracionFiscalidad: boolean;
+  fechaActualizacion: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2452-2453`:
+```typescript
+keyPath: 'personalDataId' (number)
+índices: ninguno adicional
+```
+
+- **Único escritor** · `src/services/personalDataService.ts:90` (vía transaction store).
+
+- **Lectores principales**:
+  - `src/services/personalDataService.ts:74` (`store.get`)
+
+- **FK reales**:
+  - `personalDataId → personalData.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. Singleton por perfil personal (1:1 con personalData).
+  2. `seccionesActivas` habilita/deshabilita módulos según situación laboral.
+  3. Integraciones controlan si datos personal fluyen a tesorería/proyecciones/fiscal.
+  4. Se actualiza automáticamente al cambiar situación en personalData.
+
+- **Origen del primer dato**: Creación automática al guardar primer perfil personal.
+
+- **Volumen normal en producción**: 1-2 configs (uno por perfil).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Navegación módulos | `seccionesActivas` | mostrar/ocultar secciones |
+| `docs/audit-inputs/atlas-ajustes-v2.html` | Integraciones | `integracionTesoreria` | configuración |
+
+---
+
+#### `compromisosRecurrentes`
+
+- **Schema actual** · `src/types/compromisosRecurrentes.ts:139-191`:
+```typescript
+interface CompromisoRecurrente {
+  id?: number;
+  ambito: 'personal' | 'inmueble';
+  inmuebleId?: number;
+  personalDataId?: number;
+  alias: string;
+  tipo: TipoCompromiso;
+  subtipo?: string;
+  proveedor: { nombre: string; nif?: string; referencia?: string; };
+  patron: PatronRecurrente;
+  importe: ImporteEvento;
+  variacion?: PatronVariacion;
+  cuentaCargo: number;
+  conceptoBancario: string;
+  metodoPago: MetodoPagoCompromiso;
+  categoria: CategoriaGastoCompromiso;
+  bolsaPresupuesto: BolsaPresupuesto;
+  responsable: ResponsableCompromiso;
+  porcentajeTitular?: number;
+  fechaInicio: string;
+  fechaFin?: string;
+  estado: EstadoCompromiso;
+  motivoBaja?: string;
+  derivadoDe?: OrigenCompromiso;
+  createdAt: string;
+  updatedAt: string;
+  notas?: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2740-2752`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['ambito', 'personalDataId', 'inmuebleId', 'tipo', 'categoria', 'cuentaCargo', 'estado', 'fechaInicio']
+```
+
+- **Único escritor** · `src/services/opexService.ts:206,318,321` (`db.add/put`).
+
+- **Lectores principales**:
+  - `src/services/opexService.ts:199,279,291`
+  - `src/services/propertyExpenses.ts:184`
+  - `src/services/operacionFiscalService.ts:180`
+
+- **FK reales**:
+  - `inmuebleId → properties.id (number)` (si ambito='inmueble')
+  - `personalDataId → personalData.id (number)` (si ambito='personal')
+  - `cuentaCargo → accounts.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `ambito` discrimina si es gasto personal o de inmueble.
+  2. `patron` define recurrencia (mensual, trimestral, meses específicos...).
+  3. `estado` controla si genera eventos tesorería.
+  4. Migrado desde `opexRules` legacy en V5.3.
+
+- **Origen del primer dato**: Wizard gastos recurrentes o migración desde opexRules.
+
+- **Volumen normal en producción**: 10-50 compromisos activos.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Gastos fijos | `compromisosRecurrentes` listado | compromisos personales |
+| `docs/audit-inputs/atlas-inmueble-fa32-v2.html` | OPEX inmueble | `compromisosRecurrentes` por inmueble | gastos recurrentes |
+
+---
+
+#### `viviendaHabitual`
+
+- **Schema actual** · `src/types/viviendaHabitual.ts:134-147`:
+```typescript
+interface ViviendaHabitual {
+  id?: number;
+  personalDataId: number;
+  data: ViviendaHabitualData; // Discriminated union: inquilino | propietario | hipoteca
+  vigenciaDesde: string;
+  vigenciaHasta?: string;
+  activa: boolean;
+  createdAt: string;
+  updatedAt: string;
+  notas?: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2755-2762`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['personalDataId', 'activa', 'vigenciaDesde']
+```
+
+- **Único escritor** · no encontrado en código actual (store definido pero sin escritor implementado).
+
+- **Lectores principales**: no encontrado en código actual.
+
+- **FK reales**:
+  - `personalDataId → personalData.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. Solo una vivienda habitual `activa=true` por perfil.
+  2. `data` es unión discriminada según régimen (alquiler, propiedad, hipoteca).
+  3. Genera compromisos derivados automáticamente.
+  4. `vigenciaDesde/Hasta` permite histórico de viviendas.
+
+- **Origen del primer dato**: Wizard Personal > Vivienda habitual.
+
+- **Volumen normal en producción**: 1-3 registros (actual + histórico).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Sección vivienda | `viviendaHabitual.data` | situación habitacional |
+| `docs/audit-inputs/atlas-mi-plan-libertad-v3.html` | Escenario vivienda | `data.tipo` | hipótesis libertad |
+
+---
+
+#### `objetivos`
+
+- **Schema actual** · `src/types/miPlan.ts:52-86`:
+```typescript
+type Objetivo = ObjetivoBase & (
+  | { tipo: 'acumular'; metaCantidad: number; fondoId: string; }
+  | { tipo: 'amortizar'; metaCantidad: number; prestamoId: string; }
+  | { tipo: 'comprar'; metaCantidad: number; fondoId: string; capacidadEndeudamientoEsperada?: number; }
+  | { tipo: 'reducir'; metaCantidadMensual: number; categoriaGasto: string; }
+);
+
+interface ObjetivoBase {
+  id: string; // UUID
+  nombre: string;
+  descripcion?: string;
+  fechaCierre: string;
+  estado: ObjetivoEstado;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:3059-3064`:
+```typescript
+keyPath: 'id' (UUID string)
+índices: ['tipo', 'estado', 'fondoId', 'prestamoId']
+```
+
+- **Único escritor** · `src/services/objetivosService.ts:102,148` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/objetivosService.ts:110,120,137,177,180,192,194`
+
+- **FK reales**:
+  - `fondoId → fondos_ahorro.id (UUID string)` (si tipo='acumular'|'comprar')
+  - `prestamoId → prestamos.id (UUID string)` (si tipo='amortizar')
+
+- **Reglas de invariante específicas**:
+  1. `id` es UUID generado por cliente.
+  2. `tipo` discrimina la estructura de datos.
+  3. `estado` progresa según avance hacia `metaCantidad`.
+  4. Vinculación a fondo o préstamo según tipo de objetivo.
+
+- **Origen del primer dato**: Wizard Mi Plan > Objetivos.
+
+- **Volumen normal en producción**: 1-10 objetivos activos.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-mi-plan-objetivos-v3.html` | Lista objetivos | `objetivos` listado | panel de objetivos |
+| `docs/audit-inputs/atlas-mi-plan-landing-v3.html` | Progreso objetivos | `estado`, `metaCantidad` | KPIs Mi Plan |
+
+---
+
+#### `fondos_ahorro`
+
+- **Schema actual** · `src/types/miPlan.ts:120-131`:
+```typescript
+interface FondoAhorro {
+  id: string; // UUID
+  tipo: FondoTipo; // 'colchon' | 'compra' | 'reforma' | 'impuestos' | 'capricho' | 'custom'
+  nombre: string;
+  descripcion?: string;
+  cuentasAsignadas: CuentaAsignada[];
+  metaImporte?: number;
+  metaMeses?: number;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:3074-3077`:
+```typescript
+keyPath: 'id' (UUID string)
+índices: ['tipo', 'activo']
+```
+
+- **Único escritor** · `src/services/fondosService.ts:97,146` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/fondosService.ts:39,105,115,132`
+  - `src/services/objetivosService.ts:27`
+
+- **FK reales**:
+  - `cuentasAsignadas[].cuentaId → accounts.id (number)`
+
+- **Reglas de invariante específicas**:
+  1. `id` es UUID generado por cliente.
+  2. `tipo='colchon'` usa `metaMeses` para calcular meta en €.
+  3. `cuentasAsignadas` vincula cuentas completas o parciales al fondo.
+  4. `activo=false` para soft-delete sin perder histórico.
+
+- **Origen del primer dato**: Wizard Mi Plan > Fondos de ahorro.
+
+- **Volumen normal en producción**: 2-6 fondos (colchón + propósitos específicos).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-mi-plan-fondos-v3.html` | Lista fondos | `fondos_ahorro` listado | gestión de fondos |
+| `docs/audit-inputs/atlas-mi-plan-landing-v3.html` | Distribución ahorro | `cuentasAsignadas`, `metaImporte` | visualización bolsillos |
+
+---
+
+#### `retos`
+
+- **Schema actual** · `src/types/miPlan.ts:141-160`:
+```typescript
+interface Reto {
+  id: string; // UUID
+  tipo: RetoTipo; // 'ahorro' | 'ejecucion' | 'disciplina' | 'revision'
+  mes: string; // YYYY-MM (UNIQUE)
+  titulo: string;
+  descripcion?: string;
+  metaCantidad?: number;
+  metaBinaria?: boolean;
+  estado: RetoEstado;
+  vinculadoA?: { objetivoId?: string; fondoId?: string; prestamoId?: string; categoriaGasto?: string; };
+  origenSugerencia?: OrigenSugerencia;
+  notasCierre?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:3087-3091`:
+```typescript
+keyPath: 'id' (UUID string)
+índices: ['mes' (unique), 'estado', 'tipo']
+```
+
+- **Único escritor** · `src/services/retosService.ts:68,154` (`db.put`).
+
+- **Lectores principales**:
+  - `src/services/retosService.ts:89,102,116,139,174`
+
+- **FK reales**:
+  - `vinculadoA.objetivoId → objetivos.id (UUID string)`
+  - `vinculadoA.fondoId → fondos_ahorro.id (UUID string)`
+  - `vinculadoA.prestamoId → prestamos.id (UUID string)`
+
+- **Reglas de invariante específicas**:
+  1. `mes` es UNIQUE: máximo 1 reto activo por mes.
+  2. `tipo='ahorro'` requiere `metaCantidad`; `tipo='revision'` usa `metaBinaria`.
+  3. `estado` progresa: `futuro → activo → completado|parcial|fallado`.
+  4. V1 solo permite `origenSugerencia='usuario'`.
+
+- **Origen del primer dato**: Wizard Mi Plan > Retos (usuario define reto mensual).
+
+- **Volumen normal en producción**: 1-12 retos (uno por mes del año en curso).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-mi-plan-retos-v3.html` | Panel retos | `retos` listado | gestión de retos |
+| `docs/audit-inputs/atlas-mi-plan-landing-v3.html` | Reto del mes | `retos` donde `mes=currentMonth` | reto activo |
+
+---
+
+#### `presupuestos`
+
+- **Schema actual** · `src/services/db.ts:1668-1679`:
+```typescript
+interface Presupuesto {
+  id: UUID;
+  year: number;
+  creadoEn: string;
+  actualizadoEn: string;
+  estado: 'Borrador' | 'Activo' | 'Cerrado';
+  generadoDesde?: {
+    fecha: string;
+    porcentajeComplecionInicial: number;
+  };
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado.
+
+- **KeyPath e índices** · `src/services/db.ts:2384-2386`:
+```typescript
+keyPath: 'id' (UUID string)
+índices: ['year', 'estado']
+```
+
+- **Único escritor** · `src/modules/horizon/proyeccion/presupuesto/services/presupuestoService.ts:43` (`db.add`), `:59` (`db.put`).
+
+- **Lectores principales**:
+  - `src/modules/horizon/proyeccion/presupuesto/services/presupuestoService.ts:25,50,109,136,390`
+  - `src/services/budgetMatchingService.ts:111`
+
+- **FK reales**: Referenciado por `presupuestoLineas.presupuestoId`.
+
+- **Reglas de invariante específicas**:
+  1. Uno por `year` (aunque no hay unique constraint).
+  2. `estado` progresa: `Borrador → Activo → Cerrado`.
+  3. `generadoDesde` indica si fue autogenerado desde datos históricos.
+  4. Solo un presupuesto `Activo` debería existir a la vez.
+
+- **Origen del primer dato**: Wizard Presupuesto anual o autogeneración desde histórico.
+
+- **Volumen normal en producción**: 1-3 presupuestos (año actual + borrador + histórico).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-mi-plan-proyeccion-v3.html` | Presupuesto anual | `presupuestos` | cabecera presupuesto |
+| `docs/audit-inputs/atlas-tesoreria-v8.html` | Comparativa | `estado='Activo'` | presupuesto referencia |
+
+---
+
+#### `presupuestoLineas`
+
+- **Schema actual** · `src/services/db.ts:1681-1723`:
+```typescript
+interface PresupuestoLinea {
+  id: UUID;
+  presupuestoId: UUID;
+  scope: 'INMUEBLES' | 'PERSONAL';
+  type: 'INGRESO' | 'COSTE';
+  inmuebleId?: UUID;
+  roomId?: UUID;
+  category: string;
+  subcategory?: string;
+  label: string;
+  counterpartyName?: string;
+  accountId?: UUID;
+  sourceRef?: UUID;
+  amountByMonth: number[]; // 12 posiciones
+  planAmountByMonth?: number[];
+  forecastAmountByMonth?: number[];
+  actualAmountByMonth?: number[];
+  statusCertidumbreByMonth?: EstadoCertidumbre[];
+  planningLayer?: PlanningLayer;
+  note?: string;
+  // ... campos legacy deprecados
+}
+```
+
+- **Cambios propuestos al schema**: Consolidar campos legacy deprecados.
+
+- **KeyPath e índices** · `src/services/db.ts:2391-2400`:
+```typescript
+keyPath: 'id' (UUID string)
+índices: ['presupuestoId', 'inmuebleId', 'tipo', 'categoria', 'frecuencia', 'origen', 'cuentaId', 'contratoId', 'prestamoId']
+```
+
+- **Único escritor** · `src/modules/horizon/proyeccion/presupuesto/services/presupuestoService.ts:105` (`db.add`), `:132` (`db.put`).
+
+- **Lectores principales**:
+  - `src/modules/horizon/proyeccion/presupuesto/services/presupuestoService.ts:124`
+  - `src/services/budgetMatchingService.ts:120`
+  - `src/services/budgetReclassificationService.ts:157`
+
+- **FK reales**:
+  - `presupuestoId → presupuestos.id (UUID)`
+  - `inmuebleId → properties.id (UUID string representation)`
+  - `accountId → accounts.id (UUID string representation)`
+  - `sourceRef → contracts.id | prestamos.id (según contexto)`
+
+- **Reglas de invariante específicas**:
+  1. `amountByMonth[12]` para distribución mensual ENE-DIC.
+  2. `scope + type` discrimina ingreso/coste personal/inmueble.
+  3. `planAmountByMonth` vs `actualAmountByMonth` para desviaciones.
+  4. `sourceRef` vincula a contrato o préstamo si aplica.
+
+- **Origen del primer dato**: Wizard Presupuesto o autogeneración desde histórico.
+
+- **Volumen normal en producción**: 20-100 líneas por presupuesto.
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-mi-plan-proyeccion-v3.html` | Tabla líneas | `presupuestoLineas` listado | detalle presupuesto |
+| `docs/audit-inputs/atlas-tesoreria-v8.html` | Matching | `category`, `counterpartyName` | matching con movimientos |
+
+---
+
+#### `otrosIngresos`
+
+- **Schema actual** · `src/types/personal.ts:420-435`:
+```typescript
+export interface OtrosIngresos {
+  id?: number;
+  personalDataId: number;
+  nombre: string;
+  tipo: 'prestacion-desempleo' | 'subsidio-ayuda' | 'pension-alimenticia' | 'devolucion-deuda' | 'otro';
+  importe: number;
+  frecuencia: 'mensual' | 'trimestral' | 'semestral' | 'anual' | 'unico';
+  titularidad: 'yo' | 'pareja' | 'ambos';
+  cuentaCobro: number;
+  reglasDia: ReglaDia;
+  activo: boolean;
+  fechaInicio?: string;
+  fechaFin?: string;
+  fechaCreacion: string;
+  fechaActualizacion: string;
+}
+```
+
+- **Cambios propuestos al schema**: Ninguno justificado. Schema ya soporta los 5 tipos de ingreso no laboral previstos por Personal v3.
+
+- **KeyPath e índices** · `src/services/db.ts:2489-2493`:
+```typescript
+keyPath: 'id', autoIncrement: true
+índices: ['personalDataId', 'tipo', 'activo', 'fechaActualizacion']
+```
+
+- **Único escritor** · `src/services/otrosIngresosService.ts:52,80,110` (CRUD CompletePut/add/delete sobre store).
+
+- **Lectores principales**:
+  - `src/services/otrosIngresosService.ts:22-23` (`getAll`)
+  - `src/services/personalResumenService.ts:23-24` (agregado Personal)
+  - `src/services/personalResumenService.ts` (cálculo total ingresos no laborales)
+
+- **FK reales**:
+  - `personalDataId → personalData.id (number autoIncrement)`
+  - `cuentaCobro → accounts.id (number autoIncrement)`
+
+- **Reglas de invariante específicas**:
+  1. `tipo` está cerrado al enum (no admite valores libres).
+  2. `frecuencia` determina cómo se proyecta a `treasuryEvents`.
+  3. `activo: false` excluye de cálculo total Personal pero conserva histórico.
+  4. `fechaFin` opcional permite ingresos a término (subsidios temporales).
+
+- **Origen del primer dato**: Alta manual desde UI Personal · sección "Otros ingresos" (no derivado de XML/CSV).
+
+- **Volumen normal en producción**: 0-5 entradas por usuario (subsidios, prestaciones puntuales).
+
+**Trazabilidad real**
+
+| Mockup file | Componente | Dato concreto | Cómo se usa |
+|-------------|------------|---------------|-------------|
+| `docs/audit-inputs/atlas-personal-v3.html` | Sección "Otros ingresos" | `otrosIngresos` listado | listado y total mensual |
+| `docs/audit-inputs/atlas-mi-plan-landing-v3.html` | Card "Ingresos" | `sum(otrosIngresos.importe where activo)` | suma a ingresos del mes |
 
 ---
 
@@ -1297,19 +2988,20 @@ keyPath: 'id' (siempre 1 - singleton)
 | `property_sales` | (mantener) | MANTENER | 0 |
 | `viviendaHabitual` | (mantener) | MANTENER | 0 |
 
-**Total fusiones recomendadas: 6**
-**Stores eliminados por fusión: 6**
-**Nuevo total: 59 - 11 (V1) - 6 (V2) = 42 stores**
+**Total fusiones recomendadas: 6** (de los 10 HUÉRFANOS) + **1 fusión adicional propuesta vía AMBIGUO** (`learningLogs` → `movementLearningRules`)
+**Stores eliminados por fusión total: 7**
+**Nuevo total: 59 - 11 (V1) - 7 (V2) = 41 stores**
 
 ### 3.5 Comparación de tamaños actualizada
 
 | Métrica | V1 | V2 |
 |---------|----|----|
 | Stores actuales | 59 | 59 |
-| Stores objetivo | 48 | 42 |
+| Stores objetivo | 48 | 41 |
 | Eliminaciones V1 | 11 | 11 |
-| Fusiones V2 | 0 | 6 |
-| Reducción total | 19% | **29%** |
+| Fusiones HUÉRFANOS V2 | 0 | 6 |
+| Consolidaciones AMBIGUO V2 | 0 | 1 (`learningLogs`) |
+| Reducción total | 19% | **30,5%** |
 
 ---
 
@@ -1441,8 +3133,8 @@ Heredado de V1 sección 4.5 sin cambios. Ver V1 para detalle del proceso de wipe
 
 ### 5.3 Cambios respecto V1 que requieren validación
 
-1. **Reducción de 48 a 42 stores** — ¿aprobado?
-2. **6 fusiones adicionales** — ¿alguna objeción?
+1. **Reducción de 48 a 41 stores** — ¿aprobado?
+2. **6 fusiones de HUÉRFANOS + 1 consolidación AMBIGUO (`learningLogs`)** — ¿alguna objeción?
 3. **6 stores AMBIGUO** — ¿respuestas a las preguntas?
 4. **Trazabilidad mockup→store concreta** — ¿correcciones?
 
