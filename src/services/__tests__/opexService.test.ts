@@ -3,6 +3,7 @@ import {
   generateBaseOpexForProperty,
   injectContractOpex,
   getOpexRulesForProperty,
+  getCompromisosForInmueble,
 } from '../opexService';
 
 describe('opexService', () => {
@@ -10,11 +11,20 @@ describe('opexService', () => {
 
   beforeEach(async () => {
     const db = await initDB();
-    await db.clear('opexRules');
+    // V5.4+: opexRules is DEPRECATED — tests use compromisosRecurrentes
+    await db.clear('compromisosRecurrentes');
   });
 
   describe('generateBaseOpexForProperty', () => {
-    it('debe crear 7 reglas base para un inmueble', async () => {
+    it('debe crear 7 compromisos base para un inmueble (V5.4: en compromisosRecurrentes)', async () => {
+      await generateBaseOpexForProperty(PROPERTY_ID);
+      const compromisos = await getCompromisosForInmueble(PROPERTY_ID);
+      expect(compromisos).toHaveLength(7);
+      // All should have ambito='inmueble'
+      compromisos.forEach((c) => expect(c.ambito).toBe('inmueble'));
+    });
+
+    it('debe crear 7 reglas base para un inmueble (backward compat: via getOpexRulesForProperty)', async () => {
       await generateBaseOpexForProperty(PROPERTY_ID);
       const rules = await getOpexRulesForProperty(PROPERTY_ID);
       expect(rules).toHaveLength(7);
@@ -61,6 +71,12 @@ describe('opexService', () => {
       rules.forEach((rule) => {
         expect(rule.accountId).toBe(42);
       });
+    });
+
+    it('V5.4: compromiso en compromisosRecurrentes tiene ambito inmueble e inmuebleId correcto', async () => {
+      await generateBaseOpexForProperty(PROPERTY_ID);
+      const compromisos = await getCompromisosForInmueble(PROPERTY_ID);
+      expect(compromisos.every((c) => c.inmuebleId === PROPERTY_ID)).toBe(true);
     });
   });
 
@@ -141,3 +157,4 @@ describe('opexService', () => {
     });
   });
 });
+

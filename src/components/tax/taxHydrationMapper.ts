@@ -19,7 +19,15 @@ export interface TaxHydrationPayload {
   baseLiquidableGeneral: number;
   baseLiquidableAhorro: number;
   cuotaIntegra: number;
+  /** GAP-D6: cuota íntegra estatal */
+  cuotaIntegraEstatal?: number;
+  /** GAP-D6: cuota íntegra autonómica (fallback: Madrid) */
+  cuotaIntegraAutonomica?: number;
   cuotaLiquida: number;
+  /** GAP-D6: cuota líquida estatal */
+  cuotaLiquidaEstatal?: number;
+  /** GAP-D6: cuota líquida autonómica */
+  cuotaLiquidaAutonomica?: number;
   totalRetenciones: number;
   cuotaDiferencial: number;
 }
