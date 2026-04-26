@@ -17,7 +17,7 @@ describe('DB V64 Migration · sub-tarea 5', () => {
   it('should initialize database at version 64', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(64);
+    expect(db.version).toBe(65);
     db.close();
   });
 
@@ -44,14 +44,14 @@ describe('DB V64 Migration · sub-tarea 5', () => {
     const dbModule = await import('../db');
 
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(64);
+    expect(db1.version).toBe(65);
     db1.close();
 
     jest.resetModules();
     const dbModule2 = await import('../db');
 
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(64);
+    expect(db2.version).toBe(65);
     db2.close();
   });
 
@@ -95,7 +95,7 @@ describe('DB V64 Migration · sub-tarea 5', () => {
     const dbModule = await import('../db');
     const db64 = await dbModule.initDB();
 
-    expect(db64.version).toBe(64);
+    expect(db64.version).toBe(65);
     expect(db64.objectStoreNames.contains('learningLogs')).toBe(false);
     expect(db64.objectStoreNames.contains('reconciliationAuditLogs')).toBe(false);
     expect(db64.objectStoreNames.contains('movementLearningRules')).toBe(true);
@@ -179,7 +179,7 @@ describe('DB V64 Migration · sub-tarea 5', () => {
 
     const dbModule = await import('../db');
     const db64 = await dbModule.initDB();
-    expect(db64.version).toBe(64);
+    expect(db64.version).toBe(65);
 
     // learningLogs deleted
     expect(db64.objectStoreNames.contains('learningLogs')).toBe(false);
@@ -271,7 +271,7 @@ describe('DB V64 Migration · sub-tarea 5', () => {
 
     const dbModule = await import('../db');
     const db64 = await dbModule.initDB();
-    expect(db64.version).toBe(64);
+    expect(db64.version).toBe(65);
 
     const rules = (await db64.getAll('movementLearningRules')) as any[];
     const rule = rules[0];

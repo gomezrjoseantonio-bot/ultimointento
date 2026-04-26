@@ -16,7 +16,7 @@ describe('DB V62 Migration', () => {
   it('should initialize database at version 63', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(64);
+    expect(db.version).toBe(65);
     db.close();
   });
 
@@ -73,7 +73,7 @@ describe('DB V62 Migration', () => {
     const dbModule = await import('../db');
     
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(64);
+    expect(db1.version).toBe(65);
     db1.close();
 
     // Reset to force a new connection
@@ -81,7 +81,7 @@ describe('DB V62 Migration', () => {
     const dbModule2 = await import('../db');
     
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(64);
+    expect(db2.version).toBe(65);
     db2.close();
   });
 
@@ -124,7 +124,7 @@ describe('DB V62 Migration', () => {
     const db62 = await dbModule.initDB();
 
     // Verify V62 deleted the stores
-    expect(db62.version).toBe(64);
+    expect(db62.version).toBe(65);
     expect(db62.objectStoreNames.contains('kpiConfigurations')).toBe(false);
     expect(db62.objectStoreNames.contains('opexRules')).toBe(false);
     expect(db62.objectStoreNames.contains('ejerciciosFiscales')).toBe(false);

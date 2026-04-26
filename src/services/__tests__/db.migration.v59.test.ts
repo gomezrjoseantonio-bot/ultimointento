@@ -70,7 +70,7 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     const db = await initDB();
 
     // ── Assert
-    expect(db.version).toBe(62);
+    expect(db.version).toBe(65);
     const stores = Array.from(db.objectStoreNames);
     expect(stores).not.toContain('objetivos_financieros');
     expect(stores).toContain('escenarios');
@@ -155,7 +155,7 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     const { initDB } = await import('../db');
     const db = await initDB();
 
-    expect(db.version).toBe(62);
+    expect(db.version).toBe(65);
     expect(Array.from(db.objectStoreNames)).not.toContain('objetivos_financieros');
     expect(Array.from(db.objectStoreNames)).toContain('escenarios');
 
@@ -166,7 +166,7 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     // Primer arranque: crea V59 desde cero.
     const { initDB } = await import('../db');
     const db1 = await initDB();
-    expect(db1.version).toBe(62);
+    expect(db1.version).toBe(65);
     expect(Array.from(db1.objectStoreNames)).not.toContain('objetivos_financieros');
     db1.close();
 
@@ -174,7 +174,7 @@ describe('DB migration V5.9 — cierre objetivos_financieros', () => {
     jest.resetModules();
     const { initDB: initDB2 } = await import('../db');
     const db2 = await initDB2();
-    expect(db2.version).toBe(62);
+    expect(db2.version).toBe(65);
     expect(Array.from(db2.objectStoreNames)).not.toContain('objetivos_financieros');
     db2.close();
   });
@@ -202,7 +202,7 @@ describe('window.atlasDB · exposición programática', () => {
     // No cerramos `db` aquí — el snapshot reusará la conexión singleton.
 
     const snapshot = await dbModule.exportSnapshotJSON();
-    expect(snapshot.metadata.dbVersion).toBe(62);
+    expect(snapshot.metadata.dbVersion).toBe(65);
     expect(snapshot.metadata.storeCount).toBe(realCount);
     expect(snapshot.metadata.stores).toEqual(realStores);
     // El store viejo NO debe aparecer

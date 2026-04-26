@@ -103,7 +103,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
       // No exportamos DB_VERSION directamente · validamos vía la firma
       // del módulo abriendo una DB nueva.
       const db = await dbModule.initDB();
-      expect(db.version).toBe(64);
+      expect(db.version).toBe(65);
       db.close();
     });
   });
@@ -289,7 +289,7 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
       // el backfill V60 sigue corriendo en el camino V59 → 61.
       const dbModule = await import('../db');
       const db = await dbModule.initDB();
-      expect(db.version).toBe(64);
+      expect(db.version).toBe(65);
 
       const records = await db.getAll('arrastresIRPF');
       expect(records).toHaveLength(1);

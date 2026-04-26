@@ -16,7 +16,7 @@ describe('DB V63+V64 Migration · sub-tareas 4+4-bis+5', () => {
   it('should initialize database at version 64', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(64);
+    expect(db.version).toBe(65);
     db.close();
   });
 
@@ -67,14 +67,14 @@ describe('DB V63+V64 Migration · sub-tareas 4+4-bis+5', () => {
     const dbModule = await import('../db');
 
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(64);
+    expect(db1.version).toBe(65);
     db1.close();
 
     jest.resetModules();
     const dbModule2 = await import('../db');
 
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(64);
+    expect(db2.version).toBe(65);
     db2.close();
   });
 
@@ -123,7 +123,7 @@ describe('DB V63+V64 Migration · sub-tareas 4+4-bis+5', () => {
     const dbModule = await import('../db');
     const db64 = await dbModule.initDB();
 
-    expect(db64.version).toBe(64);
+    expect(db64.version).toBe(65);
     expect(db64.objectStoreNames.contains('autonomos')).toBe(false);
     expect(db64.objectStoreNames.contains('pensiones')).toBe(false);
     expect(db64.objectStoreNames.contains('matchingConfiguration')).toBe(false);
@@ -191,7 +191,7 @@ describe('DB V63+V64 Migration · sub-tareas 4+4-bis+5', () => {
 
     const dbModule = await import('../db');
     const db64 = await dbModule.initDB();
-    expect(db64.version).toBe(64);
+    expect(db64.version).toBe(65);
 
     // Autonomo migrated into ingresos with tipo='autonomo'
     const ingresos = (await db64.getAll('ingresos')) as any[];
