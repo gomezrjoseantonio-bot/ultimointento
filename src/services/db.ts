@@ -12,7 +12,8 @@ import type {
   PatronGastoPersonal,
   GastoPersonalReal,
   PensionIngreso,
-  TraspasoPlan
+  TraspasoPlan,
+  Ingreso as IngresoPersonal
 } from '../types/personal';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
@@ -27,7 +28,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 60; // V60 (TAREA 7 sub-tarea 1): schema extensions on surviving stores · non-destructive · prepara terreno para eliminación 19 stores en sub-tareas 2-8
+const DB_VERSION = 61; // V61 (TAREA 7 sub-tarea 2): rename `nominas → ingresos` (nuevo store + Ingreso discriminated union) · V60 sub-tarea 1 hizo schema extensions sobre los 9 stores supervivientes.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2094,7 +2095,24 @@ interface AtlasHorizonDB {
   patrimonioSnapshots: PatrimonioSnapshot; // Dashboard: Historical net worth tracking
   personalData: PersonalData; // V1.2: Personal data
   personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
-  nominas: Nomina; // V1.2: Salary data
+  nominas: Nomina; // V1.2: Salary data · V61 (sub-tarea 2): legacy · datos copiados a `ingresos` con tipo='nomina' · consumidores se redirigirán en sub-tarea 6 · store eliminado en sub-tarea posterior.
+  /**
+   * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
+   *
+   * Unifica `nominas`, `autonomos` y `pensiones` bajo una unión discriminada
+   * por `tipo`. La migración V60→V61 copia los registros de `nominas` (con
+   * `tipo='nomina'`) preservando id. Los registros de `autonomos` y
+   * `pensiones` se absorberán en sub-tareas posteriores. Los consumidores
+   * siguen usando los stores legacy hasta sub-tarea 6 (cambio de
+   * consumidores). Sub-tarea posterior eliminará `nominas`/`autonomos`/
+   * `pensiones`.
+   *
+   * Índices: `personalDataId`, `tipo`, `fechaActualizacion`.
+   *
+   * Nota TS: en este módulo se importa con alias `IngresoPersonal` para no
+   * colisionar con la interfaz local `Ingreso` (H10 · Treasury income).
+   */
+  ingresos: IngresoPersonal;
   autonomos: Autonomo; // V1.2: Self-employed data
   planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
@@ -2582,6 +2600,16 @@ export const initDB = async () => {
           nominasStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
         }
 
+        // V61 (TAREA 7 sub-tarea 2): store unificado `ingresos`. Para DBs
+        // frescas se crea aquí; para DBs existentes se crea + se rellena en
+        // el bloque `if (oldVersion < 61)` más abajo.
+        if (!db.objectStoreNames.contains('ingresos')) {
+          const ingresosStore = db.createObjectStore('ingresos', { keyPath: 'id', autoIncrement: true });
+          ingresosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          ingresosStore.createIndex('tipo', 'tipo', { unique: false });
+          ingresosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        }
+
         if (!db.objectStoreNames.contains('autonomos')) {
           const autonomosStore = db.createObjectStore('autonomos', { keyPath: 'id', autoIncrement: true });
           autonomosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
@@ -2810,6 +2838,13 @@ export const initDB = async () => {
 
         // ═══════════════════════════════════════════════════
         // LIMPIEZA V44 — Eliminación de stores obsoletos
+        //
+        // NOTA: el antiguo store legacy `ingresos` (eliminado aquí desde V44)
+        // se REUTILIZA como store principal a partir de V61 (TAREA 7
+        // sub-tarea 2 · rename `nominas → ingresos` con unión discriminada
+        // `Ingreso`). Por eso ya NO se incluye en esta lista: cualquier DB
+        // que pasase por V44 ya lo eliminó hace años, y la creación V61 está
+        // a salvo del barrido.
         // ═══════════════════════════════════════════════════
         const STORES_OBSOLETOS = [
           'capex',
@@ -2820,7 +2855,6 @@ export const initDB = async () => {
           'mobiliarioActivo',
           'personalExpenses',
           'movimientosPersonales',
-          'ingresos',
           'budgetLines',
           'budgets',
         ];
@@ -3271,8 +3305,9 @@ export const initDB = async () => {
         // V60 — TAREA 7 sub-tarea 1: Schema extensions on surviving stores
         //   Cambios NO destructivos · sólo añade campos opcionales,
         //   índices y backfill no rompedor sobre stores que SOBREVIVEN
-        //   en V60. Las eliminaciones de los 19 stores y el rename
-        //   nominas → ingresos se hacen en sub-tareas 2-8.
+        //   en V60. Las eliminaciones de los 19 stores se hacen en
+        //   sub-tareas 3-8. El rename `nominas → ingresos` lo cubre
+        //   sub-tarea 2 (bloque V61 más abajo).
         //
         //   Stores afectados:
         //     1. arrastresIRPF       · añadir índice 'origen' + backfill
@@ -3323,6 +3358,61 @@ export const initDB = async () => {
           // por registro y trata los nuevos campos opcionales como
           // `undefined` al leer registros pre-V60. No requieren acción
           // en runtime de migración.
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V61 — TAREA 7 sub-tarea 2: rename `nominas → ingresos`
+        //   Crea el store unificado `ingresos` (unión discriminada
+        //   `Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension`)
+        //   y copia los registros existentes de `nominas` añadiendo
+        //   `tipo='nomina'`. Cambio NO destructivo: el store `nominas`
+        //   se mantiene intacto · los consumidores siguen usándolo hasta
+        //   sub-tarea 6 (cambio de consumidores). `autonomos` y
+        //   `pensiones` se absorberán en sub-tareas posteriores con su
+        //   propio mapeo de campos a la unión `Ingreso`.
+        //
+        //   Idempotencia:
+        //   - El bloque de creación de stores ya garantiza que `ingresos`
+        //     existe antes de entrar aquí.
+        //   - El backfill sólo añade registros si `ingresos` está vacío,
+        //     evitando duplicados si la migración se ejecutase dos veces
+        //     (p.ej. tras una recuperación de error).
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 61) {
+          if (
+            db.objectStoreNames.contains('ingresos') &&
+            db.objectStoreNames.contains('nominas')
+          ) {
+            const ingresosStore = transaction.objectStore('ingresos');
+            const nominasStore = transaction.objectStore('nominas');
+
+            // Sólo rellenamos `ingresos` si está vacío; protege ante
+            // re-ejecuciones del upgrade y evita pisar registros ya
+            // migrados manualmente.
+            ingresosStore.count().then(async (count) => {
+              if (count > 0) return;
+              // Iteramos `nominas` con cursor promise-based (mismo patrón
+              // que la migración V60 backfill arrastresIRPF y la V5.4
+              // opexRules → compromisosRecurrentes). Para cada registro
+              // añadimos `tipo='nomina'` y lo escribimos en `ingresos`
+              // preservando el id original.
+              let cursor = await nominasStore.openCursor();
+              while (cursor) {
+                const value = cursor.value as Record<string, unknown>;
+                const ingresoNomina = { ...value, tipo: 'nomina' as const };
+                // `put` con la key explícita preserva el id original,
+                // permitiendo correlacionar registros de `nominas` y
+                // `ingresos` durante la fase de transición (sub-tareas
+                // 2–6). Usamos un cast porque la unión `Ingreso` se
+                // valida estructuralmente en TS pero `put` admite el
+                // shape al runtime sin ambigüedad.
+                await ingresosStore.put(ingresoNomina as unknown as IngresoPersonal);
+                cursor = await cursor.continue();
+              }
+            }).catch((err) => {
+              console.warn('[DB V61] copia nominas → ingresos falló:', err);
+            });
+          }
         }
       },
       blocked() {
