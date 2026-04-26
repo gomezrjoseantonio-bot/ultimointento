@@ -51,7 +51,7 @@ export const inversionesService = {
     const db = await initDB();
     const posiciones = await db.getAll('inversiones');
     return posiciones
-      .filter((p) => p.activo)
+      .filter((p) => p.activo && !new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']).has((p as any).tipo))
       .map((p) => normalizePosicion(p as PosicionInversion));
   },
 
@@ -62,9 +62,12 @@ export const inversionesService = {
   }> {
     const db = await initDB();
     const todas = await db.getAll('inversiones');
+    // plan_pensiones migrado a planesPensiones en V65 (TAREA 13)
+    const TIPOS_PLAN_PENSIONES_ALL = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
+    const todasFiltradas = todas.filter((p: any) => !TIPOS_PLAN_PENSIONES_ALL.has(p.tipo));
     return {
-      activas: todas.filter((p: any) => p.activo !== false).map((p: any) => normalizePosicion(p as PosicionInversion)),
-      cerradas: todas.filter((p: any) => p.activo === false).map((p: any) => normalizePosicion(p as PosicionInversion)),
+      activas: todasFiltradas.filter((p: any) => p.activo !== false).map((p: any) => normalizePosicion(p as PosicionInversion)),
+      cerradas: todasFiltradas.filter((p: any) => p.activo === false).map((p: any) => normalizePosicion(p as PosicionInversion)),
     };
   },
 

@@ -20,7 +20,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 64; // V64 (TAREA 7 sub-tarea 5): eliminar 2 stores AMBIGUOS · learningLogs→movementLearningRules.history[] (FIFO 50) · reconciliationAuditLogs (deuda técnica · 0 lectores · wipe) · V63 (sub-tarea 4 + 4-bis): eliminar 8 stores huérfanos fusionados · nominas (deuda sub-tarea 2 · datos ya en ingresos.tipo='nomina') · autonomos→ingresos.tipo='autonomo' · pensiones→ingresos.tipo='pension' · otrosIngresos→ingresos.tipo='otro' (+metadata.otro) · arrastresManual→arrastresIRPF.origen='manual' · documentosFiscales→documents.metadata.tipo='fiscal' · loan_settlements→prestamos.liquidacion · matchingConfiguration→keyval['matchingConfig'] · V62 (sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 (sub-tarea 1): schema extensions.
+const DB_VERSION = 65; // V65 (TAREA 13): módulo planes de pensiones · 3 stores nuevos (planesPensiones, aportacionesPlan, traspasosPlanPensiones) · planesPensionInversion+traspasosPlanes eliminados
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2530,22 +2530,53 @@ export const initDB = async () => {
 
         // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
-        if (!db.objectStoreNames.contains('planesPensionInversion')) {
-          const planesStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
-          planesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          planesStore.createIndex('tipo', 'tipo', { unique: false });
-          planesStore.createIndex('titularidad', 'titularidad', { unique: false });
-          planesStore.createIndex('esHistorico', 'esHistorico', { unique: false });
-          planesStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+        // planesPensionInversion + traspasosPlanes: solo en DBs con oldVersion < 65
+        // (para migraciones); en DBs frescas V65 no se crean
+        if (oldVersion > 0 && oldVersion < 65) {
+          if (!db.objectStoreNames.contains('planesPensionInversion')) {
+            const planesLegacyStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
+            planesLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+            planesLegacyStore.createIndex('tipo', 'tipo', { unique: false });
+            planesLegacyStore.createIndex('titularidad', 'titularidad', { unique: false });
+            planesLegacyStore.createIndex('esHistorico', 'esHistorico', { unique: false });
+            planesLegacyStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
+          }
+
+          // V5.2: Traspasos entre planes de pensiones (legacy)
+          if (!db.objectStoreNames.contains('traspasosPlanes')) {
+            const traspasosLegacyStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
+            traspasosLegacyStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+            traspasosLegacyStore.createIndex('planOrigenId', 'planOrigenId', { unique: false });
+            traspasosLegacyStore.createIndex('planDestinoId', 'planDestinoId', { unique: false });
+            traspasosLegacyStore.createIndex('fecha', 'fecha', { unique: false });
+          }
         }
 
-        // V5.2: Traspasos entre planes de pensiones
-        if (!db.objectStoreNames.contains('traspasosPlanes')) {
-          const traspasosStore = db.createObjectStore('traspasosPlanes', { keyPath: 'id', autoIncrement: true });
-          traspasosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          traspasosStore.createIndex('planOrigenId', 'planOrigenId', { unique: false });
-          traspasosStore.createIndex('planDestinoId', 'planDestinoId', { unique: false });
-          traspasosStore.createIndex('fecha', 'fecha', { unique: false });
+        // V65 (TAREA 13): módulo planes de pensiones · stores nuevos
+        // planesPensionInversion: se elimina en V65 para DBs frescas — véase bloque upgrade
+        // traspasosPlanes: se elimina en V65 para DBs frescas — véase bloque upgrade
+
+        if (!db.objectStoreNames.contains('planesPensiones')) {
+          const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
+          planesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+          planesStore.createIndex('tipoAdministrativo', 'tipoAdministrativo', { unique: false });
+          planesStore.createIndex('estado', 'estado', { unique: false });
+          planesStore.createIndex('titular', 'titular', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('aportacionesPlan')) {
+          const aportacionesStore = db.createObjectStore('aportacionesPlan', { keyPath: 'id' });
+          aportacionesStore.createIndex('planId', 'planId', { unique: false });
+          aportacionesStore.createIndex('ejercicioFiscal', 'ejercicioFiscal', { unique: false });
+          aportacionesStore.createIndex('planId+ejercicioFiscal', ['planId', 'ejercicioFiscal'], { unique: false });
+          aportacionesStore.createIndex('origen', 'origen', { unique: false });
+          aportacionesStore.createIndex('ingresoIdNomina', 'ingresoIdNomina', { unique: false });
+        }
+
+        if (!db.objectStoreNames.contains('traspasosPlanPensiones')) {
+          const traspasosNuevoStore = db.createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true });
+          traspasosNuevoStore.createIndex('planId', 'planId', { unique: false });
+          traspasosNuevoStore.createIndex('fechaEjecucion', 'fechaEjecucion', { unique: false });
         }
 
         // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' + metadata.otro
@@ -3640,6 +3671,192 @@ export const initDB = async () => {
             }
             if (db.objectStoreNames.contains('reconciliationAuditLogs')) {
               db.deleteObjectStore('reconciliationAuditLogs');
+            }
+          })();
+        }
+
+        if (oldVersion < 65) {
+          // ── V65 (TAREA 13): módulo planes de pensiones ──────────────────────
+          // 1. Crear nuevos stores si no existen
+          if (!db.objectStoreNames.contains('planesPensiones')) {
+            const planesStore = db.createObjectStore('planesPensiones', { keyPath: 'id' });
+            planesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
+            planesStore.createIndex('tipoAdministrativo', 'tipoAdministrativo', { unique: false });
+            planesStore.createIndex('estado', 'estado', { unique: false });
+            planesStore.createIndex('titular', 'titular', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('aportacionesPlan')) {
+            const aportacionesStore = db.createObjectStore('aportacionesPlan', { keyPath: 'id' });
+            aportacionesStore.createIndex('planId', 'planId', { unique: false });
+            aportacionesStore.createIndex('ejercicioFiscal', 'ejercicioFiscal', { unique: false });
+            aportacionesStore.createIndex('planId+ejercicioFiscal', ['planId', 'ejercicioFiscal'], { unique: false });
+            aportacionesStore.createIndex('origen', 'origen', { unique: false });
+            aportacionesStore.createIndex('ingresoIdNomina', 'ingresoIdNomina', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('traspasosPlanPensiones')) {
+            const traspasosNuevoStore = db.createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true });
+            traspasosNuevoStore.createIndex('planId', 'planId', { unique: false });
+            traspasosNuevoStore.createIndex('fechaEjecucion', 'fechaEjecucion', { unique: false });
+          }
+
+          // 2. Migrar datos (async dentro de la transacción)
+          return (async () => {
+            const genUUID = (): string =>
+              typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+            const ahora = new Date().toISOString();
+
+            // 2a. Migrar planesPensionInversion → planesPensiones + aportacionesPlan
+            if (db.objectStoreNames.contains('planesPensionInversion')) {
+              try {
+                const srcPlanes = (transaction as any).objectStore('planesPensionInversion');
+                const dstPlanes = transaction.objectStore('planesPensiones');
+                const dstAportaciones = transaction.objectStore('aportacionesPlan');
+
+                const planes = (await srcPlanes.getAll()) as Array<Record<string, unknown>>;
+                for (const plan of planes) {
+                  // Solo migrar planes de pensiones (no inversiones ni acciones)
+                  if ((plan.tipo as string) !== 'plan-pensiones') continue;
+
+                  const tipoAdm = (plan.empresaNif || plan.empresaNombre) ? 'PPE' : 'PPI';
+                  const newId = genUUID();
+                  const ahora2 = String(plan.fechaCreacion ?? ahora);
+
+                  const nuevoPlan: Record<string, unknown> = {
+                    id: newId,
+                    nombre: plan.nombre ?? 'Plan de pensiones',
+                    titular: (plan.titularidad === 'pareja' ? 'pareja' : 'yo') as 'yo' | 'pareja',
+                    personalDataId: plan.personalDataId,
+                    tipoAdministrativo: tipoAdm,
+                    ...(tipoAdm === 'PPE' ? { subtipoPPE: 'empleador_unico' as const } : {}),
+                    gestoraActual: String(plan.entidad ?? ''),
+                    valorActual: typeof plan.valorActual === 'number' ? plan.valorActual : 0,
+                    fechaContratacion: String(plan.fechaApertura ?? ahora2.slice(0, 10)),
+                    ...(plan.empresaNif ? { empresaPagadora: { cif: plan.empresaNif, nombre: String(plan.empresaNombre ?? '') } } : {}),
+                    estado: 'activo' as const,
+                    origen: 'migrado_v60' as const,
+                    fechaCreacion: ahora2,
+                    fechaActualizacion: ahora,
+                  };
+                  try { await dstPlanes.add(nuevoPlan as any); } catch { /* ya existe */ }
+
+                  // Migrar historialAportaciones
+                  if (plan.historialAportaciones && typeof plan.historialAportaciones === 'object') {
+                    for (const [clave, entrada] of Object.entries(plan.historialAportaciones as Record<string, any>)) {
+                      if (clave.startsWith('evento_')) continue;
+                      const añoNum = parseInt(clave.slice(0, 4), 10);
+                      if (!Number.isFinite(añoNum)) continue;
+                      const aportacion: Record<string, unknown> = {
+                        id: genUUID(),
+                        planId: newId,
+                        fecha: clave.length === 7 ? `${clave}-01` : `${clave}-01-01`,
+                        ejercicioFiscal: añoNum,
+                        importeTitular: Number(entrada.titular ?? 0),
+                        importeEmpresa: Number(entrada.empresa ?? 0),
+                        origen: entrada.fuente === 'xml_aeat' ? 'xml_aeat' : 'migrado_v60',
+                        granularidad: clave.length === 7 ? 'mensual' : 'anual',
+                        fechaCreacion: ahora,
+                        fechaActualizacion: ahora,
+                      };
+                      try { await dstAportaciones.add(aportacion as any); } catch { /* skip dup */ }
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn('[DB V65] migración planesPensionInversion→planesPensiones falló:', err);
+              }
+            }
+
+            // 2b. Migrar inversiones con tipo='plan_pensiones' o tipo='plan-pensiones'
+            if (db.objectStoreNames.contains('inversiones')) {
+              try {
+                const invStore = transaction.objectStore('inversiones');
+                const dstPlanes = transaction.objectStore('planesPensiones');
+                const dstAportaciones = transaction.objectStore('aportacionesPlan');
+                const inversiones = (await invStore.getAll()) as Array<Record<string, unknown>>;
+                const PLAN_TIPOS = new Set(['plan_pensiones', 'plan-pensiones', 'plan_empleo']);
+                for (const inv of inversiones) {
+                  if (!PLAN_TIPOS.has(String(inv.tipo ?? ''))) continue;
+                  const tipoAdm = (inv.empresaNif || inv.entidad?.toString().toLowerCase().includes('emp')) ? 'PPE' : 'PPI';
+                  const newId = genUUID();
+                  const nuevoPlan: Record<string, unknown> = {
+                    id: newId,
+                    nombre: inv.nombre ?? 'Plan de pensiones',
+                    titular: 'yo' as const,
+                    personalDataId: inv.personalDataId ?? 0,
+                    tipoAdministrativo: tipoAdm,
+                    gestoraActual: String(inv.entidad ?? ''),
+                    valorActual: Number(inv.valor_actual ?? 0),
+                    fechaContratacion: String(inv.fecha_compra ?? inv.fecha_valoracion ?? ahora.slice(0, 10)),
+                    estado: 'activo' as const,
+                    origen: 'migrado_v60' as const,
+                    fechaCreacion: String(inv.created_at ?? ahora),
+                    fechaActualizacion: ahora,
+                  };
+                  try { await dstPlanes.add(nuevoPlan as any); } catch { /* skip */ }
+
+                  // Migrar aportaciones
+                  for (const ap of (inv.aportaciones as any[] ?? [])) {
+                    if (!ap.fecha) continue;
+                    const añoNum = parseInt(String(ap.fecha).slice(0, 4), 10);
+                    const aportacion: Record<string, unknown> = {
+                      id: genUUID(),
+                      planId: newId,
+                      fecha: ap.fecha,
+                      ejercicioFiscal: añoNum,
+                      importeTitular: Number(ap.importe ?? 0),
+                      importeEmpresa: 0,
+                      origen: 'migrado_v60' as const,
+                      granularidad: 'puntual' as const,
+                      fechaCreacion: ahora,
+                      fechaActualizacion: ahora,
+                    };
+                    try { await dstAportaciones.add(aportacion as any); } catch { /* skip */ }
+                  }
+                  // Eliminar de inversiones
+                  try { await invStore.delete(inv.id as number); } catch { /* skip */ }
+                }
+              } catch (err) {
+                console.warn('[DB V65] migración inversiones plan_pensiones→planesPensiones falló:', err);
+              }
+            }
+
+            // 2c. Migrar traspasosPlanes → traspasosPlanPensiones
+            if (
+              db.objectStoreNames.contains('traspasosPlanes') &&
+              db.objectStoreNames.contains('traspasosPlanPensiones')
+            ) {
+              try {
+                const srcT = (transaction as any).objectStore('traspasosPlanes');
+                const dstT = transaction.objectStore('traspasosPlanPensiones');
+                const traspasos = (await srcT.getAll()) as Array<Record<string, unknown>>;
+                for (const t of traspasos) {
+                  const nuevoT: Record<string, unknown> = {
+                    planId: String(t.planOrigenId ?? ''),
+                    fechaEjecucion: String(t.fecha ?? ahora.slice(0, 10)),
+                    gestoraOrigen: String(t.planOrigenEntidad ?? ''),
+                    gestoraDestino: String(t.planDestinoEntidad ?? ''),
+                    importeTraspasado: Number(t.importe ?? 0),
+                    esTotal: Boolean(t.esTotal),
+                    notas: t.notas,
+                    fechaCreacion: String(t.fechaCreacion ?? ahora),
+                    fechaActualizacion: ahora,
+                  };
+                  try { await dstT.add(nuevoT as any); } catch { /* skip */ }
+                }
+              } catch (err) {
+                console.warn('[DB V65] migración traspasosPlanes→traspasosPlanPensiones falló:', err);
+              }
+            }
+
+            // 3. Eliminar stores legacy
+            if (db.objectStoreNames.contains('planesPensionInversion')) {
+              db.deleteObjectStore('planesPensionInversion');
+            }
+            if (db.objectStoreNames.contains('traspasosPlanes')) {
+              db.deleteObjectStore('traspasosPlanes');
             }
           })();
         }

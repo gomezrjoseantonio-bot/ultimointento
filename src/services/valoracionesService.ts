@@ -80,6 +80,22 @@ export const valoracionesService = {
       });
     }
 
+    // Planes de pensiones en el nuevo store V65 (TAREA 13)
+    try {
+      const planesNuevos: any[] = await (db as any).getAll('planesPensiones');
+      for (const plan of planesNuevos) {
+        if (plan.estado === 'rescatado_total') continue;
+        const ultima = await this.getUltimaValoracion('plan_pensiones', plan.id as any);
+        result.push({
+          id: plan.id as any,
+          nombre: plan.nombre + (plan.gestoraActual ? ` (${plan.gestoraActual})` : ''),
+          tipo: 'plan_pensiones',
+          ultima_valoracion: ultima?.valor ?? plan.valorActual ?? 0,
+          fecha_ultima_valoracion: ultima?.fecha_valoracion,
+        });
+      }
+    } catch { /* store puede no existir en DBs muy antiguas */ }
+
     return result;
   },
 
