@@ -152,6 +152,22 @@ export interface Prestamo {
   capitalVivoAlImportar?: number;
   documentoFEIN?: string;
 
+  /**
+   * V60 (TAREA 7 sub-tarea 1): liquidación final del préstamo (cancelación
+   * total o parcial). Absorbe los datos del store eliminado
+   * `loan_settlements` (sub-tarea 4 elimina el store y migra los registros
+   * al campo `prestamos[].liquidacion` correspondiente).
+   *
+   * Tipo `unknown` aquí para evitar dependencia circular con
+   * `services/db.ts` donde vive la interfaz `LoanSettlement` completa.
+   * Los consumidores que necesiten el tipo concreto deben hacer cast a
+   * `LoanSettlement` desde `src/services/db.ts`.
+   *
+   * Default `null` post-V60 (préstamo vivo). `undefined` para préstamos
+   * pre-V60 (campo aún no inicializado).
+   */
+  liquidacion?: unknown | null;
+
   activo: boolean;
 
   // Audit
