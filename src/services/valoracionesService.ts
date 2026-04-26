@@ -177,10 +177,6 @@ export const valoracionesService = {
   ): Promise<void> {
     const db = await initDB();
     const now = new Date().toISOString();
-    const [anioStr, mesStr] = fecha.split('-');
-    const anio = parseInt(anioStr, 10);
-    const mes = parseInt(mesStr, 10);
-    const fechaCierre = `${fecha}-01`;
 
     let inmueblesTotal = 0;
     let inversionesTotal = 0;
@@ -242,16 +238,11 @@ export const valoracionesService = {
 
     const patrimonioTotal = inmueblesTotal + inversionesTotal;
 
-    // Calcular variación respecto al mes anterior
+    // Calcular variación respecto al mes anterior (informativo, no persistido)
     const anteriorFecha = this.mesAnterior(fecha);
     const anterior = await this.getSnapshotMensual(anteriorFecha);
-    const variacionEuros = anterior
-      ? patrimonioTotal - anterior.patrimonio_total
-      : 0;
-    const variacionPorcentaje =
-      anterior && anterior.patrimonio_total > 0
-        ? (variacionEuros / anterior.patrimonio_total) * 100
-        : 0;
+    void anterior;
+    void patrimonioTotal;
 
     // V62: valoraciones_mensuales store removed (derivable from valoraciones_historicas)
     // Snapshot saving now a no-op

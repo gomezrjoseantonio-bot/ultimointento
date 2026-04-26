@@ -36,6 +36,8 @@ const DEFAULT_CONFIG: ConfiguracionFiscal = {
   updatedAt: new Date().toISOString(),
 };
 
+// V62: helper kept for future use when re-introducing optional store checks.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function hasStore(db: any, storeName: string): boolean {
   return !!db?.objectStoreNames?.contains?.(storeName);
 }

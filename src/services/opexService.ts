@@ -2,7 +2,7 @@
 // V62 (TAREA 7 sub-tarea 3): store eliminado · stub enriquecido para preservar API surface.
 // Ya migrado a compromisosRecurrentes en TAREA 2.
 
-import { initDB, OpexRule, OpexCategory, OpexFrequency } from './db';
+import { initDB, OpexRule } from './db';
 import { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 
 // Re-export types from db.ts for backward compatibility

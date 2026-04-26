@@ -9,8 +9,6 @@ import type {
   Autonomo,
   PlanPensionInversion,
   OtrosIngresos,
-  PatronGastoPersonal,
-  GastoPersonalReal,
   PensionIngreso,
   TraspasoPlan,
   Ingreso as IngresoPersonal

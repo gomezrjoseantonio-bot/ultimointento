@@ -17,11 +17,23 @@ type EstadoConfig = {
 };
 
 const ESTADO_CONFIG: Record<EstadoEjercicio, EstadoConfig> = {
+  vivo: {
+    label: 'En curso',
+    colorVar: 'var(--teal-600)',
+    bgVar: 'var(--teal-100)',
+    Icon: Circle,
+  },
   en_curso: {
     label: 'En curso',
     colorVar: 'var(--teal-600)',
     bgVar: 'var(--teal-100)',
     Icon: Circle,
+  },
+  pendiente_cierre: {
+    label: 'Pendiente',
+    colorVar: 'var(--grey-700)',
+    bgVar: 'var(--grey-100)',
+    Icon: Clock,
   },
   cerrado: {
     label: 'Pendiente',
@@ -34,6 +46,12 @@ const ESTADO_CONFIG: Record<EstadoEjercicio, EstadoConfig> = {
     colorVar: 'var(--navy-900)',
     bgVar: 'var(--navy-100)',
     Icon: CheckCircle,
+  },
+  prescrito: {
+    label: 'Prescrito',
+    colorVar: 'var(--grey-700)',
+    bgVar: 'var(--grey-100)',
+    Icon: Clock,
   },
 };
 

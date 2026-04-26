@@ -1,6 +1,16 @@
 // ═══ ESTADOS Y TIPOS BASE ═══
 
-export type EstadoEjercicio = 'en_curso' | 'cerrado' | 'declarado';
+// V62 (TAREA 7 sub-tarea 3): unión ampliada para alinearse con la
+// definición canónica de `src/services/db.ts`. Mantenemos esta única
+// definición compartida — los consumidores la importan desde aquí o
+// desde `db.ts` (que la re-exporta vía la interfaz `EjercicioFiscal`).
+export type EstadoEjercicio =
+  | 'vivo'
+  | 'en_curso'
+  | 'pendiente_cierre'
+  | 'cerrado'
+  | 'declarado'
+  | 'prescrito';
 export type OrigenDeclaracion = 'pdf_importado' | 'xml_importado' | 'manual' | 'no_presentada';
 export type TipoDocumentoFiscal =
   | 'factura'
@@ -35,18 +45,23 @@ export type ConceptoFiscalVinculable =
 
 // ═══ EJERCICIO FISCAL — Entidad principal ═══
 
+// V62 (TAREA 7 sub-tarea 3): campos opcionales alineados con la versión
+// rica de `src/services/db.ts` para que ambos sitios sean estructuralmente
+// compatibles (necesario tras la eliminación del store legacy
+// `ejerciciosFiscales` y la unificación de tipos).
 export interface EjercicioFiscal {
   ejercicio: number;
+  año?: number;
   estado: EstadoEjercicio;
   calculoAtlas?: DeclaracionIRPF;
   calculoAtlasFecha?: string;
   declaracionAeat?: DeclaracionIRPF;
   declaracionAeatFecha?: string;
   declaracionAeatPdfRef?: string;
-  declaracionAeatOrigen: OrigenDeclaracion;
+  declaracionAeatOrigen?: OrigenDeclaracion;
   casillasRaw?: Record<string, number | string>;
-  arrastresRecibidos: ArrastresEjercicio;
-  arrastresGenerados: ArrastresEjercicio;
+  arrastresRecibidos?: ArrastresEjercicio;
+  arrastresGenerados?: ArrastresEjercicio;
   createdAt: string;
   updatedAt: string;
   cerradoAt?: string;

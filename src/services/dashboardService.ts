@@ -550,12 +550,9 @@ class DashboardService {
     };
   }> {
     try {
-      const db = await initDB();
+      await initDB();
 
       const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const previousMonthKey = `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}`;
       const fechaCalculo = now.toISOString();
 
       const toNumber = (value: unknown): number => {

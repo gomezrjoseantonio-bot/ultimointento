@@ -43,15 +43,41 @@ function emptyArrastresIn(): EjercicioFiscalCoord['arrastresIn'] {
   };
 }
 
+function coordEstadoToLegacy(estado: EjercicioFiscalCoord['estado']): EstadoEjercicio {
+  // El modelo coord usa `'pendiente'` para el estado intermedio cerrado;
+  // el modelo legacy lo expone como `'pendiente_cierre'`.
+  return estado === 'pendiente' ? 'pendiente_cierre' : estado;
+}
+
 function coordToLegacy(c: EjercicioFiscalCoord): EjercicioFiscal {
   return {
     ejercicio: c.año,
     año: c.año,
-    estado: c.estado,
-    origen: 'manual',
+    estado: coordEstadoToLegacy(c.estado),
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   };
+}
+
+type CoordEstado = EjercicioFiscalCoord['estado'];
+
+function toCoordEstado(estado: EstadoEjercicio | undefined, fallback: CoordEstado = 'en_curso'): CoordEstado {
+  // Mapeo del superconjunto legacy (`vivo`/`pendiente_cierre`/`cerrado`) al
+  // subconjunto del modelo coordinador.
+  switch (estado) {
+    case 'vivo':
+    case 'en_curso':
+      return 'en_curso';
+    case 'pendiente_cierre':
+    case 'cerrado':
+      return 'pendiente';
+    case 'declarado':
+      return 'declarado';
+    case 'prescrito':
+      return 'prescrito';
+    default:
+      return fallback;
+  }
 }
 
 function legacyAño(record: EjercicioFiscal): number | undefined {
@@ -92,7 +118,7 @@ export async function getOrCreateEjercicio(
   const now = nowIso();
   const created: EjercicioFiscalCoord = {
     año,
-    estado: estadoDefault,
+    estado: toCoordEstado(estadoDefault),
     arrastresIn: emptyArrastresIn(),
     inmuebleIds: [],
     createdAt: now,
@@ -118,12 +144,12 @@ export async function saveLegacyEjercicioRecord(record: EjercicioFiscal): Promis
   const merged: EjercicioFiscalCoord = existing
     ? {
         ...existing,
-        estado: record.estado ?? existing.estado,
+        estado: toCoordEstado(record.estado, existing.estado),
         updatedAt: now,
       }
     : {
         año,
-        estado: record.estado ?? 'en_curso',
+        estado: toCoordEstado(record.estado),
         arrastresIn: emptyArrastresIn(),
         inmuebleIds: [],
         createdAt: typeof record.createdAt === 'string' ? record.createdAt : now,
@@ -139,7 +165,7 @@ export async function saveEjercicio(record: EjercicioFiscal): Promise<void> {
 
 export async function cerrarEjercicio(ejercicio: number): Promise<EjercicioFiscal> {
   const current = await getOrCreateEjercicio(ejercicio);
-  current.estado = 'pendiente';
+  current.estado = 'pendiente_cierre';
   current.cerradoAt = nowIso();
   return saveLegacyEjercicioRecord(current);
 }
@@ -195,19 +221,14 @@ export async function getTresVerdades(ejercicio: number): Promise<{
  * funcionalidad se reimplemente sobre `documents` (sub-tareas
  * posteriores). Los hooks que la consumen ya manejan la lista vacía.
  */
-export async function getCoberturaDocumental(_ejercicio: number): Promise<{
-  ejercicio: number;
-  totalEsperados: number;
-  totalEntregados: number;
-  cobertura: number;
-  lineas: never[];
-}> {
+export async function getCoberturaDocumental(ejercicio: number): Promise<import('../types/fiscal').InformeCoberturaDocumental> {
   return {
-    ejercicio: _ejercicio,
-    totalEsperados: 0,
-    totalEntregados: 0,
-    cobertura: 0,
+    ejercicio,
     lineas: [],
+    totalDeclarado: 0,
+    totalDocumentado: 0,
+    riesgoTotal: 0,
+    nivelRiesgo: 'bajo',
   };
 }
 

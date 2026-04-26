@@ -1485,7 +1485,6 @@ async function escribirProveedores(
   porRefCatastral: Map<string, Property>,
 ): Promise<void> {
   const ahora = new Date().toISOString();
-  const ejercicio = decl.meta.ejercicio;
 
   for (const inm of decl.inmuebles) {
     if (inm.esAccesorioDe) continue;

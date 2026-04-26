@@ -279,28 +279,10 @@ export const generateTreasuryRecommendations = async (): Promise<void> => {
         .sort((a, b) => b.balance - a.balance);
       
       if (sortedAccounts.length > 0 && sortedAccounts[0].balance > suggestedAmount) {
-        const fromAccount = sortedAccounts[0].account;
-        
-        // Calculate recommended transfer date (a few days before deficit)
-        const projectionDate = new Date();
-        projectionDate.setDate(projectionDate.getDate() + 25); // 5 days before month end
-        
-        const recommendation = {
-          id: `transfer-${account.id}-${Date.now()}`,
-          type: 'transfer' as const,
-          severity: balance.projected < 0 ? 'critical' as const : 'warning' as const,
-          title: `Transferencia recomendada a ${account.name}`,
-          description: `Transferir ${suggestedAmount}€ de ${fromAccount.name} a ${account.name} el ${projectionDate.toLocaleDateString('es-ES')} para mantener mínimo ${minimumBalance}€`,
-          fromAccountId: fromAccount.id,
-          toAccountId: account.id,
-          suggestedAmount,
-          suggestedDate: projectionDate.toISOString().split('T')[0],
-          status: 'active' as const,
-          createdAt: new Date().toISOString()
-        };
-        
-        // treasuryRecommendations store removed in V62 (sub-tarea 3)
-        // recommendation storage now no-op
+        // V62 (TAREA 7 sub-tarea 3): el store `treasuryRecommendations` fue
+        // eliminado · la generación de recomendaciones es ahora derivable en
+        // runtime por la UI. Mantener el bloque vacío para conservar el
+        // control de flujo (skip si no hay cuentas suficientemente fondeadas).
       }
     }
   }

@@ -17,6 +17,7 @@ import {
   setInmueblesDelEjercicio,
   setArrastresManuales,
 } from './ejercicioResolverService';
+import { createEmptyArrastresEjercicio } from '../types/fiscal';
 import type { Prestamo } from '../types/prestamos';
 
 // ── Types ────────────────────────────────────────────────────
@@ -535,15 +536,16 @@ export async function ejecutarImportacionDatosFiscales(
     if (datos.arrastres) {
       try {
         const ej = await ejercicioFiscalService.getOrCreateEjercicio(ejercicio, 'en_curso');
+        const arrastresActuales = ej.arrastresGenerados ?? createEmptyArrastresEjercicio();
         const next = {
           ...ej,
           arrastresGenerados: {
-            ...ej.arrastresGenerados,
-            gastos0105_0106: [...ej.arrastresGenerados.gastos0105_0106],
-            perdidasPatrimonialesAhorro: [...ej.arrastresGenerados.perdidasPatrimonialesAhorro],
-            amortizacionesAcumuladas: [...ej.arrastresGenerados.amortizacionesAcumuladas],
-            porInmueble: [...(ej.arrastresGenerados.porInmueble ?? ej.arrastresGenerados.gastos0105_0106)],
-            porAnio: [...(ej.arrastresGenerados.porAnio ?? ej.arrastresGenerados.perdidasPatrimonialesAhorro)],
+            ...arrastresActuales,
+            gastos0105_0106: [...arrastresActuales.gastos0105_0106],
+            perdidasPatrimonialesAhorro: [...arrastresActuales.perdidasPatrimonialesAhorro],
+            amortizacionesAcumuladas: [...arrastresActuales.amortizacionesAcumuladas],
+            porInmueble: [...(arrastresActuales.porInmueble ?? arrastresActuales.gastos0105_0106)],
+            porAnio: [...(arrastresActuales.porAnio ?? arrastresActuales.perdidasPatrimonialesAhorro)],
           },
           updatedAt: new Date().toISOString(),
         };
