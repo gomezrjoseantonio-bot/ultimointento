@@ -52,7 +52,7 @@
 | 31 | `operacionesProveedor` | 15 | DUPLICADO | duplica proveedor+gasto anual; puede normalizarse | eliminar/refactorizar hacia `proveedores.operaciones[] o gasto declarado` |
 | 32 | `opexRules` | 0 | DUPLICADO | deprecated; migrado a compromisos | eliminar/refactorizar hacia `compromisosRecurrentes` |
 | 33 | `otrosIngresos` | 0 | HUÉRFANO | ingresos personales no laborales previsto | mantener roadmap |
-| 34 | `patrimonioSnapshots` | 1 | DUPLICADO | snapshot agregado duplicado con valoración mensual | eliminar/refactorizar hacia `valoraciones_mensuales` |
+| 34 | `patrimonioSnapshots` | 1 | DUPLICADO | snapshot agregado duplicado con valoración mensual | eliminar/refactorizar hacia `valoraciones_historicas + vista mensual` |
 | 35 | `patronGastosPersonales` | 7 | DUPLICADO | sustituido por compromisos recurrentes | eliminar/refactorizar hacia `compromisosRecurrentes` |
 | 36 | `pensiones` | 0 | HUÉRFANO | ingresos de pensión previstos | mantener roadmap |
 | 37 | `perdidasPatrimonialesAhorro` | 0 | VIVO | arrastres fiscal ahorro | mantener |
@@ -1021,7 +1021,7 @@ Estos stores no se fusionan porque tienen escritores, cardinalidad o reglas fisc
 | `operacionesProveedor` | DUPLICADO | `proveedores.operaciones[] o gasto declarado` | eliminar tras adaptar consumidores |
 | `opexRules` | DUPLICADO | `compromisosRecurrentes` | eliminar tras adaptar consumidores |
 | `otrosIngresos` | HUÉRFANO | `otrosIngresos` | mantener vacío hasta UI/flujo |
-| `patrimonioSnapshots` | DUPLICADO | `valoraciones_mensuales` | eliminar tras adaptar consumidores |
+| `patrimonioSnapshots` | DUPLICADO | `valoraciones_historicas + vista mensual` | eliminar tras adaptar consumidores |
 | `patronGastosPersonales` | DUPLICADO | `compromisosRecurrentes` | eliminar tras adaptar consumidores |
 | `pensiones` | HUÉRFANO | `pensiones` | mantener vacío hasta UI/flujo |
 | `perdidasPatrimonialesAhorro` | VIVO | `perdidasPatrimonialesAhorro` | mantener |
@@ -1056,7 +1056,7 @@ Estos stores no se fusionan porque tienen escritores, cardinalidad o reglas fisc
 - `kpiConfigurations` → keyval: sin datos ni mockup objetivo específico.
 - `operacionesProveedor` → proveedores.operaciones[] o gasto declarado: duplica proveedor+gasto anual; puede normalizarse.
 - `opexRules` → compromisosRecurrentes: deprecated; migrado a compromisos.
-- `patrimonioSnapshots` → valoraciones_mensuales: snapshot agregado duplicado con valoración mensual.
+- `patrimonioSnapshots` → valoraciones_historicas + vista mensual: snapshot agregado duplicado con valoración mensual.
 - `patronGastosPersonales` → compromisosRecurrentes: sustituido por compromisos recurrentes.
 - `rentaMensual` → contracts + treasuryEvents: deprecated; contrato escalar + eventos.
 - `treasuryRecommendations` → derivado en runtime: recomendaciones recalculables desde TE/movements.
