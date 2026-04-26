@@ -3357,6 +3357,42 @@ export const initDB = async () => {
         // ═══════════════════════════════════════════════════════════════════════
         if (oldVersion < 63) {
           return (async () => {
+            // 1. nominas → ingresos (deuda sub-tarea 2 · safety net)
+            //
+            //   La migración V61 ya copia `nominas → ingresos` en sub-tarea
+            //   2, pero en saltos directos V60 → V63 (ej. cuando V61 se
+            //   ejecuta como microtask fire-and-forget y V63 cierra la
+            //   transacción antes de que se complete) podríamos perder los
+            //   datos. Hacemos la copia aquí también de forma idempotente
+            //   (`add` → ingresos sólo si todavía no contiene ningún
+            //   registro con `tipo='nomina'`) antes de borrar el store.
+            if (
+              db.objectStoreNames.contains('nominas') &&
+              db.objectStoreNames.contains('ingresos')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('nominas');
+                const dst = transaction.objectStore('ingresos');
+                const dstAll = (await dst.getAll()) as Array<any>;
+                const yaHayNomina = dstAll.some((r) => r?.tipo === 'nomina');
+                if (!yaHayNomina) {
+                  const records = await src.getAll();
+                  for (const rec of records) {
+                    const value = { ...(rec as Record<string, unknown>), tipo: 'nomina' as const };
+                    // `put` con la key explícita preserva el id original.
+                    const id = (rec as { id?: number }).id;
+                    if (typeof id === 'number') {
+                      await dst.put(value as any);
+                    } else {
+                      await dst.add(value as any);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia nominas→ingresos (deuda sub-tarea 2) falló:', err);
+              }
+            }
+
             // 2. autonomos → ingresos
             if (
               db.objectStoreNames.contains('autonomos') &&

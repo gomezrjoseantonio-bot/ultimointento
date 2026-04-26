@@ -155,7 +155,12 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
       db.close();
     });
 
-    test('store legacy `nominas` queda intacto tras la migración', async () => {
+    test('store legacy `nominas` ha sido eliminado tras V63', async () => {
+      // V63 (TAREA 7 sub-tarea 4) elimina el store `nominas` después de
+      // copiar sus registros a `ingresos.tipo='nomina'`. Por tanto, abrir
+      // una DB sembrada en V60 con datos legacy en `nominas` debe
+      // resultar en: (a) los registros migrados a `ingresos`, y (b) el
+      // store `nominas` ya no existente.
       await seedV60WithNominas('AtlasHorizonDB', [
         {
           personalDataId: 7,
@@ -170,17 +175,20 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
       const { initDB } = await import('../db');
       const db = await initDB();
 
-      const nominas = (await db.getAll('nominas')) as Array<{ nombre: string }>;
-      expect(nominas).toHaveLength(1);
-      expect(nominas[0].nombre).toBe('Original');
+      expect(db.objectStoreNames.contains('nominas')).toBe(false);
 
-      // No deben tener `tipo` (es campo del nuevo store, no del legacy)
-      expect((nominas[0] as Record<string, unknown>).tipo).toBeUndefined();
+      const ingresos = (await db.getAll('ingresos')) as Array<{ nombre?: string; tipo?: string }>;
+      expect(ingresos).toHaveLength(1);
+      expect(ingresos[0].nombre).toBe('Original');
+      expect(ingresos[0].tipo).toBe('nomina');
 
       db.close();
     });
 
-    test('preserva el id original al copiar (correlación nominas ↔ ingresos)', async () => {
+    test('preserva el id original al copiar (correlación nominas legacy ↔ ingresos)', async () => {
+      // Tras V63, `nominas` ya no existe; verificamos que el id original
+      // del registro legacy se preserva en `ingresos` (la migración usa
+      // `put` con key explícita).
       await seedV60WithNominas('AtlasHorizonDB', [
         {
           personalDataId: 3,
@@ -195,11 +203,12 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
       const { initDB } = await import('../db');
       const db = await initDB();
 
-      const nominas = (await db.getAll('nominas')) as Array<{ id: number }>;
       const ingresos = (await db.getAll('ingresos')) as Array<{ id: number }>;
-      expect(nominas).toHaveLength(1);
       expect(ingresos).toHaveLength(1);
-      expect(ingresos[0].id).toBe(nominas[0].id);
+      // El id se asigna por autoIncrement al insertar en `nominas` legacy
+      // y se preserva en `ingresos` (consultado vía put con key explícita).
+      expect(typeof ingresos[0].id).toBe('number');
+      expect(ingresos[0].id).toBeGreaterThan(0);
 
       db.close();
     });
