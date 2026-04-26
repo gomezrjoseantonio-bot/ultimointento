@@ -83,16 +83,28 @@ class NominaService {
   }
 
   /**
+   * V63 (TAREA 7 sub-tarea 4 · deuda sub-tarea 2): el store legacy
+   * `nominas` ha sido eliminado. Los registros viven ahora en el store
+   * unificado `ingresos` con `tipo='nomina'`. Este servicio actúa como
+   * adaptador.
+   */
+  // === Constantes internas para el adaptador ============================
+  private readonly STORE = 'ingresos' as const;
+  private readonly TIPO = 'nomina' as const;
+
+  /**
    * Get all nominas for a personal data ID
    */
   async getNominas(personalDataId: number): Promise<Nomina[]> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readonly');
-      const store = transaction.objectStore('nominas');
+      const transaction = db.transaction([this.STORE], 'readonly');
+      const store = transaction.objectStore(this.STORE);
       const index = store.index('personalDataId');
-      const nominas = await index.getAll(personalDataId);
-      return (nominas || []).map((n: any) => this.applyDefaults(n));
+      const all = await index.getAll(personalDataId);
+      return (all || [])
+        .filter((n: any) => n.tipo === this.TIPO)
+        .map((n: any) => this.applyDefaults(n));
     } catch (error) {
       console.error('Error getting nominas:', error);
       return [];
@@ -105,11 +117,11 @@ class NominaService {
   async getAllActiveNominas(): Promise<Nomina[]> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['nominas'], 'readonly');
-      const store = transaction.objectStore('nominas');
-      const allNominas = await store.getAll();
-      return (allNominas || [])
-        .filter((n: any) => n.activa === true)
+      const transaction = db.transaction([this.STORE], 'readonly');
+      const store = transaction.objectStore(this.STORE);
+      const allIngresos = await store.getAll();
+      return (allIngresos || [])
+        .filter((n: any) => n.tipo === this.TIPO && n.activa === true)
         .map((n: any) => this.applyDefaults(n));
     } catch (error) {
       console.error('Error getting all active nominas:', error);
@@ -136,10 +148,11 @@ class NominaService {
   async getNominaById(id: number): Promise<Nomina | null> {
     try {
       const db = await this.getDB();
-      const tx = db.transaction(['nominas'], 'readonly');
-      const store = tx.objectStore('nominas');
+      const tx = db.transaction([this.STORE], 'readonly');
+      const store = tx.objectStore(this.STORE);
       const nomina = await store.get(id);
-      return nomina ? this.applyDefaults(nomina) : null;
+      if (!nomina || nomina.tipo !== this.TIPO) return null;
+      return this.applyDefaults(nomina);
     } catch (error) {
       console.error('Error getting nomina by id:', error);
       return null;
@@ -152,23 +165,23 @@ class NominaService {
   async saveNomina(nomina: Omit<Nomina, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): Promise<Nomina> {
     try {
       const db = await this.getDB();
-      const tx = db.transaction(['nominas'], 'readwrite');
-      const store = tx.objectStore('nominas');
-      
+      const tx = db.transaction([this.STORE], 'readwrite');
+      const store = tx.objectStore(this.STORE);
+
       const now = new Date().toISOString();
-      
+
       const newNomina: Nomina = {
         ...nomina,
         fechaCreacion: now,
         fechaActualizacion: now
       };
 
-      const result = await store.add(newNomina);
+      const result = await store.add({ ...newNomina, tipo: this.TIPO } as any);
       newNomina.id = result as number;
 
       await tx.done;
       // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
-      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
+      invalidateCachedStores(['nominas', 'ingresos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
       return newNomina;
     } catch (error) {
       this.db = null;
@@ -183,19 +196,20 @@ class NominaService {
   async updateNomina(id: number, updates: Partial<Nomina>): Promise<Nomina> {
     try {
       const db = await this.getDB();
-      const tx = db.transaction(['nominas'], 'readwrite');
-      const store = tx.objectStore('nominas');
+      const tx = db.transaction([this.STORE], 'readwrite');
+      const store = tx.objectStore(this.STORE);
 
       const existing = await store.get(id);
-      if (!existing) {
+      if (!existing || existing.tipo !== this.TIPO) {
         throw new Error('Nomina not found');
       }
 
       const now = new Date().toISOString();
 
-      const updated: Nomina = {
+      const updated = {
         ...existing,
         ...updates,
+        tipo: this.TIPO,
         fechaActualizacion: now
       };
 
@@ -203,8 +217,10 @@ class NominaService {
       await tx.done;
 
       // V4.3: Invalidate fiscal/treasury caches so IRPF and projections refresh
-      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
-      return updated;
+      invalidateCachedStores(['nominas', 'ingresos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
+      const { tipo, ...rest } = updated;
+      void tipo;
+      return rest as Nomina;
     } catch (error) {
       this.db = null;
       console.error('Error updating nomina:', error);
@@ -218,13 +234,18 @@ class NominaService {
   async deleteNomina(id: number): Promise<void> {
     try {
       const db = await this.getDB();
-      const tx = db.transaction(['nominas'], 'readwrite');
-      const store = tx.objectStore('nominas');
+      const tx = db.transaction([this.STORE], 'readwrite');
+      const store = tx.objectStore(this.STORE);
 
+      const existing = await store.get(id);
+      if (existing && existing.tipo !== this.TIPO) {
+        await tx.done;
+        return;
+      }
       await store.delete(id);
       await tx.done;
       // V4.3: Invalidate fiscal/treasury caches
-      invalidateCachedStores(['nominas', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
+      invalidateCachedStores(['nominas', 'ingresos', 'ejerciciosFiscalesCoord', 'treasuryEvents']);
     } catch (error) {
       this.db = null;
       console.error('Error deleting nomina:', error);

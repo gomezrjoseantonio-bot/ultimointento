@@ -358,7 +358,48 @@ export interface CalculoPensionResult {
 export type IngresoNomina = Nomina & { tipo: 'nomina' };
 export type IngresoAutonomo = Autonomo & { tipo: 'autonomo' };
 export type IngresoPension = PensionIngreso & { tipo: 'pension' };
-export type Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension;
+
+/**
+ * V63 (TAREA 7 sub-tarea 4-bis): metadata específica del subtipo `otro` de
+ * ingresos. Se almacena bajo `IngresoOtro.metadata.otro` para no colisionar
+ * con futuros sub-tipos de metadatos (`metadata.nomina`, `metadata.autonomo`,
+ * etc., reservados).
+ *
+ * Subtipos canónicos (decisión sub-tarea 4-bis):
+ *   - 'premio'        · premios, sorteos
+ *   - 'indemnizacion' · indemnizaciones laborales/aseguradoras
+ *   - 'beca'          · becas, ayudas formativas
+ *   - 'regalo'        · donaciones recibidas
+ *   - 'otro'          · catch-all (default migración V63 desde
+ *                       `otrosIngresos.tipo` legacy = 'prestacion-desempleo'
+ *                       | 'subsidio-ayuda' | 'pension-alimenticia' |
+ *                       'devolucion-deuda' | 'otro').
+ *
+ * `concepto` y `fecha` son obligatorios para trazabilidad fiscal. `casillaAEAT`
+ * es opcional (se rellena cuando el ingreso debe declararse en una casilla
+ * concreta del IRPF, e.g. ganancias patrimoniales no derivadas de
+ * transmisiones).
+ */
+export interface OtroIngresoMetadata {
+  subtipo: 'premio' | 'indemnizacion' | 'beca' | 'regalo' | 'otro';
+  concepto: string;
+  fecha: string;
+  casillaAEAT?: string;
+}
+
+/**
+ * V63 (TAREA 7 sub-tarea 4-bis): variante del store unificado `ingresos`
+ * para registros del store eliminado `otrosIngresos`. Preserva la forma
+ * legacy `OtrosIngresos` (consumidores siguen usándola vía
+ * `otrosIngresosService` que actúa como adaptador) y añade `metadata.otro`
+ * con los nuevos subtipos canónicos.
+ */
+export type IngresoOtro = OtrosIngresos & {
+  tipo: 'otro';
+  metadata?: { otro?: OtroIngresoMetadata };
+};
+
+export type Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension | IngresoOtro;
 
 // Calculation Results Types
 export interface PlanPensionInversion {

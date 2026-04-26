@@ -174,7 +174,9 @@ export async function generarEventosFiscales(
 
     // M303 — solo si autónomo con IVA (detectado si tiene fuentes con aplIva)
     const db = await initDB();
-    const autonomos = await db.getAll('autonomos');
+    // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
+    // viven en `ingresos` con `tipo='autonomo'`.
+    const autonomos = (await db.getAllFromIndex('ingresos', 'tipo', 'autonomo')) as any[];
     const activo = autonomos.find((a: any) => a.activo);
     const tieneIva = activo?.fuentesIngreso?.some((f: any) => f.aplIva) ?? false;
 

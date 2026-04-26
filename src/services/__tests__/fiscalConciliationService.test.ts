@@ -23,10 +23,9 @@ async function clearStores() {
     db.clear('ingresos'),
     db.clear('gastosInmueble'),
     db.clear('treasuryEvents'),
-    db.clear('nominas'),
-    db.clear('autonomos'),
+    // V63 (sub-tarea 4): los stores `nominas` y `autonomos` se eliminaron;
+    // los registros viven en `ingresos`. `opexRules` se eliminó en V62.
     db.clear('prestamos'),
-    db.clear('opexRules'),
   ]);
 }
 

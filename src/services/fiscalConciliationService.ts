@@ -382,7 +382,9 @@ async function conciliarAutonomo(
   const lineas: FiscalLineItem[] = [];
 
   const db = await initDB();
-  const allAutonomos = await db.getAll('autonomos');
+  // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
+  // viven en `ingresos` con `tipo='autonomo'`.
+  const allAutonomos = (await db.getAllFromIndex('ingresos', 'tipo', 'autonomo')) as any[];
   const activo = allAutonomos.find((a: any) => a.activo);
   if (!activo) return lineas;
 

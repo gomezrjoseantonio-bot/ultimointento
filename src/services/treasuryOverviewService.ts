@@ -13,6 +13,7 @@
 import { initDB } from './db';
 import type { EjercicioFiscalCoord } from './db';
 import { prestamosService } from './prestamosService';
+import { getAllLoanSettlements } from './loanSettlementService';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -172,7 +173,10 @@ export const treasuryOverviewService = {
       db.getAll('property_sales'),
       db.getAll('mejorasInmueble'),
       db.getAll('inversiones'),
-      db.getAll('loan_settlements'),
+      // V63 (sub-tarea 4): el store `loan_settlements` se eliminó; las
+      // liquidaciones se leen ahora desde `prestamos.liquidacion[]` vía
+      // helper.
+      getAllLoanSettlements(),
       db.getAll('accounts'),
       db.getAll('gastosPersonalesReal').catch(() => [] as any[]),
     ]);

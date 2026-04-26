@@ -1,7 +1,18 @@
 import { initDB } from './db';
-import { 
+import {
   OtrosIngresos
 } from '../types/personal';
+
+/**
+ * V63 (TAREA 7 sub-tarea 4-bis): el store legacy `otrosIngresos` ha sido
+ * eliminado. Los registros viven ahora en el store unificado `ingresos`
+ * con `tipo='otro'` (y opcionalmente `metadata.otro: OtroIngresoMetadata`).
+ * Este servicio actúa como adaptador: la API pública (`OtrosIngresos` IO)
+ * se preserva sin cambios para los consumidores; internamente todas las
+ * operaciones leen/escriben en `ingresos` filtrando por `tipo`.
+ */
+const STORE = 'ingresos' as const;
+const TIPO = 'otro' as const;
 
 class OtrosIngresosService {
   private db: any = null;
@@ -19,11 +30,16 @@ class OtrosIngresosService {
   async getOtrosIngresos(personalDataId: number): Promise<OtrosIngresos[]> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['otrosIngresos'], 'readonly');
-      const store = transaction.objectStore('otrosIngresos');
+      const transaction = db.transaction([STORE], 'readonly');
+      const store = transaction.objectStore(STORE);
       const index = store.index('personalDataId');
-      const ingresos = await index.getAll(personalDataId);
-      return ingresos || [];
+      const all = (await index.getAll(personalDataId)) as Array<any>;
+      return all
+        .filter((r) => r.tipo === TIPO)
+        .map(({ tipo, metadata, ...rest }) => {
+          void tipo; void metadata;
+          return rest as OtrosIngresos;
+        });
     } catch (error) {
       console.error('Error getting otros ingresos:', error);
       return [];
@@ -49,20 +65,20 @@ class OtrosIngresosService {
   async saveIngreso(ingreso: Omit<OtrosIngresos, 'id' | 'fechaCreacion' | 'fechaActualizacion'>): Promise<OtrosIngresos> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['otrosIngresos'], 'readwrite');
-      const store = transaction.objectStore('otrosIngresos');
-      
+      const transaction = db.transaction([STORE], 'readwrite');
+      const store = transaction.objectStore(STORE);
+
       const now = new Date().toISOString();
-      
+
       const newIngreso: OtrosIngresos = {
         ...ingreso,
         fechaCreacion: now,
         fechaActualizacion: now
       };
 
-      const result = await store.add(newIngreso);
+      const result = await store.add({ ...newIngreso, tipo: TIPO });
       newIngreso.id = result;
-      
+
       await transaction.complete;
       return newIngreso;
     } catch (error) {
@@ -77,24 +93,27 @@ class OtrosIngresosService {
   async updateIngreso(id: number, updates: Partial<OtrosIngresos>): Promise<OtrosIngresos> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['otrosIngresos'], 'readwrite');
-      const store = transaction.objectStore('otrosIngresos');
-      
+      const transaction = db.transaction([STORE], 'readwrite');
+      const store = transaction.objectStore(STORE);
+
       const existing = await store.get(id);
-      if (!existing) {
+      if (!existing || existing.tipo !== TIPO) {
         throw new Error('Ingreso not found');
       }
 
-      const updated: OtrosIngresos = {
+      const updated = {
         ...existing,
         ...updates,
+        tipo: TIPO,
         fechaActualizacion: new Date().toISOString()
       };
 
       await store.put(updated);
       await transaction.complete;
-      
-      return updated;
+
+      const { tipo, metadata, ...rest } = updated;
+      void tipo; void metadata;
+      return rest as OtrosIngresos;
     } catch (error) {
       console.error('Error updating ingreso:', error);
       throw error;
@@ -107,9 +126,14 @@ class OtrosIngresosService {
   async deleteIngreso(id: number): Promise<void> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['otrosIngresos'], 'readwrite');
-      const store = transaction.objectStore('otrosIngresos');
-      
+      const transaction = db.transaction([STORE], 'readwrite');
+      const store = transaction.objectStore(STORE);
+
+      const existing = await store.get(id);
+      if (existing && existing.tipo !== TIPO) {
+        await transaction.complete;
+        return;
+      }
       await store.delete(id);
       await transaction.complete;
     } catch (error) {

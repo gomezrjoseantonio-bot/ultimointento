@@ -24,7 +24,9 @@ import type { TreasuryEvent } from '../db';
 import type { Nomina } from '../../types/personal';
 
 const STORE_PLANES = 'planesPensionInversion';
-const STORE_NOMINAS = 'nominas';
+// V63 (TAREA 7 sub-tarea 4 · deuda sub-tarea 2): el store legacy `nominas`
+// se eliminó; los registros viven en `ingresos` con `tipo='nomina'`.
+const STORE_INGRESOS = 'ingresos';
 const STORE_TREASURY = 'treasuryEvents';
 
 /**
@@ -113,8 +115,8 @@ export async function procesarConfirmacionEvento(evento: TreasuryEvent): Promise
   if (!evento.sourceId) return;
 
   const db = await initDB();
-  const nomina = await db.get(STORE_NOMINAS, evento.sourceId);
-  if (!nomina) return;
+  const nomina = await db.get(STORE_INGRESOS, evento.sourceId);
+  if (!nomina || (nomina as any).tipo !== 'nomina') return;
 
   await onNominaConfirmada(evento, nomina as Nomina);
 }

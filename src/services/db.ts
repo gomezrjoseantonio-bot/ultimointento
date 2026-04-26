@@ -17,7 +17,6 @@ import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type { Escenario, Objetivo, FondoAhorro, Reto } from '../types/miPlan';
 import type {
-  ArrastreManual,
   ArrastresEjercicio,
   DeclaracionInmueble,
   DeclaracionIRPF,
@@ -26,7 +25,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 62; // V62 (TAREA 7 sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · estrategia wipe + reimport · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 sub-tarea 1 hizo schema extensions sobre los 9 stores supervivientes.
+const DB_VERSION = 63; // V63 (TAREA 7 sub-tarea 4 + 4-bis): eliminar 8 stores huérfanos fusionados · nominas (deuda sub-tarea 2 · datos ya en ingresos.tipo='nomina') · autonomos→ingresos.tipo='autonomo' · pensiones→ingresos.tipo='pension' · otrosIngresos→ingresos.tipo='otro' (+metadata.otro) · arrastresManual→arrastresIRPF.origen='manual' · documentosFiscales→documents.metadata.tipo='fiscal' · loan_settlements→prestamos.liquidacion · matchingConfiguration→keyval['matchingConfig'] · V62 (sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 (sub-tarea 1): schema extensions.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1371,8 +1370,10 @@ export interface EjercicioFiscal {
   updatedAt: string;
 }
 
-export type DocumentoFiscalRecord = DocumentoFiscal;
-export type ArrastreManualRecord = ArrastreManual;
+// V63 (TAREA 7 sub-tarea 4): el alias `DocumentoFiscalRecord` (que mapeaba
+// a registros del store eliminado `documentosFiscales`) se ha retirado;
+// los documentos fiscales viven ahora en el store `documents` con
+// `metadata.tipo='fiscal'`.
 
 
 // ─── V2.9: Resultado de Ejercicio (snapshot fiscal canónico) ─────────────────
@@ -2064,7 +2065,7 @@ export interface VinculoAccesorio {
 interface AtlasHorizonDB {
   properties: Property;
   property_sales: PropertySale;
-  loan_settlements: LoanSettlement;
+  // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros en producción
   documents: Document;
   contracts: Contract;
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
@@ -2085,7 +2086,7 @@ interface AtlasHorizonDB {
   gastos: Gasto; // H10: Treasury expense records
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
-  matchingConfiguration: MatchingConfiguration; // ATLAS HORIZON: Matching rules configuration
+  // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
   reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
@@ -2093,17 +2094,17 @@ interface AtlasHorizonDB {
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   personalData: PersonalData; // V1.2: Personal data
   personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
-  nominas: Nomina; // V1.2: Salary data · V61 (sub-tarea 2): legacy · datos copiados a `ingresos` con tipo='nomina' · consumidores se redirigirán en sub-tarea 6 · store eliminado en sub-tarea posterior.
+  // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
   /**
    * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
    *
    * Unifica `nominas`, `autonomos` y `pensiones` bajo una unión discriminada
    * por `tipo`. La migración V60→V61 copia los registros de `nominas` (con
-   * `tipo='nomina'`) preservando id. Los registros de `autonomos` y
-   * `pensiones` se absorberán en sub-tareas posteriores. Los consumidores
-   * siguen usando los stores legacy hasta sub-tarea 6 (cambio de
-   * consumidores). Sub-tarea posterior eliminará `nominas`/`autonomos`/
-   * `pensiones`.
+   * `tipo='nomina'`) preservando id. V63 (sub-tarea 4) absorbe `autonomos`
+   * (con `tipo='autonomo'`) y `pensiones` (con `tipo='pension'`)
+   * reasignando ids vía autoincrement (los stores legacy se eliminan tras
+   * la copia, incluyendo `nominas` cuyo borrado quedó pendiente desde
+   * sub-tarea 2).
    *
    * Índices: `personalDataId`, `tipo`, `fechaActualizacion`.
    *
@@ -2111,14 +2112,14 @@ interface AtlasHorizonDB {
    * colisionar con la interfaz local `Ingreso` (H10 · Treasury income).
    */
   ingresos: IngresoPersonal;
-  autonomos: Autonomo; // V1.2: Self-employed data
+  // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
-  otrosIngresos: OtrosIngresos; // V1.2: Other income
-  pensiones: PensionIngreso; // V2.5: Pension income records
+  // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
+  // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
   // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
-  prestamos: any; // Financiacion: Loan records
+  prestamos: any; // Financiacion: Loan records · V63 (sub-tarea 4): campo `liquidacion` absorbe los settlements del store eliminado `loan_settlements`.
   /**
    * Monthly valuation: Historical valuations per asset.
    *
@@ -2140,7 +2141,7 @@ interface AtlasHorizonDB {
    *   - `'configFiscal'`           ← destino de `configuracion_fiscal`
    *                                  (eliminado en sub-tarea 3).
    *   - `'matchingConfig'`         ← destino de `matchingConfiguration`
-   *                                  (eliminado en sub-tarea 4).
+   *                                  (eliminado en sub-tarea 4 · V63).
    *   - `'kpiConfig_horizon'`,
    *     `'kpiConfig_pulse'`        ← destino de `kpiConfigurations`
    *                                  (eliminado en sub-tarea 3, una clave
@@ -2165,8 +2166,8 @@ interface AtlasHorizonDB {
   // opexRules: ELIMINADO en V62 (sub-tarea 3) — ya migrado a compromisosRecurrentes en TAREA 2 · 0 registros
   // configuracion_fiscal: ELIMINADO en V62 (sub-tarea 3) — sin destino · defaults runtime · 1 registro
   // ejerciciosFiscales: ELIMINADO en V62 (sub-tarea 3) — sustituido por ejerciciosFiscalesCoord · 1 registro
-  documentosFiscales: DocumentoFiscalRecord; // V3.6: documentación fiscal vinculable
-  arrastresManual: ArrastreManualRecord; // V3.6: arrastres manuales previos a importación
+  // documentosFiscales: ELIMINADO en V63 (sub-tarea 4) — destino documents.metadata.tipo='fiscal' · 0 registros en producción
+  // arrastresManual: ELIMINADO en V63 (sub-tarea 4) — destino arrastresIRPF.origen='manual' · 0 registros en producción
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
   arrastresIRPF: ArrastreIRPF; // V2.7: IRPF carry-forwards cross-year
   perdidasPatrimonialesAhorro: PerdidaPatrimonialAhorro; // V3.4: pérdidas ahorro unificadas
@@ -2306,13 +2307,7 @@ export const initDB = async () => {
           propertySalesStore.createIndex('property-status', ['propertyId', 'status'], { unique: false });
         }
 
-        if (!db.objectStoreNames.contains('loan_settlements')) {
-          const loanSettlementsStore = db.createObjectStore('loan_settlements', { keyPath: 'id', autoIncrement: true });
-          loanSettlementsStore.createIndex('loanId', 'loanId', { unique: false });
-          loanSettlementsStore.createIndex('operationDate', 'operationDate', { unique: false });
-          loanSettlementsStore.createIndex('status', 'status', { unique: false });
-          loanSettlementsStore.createIndex('loan-status', ['loanId', 'status'], { unique: false });
-        }
+        // loan_settlements: ELIMINADO en V63 (sub-tarea 4) — destino prestamos.liquidacion · 0 registros
 
         if (oldVersion < 32 && !db.objectStoreNames.contains('objetivos_financieros')) {
           db.createObjectStore('objetivos_financieros', { keyPath: 'id' });
@@ -2518,11 +2513,7 @@ export const initDB = async () => {
           db.deleteObjectStore('importLogs');
         }
 
-        // ATLAS HORIZON: Matching configuration store
-        if (!db.objectStoreNames.contains('matchingConfiguration')) {
-          const matchingConfigStore = db.createObjectStore('matchingConfiguration', { keyPath: 'id', autoIncrement: true });
-          matchingConfigStore.createIndex('createdAt', 'createdAt', { unique: false });
-        }
+        // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros
 
         // V1.1: Reconciliation audit logs store
         if (!db.objectStoreNames.contains('reconciliationAuditLogs')) {
@@ -2566,12 +2557,7 @@ export const initDB = async () => {
           configStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
         }
 
-        if (!db.objectStoreNames.contains('nominas')) {
-          const nominasStore = db.createObjectStore('nominas', { keyPath: 'id', autoIncrement: true });
-          nominasStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          nominasStore.createIndex('activa', 'activa', { unique: false });
-          nominasStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-        }
+        // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos en `ingresos` con tipo='nomina'
 
         // V61 (TAREA 7 sub-tarea 2): store unificado `ingresos`. Para DBs
         // frescas se crea aquí; para DBs existentes se crea + se rellena en
@@ -2583,12 +2569,7 @@ export const initDB = async () => {
           ingresosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
         }
 
-        if (!db.objectStoreNames.contains('autonomos')) {
-          const autonomosStore = db.createObjectStore('autonomos', { keyPath: 'id', autoIncrement: true });
-          autonomosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          autonomosStore.createIndex('activo', 'activo', { unique: false });
-          autonomosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-        }
+        // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
 
         if (!db.objectStoreNames.contains('planesPensionInversion')) {
           const planesStore = db.createObjectStore('planesPensionInversion', { keyPath: 'id', autoIncrement: true });
@@ -2608,13 +2589,7 @@ export const initDB = async () => {
           traspasosStore.createIndex('fecha', 'fecha', { unique: false });
         }
 
-        if (!db.objectStoreNames.contains('otrosIngresos')) {
-          const otrosIngresosStore = db.createObjectStore('otrosIngresos', { keyPath: 'id', autoIncrement: true });
-          otrosIngresosStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          otrosIngresosStore.createIndex('tipo', 'tipo', { unique: false });
-          otrosIngresosStore.createIndex('activo', 'activo', { unique: false });
-          otrosIngresosStore.createIndex('fechaActualizacion', 'fechaActualizacion', { unique: false });
-        }
+        // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' + metadata.otro
 
         // V1.3: Inversiones (Investment positions) store
         if (!db.objectStoreNames.contains('inversiones')) {
@@ -2651,38 +2626,13 @@ export const initDB = async () => {
         // valoraciones_mensuales: store removed in V62 (sub-tarea 3)
         // opexRules: store removed in V62 (sub-tarea 3)
 
-        // V2.5: Pensiones store (pension income records)
-        if (!db.objectStoreNames.contains('pensiones')) {
-          const pensionesStore = db.createObjectStore('pensiones', { keyPath: 'id', autoIncrement: true });
-          pensionesStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          pensionesStore.createIndex('activa', 'activa', { unique: false });
-        }
+        // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
 
         // configuracion_fiscal: store removed in V62 (sub-tarea 3)
         // ejerciciosFiscales: store removed in V62 (sub-tarea 3)
 
-        // V3.6: Documentos fiscales store
-        if (!db.objectStoreNames.contains('documentosFiscales')) {
-          const documentosStore = db.createObjectStore('documentosFiscales', {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-          documentosStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          documentosStore.createIndex('concepto', 'concepto', { unique: false });
-          documentosStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          documentosStore.createIndex('ejercicio-concepto', ['ejercicio', 'concepto'], { unique: false });
-          documentosStore.createIndex('ejercicio-inmuebleId', ['ejercicio', 'inmuebleId'], { unique: false });
-        }
-
-        // V3.6: Arrastres manuales store
-        if (!db.objectStoreNames.contains('arrastresManual')) {
-          const arrastresManualStore = db.createObjectStore('arrastresManual', {
-            keyPath: 'id',
-            autoIncrement: true,
-          });
-          arrastresManualStore.createIndex('tipo', 'tipo', { unique: false });
-          arrastresManualStore.createIndex('ejercicioOrigen', 'ejercicioOrigen', { unique: false });
-        }
+        // documentosFiscales: ELIMINADO en V63 (sub-tarea 4) — destino documents.metadata.tipo='fiscal'
+        // arrastresManual: ELIMINADO en V63 (sub-tarea 4) — destino arrastresIRPF.origen='manual'
 
         // V2.9: Resultado de ejercicio store (immutable yearly snapshots)
         if (!db.objectStoreNames.contains('resultadosEjercicio')) {
@@ -3375,6 +3325,278 @@ export const initDB = async () => {
               db.deleteObjectStore(store);
             }
           }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // V63 — TAREA 7 sub-tarea 4 (+ 4-bis): eliminar 8 stores huérfanos
+        //   fusionados en sus destinos. Cada store con datos se migra primero
+        //   (lectura `getAll` + `add`/`put` en destino) y a continuación se
+        //   borra con `deleteObjectStore`. La migración corre en una IIFE
+        //   async cuyo Promise se devuelve desde el callback `upgrade` para
+        //   que `idb` espere su finalización antes de cerrar la transacción
+        //   versionchange (necesario porque `deleteObjectStore` debe ocurrir
+        //   DESPUÉS de leer todos los registros del store legacy).
+        //
+        //   Mapeo (8 stores → destinos):
+        //     1. nominas              · 0 reg → ya en `ingresos.tipo='nomina'`
+        //                                (deuda sub-tarea 2 · sólo deleteObjectStore)
+        //     2. autonomos            → `ingresos.tipo='autonomo'`
+        //     3. pensiones            → `ingresos.tipo='pension'`
+        //     4. otrosIngresos        → `ingresos.tipo='otro'` + metadata.otro
+        //     5. arrastresManual      → `arrastresIRPF.origen='manual'`
+        //                                (mapeo de tipo legacy)
+        //     6. documentosFiscales   → `documents.metadata.tipo='fiscal'`
+        //     7. loan_settlements     → `prestamos.liquidacion[]`
+        //                                (array de settlements por préstamo)
+        //     8. matchingConfiguration → `keyval['matchingConfig']`
+        //
+        //   Idempotente: el guard `objectStoreNames.contains(name)` permite
+        //   re-ejecuciones tras error y DBs frescas que nunca tuvieron el
+        //   store. La copia descarta `id` (autoIncrement reasigna) excepto
+        //   para destinos con keyPath persistente.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (oldVersion < 63) {
+          return (async () => {
+            // 2. autonomos → ingresos
+            if (
+              db.objectStoreNames.contains('autonomos') &&
+              db.objectStoreNames.contains('ingresos')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('autonomos');
+                const dst = transaction.objectStore('ingresos');
+                const records = await src.getAll();
+                for (const rec of records) {
+                  const { id, ...rest } = rec as Record<string, unknown>;
+                  void id;
+                  await dst.add({ ...rest, tipo: 'autonomo' } as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia autonomos→ingresos falló:', err);
+              }
+            }
+
+            // 3. pensiones → ingresos
+            if (
+              db.objectStoreNames.contains('pensiones') &&
+              db.objectStoreNames.contains('ingresos')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('pensiones');
+                const dst = transaction.objectStore('ingresos');
+                const records = await src.getAll();
+                for (const rec of records) {
+                  const { id, ...rest } = rec as Record<string, unknown>;
+                  void id;
+                  await dst.add({ ...rest, tipo: 'pension' } as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia pensiones→ingresos falló:', err);
+              }
+            }
+
+            // 4. otrosIngresos → ingresos.tipo='otro' (+ metadata.otro)
+            if (
+              db.objectStoreNames.contains('otrosIngresos') &&
+              db.objectStoreNames.contains('ingresos')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('otrosIngresos');
+                const dst = transaction.objectStore('ingresos');
+                const records = await src.getAll();
+                for (const rec of records) {
+                  const { id, ...rest } = rec as Record<string, unknown>;
+                  void id;
+                  // Best-effort mapping legacy `OtrosIngresos.tipo` → `OtroIngresoMetadata.subtipo`.
+                  // El set canónico V63 no se solapa con el legacy, así que
+                  // todos quedan como 'otro' con `concepto` igual al `nombre`
+                  // legacy y `fecha` la `fechaCreacion`.
+                  const metadataOtro = {
+                    subtipo: 'otro' as const,
+                    concepto: String((rest as any).nombre ?? ''),
+                    fecha: String(
+                      (rest as any).fechaInicio
+                        ?? (rest as any).fechaCreacion
+                        ?? new Date().toISOString()
+                    ),
+                  };
+                  await dst.add({
+                    ...rest,
+                    tipo: 'otro',
+                    metadata: { otro: metadataOtro },
+                  } as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia otrosIngresos→ingresos falló:', err);
+              }
+            }
+
+            // 5. arrastresManual → arrastresIRPF.origen='manual'
+            if (
+              db.objectStoreNames.contains('arrastresManual') &&
+              db.objectStoreNames.contains('arrastresIRPF')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('arrastresManual');
+                const dst = transaction.objectStore('arrastresIRPF');
+                const records = await src.getAll();
+                const tipoMap: Record<string, string> = {
+                  gastos_0105_0106: 'exceso_gastos_0105_0106',
+                  perdidas_ahorro: 'perdidas_patrimoniales_ahorro',
+                  perdidas_general: 'perdidas_patrimoniales_general',
+                };
+                for (const rec of records) {
+                  const r = rec as Record<string, unknown>;
+                  const legacyTipo = String(r.tipo ?? '');
+                  const importe = Number(r.importe ?? 0);
+                  const ejercicioOrigen = Number(r.ejercicioOrigen ?? new Date().getFullYear());
+                  const inmuebleIdRaw = r.inmuebleId;
+                  const createdAt = String(r.createdAt ?? new Date().toISOString());
+                  const inmuebleIdNum =
+                    typeof inmuebleIdRaw === 'number'
+                      ? inmuebleIdRaw
+                      : typeof inmuebleIdRaw === 'string' && inmuebleIdRaw.length > 0 && !Number.isNaN(Number(inmuebleIdRaw))
+                        ? Number(inmuebleIdRaw)
+                        : undefined;
+                  const arrastre: Record<string, unknown> = {
+                    ejercicioOrigen,
+                    tipo: tipoMap[legacyTipo] ?? 'otros',
+                    importeOriginal: importe,
+                    importePendiente: importe,
+                    origen: 'manual',
+                    aplicaciones: [],
+                    estado: 'pendiente',
+                    createdAt,
+                    updatedAt: createdAt,
+                  };
+                  if (inmuebleIdNum != null) arrastre.inmuebleId = inmuebleIdNum;
+                  await dst.add(arrastre as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia arrastresManual→arrastresIRPF falló:', err);
+              }
+            }
+
+            // 6. documentosFiscales → documents.metadata.tipo='fiscal'
+            if (
+              db.objectStoreNames.contains('documentosFiscales') &&
+              db.objectStoreNames.contains('documents')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('documentosFiscales');
+                const dst = transaction.objectStore('documents');
+                const records = await src.getAll();
+                for (const rec of records) {
+                  const r = rec as Record<string, unknown>;
+                  const fechaSubida = String(r.fechaSubida ?? r.fechaDocumento ?? new Date().toISOString());
+                  const docToAdd: Record<string, unknown> = {
+                    type: 'fiscal',
+                    filename: String(r.archivoNombre ?? `doc_fiscal_${r.id ?? ''}`),
+                    uploadDate: fechaSubida,
+                    metadata: {
+                      tipo: 'fiscal',
+                      ejercicio: r.ejercicio,
+                      conceptoFiscal: r.concepto,
+                      inmuebleId:
+                        typeof r.inmuebleId === 'string' && !Number.isNaN(Number(r.inmuebleId))
+                          ? Number(r.inmuebleId)
+                          : r.inmuebleId,
+                      financialData: r.importe != null ? { amount: Number(r.importe) } : undefined,
+                      provider: r.proveedorNombre,
+                      proveedorNif: r.proveedorNif,
+                      notas: r.descripcion,
+                      archivoRef: r.archivoRef,
+                      archivoTipo: r.archivoTipo,
+                      fechaDocumento: r.fechaDocumento,
+                    },
+                  };
+                  await dst.add(docToAdd as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia documentosFiscales→documents falló:', err);
+              }
+            }
+
+            // 7. loan_settlements → prestamos.liquidacion[]
+            if (
+              db.objectStoreNames.contains('loan_settlements') &&
+              db.objectStoreNames.contains('prestamos')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('loan_settlements');
+                const dst = transaction.objectStore('prestamos');
+                const records = (await src.getAll()) as Array<Record<string, unknown>>;
+                // Agrupar settlements por loanId
+                const byLoan: Map<string, Array<Record<string, unknown>>> = new Map();
+                for (const rec of records) {
+                  const loanId = String(rec.loanId ?? '');
+                  if (!loanId) continue;
+                  const list = byLoan.get(loanId) ?? [];
+                  list.push(rec);
+                  byLoan.set(loanId, list);
+                }
+                // Adjuntar al prestamo correspondiente
+                for (const [loanId, settlements] of byLoan.entries()) {
+                  const prestamo = (await dst.get(loanId)) as Record<string, unknown> | undefined;
+                  if (!prestamo) continue;
+                  const existing = Array.isArray(prestamo.liquidacion) ? prestamo.liquidacion : [];
+                  await dst.put({
+                    ...prestamo,
+                    liquidacion: [...(existing as unknown[]), ...settlements],
+                  } as any);
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia loan_settlements→prestamos.liquidacion falló:', err);
+              }
+            }
+
+            // 8. matchingConfiguration → keyval['matchingConfig']
+            if (
+              db.objectStoreNames.contains('matchingConfiguration') &&
+              db.objectStoreNames.contains('keyval')
+            ) {
+              try {
+                const src = (transaction as any).objectStore('matchingConfiguration');
+                const dst = transaction.objectStore('keyval');
+                const records = (await src.getAll()) as Array<Record<string, unknown>>;
+                if (records.length > 0) {
+                  // Sólo se preserva la configuración más reciente (ordenada
+                  // por createdAt desc, fallback al último). Coincide con la
+                  // semántica previa de `getMatchingConfiguration` que
+                  // devolvía `configs[0]`.
+                  const latest = records.slice().sort((a, b) => {
+                    const ca = String(a.createdAt ?? '');
+                    const cb = String(b.createdAt ?? '');
+                    return cb.localeCompare(ca);
+                  })[0];
+                  if (latest) {
+                    const { id, ...rest } = latest;
+                    void id;
+                    await dst.put(rest as any, 'matchingConfig');
+                  }
+                }
+              } catch (err) {
+                console.warn('[DB V63] copia matchingConfiguration→keyval falló:', err);
+              }
+            }
+
+            // Eliminar los 8 stores legacy (idempotente)
+            const storesToDeleteV63 = [
+              'nominas',
+              'autonomos',
+              'pensiones',
+              'otrosIngresos',
+              'arrastresManual',
+              'documentosFiscales',
+              'loan_settlements',
+              'matchingConfiguration',
+            ];
+            for (const store of storesToDeleteV63) {
+              if (db.objectStoreNames.contains(store)) {
+                db.deleteObjectStore(store);
+              }
+            }
+          })();
         }
       },
       blocked() {
@@ -4087,7 +4309,6 @@ export type {
 export type {
   ArrastreAmortizacion,
   ArrastreGastoInmueble,
-  ArrastreManual,
   ArrastrePerdidasAhorro,
   ArrastresEjercicio,
   ConceptoFiscalVinculable,

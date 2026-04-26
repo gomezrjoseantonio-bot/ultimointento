@@ -48,16 +48,22 @@ export interface MatchResult {
 
 /**
  * Get or create matching configuration
+ *
+ * V63 (TAREA 7 sub-tarea 4): el store `matchingConfiguration` se eliminó;
+ * la configuración vive ahora bajo la clave `'matchingConfig'` del store
+ * `keyval` (clave reservada en V60 sub-tarea 1).
  */
+const MATCHING_CONFIG_KEY = 'matchingConfig';
+
 export async function getMatchingConfiguration(): Promise<MatchingConfiguration> {
   const db = await initDB();
-  
+
   try {
-    const configs = await db.getAll('matchingConfiguration');
-    if (configs.length > 0) {
-      return configs[0]; // Use the latest configuration
+    const stored = (await db.get('keyval', MATCHING_CONFIG_KEY)) as MatchingConfiguration | undefined;
+    if (stored) {
+      return stored;
     }
-    
+
     // Create default configuration
     const now = new Date().toISOString();
     const config: MatchingConfiguration = {
@@ -65,9 +71,9 @@ export async function getMatchingConfiguration(): Promise<MatchingConfiguration>
       createdAt: now,
       updatedAt: now
     };
-    
-    const id = await db.add('matchingConfiguration', config);
-    return { ...config, id: id as number };
+
+    await db.put('keyval', config, MATCHING_CONFIG_KEY);
+    return config;
   } catch (error) {
     console.error(`${LOG_PREFIX} Error getting matching configuration:`, error);
     throw error;
@@ -79,7 +85,7 @@ export async function getMatchingConfiguration(): Promise<MatchingConfiguration>
  */
 export async function updateMatchingConfiguration(updates: Partial<MatchingConfiguration>): Promise<void> {
   const db = await initDB();
-  
+
   try {
     const config = await getMatchingConfiguration();
     const updatedConfig: MatchingConfiguration = {
@@ -87,8 +93,8 @@ export async function updateMatchingConfiguration(updates: Partial<MatchingConfi
       ...updates,
       updatedAt: new Date().toISOString()
     };
-    
-    await db.put('matchingConfiguration', updatedConfig);
+
+    await db.put('keyval', updatedConfig, MATCHING_CONFIG_KEY);
     console.info(`${LOG_PREFIX} Updated matching configuration`);
   } catch (error) {
     console.error(`${LOG_PREFIX} Error updating matching configuration:`, error);

@@ -541,7 +541,7 @@ export const confirmLoanSettlement = async (
   const effectiveDate = normalizeDate(input.operationDate);
 
   const db = await initDB();
-  const tx = db.transaction(['prestamos', 'keyval', 'loan_settlements', 'movements', 'treasuryEvents'], 'readwrite');
+  const tx = db.transaction(['prestamos', 'keyval', 'movements', 'treasuryEvents'], 'readwrite');
 
   const movementId = Number(await tx.objectStore('movements').add(createMovement({
     settlementAccountId: input.settlementAccountId,
@@ -562,7 +562,15 @@ export const confirmLoanSettlement = async (
   })));
 
   const now = new Date().toISOString();
-  const settlementToPersist: Omit<LoanSettlement, 'id'> = {
+  // V63 (sub-tarea 4): los settlements se persisten dentro de
+  // `prestamos.liquidacion[]` (campo añadido en sub-tarea 1) en lugar del
+  // store eliminado `loan_settlements`. El id sintético se genera con
+  // `Date.now()` para mantener unicidad por préstamo (no se cruzan ids
+  // entre préstamos distintos porque los consumidores siempre filtran por
+  // loanId).
+  const settlementId = Date.now();
+  const settlementToPersist: LoanSettlement = {
+    id: settlementId,
     loanId: input.loanId,
     operationType: simulation.operationType,
     partialMode: simulation.partialMode,
@@ -589,8 +597,6 @@ export const confirmLoanSettlement = async (
     updatedAt: now,
   };
 
-  const settlementId = Number(await tx.objectStore('loan_settlements').add(settlementToPersist));
-
   const treasuryEventsStore = tx.objectStore('treasuryEvents');
   const allEvents = await treasuryEventsStore.getAll() as any[];
   for (const event of allEvents) {
@@ -605,6 +611,12 @@ export const confirmLoanSettlement = async (
     }
   }
 
+  // Lectura del préstamo dentro de la transacción para añadir el settlement
+  // al array `liquidacion` de forma atómica con el resto de cambios.
+  const prestamoTx = (await tx.objectStore('prestamos').get(input.loanId)) as any;
+  const liquidacionPrev = Array.isArray(prestamoTx?.liquidacion) ? prestamoTx.liquidacion : [];
+  const prestamoBaseForUpdate = prestamoTx ?? prestamo;
+
   if (simulation.operationType === 'TOTAL') {
     const totalPlan = buildTotalCancellationPlan(currentPlan, effectiveDate, simulation.principalBefore);
     if (totalPlan) {
@@ -612,13 +624,14 @@ export const confirmLoanSettlement = async (
     }
 
     await tx.objectStore('prestamos').put({
-      ...prestamo,
+      ...prestamoBaseForUpdate,
       activo: false,
       estado: 'cancelado',
       fechaCancelacion: effectiveDate,
       principalVivo: 0,
       cuotasPagadas: totalPlan?.periodos.length ?? prestamo.cuotasPagadas,
       fechaUltimaCuotaPagada: effectiveDate,
+      liquidacion: [...liquidacionPrev, settlementToPersist],
       updatedAt: now,
     });
   } else {
@@ -639,10 +652,11 @@ export const confirmLoanSettlement = async (
     const lastPaid = paidPeriods.at(-1);
 
     await tx.objectStore('prestamos').put({
-      ...prestamo,
+      ...prestamoBaseForUpdate,
       principalVivo: simulation.principalAfter,
       cuotasPagadas: paidPeriods.length,
       fechaUltimaCuotaPagada: lastPaid?.fechaCargo ?? prestamo.fechaUltimaCuotaPagada,
+      liquidacion: [...liquidacionPrev, settlementToPersist],
       updatedAt: now,
     });
   }
@@ -651,18 +665,37 @@ export const confirmLoanSettlement = async (
   prestamosService.clearCache();
   await triggerTreasuryUpdate([input.settlementAccountId]);
 
-  return {
-    ...settlementToPersist,
-    id: settlementId,
-  };
+  return settlementToPersist;
 };
 
 export const getLoanSettlementsByLoanId = async (loanId: string): Promise<LoanSettlement[]> => {
   const db = await initDB();
-  const settlements = await db.getAllFromIndex('loan_settlements', 'loanId', loanId);
+  const prestamo = (await db.get('prestamos', loanId)) as any;
+  const settlements: LoanSettlement[] = Array.isArray(prestamo?.liquidacion) ? prestamo.liquidacion : [];
   return settlements.slice().sort((a, b) => {
     const dateDiff = new Date(b.operationDate).getTime() - new Date(a.operationDate).getTime();
     if (dateDiff !== 0) return dateDiff;
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+};
+
+/**
+ * V63 (TAREA 7 sub-tarea 4): helper para consumidores que necesitan
+ * recorrer todas las liquidaciones (e.g. `treasuryOverviewService`).
+ * Sustituye al `db.getAll('loan_settlements')` previo a la eliminación
+ * del store. Devuelve un array plano de settlements agregados de
+ * todos los préstamos.
+ */
+export const getAllLoanSettlements = async (): Promise<LoanSettlement[]> => {
+  const db = await initDB();
+  const prestamos = (await db.getAll('prestamos')) as Array<any>;
+  const out: LoanSettlement[] = [];
+  for (const p of prestamos) {
+    if (Array.isArray(p?.liquidacion)) {
+      for (const s of p.liquidacion as LoanSettlement[]) {
+        out.push(s);
+      }
+    }
+  }
+  return out;
 };

@@ -16,15 +16,23 @@ class PersonalResumenService {
 
   /**
    * Get otros ingresos for a personal data ID
+   *
+   * V63 (sub-tarea 4-bis): el store legacy `otrosIngresos` se eliminó;
+   * los registros viven en `ingresos` con `tipo='otro'`.
    */
   private async getOtrosIngresos(personalDataId: number): Promise<OtrosIngresos[]> {
     try {
       const db = await this.getDB();
-      const transaction = db.transaction(['otrosIngresos'], 'readonly');
-      const store = transaction.objectStore('otrosIngresos');
+      const transaction = db.transaction(['ingresos'], 'readonly');
+      const store = transaction.objectStore('ingresos');
       const index = store.index('personalDataId');
-      const ingresos = await index.getAll(personalDataId);
-      return ingresos || [];
+      const all = (await index.getAll(personalDataId)) as Array<any>;
+      return all
+        .filter((r) => r.tipo === 'otro')
+        .map(({ tipo, metadata, ...rest }) => {
+          void tipo; void metadata;
+          return rest as OtrosIngresos;
+        });
     } catch (error) {
       console.error('Error getting otros ingresos:', error);
       return [];

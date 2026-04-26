@@ -379,27 +379,12 @@ async function migrateOtherStores(
     console.warn('[Migración] Error migrating vinculosAccesorio:', e);
   }
 
-  // documentosFiscales (inmuebleId may be string or number depending on version)
-  try {
-    const all = await db.getAll('documentosFiscales');
-    let count = 0;
-    for (const rec of all) {
-      const rawInmuebleId = (rec as any).inmuebleId as string | number | undefined;
-      if (rawInmuebleId != null) {
-        const inmId = Number(rawInmuebleId);
-        if (!Number.isNaN(inmId)) {
-          const newId = idMap.get(inmId);
-          if (newId != null && !propertyIds.has(inmId) && rec.id != null) {
-            await db.put('documentosFiscales', { ...rec, inmuebleId: newId, updatedAt: new Date().toISOString() });
-            count++;
-          }
-        }
-      }
-    }
-    if (count > 0) report.storeUpdates.documentosFiscales = count;
-  } catch (e) {
-    console.warn('[Migración] Error migrating documentosFiscales:', e);
-  }
+  // documentosFiscales: store eliminado en V63 (sub-tarea 4); los registros
+  // viven ahora en `documents` con `metadata.tipo='fiscal'`. Esta sección
+  // queda eliminada porque el flujo legacy de remapeo de inmuebleId tras
+  // la migración de propiedades operaba sobre el store legacy. Para
+  // documentos fiscales en su nuevo destino (`documents`), el remapeo se
+  // gestionará vía el bloque genérico de `documents` cuando aplique.
 
   // arrastresIRPF
   try {

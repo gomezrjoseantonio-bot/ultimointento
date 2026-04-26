@@ -287,18 +287,12 @@ export interface DocumentoFiscal {
 }
 
 // ═══ ARRASTRES MANUALES ═══
-
-export interface ArrastreManual {
-  id?: number;
-  tipo: 'gastos_0105_0106' | 'perdidas_ahorro' | 'perdidas_general';
-  ejercicioOrigen: number;
-  importe: number;
-  inmuebleId?: string;
-  referenciaCatastral?: string;
-  detalle?: string;
-  reemplazadoPorImportacion: boolean;
-  createdAt: string;
-}
+//
+// V63 (TAREA 7 sub-tarea 4): la interfaz `ArrastreManual` y el store legacy
+// homónimo se han eliminado. Los registros viven ahora en `arrastresIRPF`
+// con `origen='manual'` (campo añadido en V60 sub-tarea 1). El mapeo de
+// tipos legacy → tipos canónicos de `ArrastreIRPF` se realiza en la
+// migración V63 (`db.ts`).
 
 // ═══ COBERTURA DOCUMENTAL ═══
 
