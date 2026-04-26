@@ -4,7 +4,7 @@
 
 ## 1. Resumen ejecutivo
 
-- **Diagnóstico general**: la DB tiene **59 stores**; 25 contienen datos y 34 están vacíos. La deuda real no es el volumen sino el solape entre stores legacy, stores de roadmap aún sin UI y datos derivados persistidos.
+- **Diagnóstico general**: la DB tiene **59 stores**; 25 contienen datos y 34 están vacíos. La deuda real no es el volumen sino el solapamiento entre stores legacy, stores de roadmap aún sin UI y datos derivados persistidos.
 
 - **Diseño objetivo recomendado**: **48 stores**. Reducción propuesta **59 → 48** (**19%**), sin crear stores nuevos en esta fase.
 
@@ -332,7 +332,7 @@
 
 #### `keyval`
 - **Schema actual**: `any` en AtlasHorizonDB; schema real en servicios/tipos externos.
-- **KeyPath e índices**: `src/services/db.ts:2513` · keyPath: sin keyPath explícito.
+- **KeyPath e índices**: `src/services/db.ts:2513` · object store sin `keyPath` explícito por diseño; usa claves externas (`db.put('keyval', value, key)`) para registros singleton y auxiliares.
 - **Registros en snapshot**: 14.
 - **Servicio dedicado**: no evidente por nombre; ver referencias.
 - **Quién lee**: `src/services/historicalCashflowCalculator.ts:66`, `src/services/prestamosService.ts:507`, `src/services/loanSettlementService.ts:544`, `src/services/propertySaleService.ts:390`, `src/services/propertySaleService.ts:626`, `src/services/propertySaleService.ts:891`.
@@ -859,7 +859,7 @@ El código ya declara `treasuryEvents = lo previsto/pendiente` y `movements = lo
 `opexService.ts:189-323` ya escribe y lee `compromisosRecurrentes` y marca `opexRules` como deprecated. Recomendación: híbrido controlado: primer arranque propone compromisos desde patrones repetidos de `gastosInmueble` histórico, pero los crea como borradores/confirmados por usuario; después la fuente viva es manual/UI o importes CSV, no `gastosInmueble`. Así se evita duplicar histórico fiscal con catálogo futuro y se aprovechan XMLs para acelerar onboarding.
 
 #### P3 · `accounts.balance`
-`accountBalanceService.ts:21-75` calcula saldo como `openingBalance + treasuryEvents comprometidos + movements`, y `rollForwardAccountBalancesToMonth` persiste `accounts.balance` como cache (`src/services/accountBalanceService.ts:97-123`). Recomendación: `openingBalance` y `openingBalanceDate` son persistidos; `balance` debe tratarse como cache derivada recalculable, nunca como fuente de verdad. Las pantallas pueden leerlo por rendimiento, pero cualquier discrepancia se resuelve recalculando desde movimientos/eventos.
+`accountBalanceService.ts:21-75` calcula saldo como `openingBalance + treasuryEvents comprometidos + movements`, y `rollForwardAccountBalancesToMonth` persiste `accounts.balance` como cache (`src/services/accountBalanceService.ts:97-123`). Recomendación: `openingBalance` y `openingBalanceDate` son persistidos; `balance` debe tratarse como cache derivada recalculable, nunca como fuente de verdad. Las pantallas pueden leerlo por rendimiento, pero cualquier discrepancia se resuelve recalculando desde movimientos/eventos. La invalidación debe dispararse tras importar o borrar `movements`, confirmar/revertir `treasuryEvents`, editar `openingBalance/openingBalanceDate` o cambiar el estado activo de una cuenta; si falla el recalculo, la UI debe mostrar el saldo calculado on-demand y marcar la cache como pendiente de sincronización.
 
 #### P4 · Renta mensual
 El mapeo Mi Plan definitivo indica que `contracts.rentaMensual` es el dato vigente y `rentaMensual` store está deprecated/0 registros. `contractService.ts:72-150` aún genera/regenera `rentaMensual`, pero `fiscalSummaryService.ts:118-138` calcula ingresos desde `contracts.rentaMensual`. Recomendación: mantener renta actual y términos vigentes en `contracts`; añadir histórico embebido `historicoRentas[]` dentro del contrato para revisiones/IPC/IRAV; eliminar store `rentaMensual` y generar `treasuryEvents` mensuales desde contrato + histórico.
@@ -1067,12 +1067,14 @@ No se recomienda crear stores nuevos en V60. La arquitectura objetivo se alcanza
 
 ### 4.5 Wipe + re-importación paso a paso
 1. Publicar DB_VERSION 60 con stores objetivo y eliminaciones aprobadas, todos vacíos.
-2. Onboarding mínimo: `personalData`, cuentas (`accounts.openingBalance`), inmuebles si no vienen completos del XML y preferencias en `keyval`.
-3. Importar XML 2020-2024 en orden cronológico: `ejerciciosFiscalesCoord`, `properties`, `contracts`, `gastosInmueble`, `proveedores`, `vinculosAccesorio`, arrastres y snapshots fiscales.
-4. Importar CSV bancario: `importBatches`, `movements`; conciliar contra `treasuryEvents`.
-5. Generar catálogos futuros: contratos → rentas previstas; préstamos → cuotas; compromisos sugeridos desde histórico; nóminas/personal desde UI.
-6. Reconciliación manual: validar contratos vivos, préstamos liquidados, saldos iniciales, fondos/objetivos de Mi Plan.
-7. Estado esperado: stores fiscal/históricos poblados por XML, tesorería real por CSV, Mi Plan y Personal gradual por UI.
+2. Antes del wipe, exportar snapshot ZIP/JSON y registrar versión de app, fecha y lista de XML/CSV originales que se usarán para reconstruir.
+3. Onboarding mínimo: `personalData`, cuentas (`accounts.openingBalance`), inmuebles si no vienen completos del XML y preferencias en `keyval`.
+4. Importar XML 2020-2024 en orden cronológico: `ejerciciosFiscalesCoord`, `properties`, `contracts`, `gastosInmueble`, `proveedores`, `vinculosAccesorio`, arrastres y snapshots fiscales.
+5. Importar CSV bancario: `importBatches`, `movements`; conciliar contra `treasuryEvents`.
+6. Generar catálogos futuros: contratos → rentas previstas; préstamos → cuotas; compromisos sugeridos desde histórico; nóminas/personal desde UI.
+7. Reconciliación manual: validar contratos vivos, préstamos liquidados, saldos iniciales, fondos/objetivos de Mi Plan.
+8. Recuperación ante fallo: cada ejercicio XML debe importarse dentro de un batch lógico idempotente; si falla un ejercicio, se revierte ese batch, se conserva el snapshot pre-wipe y no se avanza al ejercicio siguiente. Si falla la importación bancaria, se borra el `importBatch` parcial y sus `movements` asociados antes de reintentar. Si falla una fase posterior, se puede repetir desde DB vacía usando los mismos XML/CSV o restaurar el snapshot pre-wipe.
+9. Estado esperado: stores fiscal/históricos poblados por XML, tesorería real por CSV, Mi Plan y Personal gradual por UI.
 
 ### 4.6 Tareas posteriores
 - **TAREA 7** · limpieza V60: eliminar fósiles/duplicados aprobados.
