@@ -35,7 +35,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Contract, Expense, FiscalSummary, initDB, OpexRule, Property, EjercicioFiscalCoord } from '../../services/db';
+import { Contract, Expense, FiscalSummary, initDB, Property, EjercicioFiscalCoord } from '../../services/db';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { gastosInmuebleService } from '../../services/gastosInmuebleService';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
 import type { ValoracionHistorica } from '../../types/valoraciones';
@@ -129,7 +130,7 @@ const mapToSnapshot = (
   property: Property,
   contracts: Contract[],
   expenses: Expense[],
-  opexRules: OpexRule[],
+  compromisos: CompromisoRecurrente[],
   loans: Prestamo[],
   paymentPlansByLoanId: Map<string, PlanPagos>,
   valorActual: number,
@@ -256,35 +257,31 @@ const mapToSnapshot = (
   const ingresosMes = propertyContracts.reduce((sum, contract) => sum + (contract.rentaMensual || 0), 0);
 
   const propertyExpenses = expenses.filter((expense) => expense.propertyId === propertyId);
-  const propertyOpexRules = opexRules.filter((rule) => rule.propertyId === propertyId && rule.activo);
+  // V5.4+: use compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
+  const propertyCompromisos = compromisos.filter((c) => c.inmuebleId === propertyId && c.estado === 'activo');
 
-  const opexRuleMonthly = (rule: OpexRule): number => {
-    const amount = Number(rule.importeEstimado || 0);
-    switch (rule.frecuencia) {
-      case 'semanal':
-        return (amount * 52) / 12;
-      case 'mensual':
-        return amount;
-      case 'bimestral':
-        return amount / 2;
-      case 'trimestral':
-        return amount / 3;
-      case 'semestral':
-        return amount / 6;
-      case 'anual':
-        return amount / 12;
-      case 'meses_especificos':
-        if (rule.asymmetricPayments?.length) {
-          return rule.asymmetricPayments.reduce((sum, payment) => sum + Number(payment.importe || 0), 0) / 12;
-        }
-        return ((rule.mesesCobro?.length || 0) * amount) / 12;
-      default:
-        return 0;
+  const compromisoMonthly = (c: CompromisoRecurrente): number => {
+    let amount = 0;
+    if (c.importe.modo === 'fijo') amount = c.importe.importe;
+    else if (c.importe.modo === 'variable') amount = c.importe.importeMedio;
+    else if (c.importe.modo === 'diferenciadoPorMes') {
+      return c.importe.importesPorMes.reduce((s, v) => s + v, 0) / 12;
+    } else if (c.importe.modo === 'porPago') {
+      const vals = Object.values(c.importe.importesPorPago);
+      return vals.reduce((s, v) => s + v, 0) / 12;
     }
+    const p = c.patron;
+    if (p.tipo === 'mensualDiaFijo' || p.tipo === 'mensualDiaRelativo') return amount;
+    if (p.tipo === 'cadaNMeses') return amount / p.cadaNMeses;
+    if (p.tipo === 'anualMesesConcretos') return (p.mesesPago.length * amount) / 12;
+    if (p.tipo === 'trimestralFiscal') return amount / 3;
+    if (p.tipo === 'variablePorMes') return (p.mesesPago.length * amount) / 12;
+    if (p.tipo === 'puntual') return amount / 12;
+    return amount;
   };
 
-  const gastosMes = propertyOpexRules.length > 0
-    ? propertyOpexRules.reduce((sum, rule) => sum + opexRuleMonthly(rule), 0)
+  const gastosMes = propertyCompromisos.length > 0
+    ? propertyCompromisos.reduce((sum, c) => sum + compromisoMonthly(c), 0)
     : propertyExpenses.length
       ? propertyExpenses.reduce((sum, expense) => sum + expense.amount, 0) / Math.max(1, propertyExpenses.length)
       : 0;
@@ -1193,12 +1190,14 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbOpexRules, dbValoraciones, keyvalKeys, allGastos, dbEjercicios] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbCompromisos, dbValoraciones, keyvalKeys, allGastos, dbEjercicios] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
           Promise.resolve([] as Expense[]), // store deleted in V44
-          getCachedStoreRecords<OpexRule>('opexRules'),
+          // V5.4+: use compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
+          getCachedStoreRecords<CompromisoRecurrente>('compromisosRecurrentes')
+            .then((all) => all.filter((c) => c.ambito === 'inmueble')),
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
           db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
           gastosInmuebleService.getAll(),
@@ -1251,7 +1250,7 @@ export default function InmueblesAnalisis() {
             property,
             dbContracts,
             dbExpenses,
-            dbOpexRules,
+            dbCompromisos,
             dbLoans,
             paymentPlansByLoanId,
             latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,

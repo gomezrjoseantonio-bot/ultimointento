@@ -1,4 +1,5 @@
-import { initDB, OpexRule, Gasto } from '../db';
+import { initDB, Gasto } from '../db';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import {
   getAllExpensesForProperty,
   getAnnualOpexForProperty,
@@ -13,9 +14,10 @@ describe('propertyExpenses service', () => {
   beforeEach(async () => {
     const db = await initDB();
     await Promise.all([
-      db.clear('opexRules'),
+      // V5.4+: use compromisosRecurrentes (opexRules DEPRECATED)
+      db.clear('compromisosRecurrentes'),
       db.clear('gastosInmueble'),
-      db.clear('expenses'),
+      // Note: 'expenses' store was removed in V44; skip clearing it
     ]);
   });
 
@@ -37,35 +39,33 @@ describe('propertyExpenses service', () => {
     expect(yearly).toBe(1200);
   });
 
-  it('prioriza reglas OPEX cuando existen, ignorando fallback legacy', async () => {
+  it('prioriza compromisos recurrentes cuando existen, ignorando fallback legacy', async () => {
     const db = await initDB();
     const now = new Date().toISOString();
 
-    const opexRule: OpexRule = {
-      propertyId: PROPERTY_ID,
-      categoria: 'comunidad',
-      concepto: 'Comunidad',
-      importeEstimado: 120,
-      frecuencia: 'mensual',
-      activo: true,
+    // V5.4+: add CompromisoRecurrente instead of OpexRule
+    const compromiso: Omit<CompromisoRecurrente, 'id'> = {
+      ambito: 'inmueble',
+      inmuebleId: PROPERTY_ID,
+      alias: 'Comunidad',
+      tipo: 'comunidad',
+      proveedor: { nombre: 'Comunidad de vecinos' },
+      patron: { tipo: 'mensualDiaFijo', dia: 1 },
+      importe: { modo: 'fijo', importe: 120 },
+      cuentaCargo: 0,
+      conceptoBancario: 'Comunidad',
+      metodoPago: 'domiciliacion',
+      categoria: 'inmueble.comunidad' as any,
+      bolsaPresupuesto: 'inmueble',
+      responsable: 'titular',
+      fechaInicio: now,
+      estado: 'activo',
+      notas: JSON.stringify({ _opexCategoria: 'comunidad' }),
       createdAt: now,
       updatedAt: now,
     };
 
-    const legacyGasto: Gasto = {
-      contraparte_nombre: 'Proveedor legacy',
-      fecha_emision: now,
-      fecha_pago_prevista: now,
-      total: 300,
-      categoria_AEAT: 'suministros',
-      destino: 'inmueble_id',
-      destino_id: PROPERTY_ID,
-      estado: 'completo',
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await db.add('opexRules', opexRule);
+    await db.add('compromisosRecurrentes', compromiso as CompromisoRecurrente);
     await db.add('gastosInmueble', {
       inmuebleId: PROPERTY_ID, ejercicio: new Date().getFullYear(),
       fecha: now, concepto: 'Proveedor test', categoria: 'suministro',
@@ -77,7 +77,7 @@ describe('propertyExpenses service', () => {
     expect(annual).toBe(1440);
   });
 
-  it('usa fallback legacy cuando no hay reglas OPEX', async () => {
+  it('usa fallback legacy cuando no hay compromisos recurrentes', async () => {
     const db = await initDB();
     const now = new Date().toISOString();
 
@@ -108,7 +108,9 @@ describe('propertyExpenses service', () => {
 
     const all = await getAllExpensesForProperty(PROPERTY_ID);
     expect(all.length).toBe(1);
-    expect(all[0].source).toBe('expense_h5');
+    // gastosInmueble are mapped via mapGasto → source: 'gasto'
+    expect(all[0].source).toBe('gasto');
     expect(all[0].expenseClass).toBe('opex');
   });
 });
+

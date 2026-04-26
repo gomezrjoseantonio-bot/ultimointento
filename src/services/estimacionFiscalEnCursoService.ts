@@ -65,28 +65,47 @@ export function getConfianzaStyles(nivel: NivelConfianza): { background: string;
 
 // ─── Cálculo de meses con datos ──────────────────────────────────────────────
 
+/**
+ * BUG-07 · Decisión A: usa treasuryEvents para determinar meses con datos de renta.
+ * Filtro: type='income' + (categoryKey IN ['renta','alquiler'] OR sourceType='contrato')
+ * + status IN ['confirmed','executed'] + año del evento = ejercicio.
+ * AMBIGÜEDAD DOCUMENTADA: spec dice categoryKey='renta' pero el catálogo usa 'alquiler';
+ * se acepta ambos para garantizar compatibilidad con datos históricos de distinto origen.
+ * Ref: docs/CIERRE-DEUDAS-PRE-RESET.md · BUG-07.
+ */
 async function calcularMesesConDatos(ejercicio: number): Promise<number> {
   const db = await initDB();
   const mesesConDatos = new Set<number>();
 
   // Load all data sources in parallel
-  const [rentas, movements, gastos] = await Promise.all([
-    db.getAll('rentaMensual').catch(() => [] as any[]),
+  // V5.6: rentaMensual is DEPRECATED — use treasuryEvents for rent income
+  const [treasuryEvts, movements, gastos] = await Promise.all([
+    db.getAll('treasuryEvents').catch(() => [] as any[]),
     db.getAll('movements').catch(() => [] as any[]),
     (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().catch(() => [] as any[]),
   ]);
 
-  // For rentaMensual: months with confirmed data are those with estado 'cobrada' or 'parcial'
-  for (const renta of rentas as any[]) {
-    const estado = String(renta?.estado ?? '').toLowerCase();
-    if (estado === 'cobrada' || estado === 'parcial') {
-      const periodo = String(renta?.periodo ?? '');
-      if (/^\d{4}-\d{2}$/.test(periodo)) {
-        const [year, month] = periodo.split('-').map(Number);
-        if (year === ejercicio) {
-          mesesConDatos.add(month - 1); // month is 1-indexed in periodo
-        }
-      }
+  // V5.6: Use treasuryEvents for rent income months (replaces rentaMensual)
+  // Filter: type='income', confirmed/executed status, rent-related category, year matches
+  const RENTA_CATEGORY_KEYS = new Set(['renta', 'alquiler', 'renta_inmueble']);
+  for (const evt of treasuryEvts as any[]) {
+    const evtType = String(evt?.type ?? '').toLowerCase();
+    const evtStatus = String(evt?.status ?? '').toLowerCase();
+    const evtCategoryKey = String(evt?.categoryKey ?? '').toLowerCase();
+    const evtSourceType = String(evt?.sourceType ?? '').toLowerCase();
+
+    if (evtType !== 'income') continue;
+    if (evtStatus !== 'confirmed' && evtStatus !== 'executed') continue;
+    const isRentEvent = RENTA_CATEGORY_KEYS.has(evtCategoryKey) || evtSourceType === 'contrato';
+    if (!isRentEvent) continue;
+
+    // Extract year/month from actualDate (confirmed) or predictedDate
+    const fechaStr: string | undefined = evt?.actualDate ?? evt?.predictedDate;
+    if (fechaStr) {
+      const d = new Date(fechaStr);
+      if (d.getFullYear() === ejercicio) mesesConDatos.add(d.getMonth());
+    } else if (evt?.año === ejercicio && evt?.mes != null) {
+      mesesConDatos.add(evt.mes - 1); // mes is 1-indexed
     }
   }
 

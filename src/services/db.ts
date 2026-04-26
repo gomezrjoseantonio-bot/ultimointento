@@ -26,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 53; // V5.3 (ATLAS Personal v1.1): compromisosRecurrentes (unified opexRules + personal) + viviendaHabitual
+const DB_VERSION = 54; // V5.4: cierre 5 deudas técnicas pre-reset · G-01 opexRules→compromisosRecurrentes · BUG-07 rentaMensual→treasuryEvents · BUG-08 ejerciciosFiscales dual-write · GAP-D6 cuotaLiquida · snapshot completo
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1973,7 +1973,7 @@ interface AtlasHorizonDB {
   documents: Document;
   contracts: Contract;
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
-  rentaMensual: RentaMensual; // CONTRATOS: Monthly rent tracking for treasury integration
+  rentaMensual: RentaMensual; // DEPRECATED V5.6 · sustituido por treasuryEvents · pendiente eliminación V5.7 tras validación producción
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
@@ -2021,9 +2021,9 @@ interface AtlasHorizonDB {
     tasaAhorroMinima: number;
     updatedAt: string;
   }; // V3.2: financial goals singleton store
-  opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
+  opexRules: OpexRule; // DEPRECATED V5.4 · pendiente eliminación V5.5 tras validación producción · usar compromisosRecurrentes(ambito='inmueble')
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
-  ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
+  ejerciciosFiscales: EjercicioFiscal; // DEPRECATED V5.5 · sustituido por ejerciciosFiscalesCoord · cero escrituras nuevas desde V5.4
   documentosFiscales: DocumentoFiscalRecord; // V3.6: documentación fiscal vinculable
   arrastresManual: ArrastreManualRecord; // V3.6: arrastres manuales previos a importación
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
@@ -2752,6 +2752,107 @@ export const initDB = async () => {
             console.warn('[DB V5.3] migración opexRules → compromisosRecurrentes interrumpida:', err);
           });
         }
+
+        // ═══════════════════════════════════════════════════
+        // V5.4 — Cierre G-01: copia registros NUEVOS de opexRules →
+        //   compromisosRecurrentes (idempotente: salta los que ya tienen
+        //   derivadoDe.refId = opex.id). Ejecutado solo al subir desde < 54.
+        //   No elimina opexRules — queda deprecated hasta V5.5.
+        // ═══════════════════════════════════════════════════
+        if (
+          oldVersion < 54 &&
+          db.objectStoreNames.contains('opexRules') &&
+          db.objectStoreNames.contains('compromisosRecurrentes')
+        ) {
+          const opexStore54 = transaction.objectStore('opexRules');
+          const targetStore54 = transaction.objectStore('compromisosRecurrentes');
+
+          const OPEX_CAT_MAP: Record<string, string> = {
+            comunidad: 'inmueble.comunidad',
+            impuesto: 'inmueble.ibi',
+            seguro: 'inmueble.seguros',
+            suministro: 'inmueble.suministros',
+            gestion: 'inmueble.gestionAlquiler',
+            servicio: 'inmueble.opex',
+          };
+          const OPEX_CAT_TO_TIPO: Record<string, string> = {
+            comunidad: 'comunidad',
+            impuesto: 'impuesto',
+            seguro: 'seguro',
+            suministro: 'suministro',
+            gestion: 'otros',
+            servicio: 'otros',
+          };
+
+          targetStore54.getAll().then(async (existentes: any[]) => {
+            const existingRefs = new Set<number>(
+              existentes
+                .filter((c: any) => c.derivadoDe?.fuente === 'opexRule' && c.derivadoDe?.refId != null)
+                .map((c: any) => c.derivadoDe.refId as number)
+            );
+
+            let cursor54 = await opexStore54.openCursor();
+            while (cursor54) {
+              const opex = cursor54.value as OpexRule;
+              if (opex.id != null && !existingRefs.has(opex.id)) {
+                const ahora = new Date().toISOString();
+                let patron: any;
+                if (opex.frecuencia === 'mensual') {
+                  patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
+                } else if (opex.frecuencia === 'meses_especificos' && opex.mesesCobro?.length) {
+                  patron = { tipo: 'anualMesesConcretos', mesesPago: opex.mesesCobro, diaPago: opex.diaCobro ?? 5 };
+                } else if (opex.frecuencia === 'trimestral') {
+                  patron = { tipo: 'cadaNMeses', cadaNMeses: 3, mesAncla: opex.mesInicio ?? 1, dia: opex.diaCobro ?? 5 };
+                } else if (opex.frecuencia === 'semestral') {
+                  patron = { tipo: 'cadaNMeses', cadaNMeses: 6, mesAncla: opex.mesInicio ?? 1, dia: opex.diaCobro ?? 5 };
+                } else if (opex.frecuencia === 'anual') {
+                  patron = { tipo: 'anualMesesConcretos', mesesPago: [opex.mesInicio ?? 1], diaPago: opex.diaCobro ?? 5 };
+                } else {
+                  patron = { tipo: 'mensualDiaFijo', dia: opex.diaCobro ?? 1 };
+                }
+                let importe: any;
+                if (opex.asymmetricPayments?.length) {
+                  const iP: Record<number, number> = {};
+                  for (const p of opex.asymmetricPayments) { iP[p.mes] = p.importe; }
+                  importe = { modo: 'porPago', importesPorPago: iP };
+                } else {
+                  importe = { modo: 'fijo', importe: opex.importeEstimado };
+                }
+                const compromiso54: any = {
+                  ambito: 'inmueble',
+                  inmuebleId: opex.propertyId,
+                  alias: opex.concepto,
+                  tipo: OPEX_CAT_TO_TIPO[opex.categoria] ?? 'otros',
+                  subtipo: opex.subtypeKey,
+                  proveedor: { nombre: opex.proveedorNombre || 'Sin proveedor', nif: opex.proveedorNIF, referencia: opex.invoiceNumber },
+                  patron,
+                  importe,
+                  cuentaCargo: opex.accountId ?? 0,
+                  conceptoBancario: opex.proveedorNombre || opex.concepto,
+                  metodoPago: 'domiciliacion',
+                  categoria: OPEX_CAT_MAP[opex.categoria] ?? 'inmueble.opex',
+                  bolsaPresupuesto: 'inmueble',
+                  responsable: 'titular',
+                  fechaInicio: opex.createdAt || ahora,
+                  estado: opex.activo ? 'activo' : 'pausado',
+                  derivadoDe: { fuente: 'opexRule', refId: opex.id, bloqueado: false },
+                  notas: JSON.stringify({ _opexCategoria: opex.categoria, _opexCasillaAEAT: opex.casillaAEAT }),
+                  createdAt: opex.createdAt || ahora,
+                  updatedAt: ahora,
+                };
+                try {
+                  await targetStore54.add(compromiso54);
+                  existingRefs.add(opex.id);
+                } catch (err) {
+                  console.warn('[DB V5.4] migración opexRule → compromisoRecurrente falló para id=', opex.id, err);
+                }
+              }
+              cursor54 = await cursor54.continue();
+            }
+          }).catch((err) => {
+            console.warn('[DB V5.4] migración V5.4 opexRules → compromisosRecurrentes interrumpida:', err);
+          });
+        }
       },
       blocked() {
         console.warn('[DB] Upgrade blocked by another connection. Recarga las otras pestañas de ATLAS para completar la migración.');
@@ -2950,72 +3051,86 @@ export const deleteDocumentAndBlob = async (id: number): Promise<void> => {
 export const exportSnapshot = async (): Promise<void> => {
   try {
     const db = await initDB();
-    
-    // Get all data from the database
-    const [properties, documents, contracts] = await Promise.all([
-      db.getAll('properties'),
-      db.getAll('documents'),
-      db.getAll('contracts'),
-    ]);
+
+    // Get all store names dynamically
+    const storeNames = Array.from(db.objectStoreNames);
 
     // Dynamic import of JSZip to reduce main bundle size
     const JSZip = (await import('jszip')).default;
-    
+
     // Create a new ZIP file
     const zip = new JSZip();
-    
-    // Create the main data JSON
-    const dataObj = {
-      properties,
-      contracts,
-      documents: documents.map(doc => ({
-        ...doc,
-        content: null, // We'll store files separately
-      })),
-      metadata: {
-        exportDate: new Date().toISOString(),
-        version: '1.0',
-        app: 'ATLAS-Horizon-Pulse'
-      }
-    };
-    
-    // Add the main data file
-    zip.file('atlas-data.json', JSON.stringify(dataObj, null, 2));
-    
-    // Add document files to a documents folder
+
+    // Serialize all stores, stripping Blobs (they go to the documents/ folder)
+    const storesData: Record<string, unknown[]> = {};
     const documentsFolder = zip.folder('documents');
-    if (documentsFolder) {
-      for (const doc of documents) {
-        if (doc.content && doc.content instanceof Blob) {
-          // Use document ID as filename to avoid conflicts, keep original extension
-          const extension = doc.filename.split('.').pop() || 'bin';
-          const safeFilename = `${doc.id}.${extension}`;
-          documentsFolder.file(safeFilename, doc.content);
-          
-          // Also create a mapping file for filename reference
-          documentsFolder.file(`${doc.id}.meta.json`, JSON.stringify({
-            originalFilename: doc.filename,
-            type: doc.type,
-            uploadDate: doc.uploadDate,
-            metadata: doc.metadata
-          }, null, 2));
+
+    for (const storeName of storeNames) {
+      try {
+        const records = await db.getAll(storeName as any);
+        if (storeName === 'documents') {
+          // Strip blob content; store files separately
+          const meta: unknown[] = [];
+          for (const doc of records as any[]) {
+            if (doc.content instanceof Blob) {
+              const extension = (doc.filename as string || '').split('.').pop() || 'bin';
+              const safeFilename = `${doc.id}.${extension}`;
+              if (documentsFolder) {
+                documentsFolder.file(safeFilename, doc.content);
+                documentsFolder.file(`${doc.id}.meta.json`, JSON.stringify({
+                  originalFilename: doc.filename,
+                  type: doc.type,
+                  uploadDate: doc.uploadDate,
+                  metadata: doc.metadata,
+                }, null, 2));
+              }
+              meta.push({ ...doc, content: null });
+            } else {
+              meta.push(doc);
+            }
+          }
+          storesData[storeName] = meta;
+        } else {
+          storesData[storeName] = records;
         }
+      } catch (err) {
+        console.warn(`[exportSnapshot] Error reading store "${storeName}":`, err);
+        storesData[storeName] = [];
       }
     }
-    
+
+    // Main data JSON — V2 format (full-stores snapshot)
+    const dataObj = {
+      metadata: {
+        dbVersion: DB_VERSION,
+        exportDate: new Date().toISOString(),
+        version: '2.0',
+        app: 'ATLAS-Horizon-Pulse',
+        stores: storeNames,
+      },
+      stores: storesData,
+      // V1 compat fields (kept for backward compatibility with older importSnapshot)
+      properties: storesData['properties'] ?? [],
+      contracts: storesData['contracts'] ?? [],
+      documents: storesData['documents'] ?? [],
+    };
+
+    // Add the main data file
+    zip.file('atlas-data.json', JSON.stringify(dataObj, null, 2));
+
     // Generate the ZIP file
     const zipBlob = await zip.generateAsync({ type: 'blob' });
-    
+
     // Create filename with current date and time
     const now = new Date();
     const timestamp = now.toISOString().replace(/[:.]/g, '-').split('T');
     const dateStr = timestamp[0].replace(/-/g, '');
     const timeStr = timestamp[1].split('-')[0].replace(/-/g, '');
     const filename = `ATLAS-snapshot-${dateStr}-${timeStr}.zip`;
-    
+
     // Download the ZIP file
     downloadBlob(zipBlob, filename);
-    
+
   } catch (error) {
     console.error('Error exporting snapshot:', error);
     throw new Error('No se pudo exportar el snapshot');
@@ -3025,92 +3140,147 @@ export const exportSnapshot = async (): Promise<void> => {
 export const importSnapshot = async (file: File, mode: 'replace' | 'merge' = 'replace'): Promise<void> => {
   try {
     const db = await initDB();
-    
+
     // Dynamic import of JSZip to reduce main bundle size
     const JSZip = (await import('jszip')).default;
-    
+
     // Read the ZIP file
     const zip = new JSZip();
     const zipContent = await zip.loadAsync(file);
-    
+
     // Get the main data file
     const dataFile = zipContent.file('atlas-data.json');
     if (!dataFile) {
       throw new Error('Archivo de snapshot inválido: no se encontró atlas-data.json');
     }
-    
+
     const dataJson = await dataFile.async('text');
     const data = JSON.parse(dataJson);
-    
-    // Validate the data structure
-    if (!data.properties || !data.documents || !data.contracts) {
-      throw new Error('Archivo de snapshot inválido: estructura de datos incorrecta');
-    }
-    
-    // Start transaction
-    const tx = db.transaction(['properties', 'documents', 'contracts'], 'readwrite');
-    
-    // Clear existing data if replace mode
-    if (mode === 'replace') {
-      await Promise.all([
-        tx.objectStore('properties').clear(),
-        tx.objectStore('documents').clear(),
-        tx.objectStore('contracts').clear(),
-      ]);
-    }
-    
-    // Import properties
-    for (const property of data.properties) {
-      if (mode === 'merge' && property.id) {
-        await tx.objectStore('properties').put(property);
-      } else {
-        const { id, ...propertyWithoutId } = property;
-        await tx.objectStore('properties').add(propertyWithoutId);
+
+    // Detect format: V2 (stores map) or V1 (legacy)
+    const isV2 = data.stores && typeof data.stores === 'object';
+    const availableStoreNames = Array.from(db.objectStoreNames) as string[];
+
+    if (isV2) {
+      // ── V2: full-stores snapshot ─────────────────────────────────────────
+      const storesToRestore = Object.keys(data.stores).filter(
+        (s) => availableStoreNames.includes(s)
+      );
+
+      // Process stores in batches of 6 to avoid overwhelming IndexedDB
+      const BATCH_SIZE = 6;
+      for (let i = 0; i < storesToRestore.length; i += BATCH_SIZE) {
+        const batch = storesToRestore.slice(i, i + BATCH_SIZE);
+        const tx = db.transaction(batch as any[], 'readwrite');
+
+        if (mode === 'replace') {
+          await Promise.all(batch.map((s) => tx.objectStore(s as any).clear()));
+        }
+
+        for (const storeName of batch) {
+          const records = (data.stores[storeName] as any[]) ?? [];
+
+          if (storeName === 'documents') {
+            // Restore document blobs from ZIP
+            const documentsFolder = zipContent.folder('documents');
+            for (const document of records) {
+              let documentBlob: Blob | null = null;
+              if (documentsFolder && document.id) {
+                const extension = (document.filename as string || '').split('.').pop() || 'bin';
+                const documentFile = documentsFolder.file(`${document.id}.${extension}`);
+                if (documentFile) {
+                  const fileData = await documentFile.async('blob');
+                  documentBlob = new Blob([fileData], { type: document.type });
+                }
+              }
+              const docToImport = {
+                ...document,
+                content: documentBlob || document.content || new Blob([''], { type: 'text/plain' }),
+              };
+              if (mode === 'merge' && document.id) {
+                await tx.objectStore(storeName as any).put(docToImport);
+              } else {
+                const { id: _id, ...docWithoutId } = docToImport;
+                try { await tx.objectStore(storeName as any).add(docWithoutId); } catch { /* dup, skip */ }
+              }
+            }
+          } else {
+            for (const record of records) {
+              if (mode === 'merge' && record.id != null) {
+                try { await tx.objectStore(storeName as any).put(record); } catch { /* dup, skip */ }
+              } else {
+                const { id: _id, ...recordWithoutId } = record;
+                try { await tx.objectStore(storeName as any).add(recordWithoutId); } catch { /* dup, skip */ }
+              }
+            }
+          }
+        }
+        await tx.done;
       }
-    }
-    
-    // Import contracts
-    for (const contract of data.contracts) {
-      if (mode === 'merge' && contract.id) {
-        await tx.objectStore('contracts').put(contract);
-      } else {
-        const { id, ...contractWithoutId } = contract;
-        await tx.objectStore('contracts').add(contractWithoutId);
+    } else {
+      // ── V1 legacy: only properties, documents, contracts ────────────────
+      if (!data.properties || !data.documents || !data.contracts) {
+        throw new Error('Archivo de snapshot inválido: estructura de datos incorrecta');
       }
-    }
-    
-    // Import documents with their files
-    const documentsFolder = zipContent.folder('documents');
-    for (const document of data.documents) {
-      let documentBlob: Blob | null = null;
-      
-      if (documentsFolder && document.id) {
-        // Try to find the document file
-        const extension = document.filename.split('.').pop() || 'bin';
-        const documentFile = documentsFolder.file(`${document.id}.${extension}`);
-        
-        if (documentFile) {
-          // Reconstruct the blob from the ZIP
-          const fileData = await documentFile.async('blob');
-          documentBlob = new Blob([fileData], { type: document.type });
+
+      const tx = db.transaction(['properties', 'documents', 'contracts'], 'readwrite');
+
+      if (mode === 'replace') {
+        await Promise.all([
+          tx.objectStore('properties').clear(),
+          tx.objectStore('documents').clear(),
+          tx.objectStore('contracts').clear(),
+        ]);
+      }
+
+      for (const property of data.properties) {
+        if (mode === 'merge' && property.id) {
+          await tx.objectStore('properties').put(property);
+        } else {
+          const { id, ...propertyWithoutId } = property;
+          await tx.objectStore('properties').add(propertyWithoutId);
         }
       }
-      
-      const docToImport = {
-        ...document,
-        content: documentBlob || new Blob([''], { type: 'text/plain' })
-      };
-      
-      if (mode === 'merge' && document.id) {
-        await tx.objectStore('documents').put(docToImport);
-      } else {
-        const { id, ...docWithoutId } = docToImport;
-        await tx.objectStore('documents').add(docWithoutId);
+
+      for (const contract of data.contracts) {
+        if (mode === 'merge' && contract.id) {
+          await tx.objectStore('contracts').put(contract);
+        } else {
+          const { id, ...contractWithoutId } = contract;
+          await tx.objectStore('contracts').add(contractWithoutId);
+        }
       }
+
+      const documentsFolder = zipContent.folder('documents');
+      for (const document of data.documents) {
+        let documentBlob: Blob | null = null;
+
+        if (documentsFolder && document.id) {
+          const extension = document.filename.split('.').pop() || 'bin';
+          const documentFile = documentsFolder.file(`${document.id}.${extension}`);
+
+          if (documentFile) {
+            const fileData = await documentFile.async('blob');
+            documentBlob = new Blob([fileData], { type: document.type });
+          }
+        }
+
+        const docToImport = {
+          ...document,
+          content: documentBlob || new Blob([''], { type: 'text/plain' }),
+        };
+
+        if (mode === 'merge' && document.id) {
+          await tx.objectStore('documents').put(docToImport);
+        } else {
+          const { id, ...docWithoutId } = docToImport;
+          await tx.objectStore('documents').add(docWithoutId);
+        }
+      }
+
+      await tx.done;
     }
-    
-    await tx.done;
-    
+
   } catch (error) {
     console.error('Error importing snapshot:', error);
     throw new Error('No se pudo importar el snapshot: ' + (error instanceof Error ? error.message : 'Error desconocido'));

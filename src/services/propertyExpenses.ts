@@ -1,5 +1,6 @@
 import { initDB } from './db';
-import type { Expense, Gasto, OpexRule } from './db';
+import type { Expense, Gasto } from './db';
+import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type {
   PropertyExpense,
   PropertyExpenseDiagnostics,
@@ -35,18 +36,78 @@ export const normalizeExpenseToAnnual = (expense: PropertyExpense): number => {
   }
 };
 
-const normalizeOpexRuleToAnnual = (rule: OpexRule): number => {
-  if (!rule.activo) return 0;
+const getCompromisoImporteEstimado = (c: CompromisoRecurrente): number => {
+  if (c.importe.modo === 'fijo') return c.importe.importe;
+  if (c.importe.modo === 'variable') return c.importe.importeMedio;
+  if (c.importe.modo === 'diferenciadoPorMes') {
+    const vals = c.importe.importesPorMes;
+    return vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
+  }
+  if (c.importe.modo === 'porPago') {
+    const vals = Object.values(c.importe.importesPorPago);
+    return vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length);
+  }
+  return 0;
+};
 
-  if (rule.frecuencia === 'meses_especificos') {
-    if (rule.asymmetricPayments?.length) {
-      return rule.asymmetricPayments.reduce((sum, item) => sum + (item.importe || 0), 0);
-    }
+const getCompromisoFrequency = (c: CompromisoRecurrente): PropertyExpense['frequency'] => {
+  const p = c.patron;
+  if (p.tipo === 'mensualDiaFijo' || p.tipo === 'mensualDiaRelativo') return 'mensual';
+  if (p.tipo === 'cadaNMeses') {
+    if (p.cadaNMeses === 2) return 'bimestral';
+    if (p.cadaNMeses === 3) return 'trimestral';
+    if (p.cadaNMeses === 6) return 'semestral';
+  }
+  if (p.tipo === 'anualMesesConcretos') {
+    return p.mesesPago.length === 1 ? 'anual' : 'meses_especificos';
+  }
+  if (p.tipo === 'trimestralFiscal') return 'trimestral';
+  if (p.tipo === 'variablePorMes') return 'meses_especificos';
+  if (p.tipo === 'puntual') return 'unico';
+  return 'mensual';
+};
 
-    return (rule.mesesCobro?.length || 0) * (rule.importeEstimado || 0);
+const getCompromisoMesesCobro = (c: CompromisoRecurrente): number[] | undefined => {
+  const p = c.patron;
+  if (p.tipo === 'anualMesesConcretos' && p.mesesPago.length > 1) return p.mesesPago;
+  if (p.tipo === 'variablePorMes') return p.mesesPago;
+  return undefined;
+};
+
+const getCompromisoAsymmetricPayments = (c: CompromisoRecurrente): { mes: number; importe: number }[] | undefined => {
+  if (c.importe.modo === 'porPago') {
+    return Object.entries(c.importe.importesPorPago).map(
+      ([mes, importe]) => ({ mes: Number(mes), importe })
+    );
+  }
+  return undefined;
+};
+
+const normalizeCompromisoToAnnual = (c: CompromisoRecurrente): number => {
+  if (c.estado !== 'activo') return 0;
+
+  if (c.importe.modo === 'porPago') {
+    const vals = Object.values(c.importe.importesPorPago);
+    return vals.reduce((a, b) => a + b, 0);
+  }
+  if (c.importe.modo === 'diferenciadoPorMes') {
+    return c.importe.importesPorMes.reduce((a, b) => a + b, 0);
   }
 
-  return normalizeExpenseToAnnual(mapOpexRule(rule));
+  const amount = getCompromisoImporteEstimado(c);
+  const freq = getCompromisoFrequency(c);
+  return normalizeExpenseToAnnual({
+    id: String(c.id ?? ''),
+    propertyId: c.inmuebleId ?? 0,
+    category: '',
+    concept: c.alias,
+    amount,
+    frequency: freq,
+    source: 'opex_rule',
+    expenseClass: 'opex',
+    isLegacy: false,
+    isActive: c.estado === 'activo',
+  });
 };
 
 const isWithinLastYear = (isoDate?: string): boolean => {
@@ -55,27 +116,60 @@ const isWithinLastYear = (isoDate?: string): boolean => {
   return Number.isFinite(ts) && ts >= getLast12MonthsThreshold();
 };
 
-const mapOpexRule = (rule: OpexRule): PropertyExpense => {
-  const monthsSpecificAmount = rule.frecuencia === 'meses_especificos'
-    ? normalizeOpexRuleToAnnual(rule)
-    : rule.importeEstimado;
+/**
+ * Recover original categoria + casillaAEAT from notas (stored by opexService V5.4+).
+ */
+const getCompromisoCategoryExtras = (c: CompromisoRecurrente): { categoria: string; casillaAEAT?: string } => {
+  try {
+    if (c.notas) {
+      const extras = JSON.parse(c.notas) as { _opexCategoria?: string; _opexCasillaAEAT?: string };
+      return {
+        categoria: extras._opexCategoria ?? c.categoria,
+        casillaAEAT: extras._opexCasillaAEAT,
+      };
+    }
+  } catch { /* ignore */ }
+  return { categoria: c.categoria };
+};
+
+const mapCompromiso = (c: CompromisoRecurrente): PropertyExpense => {
+  const freq = getCompromisoFrequency(c);
+  const meses = getCompromisoMesesCobro(c);
+  const asymmetric = getCompromisoAsymmetricPayments(c);
+
+  const rawAmount = getCompromisoImporteEstimado(c);
+  const amount = (freq === 'meses_especificos' && asymmetric?.length)
+    ? asymmetric.reduce((s, p) => s + p.importe, 0)
+    : (freq === 'meses_especificos' && meses?.length)
+      ? (meses.length * rawAmount)
+      : rawAmount;
+
+  const { categoria, casillaAEAT } = getCompromisoCategoryExtras(c);
+
+  // Derive a start date from first payment month if available
+  const p = c.patron;
+  let startDate: string | undefined;
+  if (p.tipo === 'anualMesesConcretos' && p.mesesPago.length > 0) {
+    startDate = `${new Date().getFullYear()}-${String(p.mesesPago[0]).padStart(2, '0')}-01`;
+  }
 
   return {
-    id: `opex_rule:${rule.id}`,
-    propertyId: rule.propertyId,
-    category: rule.categoria,
-    concept: rule.concepto,
-    amount: monthsSpecificAmount,
-    frequency: rule.frecuencia,
-    accountId: rule.accountId,
-    casillaAEAT: rule.casillaAEAT,
-    startDate: rule.mesInicio ? `${new Date().getFullYear()}-${String(rule.mesInicio).padStart(2, '0')}-01` : undefined,
+    id: `opex_rule:${c.id}`,
+    propertyId: c.inmuebleId!,
+    category: categoria,
+    concept: c.alias,
+    amount,
+    frequency: freq,
+    accountId: c.cuentaCargo || undefined,
+    casillaAEAT: casillaAEAT as any,
+    startDate,
     source: 'opex_rule',
     expenseClass: 'opex',
     isLegacy: false,
-    isActive: rule.activo,
+    isActive: c.estado === 'activo',
   };
 };
+
 
 const mapGasto = (gasto: Gasto): PropertyExpense | null => {
   if (gasto.destino !== 'inmueble_id' || !gasto.destino_id) return null;
@@ -112,10 +206,12 @@ const mapLegacyExpense = (expense: Expense): PropertyExpense => ({
 const getPropertyExpensesSnapshot = async (propertyId: number): Promise<PropertyExpense[]> => {
   const db = await initDB();
   const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
-  const [opexRules, gastosInm, expenses] = await Promise.all([
-    db.getAllFromIndex('opexRules', 'propertyId', propertyId),
+  // V5.4+: read from compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
+  const [compromisos, gastosInm, expenses] = await Promise.all([
+    db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', propertyId)
+      .then((all) => all.filter((c) => c.ambito === 'inmueble')),
     gastosInmuebleService.getByInmueble(propertyId),
-    db.getAllFromIndex('expenses', 'propertyId', propertyId),
+    db.getAllFromIndex('expenses', 'propertyId', propertyId).catch(() => []),
   ]);
 
   // Map gastosInmueble to Gasto-like shape for mapGasto compatibility
@@ -130,7 +226,7 @@ const getPropertyExpensesSnapshot = async (propertyId: number): Promise<Property
   const mappedGastos = gastosMapped.map(mapGasto).filter(Boolean) as PropertyExpense[];
 
   return [
-    ...opexRules.map(mapOpexRule),
+    ...compromisos.map(mapCompromiso),
     ...mappedGastos,
     ...expenses.map(mapLegacyExpense),
   ];
