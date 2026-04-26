@@ -17,34 +17,17 @@
 // vía index signature: lo que se persiste es sólo lo válido para
 // `EjercicioFiscalCoord`.
 
-import { initDB, type EjercicioFiscalCoord } from './db';
+import {
+  initDB,
+  type EjercicioFiscalCoord,
+  type EjercicioFiscal as DbEjercicioFiscal,
+  type EstadoEjercicio as DbEstadoEjercicio,
+} from './db';
 
-export type EstadoEjercicio = 'en_curso' | 'pendiente' | 'declarado' | 'prescrito' | 'cerrado';
-
-/**
- * Vista legacy del ejercicio fiscal. Mantenida como índice abierto para
- * absorber los campos adicionales que la versión pre-V62 manejaba (p.ej.
- * `arrastresGenerados`, `declaracionAeat`, `cerradoAt`, `origen`).
- */
-export interface EjercicioFiscal {
-  ejercicio?: number;
-  año?: number;
-  estado: EstadoEjercicio;
-  origen?: string;
-  snapshotId?: number;
-  cerradoAt?: string;
-  declaradoAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  // Legacy fields from pre-V62 that consumers still expect
-  declaracionAeat?: unknown;
-  calculoAtlas?: unknown;
-  arrastresGenerados?: unknown;
-  coberturaDocumental?: unknown;
-  // Campos extra del modelo legacy que algunos consumidores aún proyectan.
-  // No se persisten más allá de la entrada en `ejerciciosFiscalesCoord`.
-  [extra: string]: unknown;
-}
+// Re-exportamos los tipos canónicos definidos en `./db` para que todos
+// los consumidores compartan la misma forma (evita conflictos de tipo).
+export type EstadoEjercicio = DbEstadoEjercicio;
+export type EjercicioFiscal = DbEjercicioFiscal;
 
 function nowIso(): string {
   return new Date().toISOString();
