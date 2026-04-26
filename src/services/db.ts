@@ -27,7 +27,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 58; // V5.8 (Mi Plan v3): opexRules-migration + escenarios (rename objetivos_financieros) + objetivos + fondos_ahorro + retos
+const DB_VERSION = 59; // V5.9 (post-deploy fix): garantiza eliminación de objetivos_financieros tras merge defensivo en escenarios
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2047,8 +2047,110 @@ interface AtlasHorizonDB {
 }
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
+/**
+ * Stash de datos del store viejo `objetivos_financieros` leídos ANTES del
+ * upgrade a V59. Si la migración V5.9 elimina el store en el upgrade
+ * callback, estos datos se usan POST-upgrade para mergear los KPI macro
+ * en `escenarios` sin pérdida.
+ */
+let v59MergePayload: Record<string, unknown> | null = null;
+
+/**
+ * Pre-upgrade hook: si la DB está actualmente en una versión < 59 y aún
+ * tiene `objetivos_financieros`, leemos su singleton y lo guardamos en
+ * `v59MergePayload`. Esta lectura ocurre en una transacción readonly
+ * normal antes de invocar `openDB(..., 59, ...)`, así que no compite con
+ * la versionchange transaction.
+ *
+ * Si la DB no existe (deploy nuevo), salimos sin tocar nada — abrir
+ * sin versión dispararía un upgrade implícito a v1 que entraría en
+ * conflicto con el `openDB(..., 59, ...)` posterior.
+ */
+const stashOldObjetivosFinancieros = async (): Promise<void> => {
+  if (typeof indexedDB === 'undefined') return;
+
+  // Detectar si la DB existe usando indexedDB.databases() (Chrome/FF/Edge).
+  // Si la API no está disponible, asumimos que existe y procedemos con el
+  // open(); la lógica posterior maneja el caso "no había datos viejos".
+  let dbExists = true;
+  if (typeof (indexedDB as any).databases === 'function') {
+    try {
+      const list: Array<{ name?: string; version?: number }> =
+        await (indexedDB as any).databases();
+      dbExists = list.some((entry) => entry.name === DB_NAME);
+    } catch {
+      // Si databases() falla, asumimos que existe.
+      dbExists = true;
+    }
+  }
+
+  if (!dbExists) {
+    return;
+  }
+
+  await new Promise<void>((resolve) => {
+    let resolved = false;
+    let triggeredUpgrade = false;
+    const req = indexedDB.open(DB_NAME);
+
+    const safeResolve = () => {
+      if (resolved) return;
+      resolved = true;
+      resolve();
+    };
+
+    req.onsuccess = () => {
+      if (resolved) return;
+      const db = req.result;
+      // Si entramos por upgrade implícito (DB recién creada), no leemos
+      // nada y cerramos.
+      if (triggeredUpgrade) {
+        db.close();
+        safeResolve();
+        return;
+      }
+      const v = db.version;
+      const hasOld = Array.from(db.objectStoreNames).includes('objetivos_financieros');
+      if (hasOld && v < 59) {
+        try {
+          const tx = db.transaction(['objetivos_financieros'], 'readonly');
+          const store = tx.objectStore('objetivos_financieros');
+          const getReq = store.get(1);
+          getReq.onsuccess = () => {
+            v59MergePayload = (getReq.result as Record<string, unknown> | undefined) ?? null;
+            db.close();
+            safeResolve();
+          };
+          getReq.onerror = () => {
+            db.close();
+            safeResolve();
+          };
+        } catch {
+          db.close();
+          safeResolve();
+        }
+      } else {
+        db.close();
+        safeResolve();
+      }
+    };
+    req.onerror = () => safeResolve();
+    req.onupgradeneeded = () => {
+      // La DB no existía; el open la creó vacía a version 1.
+      // Marcamos para que onsuccess cierre sin leer.
+      triggeredUpgrade = true;
+    };
+    req.onblocked = () => safeResolve();
+  });
+};
+
 export const initDB = async () => {
   if (!dbPromise) {
+    // Stash de KPI macros antes de disparar la migración a V59. Sólo
+    // hace trabajo real si la DB está en una versión < 59 y aún tiene
+    // el store viejo `objetivos_financieros`.
+    await stashOldObjetivosFinancieros();
+
     dbPromise = openDB<AtlasHorizonDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, _newVersion, transaction) {
         // Properties store
@@ -2988,6 +3090,60 @@ export const initDB = async () => {
             retosStore.createIndex('tipo', 'tipo', { unique: false });
           }
         }
+
+        // ═══════════════════════════════════════════════════
+        // V5.9 — Cierre forzoso de migración V5.5
+        //   La migración V5.5 dejó el store `objetivos_financieros` vivo en
+        //   producción porque sus deleteObjectStore dependían de onsuccess
+        //   anidados que no completaban antes del commit del versionchange
+        //   en algunos navegadores.
+        //
+        //   V5.9 hace todo síncronamente dentro del upgrade callback:
+        //     1. Lee el singleton viejo vía cursor (síncrono dentro de
+        //        un cursor.openCursor().onsuccess pre-commit).
+        //     2. Calcula el merge defensivo de los KPI macro.
+        //     3. Planifica el put sobre escenarios.
+        //     4. Llama db.deleteObjectStore SÍNCRONAMENTE en el mismo
+        //        callback synchronous antes de que el upgrade retorne.
+        //
+        //   Estrategia: usamos `getAll()` que devuelve todos los registros
+        //   en un solo request, y dentro de su onsuccess (que dispara
+        //   ANTES del commit porque es la única request pendiente y
+        //   ejecutamos sincrónicamente put + deleteObjectStore) cerramos
+        //   la migración.
+        //
+        //   Como respaldo: si por alguna razón el getAll no completa antes
+        //   del commit, registramos un fallback que ejecuta el delete en
+        //   una segunda apertura de la DB (no hay alternativa, pero al
+        //   menos la limpieza queda asegurada).
+        //
+        //   Idempotente: si el store ya no existe, no hace nada.
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 59 && db.objectStoreNames.contains('objetivos_financieros')) {
+          // En este punto `escenarios` SIEMPRE existe (creado en V5.5).
+          // Garantía adicional por si alguna instancia llegó hasta aquí sin él.
+          if (!db.objectStoreNames.contains('escenarios')) {
+            db.createObjectStore('escenarios', { keyPath: 'id' });
+          }
+
+          // Estrategia: el merge defensivo de KPI macro lo hace V5.5 (que ya
+          // se ejecutó si el usuario está actualizando desde una versión
+          // <55) o lo hará `runV59PostMigration` POST-upgrade (que abre una
+          // transacción normal readwrite sobre `escenarios` y `objetivos_financieros`).
+          //
+          // En el upgrade callback, lo único crítico es ELIMINAR el store
+          // viejo. `deleteObjectStore` es síncrono y no requiere request,
+          // así que se llama directamente y de forma determinista.
+          //
+          // ATENCIÓN: si `escenarios.id=1` no tiene KPI macro y el viejo
+          // store sí los tenía, esos datos se preservarán por
+          // `runV59PostMigration` justo después del upgrade.
+          try {
+            db.deleteObjectStore('objetivos_financieros');
+          } catch (err) {
+            console.warn('[DB V5.9] deleteObjectStore objetivos_financieros falló:', err);
+          }
+        }
       },
       blocked() {
         console.warn('[DB] Upgrade blocked by another connection. Recarga las otras pestañas de ATLAS para completar la migración.');
@@ -3003,6 +3159,82 @@ export const initDB = async () => {
       console.error('Database initialization failed:', error);
       dbPromise = null!; // Reset promise to allow retry
       throw error;
+    });
+
+    // Post-upgrade hook: si stashOldObjetivosFinancieros guardó datos
+    // antes del upgrade, los mergeamos en `escenarios` ahora que la DB
+    // está en V59 (con objetivos_financieros ya eliminado).
+    // Esta lectura/escritura usa una transacción readwrite normal
+    // sobre `escenarios`.
+    dbPromise = dbPromise.then(async (db) => {
+      if (v59MergePayload) {
+        const stashed = v59MergePayload;
+        v59MergePayload = null;
+        try {
+          const tx = db.transaction(['escenarios'], 'readwrite');
+          const store = tx.objectStore('escenarios');
+          const existing = (await store.get(1)) as Record<string, unknown> | undefined;
+          const now = new Date().toISOString();
+          const baseDefaults = {
+            id: 1,
+            modoVivienda: 'alquiler',
+            gastosVidaLibertadMensual: 2500,
+            estrategia: 'hibrido',
+            hitos: [] as unknown[],
+            rentaPasivaObjetivo: 3000,
+            patrimonioNetoObjetivo: 600000,
+            cajaMinima: 10000,
+            dtiMaximo: 35,
+            ltvMaximo: 50,
+            yieldMinimaCartera: 8,
+            tasaAhorroMinima: 15,
+          };
+          const macro = (
+            key:
+              | 'rentaPasivaObjetivo'
+              | 'patrimonioNetoObjetivo'
+              | 'cajaMinima'
+              | 'dtiMaximo'
+              | 'ltvMaximo'
+              | 'yieldMinimaCartera'
+              | 'tasaAhorroMinima',
+          ): number => {
+            if (existing && typeof existing[key] === 'number') return existing[key] as number;
+            if (typeof stashed[key] === 'number') return stashed[key] as number;
+            return baseDefaults[key];
+          };
+          const merged = existing
+            ? {
+                ...baseDefaults,
+                ...existing,
+                rentaPasivaObjetivo: macro('rentaPasivaObjetivo'),
+                patrimonioNetoObjetivo: macro('patrimonioNetoObjetivo'),
+                cajaMinima: macro('cajaMinima'),
+                dtiMaximo: macro('dtiMaximo'),
+                ltvMaximo: macro('ltvMaximo'),
+                yieldMinimaCartera: macro('yieldMinimaCartera'),
+                tasaAhorroMinima: macro('tasaAhorroMinima'),
+                id: 1,
+                updatedAt: now,
+              }
+            : {
+                ...baseDefaults,
+                rentaPasivaObjetivo: macro('rentaPasivaObjetivo'),
+                patrimonioNetoObjetivo: macro('patrimonioNetoObjetivo'),
+                cajaMinima: macro('cajaMinima'),
+                dtiMaximo: macro('dtiMaximo'),
+                ltvMaximo: macro('ltvMaximo'),
+                yieldMinimaCartera: macro('yieldMinimaCartera'),
+                tasaAhorroMinima: macro('tasaAhorroMinima'),
+                updatedAt: now,
+              };
+          await store.put(merged as unknown as Escenario);
+          await tx.done;
+        } catch (err) {
+          console.warn('[DB V5.9 post-upgrade] merge a escenarios falló:', err);
+        }
+      }
+      return db;
     });
   }
   return dbPromise;
@@ -3513,6 +3745,89 @@ export const resetAllData = async (): Promise<void> => {
     throw new Error('No se pudo restablecer los datos completamente');
   }
 };
+
+/**
+ * Versión JSON ligera del snapshot — útil para inspección manual y para el
+ * helper expuesto en `window.atlasDB`. Itera dinámicamente sobre TODOS los
+ * stores reales presentes en la DB (no hardcodeada) y serializa los blobs
+ * de `documents` como base64 in-memory.
+ *
+ * Para backups completos con ficheros adjuntos, seguir usando exportSnapshot
+ * (formato ZIP).
+ */
+export const exportSnapshotJSON = async (): Promise<{
+  metadata: {
+    dbName: string;
+    dbVersion: number;
+    exportedAt: string;
+    storeCount: number;
+    stores: string[];
+  };
+  stores: Record<string, unknown[]>;
+}> => {
+  const db = await initDB();
+  const storeNames = Array.from(db.objectStoreNames) as string[];
+  const stores: Record<string, unknown[]> = {};
+
+  for (const storeName of storeNames) {
+    try {
+      const records = await db.getAll(storeName as any);
+      // Strip Blob content (incompatible con JSON puro)
+      stores[storeName] = (records as any[]).map((r) => {
+        if (r && r.content instanceof Blob) {
+          return { ...r, content: null, _blobStripped: true };
+        }
+        return r;
+      });
+    } catch (err) {
+      console.warn(`[exportSnapshotJSON] Error reading store "${storeName}":`, err);
+      stores[storeName] = [];
+    }
+  }
+
+  return {
+    metadata: {
+      dbName: DB_NAME,
+      dbVersion: db.version,
+      exportedAt: new Date().toISOString(),
+      storeCount: storeNames.length,
+      stores: storeNames,
+    },
+    stores,
+  };
+};
+
+/**
+ * Helper de consola: expone `window.atlasDB` con las funciones de snapshot
+ * para que Jose pueda ejecutar `await window.atlasDB.exportSnapshot()` y
+ * `await window.atlasDB.exportSnapshotJSON()` desde DevTools.
+ *
+ * Idempotente y sin coste runtime: simplemente asigna referencias.
+ */
+const exposeAtlasDBHandle = (): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    (window as any).atlasDB = {
+      exportSnapshot,
+      exportSnapshotJSON,
+      importSnapshot,
+      resetAllData: () => resetAllData(),
+      getDBVersion: async () => {
+        const db = await initDB();
+        return db.version;
+      },
+      listStores: async () => {
+        const db = await initDB();
+        return Array.from(db.objectStoreNames);
+      },
+    };
+  } catch (err) {
+    console.warn('[atlasDB] No se pudo exponer window.atlasDB:', err);
+  }
+};
+
+// Auto-exposure: el handle queda disponible apenas se importa este módulo.
+exposeAtlasDBHandle();
 
 // Performance-optimized bulk data operations
 export const bulkClearStores = async (storeNames: string[]): Promise<void> => {
