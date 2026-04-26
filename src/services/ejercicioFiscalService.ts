@@ -1,70 +1,245 @@
 // src/services/ejercicioFiscalService.ts
-// V62 (TAREA 7 sub-tarea 3): store eliminado · stub para evitar romper consumers.
-// Usar ejerciciosFiscalesCoord en su lugar.
+// V62 (TAREA 7 sub-tarea 3): el store legacy `ejerciciosFiscales` fue
+// eliminado. Este módulo se mantiene como capa de compatibilidad mínima
+// que redirige las operaciones al store actual `ejerciciosFiscalesCoord`
+// (modelo coordinador, keyPath: `año`).
+//
+// Doble exposición intencional:
+//   - Exports top-level (consumido por `import * as ejercicioFiscalService`,
+//     p.ej. `fiscalLifecycleService`, `fiscalYearLifecycleService`).
+//   - Const `ejercicioFiscalService` con los mismos métodos (consumido por
+//     `import { ejercicioFiscalService }`, p.ej. `datosFiscalesService`,
+//     `declaracionOnboardingService`, `useEjercicioFiscal`).
+//
+// El interface `EjercicioFiscal` (legacy, vivía en db.ts antes de V62) se
+// re-exporta aquí para que los pocos consumidores que lo importan sigan
+// compilando. Los campos extra que la versión legacy soportaba se aceptan
+// vía index signature: lo que se persiste es sólo lo válido para
+// `EjercicioFiscalCoord`.
 
-import { initDB } from './db';
+import { initDB, type EjercicioFiscalCoord } from './db';
 
-// Legacy type (no longer in db.ts)
+export type EstadoEjercicio = 'en_curso' | 'pendiente' | 'declarado' | 'prescrito' | 'cerrado';
+
+/**
+ * Vista legacy del ejercicio fiscal. Mantenida como índice abierto para
+ * absorber los campos adicionales que la versión pre-V62 manejaba (p.ej.
+ * `arrastresGenerados`, `declaracionAeat`, `cerradoAt`, `origen`).
+ */
 export interface EjercicioFiscal {
-  ejercicio: number;
-  estado: 'en_curso' | 'pendiente' | 'declarado' | 'prescrito';
-  origen?: 'XML' | 'manual' | 'migración';
+  ejercicio?: number;
+  año?: number;
+  estado: EstadoEjercicio;
+  origen?: string;
   snapshotId?: number;
-  createdAt: string;
-  updatedAt: string;
+  cerradoAt?: string;
+  declaradoAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Legacy fields from pre-V62 that consumers still expect
+  declaracionAeat?: unknown;
+  calculoAtlas?: unknown;
+  arrastresGenerados?: unknown;
+  coberturaDocumental?: unknown;
+  // Campos extra del modelo legacy que algunos consumidores aún proyectan.
+  // No se persisten más allá de la entrada en `ejerciciosFiscalesCoord`.
+  [extra: string]: unknown;
 }
 
-export const ejercicioFiscalService = {
-  async get(_ejercicio: number): Promise<EjercicioFiscal | undefined> {
-    return undefined;
-  },
+function nowIso(): string {
+  return new Date().toISOString();
+}
 
-  async create(_ejercicio: Partial<EjercicioFiscal>): Promise<EjercicioFiscal | null> {
-    console.warn('[ejercicioFiscalService] Store eliminado en V62 · usar ejerciciosFiscalesCoord');
-    return null;
-  },
+function emptyArrastresIn(): EjercicioFiscalCoord['arrastresIn'] {
+  return {
+    fuente: 'ninguno',
+    gastosPendientes: [],
+    perdidasPatrimoniales: [],
+    amortizacionesAcumuladas: [],
+    deduccionesPendientes: [],
+  };
+}
 
-  async update(_ejercicio: EjercicioFiscal): Promise<void> {
-    console.warn('[ejercicioFiscalService] Store eliminado en V62 · operación no-op');
-  },
+function coordToLegacy(c: EjercicioFiscalCoord): EjercicioFiscal {
+  return {
+    ejercicio: c.año,
+    año: c.año,
+    estado: c.estado,
+    origen: 'manual',
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+  };
+}
 
-  async delete(_ejercicio: number): Promise<void> {
-    console.warn('[ejercicioFiscalService] Store eliminado en V62 · operación no-op');
-  },
-};
-
-export async function getEjercicio(_ejercicio: number): Promise<EjercicioFiscal | undefined> {
+function legacyAño(record: EjercicioFiscal): number | undefined {
+  if (typeof record.año === 'number') return record.año;
+  if (typeof record.ejercicio === 'number') return record.ejercicio;
   return undefined;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// Top-level exports (consumed via `import * as ejercicioFiscalService`)
+// ───────────────────────────────────────────────────────────────────────────
+
+export async function getEjercicio(ejercicio: number): Promise<EjercicioFiscal | undefined> {
+  const db = await initDB();
+  const coord = await db.get('ejerciciosFiscalesCoord', ejercicio);
+  return coord ? coordToLegacy(coord) : undefined;
+}
+
 export async function getAllEjercicios(): Promise<EjercicioFiscal[]> {
-  // Try to return from ejerciciosFiscalesCoord
   const db = await initDB();
   try {
     const coords = await db.getAll('ejerciciosFiscalesCoord');
-    return coords.map(c => ({
-      ejercicio: c.año,
-      estado: c.estado,
-      origen: 'manual' as const,
-      createdAt: c.createdAt || new Date().toISOString(),
-      updatedAt: c.updatedAt || new Date().toISOString(),
-    }));
+    return coords.map(coordToLegacy);
   } catch {
     return [];
   }
 }
 
-export async function getOrCreateEjercicio(año: number): Promise<EjercicioFiscal> {
-  // Fallback to creating a minimal stub
+export async function getOrCreateEjercicio(
+  año: number,
+  estadoDefault: EstadoEjercicio = 'en_curso',
+): Promise<EjercicioFiscal> {
+  const db = await initDB();
+  const existing = await db.get('ejerciciosFiscalesCoord', año);
+  if (existing) {
+    return coordToLegacy(existing);
+  }
+  const now = nowIso();
+  const created: EjercicioFiscalCoord = {
+    año,
+    estado: estadoDefault,
+    arrastresIn: emptyArrastresIn(),
+    inmuebleIds: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  await db.put('ejerciciosFiscalesCoord', created);
+  return coordToLegacy(created);
+}
+
+/**
+ * Persiste el registro legacy en `ejerciciosFiscalesCoord`.
+ * Sólo se conservan los campos válidos del modelo coordinador (estado,
+ * fechas). El resto de campos legacy se descartan en silencio.
+ */
+export async function saveLegacyEjercicioRecord(record: EjercicioFiscal): Promise<EjercicioFiscal> {
+  const año = legacyAño(record);
+  if (typeof año !== 'number') {
+    throw new Error('El registro legacy debe incluir ejercicio o año.');
+  }
+  const db = await initDB();
+  const now = nowIso();
+  const existing = await db.get('ejerciciosFiscalesCoord', año);
+  const merged: EjercicioFiscalCoord = existing
+    ? {
+        ...existing,
+        estado: record.estado ?? existing.estado,
+        updatedAt: now,
+      }
+    : {
+        año,
+        estado: record.estado ?? 'en_curso',
+        arrastresIn: emptyArrastresIn(),
+        inmuebleIds: [],
+        createdAt: typeof record.createdAt === 'string' ? record.createdAt : now,
+        updatedAt: now,
+      };
+  await db.put('ejerciciosFiscalesCoord', merged);
+  return coordToLegacy(merged);
+}
+
+export async function saveEjercicio(record: EjercicioFiscal): Promise<void> {
+  await saveLegacyEjercicioRecord(record);
+}
+
+export async function cerrarEjercicio(ejercicio: number): Promise<EjercicioFiscal> {
+  const current = await getOrCreateEjercicio(ejercicio);
+  current.estado = 'pendiente';
+  current.cerradoAt = nowIso();
+  return saveLegacyEjercicioRecord(current);
+}
+
+/**
+ * V62: el store legacy fue eliminado · persistimos a `ejerciciosFiscalesCoord`
+ * marcando el ejercicio como `declarado`. Los args extra (declaración,
+ * origen, fechaPresentacion, ...) se mantienen por compatibilidad de firma;
+ * sólo `fechaPresentacion` se usa para anotar `createdAt`. El detalle de la
+ * declaración (snapshotsDeclaracion, arrastresIRPF, etc.) se persiste a
+ * través de `declaracionDistributorService`.
+ */
+export async function declararEjercicio(
+  ejercicio: number,
+  _declaracion?: unknown,
+  _origen?: string,
+  fechaPresentacion?: string,
+  _pdfRef?: string,
+  _casillasRaw?: Record<string, number | string>,
+): Promise<EjercicioFiscal> {
+  const db = await initDB();
+  const now = nowIso();
+  const fecha = fechaPresentacion ?? now;
+  const existing = await db.get('ejerciciosFiscalesCoord', ejercicio);
+  const updated: EjercicioFiscalCoord = existing
+    ? { ...existing, estado: 'declarado', updatedAt: now }
+    : {
+        año: ejercicio,
+        estado: 'declarado',
+        arrastresIn: emptyArrastresIn(),
+        inmuebleIds: [],
+        createdAt: fecha,
+        updatedAt: now,
+      };
+  await db.put('ejerciciosFiscalesCoord', updated);
+  const result = coordToLegacy(updated);
+  result.declaradoAt = fecha;
+  return result;
+}
+
+export async function getTresVerdades(ejercicio: number): Promise<{
+  calculado?: undefined;
+  declarado?: undefined;
+  estado: EstadoEjercicio;
+}> {
+  const current = await getOrCreateEjercicio(ejercicio);
+  return { calculado: undefined, declarado: undefined, estado: current.estado };
+}
+
+/**
+ * V62: la cobertura documental dependía del store eliminado
+ * `documentosFiscales`. Se devuelve un informe vacío hasta que la
+ * funcionalidad se reimplemente sobre `documents` (sub-tareas
+ * posteriores). Los hooks que la consumen ya manejan la lista vacía.
+ */
+export async function getCoberturaDocumental(_ejercicio: number): Promise<{
+  ejercicio: number;
+  totalEsperados: number;
+  totalEntregados: number;
+  cobertura: number;
+  lineas: never[];
+}> {
   return {
-    ejercicio: año,
-    estado: 'en_curso',
-    origen: 'manual',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    ejercicio: _ejercicio,
+    totalEsperados: 0,
+    totalEntregados: 0,
+    cobertura: 0,
+    lineas: [],
   };
 }
 
-export async function declararEjercicio(_ejercicio: number): Promise<void> {
-  console.warn('[ejercicioFiscalService] Store eliminado en V62 · operación no-op');
-}
+// ───────────────────────────────────────────────────────────────────────────
+// Const object (consumed via `import { ejercicioFiscalService }`)
+// ───────────────────────────────────────────────────────────────────────────
+
+export const ejercicioFiscalService = {
+  getEjercicio,
+  getAllEjercicios,
+  getOrCreateEjercicio,
+  saveLegacyEjercicioRecord,
+  saveEjercicio,
+  cerrarEjercicio,
+  declararEjercicio,
+  getTresVerdades,
+  getCoberturaDocumental,
+};

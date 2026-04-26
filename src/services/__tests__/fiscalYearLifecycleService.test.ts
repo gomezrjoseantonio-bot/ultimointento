@@ -16,7 +16,7 @@ describe('fiscalYearLifecycleService', () => {
   beforeEach(async () => {
     jest.restoreAllMocks();
     const db = await initDB();
-    await db.clear('ejerciciosFiscales');
+    await db.clear('ejerciciosFiscalesCoord');
     await db.clear('snapshotsDeclaracion');
   });
 

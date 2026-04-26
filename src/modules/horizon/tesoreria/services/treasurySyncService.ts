@@ -1009,6 +1009,8 @@ export async function generateMonthlyForecasts(
         incluir_prevision_irpf: true,
         mes_declaracion: 6,
         dia_declaracion: 25,
+        minusvalias_pendientes: [] as { anio: number; importe: number }[],
+        cuenta_irpf_id: undefined as number | undefined,
       };
 
       if (configFiscal.incluir_prevision_irpf) {
@@ -1095,7 +1097,7 @@ export async function generateMonthlyForecasts(
 
             // Subtract pending minusvalías (up to 4 years back)
             const minusvalias = (configFiscal.minusvalias_pendientes ?? [])
-              .filter(m => m.año >= añoFiscal - 4 && m.año < añoFiscal)
+              .filter(m => m.anio >= añoFiscal - 4 && m.anio < añoFiscal)
               .reduce((sum, m) => sum + m.importe, 0);
 
             const baseAhorro = interesesBrutos + dividendosBrutos + plusvalias - minusvalias;
