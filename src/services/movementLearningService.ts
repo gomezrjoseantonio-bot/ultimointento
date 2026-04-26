@@ -211,7 +211,8 @@ export async function createOrUpdateRule(params: {
       rule.ambito = ambito;
       rule.inmuebleId = inmuebleId;
       rule.updatedAt = new Date().toISOString();
-      
+      appendHistory(rule, { action: 'CREATE_RULE', ts: new Date().toISOString() });
+
       await db.put('movementLearningRules', rule);
       console.log(`📚 Updated learning rule: ${learnKey}`);
       return rule;
@@ -229,11 +230,12 @@ export async function createOrUpdateRule(params: {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         appliedCount: 0,
+        history: [{ action: 'CREATE_RULE', ts: new Date().toISOString() }],
       };
-      
+
       const ruleId = await db.add('movementLearningRules', newRule);
       newRule.id = ruleId as number;
-      
+
       console.log(`📚 Created learning rule: ${learnKey}`);
       return newRule;
     }
