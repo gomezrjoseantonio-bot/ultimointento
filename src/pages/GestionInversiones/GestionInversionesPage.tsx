@@ -11,7 +11,8 @@ import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
 import { personalDataService } from '../../services/personalDataService';
 import { traspasosPlanesService, PLAN_PENSIONES_TIPOS_INVERSION } from '../../services/traspasosPlanesService';
-import type { PlanPensionInversion, TraspasoPlan } from '../../types/personal';
+import type { TraspasoPlan } from '../../types/personal';
+import type { PlanPensiones } from '../../types/planesPensiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
@@ -199,7 +200,7 @@ function ContenidoPrestamo({ posicion }: { posicion: PosicionInversion }) {
 
 // ─── ContenidoPlanPension — historial de aportaciones ────────────────────────
 
-function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionInversion; planesPension: PlanPensionInversion[] }) {
+function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionInversion; planesPension: PlanPensiones[] }) {
   const matchingPlan = planesPension.find(p =>
     p.nombre.toLowerCase() === posicion.nombre.toLowerCase() ||
     (p.entidad && posicion.entidad && p.entidad.toLowerCase() === posicion.entidad.toLowerCase())
@@ -379,7 +380,7 @@ function ContenidoResumen({ posicion }: { posicion: PosicionInversion }) {
 const GestionInversionesPage: React.FC = () => {
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
   const [selectedPosId, setSelectedPosId] = useState<number | null>(null);
-  const [planesPension, setPlanesPension] = useState<PlanPensionInversion[]>([]);
+  const [planesPension, setPlanesPension] = useState<PlanPensiones[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showAportacionForm, setShowAportacionForm] = useState(false);
@@ -387,8 +388,8 @@ const GestionInversionesPage: React.FC = () => {
   const [detailPosicion, setDetailPosicion] = useState<PosicionInversion | undefined>();
   const [editingAportacion, setEditingAportacion] = useState<Aportacion | undefined>();
 
-  const [planSeleccionado, setPlanSeleccionado] = useState<PlanPensionInversion | null>(null);
-  const [planEnEdicion, setPlanEnEdicion] = useState<PlanPensionInversion | null>(null);
+  const [planSeleccionado, setPlanSeleccionado] = useState<PlanPensiones | null>(null);
+  const [planEnEdicion, setPlanEnEdicion] = useState<PlanPensiones | null>(null);
   const [mostrarFormularioPlan, setMostrarFormularioPlan] = useState(false);
   const [mostrarModalValor, setMostrarModalValor] = useState(false);
   const [mostrarModalAportacion, setMostrarModalAportacion] = useState(false);
@@ -431,7 +432,7 @@ const GestionInversionesPage: React.FC = () => {
           planesInversionService.getPlanes(data.id),
           traspasosPlanesService.getTraspasosByPersonal(data.id),
         ]);
-        setPlanesPension(planes as unknown as PlanPensionInversion[]);
+        setPlanesPension(planes as PlanPensiones[]);
         setTraspasos(tras);
       } catch {
         setPlanesPension([]);
@@ -453,7 +454,7 @@ const GestionInversionesPage: React.FC = () => {
           planesInversionService.getPlanes(personalDataId),
           traspasosPlanesService.getTraspasosByPersonal(personalDataId),
         ]);
-        setPlanesPension(planes as unknown as PlanPensionInversion[]);
+        setPlanesPension(planes as PlanPensiones[]);
         setTraspasos(tras);
       } catch {
         // keep previous state
@@ -499,7 +500,7 @@ const GestionInversionesPage: React.FC = () => {
     }
   };
 
-  const handleEditPlanPension = (plan: PlanPensionInversion) => {
+  const handleEditPlanPension = (plan: PlanPensiones) => {
     setPlanEnEdicion(plan);
     setMostrarFormularioPlan(true);
   };
@@ -511,14 +512,14 @@ const GestionInversionesPage: React.FC = () => {
       const personalData = await personalDataService.getPersonalData();
       if (personalData?.id) {
         const planes = await planesInversionService.getPlanes(personalData.id);
-        setPlanesPension(planes as unknown as PlanPensionInversion[]);
+        setPlanesPension(planes as PlanPensiones[]);
       }
     } catch {
       // If reload fails the list keeps its previous state; the save itself already succeeded.
     }
   };
 
-  const handleDeletePlanPension = async (plan: PlanPensionInversion) => {
+  const handleDeletePlanPension = async (plan: PlanPensiones) => {
     if (plan.id == null) { toast.error('El plan no tiene ID y no puede eliminarse'); return; }
     if (!window.confirm(`¿Eliminar "${plan.nombre}"? Esta acción no se puede deshacer.`)) return;
     try {
@@ -526,7 +527,7 @@ const GestionInversionesPage: React.FC = () => {
       if (!personalData?.id) return;
       await planesInversionService.deletePlan(plan.id);
       const planes = await planesInversionService.getPlanes(personalData.id);
-      setPlanesPension(planes as unknown as PlanPensionInversion[]);
+      setPlanesPension(planes as PlanPensiones[]);
       toast.success(`"${plan.nombre}" eliminado`);
     } catch {
       toast.error('Error al eliminar el plan de pensiones');
@@ -548,7 +549,7 @@ const GestionInversionesPage: React.FC = () => {
       setMostrarModalValor(false);
       const personalData = await personalDataService.getPersonalData();
       if (personalData?.id) {
-        setPlanesPension((await planesInversionService.getPlanes(personalData.id)) as unknown as PlanPensionInversion[]);
+        setPlanesPension((await planesInversionService.getPlanes(personalData.id)) as PlanPensiones[]);
       }
       toast.success('Valor actualizado y registrado en el histórico');
     } catch {
@@ -556,7 +557,7 @@ const GestionInversionesPage: React.FC = () => {
     }
   };
 
-  const handleVerEvolucion = async (plan: PlanPensionInversion) => {
+  const handleVerEvolucion = async (plan: PlanPensiones) => {
     if (!plan.id) return;
     try {
       const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id);
@@ -1147,7 +1148,7 @@ const GestionInversionesPage: React.FC = () => {
                   } as any);
                   setMostrarModalAportacion(false);
                   const planes = await planesInversionService.getPlanes(personalData.id);
-                  setPlanesPension(planes as unknown as PlanPensionInversion[]);
+                  setPlanesPension(planes as PlanPensiones[]);
                   toast.success('Aportación añadida');
                 }}
                 style={{ padding: '8px 16px', background: C.blue, color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
