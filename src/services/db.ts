@@ -16,6 +16,7 @@ import type {
 } from '../types/personal';
 import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
+import type { Escenario, Objetivo, FondoAhorro, Reto } from '../types/miPlan';
 import type {
   ArrastreManual,
   ArrastresEjercicio,
@@ -26,7 +27,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 53; // V5.3 (ATLAS Personal v1.1): compromisosRecurrentes (unified opexRules + personal) + viviendaHabitual
+const DB_VERSION = 57; // V5.7 (Mi Plan v3): escenarios (rename objetivos_financieros) + objetivos + fondos_ahorro + retos
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2010,6 +2011,8 @@ interface AtlasHorizonDB {
   valoraciones_historicas: any; // Monthly valuation: Historical valuations per asset
   valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
   keyval: any; // General key-value store for application configuration
+  // ⚠ DEPRECATED (V5.4): objetivos_financieros fue migrado a 'escenarios' · el store fue eliminado en la migración V5.4
+  // Se mantiene en la interfaz TypeScript únicamente para que el código de migración compile.
   objetivos_financieros: {
     id: 1;
     rentaPasivaObjetivo: number;
@@ -2020,7 +2023,7 @@ interface AtlasHorizonDB {
     yieldMinimaCartera: number;
     tasaAhorroMinima: number;
     updatedAt: string;
-  }; // V3.2: financial goals singleton store
+  }; // V3.2 → V5.4 MIGRATED to 'escenarios'
   opexRules: OpexRule; // V2.2: OPEX recurring expense rules per property
   configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
   ejerciciosFiscales: EjercicioFiscal; // V2.7: Fiscal year lifecycle
@@ -2036,8 +2039,12 @@ interface AtlasHorizonDB {
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
   compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01)
   viviendaHabitual: ViviendaHabitual;           // V5.3: ficha vivienda habitual del hogar · genera derivados (sección 6)
+  // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
+  escenarios: Escenario;     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
+  objetivos: Objetivo;       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)
+  fondos_ahorro: FondoAhorro; // V5.6: fondos de ahorro con etiquetas de propósito
+  retos: Reto;               // V5.7: retos mensuales (1 activo por mes)
 }
-
 let dbPromise: Promise<IDBPDatabase<AtlasHorizonDB>>;
 
 export const initDB = async () => {
@@ -2751,6 +2758,134 @@ export const initDB = async () => {
           }).catch((err) => {
             console.warn('[DB V5.3] migración opexRules → compromisosRecurrentes interrumpida:', err);
           });
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V5.4 — Mi Plan v3 · escenarios (singleton)
+        //   Renombra objetivos_financieros → escenarios.
+        //   Preserva los 7 campos KPI existentes.
+        //   Añade: modoVivienda · gastosVidaLibertadMensual · estrategia · hitos[].
+        //   El store objetivos_financieros se elimina tras la copia.
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 54) {
+          if (!db.objectStoreNames.contains('escenarios')) {
+            db.createObjectStore('escenarios', { keyPath: 'id' });
+          }
+
+          const defaultEscenario = {
+            id: 1,
+            modoVivienda: 'alquiler',
+            gastosVidaLibertadMensual: 2500,
+            estrategia: 'hibrido',
+            hitos: [],
+            rentaPasivaObjetivo: 3000,
+            patrimonioNetoObjetivo: 600000,
+            cajaMinima: 10000,
+            dtiMaximo: 35,
+            ltvMaximo: 50,
+            yieldMinimaCartera: 8,
+            tasaAhorroMinima: 15,
+            updatedAt: new Date().toISOString(),
+          };
+
+          if (db.objectStoreNames.contains('objetivos_financieros')) {
+            // Copiar usando raw IDB event handlers para garantizar que la
+            // versionchange transaction permanece activa durante el delete.
+            const rawGetReq = (transaction as unknown as IDBTransaction)
+              .objectStore('objetivos_financieros')
+              .get(1);
+
+            rawGetReq.onsuccess = () => {
+              const now = new Date().toISOString();
+              const old = rawGetReq.result as Record<string, unknown> | undefined;
+              const nuevo = {
+                ...defaultEscenario,
+                rentaPasivaObjetivo:
+                  typeof old?.rentaPasivaObjetivo === 'number'
+                    ? old.rentaPasivaObjetivo
+                    : defaultEscenario.rentaPasivaObjetivo,
+                patrimonioNetoObjetivo:
+                  typeof old?.patrimonioNetoObjetivo === 'number'
+                    ? old.patrimonioNetoObjetivo
+                    : defaultEscenario.patrimonioNetoObjetivo,
+                cajaMinima:
+                  typeof old?.cajaMinima === 'number'
+                    ? old.cajaMinima
+                    : defaultEscenario.cajaMinima,
+                dtiMaximo:
+                  typeof old?.dtiMaximo === 'number'
+                    ? old.dtiMaximo
+                    : defaultEscenario.dtiMaximo,
+                ltvMaximo:
+                  typeof old?.ltvMaximo === 'number'
+                    ? old.ltvMaximo
+                    : defaultEscenario.ltvMaximo,
+                yieldMinimaCartera:
+                  typeof old?.yieldMinimaCartera === 'number'
+                    ? old.yieldMinimaCartera
+                    : defaultEscenario.yieldMinimaCartera,
+                tasaAhorroMinima:
+                  typeof old?.tasaAhorroMinima === 'number'
+                    ? old.tasaAhorroMinima
+                    : defaultEscenario.tasaAhorroMinima,
+                updatedAt: now,
+              };
+              (transaction as unknown as IDBTransaction).objectStore('escenarios').put(nuevo);
+              // Eliminar store viejo (la versionchange transaction sigue activa en onsuccess)
+              (db as unknown as IDBDatabase).deleteObjectStore('objetivos_financieros');
+            };
+
+            rawGetReq.onerror = () => {
+              console.warn('[DB V5.4] No se pudo leer objetivos_financieros, usando defaults para escenarios');
+              (transaction as unknown as IDBTransaction).objectStore('escenarios').put(defaultEscenario);
+              (db as unknown as IDBDatabase).deleteObjectStore('objetivos_financieros');
+            };
+          } else {
+            // Instalación nueva (sin objetivos_financieros): crear singleton con defaults
+            transaction.objectStore('escenarios').put(defaultEscenario as unknown as Escenario);
+          }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V5.5 — Mi Plan v3 · objetivos (lista)
+        //   Store nuevo para los 4 tipos de objetivo:
+        //   acumular · amortizar · comprar · reducir.
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 55) {
+          if (!db.objectStoreNames.contains('objetivos')) {
+            const objetivosStore = db.createObjectStore('objetivos', { keyPath: 'id' });
+            objetivosStore.createIndex('tipo', 'tipo', { unique: false });
+            objetivosStore.createIndex('estado', 'estado', { unique: false });
+            objetivosStore.createIndex('fondoId', 'fondoId', { unique: false });
+            objetivosStore.createIndex('prestamoId', 'prestamoId', { unique: false });
+          }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V5.6 — Mi Plan v3 · fondos_ahorro
+        //   Store nuevo para etiquetas de propósito sobre euros de tesorería.
+        //   6 tipos: colchon · compra · reforma · impuestos · capricho · custom.
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 56) {
+          if (!db.objectStoreNames.contains('fondos_ahorro')) {
+            const fondosStore = db.createObjectStore('fondos_ahorro', { keyPath: 'id' });
+            fondosStore.createIndex('tipo', 'tipo', { unique: false });
+            fondosStore.createIndex('activo', 'activo', { unique: false });
+          }
+        }
+
+        // ═══════════════════════════════════════════════════
+        // V5.7 — Mi Plan v3 · retos
+        //   Store nuevo para retos mensuales.
+        //   El índice 'mes' es UNIQUE: fuerza 1 reto por mes.
+        // ═══════════════════════════════════════════════════
+        if (oldVersion < 57) {
+          if (!db.objectStoreNames.contains('retos')) {
+            const retosStore = db.createObjectStore('retos', { keyPath: 'id' });
+            retosStore.createIndex('mes', 'mes', { unique: true });
+            retosStore.createIndex('estado', 'estado', { unique: false });
+            retosStore.createIndex('tipo', 'tipo', { unique: false });
+          }
         }
       },
       blocked() {

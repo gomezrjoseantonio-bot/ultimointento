@@ -3,12 +3,14 @@ import toast from 'react-hot-toast';
 import { BarChart3, Home, Landmark, Settings, Target, Wallet, X, type LucideIcon } from 'lucide-react';
 import PageHeader, { HeaderSecondaryButton } from '../../../../components/shared/PageHeader';
 import {
-  getObjetivos,
-  ObjetivosFinancieros,
-  resetObjetivos,
-  saveObjetivos,
-} from '../../../../services/objetivosService';
+  getEscenarioActivo,
+  resetEscenario,
+  saveEscenarioActivo,
+} from '../../../../services/escenariosService';
+import type { Escenario } from '../../../../types/miPlan';
 import styles from './ObjetivosPage.module.css';
+
+type EscenarioKPIKey = 'rentaPasivaObjetivo' | 'patrimonioNetoObjetivo' | 'cajaMinima' | 'dtiMaximo' | 'ltvMaximo' | 'yieldMinimaCartera' | 'tasaAhorroMinima';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
   style: 'currency',
@@ -107,10 +109,10 @@ const ObjectiveCard: React.FC<ObjectiveCardProps> = ({
 };
 
 interface EditDrawerProps {
-  obj: ObjetivosFinancieros;
+  obj: Escenario;
   saving: boolean;
   dirty: boolean;
-  onChange: <K extends keyof Omit<ObjetivosFinancieros, 'id' | 'updatedAt'>>(key: K, value: string) => void;
+  onChange: (key: EscenarioKPIKey, value: string) => void;
   onSave: () => Promise<void>;
   onReset: () => Promise<void>;
   onClose: () => void;
@@ -144,7 +146,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={100}
-              value={obj.rentaPasivaObjetivo}
+              value={obj.rentaPasivaObjetivo ?? 0}
               onChange={(event) => onChange('rentaPasivaObjetivo', event.target.value)}
             />
           </label>
@@ -159,7 +161,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={10000}
-              value={obj.patrimonioNetoObjetivo}
+              value={obj.patrimonioNetoObjetivo ?? 0}
               onChange={(event) => onChange('patrimonioNetoObjetivo', event.target.value)}
             />
           </label>
@@ -174,7 +176,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={1000}
-              value={obj.cajaMinima}
+              value={obj.cajaMinima ?? 0}
               onChange={(event) => onChange('cajaMinima', event.target.value)}
             />
           </label>
@@ -189,7 +191,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={0.5}
-              value={obj.dtiMaximo}
+              value={obj.dtiMaximo ?? 35}
               onChange={(event) => onChange('dtiMaximo', event.target.value)}
             />
             <p className={styles.helpText}>% máximo de ingresos mensuales en cuotas de deuda</p>
@@ -201,7 +203,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={0.5}
-              value={obj.ltvMaximo}
+              value={obj.ltvMaximo ?? 50}
               onChange={(event) => onChange('ltvMaximo', event.target.value)}
             />
           </label>
@@ -216,7 +218,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={0.5}
-              value={obj.yieldMinimaCartera}
+              value={obj.yieldMinimaCartera ?? 8}
               onChange={(event) => onChange('yieldMinimaCartera', event.target.value)}
             />
           </label>
@@ -227,7 +229,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
               type="number"
               min={0}
               step={0.5}
-              value={obj.tasaAhorroMinima}
+              value={obj.tasaAhorroMinima ?? 15}
               onChange={(event) => onChange('tasaAhorroMinima', event.target.value)}
             />
           </label>
@@ -257,7 +259,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({
 );
 
 const ObjetivosPage: React.FC = () => {
-  const [obj, setObj] = useState<ObjetivosFinancieros | null>(null);
+  const [obj, setObj] = useState<Escenario | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -276,8 +278,8 @@ const ObjetivosPage: React.FC = () => {
           import('../../../../services/dashboardService'),
           import('../../../../services/prestamosService'),
         ]);
-        const [objetivos, flujos, tesoreria, patrimonio, prestamos] = await Promise.all([
-          getObjetivos(),
+        const [escenario, flujos, tesoreria, patrimonio, prestamos] = await Promise.all([
+          getEscenarioActivo(),
           dashboardService.getFlujosCaja(),
           dashboardService.getTesoreriaPanel(),
           dashboardService.getPatrimonioNeto(),
@@ -299,7 +301,7 @@ const ObjetivosPage: React.FC = () => {
         }, 0);
         const monthlyIncome = flujos.trabajo.netoMensual;
 
-        setObj(objetivos);
+        setObj(escenario);
         setCfActual(flujos.inmuebles.cashflow);
         setPatrimonioActual(patrimonio.total);
         setCajaActual(tesoreria.totales.hoy);
@@ -322,8 +324,8 @@ const ObjetivosPage: React.FC = () => {
     };
   }, []);
 
-  const handleNumberChange = <K extends keyof Omit<ObjetivosFinancieros, 'id' | 'updatedAt'>>(
-    key: K,
+  const handleNumberChange = (
+    key: EscenarioKPIKey,
     value: string,
   ) => {
     const parsed = Number(value);
@@ -342,25 +344,25 @@ const ObjetivosPage: React.FC = () => {
 
   const cfStatus = useMemo<StatusTone>(() => {
     if (!obj) return 'alert';
-    if (cfActual >= obj.rentaPasivaObjetivo) return 'ok';
-    if (cfActual >= obj.rentaPasivaObjetivo * 0.7) return 'warn';
+    if (cfActual >= (obj.rentaPasivaObjetivo ?? 0)) return 'ok';
+    if (cfActual >= (obj.rentaPasivaObjetivo ?? 0) * 0.7) return 'warn';
     return 'alert';
   }, [cfActual, obj]);
 
   const cajaStatus = useMemo<StatusTone>(() => {
     if (!obj) return 'alert';
-    return cajaActual >= obj.cajaMinima ? 'ok' : 'alert';
+    return cajaActual >= (obj.cajaMinima ?? 0) ? 'ok' : 'alert';
   }, [cajaActual, obj]);
 
   const dtiStatus = useMemo<StatusTone>(() => {
     if (!obj) return 'alert';
-    if (dtiActual <= obj.dtiMaximo) return 'ok';
-    if (dtiActual <= obj.dtiMaximo * 1.15) return 'warn';
+    if (dtiActual <= (obj.dtiMaximo ?? 35)) return 'ok';
+    if (dtiActual <= (obj.dtiMaximo ?? 35) * 1.15) return 'warn';
     return 'alert';
   }, [dtiActual, obj]);
 
   const patrimonioProgress = obj
-    ? clampProgress((patrimonioActual / Math.max(obj.patrimonioNetoObjetivo, 1)) * 100)
+    ? clampProgress((patrimonioActual / Math.max(obj.patrimonioNetoObjetivo ?? 1, 1)) * 100)
     : 0;
 
   const handleSave = async () => {
@@ -370,7 +372,7 @@ const ObjetivosPage: React.FC = () => {
 
     setSaving(true);
     try {
-      const saved = await saveObjetivos(obj);
+      const saved = await saveEscenarioActivo(obj);
       setObj(saved);
       setDirty(false);
       toast.success('Objetivos guardados correctamente');
@@ -389,7 +391,7 @@ const ObjetivosPage: React.FC = () => {
 
     setSaving(true);
     try {
-      const reset = await resetObjetivos();
+      const reset = await resetEscenario();
       setObj(reset);
       setDirty(false);
       toast.success('Objetivos restaurados correctamente');
@@ -443,13 +445,13 @@ const ObjetivosPage: React.FC = () => {
             title="Libertad financiera"
             Icon={Target}
             status={cfStatus}
-            objective={`${euroFormatter.format(obj.rentaPasivaObjetivo)}/mes`}
+            objective={`${euroFormatter.format(obj.rentaPasivaObjetivo ?? 0)}/mes`}
             current={`${euroFormatter.format(cfActual)}/mes`}
-            progress={clampProgress((cfActual / Math.max(obj.rentaPasivaObjetivo, 1)) * 100)}
+            progress={clampProgress((cfActual / Math.max(obj.rentaPasivaObjetivo ?? 1, 1)) * 100)}
             detail={
-              cfActual >= obj.rentaPasivaObjetivo
-                ? `Superado en ${euroFormatter.format(cfActual - obj.rentaPasivaObjetivo)}/mes ✓`
-                : `Faltan ${euroFormatter.format(obj.rentaPasivaObjetivo - cfActual)}/mes`
+              cfActual >= (obj.rentaPasivaObjetivo ?? 0)
+                ? `Superado en ${euroFormatter.format(cfActual - (obj.rentaPasivaObjetivo ?? 0))}/mes ✓`
+                : `Faltan ${euroFormatter.format((obj.rentaPasivaObjetivo ?? 0) - cfActual)}/mes`
             }
             action={{ label: 'Simular hoja de ruta', href: '/mi-plan/libertad' }}
           />
@@ -458,18 +460,18 @@ const ObjetivosPage: React.FC = () => {
             title="Patrimonio neto"
             Icon={Wallet}
             status={
-              patrimonioActual >= obj.patrimonioNetoObjetivo
+              patrimonioActual >= (obj.patrimonioNetoObjetivo ?? 0)
                 ? 'ok'
-                : patrimonioActual >= obj.patrimonioNetoObjetivo * 0.7
+                : patrimonioActual >= (obj.patrimonioNetoObjetivo ?? 0) * 0.7
                   ? 'warn'
                   : 'alert'
             }
-            objective={euroFormatter.format(obj.patrimonioNetoObjetivo)}
+            objective={euroFormatter.format(obj.patrimonioNetoObjetivo ?? 0)}
             current={euroFormatter.format(patrimonioActual)}
             progress={patrimonioProgress}
             detail={
-              patrimonioActual >= obj.patrimonioNetoObjetivo
-                ? `Superado en ${euroFormatter.format(patrimonioActual - obj.patrimonioNetoObjetivo)} ✓`
+              patrimonioActual >= (obj.patrimonioNetoObjetivo ?? 0)
+                ? `Superado en ${euroFormatter.format(patrimonioActual - (obj.patrimonioNetoObjetivo ?? 0))} ✓`
                 : `${percentFormatter.format(patrimonioProgress)}% del objetivo`
             }
           />
@@ -478,13 +480,13 @@ const ObjetivosPage: React.FC = () => {
             title="Liquidez"
             Icon={Landmark}
             status={cajaStatus}
-            objective={`Mínimo ${euroFormatter.format(obj.cajaMinima)}`}
+            objective={`Mínimo ${euroFormatter.format(obj.cajaMinima ?? 0)}`}
             current={euroFormatter.format(cajaActual)}
-            progress={clampProgress((cajaActual / Math.max(obj.cajaMinima, 1)) * 100)}
+            progress={clampProgress((cajaActual / Math.max(obj.cajaMinima ?? 1, 1)) * 100)}
             detail={
-              cajaActual >= obj.cajaMinima
+              cajaActual >= (obj.cajaMinima ?? 0)
                 ? 'Colchón de seguridad cubierto ✓'
-                : `Déficit de ${euroFormatter.format(obj.cajaMinima - cajaActual)}`
+                : `Déficit de ${euroFormatter.format((obj.cajaMinima ?? 0) - cajaActual)}`
             }
           />
 
@@ -492,14 +494,14 @@ const ObjetivosPage: React.FC = () => {
             title="Esfuerzo de deuda (DTI)"
             Icon={BarChart3}
             status={dtiStatus}
-            objective={`Máximo ${percentFormatter.format(obj.dtiMaximo)}%`}
+            objective={`Máximo ${percentFormatter.format(obj.dtiMaximo ?? 35)}%`}
             current={`${percentFormatter.format(dtiActual)}%`}
-            progress={clampProgress((dtiActual / Math.max(obj.dtiMaximo, 1)) * 100)}
+            progress={clampProgress((dtiActual / Math.max(obj.dtiMaximo ?? 35, 1)) * 100)}
             progressInverted
             detail={
-              dtiActual <= obj.dtiMaximo
-                ? `Dentro del umbral (${percentFormatter.format(obj.dtiMaximo - dtiActual)}pp de margen) ✓`
-                : `Supera el umbral en ${percentFormatter.format(dtiActual - obj.dtiMaximo)}pp`
+              dtiActual <= (obj.dtiMaximo ?? 35)
+                ? `Dentro del umbral (${percentFormatter.format((obj.dtiMaximo ?? 35) - dtiActual)}pp de margen) ✓`
+                : `Supera el umbral en ${percentFormatter.format(dtiActual - (obj.dtiMaximo ?? 35))}pp`
             }
           />
 
@@ -508,7 +510,7 @@ const ObjetivosPage: React.FC = () => {
             Icon={Home}
             status="ok"
             objective={
-              `Yield ≥ ${percentFormatter.format(obj.yieldMinimaCartera)}%  ·  Ahorro ≥ ${percentFormatter.format(obj.tasaAhorroMinima)}%`
+              `Yield ≥ ${percentFormatter.format(obj.yieldMinimaCartera ?? 8)}%  ·  Ahorro ≥ ${percentFormatter.format(obj.tasaAhorroMinima ?? 15)}%`
             }
             current="Umbrales activos en informes"
             progress={null}

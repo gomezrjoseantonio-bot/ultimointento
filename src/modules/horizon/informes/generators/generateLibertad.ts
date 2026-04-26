@@ -1,8 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InformesData } from '../../../../services/informesDataService';
-import { initDB } from '../../../../services/db';
-import { getObjetivos } from '../../../../services/objetivosService';
+import { getEscenarioActivo } from '../../../../services/escenariosService';
 import { COLOR, drawFooter, drawHeader, drawKpiRow, drawSectionTitle, fmtEur, fmtPct } from './pdfHelpers';
 
 const PAGE_MARGIN = 14;
@@ -29,20 +28,9 @@ const formatMonthYear = (date: Date | null): string => {
 };
 
 export async function generateLibertad(data: InformesData): Promise<void> {
-  const objetivos = await getObjetivos();
+  const escenario = await getEscenarioActivo();
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
-  let objetivoMensual = Math.max(objetivos.rentaPasivaObjetivo, 3_000);
-
-  try {
-    const db = await initDB();
-    const objetivoGuardado = await db.get('objetivos_financieros', 1).catch(() => null);
-    if (objetivoGuardado && typeof (objetivoGuardado as { rentaPasivaObjetivo?: unknown }).rentaPasivaObjetivo === 'number') {
-      objetivoMensual = Math.max((objetivoGuardado as { rentaPasivaObjetivo: number }).rentaPasivaObjetivo, 3_000);
-    }
-  } catch {
-    // Usar el valor por defecto si el store aún no existe o no está disponible.
-  }
-
+  const objetivoMensual = Math.max(escenario.rentaPasivaObjetivo ?? 3_000, 3_000);
   const cfInmueblesMensual = data.resumenCartera.cfMensualTotal;
   const ahorroMensualTotal = (data.proyeccion.totalesAnuales.ingresosTotales -
     data.proyeccion.totalesAnuales.gastosTotales -

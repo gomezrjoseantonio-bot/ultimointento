@@ -3,7 +3,7 @@ import { CalendarClock, Download, Goal, Home, Loader2, Sparkles, Target, Trendin
 import { jsPDF } from 'jspdf';
 import toast from 'react-hot-toast';
 import PageHeader from '../../../../components/shared/PageHeader';
-import { getObjetivos, saveObjetivos } from '../../../../services/objetivosService';
+import { getEscenarioActivo, saveEscenarioActivo } from '../../../../services/escenariosService';
 
 const euroFormatter = new Intl.NumberFormat('es-ES', {
   style: 'currency',
@@ -168,7 +168,7 @@ const LibertadFinancieraPage: React.FC = () => {
         const [flujos, tesoreria, obj] = await Promise.all([
           dashboardService.getFlujosCaja(),
           dashboardService.getTesoreriaPanel(),
-          getObjetivos(),
+          getEscenarioActivo(),
         ]);
 
         if (!mounted) {
@@ -184,8 +184,8 @@ const LibertadFinancieraPage: React.FC = () => {
             toFiniteNumber(flujos.inversiones.dividendosMes),
           capitalLiquido: toFiniteNumber(tesoreria.totales.hoy),
         });
-        setMetaIngresoMensual(obj.rentaPasivaObjetivo);
-        setObjetivoGuardado(obj.rentaPasivaObjetivo);
+        setMetaIngresoMensual(obj.rentaPasivaObjetivo ?? 3000);
+        setObjetivoGuardado(obj.rentaPasivaObjetivo ?? 3000);
       } catch (error) {
         console.warn('No se pudieron cargar los datos para el planificador ATLAS', error);
         toast.error('No se pudieron cargar los datos para el simulador');
@@ -281,7 +281,7 @@ const LibertadFinancieraPage: React.FC = () => {
 
   const guardarObjetivo = async () => {
     try {
-      await saveObjetivos({ rentaPasivaObjetivo: metaIngresoMensual });
+      await saveEscenarioActivo({ rentaPasivaObjetivo: metaIngresoMensual });
       setObjetivoGuardado(metaIngresoMensual);
       toast.success('Objetivo guardado');
     } catch (error) {
