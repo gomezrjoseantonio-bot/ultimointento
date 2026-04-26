@@ -4,21 +4,22 @@ import PageLayout from '../../components/common/PageLayout';
 import ProfileView from '../../modules/personal/components/ProfileView';
 import PlanFacturacion from '../../modules/horizon/configuracion/plan-facturacion/PlanFacturacion';
 import MigracionTab from './MigracionTab';
-import { User, CreditCard, Settings, Upload } from 'lucide-react';
+import DatosTab from './DatosTab';
+import { User, CreditCard, Settings, Upload, Database } from 'lucide-react';
 
 const PandaDocTemplateBuilder = React.lazy(() => import('../../modules/pulse/firmas/plantillas/PandaDocTemplateBuilder'));
 
-type AccountTab = 'perfil' | 'plan' | 'configuracion' | 'migracion';
+type AccountTab = 'perfil' | 'plan' | 'configuracion' | 'migracion' | 'datos';
 
 const AccountPage: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<AccountTab>('perfil');
-  
+
   // Update active tab based on current path
   useEffect(() => {
     const pathSegments = location.pathname.split('/');
     const tabFromPath = pathSegments[2] as AccountTab;
-    if (['perfil', 'plan', 'configuracion', 'migracion'].includes(tabFromPath)) {
+    if (['perfil', 'plan', 'configuracion', 'migracion', 'datos'].includes(tabFromPath)) {
       setActiveTab(tabFromPath);
     }
   }, [location.pathname]);
@@ -27,6 +28,7 @@ const AccountPage: React.FC = () => {
     { key: 'perfil', label: 'Perfil', icon: User },
     { key: 'plan', label: 'Plan & Facturación', icon: CreditCard },
     { key: 'configuracion', label: 'Configuración', icon: Settings },
+    { key: 'datos', label: 'Exportación de Datos', icon: Database },
     { key: 'migracion', label: 'Migración de Datos', icon: Upload },
   ];
 
@@ -73,6 +75,10 @@ const AccountPage: React.FC = () => {
         }>
           <PandaDocTemplateBuilder />
         </React.Suspense>
+      )}
+
+      {activeTab === 'datos' && (
+        <DatosTab />
       )}
 
       {activeTab === 'migracion' && (
