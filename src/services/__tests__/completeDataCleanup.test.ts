@@ -75,12 +75,14 @@ describe('Complete Data Cleanup', () => {
     it('should define expected object stores to clear', () => {
       // Define the object stores that should exist in the database
       // NOTE: rentCalendar, rentPayments removed in V4.5 — migrated to rentaMensual
+      // V63 (TAREA 7 sub-tarea 4): `matchingConfiguration` eliminado;
+      // su configuración vive ahora en `keyval['matchingConfig']`.
       const expectedStores = [
         'properties', 'documents', 'contracts', 'expenses',
         'rentaMensual', 'accounts', 'movements', 'importBatches',
         'treasuryEvents', 'treasuryRecommendations',
         'ingresos', 'budgets', 'budgetLines',
-        'presupuestos', 'presupuestoLineas', 'matchingConfiguration',
+        'presupuestos', 'presupuestoLineas',
         'aeatCarryForwards', 'propertyDays',
         'kpiConfigurations', 'keyval',
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',

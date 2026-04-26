@@ -144,8 +144,8 @@ export async function detectTransfers(movements: Movement[]): Promise<TransferDe
   try {
     // Get matching configuration
     const db = await initDB();
-    const configs = await db.getAll('matchingConfiguration');
-    const config = configs[0] || {
+    const stored = (await db.get('keyval', 'matchingConfig')) as any;
+    const config = stored || {
       transferDateWindow: 2,
       transferKeywords: ['TRASPASO', 'TRANSFERENCIA', 'ENVÍO ENTRE CUENTAS', 'TRANSFER', 'ENVIO']
     };
@@ -339,8 +339,8 @@ export async function checkPendingTransferCompletions(newMovements: Movement[]):
     for (const newMovement of newMovements) {
       for (const pendingTransfer of pendingTransfers) {
         // Try to pair them using the same validation logic
-        const configs = await db.getAll('matchingConfiguration');
-        const config = configs[0] || {
+        const stored = (await db.get('keyval', 'matchingConfig')) as any;
+        const config = stored || {
           transferDateWindow: 2,
           transferKeywords: ['TRASPASO', 'TRANSFERENCIA', 'ENVÍO ENTRE CUENTAS', 'TRANSFER', 'ENVIO']
         };

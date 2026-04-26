@@ -1369,7 +1369,9 @@ async function cargarContratosExistentes(): Promise<ContratoExistente[]> {
 async function cargarActividadesExistentes(): Promise<ActividadExistente[]> {
   try {
     const db = await initDB();
-    const autonomos = await db.getAll('autonomos') as Array<{ epigrafeIAE?: string; activo?: boolean }>;
+    // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
+    // viven en `ingresos` con `tipo='autonomo'`.
+    const autonomos = (await db.getAllFromIndex('ingresos', 'tipo', 'autonomo')) as Array<{ epigrafeIAE?: string; activo?: boolean }>;
     return autonomos
       .filter((item) => Boolean(item.epigrafeIAE))
       .filter((item) => item.activo !== false)

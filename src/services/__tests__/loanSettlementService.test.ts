@@ -51,7 +51,9 @@ describe('loanSettlementService', () => {
       db.clear('movements'),
       db.clear('treasuryEvents'),
       db.clear('prestamos'),
-      db.clear('loan_settlements'),
+      // V63 (sub-tarea 4): el store `loan_settlements` se eliminó; las
+      // liquidaciones viven en `prestamos.liquidacion[]`, así que basta
+      // con haber limpiado `prestamos`.
       db.clear('keyval'),
     ]);
     prestamosService.clearCache();

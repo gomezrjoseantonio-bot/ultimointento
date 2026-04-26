@@ -417,7 +417,9 @@ async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTra
 async function recopilarDatosAutonomo(ejercicio: number): Promise<RendimientosAutonomo | null> {
   try {
     const db = await initDB();
-    const allAutonomos = await db.getAll('autonomos');
+    // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
+    // viven en `ingresos` con `tipo='autonomo'`.
+    const allAutonomos = (await db.getAllFromIndex('ingresos', 'tipo', 'autonomo')) as any[];
     const activos = allAutonomos.filter((a: any) => a.activo);
     if (activos.length === 0) return null;
 

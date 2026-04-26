@@ -157,7 +157,9 @@ describe('declaracionOnboardingService', () => {
       db.clear('accounts'),
       db.clear('ejerciciosFiscalesCoord'),
       db.clear('personalData'),
-      db.clear('autonomos'),
+      // V63 (sub-tarea 4): el store `autonomos` se eliminó; los registros
+      // viven en `ingresos` con `tipo='autonomo'`. Limpiamos la unión.
+      db.clear('ingresos'),
     ]);
   });
 

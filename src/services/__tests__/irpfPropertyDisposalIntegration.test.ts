@@ -87,11 +87,11 @@ function buildMockDB() {
     getAll: jest.fn().mockImplementation((store: string) => {
       if (store === 'properties') return Promise.resolve([]);
       if (store === 'contracts') return Promise.resolve([]);
-      if (store === 'nominas') return Promise.resolve([]);
-      if (store === 'autonomos') return Promise.resolve([]);
       if (store === 'inversiones') return Promise.resolve([]);
       return Promise.resolve([]);
     }),
+    // V63 (sub-tarea 4): autonomos viven ahora en `ingresos` consultados
+    // vía `getAllFromIndex('ingresos', 'tipo', 'autonomo')`.
     getAllFromIndex: jest.fn().mockResolvedValue([]),
   } as any;
 }

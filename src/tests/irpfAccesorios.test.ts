@@ -33,13 +33,14 @@ function buildMockDB(properties: any[], contracts: any[] = [], propertyDays: any
     getAll: jest.fn().mockImplementation((store: string) => {
       if (store === 'properties') return Promise.resolve(properties);
       if (store === 'contracts') return Promise.resolve(contracts);
-      if (store === 'nominas') return Promise.resolve([]);
-      if (store === 'autonomos') return Promise.resolve([]);
       if (store === 'inversiones') return Promise.resolve([]);
       return Promise.resolve([]);
     }),
-    getAllFromIndex: jest.fn().mockImplementation((store: string) => {
+    getAllFromIndex: jest.fn().mockImplementation((store: string, _indexName: string, _value: any) => {
       if (store === 'propertyDays') return Promise.resolve(propertyDays);
+      // V63 (sub-tarea 4): nominas/autonomos/pensiones consultan ahora
+      // `ingresos` filtrado por índice `tipo`.
+      if (store === 'ingresos') return Promise.resolve([]);
       return Promise.resolve([]);
     }),
   } as any;
