@@ -341,6 +341,25 @@ export interface CalculoPensionResult {
   retencionAnual: number;
 }
 
+// ─── ATLAS V61 · TAREA 7 sub-tarea 2 · `nominas → ingresos` rename ──────────
+//
+// Unión discriminada que unifica las tres fuentes de ingreso personal
+// (`nominas`, `autonomos`, `pensiones`) en un único store `ingresos`. El
+// discriminante `tipo` separa cada variante, preservando la forma exacta de
+// los tipos legacy `Nomina`, `Autonomo` y `PensionIngreso` para que la
+// migración V60→V61 sea no destructiva (sólo añade `tipo='nomina'` a los
+// registros existentes copiados desde `nominas`).
+//
+// Sub-tarea 2 (este PR) sólo crea el store y copia `nominas → ingresos` con
+// `tipo='nomina'`. Los registros de `autonomos` y `pensiones` se absorberán
+// en sub-tareas posteriores (mapeo de campos a esta unión + migración de
+// datos). Los consumidores siguen leyendo de `nominas`/`autonomos`/`pensiones`
+// hasta sub-tarea 6, momento en que se redirigen al nuevo store.
+export type IngresoNomina = Nomina & { tipo: 'nomina' };
+export type IngresoAutonomo = Autonomo & { tipo: 'autonomo' };
+export type IngresoPension = PensionIngreso & { tipo: 'pension' };
+export type Ingreso = IngresoNomina | IngresoAutonomo | IngresoPension;
+
 // Calculation Results Types
 export interface PlanPensionInversion {
   id?: number;

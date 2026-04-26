@@ -98,12 +98,12 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
   });
 
   describe('DB_VERSION', () => {
-    test('está fijado a 60 en src/services/db.ts', async () => {
+    test('está fijado a 61 en src/services/db.ts', async () => {
       const dbModule = await import('../db');
       // No exportamos DB_VERSION directamente · validamos vía la firma
       // del módulo abriendo una DB nueva.
       const db = await dbModule.initDB();
-      expect(db.version).toBe(60);
+      expect(db.version).toBe(61);
       db.close();
     });
   });
@@ -284,10 +284,12 @@ describe('V60 migration · sub-tarea 1 schema extensions', () => {
         req.onerror = () => reject(req.error);
       });
 
-      // initDB() de db.ts dispara el upgrade a V60.
+      // initDB() de db.ts dispara el upgrade hasta la versión actual.
+      // Tras V61 (sub-tarea 2 · rename nominas → ingresos) la versión es 61;
+      // el backfill V60 sigue corriendo en el camino V59 → 61.
       const dbModule = await import('../db');
       const db = await dbModule.initDB();
-      expect(db.version).toBe(60);
+      expect(db.version).toBe(61);
 
       const records = await db.getAll('arrastresIRPF');
       expect(records).toHaveLength(1);
