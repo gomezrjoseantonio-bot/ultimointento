@@ -130,10 +130,20 @@ export async function getRendimientoFiscal(
   let rentasDeclaradas = 0;
   for (const c of propContracts) {
     if (c.id == null) continue;
-    const rentas: any[] = await db.getAllFromIndex('rentaMensual', 'contratoId', c.id);
-    rentasDeclaradas += rentas
-      .filter((r: any) => typeof r.periodo === 'string' && r.periodo.startsWith(String(año)))
-      .reduce((s: number, r: any) => s + (r.importePrevisto ?? 0), 0);
+    // rentaMensual store eliminado en V62 — derivar desde contract.rentaMensual × meses activos en el año.
+    const rentaMes = (c as any).rentaMensual ?? 0;
+    if (rentaMes > 0) {
+      const inicioStr = String((c as any).fechaInicio ?? `${año}-01-01`);
+      const finStr = String((c as any).fechaFin ?? `${año + 1}-01-01`);
+      const inicioAño = new Date(`${año}-01-01`);
+      const finAño = new Date(`${año}-12-31`);
+      const inicio = new Date(inicioStr) < inicioAño ? inicioAño : new Date(inicioStr);
+      const fin = new Date(finStr) > finAño ? finAño : new Date(finStr);
+      if (inicio <= fin) {
+        const meses = (fin.getFullYear() - inicio.getFullYear()) * 12 + (fin.getMonth() - inicio.getMonth()) + 1;
+        rentasDeclaradas += rentaMes * Math.max(0, meses);
+      }
+    }
   }
 
   // Amortización: desde property.fiscalData

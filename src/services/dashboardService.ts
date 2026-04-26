@@ -908,7 +908,7 @@ class DashboardService {
       const ingresos: any[] = []; // store deleted in V44
       const gastos = await (await import('./gastosInmuebleService')).gastosInmuebleService.getAll().then(gs => gs.map((g: any) => ({ id: g.id, contraparte_nombre: g.proveedorNombre, total: g.importe, fecha_emision: g.fecha, fecha_pago_prevista: g.fecha, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', movement_id: g.movimientoId ? Number(g.movimientoId) : undefined })));
       const expenses: any[] = []; // store deleted in V44
-      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
+      const rentasMensuales: any[] = []; // rentaMensual store eliminado en V62
       const contracts = await getCachedStoreRecords<any>('contracts');
       const inversiones = await getCachedStoreRecords<any>('inversiones');
 
@@ -1323,7 +1323,7 @@ class DashboardService {
       
       // Calculate expected income in next 30 days
       // Include rent payments, salaries, etc.
-      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
+      const rentasMensuales: any[] = []; // rentaMensual store eliminado en V62
       const ingresos: any[] = []; // store deleted in V44
       
       // Filter rentaMensual by period falling within next 30 days
@@ -1598,7 +1598,7 @@ class DashboardService {
       
       // Expected income in next 30 days
       const ingresos: any[] = []; // store deleted in V44
-      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
+      const rentasMensuales: any[] = []; // rentaMensual store eliminado en V62
       
       const ingresosEsperados = ingresos
         .filter((ing: any) => isDateWithinRange(ing.fecha, now, next30Days))
@@ -1695,7 +1695,7 @@ class DashboardService {
       
       // Check for unpaid rent (cobro type) using rentaMensual
       // impago or pendiente with periodo anterior al mes actual
-      const rentasMensuales = await getCachedStoreRecords<any>('rentaMensual');
+      const rentasMensuales: any[] = []; // rentaMensual store eliminado en V62
       const unpaidRents = rentasMensuales.filter((renta: any) => {
         const estado = String(renta?.estado ?? '').toLowerCase();
         const periodo = renta?.periodo ?? '';

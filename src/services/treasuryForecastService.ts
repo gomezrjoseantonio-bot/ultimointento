@@ -574,7 +574,8 @@ async function regenerateOpexForecast(
 ): Promise<number> {
   const { year, month } = params;
   const db = await initDB();
-  const rules = (await db.getAll('opexRules')) as OpexRule[];
+  // opexRules store eliminado en V62 — migrado a compromisosRecurrentes (TAREA 2)
+  const rules: OpexRule[] = [];
   const activeRules = rules.filter((r) => r.activo);
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
   const lastDay = new Date(year, month + 1, 0).getDate();

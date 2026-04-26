@@ -354,20 +354,7 @@ export async function resolverDatosEjercicio(año: number): Promise<DatosFiscale
       }
     } catch { /* ignore */ }
 
-    // Fallback: try ejerciciosFiscales store (legacy)
-    try {
-      const db = await initDB();
-      const ejFiscal = await db.get('ejerciciosFiscales', año);
-      if (ejFiscal) {
-        const ejAny = ejFiscal as any;
-        if (ejAny.declaracionAeat?.basesYCuotas) {
-          return resolverDesdeLegacyDecl(año, ejAny.declaracionAeat, fuente, coordResumen);
-        }
-        if (ejAny.resumen) {
-          return resolverDesdeLegacyResumen(año, ejAny.resumen, fuente, coordResumen);
-        }
-      }
-    } catch { /* ignore */ }
+    // ejerciciosFiscales store eliminado en V62 — datos migrados a ejerciciosFiscalesCoord
 
     // Still no data — return empty
     const result = buildEmptyResult(año);
@@ -402,92 +389,6 @@ export async function resolverDatosEjercicio(año: number): Promise<DatosFiscale
   }
 
   return buildEmptyResult(año);
-}
-
-// ── Legacy helpers ────────────────────────────────────
-
-function resolverDesdeLegacyDecl(
-  año: number,
-  declAeat: any,
-  fuente: FuenteDatosEjercicio,
-  coordResumen: ResumenFiscal | null,
-): DatosFiscalesEjercicio {
-  const byc = declAeat.basesYCuotas;
-  const resultado = safeNum(byc?.resultadoDeclaracion) ?? safeNum(coordResumen?.resultado) ?? null;
-  const trabajo = declAeat.trabajo;
-  const inmuebles = declAeat.inmuebles as any[] ?? [];
-
-  return {
-    año,
-    estado: getEstado(año),
-    fuente,
-    resultado,
-    tipoResultado: resultado !== null ? (resultado < 0 ? 'devolver' : 'pagar') : null,
-    resumen: {
-      baseLiquidableGeneral: safeNum(byc?.baseLiquidableGeneral) ?? safeNum(coordResumen?.baseLiquidableGeneral),
-      baseLiquidableAhorro: safeNum(byc?.baseLiquidableAhorro) ?? safeNum(coordResumen?.baseLiquidableAhorro),
-      cuotaIntegraEstatal: safeNum(byc?.cuotaIntegraEstatal) ?? safeNum(coordResumen?.cuotaIntegraEstatal),
-      cuotaIntegraAutonomica: safeNum(byc?.cuotaIntegraAutonomica) ?? safeNum(coordResumen?.cuotaIntegraAutonomica),
-      cuotaLiquidaEstatal: safeNum(byc?.cuotaLiquidaEstatal) ?? safeNum(coordResumen?.cuotaLiquidaEstatal),
-      cuotaLiquidaAutonomica: safeNum(byc?.cuotaLiquidaAutonomica) ?? safeNum(coordResumen?.cuotaLiquidaAutonomica),
-    },
-    rendimientosTrabajo: safeNum(trabajo?.rendimientoNetoReducido) ?? safeNum(trabajo?.rendimientoNeto) ?? safeNum(trabajo?.totalIngresosIntegros),
-    rendimientosInmuebles: inmuebles.length > 0
-      ? inmuebles.reduce((s: number, i: any) => s + (i.rendimientoNetoReducido ?? i.rendimientoNeto ?? 0), 0)
-      : null,
-    rendimientosActividades: declAeat.actividades
-      ? (declAeat.actividades as any[]).reduce((s: number, a: any) => s + (a.rendimientoNetoReducido ?? a.rendimientoNeto ?? 0), 0) || null
-      : null,
-    rendimientosAhorro: safeNum(declAeat.capitalMobiliario?.rendimientoNetoReducido) ?? safeNum(declAeat.capitalMobiliario?.rendimientoNeto),
-    baseImponibleGeneral: safeNum(byc?.baseImponibleGeneral) ?? safeNum(coordResumen?.baseImponibleGeneral),
-    baseImponibleAhorro: safeNum(byc?.baseImponibleAhorro) ?? safeNum(coordResumen?.baseImponibleAhorro),
-    cuotaIntegra: safeNum(byc?.cuotaIntegra) ?? safeNum(coordResumen?.cuotaIntegra),
-    retenciones: safeNum(byc?.retencionesTotal),
-    casillas: null,
-    inmuebles: inmuebles.map((inm: any) => ({
-      refCatastral: inm.referenciaCatastral ?? '',
-      direccion: inm.direccion ?? '',
-      valorCatastral: inm.valorCatastral ?? 0,
-      rendimiento: inm.rendimientoNetoReducido ?? inm.rendimientoNeto ?? 0,
-      diasDisposicion: inm.diasDisposicion ?? 0,
-    })),
-    declaracionCompleta: null,
-  };
-}
-
-function resolverDesdeLegacyResumen(
-  año: number,
-  resumen: any,
-  fuente: FuenteDatosEjercicio,
-  coordResumen: ResumenFiscal | null,
-): DatosFiscalesEjercicio {
-  const resultado = safeNum(resumen.resultado) ?? safeNum(coordResumen?.resultado) ?? null;
-  return {
-    año,
-    estado: getEstado(año),
-    fuente,
-    resultado,
-    tipoResultado: resultado !== null ? (resultado < 0 ? 'devolver' : 'pagar') : null,
-    resumen: {
-      baseLiquidableGeneral: safeNum(coordResumen?.baseLiquidableGeneral),
-      baseLiquidableAhorro: safeNum(coordResumen?.baseLiquidableAhorro),
-      cuotaIntegraEstatal: safeNum(coordResumen?.cuotaIntegraEstatal),
-      cuotaIntegraAutonomica: safeNum(coordResumen?.cuotaIntegraAutonomica),
-      cuotaLiquidaEstatal: safeNum(coordResumen?.cuotaLiquidaEstatal),
-      cuotaLiquidaAutonomica: safeNum(coordResumen?.cuotaLiquidaAutonomica),
-    },
-    rendimientosTrabajo: null,
-    rendimientosInmuebles: null,
-    rendimientosActividades: null,
-    rendimientosAhorro: null,
-    baseImponibleGeneral: safeNum(resumen.baseImponibleGeneral) ?? safeNum(coordResumen?.baseImponibleGeneral),
-    baseImponibleAhorro: safeNum(resumen.baseImponibleAhorro) ?? safeNum(coordResumen?.baseImponibleAhorro),
-    cuotaIntegra: safeNum(resumen.cuotaIntegra) ?? safeNum(coordResumen?.cuotaIntegra),
-    retenciones: safeNum(resumen.retencionesYPagos),
-    casillas: null,
-    inmuebles: null,
-    declaracionCompleta: null,
-  };
 }
 
 // ═══════════════════════════════════════════════

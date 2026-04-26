@@ -99,12 +99,8 @@ export async function calcularPropostaDistribucion(
     const diasActivos =
       Math.round((finEfectivo.getTime() - inicioEfectivo.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    // F-drawer: leer importe real del contrato para ese año,
-    // sumando sus rentaMensual del ejercicio.
-    const todasRentas = await db.getAllFromIndex('rentaMensual', 'contratoId', contrato.id!);
-    const importeRealAño = todasRentas
-      .filter(r => r.periodo.startsWith(String(ejercicio)))
-      .reduce((sum, r) => sum + (r.importePrevisto || 0), 0);
+    // rentaMensual store eliminado en V62 — usar cálculo clásico directamente.
+    const importeRealAño = 0;
 
     // Si el contrato no tiene rentaMensual en ese año (porque el año está declarado
     // y F3 impide generarlas), caer al cálculo clásico: rentaMensual × 12 × días/365

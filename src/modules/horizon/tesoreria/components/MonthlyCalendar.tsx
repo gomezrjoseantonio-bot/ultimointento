@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Movement, RentaMensual, initDB } from '../../../../services/db';
+import { Movement, RentaMensual } from '../../../../services/db';
 import MovementStatusChip from '../../../../components/treasury/MovementStatusChip';
 import MovementQuickActions from '../../../../components/treasury/MovementQuickActions';
 
@@ -35,19 +35,9 @@ const MonthlyCalendar: React.FC<MonthlyCalendarProps> = ({
   const [year, month] = monthYear.split('-').map(Number);
   const [rents, setRents] = useState<RentaMensual[]>([]);
 
-  // Load rent entries for the month
+  // rentaMensual store eliminado en V62 — rents always empty
   useEffect(() => {
-    const loadRents = async () => {
-      try {
-        const db = await initDB();
-        const allRents = await db.getAll('rentaMensual');
-        const monthRents = allRents.filter(rent => rent.periodo === monthYear);
-        setRents(monthRents);
-      } catch (error) {
-        console.error('Error loading rents:', error);
-      }
-    };
-    loadRents();
+    setRents([]);
   }, [monthYear]);
   
   // Generate calendar days

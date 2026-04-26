@@ -630,31 +630,21 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
   const suggestedOutstandingDebt = suggestedOutstandingDebtByLoan.reduce((sum, debt) => sum + debt, 0);
 
   const gastosInmuebleService = (await import('./gastosInmuebleService')).gastosInmuebleService;
-  const [allOpexRules, allRentaMensual, allGastosRaw] = await Promise.all([
-    db.getAll('opexRules').catch(() => []),
-    db.getAll('rentaMensual').catch(() => []),
+  const [allCompromisos, allGastosRaw] = await Promise.all([
+    db.getAll('compromisosRecurrentes').catch(() => []),
     gastosInmuebleService.getAll().catch(() => []),
   ]);
   const allGastos = allGastosRaw.map((g: any) => ({ id: g.id, destino: g.inmuebleId ? 'inmueble_id' : 'personal', destino_id: g.inmuebleId, estado: g.estado === 'confirmado' ? 'pagado' : 'pendiente', fecha_pago_prevista: g.fecha }));
 
-  const activeOpexRulesCount = allOpexRules.filter(
-    (rule: any) => rule.propertyId === propertyId && rule.activo !== false
+  const activeOpexRulesCount = allCompromisos.filter(
+    (comp: any) => comp.ambito === 'inmueble' && comp.inmuebleId === propertyId && comp.estado !== 'baja'
   ).length;
 
-  // Future rental income counted from rentaMensual via contracts of this
-  // property (rentaMensual is indexed by contratoId, not inmuebleId).
-  const propertyContractIds = new Set(
-    contracts
-      .filter((c) => c.inmuebleId === propertyId || c.propertyId === propertyId)
-      .map((c) => c.id)
-      .filter((id): id is number => typeof id === 'number'),
-  );
+  // Future rental income derived from active contracts of this property.
+  // rentaMensual store eliminated in V62; use active contracts as proxy.
   const referenceMonth = referenceDate.slice(0, 7);
-  const futureIncomeCount = (allRentaMensual as any[]).filter((r) =>
-    propertyContractIds.has(r?.contratoId) &&
-    typeof r?.periodo === 'string' &&
-    r.periodo >= referenceMonth &&
-    r.estado !== 'cobrada',
+  const futureIncomeCount = activeContracts.filter(
+    (c) => !c.fechaFin || c.fechaFin >= referenceMonth,
   ).length;
 
   const futureExpenseCount = allGastos.filter((gasto: any) =>
@@ -693,7 +683,7 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   // We surface a friendlier error and bail out before opening the tx.
   const REQUIRED_STORES = [
     'properties', 'contracts', 'property_sales', 'accounts', 'movements',
-    'prestamos', 'opexRules', 'gastosInmueble', 'treasuryEvents', 'keyval',
+    'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'treasuryEvents', 'keyval',
   ] as const;
   const existingStores = new Set(Array.from(db.objectStoreNames));
   const missingStores = REQUIRED_STORES.filter((name) => !existingStores.has(name));
@@ -915,16 +905,16 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
     });
   }
 
-  const opexStore = tx.objectStore('opexRules');
-  const allOpexRules = await opexStore.getAll();
-  for (const rule of allOpexRules as any[]) {
-    if (rule?.propertyId !== input.propertyId || rule.activo === false || typeof rule.id !== 'number') {
+  const compromisosStore = tx.objectStore('compromisosRecurrentes');
+  const allCompromisos = await compromisosStore.getAll();
+  for (const comp of allCompromisos as any[]) {
+    if (comp?.ambito !== 'inmueble' || comp?.inmuebleId !== input.propertyId || comp?.estado === 'baja' || typeof comp.id !== 'number') {
       continue;
     }
-    executionJournal.deactivatedOpexRules.push({ id: rule.id, previous: rule });
-    await opexStore.put({
-      ...rule,
-      activo: false,
+    executionJournal.deactivatedOpexRules.push({ id: comp.id, previous: comp });
+    await compromisosStore.put({
+      ...comp,
+      estado: 'baja',
       updatedAt: new Date().toISOString(),
     });
   }
@@ -1083,7 +1073,7 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'opexRules', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -1211,7 +1201,7 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
 
   if (journal?.deactivatedOpexRules?.length) {
     for (const snapshot of journal.deactivatedOpexRules) {
-      await tx.objectStore('opexRules').put(snapshot.previous as any);
+      await tx.objectStore('compromisosRecurrentes').put(snapshot.previous as any);
     }
   }
 

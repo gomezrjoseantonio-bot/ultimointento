@@ -343,12 +343,8 @@ const TreasuryReconciliationView: React.FC = () => {
             if (dbEvent?.sourceType === 'personal_expense') {
               try {
                 const tesoreriaEventoId = String(ev.dbId);
-                // Idempotency: skip if already registered for this treasury event
-                const existingReal = await db.getAllFromIndex(
-                  'gastosPersonalesReal',
-                  'tesoreriaEventoId',
-                  tesoreriaEventoId,
-                );
+                // gastosPersonalesReal store eliminado en V62 — always treat as not-registered
+                const existingReal: any[] = [];
                 if (existingReal.length === 0) {
                   const fechaConf = dbEvent.actualDate || new Date().toISOString().substring(0, 10);
                   const patronId = typeof dbEvent.sourceId === 'number' ? dbEvent.sourceId : undefined;

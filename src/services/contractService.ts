@@ -181,20 +181,7 @@ export const getAllContracts = async (): Promise<Contract[]> => {
 
 export const deleteContract = async (id: number): Promise<void> => {
   const db = await initDB();
-  const tx = db.transaction(['contracts', 'rentaMensual'], 'readwrite');
-  
-  // Delete contract
-  await tx.objectStore('contracts').delete(id);
-  
-  // Delete related rent forecasts
-  const rentaMensualEntries = await tx.objectStore('rentaMensual').index('contratoId').getAll(id);
-  for (const entry of rentaMensualEntries) {
-    if (entry.id) {
-      await tx.objectStore('rentaMensual').delete(entry.id);
-    }
-  }
-  
-  await tx.done;
+  await db.delete('contracts', id);
 };
 
 export const rescindContract = async (id: number, fechaRescision: string, motivo: string): Promise<void> => {
@@ -216,80 +203,21 @@ export const rescindContract = async (id: number, fechaRescision: string, motivo
   });
 };
 
-// Generate monthly rent forecasts for treasury integration
-export const generateRentaMensual = async (contratoId: number, contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
-  // sin_identificar contracts never generate monthly rent forecasts
-  if (contract.estadoContrato === 'sin_identificar') return;
-
-  const db = await initDB();
-
-  // Truncate fechaFin to max añoActual+1, 31-12 to avoid generating hundreds of
-  // future periods for contracts with open-ended dates (e.g. '2099-12-31').
-  const añoActual = new Date().getFullYear();
-  const fechaLimite = `${añoActual + 1}-12-31`;
-  const contractParaCalculo = contract.fechaFin && contract.fechaFin <= fechaLimite
-    ? contract
-    : { ...contract, fechaFin: fechaLimite };
-
-  const periods = calculateRentPeriodsNew(contractParaCalculo);
-
-  // F3: saltar meses de años con ejercicio fiscal declarado
-  // (ese importe es verdad consumada, no lo generamos mensualmente)
-  const añosDeclarados = new Set<number>();
-  if (contract.ejerciciosFiscales) {
-    for (const [año, data] of Object.entries(contract.ejerciciosFiscales)) {
-      if (data?.estado === 'declarado') {
-        añosDeclarados.add(parseInt(año, 10));
-      }
-    }
-  }
-
-  const rentaMensualEntries: Omit<RentaMensual, 'id'>[] = periods
-    .filter(period => {
-      const añoPeriodo = parseInt(period.periodo.slice(0, 4), 10);
-      return !añosDeclarados.has(añoPeriodo);
-    })
-    .map(period => ({
-      contratoId,
-      periodo: period.periodo,
-      importePrevisto: period.importe,
-      importeCobradoAcum: 0,
-      estado: 'pendiente' as const,
-      movimientosVinculados: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
-
-  // Clear existing entries and regenerate within the new time window
-  await clearRentaMensual(contratoId);
-  for (const entry of rentaMensualEntries) {
-    await db.add('rentaMensual', entry);
-  }
+// Generate monthly rent forecasts — store eliminado en V62 · no-op
+// Los datos del contrato (contract.rentaMensual) se usan directamente como fallback.
+export const generateRentaMensual = async (_contratoId: number, _contract: Omit<Contract, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
+  // rentaMensual store eliminated in V62 — historic data in contract.historicoRentas[]
 };
 
 export const regenerateRentaMensual = async (contratoId: number, contract: Contract): Promise<void> => {
   await generateRentaMensual(contratoId, contract);
 };
 
-export const clearRentaMensual = async (contratoId: number): Promise<void> => {
-  const db = await initDB();
-  const tx = db.transaction(['rentaMensual'], 'readwrite');
-  const entries = await tx.objectStore('rentaMensual').index('contratoId').getAll(contratoId);
-  
-  for (const entry of entries) {
-    if (entry.id) {
-      await tx.objectStore('rentaMensual').delete(entry.id);
-    }
-  }
-  
-  await tx.done;
-};
+// Store eliminado en V62 · no-op
+export const clearRentaMensual = async (_contratoId: number): Promise<void> => {};
 
-export const getRentaMensual = async (contratoId: number): Promise<RentaMensual[]> => {
-  const db = await initDB();
-  const allEntries = await db.getAll('rentaMensual');
-  return allEntries.filter(entry => entry.contratoId === contratoId);
-};
+// Store eliminado en V62 · returns empty array
+export const getRentaMensual = async (_contratoId: number): Promise<RentaMensual[]> => [];
 
 export type SignatureStatus = 'borrador' | 'preparado' | 'enviado' | 'firmado' | 'rechazado';
 
