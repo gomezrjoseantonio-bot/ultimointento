@@ -101,8 +101,25 @@ export const limitesFiscalesPlanesService = {
     );
 
     const totales = await aportacionesPlanService.getTotalesPorAño(planId, ejercicio);
-    const yaAportado = rolAportante === 'empresa' ? totales.empresa : (rolAportante === 'conyuge' ? totales.conyuge : totales.titular);
-    const limiteAplicable = rolAportante === 'conyuge' ? LIMITE_CONYUGE : limites.limiteEfectivo;
+    let yaAportado: number;
+    if (rolAportante === 'empresa') {
+      yaAportado = totales.empresa;
+    } else if (rolAportante === 'conyuge') {
+      yaAportado = totales.conyuge;
+    } else {
+      yaAportado = totales.titular;
+    }
+    // empresa: validar contra limiteEconomico (8.500€ en PPE empleador único)
+    // conyuge: límite fijo 1.000€
+    // titular: limiteEfectivo (conjunto titular+empresa para PPE)
+    let limiteAplicable: number;
+    if (rolAportante === 'empresa') {
+      limiteAplicable = limites.limiteEconomico;
+    } else if (rolAportante === 'conyuge') {
+      limiteAplicable = LIMITE_CONYUGE;
+    } else {
+      limiteAplicable = limites.limiteEfectivo;
+    }
     const totalConNueva = yaAportado + importe;
     const deducible = Math.min(totalConNueva, limiteAplicable);
     const exceso = Math.max(0, totalConNueva - limiteAplicable);
