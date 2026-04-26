@@ -83,33 +83,6 @@ const getCompromisoAsymmetricPayments = (c: CompromisoRecurrente): { mes: number
   return undefined;
 };
 
-const normalizeCompromisoToAnnual = (c: CompromisoRecurrente): number => {
-  if (c.estado !== 'activo') return 0;
-
-  if (c.importe.modo === 'porPago') {
-    const vals = Object.values(c.importe.importesPorPago);
-    return vals.reduce((a, b) => a + b, 0);
-  }
-  if (c.importe.modo === 'diferenciadoPorMes') {
-    return c.importe.importesPorMes.reduce((a, b) => a + b, 0);
-  }
-
-  const amount = getCompromisoImporteEstimado(c);
-  const freq = getCompromisoFrequency(c);
-  return normalizeExpenseToAnnual({
-    id: String(c.id ?? ''),
-    propertyId: c.inmuebleId ?? 0,
-    category: '',
-    concept: c.alias,
-    amount,
-    frequency: freq,
-    source: 'opex_rule',
-    expenseClass: 'opex',
-    isLegacy: false,
-    isActive: c.estado === 'activo',
-  });
-};
-
 const isWithinLastYear = (isoDate?: string): boolean => {
   if (!isoDate) return false;
   const ts = new Date(isoDate).getTime();
