@@ -18,7 +18,7 @@ import {
   getLearningLogs,
   createLearningRule
 } from '../movementLearningService';
-import { initDB, Movement, MovementLearningRule, LearningLog } from '../db';
+import { initDB, Movement, MovementLearningRule } from '../db';
 
 // Test data generators
 const createTestMovement = (overrides: Partial<Movement> = {}): Movement => ({
@@ -149,7 +149,7 @@ describe('Treasury v1.1 Learning Engine', () => {
     db = await initDB();
     
     // Clear existing data
-    const stores = ['movements', 'movementLearningRules', 'learningLogs', 'reconciliationAuditLogs'];
+    const stores = ['movements', 'movementLearningRules'];
     for (const store of stores) {
       const transaction = db.transaction(store, 'readwrite');
       await transaction.objectStore(store).clear();

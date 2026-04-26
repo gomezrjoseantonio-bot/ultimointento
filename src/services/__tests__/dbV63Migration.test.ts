@@ -7,20 +7,20 @@ import { IDBFactory } from 'fake-indexeddb';
 
 const TEST_DB_NAME = 'AtlasHorizonDB';
 
-describe('DB V63 Migration · sub-tarea 4 + 4-bis', () => {
+describe('DB V63+V64 Migration · sub-tareas 4+4-bis+5', () => {
   beforeEach(() => {
     (globalThis as any).indexedDB = new IDBFactory();
     jest.resetModules();
   });
 
-  it('should initialize database at version 63', async () => {
+  it('should initialize database at version 64', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
-    expect(db.version).toBe(63);
+    expect(db.version).toBe(64);
     db.close();
   });
 
-  it('should not contain the 8 eliminated stores', async () => {
+  it('should not contain the 10 eliminated stores', async () => {
     const dbModule = await import('../db');
     const db = await dbModule.initDB();
 
@@ -33,6 +33,8 @@ describe('DB V63 Migration · sub-tarea 4 + 4-bis', () => {
       'documentosFiscales',
       'loan_settlements',
       'matchingConfiguration',
+      'learningLogs',
+      'reconciliationAuditLogs',
     ];
 
     for (const storeName of eliminatedStores) {
@@ -61,18 +63,18 @@ describe('DB V63 Migration · sub-tarea 4 + 4-bis', () => {
     db.close();
   });
 
-  it('should be idempotent (opening twice stays at version 63)', async () => {
+  it('should be idempotent (opening twice stays at version 64)', async () => {
     const dbModule = await import('../db');
 
     const db1 = await dbModule.initDB();
-    expect(db1.version).toBe(63);
+    expect(db1.version).toBe(64);
     db1.close();
 
     jest.resetModules();
     const dbModule2 = await import('../db');
 
     const db2 = await dbModule2.initDB();
-    expect(db2.version).toBe(63);
+    expect(db2.version).toBe(64);
     db2.close();
   });
 
@@ -119,19 +121,22 @@ describe('DB V63 Migration · sub-tarea 4 + 4-bis', () => {
     });
 
     const dbModule = await import('../db');
-    const db63 = await dbModule.initDB();
+    const db64 = await dbModule.initDB();
 
-    expect(db63.version).toBe(63);
-    expect(db63.objectStoreNames.contains('autonomos')).toBe(false);
-    expect(db63.objectStoreNames.contains('pensiones')).toBe(false);
-    expect(db63.objectStoreNames.contains('matchingConfiguration')).toBe(false);
-    expect(db63.objectStoreNames.contains('loan_settlements')).toBe(false);
+    expect(db64.version).toBe(64);
+    expect(db64.objectStoreNames.contains('autonomos')).toBe(false);
+    expect(db64.objectStoreNames.contains('pensiones')).toBe(false);
+    expect(db64.objectStoreNames.contains('matchingConfiguration')).toBe(false);
+    expect(db64.objectStoreNames.contains('loan_settlements')).toBe(false);
+    expect(db64.objectStoreNames.contains('learningLogs')).toBe(false);
+    expect(db64.objectStoreNames.contains('reconciliationAuditLogs')).toBe(false);
     // Destination stores survive
-    expect(db63.objectStoreNames.contains('ingresos')).toBe(true);
-    expect(db63.objectStoreNames.contains('keyval')).toBe(true);
-    expect(db63.objectStoreNames.contains('prestamos')).toBe(true);
+    expect(db64.objectStoreNames.contains('ingresos')).toBe(true);
+    expect(db64.objectStoreNames.contains('keyval')).toBe(true);
+    expect(db64.objectStoreNames.contains('prestamos')).toBe(true);
+    expect(db64.objectStoreNames.contains('movementLearningRules')).toBe(true);
 
-    db63.close();
+    db64.close();
   });
 
   it('should migrate autonomos records into ingresos with tipo="autonomo"', async () => {
@@ -185,22 +190,22 @@ describe('DB V63 Migration · sub-tarea 4 + 4-bis', () => {
     });
 
     const dbModule = await import('../db');
-    const db63 = await dbModule.initDB();
-    expect(db63.version).toBe(63);
+    const db64 = await dbModule.initDB();
+    expect(db64.version).toBe(64);
 
     // Autonomo migrated into ingresos with tipo='autonomo'
-    const ingresos = (await db63.getAll('ingresos')) as any[];
+    const ingresos = (await db64.getAll('ingresos')) as any[];
     const migratedAutonomos = ingresos.filter((r) => r.tipo === 'autonomo');
     expect(migratedAutonomos).toHaveLength(1);
     expect(migratedAutonomos[0].cuotaAutonomos).toBe(350);
     expect(migratedAutonomos[0].activo).toBe(true);
 
     // Matching configuration migrated into keyval['matchingConfig']
-    const config = (await db63.get('keyval', 'matchingConfig')) as any;
+    const config = (await db64.get('keyval', 'matchingConfig')) as any;
     expect(config).toBeDefined();
     expect(config.dateWindow).toBe(7);
     expect(config.amountTolerancePercent).toBe(20);
 
-    db63.close();
+    db64.close();
   });
 });

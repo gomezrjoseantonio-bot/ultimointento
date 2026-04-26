@@ -20,7 +20,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 63; // V63 (TAREA 7 sub-tarea 4 + 4-bis): eliminar 8 stores huérfanos fusionados · nominas (deuda sub-tarea 2 · datos ya en ingresos.tipo='nomina') · autonomos→ingresos.tipo='autonomo' · pensiones→ingresos.tipo='pension' · otrosIngresos→ingresos.tipo='otro' (+metadata.otro) · arrastresManual→arrastresIRPF.origen='manual' · documentosFiscales→documents.metadata.tipo='fiscal' · loan_settlements→prestamos.liquidacion · matchingConfiguration→keyval['matchingConfig'] · V62 (sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 (sub-tarea 1): schema extensions.
+const DB_VERSION = 64; // V64 (TAREA 7 sub-tarea 5): eliminar 2 stores AMBIGUOS · learningLogs→movementLearningRules.history[] (FIFO 50) · reconciliationAuditLogs (deuda técnica · 0 lectores · wipe) · V63 (sub-tarea 4 + 4-bis): eliminar 8 stores huérfanos fusionados · nominas (deuda sub-tarea 2 · datos ya en ingresos.tipo='nomina') · autonomos→ingresos.tipo='autonomo' · pensiones→ingresos.tipo='pension' · otrosIngresos→ingresos.tipo='otro' (+metadata.otro) · arrastresManual→arrastresIRPF.origen='manual' · documentosFiscales→documents.metadata.tipo='fiscal' · loan_settlements→prestamos.liquidacion · matchingConfiguration→keyval['matchingConfig'] · V62 (sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 (sub-tarea 1): schema extensions.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -1219,18 +1219,8 @@ export interface TreasuryEvent {
   updatedAt: string;
 }
 
-// V1.1: Reconciliation audit log for security and auditing
-export interface ReconciliationAuditLog {
-  id?: number;
-  action: 'manual_reconcile' | 'auto_reclassify' | 'budget_trigger' | 'learn_rule_created' | 'learn_rule_applied';
-  movimientoId: number;
-  categoria?: string;
-  ambito?: 'PERSONAL' | 'INMUEBLE';
-  inmuebleId?: string;
-  learnKey?: string;
-  timestamp: string;
-  userId?: string; // Optional user identifier
-}
+// reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · nadie lee · 0 registros en producción
+// ReconciliationAuditLog: interfaz eliminada con el store
 
 // V1.1: Learning rules for automatic movement classification
 export interface MovementLearningRule {
@@ -1268,18 +1258,8 @@ export interface HistoryEntry {
   ts: string; // ISO timestamp
 }
 
-// V1.1: Learning log for audit trail (without PII)
-export interface LearningLog {
-  id?: number;
-  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
-  movimientoId?: number;
-  ruleId?: number;
-  learnKey: string;
-  categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
-  inmuebleId?: string;
-  ts: string; // ISO timestamp
-}
+// learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[] · max 50 FIFO
+// LearningLog: interfaz eliminada con el store
 
 // H9: Treasury Recommendations
 export interface TreasuryRecommendation {
@@ -2082,9 +2062,9 @@ interface AtlasHorizonDB {
   presupuestos: Presupuesto; // H9: New budget system per specification
   presupuestoLineas: PresupuestoLinea; // H9: New budget lines per specification
   // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros en producción
-  reconciliationAuditLogs: ReconciliationAuditLog; // V1.1: Audit logs for reconciliation actions
+  // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — deuda técnica · 0 lectores · wipe
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
-  learningLogs: LearningLog; // V1.1: Learning audit log without PII
+  // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
   inversiones: PosicionInversion; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   personalData: PersonalData; // V1.2: Personal data
@@ -2510,14 +2490,7 @@ export const initDB = async () => {
 
         // matchingConfiguration: ELIMINADO en V63 (sub-tarea 4) — destino keyval['matchingConfig'] · 0 registros
 
-        // V1.1: Reconciliation audit logs store
-        if (!db.objectStoreNames.contains('reconciliationAuditLogs')) {
-          const auditLogsStore = db.createObjectStore('reconciliationAuditLogs', { keyPath: 'id', autoIncrement: true });
-          auditLogsStore.createIndex('action', 'action', { unique: false });
-          auditLogsStore.createIndex('movimientoId', 'movimientoId', { unique: false });
-          auditLogsStore.createIndex('timestamp', 'timestamp', { unique: false });
-          auditLogsStore.createIndex('categoria', 'categoria', { unique: false });
-        }
+        // reconciliationAuditLogs: ELIMINADO en V64 (sub-tarea 5) — no se crea en DBs frescas
 
         // V1.1: Movement learning rules store
         if (!db.objectStoreNames.contains('movementLearningRules')) {
@@ -2529,16 +2502,7 @@ export const initDB = async () => {
           learningRulesStore.createIndex('appliedCount', 'appliedCount', { unique: false });
         }
 
-        // V1.1: Learning logs store for audit trail (no PII)
-        if (!db.objectStoreNames.contains('learningLogs')) {
-          const learningLogsStore = db.createObjectStore('learningLogs', { keyPath: 'id', autoIncrement: true });
-          learningLogsStore.createIndex('action', 'action', { unique: false });
-          learningLogsStore.createIndex('learnKey', 'learnKey', { unique: false });
-          learningLogsStore.createIndex('categoria', 'categoria', { unique: false });
-          learningLogsStore.createIndex('ts', 'ts', { unique: false });
-          learningLogsStore.createIndex('movimientoId', 'movimientoId', { unique: false });
-          learningLogsStore.createIndex('ruleId', 'ruleId', { unique: false });
-        }
+        // learningLogs: ELIMINADO en V64 (sub-tarea 5) — no se crea en DBs frescas
 
         // V1.2: Personal V1 module data stores
         if (!db.objectStoreNames.contains('personalData')) {
@@ -3323,35 +3287,34 @@ export const initDB = async () => {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // V63 — TAREA 7 sub-tarea 4 (+ 4-bis): eliminar 8 stores huérfanos
-        //   fusionados en sus destinos. Cada store con datos se migra primero
-        //   (lectura `getAll` + `add`/`put` en destino) y a continuación se
-        //   borra con `deleteObjectStore`. La migración corre en una IIFE
-        //   async cuyo Promise se devuelve desde el callback `upgrade` para
-        //   que `idb` espere su finalización antes de cerrar la transacción
-        //   versionchange (necesario porque `deleteObjectStore` debe ocurrir
-        //   DESPUÉS de leer todos los registros del store legacy).
+        // V63+V64 — TAREA 7 sub-tareas 4+4-bis+5: bloque async combinado.
+        //   Se ejecuta en una única IIFE async devuelta al callback `upgrade`
+        //   para que `idb` espere su finalización antes de cerrar la
+        //   transacción versionchange.
         //
-        //   Mapeo (8 stores → destinos):
-        //     1. nominas              · 0 reg → ya en `ingresos.tipo='nomina'`
-        //                                (deuda sub-tarea 2 · sólo deleteObjectStore)
+        //   V63 (oldVersion < 63) — 8 stores huérfanos:
+        //     1. nominas              · deuda sub-tarea 2 · sólo deleteObjectStore
         //     2. autonomos            → `ingresos.tipo='autonomo'`
         //     3. pensiones            → `ingresos.tipo='pension'`
         //     4. otrosIngresos        → `ingresos.tipo='otro'` + metadata.otro
         //     5. arrastresManual      → `arrastresIRPF.origen='manual'`
-        //                                (mapeo de tipo legacy)
         //     6. documentosFiscales   → `documents.metadata.tipo='fiscal'`
         //     7. loan_settlements     → `prestamos.liquidacion[]`
-        //                                (array de settlements por préstamo)
         //     8. matchingConfiguration → `keyval['matchingConfig']`
         //
+        //   V64 (sub-tarea 5) — 2 stores AMBIGUOS:
+        //     1. learningLogs         → `movementLearningRules.history[]`
+        //                                (agrupado por ruleId · FIFO max 50)
+        //     2. reconciliationAuditLogs · wipe sin destino (0 lectores)
+        //
         //   Idempotente: el guard `objectStoreNames.contains(name)` permite
-        //   re-ejecuciones tras error y DBs frescas que nunca tuvieron el
-        //   store. La copia descarta `id` (autoIncrement reasigna) excepto
-        //   para destinos con keyPath persistente.
+        //   re-ejecuciones y DBs frescas que nunca tuvieron el store.
         // ═══════════════════════════════════════════════════════════════════════
-        if (oldVersion < 63) {
+        if (oldVersion < 64) {
           return (async () => {
+
+            // ──────────── V63 migrations (solo si venimos de < V63) ────────────
+            if (oldVersion < 63) {
             // 1. nominas → ingresos (deuda sub-tarea 2 · safety net)
             //
             //   La migración V61 ya copia `nominas → ingresos` en sub-tarea
@@ -3626,6 +3589,57 @@ export const initDB = async () => {
               if (db.objectStoreNames.contains(store)) {
                 db.deleteObjectStore(store);
               }
+            }
+            } // end if (oldVersion < 63)
+
+            // ──────────── V64 migrations (sub-tarea 5) ────────────────────────
+            // 1. learningLogs → movementLearningRules.history[] (FIFO max 50)
+            if (
+              db.objectStoreNames.contains('learningLogs') &&
+              db.objectStoreNames.contains('movementLearningRules')
+            ) {
+              try {
+                const logsSrc = (transaction as any).objectStore('learningLogs');
+                const rulesDst = transaction.objectStore('movementLearningRules');
+                const logRecords = (await logsSrc.getAll()) as Array<Record<string, unknown>>;
+
+                // Agrupar logs por ruleId
+                const byRule = new Map<number, Array<Record<string, unknown>>>();
+                for (const rec of logRecords) {
+                  const ruleId = typeof rec.ruleId === 'number' ? rec.ruleId : undefined;
+                  if (ruleId == null) continue;
+                  const list = byRule.get(ruleId) ?? [];
+                  list.push(rec);
+                  byRule.set(ruleId, list);
+                }
+
+                // Adjuntar al campo history[] de cada regla (FIFO max 50)
+                for (const [ruleId, logs] of byRule.entries()) {
+                  const rule = (await rulesDst.get(ruleId)) as Record<string, unknown> | undefined;
+                  if (!rule) continue;
+                  const existing: unknown[] = Array.isArray(rule.history) ? (rule.history as unknown[]) : [];
+                  const newEntries = logs
+                    .sort((a, b) => String(a.ts ?? '').localeCompare(String(b.ts ?? '')))
+                    .map((l) => ({
+                      action: l.action,
+                      ...(l.movimientoId != null && { movimientoId: l.movimientoId }),
+                      ts: l.ts,
+                    }));
+                  const merged = [...existing, ...newEntries];
+                  rule.history = merged.length > 50 ? merged.slice(merged.length - 50) : merged;
+                  await rulesDst.put(rule as any);
+                }
+              } catch (err) {
+                console.warn('[DB V64] migración learningLogs→movementLearningRules.history falló:', err);
+              }
+            }
+
+            // 2. Eliminar los 2 stores AMBIGUOS (idempotente)
+            if (db.objectStoreNames.contains('learningLogs')) {
+              db.deleteObjectStore('learningLogs');
+            }
+            if (db.objectStoreNames.contains('reconciliationAuditLogs')) {
+              db.deleteObjectStore('reconciliationAuditLogs');
             }
           })();
         }

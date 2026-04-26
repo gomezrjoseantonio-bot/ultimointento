@@ -79,7 +79,7 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
     test('está fijado a 62 en src/services/db.ts (V61 hizo rename, V62 elimina stores)', async () => {
       const dbModule = await import('../db');
       const db = await dbModule.initDB();
-      expect(db.version).toBe(63);
+      expect(db.version).toBe(64);
       db.close();
     });
   });
@@ -133,7 +133,7 @@ describe('V61 migration · sub-tarea 2 nominas → ingresos rename', () => {
       const { initDB } = await import('../db');
       const db = await initDB();
 
-      expect(db.version).toBe(63);
+      expect(db.version).toBe(64);
 
       // El store `ingresos` debe contener los dos registros migrados con
       // `tipo='nomina'` y conservar el resto de campos.
