@@ -13,7 +13,6 @@ import { prestamosService } from '../../../../../services/prestamosService';
 import { inversionesService } from '../../../../../services/inversionesService';
 import { personalExpensesService } from '../../../../../services/personalExpensesService';
 import { calculateTotalInitialCash } from '../../../../../services/accountBalanceService';
-import { getCachedStoreRecords } from '../../../../../services/indexedDbCacheService';
 import { PersonalExpense, OtrosIngresos, FuenteIngreso, GastoRecurrenteActividad } from '../../../../../types/personal';
 import { ValoracionHistorica } from '../../../../../types/valoraciones';
 import { PeriodoPago } from '../../../../../types/prestamos';

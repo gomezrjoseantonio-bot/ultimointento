@@ -463,12 +463,11 @@ export async function actualizarEstadoEjercicioCoord(
 }
 
 /**
- * BUG-08: Migra registros de ejerciciosFiscales (legacy) a ejerciciosFiscalesCoord
- * que no existan todavía. Idempotente: no sobreescribe coord si ya existe.
- * Se ejecuta UNA vez por sesión en el bootstrap (FiscalDashboard).
+ * No-op desde V62: el store `ejerciciosFiscales` fue eliminado y toda la
+ * migración corre automáticamente en el upgrade de IDB. Se mantiene la firma
+ * para no romper los callers del bootstrap.
  */
 export async function syncAndCleanupLegacyStore(): Promise<{ migrados: number; errores: number }> {
-  // ejerciciosFiscales store eliminado en V62 — migración legacy completada, nada que sincronizar
   return { migrados: 0, errores: 0 };
 }
 
