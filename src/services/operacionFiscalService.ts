@@ -180,7 +180,8 @@ export async function generarOperacionesDesdeRecurrentes(inmuebleId: number, eje
   const compromisos = await db.getAllFromIndex('compromisosRecurrentes', 'inmuebleId', inmuebleId);
   const rules = compromisos
     .filter((c: CompromisoRecurrente) => c.ambito === 'inmueble' && c.estado === 'activo')
-    .map(mapCompromisoToOpexRule);
+    .map(mapCompromisoToOpexRule)
+    .filter((r): r is OpexRule => r !== null);
   let creadas = 0;
 
   for (const rule of rules.filter((item) => item.activo)) {

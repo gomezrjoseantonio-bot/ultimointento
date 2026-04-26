@@ -155,10 +155,9 @@ describe('declaracionOnboardingService', () => {
       db.clear('prestamos'),
       db.clear('contracts'),
       db.clear('accounts'),
-      db.clear('ejerciciosFiscales'),
+      db.clear('ejerciciosFiscalesCoord'),
       db.clear('personalData'),
       db.clear('autonomos'),
-      db.clear('rentaMensual'),
     ]);
   });
 
@@ -210,7 +209,7 @@ describe('declaracionOnboardingService', () => {
       db.getAll('properties'),
       db.getAll('prestamos'),
       db.getAll('contracts'),
-      db.get('ejerciciosFiscales', 2024),
+      db.get('ejerciciosFiscalesCoord', 2024),
     ]);
 
     expect(resumen.exito).toBe(true);

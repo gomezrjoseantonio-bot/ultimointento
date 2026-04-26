@@ -1485,7 +1485,6 @@ async function escribirProveedores(
   porRefCatastral: Map<string, Property>,
 ): Promise<void> {
   const ahora = new Date().toISOString();
-  const ejercicio = decl.meta.ejercicio;
 
   for (const inm of decl.inmuebles) {
     if (inm.esAccesorioDe) continue;
@@ -1552,22 +1551,10 @@ async function escribirProveedores(
         });
       }
 
-      // 2. Create operation if not duplicate (unique index enforces this too)
-      try {
-        await db.add('operacionesProveedor', {
-          proveedorNif: p.nif,
-          inmuebleId: property.id!,
-          ejercicio,
-          tipo: p.tipo,
-          importe: p.importe,
-          createdAt: ahora,
-        });
-      } catch (_e) {
-        // Unique index constraint — operation already exists, skip
-      }
+      // operacionesProveedor writer removed in V62 (sub-tarea 3) — cache desnormalizada
     }
   }
-  invalidateCachedStores(['proveedores', 'operacionesProveedor']);
+  invalidateCachedStores(['proveedores']);
 }
 
 async function escribirMobiliario(

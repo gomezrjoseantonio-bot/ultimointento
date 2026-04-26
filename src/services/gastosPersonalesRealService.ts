@@ -1,20 +1,15 @@
 // src/services/gastosPersonalesRealService.ts
-// ATLAS — GastosPersonalesReal service
-// Manages confirmed/real personal expenses written by Tesorería after punteo.
-// This is the mirror of gastosInmueble (Inmuebles module).
-//
-// RESTRICTION: Only Tesorería writes here. The UI never writes directly.
+// V62 (TAREA 7 sub-tarea 3): store eliminado · stub enriquecido para preservar API surface.
+// Futuro: usar movements + treasuryEvents.
 
-import { initDB } from './db';
-import { GastoPersonalReal, DesviacionResumen, PersonalExpenseCategory } from '../types/personal';
+import { GastoPersonalReal, PersonalExpenseCategory, DesviacionResumen } from '../types/personal';
 
 class GastosPersonalesRealService {
-
   /**
    * Register a confirmed real expense. Called by Tesorería upon confirming
    * a gasto_personal event.
    */
-  async registrarGastoReal(data: {
+  async registrarGastoReal(_data: {
     personalDataId: number;
     patronId?: number;
     concepto: string;
@@ -27,100 +22,73 @@ class GastosPersonalesRealService {
     ejercicio: number;
     mes: number;
   }): Promise<GastoPersonalReal> {
-    const db = await initDB();
+    console.warn('[gastosPersonalesRealService] Store eliminado en V62 · operación no-op');
     const now = new Date().toISOString();
-
-    const desviacion = data.importeEstimado != null
-      ? data.importeReal - data.importeEstimado
+    const desviacion = _data.importeEstimado != null
+      ? _data.importeReal - _data.importeEstimado
       : undefined;
-
-    const gasto: GastoPersonalReal = {
-      personalDataId: data.personalDataId,
-      patronId: data.patronId,
-      concepto: data.concepto,
-      categoria: data.categoria,
-      importeReal: data.importeReal,
-      fechaReal: data.fechaReal,
-      cuentaCargoId: data.cuentaCargoId,
-      importeEstimado: data.importeEstimado,
+    return {
+      id: 0,
+      personalDataId: _data.personalDataId,
+      patronId: _data.patronId,
+      concepto: _data.concepto,
+      categoria: _data.categoria,
+      importeReal: _data.importeReal,
+      fechaReal: _data.fechaReal,
+      cuentaCargoId: _data.cuentaCargoId,
+      importeEstimado: _data.importeEstimado,
       desviacion,
-      tesoreriaEventoId: data.tesoreriaEventoId,
-      ejercicio: data.ejercicio,
-      mes: data.mes,
+      tesoreriaEventoId: _data.tesoreriaEventoId,
+      ejercicio: _data.ejercicio,
+      mes: _data.mes,
       createdAt: now,
       updatedAt: now,
     };
-
-    const id = await db.add('gastosPersonalesReal', gasto);
-    return { ...gasto, id: id as number };
   }
 
   /**
    * Get all confirmed real expenses for a given fiscal year (and optionally month).
    */
   async getGastosRealesPorPeriodo(
-    personalDataId: number,
-    ejercicio: number,
-    mes?: number,
+    _personalDataId: number,
+    _ejercicio: number,
+    _mes?: number,
   ): Promise<GastoPersonalReal[]> {
-    try {
-      const db = await initDB();
-      const tx = db.transaction('gastosPersonalesReal', 'readonly');
-      const index = tx.store.index('personalDataId');
-      const all = await index.getAll(personalDataId);
-
-      return (all || []).filter(g =>
-        g.ejercicio === ejercicio && (mes == null || g.mes === mes)
-      );
-    } catch (error) {
-      console.error('Error getting gastos personales reales:', error);
-      return [];
-    }
+    return [];
   }
 
   /**
    * Compute deviation summary per pattern for a fiscal year.
-   * Groups real expenses by patronId and compares against estimated totals.
    */
   async getDesviaciones(
-    personalDataId: number,
-    ejercicio: number,
+    _personalDataId: number,
+    _ejercicio: number,
   ): Promise<DesviacionResumen[]> {
-    const reales = await this.getGastosRealesPorPeriodo(personalDataId, ejercicio);
+    return [];
+  }
 
-    const byPatron = new Map<number, {
-      concepto: string;
-      categoria: PersonalExpenseCategory;
-      estimado: number;
-      real: number;
-      meses: Set<number>;
-    }>();
+  // Legacy method names for backward compatibility
+  async getAll(): Promise<GastoPersonalReal[]> {
+    return [];
+  }
 
-    for (const g of reales) {
-      if (g.patronId == null) continue;
-      const entry = byPatron.get(g.patronId) ?? {
-        concepto: g.concepto,
-        categoria: g.categoria,
-        estimado: 0,
-        real: 0,
-        meses: new Set<number>(),
-      };
-      entry.real += g.importeReal;
-      entry.estimado += g.importeEstimado ?? 0;
-      entry.meses.add(g.mes);
-      byPatron.set(g.patronId, entry);
-    }
+  async getAllForPersonalData(_personalDataId: number): Promise<GastoPersonalReal[]> {
+    return [];
+  }
 
-    return Array.from(byPatron.entries()).map(([patronId, entry]) => ({
-      patronId,
-      concepto: entry.concepto,
-      categoria: entry.categoria,
-      estimadoTotal: entry.estimado,
-      realTotal: entry.real,
-      desviacion: entry.real - entry.estimado,
-      meses: Array.from(entry.meses).sort((a, b) => a - b),
-    }));
+  async getByEjercicio(_personalDataId: number, _ejercicio: number): Promise<GastoPersonalReal[]> {
+    return [];
+  }
+
+  async save(_gasto: Partial<GastoPersonalReal>): Promise<GastoPersonalReal | null> {
+    console.warn('[gastosPersonalesRealService] Store eliminado en V62 · operación no-op');
+    return null;
+  }
+
+  async delete(_id: number): Promise<void> {
+    console.warn('[gastosPersonalesRealService] Store eliminado en V62 · operación no-op');
   }
 }
 
 export const gastosPersonalesRealService = new GastosPersonalesRealService();
+

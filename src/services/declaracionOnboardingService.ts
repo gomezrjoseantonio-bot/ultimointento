@@ -1,9 +1,10 @@
 import type { Contract, Property } from './db';
 import { initDB } from './db';
-import type {
-  DeclaracionActividad,
-  DeclaracionIRPF,
-  DeclaracionInmueble,
+import {
+  createEmptyArrastresEjercicio,
+  type DeclaracionActividad,
+  type DeclaracionIRPF,
+  type DeclaracionInmueble,
 } from '../types/fiscal';
 import type { ExtraccionCompleta } from './aeatParserService';
 import type { Prestamo } from '../types/prestamos';
@@ -1211,15 +1212,16 @@ export async function crearContratoPendienteIdentificar(params: {
 
 async function importarArrastresDesdeDeclaracion(resultado: ResultadoAnalisis): Promise<number> {
   const ejercicio = await ejercicioFiscalService.getOrCreateEjercicio(resultado.ejercicio, 'declarado');
+  const arrastresActuales = ejercicio.arrastresGenerados ?? createEmptyArrastresEjercicio();
   const next = {
     ...ejercicio,
     arrastresGenerados: {
-      ...ejercicio.arrastresGenerados,
-      gastos0105_0106: [...ejercicio.arrastresGenerados.gastos0105_0106],
-      perdidasPatrimonialesAhorro: [...ejercicio.arrastresGenerados.perdidasPatrimonialesAhorro],
-      amortizacionesAcumuladas: [...ejercicio.arrastresGenerados.amortizacionesAcumuladas],
-      porInmueble: [...(ejercicio.arrastresGenerados.porInmueble ?? ejercicio.arrastresGenerados.gastos0105_0106)],
-      porAnio: [...(ejercicio.arrastresGenerados.porAnio ?? ejercicio.arrastresGenerados.perdidasPatrimonialesAhorro)],
+      ...arrastresActuales,
+      gastos0105_0106: [...arrastresActuales.gastos0105_0106],
+      perdidasPatrimonialesAhorro: [...arrastresActuales.perdidasPatrimonialesAhorro],
+      amortizacionesAcumuladas: [...arrastresActuales.amortizacionesAcumuladas],
+      porInmueble: [...(arrastresActuales.porInmueble ?? arrastresActuales.gastos0105_0106)],
+      porAnio: [...(arrastresActuales.porAnio ?? arrastresActuales.perdidasPatrimonialesAhorro)],
     },
     updatedAt: new Date().toISOString(),
   };

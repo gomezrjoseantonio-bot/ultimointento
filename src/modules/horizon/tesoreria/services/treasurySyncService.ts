@@ -1003,11 +1003,17 @@ export async function generateMonthlyForecasts(
     // ── Bloque ④ FISCALIDAD IRPF anual ────────────────────────────────────────
     // Generates a forecast expense/income event for the annual income tax declaration.
     // Only generated once per fiscal year, in the month of the tax filing.
+    // V62: configuracion_fiscal store removed · using hardcoded defaults
     try {
-      const configFiscalRecord = await db.get('configuracion_fiscal', 'default');
-      const configFiscal: ConfiguracionFiscal | undefined = configFiscalRecord;
+      const configFiscal = {
+        incluir_prevision_irpf: true,
+        mes_declaracion: 6,
+        dia_declaracion: 25,
+        minusvalias_pendientes: [] as { anio: number; importe: number }[],
+        cuenta_irpf_id: undefined as number | undefined,
+      };
 
-      if (configFiscal?.incluir_prevision_irpf) {
+      if (configFiscal.incluir_prevision_irpf) {
         const mesDeclaracion = configFiscal.mes_declaracion ?? 6;
         const diaDeclaracion = configFiscal.dia_declaracion ?? 25;
 
@@ -1091,7 +1097,7 @@ export async function generateMonthlyForecasts(
 
             // Subtract pending minusvalías (up to 4 years back)
             const minusvalias = (configFiscal.minusvalias_pendientes ?? [])
-              .filter(m => m.año >= añoFiscal - 4 && m.año < añoFiscal)
+              .filter(m => m.anio >= añoFiscal - 4 && m.anio < añoFiscal)
               .reduce((sum, m) => sum + m.importe, 0);
 
             const baseAhorro = interesesBrutos + dividendosBrutos + plusvalias - minusvalias;

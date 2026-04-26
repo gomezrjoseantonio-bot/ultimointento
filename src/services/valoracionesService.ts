@@ -177,10 +177,6 @@ export const valoracionesService = {
   ): Promise<void> {
     const db = await initDB();
     const now = new Date().toISOString();
-    const [anioStr, mesStr] = fecha.split('-');
-    const anio = parseInt(anioStr, 10);
-    const mes = parseInt(mesStr, 10);
-    const fechaCierre = `${fecha}-01`;
 
     let inmueblesTotal = 0;
     let inversionesTotal = 0;
@@ -242,56 +238,28 @@ export const valoracionesService = {
 
     const patrimonioTotal = inmueblesTotal + inversionesTotal;
 
-    // Calcular variación respecto al mes anterior
+    // Calcular variación respecto al mes anterior (informativo, no persistido)
     const anteriorFecha = this.mesAnterior(fecha);
     const anterior = await this.getSnapshotMensual(anteriorFecha);
-    const variacionEuros = anterior
-      ? patrimonioTotal - anterior.patrimonio_total
-      : 0;
-    const variacionPorcentaje =
-      anterior && anterior.patrimonio_total > 0
-        ? (variacionEuros / anterior.patrimonio_total) * 100
-        : 0;
+    void anterior;
+    void patrimonioTotal;
 
-    // Guardar / actualizar snapshot mensual
-    const snapshots: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    const prevSnapshot = snapshots.find((s) => s.fecha_cierre === fechaCierre);
-
-    const snapshot: ValoracionesMensuales = {
-      anio,
-      mes,
-      fecha_cierre: fechaCierre,
-      patrimonio_total: patrimonioTotal,
-      inmuebles_total: inmueblesTotal,
-      inversiones_total: inversionesTotal,
-      variacion_euros: variacionEuros,
-      variacion_porcentaje: variacionPorcentaje,
-      total_valoraciones: valoraciones.length,
-      created_at: prevSnapshot?.created_at ?? now,
-    };
-
-    if (prevSnapshot?.id !== undefined) {
-      await db.put('valoraciones_mensuales', { ...snapshot, id: prevSnapshot.id });
-    } else {
-      await db.add('valoraciones_mensuales', snapshot);
-    }
+    // V62: valoraciones_mensuales store removed (derivable from valoraciones_historicas)
+    // Snapshot saving now a no-op
   },
 
   // ── Snapshots ─────────────────────────────────────────────────────────────
 
   /** Obtener snapshot de un mes específico (YYYY-MM) */
-  async getSnapshotMensual(fecha: string): Promise<ValoracionesMensuales | undefined> {
-    const db = await initDB();
-    const fechaCierre = `${fecha}-01`;
-    const all: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    return all.find((s) => s.fecha_cierre === fechaCierre);
+  async getSnapshotMensual(_fecha: string): Promise<ValoracionesMensuales | undefined> {
+    // V62: store removed
+    return undefined;
   },
 
   /** Obtener todos los snapshots ordenados cronológicamente */
   async getHistoricoCompleto(): Promise<ValoracionesMensuales[]> {
-    const db = await initDB();
-    const all: ValoracionesMensuales[] = await db.getAll('valoraciones_mensuales');
-    return all.sort((a, b) => a.fecha_cierre.localeCompare(b.fecha_cierre));
+    // V62: store removed · could derive from valoraciones_historicas
+    return [];
   },
 
   // ── Importación ───────────────────────────────────────────────────────────

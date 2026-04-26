@@ -1,9 +1,6 @@
-import { openDB } from 'idb';
-import { Property, Contract } from './db';
-import { formatEuro, formatPercentage as formatPercentageUtil } from '../utils/formatUtils';
-
-/** Local type for KPI expense calculations */
-type KpiExpense = { amount: number; propertyId?: number; fiscalType?: string; destino?: string; destino_id?: number; [key: string]: any };
+// src/services/kpiService.ts
+// V62 (TAREA 7 sub-tarea 3): store eliminado · stub enriquecido para preservar API surface.
+// Configuraciones ahora en keyval['kpiConfig_*'].
 
 export type KPIMetricType = 
   | 'ingresos-anuales'
@@ -199,7 +196,6 @@ export const KPI_TEMPLATES: Record<KPITemplate, { name: string; metrics: KPIMetr
       'rentabilidad-bruta',
       'ingresos-anuales',
       'gastos-explotacion'
-      // Note: fiscal-specific metrics will show as "—" until H9
     ]
   },
   inversor: {
@@ -208,7 +204,6 @@ export const KPI_TEMPLATES: Record<KPITemplate, { name: string; metrics: KPIMetr
       'rentabilidad-neta',
       'cash-on-cash',
       'cap-rate'
-      // DSCR will be hidden by default
     ]
   }
 };
@@ -237,322 +232,22 @@ export const DEFAULT_KPI_CONFIG: KPIConfiguration = {
   }
 };
 
-// Format ratio
-export const formatRatio = (value: number): string => {
-  return new Intl.NumberFormat('es-ES', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 2
-  }).format(value) + ' x';
-};
-
 // KPI Service Class
 export class KPIService {
-  private dbName = 'AtlasHorizonDB';
-  private dbVersion = 4; // Match the current DB version
-
-  async saveConfiguration(config: KPIConfiguration, module: 'horizon' | 'pulse' = 'horizon'): Promise<void> {
-    try {
-      const db = await openDB(this.dbName, this.dbVersion);
-      await db.put('kpiConfigurations', { 
-        id: module, 
-        ...config,
-        updatedAt: new Date().toISOString()
-      });
-      console.log(`KPI configuration saved for module: ${module}`);
-    } catch (error) {
-      console.error('Error saving KPI configuration:', error);
-      throw new Error(`Failed to save KPI configuration: ${error}`);
-    }
+  async saveConfiguration(_config: KPIConfiguration, _module: 'horizon' | 'pulse' = 'horizon'): Promise<void> {
+    console.warn('[kpiService] Store eliminado en V62 · usar keyval["kpiConfig_*"]');
   }
 
-  async getConfiguration(module: 'horizon' | 'pulse' = 'horizon'): Promise<KPIConfiguration> {
-    try {
-      const db = await openDB(this.dbName, this.dbVersion);
-      const config = await db.get('kpiConfigurations', module);
-      return config || DEFAULT_KPI_CONFIG;
-    } catch (error) {
-      console.warn('Could not load KPI configuration, using defaults', error);
-      return DEFAULT_KPI_CONFIG;
-    }
+  async getConfiguration(_module: 'horizon' | 'pulse' = 'horizon'): Promise<KPIConfiguration> {
+    return DEFAULT_KPI_CONFIG;
   }
 
-  async calculateKPIsForProperty(propertyId: number, config?: KPIConfiguration): Promise<PropertyKPIData> {
-    const actualConfig = config || await this.getConfiguration();
-    const db = await openDB(this.dbName, this.dbVersion);
-    
-    // Get property data
-    const property = await db.get('properties', propertyId);
-    if (!property) {
-      throw new Error(`Property ${propertyId} not found`);
-    }
-
-    // Get related data
-    const contracts = await db.getAll('contracts');
-    const expenses = await db.getAll('expenses');
-    
-    // Filter data for this property
-    const propertyContracts = contracts.filter(c => c.propertyId === propertyId);
-    const propertyExpenses = expenses.filter(e => e.propertyId === propertyId);
-
-    // Calculate KPIs
-    const kpis: KPIValue[] = [];
-    
-    for (const metricId of actualConfig.activeMetrics) {
-      const kpiValue = await this.calculateSingleKPI(metricId, property, propertyContracts, propertyExpenses, actualConfig);
-      kpis.push(kpiValue);
-    }
-
+  async calculateKPIsForProperty(_propertyId: number, _config?: KPIConfiguration): Promise<PropertyKPIData> {
     return {
-      propertyId,
-      kpis,
+      propertyId: _propertyId,
+      kpis: [],
       lastCalculated: new Date().toISOString()
     };
-  }
-
-  private async calculateSingleKPI(
-    metricId: KPIMetricType,
-    property: Property,
-    contracts: Contract[],
-    expenses: KpiExpense[],
-    config: KPIConfiguration
-  ): Promise<KPIValue> {
-    const metric = KPI_METRICS[metricId];
-    let value: number | null = null;
-    let isAvailable = true;
-    let tooltipText = metric.formula;
-
-    try {
-      switch (metricId) {
-        case 'ingresos-anuales':
-          value = this.calculateIngresosAnuales(contracts);
-          break;
-          
-        case 'gastos-explotacion':
-          value = this.calculateGastosExplotacion(expenses);
-          break;
-          
-        case 'vacancia-estimada':
-          const ingresos = this.calculateIngresosAnuales(contracts);
-          value = ingresos * (config.parameters.vacancyPercent / 100);
-          break;
-          
-        case 'noi-anual':
-          const ingresosAnuales = this.calculateIngresosAnuales(contracts);
-          const gastosExplotacion = this.calculateGastosExplotacion(expenses);
-          const vacancia = ingresosAnuales * (config.parameters.vacancyPercent / 100);
-          value = ingresosAnuales - vacancia - gastosExplotacion;
-          break;
-          
-        case 'coste-adquisicion':
-          value = this.calculateCosteAdquisicion(property, config);
-          break;
-          
-        case 'rentabilidad-bruta':
-          const ingresosAnu = this.calculateIngresosAnuales(contracts);
-          const costeAdq = this.calculateCosteAdquisicion(property, config);
-          value = costeAdq > 0 ? (ingresosAnu / costeAdq) * 100 : 0;
-          break;
-          
-        case 'rentabilidad-neta':
-          value = this.calculateRentabilidadNeta(property, contracts, expenses, config);
-          break;
-          
-        case 'beneficio-neto-mes':
-          value = this.calculateBeneficioNetoMes(property, contracts, expenses, config);
-          break;
-          
-        case 'cash-on-cash':
-          // Will show "—" since no loan data available yet
-          isAvailable = false;
-          tooltipText = 'Disponible cuando existan préstamos';
-          break;
-          
-        case 'cap-rate':
-          const noi = this.calculateNOI(contracts, expenses, config);
-          const baseValue = config.parameters.marketValue || this.calculateCosteAdquisicion(property, config);
-          value = baseValue > 0 ? (noi / baseValue) * 100 : 0;
-          break;
-          
-        case 'dscr':
-          if (!config.parameters.dxcrVisible) {
-            isAvailable = false;
-            tooltipText = 'Métrica oculta por configuración';
-          } else {
-            isAvailable = false;
-            tooltipText = 'Disponible cuando existan préstamos';
-          }
-          break;
-          
-        case 'ocupacion':
-          value = this.calculateOcupacion(contracts);
-          if (contracts.length === 0) {
-            isAvailable = false;
-            tooltipText = 'Disponible cuando existan contratos';
-          }
-          break;
-          
-        default:
-          isAvailable = false;
-          value = null;
-      }
-    } catch (error) {
-      console.warn(`Error calculating KPI ${metricId}:`, error);
-      isAvailable = false;
-      value = null;
-    }
-
-    return {
-      metricId,
-      value,
-      formattedValue: this.formatKPIValue(value, metric.unit, isAvailable),
-      isAvailable,
-      tooltipText
-    };
-  }
-
-  private calculateIngresosAnuales(contracts: Contract[]): number {
-    const now = new Date();
-    const activeContracts = contracts.filter(c => {
-      const startDate = new Date(c.fechaInicio || c.startDate || '');
-      if (startDate > now) return false; // Not started yet
-      
-      if (c.isIndefinite) return true; // Indefinite contracts are active
-      
-      const endDate = c.fechaFin || c.endDate;
-      if (endDate) {
-        return new Date(endDate) > now; // Check if not ended
-      }
-      
-      return true; // If no end date and not indefinite, assume active
-    });
-    return activeContracts.reduce((total, contract) => total + ((contract.rentaMensual || contract.monthlyRent || 0) * 12), 0);
-  }
-
-  private calculateGastosExplotacion(expenses: KpiExpense[]): number {
-    const currentYear = new Date().getFullYear();
-    const operatingExpenses = expenses.filter(e => 
-      e.taxYear === currentYear && 
-      e.fiscalType !== 'financiacion' && 
-      e.fiscalType !== 'capex-mejora-ampliacion'
-    );
-    return operatingExpenses.reduce((total, expense) => total + expense.amount, 0);
-  }
-
-  private calculateCosteAdquisicion(property: Property, config: KPIConfiguration): number {
-    if (config.parameters.costBasis === 'precio-solo') {
-      return property.acquisitionCosts.price;
-    }
-
-    let total = property.acquisitionCosts.price;
-    const costs = property.acquisitionCosts;
-
-    if (config.parameters.includeITP && costs.itp) total += costs.itp;
-    if (config.parameters.includeIVA && costs.iva) total += costs.iva;
-    if (config.parameters.includeNotary && costs.notary) total += costs.notary;
-    if (config.parameters.includeRegistry && costs.registry) total += costs.registry;
-    if (config.parameters.includeManagement && costs.management) total += costs.management;
-    if (config.parameters.includePSI && costs.psi) total += costs.psi;
-    if (config.parameters.includeRealEstate && costs.realEstate) total += costs.realEstate;
-    if (config.parameters.includeOther && costs.other) {
-      total += costs.other.reduce((sum, item) => sum + item.amount, 0);
-    }
-
-    return total;
-  }
-
-  private calculateNOI(contracts: Contract[], expenses: KpiExpense[], config: KPIConfiguration): number {
-    const ingresos = this.calculateIngresosAnuales(contracts);
-    const gastos = this.calculateGastosExplotacion(expenses);
-    const vacancia = ingresos * (config.parameters.vacancyPercent / 100);
-    return ingresos - vacancia - gastos;
-  }
-
-  private calculateRentabilidadNeta(
-    property: Property, 
-    contracts: Contract[], 
-    expenses: KpiExpense[], 
-    config: KPIConfiguration
-  ): number {
-    const noi = this.calculateNOI(contracts, expenses, config);
-    let adjustedNOI = noi;
-
-    // Apply management fee if configured
-    if (config.parameters.managementFee) {
-      const ingresos = this.calculateIngresosAnuales(contracts);
-      const managementCost = ingresos * (config.parameters.managementFeePercent / 100);
-      adjustedNOI -= managementCost;
-    }
-
-    // Apply mejora amortization if configured
-    if (config.parameters.mejoraAmortizable) {
-      // TODO: Calculate mejora amortization when mejora data is available
-    }
-
-    const costeAdquisicion = this.calculateCosteAdquisicion(property, config);
-    return costeAdquisicion > 0 ? (adjustedNOI / costeAdquisicion) * 100 : 0;
-  }
-
-  private calculateBeneficioNetoMes(
-    property: Property, 
-    contracts: Contract[], 
-    expenses: KpiExpense[], 
-    config: KPIConfiguration
-  ): number {
-    const noi = this.calculateNOI(contracts, expenses, config);
-    let monthlyBenefit = noi / 12;
-
-    // Apply management fee if configured
-    if (config.parameters.managementFee) {
-      const ingresos = this.calculateIngresosAnuales(contracts);
-      const managementCost = (ingresos * (config.parameters.managementFeePercent / 100)) / 12;
-      monthlyBenefit -= managementCost;
-    }
-
-    // Apply mejora amortization if configured
-    if (config.parameters.mejoraAmortizable) {
-      // TODO: Calculate monthly mejora amortization when mejora data is available
-    }
-
-    // TODO: Subtract debt service when loan data is available
-
-    return monthlyBenefit;
-  }
-
-  private calculateOcupacion(contracts: Contract[]): number {
-    if (contracts.length === 0) return 0;
-    
-    const now = new Date();
-    const activeContracts = contracts.filter(c => {
-      const startDate = new Date(c.fechaInicio || c.startDate || '');
-      if (startDate > now) return false; // Not started yet
-      
-      if (c.isIndefinite) return true; // Indefinite contracts are active
-      
-      if (c.endDate) {
-        return new Date(c.endDate) > now; // Check if not ended
-      }
-      
-      return true; // If no end date and not indefinite, assume active
-    });
-    
-    return (activeContracts.length / contracts.length) * 100;
-  }
-
-  private formatKPIValue(value: number | null, unit: 'currency' | 'percentage' | 'ratio', isAvailable: boolean): string {
-    if (!isAvailable || value === null) {
-      return '—';
-    }
-
-    switch (unit) {
-      case 'currency':
-        return formatEuro(value);
-      case 'percentage':
-        return formatPercentageUtil(value);
-      case 'ratio':
-        return formatRatio(value);
-      default:
-        return '—';
-    }
   }
 }
 

@@ -9,8 +9,6 @@ import type {
   Autonomo,
   PlanPensionInversion,
   OtrosIngresos,
-  PatronGastoPersonal,
-  GastoPersonalReal,
   PensionIngreso,
   TraspasoPlan,
   Ingreso as IngresoPersonal
@@ -28,7 +26,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 61; // V61 (TAREA 7 sub-tarea 2): rename `nominas → ingresos` (nuevo store + Ingreso discriminated union) · V60 sub-tarea 1 hizo schema extensions sobre los 9 stores supervivientes.
+const DB_VERSION = 62; // V62 (TAREA 7 sub-tarea 3): eliminar 11 stores duplicados/fósiles V1 · estrategia wipe + reimport · V61 (sub-tarea 2): rename `nominas → ingresos` · V60 sub-tarea 1 hizo schema extensions sobre los 9 stores supervivientes.
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2070,19 +2068,19 @@ interface AtlasHorizonDB {
   documents: Document;
   contracts: Contract;
   // NOTE: rentCalendar and rentPayments removed in V4.5 — migrated to rentaMensual
-  rentaMensual: RentaMensual; // DEPRECATED V5.6 · sustituido por treasuryEvents · pendiente eliminación V5.7 tras validación producción
+  // rentaMensual: ELIMINADO en V62 (sub-tarea 3) — deprecated V5.6 · 0 registros
   aeatCarryForwards: AEATCarryForward; // H5: Tax carryforwards
   propertyDays: PropertyDays; // H5: Rental/availability days
   propertyImprovements: PropertyImprovement; // H9-FISCAL: Property improvements for AEAT
   operacionesFiscales: OperacionFiscal; // Flujo fiscal unificado: operaciones deducibles por casilla
   proveedores: Proveedor; // V3.8: entidad única proveedor por NIF
-  operacionesProveedor: OperacionProveedor; // V3.8: operaciones vinculadas proveedor-inmueble
-  kpiConfigurations: any; // H6: KPI configurations
+  // operacionesProveedor: ELIMINADO en V62 (sub-tarea 3) — cache desnormalizada de gastosInmueble + proveedores · 15 registros
+  // kpiConfigurations: ELIMINADO en V62 (sub-tarea 3) — sustituido por keyval['kpiConfig_*'] · 0 registros
   accounts: Account; // H8: Treasury accounts
   movements: Movement; // H8: Bank movements
   importBatches: ImportBatch; // H8: CSV import tracking
   treasuryEvents: TreasuryEvent; // H9: Treasury forecasting
-  treasuryRecommendations: TreasuryRecommendation; // H9: Treasury recommendations
+  // treasuryRecommendations: ELIMINADO en V62 (sub-tarea 3) — derivable runtime · 0 registros
   fiscalSummaries: FiscalSummary; // H9: Fiscal summaries by property/year
   gastos: Gasto; // H10: Treasury expense records
   presupuestos: Presupuesto; // H9: New budget system per specification
@@ -2092,7 +2090,7 @@ interface AtlasHorizonDB {
   movementLearningRules: MovementLearningRule; // V1.1: Learning rules for automatic classification
   learningLogs: LearningLog; // V1.1: Learning audit log without PII
   inversiones: PosicionInversion; // V1.3: Investment positions
-  patrimonioSnapshots: PatrimonioSnapshot; // Dashboard: Historical net worth tracking
+  // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
   personalData: PersonalData; // V1.2: Personal data
   personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
   nominas: Nomina; // V1.2: Salary data · V61 (sub-tarea 2): legacy · datos copiados a `ingresos` con tipo='nomina' · consumidores se redirigirán en sub-tarea 6 · store eliminado en sub-tarea posterior.
@@ -2118,8 +2116,8 @@ interface AtlasHorizonDB {
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
   otrosIngresos: OtrosIngresos; // V1.2: Other income
   pensiones: PensionIngreso; // V2.5: Pension income records
-  patronGastosPersonales: PatronGastoPersonal; // V4.3: spending pattern (was personalExpenses)
-  gastosPersonalesReal: GastoPersonalReal; // V4.3: confirmed facts from Tesorería punteo
+  // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros
+  // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
   prestamos: any; // Financiacion: Loan records
   /**
    * Monthly valuation: Historical valuations per asset.
@@ -2133,7 +2131,7 @@ interface AtlasHorizonDB {
    * patrimonio total, agregar runtime sobre los registros del rango.
    */
   valoraciones_historicas: any;
-  valoraciones_mensuales: any; // Monthly valuation: Monthly snapshots
+  // valoraciones_mensuales: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 115 registros
   /**
    * General key-value store for application configuration.
    *
@@ -2164,9 +2162,9 @@ interface AtlasHorizonDB {
     tasaAhorroMinima: number;
     updatedAt: string;
   }; // V3.2 → V5.5 MIGRATED to 'escenarios'
-  opexRules: OpexRule; // DEPRECATED V5.4 · pendiente eliminación V5.5 tras validación producción · usar compromisosRecurrentes(ambito='inmueble')
-  configuracion_fiscal: any; // V2.6: IRPF forecast configuration (singleton, id='default')
-  ejerciciosFiscales: EjercicioFiscal; // DEPRECATED V5.5 · sustituido por ejerciciosFiscalesCoord · cero escrituras nuevas desde V5.4
+  // opexRules: ELIMINADO en V62 (sub-tarea 3) — ya migrado a compromisosRecurrentes en TAREA 2 · 0 registros
+  // configuracion_fiscal: ELIMINADO en V62 (sub-tarea 3) — sin destino · defaults runtime · 1 registro
+  // ejerciciosFiscales: ELIMINADO en V62 (sub-tarea 3) — sustituido por ejerciciosFiscalesCoord · 1 registro
   documentosFiscales: DocumentoFiscalRecord; // V3.6: documentación fiscal vinculable
   arrastresManual: ArrastreManualRecord; // V3.6: arrastres manuales previos a importación
   resultadosEjercicio: ResultadoEjercicio; // V2.9: Immutable yearly fiscal snapshots
@@ -2359,14 +2357,7 @@ export const initDB = async () => {
           db.createObjectStore('proveedores', { keyPath: 'nif' });
         }
 
-        // V3.8: Operaciones proveedor (linked operations, unique per nif+inmueble+ejercicio+tipo)
-        if (!db.objectStoreNames.contains('operacionesProveedor')) {
-          const opProvStore = db.createObjectStore('operacionesProveedor', { keyPath: 'id', autoIncrement: true });
-          opProvStore.createIndex('proveedorNif', 'proveedorNif', { unique: false });
-          opProvStore.createIndex('inmuebleId', 'inmuebleId', { unique: false });
-          opProvStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          opProvStore.createIndex('prov-inmueble-ejercicio-tipo', ['proveedorNif', 'inmuebleId', 'ejercicio', 'tipo'], { unique: true });
-        }
+        // operacionesProveedor: store removed in V62 (sub-tarea 3)
 
         // V4.0: gastosInmueble — store unificado de gastos por inmueble
         if (!db.objectStoreNames.contains('gastosInmueble')) {
@@ -2438,20 +2429,9 @@ export const initDB = async () => {
           }
         }
 
-        // H6: KPI Configurations store
-        if (!db.objectStoreNames.contains('kpiConfigurations')) {
-          db.createObjectStore('kpiConfigurations', { keyPath: 'id' }); // id will be 'horizon' or 'pulse'
-        }
-
         // NOTE: rentCalendar and rentPayments stores removed in V4.5 — migrated to rentaMensual
-
-        // CONTRATOS: Monthly rent tracking for treasury integration
-        if (!db.objectStoreNames.contains('rentaMensual')) {
-          const rentaMensualStore = db.createObjectStore('rentaMensual', { keyPath: 'id', autoIncrement: true });
-          rentaMensualStore.createIndex('contratoId', 'contratoId', { unique: false });
-          rentaMensualStore.createIndex('periodo', 'periodo', { unique: false });
-          rentaMensualStore.createIndex('estado', 'estado', { unique: false });
-        }
+        // rentaMensual: store removed in V62 (sub-tarea 3)
+        // kpiConfigurations: store removed in V62 (sub-tarea 3)
 
         // H8: Treasury Accounts store
         if (!db.objectStoreNames.contains('accounts')) {
@@ -2506,14 +2486,7 @@ export const initDB = async () => {
           ensureIndex(treasuryEventsStore, 'inmuebleId', 'inmuebleId', { unique: false });
         }
 
-        // H9: Treasury Recommendations store
-        if (!db.objectStoreNames.contains('treasuryRecommendations')) {
-          const treasuryRecommendationsStore = db.createObjectStore('treasuryRecommendations', { keyPath: 'id' });
-          treasuryRecommendationsStore.createIndex('type', 'type', { unique: false });
-          treasuryRecommendationsStore.createIndex('status', 'status', { unique: false });
-          treasuryRecommendationsStore.createIndex('severity', 'severity', { unique: false });
-          treasuryRecommendationsStore.createIndex('createdAt', 'createdAt', { unique: false });
-        }
+        // treasuryRecommendations: store removed in V62 (sub-tarea 3)
 
         // fiscalSummaries — DELETED in V4.2
 
@@ -2651,12 +2624,7 @@ export const initDB = async () => {
           inversionesStore.createIndex('entidad', 'entidad', { unique: false });
         }
 
-        // Dashboard refactor: Patrimonio Snapshots for historical tracking
-        if (!db.objectStoreNames.contains('patrimonioSnapshots')) {
-          const snapshotsStore = db.createObjectStore('patrimonioSnapshots', { keyPath: 'id', autoIncrement: true });
-          snapshotsStore.createIndex('fecha', 'fecha', { unique: true });
-          snapshotsStore.createIndex('createdAt', 'createdAt', { unique: false });
-        }
+        // patrimonioSnapshots: store removed in V62 (sub-tarea 3)
 
         // General key-value store for application configuration
         if (!db.objectStoreNames.contains('keyval')) {
@@ -2680,17 +2648,8 @@ export const initDB = async () => {
           valoracionesStore.createIndex('tipo-activo-fecha', ['tipo_activo', 'activo_id', 'fecha_valoracion'], { unique: false });
         }
 
-        // V2.1: Valoraciones mensuales store for monthly snapshots
-        if (!db.objectStoreNames.contains('valoraciones_mensuales')) {
-          const snapshotsStore = db.createObjectStore('valoraciones_mensuales', { keyPath: 'id', autoIncrement: true });
-          snapshotsStore.createIndex('fecha_cierre', 'fecha_cierre', { unique: true });
-        }
-
-        // V2.2: OPEX Rules store for recurring expense templates per property
-        if (!db.objectStoreNames.contains('opexRules')) {
-          const opexStore = db.createObjectStore('opexRules', { keyPath: 'id', autoIncrement: true });
-          opexStore.createIndex('propertyId', 'propertyId', { unique: false });
-        }
+        // valoraciones_mensuales: store removed in V62 (sub-tarea 3)
+        // opexRules: store removed in V62 (sub-tarea 3)
 
         // V2.5: Pensiones store (pension income records)
         if (!db.objectStoreNames.contains('pensiones')) {
@@ -2699,31 +2658,8 @@ export const initDB = async () => {
           pensionesStore.createIndex('activa', 'activa', { unique: false });
         }
 
-        // V2.6: Configuración fiscal (IRPF forecast, singleton with id='default')
-        if (!db.objectStoreNames.contains('configuracion_fiscal')) {
-          db.createObjectStore('configuracion_fiscal', { keyPath: 'id' });
-        }
-
-        // V3.6: Ejercicios Fiscales store
-        if (!db.objectStoreNames.contains('ejerciciosFiscales')) {
-          const ejerciciosStore = db.createObjectStore('ejerciciosFiscales', { keyPath: 'ejercicio' });
-          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
-          // Compatibilidad: clientes legacy pueden traer varios registros con el mismo ejercicio.
-          // Estos índices se usan como alias de consulta y no deben abortar la migración por unicidad.
-          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: false });
-          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: false });
-          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
-          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
-        } else {
-          const ejerciciosStore = transaction.objectStore('ejerciciosFiscales');
-          ensureIndex(ejerciciosStore, 'estado', 'estado', { unique: false });
-          // Compatibilidad: clientes legacy pueden traer varios registros con el mismo ejercicio.
-          // Estos índices se usan como alias de consulta y no deben abortar la migración por unicidad.
-          ensureIndex(ejerciciosStore, 'año', 'ejercicio', { unique: false });
-          ensureIndex(ejerciciosStore, 'ejercicio', 'ejercicio', { unique: false });
-          ensureIndex(ejerciciosStore, 'origen', 'origen', { unique: false });
-          ensureIndex(ejerciciosStore, 'snapshotId', 'snapshotId', { unique: false });
-        }
+        // configuracion_fiscal: store removed in V62 (sub-tarea 3)
+        // ejerciciosFiscales: store removed in V62 (sub-tarea 3)
 
         // V3.6: Documentos fiscales store
         if (!db.objectStoreNames.contains('documentosFiscales')) {
@@ -2814,24 +2750,8 @@ export const initDB = async () => {
         }
 
         // ── V4.3: Personal Module Architecture ─────────────────────────────────
-        // 1. Create patronGastosPersonales (renamed from personalExpenses)
-        if (!db.objectStoreNames.contains('patronGastosPersonales')) {
-          const patronStore = db.createObjectStore('patronGastosPersonales', { keyPath: 'id', autoIncrement: true });
-          patronStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          patronStore.createIndex('categoria', 'categoria', { unique: false });
-          patronStore.createIndex('origen', 'origen', { unique: false });
-        }
-
-        // 2. Create gastosPersonalesReal (new — confirmed facts from Tesorería)
-        if (!db.objectStoreNames.contains('gastosPersonalesReal')) {
-          const realStore = db.createObjectStore('gastosPersonalesReal', { keyPath: 'id', autoIncrement: true });
-          realStore.createIndex('personalDataId', 'personalDataId', { unique: false });
-          realStore.createIndex('patronId', 'patronId', { unique: false });
-          realStore.createIndex('ejercicio', 'ejercicio', { unique: false });
-          realStore.createIndex('mes', 'mes', { unique: false });
-          realStore.createIndex('ejercicio-mes', ['ejercicio', 'mes'], { unique: false });
-          realStore.createIndex('tesoreriaEventoId', 'tesoreriaEventoId', { unique: false });
-        }
+        // patronGastosPersonales: store removed in V62 (sub-tarea 3)
+        // gastosPersonalesReal: store removed in V62 (sub-tarea 3)
 
         // 3. V4.3 migration personalExpenses → patronGastosPersonales — REMOVED in V4.4
         //    personalExpenses store is deleted in LIMPIEZA V44 below.
@@ -3412,6 +3332,48 @@ export const initDB = async () => {
             }).catch((err) => {
               console.warn('[DB V61] copia nominas → ingresos falló:', err);
             });
+          }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // V62 — TAREA 7 sub-tarea 3: eliminar 11 stores duplicados/fósiles V1
+        //   ⚠ DESTRUCTIVO: estrategia wipe + reimport · datos NO productivos.
+        //
+        //   Stores eliminados (con razón):
+        //     1. kpiConfigurations     · 0 reg · sustituido por keyval['kpiConfig_*']
+        //     2. configuracion_fiscal  · 1 reg · sin destino · defaults runtime
+        //     3. treasuryRecommendations · 0 reg · derivable runtime
+        //     4. valoraciones_mensuales  · 115 reg · derivable de valoraciones_historicas
+        //     5. patrimonioSnapshots   · 1 reg · derivable de valoraciones_historicas
+        //     6. operacionesProveedor  · 15 reg · cache desnormalizada de
+        //                                gastosInmueble + proveedores
+        //     7. patronGastosPersonales · 7 reg · futuro compromisosRecurrentes
+        //     8. gastosPersonalesReal  · 0 reg · futuro movements + treasuryEvents
+        //     9. opexRules             · 0 reg · ya migrado en TAREA 2
+        //    10. rentaMensual          · 0 reg · deprecado en BUG-07
+        //    11. ejerciciosFiscales    · 1 reg · sustituido por ejerciciosFiscalesCoord
+        //
+        //   Idempotente: el guard `objectStoreNames.contains(name)` permite
+        //   re-ejecuciones tras error y DBs frescas que nunca tuvieron el store.
+        // ═══════════════════════════════════════════════════════════════════════
+        if (oldVersion < 62) {
+          const storesToDelete = [
+            'kpiConfigurations',
+            'configuracion_fiscal',
+            'treasuryRecommendations',
+            'valoraciones_mensuales',
+            'patrimonioSnapshots',
+            'operacionesProveedor',
+            'patronGastosPersonales',
+            'gastosPersonalesReal',
+            'opexRules',
+            'rentaMensual',
+            'ejerciciosFiscales',
+          ];
+          for (const store of storesToDelete) {
+            if (db.objectStoreNames.contains(store)) {
+              db.deleteObjectStore(store);
+            }
           }
         }
       },

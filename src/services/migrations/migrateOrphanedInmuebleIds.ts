@@ -317,25 +317,7 @@ async function migrateOtherStores(
     console.warn('[Migración] Error migrating mueblesInmueble:', e);
   }
 
-  // operacionesProveedor
-  try {
-    const all = await db.getAll('operacionesProveedor');
-    let count = 0;
-    for (const rec of all) {
-      const newId = idMap.get(rec.inmuebleId);
-      if (newId != null && !propertyIds.has(rec.inmuebleId) && rec.id != null) {
-        try {
-          await db.put('operacionesProveedor', { ...rec, inmuebleId: newId });
-          count++;
-        } catch (_e) {
-          // Unique index constraint — might already exist with the new inmuebleId
-        }
-      }
-    }
-    if (count > 0) report.storeUpdates.operacionesProveedor = count;
-  } catch (e) {
-    console.warn('[Migración] Error migrating operacionesProveedor:', e);
-  }
+  // operacionesProveedor — removed in V62 (sub-tarea 3)
 
   // contracts (both inmuebleId and propertyId fields)
   try {
