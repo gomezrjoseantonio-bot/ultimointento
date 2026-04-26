@@ -739,6 +739,16 @@ function App() {
                   <AccountPage />
                 </React.Suspense>
               } />
+              <Route path="datos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
+              <Route path="migracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AccountPage />
+                </React.Suspense>
+              } />
               {/* Bank accounts are managed exclusively in Tesorería */}
               <Route path="cuentas" element={<Navigate to="/tesoreria" replace />} />
             </Route>
