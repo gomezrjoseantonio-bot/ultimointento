@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Nuevo Contrato</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+    --room-green: #4A7C59; --room-red: #A23E3E; --room-yellow: #C89828;
+    --room-blue: #3B5A7F; --room-bw: #2C2C2C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; min-height: 100vh; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  button { background: none; border: none; cursor: pointer; }
+
+  /* Fondo semioscuro detrás del modal */
+  .app-bg {
+    background: rgba(14,20,35,.45);
+    position: fixed; inset: 0; z-index: 1;
+  }
+
+  /* Modal fullscreen */
+  .wiz {
+    position: fixed; inset: 20px; z-index: 2;
+    background: var(--card); border-radius: 14px;
+    display: grid; grid-template-columns: 1fr 380px;
+    grid-template-rows: 64px 1fr 72px;
+    grid-template-areas:
+      "head   aside"
+      "body   aside"
+      "footer aside";
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(14,20,35,.2);
+  }
+
+  /* ═════ HEADER ═════ */
+  .wiz-head {
+    grid-area: head;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  .wiz-title-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .wiz-title-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--brand-ink); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wiz-title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.1; }
+  .wiz-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .wiz-close {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--card-alt); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink-3); cursor: pointer;
+  }
+  .wiz-close:hover { border-color: var(--ink-5); color: var(--ink); }
+
+  /* ═════ STEPS INDICATOR ═════ */
+  .wiz-steps {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .wiz-step-ind {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 999px;
+    font-size: 11.5px; color: var(--ink-4); font-weight: 600;
+    background: transparent;
+    cursor: pointer;
+  }
+  .wiz-step-ind:hover { color: var(--ink-2); }
+  .wiz-step-ind.done { color: var(--ink-2); }
+  .wiz-step-ind.active { color: var(--ink); background: var(--bg); }
+  .wiz-step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); color: var(--ink-4);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    border: 1.5px solid var(--line);
+  }
+  .wiz-step-ind.active .wiz-step-num {
+    background: var(--brand-ink); color: var(--gold); border-color: var(--brand-ink);
+  }
+  .wiz-step-ind.done .wiz-step-num {
+    background: var(--card); color: var(--gold); border-color: var(--gold);
+  }
+  .wiz-step-sep {
+    width: 18px; height: 1px; background: var(--line-2);
+  }
+
+  /* ═════ BODY ═════ */
+  .wiz-body {
+    grid-area: body;
+    overflow-y: auto;
+    padding: 28px 40px 32px;
+    background: var(--card);
+  }
+  .step-title {
+    font-size: 22px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.025em;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .step-title-num {
+    font-family: 'JetBrains Mono', monospace; font-size: 16px;
+    color: var(--ink-5); font-weight: 600;
+  }
+  .step-sub {
+    font-size: 13px; color: var(--ink-4); margin-top: 6px;
+    margin-bottom: 24px; max-width: 540px;
+  }
+  .step-section {
+    margin-bottom: 24px;
+  }
+  .step-section-title {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-4); font-weight: 600; margin-bottom: 10px;
+  }
+
+  /* ═════ INPUTS ═════ */
+  .fld {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .fld-lab {
+    font-size: 12.5px; color: var(--ink-2); font-weight: 600;
+  }
+  .fld-lab .req { color: var(--neg); margin-left: 2px; }
+  .fld-hint {
+    font-size: 11px; color: var(--ink-4); margin-top: 2px; line-height: 1.4;
+  }
+  .fld-hint-inline {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--gold-ink); background: var(--gold-wash);
+    padding: 2px 8px; border-radius: 4px;
+    margin-left: 8px;
+  }
+  .inp {
+    width: 100%; height: 38px;
+    padding: 0 12px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card);
+    font-size: 13px; color: var(--ink); outline: none;
+    transition: border-color .12s;
+  }
+  .inp:hover { border-color: var(--ink-5); }
+  .inp:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .inp.mono { font-family: 'JetBrains Mono', monospace; }
+  textarea.inp { height: auto; padding: 10px 12px; min-height: 72px; resize: vertical; }
+  select.inp { appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A92A0' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px; }
+  .inp-group {
+    display: flex; align-items: stretch; border: 1px solid var(--line);
+    border-radius: 7px; overflow: hidden;
+  }
+  .inp-group .inp { border: none; }
+  .inp-group .inp:focus { box-shadow: none; }
+  .inp-group:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(184,138,62,0.15); }
+  .inp-prefix, .inp-suffix {
+    display: flex; align-items: center; padding: 0 12px;
+    background: var(--card-alt); color: var(--ink-4); font-size: 12px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 600;
+  }
+  .inp-prefix { border-right: 1px solid var(--line); }
+  .inp-suffix { border-left: 1px solid var(--line); }
+
+  /* Grid de filas */
+  .fld-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .fld-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .fld-grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+
+  /* Radio cards · tipo de contrato / plantilla / firma */
+  .rcard-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .rcard {
+    padding: 14px 16px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card);
+    cursor: pointer; transition: all .12s;
+    position: relative;
+  }
+  .rcard:hover { border-color: var(--ink-5); }
+  .rcard.selected {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    background: var(--card);
+    padding-left: 14px;
+  }
+  .rcard-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--card-alt); color: var(--ink-3);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 10px;
+    border: 1px solid var(--line);
+  }
+  .rcard.selected .rcard-icon {
+    background: var(--brand-ink); color: var(--gold);
+    border-color: var(--brand-ink);
+  }
+  .rcard-title {
+    font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em;
+  }
+  .rcard-sub {
+    font-size: 11px; color: var(--ink-4); margin-top: 3px; line-height: 1.4;
+  }
+
+  /* Selector habitaciones con color */
+  .room-selector {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  }
+  .room-card {
+    padding: 12px 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--card);
+    cursor: pointer; transition: all .12s;
+    text-align: center;
+    position: relative;
+  }
+  .room-card:hover { border-color: var(--ink-5); }
+  .room-card.selected {
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    padding-top: 10px;
+    background: var(--card);
+  }
+  .room-card.occupied {
+    opacity: 0.45; cursor: not-allowed;
+    background: var(--card-alt);
+  }
+  .room-color-band {
+    height: 6px; border-radius: 3px;
+    margin-bottom: 8px;
+  }
+  .room-color-band.green { background: var(--room-green); }
+  .room-color-band.red { background: var(--room-red); }
+  .room-color-band.yellow { background: var(--room-yellow); }
+  .room-color-band.blue { background: var(--room-blue); }
+  .room-color-band.bw { background: var(--room-bw); }
+  .room-card-name { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .room-card-status { font-size: 10px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Checkboxes agrupados */
+  .chk-group {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .chk-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 7px;
+    background: var(--card); border: 1px solid var(--line);
+    cursor: pointer; transition: all .12s;
+  }
+  .chk-item:hover { border-color: var(--ink-5); }
+  .chk-item.checked {
+    background: var(--card);
+    border-color: var(--ink-5);
+  }
+  .chk-box {
+    width: 18px; height: 18px; border-radius: 5px;
+    border: 1.5px solid var(--ink-5);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--card); flex-shrink: 0;
+  }
+  .chk-item.checked .chk-box {
+    background: var(--brand-ink); border-color: var(--brand-ink);
+  }
+  .chk-item.checked .chk-box::after {
+    content: "";
+    width: 10px; height: 10px;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='20 6 9 17 4 12'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: center; background-size: contain;
+  }
+  .chk-label { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+
+  /* Upload docs */
+  .doc-upload {
+    display: grid; grid-template-columns: 36px 1fr auto; gap: 12px;
+    padding: 14px; border-radius: 10px;
+    border: 1px dashed var(--ink-5); background: var(--card-alt);
+    align-items: center; cursor: pointer;
+    transition: all .12s;
+  }
+  .doc-upload:hover { border-color: var(--gold); background: var(--card); }
+  .doc-upload.uploaded {
+    border-style: solid; border-color: var(--line);
+    background: var(--card);
+    border-left: 3px solid var(--gold);
+    padding-left: 14px;
+  }
+  .doc-upload-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--card); color: var(--ink-3);
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line);
+  }
+  .doc-upload.uploaded .doc-upload-icon {
+    background: var(--brand-ink); color: var(--gold);
+    border-color: var(--brand-ink);
+  }
+  .doc-upload-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .doc-upload-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .doc-upload.uploaded .doc-upload-sub { color: var(--ink-3); font-weight: 500; }
+  .doc-upload-cta {
+    font-size: 11.5px; color: var(--gold); font-weight: 600;
+  }
+  .doc-upload.uploaded .doc-upload-cta { color: var(--ink-3); }
+  .doc-req { display: inline-block; padding: 1px 6px; border-radius: 3px; background: var(--neg-wash); color: var(--neg); font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; margin-left: 6px; vertical-align: middle; }
+  .doc-opt { display: inline-block; padding: 1px 6px; border-radius: 3px; background: var(--bg); color: var(--ink-4); font-size: 9.5px; font-weight: 700; letter-spacing: 0.05em; margin-left: 6px; vertical-align: middle; }
+
+  /* ═════ ASIDE RESUMEN ═════ */
+  .wiz-aside {
+    grid-area: aside;
+    background: var(--brand-ink);
+    color: #fff;
+    overflow-y: auto;
+    padding: 24px 22px;
+  }
+  .aside-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em;
+    color: rgba(255,255,255,0.6); font-weight: 600; margin-bottom: 4px;
+  }
+  .aside-title {
+    font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.02em;
+    margin-bottom: 20px; line-height: 1.2;
+  }
+  .aside-section {
+    padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .aside-section:first-of-type { border-top: none; padding-top: 0; }
+  .aside-section-title {
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.55); font-weight: 600; margin-bottom: 8px;
+  }
+  .aside-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 5px 0; font-size: 12px;
+    align-items: baseline;
+  }
+  .aside-row-lab { color: rgba(255,255,255,0.7); }
+  .aside-row-val {
+    color: #fff; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right; letter-spacing: -0.01em;
+  }
+  .aside-row-val.empty { color: rgba(255,255,255,0.35); font-weight: 400; font-style: italic; }
+  .aside-room-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 8px; border-radius: 5px;
+    font-size: 11px; font-weight: 600; color: #fff;
+    margin-right: 6px;
+  }
+  .aside-room-chip.green { background: var(--room-green); }
+  .aside-room-chip.red { background: var(--room-red); }
+  .aside-room-chip.yellow { background: var(--room-yellow); }
+  .aside-room-chip.blue { background: var(--room-blue); }
+  .aside-room-chip.bw { background: var(--room-bw); }
+  .aside-preview-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 10px;
+    background: rgba(255,255,255,0.1); color: #fff;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; font-size: 12px; font-weight: 600;
+    margin-top: 16px; cursor: pointer;
+    transition: background .1s;
+  }
+  .aside-preview-btn:hover { background: rgba(255,255,255,0.18); }
+  .aside-status {
+    margin-top: 22px; padding: 14px;
+    background: linear-gradient(135deg, rgba(184,138,62,0.15), rgba(184,138,62,0.08));
+    border: 1px solid rgba(184,138,62,0.3);
+    border-radius: 10px;
+  }
+  .aside-status-lab {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+    font-weight: 700; color: #E8D9AE;
+    margin-bottom: 6px;
+  }
+  .aside-status-lab::before {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: #E8D9AE;
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .aside-status-text {
+    font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.5;
+  }
+
+  /* ═════ FOOTER ═════ */
+  .wiz-footer {
+    grid-area: footer;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    background: var(--card-alt);
+    border-top: 1px solid var(--line);
+  }
+  .wiz-foot-meta { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  .wiz-foot-actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 8px;
+    font-size: 13px; font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all .12s;
+  }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-pos { background: var(--gold); color: #fff; }
+  .btn-pos:hover { background: var(--gold-2); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Alerta inline · smart suggestion */
+  .smart {
+    display: flex; gap: 10px; padding: 12px 14px;
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-radius: 10px; font-size: 12px; color: var(--gold-ink);
+    line-height: 1.5;
+  }
+  .smart svg { color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+  .smart strong { color: #4A3A00; }
+
+  /* Solo muestra step activo */
+  .step { display: none; }
+  .step.active { display: block; }
+
+  /* Navegación steps */
+  .step-5-final {
+    text-align: center; padding: 40px 20px;
+  }
+  .plantilla-preview {
+    margin-top: 16px; padding: 18px;
+    background: var(--card-alt); border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: 'Inter', serif;
+    color: var(--ink-3); font-size: 11.5px; line-height: 1.55;
+    max-height: 220px; overflow-y: auto;
+  }
+  .plantilla-preview h4 { text-align: center; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .plantilla-preview p { margin-bottom: 8px; }
+  .plantilla-preview .var {
+    background: var(--gold-wash); color: var(--gold-ink); padding: 1px 5px; border-radius: 3px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+
+  .ast-chip {
+    display: inline-block; padding: 2px 7px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    background: var(--brand-ink); color: #fff;
+    letter-spacing: 0.02em;
+  }
+
+  .help-tip {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; border-radius: 50%;
+    background: var(--bg); color: var(--ink-4);
+    font-size: 10px; font-weight: 700;
+    margin-left: 4px; cursor: help;
+  }
+
+  /* Checkbox con icono incluido (gastos) */
+  .util-chk { position: relative; }
+  .util-chk svg { color: var(--ink-4); margin-right: 8px; }
+  .util-chk.checked svg { color: var(--ink-2); }
+
+  /* Scrollbar limpio */
+  .wiz-body::-webkit-scrollbar, .wiz-aside::-webkit-scrollbar { width: 8px; }
+  .wiz-body::-webkit-scrollbar-track { background: transparent; }
+  .wiz-body::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .wiz-aside::-webkit-scrollbar-track { background: transparent; }
+  .wiz-aside::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+  .ok-banner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; margin-bottom: 16px;
+    background: var(--pos-wash); border: 1px solid rgba(30,107,58,0.3);
+    border-radius: 10px;
+    color: var(--pos); font-size: 12.5px; font-weight: 500;
+  }
+  .ok-banner svg { color: var(--pos); flex-shrink: 0; }
+  .ok-banner strong { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="app-bg"></div>
+
+<div class="wiz">
+
+  <!-- ═════════ HEADER ═════════ -->
+  <div class="wiz-head">
+    <div class="wiz-title-wrap">
+      <div class="wiz-title-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15h6"/></svg>
+      </div>
+      <div>
+        <div class="wiz-title">Nuevo contrato de alquiler</div>
+        <div class="wiz-sub">5 pasos · ~3 min</div>
+      </div>
+    </div>
+
+    <div class="wiz-steps">
+      <div class="wiz-step-ind active" id="ind-1" onclick="gotoStep(1)">
+        <span class="wiz-step-num">1</span><span>Dónde</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-2" onclick="gotoStep(2)">
+        <span class="wiz-step-num">2</span><span>Inquilino</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-3" onclick="gotoStep(3)">
+        <span class="wiz-step-num">3</span><span>Económico</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-4" onclick="gotoStep(4)">
+        <span class="wiz-step-num">4</span><span>Documentos</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-5" onclick="gotoStep(5)">
+        <span class="wiz-step-num">5</span><span>Plantilla y firma</span>
+      </div>
+    </div>
+
+    <button class="wiz-close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- ═════════ BODY ═════════ -->
+  <div class="wiz-body">
+
+    <!-- ══════ PASO 1 · DÓNDE ══════ -->
+    <div class="step active" id="step-1">
+      <div class="step-title"><span class="step-title-num">01</span> ¿Dónde se firma el contrato?</div>
+      <div class="step-sub">Selecciona el inmueble y la habitación (o piso completo) sobre la que se firma el contrato. ATLAS traerá automáticamente los datos catastrales, el propietario y la configuración de gastos.</div>
+
+      <!-- Inmueble -->
+      <div class="step-section">
+        <div class="step-section-title">Inmueble</div>
+        <div class="fld">
+          <select class="inp" id="f-inmueble">
+            <option value="">Selecciona un inmueble…</option>
+            <option>AST-01 · Fuertes Acevedo 32 · Oviedo · 5 habitaciones</option>
+            <option selected>AST-01 · Fuertes Acevedo 32 · Oviedo · 5 habitaciones</option>
+            <option>AST-02 · Tenderina 64 · 4D · Oviedo · 5 habitaciones</option>
+            <option>AST-03 · Tenderina 64 · 4IZ · Oviedo · 5 habitaciones</option>
+            <option>AST-04 · Calle Uría 14 · Oviedo · 4 habitaciones</option>
+            <option>AST-05 · Calle Nueva 22 · Oviedo · 4 habitaciones</option>
+            <option>AST-06 · Milicias Nacionales 7 · Oviedo · piso completo</option>
+            <option>AST-07 · Sant Fruitós · Cataluña · piso completo</option>
+          </select>
+          <div class="fld-hint">Catastral <strong style="color:var(--ink-2); font-family:'JetBrains Mono',monospace">0654102TP7005S0005LK</strong> · propietario Jose Antonio Gómez Ramírez</div>
+        </div>
+      </div>
+
+      <!-- Habitación -->
+      <div class="step-section">
+        <div class="step-section-title">Habitación a arrendar</div>
+        <div class="room-selector">
+          <div class="room-card occupied">
+            <div class="room-color-band green"></div>
+            <div class="room-card-name">Hab 1</div>
+            <div class="room-card-status">A. Fuentes</div>
+          </div>
+          <div class="room-card occupied">
+            <div class="room-color-band red"></div>
+            <div class="room-card-name">Hab 2</div>
+            <div class="room-card-status">L. Villanueva</div>
+          </div>
+          <div class="room-card occupied">
+            <div class="room-color-band yellow"></div>
+            <div class="room-card-name">Hab 3</div>
+            <div class="room-card-status">M. Gómez</div>
+          </div>
+          <div class="room-card selected">
+            <div class="room-color-band blue"></div>
+            <div class="room-card-name">Hab 4</div>
+            <div class="room-card-status" style="color: var(--neg); font-weight: 700">Libre</div>
+          </div>
+          <div class="room-card occupied">
+            <div class="room-color-band bw"></div>
+            <div class="room-card-name">Hab 5</div>
+            <div class="room-card-status">J. Martín</div>
+          </div>
+        </div>
+        <div class="fld-hint" style="margin-top: 8px">Solo las habitaciones libres están disponibles. <span class="fld-hint-inline">Hab 4 libre desde hace 20 días · − 253 € perdidos</span></div>
+      </div>
+
+      <!-- Tipo -->
+      <div class="step-section">
+        <div class="step-section-title">Tipo de contrato</div>
+        <div class="rcard-grid">
+          <div class="rcard">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="rcard-title">Larga estancia</div>
+            <div class="rcard-sub">LAU · 1+ año · con prórrogas · reducción fiscal posible</div>
+          </div>
+          <div class="rcard selected">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <div class="rcard-title">Corta estancia · temporada</div>
+            <div class="rcard-sub">Código Civil · 1 a 11 meses · sin reducción fiscal</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+            </div>
+            <div class="rcard-title">Vacacional · turístico</div>
+            <div class="rcard-sub">Ley turismo · días/semanas · sin reducción fiscal</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fechas -->
+      <div class="step-section">
+        <div class="step-section-title">Fechas del contrato</div>
+        <div class="fld-grid-3">
+          <div class="fld">
+            <label class="fld-lab">Fecha entrada <span class="req">*</span></label>
+            <input type="date" class="inp mono" value="2026-05-15" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Fecha fin <span class="req">*</span></label>
+            <input type="date" class="inp mono" value="2026-11-14" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Duración <span class="help-tip" title="Calculada automáticamente">?</span></label>
+            <input type="text" class="inp mono" value="6 meses" readonly style="background: var(--card-alt); color: var(--ink-3); cursor: not-allowed" />
+          </div>
+        </div>
+        <div class="smart" style="margin-top: 12px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Z"/><path d="M12 8v4l3 2"/></svg>
+          <div>
+            Contrato de <strong>corta estancia · 6 meses</strong>. Al terminar, ATLAS te recordará 30 días antes si quieres renovar o poner la habitación disponible de nuevo.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PASO 2 · INQUILINO ══════ -->
+    <div class="step" id="step-2">
+      <div class="step-title"><span class="step-title-num">02</span> ¿Quién es el inquilino?</div>
+      <div class="step-sub">Estos datos personales se volcarán automáticamente en el contrato legal. Todos los campos marcados son obligatorios para cumplir con los requisitos fiscales y legales.</div>
+
+      <div class="step-section">
+        <div class="step-section-title">Identificación</div>
+        <div class="fld-grid-2">
+          <div class="fld">
+            <label class="fld-lab">Nombre <span class="req">*</span></label>
+            <input type="text" class="inp" placeholder="Nombre completo" value="Lucía" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Apellidos <span class="req">*</span></label>
+            <input type="text" class="inp" value="Sanz Pérez" />
+          </div>
+        </div>
+        <div class="fld-grid-3" style="margin-top: 14px">
+          <div class="fld">
+            <label class="fld-lab">Documento <span class="req">*</span></label>
+            <select class="inp">
+              <option selected>DNI</option>
+              <option>NIE</option>
+              <option>Pasaporte</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Número <span class="req">*</span></label>
+            <input type="text" class="inp mono" value="58274931K" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Nacionalidad</label>
+            <input type="text" class="inp" value="Española" />
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Contacto</div>
+        <div class="fld-grid-2">
+          <div class="fld">
+            <label class="fld-lab">Email <span class="req">*</span></label>
+            <input type="email" class="inp" value="lucia.sanz@gmail.com" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Teléfono <span class="req">*</span></label>
+            <input type="tel" class="inp mono" value="+34 645 112 887" />
+          </div>
+        </div>
+        <div style="margin-top: 8px">
+          <div class="chk-item checked" style="display: inline-flex; width: auto">
+            <div class="chk-box"></div>
+            <span class="chk-label">WhatsApp coincide con el teléfono</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Datos personales</div>
+        <div class="fld-grid-2">
+          <div class="fld">
+            <label class="fld-lab">Fecha nacimiento
+              <span class="fld-hint-inline">necesaria si aplica reducción 70%</span>
+            </label>
+            <input type="date" class="inp mono" value="1998-03-22" />
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Domicilio anterior <span class="req">*</span></label>
+            <input type="text" class="inp" value="C/ Mayor 14, 3º B · 28013 Madrid" />
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Motivo de la estancia <span class="help-tip" title="Obligatorio en contratos de temporada · justifica por qué no es residencia habitual">?</span></div>
+        <div class="fld">
+          <input type="text" class="inp" value="Prácticas profesionales en HC Energía · 6 meses · Oviedo" />
+          <div class="fld-hint">Obligatorio en contratos de temporada/corta estancia para justificar que no es residencia habitual. Aparecerá literalmente en la cláusula primera del contrato.</div>
+        </div>
+      </div>
+
+      <div class="smart">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <div>
+          <strong>Edad 28 años</strong> · si esta habitación estuviera en zona tensionada, aplicaría reducción fiscal del <strong>70%</strong> (joven 18-35 + zona tensionada). ATLAS lo calculará automáticamente en el paso 3.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PASO 3 · ECONÓMICO ══════ -->
+    <div class="step" id="step-3">
+      <div class="step-title"><span class="step-title-num">03</span> Condiciones económicas</div>
+      <div class="step-sub">Renta, fianza, forma de pago y qué gastos están incluidos. ATLAS calculará automáticamente la reducción fiscal aplicable según tu contrato.</div>
+
+      <div class="step-section">
+        <div class="step-section-title">Renta y fianza</div>
+        <div class="fld-grid-3">
+          <div class="fld">
+            <label class="fld-lab">Renta mensual <span class="req">*</span></label>
+            <div class="inp-group">
+              <input type="number" class="inp mono" value="420" />
+              <span class="inp-suffix">€/mes</span>
+            </div>
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Fianza <span class="req">*</span></label>
+            <div class="inp-group">
+              <input type="number" class="inp mono" value="420" />
+              <span class="inp-suffix">€</span>
+            </div>
+            <div class="fld-hint">Por ley · mín 1 mensualidad (vivienda habitual)</div>
+          </div>
+          <div class="fld">
+            <label class="fld-lab">Día de cobro</label>
+            <select class="inp">
+              <option>Día 1 de cada mes</option>
+              <option selected>Día 5 de cada mes</option>
+              <option>Día 10 de cada mes</option>
+              <option>Día 15 de cada mes</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Cuenta de cobro</div>
+        <div class="fld">
+          <label class="fld-lab">IBAN destino</label>
+          <input type="text" class="inp mono" value="ES54 0049 0052 6221 1043 8676" />
+          <div class="fld-hint">Auto-rellenado de tu perfil (Santander · cuenta principal). Puedes cambiarlo solo para este contrato.</div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Gastos incluidos en la renta</div>
+        <div class="chk-group">
+          <div class="chk-item checked util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span class="chk-label">Luz</span>
+          </div>
+          <div class="chk-item checked util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            <span class="chk-label">Agua</span>
+          </div>
+          <div class="chk-item util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            <span class="chk-label">Gas</span>
+          </div>
+          <div class="chk-item checked util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span class="chk-label">Internet</span>
+          </div>
+          <div class="chk-item util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h18"/><path d="M5 7v13h14V7"/><path d="M9 12h6"/></svg>
+            <span class="chk-label">Limpieza zonas comunes</span>
+          </div>
+          <div class="chk-item util-chk">
+            <div class="chk-box"></div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span class="chk-label">Comunidad</span>
+          </div>
+        </div>
+        <div class="fld" style="margin-top: 14px">
+          <label class="fld-lab">Límite de consumo <span class="help-tip" title="Opcional. Si el consumo supera este límite, el exceso lo paga el inquilino.">?</span></label>
+          <div class="inp-group">
+            <input type="number" class="inp mono" value="40" placeholder="Sin límite" />
+            <span class="inp-suffix">€/inquilino/mes</span>
+          </div>
+          <div class="fld-hint">Opcional · habitual en habitaciones compartidas. El exceso se prorratea entre los inquilinos del piso.</div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Reducción fiscal aplicable</div>
+        <div class="smart" style="margin-bottom: 10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <div>
+            Este contrato es de <strong>corta estancia</strong> · por ley no aplica reducción fiscal sobre rendimientos de capital inmobiliario. Tributará al tipo general de IRPF.
+          </div>
+        </div>
+        <div class="fld">
+          <select class="inp" disabled style="background: var(--card-alt); color: var(--ink-3)">
+            <option>No aplica reducción · corta estancia</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PASO 4 · DOCUMENTOS ══════ -->
+    <div class="step" id="step-4">
+      <div class="step-title"><span class="step-title-num">04</span> Documentos del inquilino</div>
+      <div class="step-sub">Adjunta los documentos que aportas del inquilino. El DNI/pasaporte y un justificante de solvencia son obligatorios · el resto son opcionales pero recomendables para futuros inquilinos.</div>
+
+      <div class="step-section">
+        <div class="step-section-title">Requeridos</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="doc-upload uploaded">
+            <div class="doc-upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div class="doc-upload-name">DNI anverso y reverso <span class="doc-req">Obligatorio</span></div>
+              <div class="doc-upload-sub">DNI-Lucia-Sanz.pdf · 1.2 MB · subido hace 3 min</div>
+            </div>
+            <div class="doc-upload-cta">Ver / Reemplazar</div>
+          </div>
+
+          <div class="doc-upload uploaded">
+            <div class="doc-upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div class="doc-upload-name">Justificante de solvencia <span class="doc-req">Obligatorio</span></div>
+              <div class="doc-upload-sub">Contrato-HC-Energia.pdf · 890 KB · contrato de prácticas 6 meses</div>
+            </div>
+            <div class="doc-upload-cta">Ver / Reemplazar</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Opcionales</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="doc-upload">
+            <div class="doc-upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+            </div>
+            <div>
+              <div class="doc-upload-name">Referencias de caseros anteriores <span class="doc-opt">Opcional</span></div>
+              <div class="doc-upload-sub">Recomendado para inquilinos sin nómina fija. Sube emails, cartas o screenshots.</div>
+            </div>
+            <div class="doc-upload-cta">+ Subir archivo</div>
+          </div>
+
+          <div class="doc-upload">
+            <div class="doc-upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div>
+              <div class="doc-upload-name">Foto tipo carnet del inquilino <span class="doc-opt">Opcional</span></div>
+              <div class="doc-upload-sub">Útil para identificarlo rápido en el futuro · no aparece en el contrato legal.</div>
+            </div>
+            <div class="doc-upload-cta">+ Subir archivo</div>
+          </div>
+
+          <div class="doc-upload">
+            <div class="doc-upload-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div>
+              <div class="doc-upload-name">Vídeo inventario de la habitación <span class="doc-opt">Opcional</span></div>
+              <div class="doc-upload-sub">Muy recomendable grabar un vídeo antes de la entrada · evita disputas sobre daños al salir.</div>
+            </div>
+            <div class="doc-upload-cta">+ Subir archivo</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="smart">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div>
+          Todos los documentos se guardan cifrados en el <strong>Archivo</strong> del inmueble (AST-01 · FA32) y quedan asociados a este contrato. Podrás acceder a ellos desde la ficha del contrato o desde el módulo Archivo.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════ PASO 5 · PLANTILLA Y FIRMA ══════ -->
+    <div class="step" id="step-5">
+      <div class="step-title"><span class="step-title-num">05</span> Plantilla de contrato y firma</div>
+      <div class="step-sub">ATLAS ha seleccionado la plantilla que mejor se ajusta a los datos introducidos. Puedes cambiarla si lo necesitas, previsualizar el PDF final y elegir cómo firmar.</div>
+
+      <div class="step-section">
+        <div class="step-section-title">Plantilla sugerida</div>
+        <div class="rcard-grid" style="grid-template-columns: repeat(2, 1fr)">
+          <div class="rcard selected">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="rcard-title">Habitación · corta estancia · piso compartido</div>
+            <div class="rcard-sub">18 cláusulas · Código Civil · incluye reglas de convivencia por color y día · ideal para tu caso</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="rcard-title">Habitación · corta estancia · estándar</div>
+            <div class="rcard-sub">14 cláusulas · Código Civil · sin reglas de convivencia por color</div>
+          </div>
+        </div>
+        <div class="fld-hint" style="margin-top: 10px">
+          <a style="color: var(--brand); font-weight: 600; cursor: pointer">Ver todas las plantillas (7) →</a> · o <a style="color: var(--gold); font-weight: 600; cursor: pointer">crear una nueva en Ajustes</a>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Idioma del contrato</div>
+        <div class="rcard-grid" style="grid-template-columns: repeat(3, 1fr)">
+          <div class="rcard selected">
+            <div class="rcard-title">Español</div>
+            <div class="rcard-sub">sugerido por nacionalidad del inquilino</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-title">Inglés</div>
+            <div class="rcard-sub">English</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-title">Bilingüe</div>
+            <div class="rcard-sub">ES + EN en columnas</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Anexos auto-generados</div>
+        <div class="chk-group" style="grid-template-columns: repeat(2, 1fr)">
+          <div class="chk-item checked">
+            <div class="chk-box"></div>
+            <span class="chk-label">Anexo I · Inventario de muebles (12 items detectados en FA32 Hab 4)</span>
+          </div>
+          <div class="chk-item checked">
+            <div class="chk-box"></div>
+            <span class="chk-label">Anexo II · Reglas de convivencia (días limpieza por color)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Cómo se firma</div>
+        <div class="rcard-grid">
+          <div class="rcard selected">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="rcard-title">Firma digital · Rentila</div>
+            <div class="rcard-sub">Certificado con IP + timestamp · válido legalmente · conectado ✓</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+            </div>
+            <div class="rcard-title">Firma digital · Signaturit</div>
+            <div class="rcard-sub">Alternativa · no conectada</div>
+          </div>
+          <div class="rcard">
+            <div class="rcard-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <div class="rcard-title">Firma manual · PDF</div>
+            <div class="rcard-sub">Descargar · imprimir · firmar en persona</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step-section">
+        <div class="step-section-title">Previsualización del contrato</div>
+        <div class="plantilla-preview">
+          <h4>Seasonal Room Rental Agreement · Habitación 4 uso individual</h4>
+          <p><strong>En Oviedo, a 15/05/2026</strong></p>
+          <p><strong>PARTES</strong></p>
+          <p>De una parte, <span class="var">Jose Antonio Gómez Ramírez</span>, con DNI <span class="var">53069494F</span>, domiciliado en <span class="var">C/ Ramón Rubial 35 · Getafe</span>, en adelante el ARRENDADOR.</p>
+          <p>De otra parte, <span class="var">Lucía Sanz Pérez</span>, con DNI <span class="var">58274931K</span>, domiciliada anteriormente en <span class="var">C/ Mayor 14 · Madrid</span>, en adelante la ARRENDATARIA.</p>
+          <p><strong>EXPONEN</strong></p>
+          <p>Primero · Que <span class="var">Jose Antonio Gómez Ramírez</span> es propietario de la vivienda sita en <span class="var">Calle Fuertes Acevedo 32</span>, con referencia catastral <span class="var">0654102TP7005S0005LK</span>.</p>
+          <p>Segundo · Que el objeto del presente contrato es el arrendamiento de la <span class="var">HABITACIÓN 4 de uso individual</span>, amueblada según inventario anexo, con uso compartido de cocina, baño y zonas comunes…</p>
+          <p style="text-align: center; color: var(--ink-4); font-style: italic; margin-top: 12px">— preview · 18 cláusulas · 8 páginas + 2 anexos —</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═════════ ASIDE · RESUMEN EN VIVO ═════════ -->
+  <aside class="wiz-aside">
+    <div class="aside-label">Resumen</div>
+    <div class="aside-title">Contrato de Lucía Sanz</div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Dónde</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Inmueble</span>
+        <span class="aside-row-val">FA32</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">AST</span>
+        <span class="aside-row-val">AST-01</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Habitación</span>
+        <span class="aside-row-val"><span class="aside-room-chip blue">Hab 4</span></span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Tipo</span>
+        <span class="aside-row-val">Corta · 6m</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Entrada</span>
+        <span class="aside-row-val">15/05/26</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Fin</span>
+        <span class="aside-row-val">14/11/26</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Inquilino</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Nombre</span>
+        <span class="aside-row-val">L. Sanz</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">DNI</span>
+        <span class="aside-row-val">58274931K</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Email</span>
+        <span class="aside-row-val" style="font-size: 10.5px">lucia.sanz@…</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Edad</span>
+        <span class="aside-row-val">28 años</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Económico</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Renta</span>
+        <span class="aside-row-val">420 €/mes</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Fianza</span>
+        <span class="aside-row-val">420 €</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Total a cobrar</span>
+        <span class="aside-row-val">2.520 €</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Reducción IRPF</span>
+        <span class="aside-row-val empty">no aplica</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Gastos incluidos</span>
+        <span class="aside-row-val">Luz · Agua · Net</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Documentos</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">DNI inquilino</span>
+        <span class="aside-row-val" style="color: #E8D9AE">✓ subido</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Solvencia</span>
+        <span class="aside-row-val" style="color: #E8D9AE">✓ subido</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Referencias</span>
+        <span class="aside-row-val empty">opcional</span>
+      </div>
+    </div>
+
+    <button class="aside-preview-btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      Previsualizar PDF completo
+    </button>
+
+    <div class="aside-status">
+      <div class="aside-status-lab">Estado · Borrador</div>
+      <div class="aside-status-text">
+        Este contrato se creará como <strong style="color:#fff">borrador</strong>. No se enviará a firma hasta que completes los 5 pasos y pulses <strong style="color:#fff">Enviar a firma</strong>.
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═════════ FOOTER ═════════ -->
+  <div class="wiz-footer">
+    <div class="wiz-foot-meta">
+      <span id="step-counter">Paso 1 de 5</span> · los cambios se guardan automáticamente como borrador
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" id="btn-prev" onclick="prevStep()" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Atrás
+      </button>
+      <button class="btn btn-primary" id="btn-next" onclick="nextStep()">
+        Continuar
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 5;
+
+  function gotoStep(n) {
+    if (n < 1 || n > totalSteps) return;
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+
+    // Indicadores
+    for (let i = 1; i <= totalSteps; i++) {
+      const ind = document.getElementById('ind-' + i);
+      ind.classList.remove('active', 'done');
+      if (i < n) ind.classList.add('done');
+      else if (i === n) ind.classList.add('active');
+    }
+
+    currentStep = n;
+    document.getElementById('step-counter').textContent = `Paso ${n} de ${totalSteps}`;
+    document.getElementById('btn-prev').disabled = (n === 1);
+
+    const btnNext = document.getElementById('btn-next');
+    if (n === totalSteps) {
+      btnNext.className = 'btn btn-pos';
+      btnNext.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 11.08 12 2 2 11.08"/><path d="M2 11.08V21a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-9.92"/><polyline points="8 15 12 19 16 15"/></svg> Enviar a firma';
+    } else {
+      btnNext.className = 'btn btn-primary';
+      btnNext.innerHTML = 'Continuar <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+    }
+
+    // Scroll body al tope
+    document.querySelector('.wiz-body').scrollTop = 0;
+  }
+
+  function nextStep() {
+    if (currentStep < totalSteps) gotoStep(currentStep + 1);
+    else alert('✓ Contrato enviado a L. Sanz para firma digital vía Rentila\n\nRecibirás un email cuando lo firme. El estado del contrato pasará automáticamente de "Sin firmar" a "Al día" al confirmarse la firma.');
+  }
+  function prevStep() {
+    if (currentStep > 1) gotoStep(currentStep - 1);
+  }
+
+  // Radio cards interactivas
+  document.querySelectorAll('.rcard-grid').forEach(grid => {
+    grid.querySelectorAll('.rcard').forEach(card => {
+      card.addEventListener('click', () => {
+        grid.querySelectorAll('.rcard').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+    });
+  });
+
+  // Checkbox items
+  document.querySelectorAll('.chk-item').forEach(c => {
+    c.addEventListener('click', () => c.classList.toggle('checked'));
+  });
+
+  // Room cards
+  document.querySelectorAll('.room-card').forEach(card => {
+    if (card.classList.contains('occupied')) return;
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.room-card').forEach(c => {
+        if (!c.classList.contains('occupied')) c.classList.remove('selected');
+      });
+      card.classList.add('selected');
+    });
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' && currentStep < totalSteps) nextStep();
+    if (e.key === 'ArrowLeft' && currentStep > 1) prevStep();
+  });
+</script>
+
+</body>
+</html>

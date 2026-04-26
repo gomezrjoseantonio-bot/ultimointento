@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ATLAS · Historia patrimonial de Jose · 2012-2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 28px 80px; }
+
+  /* HERO */
+  .hero { background: var(--brand-ink); color: #fff; border-radius: 14px; padding: 36px 40px; margin-bottom: 28px; position: relative; overflow: hidden; }
+  .hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gold); }
+  .hero-lab { color: var(--gold-2); font-size: 10.5px; text-transform: uppercase; letter-spacing: .14em; font-weight: 600; margin-bottom: 10px; }
+  .hero h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; line-height: 1.2; margin-bottom: 10px; }
+  .hero p.sub { color: rgba(255,255,255,0.72); font-size: 14px; max-width: 760px; line-height: 1.55; }
+  .hero-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.12); }
+  .hero-stat .lab { color: rgba(255,255,255,0.55); font-size: 10.5px; text-transform: uppercase; letter-spacing: .14em; font-weight: 600; margin-bottom: 6px; }
+  .hero-stat .val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 24px; color: #fff; letter-spacing: -.02em; }
+  .hero-stat .val small { font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 500; margin-left: 6px; }
+
+  /* SECTION HEADER */
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 36px 0 14px; }
+  .section-head h2 { font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+  .section-head .hint { font-size: 12px; color: var(--ink-4); }
+
+  /* CAPÍTULOS */
+  .chapters { display: grid; gap: 14px; }
+  .chapter { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; position: relative; }
+  .chapter::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px 0 0 3px; }
+  .chapter.c1::before { background: var(--ink-4); }
+  .chapter.c2::before { background: var(--gold); }
+  .chapter.c3::before { background: var(--brand); }
+  .chapter.c4::before { background: var(--neg); }
+  .chapter.c5::before { background: var(--pos); }
+  .chapter-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px; }
+  .chapter-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; color: var(--ink-4); letter-spacing: .02em; }
+  .chapter-title { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -.02em; }
+  .chapter-years { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-3); }
+  .chapter-body { color: var(--ink-2); font-size: 13.5px; line-height: 1.6; }
+  .chapter-body p { margin-bottom: 10px; }
+  .chapter-body p:last-child { margin-bottom: 0; }
+  .chapter-body strong { color: var(--ink); font-weight: 600; }
+
+  /* MATRIX */
+  .matrix-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .matrix thead th { background: var(--card-alt); border-bottom: 1px solid var(--line); padding: 10px 8px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-4); font-weight: 600; text-align: right; }
+  .matrix thead th:first-child { text-align: left; padding-left: 18px; min-width: 220px; }
+  .matrix tbody td { padding: 8px; border-bottom: 1px solid var(--line-2); text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .matrix tbody td:first-child { text-align: left; padding-left: 18px; font-family: 'Inter', sans-serif; color: var(--ink); font-weight: 500; }
+  .matrix tbody tr:nth-child(even) { background: var(--card-alt); }
+  .matrix .pos { color: var(--pos); }
+  .matrix .neg { color: var(--neg); }
+  .matrix .muted { color: var(--ink-5); }
+  .matrix .hl { background: var(--gold-wash); font-weight: 600; color: var(--gold-ink); }
+  .matrix tfoot td { background: var(--brand-ink); color: #fff; padding: 10px 8px; font-weight: 600; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .matrix tfoot td:first-child { text-align: left; padding-left: 18px; font-family: 'Inter', sans-serif; }
+
+  /* INMUEBLES LIFELINE */
+  .lifeline { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .lifeline-row { display: grid; grid-template-columns: 260px 1fr 120px; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+  .lifeline-row:last-child { border-bottom: none; }
+  .lifeline-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .lifeline-name .rc { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-4); margin-top: 2px; }
+  .lifeline-track { position: relative; height: 28px; background: var(--card-alt); border-radius: 4px; border: 1px solid var(--line); }
+  .lifeline-seg { position: absolute; top: 3px; bottom: 3px; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+  .seg-vh { background: var(--ink-3); }
+  .seg-dis { background: var(--ink-5); color: var(--ink-2); }
+  .seg-lar { background: var(--brand); }
+  .seg-vac { background: var(--gold); }
+  .seg-hab { background: var(--brand-2); }
+  .seg-cb { background: var(--pos); }
+  .seg-sold { background: var(--neg); }
+  .lifeline-badge { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); text-align: right; }
+  .lifeline-years { display: grid; grid-template-columns: 260px 1fr 120px; gap: 14px; margin-bottom: 6px; }
+  .lifeline-years .years-axis { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-4); font-weight: 500; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
+  .legend-sw { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* CALLOUT */
+  .callout { background: var(--gold-wash); border: 1px solid var(--gold); border-left-width: 3px; border-radius: 8px; padding: 18px 22px; margin: 18px 0 0; }
+  .callout-title { color: var(--gold-ink); font-size: 11px; text-transform: uppercase; letter-spacing: .14em; font-weight: 700; margin-bottom: 8px; }
+  .callout-body { color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+  .callout-body strong { color: var(--ink); }
+
+  /* LEARNINGS */
+  .learnings { background: var(--brand-ink); color: #fff; border-radius: 14px; padding: 32px 36px; margin-top: 28px; position: relative; overflow: hidden; }
+  .learnings::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--gold); }
+  .learnings h2 { font-size: 20px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 20px; color: #fff; }
+  .learnings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+  .learning { padding: 16px 18px; background: rgba(255,255,255,0.04); border-radius: 10px; border-left: 3px solid var(--gold); }
+  .learning-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold-2); font-weight: 600; margin-bottom: 6px; }
+  .learning-title { color: #fff; font-size: 14px; font-weight: 600; margin-bottom: 4px; letter-spacing: -.01em; }
+  .learning-body { color: rgba(255,255,255,0.72); font-size: 12.5px; line-height: 1.55; }
+
+  /* FOOT */
+  .foot { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-4); }
+  .foot .mono { font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-lab">Historia patrimonial · input arquitectura fiscal ATLAS</div>
+    <h1>14 años de patrimonio contados<br>desde la declaración</h1>
+    <p class="sub">De un empleado con una vivienda habitual en Sant Fruitós a un mini-gestor con 4 figuras fiscales conviviendo. Toda tu huella fiscal 2012-2025 leída desde XML y datos fiscales AEAT · para que esta sea la base desde la que diseñamos las entidades del módulo Fiscal.</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="lab">Ejercicios</div>
+        <div class="val mono">14 <small>2012-2025</small></div>
+      </div>
+      <div class="hero-stat">
+        <div class="lab">Inmuebles en cartera 2025</div>
+        <div class="val mono">10 <small>+ 7 CB 10%</small></div>
+      </div>
+      <div class="hero-stat">
+        <div class="lab">Capítulos del relato</div>
+        <div class="val mono">5</div>
+      </div>
+      <div class="hero-stat">
+        <div class="lab">Figuras fiscales hoy</div>
+        <div class="val mono">4 <small>capas</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAPÍTULOS -->
+  <div class="section-head">
+    <h2>La historia · 5 capítulos</h2>
+    <div class="hint">clasificación por cambio sustantivo en el perfil fiscal</div>
+  </div>
+
+  <div class="chapters">
+
+    <div class="chapter c1">
+      <div class="chapter-head">
+        <div class="chapter-num">CAP · 01</div>
+        <div class="chapter-title">El empleado con vivienda habitual</div>
+        <div class="chapter-years">· 2012 → 2019 · 8 años</div>
+      </div>
+      <div class="chapter-body">
+        <p>Declaraciones simples · solo <strong>rendimientos del trabajo</strong> de Orange España y <strong>deducción por inversión en vivienda habitual</strong> (régimen antiguo pre-2013) por el piso de Carles Buigas 15 · Sant Fruitós de Bages · adquirido el 26/10/2005. Casi todos los años devolución pura por exceso de retenciones.</p>
+        <p>Domicilio fiscal · <strong>Sant Fruitós hasta 2014</strong> · <strong>Oviedo en 2015</strong> · <strong>Madrid desde 2017</strong> como arrendatario. El piso de Sant Fruitós pasa a segunda vivienda pero sigue declarado como vivienda habitual a efectos de la deducción adquirida · no hay arrendamientos reales todavía.</p>
+        <p>Fiscalmente · es la etapa más plana. Un titular · un inmueble · un empleador · un IRPF trivial.</p>
+      </div>
+    </div>
+
+    <div class="chapter c2">
+      <div class="chapter-head">
+        <div class="chapter-num">CAP · 02</div>
+        <div class="chapter-title">Despertar inversor · primero cartera financiera · luego inmuebles</div>
+        <div class="chapter-years">· 2020 → 2021 · 2 años</div>
+      </div>
+      <div class="chapter-body">
+        <p>Carles Buigas ya no consta como vivienda habitual · aparece declarado como <strong>inmueble a disposición del titular</strong> con imputación de renta inmobiliaria (1.367€ en 2020 · 1.367€ también en 2021). Jose ya vive en Madrid de alquiler · el piso está ahí sin uso productivo y paga IRPF imputado como castigo fiscal.</p>
+        <p>El <strong>12/08/2021 se compra Sant Joan d'en Coll 53 + garaje Vic 178</strong> en Manresa. Primera compra con vocación de inversión · pero en 2021 todavía aparece declarado como <strong>a disposición 141 días</strong> del ejercicio. No empieza a rentar hasta 2022.</p>
+        <p>Pero lo más revelador de 2021 es que <strong>no es un año plano · es el año en que arranca la operativa de cartera financiera</strong>. Por primera vez en 10 años declaras ganancias patrimoniales reales:</p>
+        <p>· <strong>Venta de fondos</strong> · 45.058€ vendidos contra 38.189€ adquisición · <strong>ganancia 6.869€</strong><br>
+        · <strong>Venta de acciones</strong> · Banco Francés (−110€) · Orange dos lotes (−103€ y −1.264€) · <strong>pérdida total −1.477€</strong><br>
+        · <strong>Otros elementos patrimoniales</strong> · 9.655€ · probablemente derechos de suscripción o similar<br>
+        · <strong>Premios</strong> · 512€<br>
+        · <strong>Ganancia neta base ahorro</strong> · 5.857€</p>
+        <p>2021 es año bisagra en dos frentes · <strong>financiero</strong> (ya operas cartera) y <strong>inmobiliario en incubación</strong> (compras pero aún no rentas). En 2022 el frente inmobiliario explota · y la cartera financiera se desdibuja (se queda en fondos residuales y entra crypto).</p>
+      </div>
+    </div>
+
+    <div class="chapter c3">
+      <div class="chapter-head">
+        <div class="chapter-num">CAP · 03</div>
+        <div class="chapter-title">Explosión del inversor · 5 figuras fiscales nuevas en un año</div>
+        <div class="chapter-years">· 2022 · año de explosión</div>
+      </div>
+      <div class="chapter-body">
+        <p>En un solo ejercicio aparecen <strong>5 tipos de rendimientos nuevos</strong> que nunca antes habías declarado · y es donde ATLAS necesita saber coreografiar los datos.</p>
+        <p>· <strong>Fuertes Acevedo 32</strong> entra como inmueble a disposición (97 días). No arrendado aún. Aparece en la declaración por primera vez · significa que se adquirió justo antes o en 2022.<br>
+        · <strong>Carles Buigas</strong> pasa a <strong>arrendamiento de vivienda</strong> a 53639207X · 6.000€/año · deducción por reducción 60% del antiguo régimen.<br>
+        · <strong>Tenderina 48</strong> se adquiere el 23/09/2022 y entra en <strong>arrendamiento turístico/temporada</strong> (TIPO 2) · 100 días · 5.380€. Sin reducción.<br>
+        · <strong>Sant Joan d'en Coll</strong> arriendo larga · 4.800€ · con garaje vinculado.<br>
+        · <strong>Venta de fondos</strong> · A87409728 · ganancia 2.351€. Primera vez.<br>
+        · <strong>Pérdidas crypto</strong> · pérdida patrimonial 3.862€. Primera vez.<br>
+        · <strong>Plan de pensiones</strong> · contribución empresa Orange 1.281€ + aportación personal 1.708€ · primera vez con aportación personal.</p>
+        <p>Devolución · 5.877,64€ · la mayor de la historia hasta esa fecha. Los gastos operativos y la amortización de los tres arrendados generan pérdida fiscal neta que reduce base imponible.</p>
+      </div>
+    </div>
+
+    <div class="chapter c4">
+      <div class="chapter-head">
+        <div class="chapter-num">CAP · 04</div>
+        <div class="chapter-title">Escala · cartera consolidada y primer año a pagar</div>
+        <div class="chapter-years">· 2023 → 2024 · 2 años</div>
+      </div>
+      <div class="chapter-body">
+        <p><strong>25/08/2023 se compra el bloque Tenderina 64</strong> · 4D · 4I · trastero 5·01. Ocho inmuebles en cartera. Seis arrendados. Los dos de Tenderina 64 generan tales gastos de conservación (28.239€ y 27.879€ de intereses no deducidos) que arrastran excesos para los próximos 4 años.</p>
+        <p>2023 · trabajo Orange salta a <strong>160.282€</strong> (probable bonus) · crypto pierde 27.308€ otra vez · devolución 6.094€.</p>
+        <p>2024 · primer año que <strong>sale a pagar</strong> · 2.899€ · el patrimonio ya no devuelve automáticamente porque las reducciones no compensan los ingresos crecientes y los arrastres no se pueden usar todos.</p>
+      </div>
+    </div>
+
+    <div class="chapter c5">
+      <div class="chapter-head">
+        <div class="chapter-num">CAP · 05</div>
+        <div class="chapter-title">Mini-gestor patrimonial · 4 figuras fiscales en paralelo</div>
+        <div class="chapter-years">· 2025 · campaña 2026</div>
+      </div>
+      <div class="chapter-body">
+        <p>Los datos fiscales AEAT 2025 marcan el salto más complejo de tu historia. Por primera vez conviven en un solo IRPF:</p>
+        <p>· <strong>Capital inmobiliario directo</strong> · 6 arrendamientos activos + Tenderina 48 vendida el 27/11/2025 (ganancia patrimonial a declarar).<br>
+        · <strong>Capital inmobiliario atribuido</strong> · entra Residencial Smart Santa Catalina CB (E25904640) con <strong>atribución de 1.682€</strong> por tu 10% y retenciones atribuidas 136€. Son los 7 pisos y 2 solares de Av Leitariegos (Cangas del Narcea).<br>
+        · <strong>Actividad profesional Unihouser</strong> · primera vez · 5.040€ facturados + 756€ retenidos. Epígrafes 631 · 854.1 · 724 · 727.<br>
+        · <strong>Capital mobiliario</strong> · 755€ de Unihouser como otros rendimientos + intereses 464€ de 4 bancos.<br>
+        · <strong>Arrastres a usar</strong> · 56.119€ de intereses pendientes Tenderina 64 + 29.109€ de pérdidas crypto base ahorro.</p>
+        <p><strong>Y el cambio más silencioso</strong> · el domicilio fiscal ha pasado a Getafe (Madrid) · 8038614VK3683N0054BL · ya no aparece domicilio Sant Fruitós. Es el año en que en los papeles oficiales ya vives oficialmente en Madrid después de años de alquiler.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MATRIZ AÑO × CONCEPTO -->
+  <div class="section-head">
+    <h2>Matriz declaración · año × concepto</h2>
+    <div class="hint">oro · hitos patrimoniales · verde · devolución · rojo · ingreso</div>
+  </div>
+
+  <div class="matrix-wrap">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>2012</th>
+          <th>2013</th>
+          <th class="muted">2020</th>
+          <th>2021</th>
+          <th>2022</th>
+          <th>2023</th>
+          <th>2024</th>
+          <th class="hl">2025*</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Rendimientos del trabajo</td>
+          <td>76.249</td>
+          <td>109.151</td>
+          <td>118.619</td>
+          <td>122.042</td>
+          <td>125.430</td>
+          <td class="hl">160.282</td>
+          <td>138.670</td>
+          <td class="hl">118.981</td>
+        </tr>
+        <tr>
+          <td>Retenciones trabajo</td>
+          <td>24.399</td>
+          <td>39.294</td>
+          <td>39.053</td>
+          <td>40.436</td>
+          <td>41.926</td>
+          <td>57.329</td>
+          <td>47.545</td>
+          <td class="hl">40.991</td>
+        </tr>
+        <tr>
+          <td>Actividad profesional Unihouser</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="hl">5.041</td>
+        </tr>
+        <tr>
+          <td>Rdto capital mobiliario</td>
+          <td>188</td>
+          <td>947</td>
+          <td>43</td>
+          <td>21</td>
+          <td>369</td>
+          <td>2.830</td>
+          <td>477</td>
+          <td class="hl">1.220</td>
+        </tr>
+        <tr>
+          <td>Inmuebles declarados</td>
+          <td>1 VH</td>
+          <td>1 VH</td>
+          <td>1 disp</td>
+          <td class="hl">3 disp</td>
+          <td class="hl">5 (3 arr)</td>
+          <td class="hl">8 (4 arr)</td>
+          <td>8 (6 arr)</td>
+          <td class="hl">10 (6 arr)</td>
+        </tr>
+        <tr>
+          <td>Atribución CB (10%)</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="hl">1.683</td>
+        </tr>
+        <tr>
+          <td>Ganancias / pérdidas patrimoniales</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="muted">—</td>
+          <td class="hl">+15.045</td>
+          <td>−1.510</td>
+          <td>−28.597</td>
+          <td>46</td>
+          <td class="hl">venta T48</td>
+        </tr>
+        <tr>
+          <td>Reducción planes de pensiones</td>
+          <td class="muted">—</td>
+          <td>10.000</td>
+          <td>2.808</td>
+          <td>2.808</td>
+          <td>2.990</td>
+          <td>3.161</td>
+          <td>3.259</td>
+          <td class="hl">3.259</td>
+        </tr>
+        <tr>
+          <td>Cuota autoliquidación</td>
+          <td>22.805</td>
+          <td>33.727</td>
+          <td>39.366</td>
+          <td>42.313</td>
+          <td>37.424</td>
+          <td>55.107</td>
+          <td>53.881</td>
+          <td class="mono muted">pendiente</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td>Resultado · euros</td>
+          <td class="pos" style="color:#7ae0a0">−1.633</td>
+          <td class="pos" style="color:#7ae0a0">−5.768</td>
+          <td class="pos" style="color:#7ae0a0">−495</td>
+          <td class="pos" style="color:#7ae0a0">−339</td>
+          <td class="pos" style="color:#7ae0a0">−5.878</td>
+          <td class="pos" style="color:#7ae0a0">−6.095</td>
+          <td style="color:#ff9b91">+2.900</td>
+          <td class="mono" style="color:#f3ead6">a calcular</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title">Detalle de años intermedios</div>
+    <div class="callout-body">Los ejercicios 2014-2019 están en formato PADRE antiguo y no se leen con el mismo grado de detalle que los XML modernos. Los tienes presentados y conservan la continuidad del capítulo 01 · trabajo Orange + vivienda habitual Carles Buigas + planes de pensiones. <strong>Los datos de 2025 son los datos fiscales AEAT</strong> · la declaración se presentará entre abril y junio de 2026 (campaña IRPF abierta desde el 2 de abril).</div>
+  </div>
+
+  <!-- LIFELINE DE INMUEBLES -->
+  <div class="section-head">
+    <h2>Ciclo de vida por inmueble</h2>
+    <div class="hint">cada barra · un año · color · uso fiscal en ese ejercicio</div>
+  </div>
+
+  <div class="lifeline">
+    <div class="lifeline-years">
+      <div></div>
+      <div class="years-axis">
+        <span>2012</span><span>2014</span><span>2016</span><span>2018</span><span>2020</span><span>2022</span><span>2024</span><span>2026</span>
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Carles Buigas -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Carles Buigas 15 · Sant Fruitós<span class="rc">6533404DG0263S0002TP</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-vh" style="left:0%; width:50%;">VIVIENDA HABITUAL</div>
+        <div class="lifeline-seg seg-dis" style="left:50%; width:16%;">DISP</div>
+        <div class="lifeline-seg seg-lar" style="left:66%; width:34%;">ARRENDADO LARGA</div>
+      </div>
+      <div class="lifeline-badge">2005 · adq<br>54,55% amort</div>
+    </div>
+
+    <!-- Sant Joan d'en Coll -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Sant Joan d'en Coll 53 · Manresa<span class="rc">3308041DG0230A0041MP</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-lar" style="left:66%; width:34%;">LARGA + GARAJE</div>
+      </div>
+      <div class="lifeline-badge">2021 · adq<br>62,80% amort</div>
+    </div>
+
+    <!-- Tenderina 48 -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Tenderina 48 1·5D · Oviedo<span class="rc">0454010TP7005S0012TS</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-vac" style="left:70%; width:10%;">TURÍSTICO</div>
+        <div class="lifeline-seg seg-lar" style="left:80%; width:14%;">LARGA</div>
+        <div class="lifeline-seg seg-sold" style="left:94%; width:3%;">⌧</div>
+      </div>
+      <div class="lifeline-badge">2022 · adq<br>2025 · vende</div>
+    </div>
+
+    <!-- Fuertes Acevedo -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Fuertes Acevedo 32 1·2D · Oviedo<span class="rc">7949807TP6074N0006YM</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-dis" style="left:70%; width:6%;">—</div>
+        <div class="lifeline-seg seg-hab" style="left:76%; width:24%;">ARRENDADO HABITACIONES</div>
+      </div>
+      <div class="lifeline-badge">2022 · aparece<br>mixto 3T + 2L</div>
+    </div>
+
+    <!-- Tenderina 64 4D -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Tenderina 64 1·4D · Oviedo<span class="rc">0654104TP7005S0009SS</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-hab" style="left:80%; width:20%;">ARRENDADO HABITACIONES</div>
+      </div>
+      <div class="lifeline-badge">2023 · adq<br>28k€ int. arrastre</div>
+    </div>
+
+    <!-- Tenderina 64 4I -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">Tenderina 64 1·4I · Oviedo<span class="rc">0654104TP7005S0010PP</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-hab" style="left:80%; width:20%;">ARRENDADO HABITACIONES</div>
+      </div>
+      <div class="lifeline-badge">2023 · adq<br>28k€ int. arrastre</div>
+    </div>
+
+    <!-- CB Santa Catalina -->
+    <div class="lifeline-row">
+      <div class="lifeline-name">CB Smart Santa Catalina · 7 pisos<span class="rc">E25904640 · 10% atribución</span></div>
+      <div class="lifeline-track">
+        <div class="lifeline-seg seg-cb" style="left:93%; width:7%;">CB 10%</div>
+      </div>
+      <div class="lifeline-badge">2025 · entra<br>1.683€ atribuido</div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-sw" style="background:var(--ink-3)"></div>Vivienda habitual</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--ink-5)"></div>A disposición del titular</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--brand)"></div>Arrendado larga duración</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--brand-2)"></div>Arrendado habitaciones</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--gold)"></div>Arrendado turístico/temporada</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--pos)"></div>Comunidad de bienes</div>
+      <div class="legend-item"><div class="legend-sw" style="background:var(--neg)"></div>Vendido</div>
+    </div>
+  </div>
+
+  <!-- LEARNINGS · qué nos enseña esto para arquitectura -->
+  <div class="learnings">
+    <h2>Lo que tu caso enseña a la arquitectura fiscal</h2>
+    <div class="learnings-grid">
+      <div class="learning">
+        <div class="learning-num">01 · sobre entidades</div>
+        <div class="learning-title">Un inmueble no es una entidad · es varias en el tiempo</div>
+        <div class="learning-body">Carles Buigas fue vivienda habitual · luego a disposición · luego arrendado. El mismo activo físico cambia de naturaleza fiscal año a año. ATLAS necesita una entidad <span class="mono">uso-ejercicio</span> separada del inmueble para no falsear históricos.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">02 · sobre amortización</div>
+        <div class="learning-title">La base amortizable es sagrada · el porcentaje cambia</div>
+        <div class="learning-body">Cada inmueble arrastra su base amortizable desde la adquisición + mejoras acumuladas. El 54,55% de Carles Buigas y el 62,80% de Sant Joan no son datos calculados en caliente · vienen declarados en el XML y ATLAS debe respetarlos como verdad consumida.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">03 · sobre arrastres</div>
+        <div class="learning-title">Los 56.119€ de Tenderina 64 son dinero real</div>
+        <div class="learning-body">Intereses + gastos de conservación no deducidos en 2024 se pueden aplicar hasta 4 años. ATLAS necesita una cuenta-arrastre por inmueble y por tipo de gasto · vencimiento incluido · y alertar cuando un arrastre va a prescribir sin aprovechar.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">04 · sobre reducciones</div>
+        <div class="learning-title">Un piso puede tener múltiples contratos · múltiples reducciones</div>
+        <div class="learning-body">Fuertes Acevedo 32 tiene mezcla 3 turístico + 2 larga. Cada habitación con su contrato · cada contrato con su reducción (50% / 60% / 70% / 90% / 0% según Ley Vivienda 26/05/2023). La reducción es por contrato · no por inmueble.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">05 · sobre atribución</div>
+        <div class="learning-title">La CB vive fuera del IRPF · entra solo con su 10%</div>
+        <div class="learning-body">Smart Santa Catalina es una entidad en régimen de atribución. ATLAS debe tratarla como <span class="mono">fuente externa</span> con su propio modelo · y reflejar en tu IRPF solo la parte atribuida. Probablemente el Modelo 184 de la CB alimentará este flujo.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">06 · sobre ingresos plurianuales</div>
+        <div class="learning-title">Un año puede atravesar 5 tipos de rendimientos</div>
+        <div class="learning-body">2025 tiene trabajo + profesional autónomo + capital inmobiliario + mobiliario + atribución CB + ganancia patrimonial por venta + arrastres. La narrativa de ATLAS tiene que orquestar esta polifonía · no presentar un IRPF monolítico como hacen los Excel.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">07 · sobre el estado del ejercicio</div>
+        <div class="learning-title">2012-2020 son verdad consumida · 2025 está vivo</div>
+        <div class="learning-body">Los años declarados hasta 2024 son intocables (2020 prescribe pronto · los demás aún abiertos a inspección). 2025 está en estado <span class="mono">en_curso</span> hasta cerrarse. Cada estado tiene permisos de edición distintos en ATLAS.</div>
+      </div>
+      <div class="learning">
+        <div class="learning-num">08 · sobre el cold start</div>
+        <div class="learning-title">Tu historia se reconstruye en 11 XMLs + 2 PDFs + datos fiscales</div>
+        <div class="learning-body">Todos los datos primarios para bootstrap ATLAS están disponibles hoy · 11 ejercicios importables directos · 1 via OCR (2021) · 1 en formato datos fiscales. El cold start es duro conceptualmente · no técnicamente. Importamos una vez y queda.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>ATLAS · análisis de caso dogfooding · 22 abr 2026 · v2</div>
+    <div class="mono">12 XMLs procesados · 2 PDFs leídos · 1 datos fiscales AEAT</div>
+  </div>
+
+</div>
+</body>
+</html>

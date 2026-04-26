@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Mi Plan · Fondos de ahorro v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5; --line-3: #F3F1EB;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═══ Sidebar ═══ */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═══ Main ═══ */
+  .main { padding: 22px 32px 60px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+  /* ═══ Page head ═══ */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 6px; }
+  .breadcrumb a { color: var(--ink-3); cursor: pointer; }
+  .breadcrumb a:hover { color: var(--ink-2); }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--ink-3); padding: 2px 8px 2px 4px; border-radius: 5px; }
+  .back-btn:hover { background: var(--card-alt); color: var(--ink-2); }
+  .page-head h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .page-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { color: #fff; background: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-ink); border-color: var(--gold-ink); }
+
+  /* ═══ Tabs Mi Plan ═══ */
+  .submod-tabs { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 1px solid var(--line-2); }
+  .submod-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+  .submod-tabs button:hover { color: var(--ink-2); }
+  .submod-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); }
+
+  /* ═══ Hero · tesorería total + distribución ═══ */
+  .hero { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 22px 26px; margin-bottom: 16px; }
+  .hero-grid { display: grid; grid-template-columns: 1fr 320px; gap: 32px; align-items: center; }
+  .hero-left h2 { font-size: 13px; color: var(--ink-3); font-weight: 600; letter-spacing: .04em; }
+  .hero-total { font-family: 'JetBrains Mono', monospace; font-size: 38px; font-weight: 700; color: var(--ink); margin-top: 6px; letter-spacing: -0.03em; line-height: 1.1; }
+  .hero-meta { font-size: 12px; color: var(--ink-4); margin-top: 6px; }
+  .hero-bar-section { margin-top: 16px; }
+  .hero-bar-label { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-bottom: 8px; }
+  .hero-bar-label .pct-asignado { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; }
+  .hero-bar { height: 14px; border-radius: 4px; overflow: hidden; display: flex; background: var(--line-2); border: 1px solid var(--line); }
+  .hero-seg { height: 100%; cursor: pointer; transition: opacity 0.15s; position: relative; }
+  .hero-seg:hover { opacity: 0.82; }
+  .hero-seg.colchon { background: var(--brand); }
+  .hero-seg.compra { background: var(--gold); }
+  .hero-seg.reforma { background: var(--gold-soft); }
+  .hero-seg.impuestos { background: #6E7C8E; }
+  .hero-seg.libre { background: var(--line); }
+  .hero-leyenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+  .hero-leg-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-3); }
+  .hero-leg-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+  .hero-leg-dot.colchon { background: var(--brand); }
+  .hero-leg-dot.compra { background: var(--gold); }
+  .hero-leg-dot.reforma { background: var(--gold-soft); }
+  .hero-leg-dot.impuestos { background: #6E7C8E; }
+  .hero-leg-dot.libre { background: var(--line); border: 1px solid var(--ink-5); }
+  .hero-leg-item .num { font-family: 'JetBrains Mono', monospace; color: var(--ink-2); font-weight: 600; }
+
+  .hero-right { padding-left: 28px; border-left: 1px solid var(--line-2); }
+  .hero-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .hero-count { padding: 4px 0; }
+  .hero-count-lab { font-size: 11px; color: var(--ink-4); font-weight: 600; letter-spacing: .04em; }
+  .hero-count-val { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: var(--ink); margin-top: 3px; letter-spacing: -0.02em; }
+  .hero-count-val.warn { color: var(--warn); }
+  .hero-count-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+
+  /* ═══ Aviso sin propósito ═══ */
+  .aviso { background: var(--gold-wash); border: 1px solid #E8D49B; border-radius: 9px; padding: 13px 18px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .aviso-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--card); border: 1px solid var(--gold); display: flex; align-items: center; justify-content: center; color: var(--gold-ink); flex-shrink: 0; }
+  .aviso-body { flex: 1; }
+  .aviso-title { font-size: 13px; font-weight: 700; color: var(--gold-ink); }
+  .aviso-desc { font-size: 12px; color: var(--gold-ink); margin-top: 2px; opacity: 0.85; }
+  .aviso-cta { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; background: var(--gold); color: #fff; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .aviso-cta:hover { background: var(--gold-ink); }
+
+  /* ═══ Section title ═══ */
+  .sec-title { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 12px; }
+  .sec-title h2 { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .sec-title-sub { font-size: 12px; color: var(--ink-4); }
+  .sec-title-actions { display: flex; gap: 10px; }
+
+  /* ═══ Grid de fondos ═══ */
+  .fondos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+  /* ═══ Card fondo ═══ */
+  .fondo-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 0; overflow: hidden; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; border-top-width: 3px; display: flex; flex-direction: column; }
+  .fondo-card:hover { border-color: var(--ink-5); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .fondo-card.colchon { border-top-color: var(--brand); }
+  .fondo-card.compra { border-top-color: var(--gold); }
+  .fondo-card.reforma { border-top-color: var(--gold-soft); }
+  .fondo-card.impuestos { border-top-color: #6E7C8E; }
+
+  .fondo-head { padding: 16px 20px 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 1px solid var(--line-2); }
+  .fondo-head-left { display: flex; gap: 12px; align-items: flex-start; flex: 1; min-width: 0; }
+  .fondo-icon { width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .fondo-icon.colchon { background: var(--brand-wash); color: var(--brand); }
+  .fondo-icon.compra { background: var(--gold-wash); color: var(--gold-ink); }
+  .fondo-icon.reforma { background: #F3EBDB; color: #8A6926; }
+  .fondo-icon.impuestos { background: var(--card-alt); color: var(--ink-3); border: 1px solid var(--line); }
+  .fondo-head-info { flex: 1; min-width: 0; }
+  .fondo-tipo { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+  .fondo-card.colchon .fondo-tipo { color: var(--brand); }
+  .fondo-card.compra .fondo-tipo { color: var(--gold-ink); }
+  .fondo-card.reforma .fondo-tipo { color: #8A6926; }
+  .fondo-card.impuestos .fondo-tipo { color: var(--ink-3); }
+  .fondo-nom { font-size: 16px; font-weight: 700; color: var(--ink); margin-top: 3px; letter-spacing: -0.015em; }
+  .fondo-cat { font-size: 12px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
+  .fondo-estado { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 4px 10px; border-radius: 12px; flex-shrink: 0; white-space: nowrap; }
+  .fondo-estado.al-dia { background: var(--pos-wash); color: var(--pos); }
+  .fondo-estado.por-debajo { background: var(--warn-wash); color: var(--warn); }
+  .fondo-estado.sin-meta { background: var(--card-alt); color: var(--ink-3); border: 1px solid var(--line-2); }
+  .fondo-estado.vacio { background: var(--neg-wash); color: var(--neg); }
+
+  /* Numbers actual → meta */
+  .fondo-numbers { padding: 14px 20px; display: flex; align-items: center; gap: 12px; background: var(--card-alt); border-bottom: 1px solid var(--line-2); }
+  .fondo-num-block { flex: 1; min-width: 0; }
+  .fondo-num-lab { font-size: 10.5px; color: var(--ink-4); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .fondo-num-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 3px; letter-spacing: -0.025em; line-height: 1.15; }
+  .fondo-num-val.meta { color: var(--gold-ink); }
+  .fondo-num-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; line-height: 1.3; }
+  .fondo-num-arrow { color: var(--ink-5); flex-shrink: 0; }
+
+  /* Progress */
+  .fondo-progress { padding: 12px 20px 8px; }
+  .fondo-prog-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-bottom: 6px; }
+  .fondo-prog-top .pct { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink); font-weight: 700; }
+  .fondo-prog-bar { height: 6px; background: var(--line-2); border-radius: 4px; overflow: hidden; }
+  .fondo-prog-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+  .fondo-prog-fill.colchon { background: var(--brand); }
+  .fondo-prog-fill.compra { background: var(--gold); }
+  .fondo-prog-fill.reforma { background: var(--gold-soft); }
+  .fondo-prog-fill.impuestos { background: #6E7C8E; }
+
+  /* Composición de cuentas */
+  .fondo-comp { padding: 12px 20px 8px; }
+  .fondo-comp-title { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 8px; }
+  .fondo-comp-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line-2); font-size: 12px; }
+  .fondo-comp-row:last-child { border-bottom: none; }
+  .fondo-comp-bank { display: inline-flex; align-items: center; gap: 7px; flex: 1; min-width: 0; color: var(--ink-2); }
+  .fondo-comp-bank-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fondo-comp-bank-dot.santander { background: #EC0000; }
+  .fondo-comp-bank-dot.sabadell { background: #024EA5; }
+  .fondo-comp-bank-dot.unicaja { background: #009639; }
+  .fondo-comp-bank-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-4); }
+  .fondo-comp-tipo { font-size: 10.5px; padding: 2px 7px; border-radius: 9px; background: var(--brand-wash); color: var(--brand); font-weight: 600; }
+  .fondo-comp-tipo.parcial { background: var(--gold-wash); color: var(--gold-ink); }
+  .fondo-comp-importe { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--ink); flex-shrink: 0; padding-left: 8px; }
+
+  /* Empty composition */
+  .fondo-empty { padding: 18px 20px; text-align: center; color: var(--ink-4); font-size: 12px; line-height: 1.5; border: 1px dashed var(--line); border-radius: 7px; margin: 8px 20px; }
+  .fondo-empty-cta { display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--gold-ink); cursor: pointer; }
+  .fondo-empty-cta:hover { text-decoration: underline; }
+
+  /* Vínculo objetivo */
+  .fondo-foot { padding: 11px 20px; border-top: 1px solid var(--line-2); background: var(--card-alt); display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: auto; }
+  .fondo-foot-info { font-size: 11px; color: var(--ink-4); }
+  .fondo-foot-info strong { color: var(--ink-2); font-weight: 600; }
+  .fondo-foot-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--brand); padding: 4px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); flex-shrink: 0; }
+  .fondo-foot-link:hover { border-color: var(--brand); }
+  .fondo-foot-link.muted { color: var(--ink-3); border-style: dashed; }
+  .fondo-foot-link.muted:hover { border-color: var(--gold); color: var(--gold-ink); }
+
+  /* ═══ Movimientos ═══ */
+  .movs-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; overflow: hidden; }
+
+  .movs-table { width: 100%; }
+  .movs-table thead { background: var(--card-alt); }
+  .movs-table th, .movs-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--line-2); font-size: 12px; }
+  .movs-table tr:last-child td { border-bottom: none; }
+  .movs-table th { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-4); }
+  .movs-table tr:hover td { background: var(--card-alt); }
+  .movs-table td.fecha { font-family: 'JetBrains Mono', monospace; color: var(--ink-3); width: 90px; }
+  .movs-table td.concepto { color: var(--ink-2); }
+  .movs-table td.fondo-tag { width: 200px; }
+  .movs-table td.cuenta { font-family: 'JetBrains Mono', monospace; color: var(--ink-3); width: 110px; font-size: 11.5px; }
+  .movs-table td.imp { font-family: 'JetBrains Mono', monospace; font-weight: 600; text-align: right; width: 110px; }
+  .movs-table td.imp.pos { color: var(--pos); }
+  .movs-table td.imp.neg { color: var(--neg); }
+  .movs-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 9px; border-radius: 11px; font-weight: 600; }
+  .movs-tag.colchon { background: var(--brand-wash); color: var(--brand); }
+  .movs-tag.compra { background: var(--gold-wash); color: var(--gold-ink); }
+  .movs-tag.reforma { background: #F3EBDB; color: #8A6926; }
+  .movs-tag.impuestos { background: var(--card-alt); color: var(--ink-3); border: 1px solid var(--line); }
+  .movs-tag-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .movs-tag.colchon .movs-tag-dot { background: var(--brand); }
+  .movs-tag.compra .movs-tag-dot { background: var(--gold); }
+  .movs-tag.reforma .movs-tag-dot { background: var(--gold-soft); }
+  .movs-tag.impuestos .movs-tag-dot { background: #6E7C8E; }
+
+  .movs-filter { font-size: 11.5px; padding: 5px 11px; border-radius: 14px; border: 1px solid var(--line); color: var(--ink-3); cursor: pointer; background: var(--card); font-weight: 600; }
+  .movs-filter.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--brand-ink); color: #fff; padding: 11px 18px; border-radius: 8px; font-size: 12.5px; opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 100; max-width: 480px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+    <nav class="nav" style="margin-top: 14px;">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+      <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div>
+        <div class="side-foot-name">José Antonio</div>
+        <div class="side-foot-sub">activo</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar inmueble, contrato, movimiento..." />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showToast('Volver al landing de Mi Plan')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showToast('Ir a Mi Plan')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Fondos de ahorro</span>
+        </div>
+        <h1>Fondos de ahorro</h1>
+        <div class="page-sub">para qué tienes el dinero líquido que tienes hoy · ATLAS etiqueta · Tesorería custodia</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Mover dinero entre fondos · transferencias dirigidas con etiqueta')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          Mover entre fondos
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Crear fondo · 5 tipos predefinidos (colchón · compra · reforma · impuestos · capricho) o custom')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear fondo
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs Mi Plan -->
+    <div class="submod-tabs">
+      <button onclick="showToast('Ir a Proyección')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+        Proyección
+      </button>
+      <button onclick="showToast('Ir a Libertad financiera · simulador')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+        Libertad financiera
+      </button>
+      <button onclick="showToast('Ir a Objetivos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Objetivos
+      </button>
+      <button class="active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+        Fondos de ahorro
+      </button>
+      <button onclick="showToast('Ir a Retos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Retos
+      </button>
+    </div>
+
+    <!-- ═══ HERO · tesorería total + distribución ═══ -->
+    <div class="hero">
+      <div class="hero-grid">
+        <div class="hero-left">
+          <h2>Tesorería total bajo control</h2>
+          <div class="hero-total">36.000 €</div>
+          <div class="hero-meta">3 cuentas activas · saldo agregado de Tesorería · ATLAS etiqueta cada euro con su propósito</div>
+
+          <div class="hero-bar-section">
+            <div class="hero-bar-label">
+              <span>Distribución por propósito</span>
+              <span><span class="pct-asignado">51%</span> con propósito · 49% sin asignar</span>
+            </div>
+            <div class="hero-bar">
+              <div class="hero-seg colchon" style="width: 27.2%;" onclick="showToast('Colchón · 9.800 € · 27% del total')"></div>
+              <div class="hero-seg compra" style="width: 15.0%;" onclick="showToast('Próximo piso · 5.400 € · 15% del total')"></div>
+              <div class="hero-seg reforma" style="width: 8.9%;" onclick="showToast('Reforma T64 · 3.200 € · 9% del total')"></div>
+              <div class="hero-seg libre" style="width: 48.9%;" onclick="showToast('17.600 € sin asignar · pulsa Asignar para repartir')"></div>
+            </div>
+            <div class="hero-leyenda">
+              <div class="hero-leg-item"><div class="hero-leg-dot colchon"></div>Colchón <span class="num">9.800 €</span></div>
+              <div class="hero-leg-item"><div class="hero-leg-dot compra"></div>Próximo piso <span class="num">5.400 €</span></div>
+              <div class="hero-leg-item"><div class="hero-leg-dot reforma"></div>Reforma T64 <span class="num">3.200 €</span></div>
+              <div class="hero-leg-item"><div class="hero-leg-dot impuestos"></div>Impuestos <span class="num">0 €</span></div>
+              <div class="hero-leg-item"><div class="hero-leg-dot libre"></div>Sin asignar <span class="num" style="color:var(--warn);">17.600 €</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="hero-counts">
+            <div class="hero-count">
+              <div class="hero-count-lab">Fondos activos</div>
+              <div class="hero-count-val">4</div>
+              <div class="hero-count-sub">colchón · piso · reforma · impuestos</div>
+            </div>
+            <div class="hero-count">
+              <div class="hero-count-lab">Cuentas vinculadas</div>
+              <div class="hero-count-val">3</div>
+              <div class="hero-count-sub">Santander · Sabadell · Unicaja</div>
+            </div>
+            <div class="hero-count">
+              <div class="hero-count-lab">Sin propósito</div>
+              <div class="hero-count-val warn">17.600</div>
+              <div class="hero-count-sub">repartido en 2 cuentas</div>
+            </div>
+            <div class="hero-count">
+              <div class="hero-count-lab">Última actualización</div>
+              <div class="hero-count-val" style="font-size: 14px; line-height: 1.5;">hace 2 h</div>
+              <div class="hero-count-sub">vía Tesorería · auto</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ AVISO sin propósito ═══ -->
+    <div class="aviso">
+      <div class="aviso-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="aviso-body">
+        <div class="aviso-title">17.600 € sin propósito asignado · 49% de tu tesorería líquida</div>
+        <div class="aviso-desc">si este dinero no tiene un para qué · es ahorro inerte · asígnalo a un fondo existente o crea uno nuevo</div>
+      </div>
+      <button class="aviso-cta" onclick="showToast('Wizard de asignación · ATLAS sugiere distribución óptima · puedes ajustar antes de confirmar')">
+        Asignar ahora
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <!-- Section title -->
+    <div class="sec-title">
+      <div>
+        <h2>Mis fondos · 4 activos</h2>
+        <div class="sec-title-sub">cada fondo etiqueta una porción del saldo de una o varias cuentas · Tesorería custodia los euros</div>
+      </div>
+    </div>
+
+    <!-- ═══ GRID DE FONDOS ═══ -->
+    <div class="fondos-grid">
+
+      <!-- ─── FONDO 1 · COLCHÓN EMERGENCIA ─── -->
+      <div class="fondo-card colchon" onclick="showToast('Abrir detalle · Colchón emergencia · histórico aportaciones · ajustar meta · gestionar cuentas')">
+        <div class="fondo-head">
+          <div class="fondo-head-left">
+            <div class="fondo-icon colchon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="fondo-head-info">
+              <div class="fondo-tipo">Colchón</div>
+              <div class="fondo-nom">Colchón emergencia</div>
+              <div class="fondo-cat">tesorería líquida que cubra 12 meses de gasto vida ante imprevistos</div>
+            </div>
+          </div>
+          <span class="fondo-estado por-debajo">Por debajo</span>
+        </div>
+
+        <div class="fondo-numbers">
+          <div class="fondo-num-block">
+            <div class="fondo-num-lab">Acumulado</div>
+            <div class="fondo-num-val">9.800 €</div>
+            <div class="fondo-num-sub">cubre 2,4 meses de gasto vida</div>
+          </div>
+          <svg class="fondo-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="fondo-num-block" style="text-align: right;">
+            <div class="fondo-num-lab">Meta</div>
+            <div class="fondo-num-val meta">49.440 €</div>
+            <div class="fondo-num-sub">12 × 4.120 € gasto vida</div>
+          </div>
+        </div>
+
+        <div class="fondo-progress">
+          <div class="fondo-prog-top">
+            <span>Progreso</span>
+            <span class="pct">20%</span>
+          </div>
+          <div class="fondo-prog-bar"><div class="fondo-prog-fill colchon" style="width: 20%;"></div></div>
+        </div>
+
+        <div class="fondo-comp">
+          <div class="fondo-comp-title">Compuesto por · 2 cuentas</div>
+          <div class="fondo-comp-row" onclick="event.stopPropagation(); showToast('Saltar a Tesorería → Santander 2715 · ver saldos por propósito')">
+            <div class="fondo-comp-bank">
+              <div class="fondo-comp-bank-dot santander"></div>
+              <span>Santander</span>
+              <span class="fondo-comp-bank-num">····2715</span>
+            </div>
+            <span class="fondo-comp-tipo parcial">Parcial</span>
+            <span class="fondo-comp-importe">6.200 €</span>
+          </div>
+          <div class="fondo-comp-row" onclick="event.stopPropagation(); showToast('Saltar a Tesorería → Unicaja 4437 · cuenta dedicada al colchón')">
+            <div class="fondo-comp-bank">
+              <div class="fondo-comp-bank-dot unicaja"></div>
+              <span>Unicaja</span>
+              <span class="fondo-comp-bank-num">····4437</span>
+            </div>
+            <span class="fondo-comp-tipo">Dedicada</span>
+            <span class="fondo-comp-importe">3.600 €</span>
+          </div>
+        </div>
+
+        <div class="fondo-foot">
+          <div class="fondo-foot-info">aporte 3 m · <strong>+1.650 €/mes</strong> · ritmo objetivo +1.969 €/mes</div>
+          <a class="fondo-foot-link" onclick="event.stopPropagation(); showToast('Saltar a Objetivos → OBJ-01 · Colchón 12 meses')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            OBJ-01
+          </a>
+        </div>
+      </div>
+
+      <!-- ─── FONDO 2 · PRÓXIMO PISO ─── -->
+      <div class="fondo-card compra" onclick="showToast('Abrir detalle · Próximo piso · histórico · ajustar meta · simular compra')">
+        <div class="fondo-head">
+          <div class="fondo-head-left">
+            <div class="fondo-icon compra">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div class="fondo-head-info">
+              <div class="fondo-tipo">Compra futura</div>
+              <div class="fondo-nom">Próximo piso · 6º inmueble</div>
+              <div class="fondo-cat">entrada 20% sobre piso 200 K + costes notariales y RTPO + reserva</div>
+            </div>
+          </div>
+          <span class="fondo-estado por-debajo">Por debajo</span>
+        </div>
+
+        <div class="fondo-numbers">
+          <div class="fondo-num-block">
+            <div class="fondo-num-lab">Acumulado</div>
+            <div class="fondo-num-val">5.400 €</div>
+            <div class="fondo-num-sub">7% de la meta · queda 74.600 €</div>
+          </div>
+          <svg class="fondo-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="fondo-num-block" style="text-align: right;">
+            <div class="fondo-num-lab">Meta</div>
+            <div class="fondo-num-val meta">80.000 €</div>
+            <div class="fondo-num-sub">entrada 40 K + costes 12 K + reserva 28 K</div>
+          </div>
+        </div>
+
+        <div class="fondo-progress">
+          <div class="fondo-prog-top">
+            <span>Progreso</span>
+            <span class="pct">7%</span>
+          </div>
+          <div class="fondo-prog-bar"><div class="fondo-prog-fill compra" style="width: 7%;"></div></div>
+        </div>
+
+        <div class="fondo-comp">
+          <div class="fondo-comp-title">Compuesto por · 1 cuenta</div>
+          <div class="fondo-comp-row" onclick="event.stopPropagation(); showToast('Saltar a Tesorería → Sabadell 9421 · cuenta dedicada al objetivo piso')">
+            <div class="fondo-comp-bank">
+              <div class="fondo-comp-bank-dot sabadell"></div>
+              <span>Sabadell</span>
+              <span class="fondo-comp-bank-num">····9421</span>
+            </div>
+            <span class="fondo-comp-tipo">Dedicada</span>
+            <span class="fondo-comp-importe">5.400 €</span>
+          </div>
+        </div>
+
+        <div class="fondo-foot">
+          <div class="fondo-foot-info">aporte 3 m · <strong>+1.650 €/mes</strong> · ritmo objetivo +1.972 €/mes</div>
+          <a class="fondo-foot-link" onclick="event.stopPropagation(); showToast('Saltar a Objetivos → OBJ-03 · Próximo piso')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            OBJ-03
+          </a>
+        </div>
+      </div>
+
+      <!-- ─── FONDO 3 · REFORMA TRASTERO T64 ─── -->
+      <div class="fondo-card reforma" onclick="showToast('Abrir detalle · Reforma T64 trastero · presupuesto · vincular a CAPEX inmueble')">
+        <div class="fondo-head">
+          <div class="fondo-head-left">
+            <div class="fondo-icon reforma">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <div class="fondo-head-info">
+              <div class="fondo-tipo">Reforma</div>
+              <div class="fondo-nom">Reforma trastero T64 5·01</div>
+              <div class="fondo-cat">CAPEX para convertir trastero en 2 viviendas · pendiente permiso</div>
+            </div>
+          </div>
+          <span class="fondo-estado sin-meta">Sin objetivo</span>
+        </div>
+
+        <div class="fondo-numbers">
+          <div class="fondo-num-block">
+            <div class="fondo-num-lab">Acumulado</div>
+            <div class="fondo-num-val">3.200 €</div>
+            <div class="fondo-num-sub">previsión presupuesto reforma</div>
+          </div>
+          <svg class="fondo-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="fondo-num-block" style="text-align: right;">
+            <div class="fondo-num-lab">Meta estimada</div>
+            <div class="fondo-num-val meta">12.000 €</div>
+            <div class="fondo-num-sub">sin fecha · pendiente permiso</div>
+          </div>
+        </div>
+
+        <div class="fondo-progress">
+          <div class="fondo-prog-top">
+            <span>Progreso</span>
+            <span class="pct">27%</span>
+          </div>
+          <div class="fondo-prog-bar"><div class="fondo-prog-fill reforma" style="width: 27%;"></div></div>
+        </div>
+
+        <div class="fondo-comp">
+          <div class="fondo-comp-title">Compuesto por · 1 cuenta</div>
+          <div class="fondo-comp-row" onclick="event.stopPropagation(); showToast('Saltar a Tesorería → Santander 2715 · ver saldos por propósito')">
+            <div class="fondo-comp-bank">
+              <div class="fondo-comp-bank-dot santander"></div>
+              <span>Santander</span>
+              <span class="fondo-comp-bank-num">····2715</span>
+            </div>
+            <span class="fondo-comp-tipo parcial">Parcial</span>
+            <span class="fondo-comp-importe">3.200 €</span>
+          </div>
+        </div>
+
+        <div class="fondo-foot">
+          <div class="fondo-foot-info">aporte 3 m · <strong>+0 €/mes</strong> · sin ritmo definido</div>
+          <a class="fondo-foot-link muted" onclick="event.stopPropagation(); showToast('Crear objetivo asociado · acumular hasta 12.000 € para fecha X')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Crear objetivo
+          </a>
+        </div>
+      </div>
+
+      <!-- ─── FONDO 4 · PROVISIÓN FISCAL ─── -->
+      <div class="fondo-card impuestos" onclick="showToast('Abrir detalle · Provisión fiscal · ATLAS calcula meta desde Fiscal · automatiza aportaciones')">
+        <div class="fondo-head">
+          <div class="fondo-head-left">
+            <div class="fondo-icon impuestos">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="fondo-head-info">
+              <div class="fondo-tipo">Impuestos</div>
+              <div class="fondo-nom">Provisión fiscal · IRPF 2026</div>
+              <div class="fondo-cat">cobertura para los 2 plazos del IRPF · evita lo que pasó con IVA 3T 2024</div>
+            </div>
+          </div>
+          <span class="fondo-estado vacio">Vacío · alerta</span>
+        </div>
+
+        <div class="fondo-numbers">
+          <div class="fondo-num-block">
+            <div class="fondo-num-lab">Acumulado</div>
+            <div class="fondo-num-val" style="color: var(--neg);">0 €</div>
+            <div class="fondo-num-sub">sin provisión arrancada</div>
+          </div>
+          <svg class="fondo-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="fondo-num-block" style="text-align: right;">
+            <div class="fondo-num-lab">Meta</div>
+            <div class="fondo-num-val meta">5.880 €</div>
+            <div class="fondo-num-sub">IRPF estimado · 2 plazos jun + nov</div>
+          </div>
+        </div>
+
+        <div class="fondo-progress">
+          <div class="fondo-prog-top">
+            <span>Progreso</span>
+            <span class="pct">0%</span>
+          </div>
+          <div class="fondo-prog-bar"><div class="fondo-prog-fill impuestos" style="width: 0%;"></div></div>
+        </div>
+
+        <div class="fondo-empty">
+          Aún no hay cuenta asignada a este fondo
+          <br>
+          <a class="fondo-empty-cta" onclick="event.stopPropagation(); showToast('Vincular una cuenta · ATLAS sugiere abrir cuenta separada para impuestos · evitas tocarlos por error')">+ asigna una cuenta para alimentar este fondo</a>
+        </div>
+
+        <div class="fondo-foot">
+          <div class="fondo-foot-info">primer plazo IRPF · <strong>jun 2026</strong> · ritmo necesario +840 €/mes</div>
+          <a class="fondo-foot-link muted" onclick="event.stopPropagation(); showToast('Crear objetivo · acumular hasta 5.880 € para 30 jun 2026')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Crear objetivo
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Section title movimientos -->
+    <div class="sec-title">
+      <div>
+        <h2>Movimientos recientes · últimos 60 días</h2>
+        <div class="sec-title-sub">aportaciones y retiradas etiquetadas a fondo · provienen de Tesorería</div>
+      </div>
+      <div class="sec-title-actions">
+        <button class="movs-filter active" onclick="showToast('Filtrar · todos los movimientos de fondos')">Todos</button>
+        <button class="movs-filter" onclick="showToast('Filtrar · solo aportaciones')">+ Aportaciones</button>
+        <button class="movs-filter" onclick="showToast('Filtrar · solo retiradas')">− Retiradas</button>
+      </div>
+    </div>
+
+    <!-- ═══ TABLA MOVIMIENTOS ═══ -->
+    <div class="movs-card">
+      <table class="movs-table">
+        <thead>
+          <tr>
+            <th>fecha</th>
+            <th>concepto</th>
+            <th>fondo</th>
+            <th>cuenta</th>
+            <th style="text-align: right;">importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr onclick="showToast('Aportación recurrente nómina · 650 € a Santander 2715 · etiquetado parcial al colchón')" style="cursor: pointer;">
+            <td class="fecha">25 abr</td>
+            <td class="concepto">Aportación nómina · transfer libro</td>
+            <td class="fondo-tag"><span class="movs-tag colchon"><span class="movs-tag-dot"></span>Colchón emergencia</span></td>
+            <td class="cuenta">····2715</td>
+            <td class="imp pos">+650 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación a fondo piso · 400 € a Sabadell dedicada')" style="cursor: pointer;">
+            <td class="fecha">22 abr</td>
+            <td class="concepto">Aportación voluntaria</td>
+            <td class="fondo-tag"><span class="movs-tag compra"><span class="movs-tag-dot"></span>Próximo piso</span></td>
+            <td class="cuenta">····9421</td>
+            <td class="imp pos">+400 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación al colchón · 350 € a Unicaja dedicada')" style="cursor: pointer;">
+            <td class="fecha">15 abr</td>
+            <td class="concepto">Aportación quincenal</td>
+            <td class="fondo-tag"><span class="movs-tag colchon"><span class="movs-tag-dot"></span>Colchón emergencia</span></td>
+            <td class="cuenta">····4437</td>
+            <td class="imp pos">+350 €</td>
+          </tr>
+          <tr onclick="showToast('Retirada del colchón · gasto inesperado caldera')" style="cursor: pointer;">
+            <td class="fecha">8 abr</td>
+            <td class="concepto">Retirada · reparación caldera</td>
+            <td class="fondo-tag"><span class="movs-tag colchon"><span class="movs-tag-dot"></span>Colchón emergencia</span></td>
+            <td class="cuenta">····2715</td>
+            <td class="imp neg">−340 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación a reforma · 200 € transferidos')" style="cursor: pointer;">
+            <td class="fecha">31 mar</td>
+            <td class="concepto">Aportación trastero</td>
+            <td class="fondo-tag"><span class="movs-tag reforma"><span class="movs-tag-dot"></span>Reforma T64</span></td>
+            <td class="cuenta">····2715</td>
+            <td class="imp pos">+200 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación nómina · 650 € al colchón')" style="cursor: pointer;">
+            <td class="fecha">25 mar</td>
+            <td class="concepto">Aportación nómina · transfer libro</td>
+            <td class="fondo-tag"><span class="movs-tag colchon"><span class="movs-tag-dot"></span>Colchón emergencia</span></td>
+            <td class="cuenta">····2715</td>
+            <td class="imp pos">+650 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación a piso · 500 € voluntarios')" style="cursor: pointer;">
+            <td class="fecha">18 mar</td>
+            <td class="concepto">Aportación voluntaria</td>
+            <td class="fondo-tag"><span class="movs-tag compra"><span class="movs-tag-dot"></span>Próximo piso</span></td>
+            <td class="cuenta">····9421</td>
+            <td class="imp pos">+500 €</td>
+          </tr>
+          <tr onclick="showToast('Aportación al colchón Unicaja')" style="cursor: pointer;">
+            <td class="fecha">15 mar</td>
+            <td class="concepto">Aportación quincenal</td>
+            <td class="fondo-tag"><span class="movs-tag colchon"><span class="movs-tag-dot"></span>Colchón emergencia</span></td>
+            <td class="cuenta">····4437</td>
+            <td class="imp pos">+350 €</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+</body>
+</html>

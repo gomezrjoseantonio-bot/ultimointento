@@ -1,0 +1,2016 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Flujo corrección por inspección</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+  input, select, textarea { font: inherit; }
+  table { border-collapse: collapse; width: 100%; }
+
+  /* Demo selector */
+  .demo-sel {
+    position: fixed; top: 12px; right: 12px; z-index: 200;
+    background: var(--brand-ink); color: #fff;
+    padding: 8px 10px; border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    display: flex; gap: 6px; align-items: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+  }
+  .demo-sel-label { opacity: 0.65; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; padding-right: 4px; }
+  .demo-sel select {
+    background: rgba(255,255,255,0.08); color: #fff;
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 5px;
+    padding: 4px 8px; font-size: 11px; cursor: pointer;
+    font-family: inherit;
+  }
+
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: block; }
+
+  /* ═══ App layout · con sidebar (solo en pantalla 1 y 7) ═══ */
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .side-brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { color: rgba(255,255,255,.42); font-size: 10px; letter-spacing: .18em; text-transform: uppercase; margin-top: 3px; font-weight: 400; }
+
+  .nav-section { padding: 16px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav-sep { margin: 12px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+
+  /* ═══ Page header canónico ═══ */
+  .pg-hd { display: flex; gap: 14px; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .pg-hd-icon { color: var(--ink-3); margin-top: 2px; }
+  .pg-hd h1 { font-size: 24px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15; }
+  .pg-hd-sub { font-size: 12.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  .tabs-inner { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -10px 0 22px; }
+  .tabs-inner button { padding: 11px 18px; font-size: 13px; font-weight: 600; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs-inner button.active { color: var(--ink); border-bottom-color: var(--gold); }
+  .tabs-inner button:hover:not(.active) { color: var(--ink-2); }
+
+  /* ═══ Tabla ejercicios enriquecida ═══ */
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 0; margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card-hd { padding: 18px 22px; border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: baseline; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .card-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .card-body { padding: 0; }
+
+  .ejer-tbl { width: 100%; font-size: 12.5px; }
+  .ejer-tbl thead { background: var(--card-alt); }
+  .ejer-tbl th {
+    padding: 11px 16px; text-align: left; font-weight: 700;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-4); border-bottom: 1px solid var(--line);
+  }
+  .ejer-tbl th.r { text-align: right; }
+  .ejer-tbl td {
+    padding: 14px 16px; border-bottom: 1px solid var(--line-2);
+    vertical-align: middle;
+  }
+  .ejer-tbl td.r { text-align: right; }
+  .ejer-tbl tr:last-child td { border-bottom: none; }
+  .ejer-tbl tr:hover { background: var(--card-alt); }
+
+  .ejer-year { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .ejer-state {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .ejer-state.declarado { background: var(--pos-wash); color: var(--pos); }
+  .ejer-state.pendiente { background: var(--warn-wash); color: var(--warn); }
+  .ejer-state.en_curso { background: var(--brand-wash); color: var(--brand); }
+  .ejer-state.prescrito { background: var(--bg); color: var(--ink-4); border: 1px solid var(--line); }
+  .ejer-state.corregido { background: var(--gold-wash); color: var(--gold-ink); }
+
+  .ejer-v {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 3px;
+    background: var(--gold); color: #fff;
+    margin-left: 5px;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .pos-col { color: var(--pos); }
+  .neg-col { color: var(--neg); }
+
+  .row-actions { display: inline-flex; gap: 6px; justify-content: flex-end; }
+  .row-btn {
+    padding: 6px 10px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 600;
+    background: var(--card-alt); border: 1px solid var(--line);
+    color: var(--ink-2);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .row-btn:hover { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .row-btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; }
+  .row-btn.primary:hover { background: var(--gold-2); border-color: var(--gold-2); }
+  .row-btn-icon {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--card-alt); color: var(--ink-3);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .row-btn-icon:hover { background: var(--card); color: var(--ink); border-color: var(--ink-5); }
+
+  .chip-dot {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 7px; border-radius: 4px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    font-weight: 700; letter-spacing: 0.04em;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+
+  /* ═══ Wizard layout común ═══ */
+  .wiz { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+
+  .wiz-topbar {
+    background: var(--card); border-bottom: 1px solid var(--line);
+    padding: 14px 32px;
+    display: grid; grid-template-columns: 260px 1fr 260px;
+    align-items: center; gap: 20px;
+  }
+  .wiz-tb-brand { display: flex; align-items: center; gap: 10px; }
+  .wiz-tb-brand .brand-mark { width: 30px; height: 30px; border-radius: 8px; font-size: 14px; }
+  .wiz-tb-brand .brand-name { font-size: 16px; }
+  .wiz-tb-title {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .wiz-tb-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700;
+  }
+  .wiz-tb-close {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--card-alt); border: 1px solid var(--line);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-3); cursor: pointer; margin-left: auto;
+  }
+  .wiz-tb-close:hover { background: var(--bg); color: var(--ink); }
+
+  .stepper {
+    display: flex; align-items: center; justify-content: center;
+    gap: 0; flex: 1;
+  }
+  .stepper-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--ink-4); }
+  .stepper-circle {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--bg); border: 1.5px solid var(--line);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--ink-4); font-weight: 700;
+  }
+  .stepper-item.done .stepper-circle { background: var(--pos); border-color: var(--pos); color: #fff; }
+  .stepper-item.active .stepper-circle { background: var(--gold); border-color: var(--gold); color: #fff; box-shadow: 0 0 0 3px var(--gold-wash); }
+  .stepper-item.active { color: var(--ink); }
+  .stepper-label { display: none; }
+  @media (min-width: 1200px) { .stepper-label { display: inline; } }
+  .stepper-line { width: 28px; height: 1.5px; background: var(--line); margin: 0 4px; }
+  .stepper-item.done + .stepper-line { background: var(--pos); }
+
+  .wiz-content { flex: 1; display: flex; justify-content: center; padding: 36px 30px 140px; }
+  .wiz-inner { max-width: 920px; width: 100%; }
+  .wiz-step-head { margin-bottom: 24px; }
+  .wiz-step-kick {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--gold-ink); font-weight: 700; margin-bottom: 10px;
+  }
+  .wiz-step-head h2 { font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; margin-bottom: 10px; }
+  .wiz-step-head p { font-size: 14px; color: var(--ink-3); line-height: 1.55; max-width: 680px; }
+
+  .wiz-foot {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--card); border-top: 1px solid var(--line);
+    padding: 14px 32px;
+    display: flex; align-items: center; gap: 14px; z-index: 30;
+  }
+  .wiz-foot-status { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-4); font-weight: 600; }
+  .wiz-foot-status strong { color: var(--ink-2); }
+  .wiz-foot-actions { margin-left: auto; display: flex; gap: 10px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; border: 1px solid transparent; cursor: pointer; white-space: nowrap; transition: all .14s; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); background: var(--card-alt); }
+  .btn-gold { background: var(--gold); color: #fff; font-weight: 700; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-gold:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-navy { background: var(--brand-ink); color: #fff; font-weight: 700; }
+  .btn-navy:hover { background: var(--brand); }
+  .btn-danger { background: var(--neg); color: #fff; font-weight: 700; }
+  .btn-danger:hover { background: #8B2B21; }
+
+  /* ═══ Formularios ═══ */
+  .form-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 24px 26px; margin-bottom: 14px;
+  }
+  .form-card-title { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; margin-bottom: 4px; }
+  .form-card-sub { font-size: 12px; color: var(--ink-4); margin-bottom: 18px; }
+  .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .form-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); letter-spacing: -0.005em; }
+  .form-label-sub { font-size: 11px; color: var(--ink-4); font-weight: 400; }
+  .form-input, .form-select, .form-textarea {
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); font-size: 13px; color: var(--ink);
+    outline: none; transition: all .14s;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .form-input.mono { font-family: 'JetBrains Mono', monospace; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+  .form-textarea { min-height: 70px; resize: vertical; font-family: 'Inter', sans-serif; }
+
+  .info-banner {
+    background: var(--brand-wash); border-left: 3px solid var(--brand);
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;
+    display: flex; align-items: flex-start; gap: 12px;
+    font-size: 12.5px; color: var(--brand-ink); line-height: 1.55;
+  }
+  .info-banner svg { color: var(--brand); flex-shrink: 0; margin-top: 1px; }
+  .info-banner.warn { background: var(--warn-wash); border-left-color: var(--warn); color: #6B4A10; }
+  .info-banner.warn svg { color: var(--warn); }
+  .info-banner.gold { background: var(--gold-wash); border-left-color: var(--gold-ink); color: var(--gold-ink); }
+  .info-banner.gold svg { color: var(--gold-ink); }
+  .info-banner strong { font-weight: 700; }
+
+  /* ═══ Dropzone archivo paralela ═══ */
+  .mini-dropzone {
+    border: 1.5px dashed var(--line); border-radius: 10px;
+    padding: 18px 22px; text-align: center;
+    cursor: pointer; transition: all .15s;
+    background: var(--card-alt);
+  }
+  .mini-dropzone:hover { border-color: var(--gold); background: var(--gold-wash); }
+  .mini-dz-title { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .mini-dz-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ═══ Categorías corregibles · paso 2 ═══ */
+  .cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .cat-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 18px; border-radius: 10px;
+    background: var(--card); border: 1.5px solid var(--line);
+    cursor: pointer; transition: all .14s;
+  }
+  .cat-item:hover { border-color: var(--gold); background: var(--card-alt); }
+  .cat-item.selected { border-color: var(--gold); background: var(--gold-wash); }
+  .cat-check {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 1.5px solid var(--ink-5); background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: transparent;
+  }
+  .cat-item.selected .cat-check { background: var(--gold); border-color: var(--gold); color: #fff; }
+  .cat-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--brand-wash); color: var(--brand);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .cat-item.selected .cat-icon { background: var(--gold); color: #fff; }
+  .cat-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .cat-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ═══ Delta capture · paso 3 ═══ */
+  .delta-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px; margin-bottom: 14px;
+  }
+  .delta-hd {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2);
+  }
+  .delta-hd-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .delta-hd-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .delta-hd-sub { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+  .delta-compare {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px;
+    align-items: center; margin-bottom: 14px;
+  }
+  .delta-box {
+    padding: 14px 18px; border-radius: 10px;
+    border: 1px solid var(--line);
+  }
+  .delta-box.v1 { background: var(--card-alt); }
+  .delta-box.v2 { background: #fff; border: 1.5px solid var(--gold); }
+  .delta-box-lab {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--ink-4); font-weight: 700; margin-bottom: 6px;
+  }
+  .delta-box.v2 .delta-box-lab { color: var(--gold-ink); }
+  .delta-box-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.02em; line-height: 1;
+  }
+  .delta-box-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  .delta-arrow { color: var(--ink-5); }
+  .delta-diff {
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--neg-wash); color: var(--neg);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12.5px; font-weight: 600;
+  }
+  .delta-diff.pos-diff { background: var(--pos-wash); color: var(--pos); }
+  .delta-diff-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+
+  .delta-motivo { margin-top: 14px; }
+
+  .delta-compare-full {
+    background: var(--card-alt); border: 1px solid var(--line-2);
+    border-radius: 10px; padding: 18px 20px; margin-top: 14px;
+  }
+  .delta-compare-full-hd {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
+  }
+  .delta-compare-full-title { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .delta-compare-full-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+
+  /* Tabla comparativa completa */
+  .compare-tbl { width: 100%; margin-top: 14px; font-size: 12px; }
+  .compare-tbl th {
+    padding: 8px 10px; text-align: left; font-weight: 700;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-4); border-bottom: 1px solid var(--line);
+  }
+  .compare-tbl th.r { text-align: right; }
+  .compare-tbl td { padding: 8px 10px; border-bottom: 1px solid var(--line-2); }
+  .compare-tbl td.r { text-align: right; font-family: 'JetBrains Mono', monospace; }
+  .compare-tbl tr.changed td { background: var(--gold-wash); }
+  .compare-tbl tr.changed td:first-child { font-weight: 700; color: var(--gold-ink); }
+
+  /* ═══ Impacto año corregido · paso 4 ═══ */
+  .impact-big {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 28px 32px; margin-bottom: 14px;
+    position: relative; overflow: hidden;
+  }
+  .impact-big::before {
+    content: ''; position: absolute;
+    top: -60px; right: -60px; width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(184,138,62,0.12), transparent 65%);
+  }
+  .impact-kick {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--gold-ink); font-weight: 700; margin-bottom: 10px;
+    position: relative;
+  }
+  .impact-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-bottom: 10px; position: relative; }
+  .impact-sub { font-size: 13px; color: var(--ink-3); line-height: 1.55; max-width: 600px; position: relative; }
+
+  .impact-compare-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+  }
+  .impact-col {
+    padding: 22px 26px; border-right: 1px solid var(--line-2);
+  }
+  .impact-col:last-child { border-right: none; }
+  .impact-col.highlight { background: var(--gold-wash); }
+  .impact-col-kick {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--ink-4); font-weight: 700;
+  }
+  .impact-col.highlight .impact-col-kick { color: var(--gold-ink); }
+  .impact-col-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.025em; line-height: 1; margin-top: 8px;
+  }
+  .impact-col-val.pos { color: var(--pos); }
+  .impact-col-val.neg { color: var(--neg); }
+  .impact-col-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+  .impact-breakdown {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 26px; margin-bottom: 14px;
+  }
+  .impact-breakdown-row {
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 14px; padding: 11px 0;
+    border-bottom: 1px solid var(--line-2);
+    align-items: baseline; font-size: 12.5px;
+  }
+  .impact-breakdown-row:last-child { border-bottom: none; }
+  .impact-breakdown-row.total { font-weight: 700; padding-top: 14px; border-top: 2px solid var(--ink); border-bottom: none; }
+  .impact-breakdown-row.total .ib-lab { color: var(--ink); }
+  .ib-lab { color: var(--ink-2); font-weight: 500; }
+  .ib-sub { color: var(--ink-4); font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .ib-val { font-family: 'JetBrains Mono', monospace; text-align: right; color: var(--ink); font-weight: 600; }
+  .ib-val.highlight { background: var(--gold-wash); color: var(--gold-ink); padding: 2px 8px; border-radius: 4px; }
+  .ib-diff { font-family: 'JetBrains Mono', monospace; text-align: right; font-weight: 700; }
+  .ib-diff.neg { color: var(--neg); }
+  .ib-diff.pos { color: var(--pos); }
+
+  /* ═══ Cascada · paso 5 ═══ */
+  .cascade-year-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 26px; margin-bottom: 12px;
+  }
+  .cascade-year-hd {
+    display: grid; grid-template-columns: auto 1fr auto auto;
+    gap: 14px; align-items: center; margin-bottom: 16px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--line-2);
+  }
+  .cascade-year-badge {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--bg); color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 16px;
+    border: 1px solid var(--line);
+    letter-spacing: -0.02em;
+  }
+  .cascade-year-badge.curso { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .cascade-year-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .cascade-year-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .cascade-impact-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700;
+    padding: 4px 10px; border-radius: 5px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+
+  .cascade-change {
+    display: grid; grid-template-columns: 2fr 1fr 14px 1fr 1fr;
+    gap: 12px; padding: 10px 0;
+    align-items: center; font-size: 12.5px;
+    border-bottom: 1px dashed var(--line-2);
+  }
+  .cascade-change:last-child { border-bottom: none; }
+  .cc-label { color: var(--ink-2); font-weight: 500; }
+  .cc-label-sub { color: var(--ink-4); font-size: 10.5px; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .cc-from { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; text-align: right; text-decoration: line-through; }
+  .cc-arr { color: var(--ink-5); text-align: center; }
+  .cc-to { color: var(--ink); font-family: 'JetBrains Mono', monospace; font-weight: 700; text-align: right; }
+  .cc-diff { font-family: 'JetBrains Mono', monospace; font-weight: 700; text-align: right; font-size: 11.5px; }
+  .cc-diff.neg { color: var(--neg); }
+  .cc-diff.pos { color: var(--pos); }
+  .cc-diff.zero { color: var(--ink-5); }
+
+  .cascade-note {
+    background: var(--warn-wash); border: 1px solid #E8D59E;
+    border-left: 3px solid var(--warn);
+    padding: 10px 14px; border-radius: 6px;
+    margin-top: 12px;
+    font-size: 11.5px; color: #6B4A10; line-height: 1.5;
+  }
+
+  .cascade-check {
+    background: var(--neg-wash); border: 1.5px solid var(--neg);
+    border-radius: 10px; padding: 16px 20px; margin: 18px 0;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .cascade-check-box {
+    width: 22px; height: 22px; border-radius: 5px;
+    border: 2px solid var(--neg); background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 1px;
+    cursor: pointer;
+  }
+  .cascade-check-box.checked { background: var(--neg); }
+  .cascade-check-text { font-size: 12.5px; color: #6B1E14; line-height: 1.55; }
+  .cascade-check-text strong { font-weight: 700; }
+
+  /* ═══ Vista final · año v2 ═══ */
+  .final-year-card {
+    background: linear-gradient(135deg, var(--gold-wash), #FAF3E0);
+    border: 1.5px solid var(--gold);
+    border-radius: 14px; padding: 28px 32px; margin-bottom: 18px;
+    position: relative; overflow: hidden;
+  }
+  .final-year-card::before {
+    content: ''; position: absolute;
+    top: -60px; right: -60px; width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(184,138,62,0.2), transparent 65%);
+  }
+  .final-year-hd {
+    display: flex; gap: 14px; align-items: flex-start;
+    margin-bottom: 20px; position: relative;
+  }
+  .final-year-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: #fff; color: var(--gold-ink);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; box-shadow: 0 4px 12px rgba(184,138,62,0.22);
+  }
+  .final-year-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .final-year-sub { font-size: 13px; color: var(--gold-ink); margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  .versions-tabs { display: flex; gap: 4px; padding: 4px; background: rgba(255,255,255,0.5); border-radius: 8px; margin-bottom: 14px; position: relative; }
+  .versions-tab {
+    padding: 8px 16px; border-radius: 5px;
+    font-size: 12px; font-weight: 600; color: var(--ink-3);
+    flex: 1; text-align: center; cursor: pointer;
+  }
+  .versions-tab.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  .final-actions {
+    display: flex; gap: 10px; position: relative;
+    padding-top: 16px; border-top: 1px solid rgba(184,138,62,0.3);
+  }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<!-- Demo selector -->
+<div class="demo-sel">
+  <span class="demo-sel-label">Demo</span>
+  <select onchange="showPage(this.value)">
+    <option value="ejercicios">01 · Fiscal > Ejercicios · lista</option>
+    <option value="wiz-1">02 · Wizard · identifica paralela</option>
+    <option value="wiz-2">03 · Wizard · elige qué cambia</option>
+    <option value="wiz-3">04 · Wizard · captura delta</option>
+    <option value="wiz-4">05 · Wizard · impacto año corregido</option>
+    <option value="wiz-5">06 · Wizard · preview cascada (crítico)</option>
+    <option value="final">07 · Vista final · año v2 aplicado</option>
+  </select>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 01 · FISCAL · EJERCICIOS (lista enriquecida) -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page active" id="page-ejercicios">
+  <div class="app">
+
+    <!-- Sidebar estándar Atlas -->
+    <aside class="side">
+      <div class="side-brand">
+        <div class="brand-mark">A</div>
+        <div>
+          <div class="brand-name">Atlas</div>
+          <div class="brand-sub">Patrimonio & Renta</div>
+        </div>
+      </div>
+      <nav class="nav" style="margin-top: 14px;">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+      </nav>
+      <div class="nav-section">Mis activos</div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      </nav>
+      <div class="nav-section">Operativa</div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+        <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+      </nav>
+      <div class="nav-sep"></div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Ajustes</a>
+      </nav>
+      <div class="side-foot">
+        <div class="avatar">JA</div>
+        <div><div class="side-foot-name">José Antonio</div><div class="side-foot-sub">activo</div></div>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <div class="pg-hd">
+        <div class="pg-hd-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div>
+          <h1>Fiscal</h1>
+          <div class="pg-hd-sub">ejercicios · calendario · carryforwards · amortizaciones</div>
+        </div>
+      </div>
+
+      <div class="tabs-inner">
+        <button class="active">Ejercicios</button>
+        <button>Calendario fiscal</button>
+        <button>Amortizaciones</button>
+        <button>Carryforwards</button>
+        <button>Documentos</button>
+        <button>Inspecciones</button>
+      </div>
+
+      <div class="info-banner gold">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div><strong>¿Has recibido una paralela de Hacienda?</strong> Si Hacienda te ha enviado una propuesta de liquidación · acta · o liquidación y la has firmado en conformidad · aplícala sobre el año afectado para que Atlas recalcule en cascada los años posteriores. <strong>Nunca apliques paralelas que estén en recurso.</strong></div>
+      </div>
+
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Tus ejercicios fiscales</div>
+            <div class="card-sub">14 años · 2012–2025 · 2 paralelas aplicadas</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-ghost" style="padding: 7px 12px; font-size: 12px;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir año
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <table class="ejer-tbl">
+            <thead>
+              <tr>
+                <th>Año</th>
+                <th>Estado</th>
+                <th>Fecha presentación</th>
+                <th class="r">Cuota líquida</th>
+                <th class="r">Resultado</th>
+                <th>Notas</th>
+                <th style="text-align: right;">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <!-- 2025 · en curso -->
+              <tr>
+                <td><span class="ejer-year">2025</span></td>
+                <td><span class="ejer-state en_curso">En curso</span></td>
+                <td class="mono" style="color: var(--ink-4);">—</td>
+                <td class="r mono" style="color: var(--ink-4);">proyectada · 7.840 €</td>
+                <td class="r mono" style="color: var(--ink-4);">—</td>
+                <td style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">campaña abr-jun 2026</td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn">Ver detalle</button>
+                    <button class="row-btn-icon" title="Más acciones">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2024 · declarado -->
+              <tr>
+                <td><span class="ejer-year">2024</span></td>
+                <td><span class="ejer-state declarado">Declarado</span></td>
+                <td class="mono">28/06/2025</td>
+                <td class="r mono">6.524,12 €</td>
+                <td class="r mono pos-col">+1.847 € devolución</td>
+                <td style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">prescripción · 28/06/2029</td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn primary" onclick="showPage('wiz-1')">Aplicar corrección</button>
+                    <button class="row-btn">Ver</button>
+                    <button class="row-btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2023 · corregido v2 -->
+              <tr>
+                <td><span class="ejer-year">2023<span class="ejer-v">v2</span></span></td>
+                <td><span class="ejer-state corregido">Corregido</span></td>
+                <td class="mono">25/06/2024 · v1<br><span style="font-size: 10.5px; color: var(--gold-ink);">15/10/2024 · v2</span></td>
+                <td class="r mono">4.128,45 €</td>
+                <td class="r mono pos-col">+5.509,89 € devolución</td>
+                <td>
+                  <span class="chip-dot">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Paralela M130 · 15/10/2024
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn">Ver versiones</button>
+                    <button class="row-btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2022 · corregido v2 -->
+              <tr>
+                <td><span class="ejer-year">2022<span class="ejer-v">v2</span></span></td>
+                <td><span class="ejer-state corregido">Corregido</span></td>
+                <td class="mono">27/06/2023 · v1<br><span style="font-size: 10.5px; color: var(--gold-ink);">12/01/2024 · v2</span></td>
+                <td class="r mono">3.952,18 €</td>
+                <td class="r mono neg-col">−487 € adicional ingresado</td>
+                <td>
+                  <span class="chip-dot">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    Paralela SF12 · 12/01/2024
+                  </span>
+                </td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn">Ver versiones</button>
+                    <button class="row-btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2021 -->
+              <tr>
+                <td><span class="ejer-year">2021</span></td>
+                <td><span class="ejer-state declarado">Declarado</span></td>
+                <td class="mono">25/06/2022</td>
+                <td class="r mono">2.820,00 €</td>
+                <td class="r mono pos-col">+390 € devolución</td>
+                <td style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">prescripción · 25/06/2026</td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn primary" onclick="showPage('wiz-1')">Aplicar corrección</button>
+                    <button class="row-btn">Ver</button>
+                    <button class="row-btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2020 -->
+              <tr>
+                <td><span class="ejer-year">2020</span></td>
+                <td><span class="ejer-state declarado">Declarado</span></td>
+                <td class="mono">23/06/2021</td>
+                <td class="r mono">2.140,00 €</td>
+                <td class="r mono neg-col">−180 € ingreso</td>
+                <td style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">prescripción · 23/06/2025 <span style="color: var(--warn);">⚠ próxima</span></td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn primary" onclick="showPage('wiz-1')">Aplicar corrección</button>
+                    <button class="row-btn">Ver</button>
+                    <button class="row-btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- 2019 prescrito -->
+              <tr style="opacity: 0.65;">
+                <td><span class="ejer-year">2019</span></td>
+                <td><span class="ejer-state prescrito">Prescrito</span></td>
+                <td class="mono">24/06/2020</td>
+                <td class="r mono">1.890,00 €</td>
+                <td class="r mono">+240 € devolución</td>
+                <td style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">prescrito · 24/06/2024</td>
+                <td style="text-align: right;">
+                  <div class="row-actions">
+                    <button class="row-btn" style="opacity: 0.5;" disabled title="Año prescrito · no se puede corregir">Aplicar corrección</button>
+                    <button class="row-btn">Ver</button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 14px 16px; color: var(--ink-4); font-size: 11.5px; font-family: 'JetBrains Mono', monospace;">
+                  · 7 años anteriores prescritos · 2012–2018
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 02 · WIZARD paso 1 · IDENTIFICA PARALELA -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page wiz" id="page-wiz-1">
+
+  <div class="wiz-topbar">
+    <div class="wiz-tb-brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Corrección · inspección</div>
+      </div>
+    </div>
+    <div class="stepper">
+      <div class="stepper-item active"><span class="stepper-circle">1</span><span class="stepper-label">Paralela</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">2</span><span class="stepper-label">Qué cambia</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">3</span><span class="stepper-label">Delta</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">4</span><span class="stepper-label">Impacto año</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">5</span><span class="stepper-label">Cascada</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+      <span class="wiz-tb-badge">Año 2022</span>
+      <div class="wiz-tb-close" onclick="showPage('ejercicios')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+  </div>
+
+  <div class="wiz-content">
+    <div class="wiz-inner">
+      <div class="wiz-step-head">
+        <div class="wiz-step-kick">Paso 1 de 5</div>
+        <h2>Identifica la paralela</h2>
+        <p>Datos administrativos de la propuesta de liquidación · acta o liquidación que Hacienda te envió. Esto queda archivado junto al ejercicio para trazabilidad.</p>
+      </div>
+
+      <div class="info-banner warn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div><strong>Solo paralelas firmadas en conformidad.</strong> Si has recurrido (TEAR · TEAC · contencioso) la paralela no es firme · no la apliques aquí hasta resolución. Atlas cascada valores reales · un recurso en curso podría cambiar lo que ya se haya cascadado.</div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-title">Datos de la notificación</div>
+        <div class="form-card-sub">Los encuentras en la cabecera del documento que recibiste</div>
+
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Tipo de actuación</label>
+            <select class="form-select">
+              <option>Propuesta de liquidación · paralela</option>
+              <option>Liquidación provisional</option>
+              <option>Liquidación definitiva</option>
+              <option>Acta de conformidad · inspección</option>
+              <option>Resolución de rectificación</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Órgano emisor</label>
+            <select class="form-select">
+              <option>AEAT · Gestión Tributaria · Administración</option>
+              <option>AEAT · Dependencia Regional Gestión</option>
+              <option>AEAT · Inspección Financiera y Tributaria</option>
+              <option>TEAR · Tribunal Económico-Administrativo Regional</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Número de expediente <span class="form-label-sub">opcional · ayuda para trazabilidad</span></label>
+          <input class="form-input mono" placeholder="00000000000" value="2022-IRPF-3345678-A"/>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-row">
+            <label class="form-label">Fecha de notificación</label>
+            <input class="form-input mono" type="text" value="28/11/2023"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Fecha firma conformidad</label>
+            <input class="form-input mono" type="text" value="12/01/2024"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-title">Documento de la paralela</div>
+        <div class="form-card-sub">Sube la notificación firmada · quedará archivada y vinculada al ejercicio 2022</div>
+
+        <div class="mini-dropzone" onclick="showToast('Selector archivo · PDF · imagen')">
+          <div class="mini-dz-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align: -2px; margin-right: 6px; color: var(--ink-3);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Arrastra el PDF de la paralela aquí
+          </div>
+          <div class="mini-dz-sub">o haz click para seleccionar · PDF · PNG · JPG</div>
+        </div>
+
+        <div style="margin-top: 12px; padding: 12px 14px; background: var(--pos-wash); border: 1px solid rgba(30,107,58,0.22); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="color: var(--pos); flex-shrink: 0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+          <div style="flex: 1;">
+            <div style="font-size: 12.5px; font-weight: 600; color: var(--ink);">paralela_2022_SF12_conformidad.pdf</div>
+            <div style="font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">842 KB · 8 páginas · subido hace 2 min</div>
+          </div>
+          <button class="row-btn-icon" title="Eliminar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-card-title">Resumen rápido de la paralela</div>
+        <div class="form-card-sub">Cuéntale a tu yo del futuro de qué iba esto · en una línea</div>
+        <div class="form-row">
+          <textarea class="form-textarea" placeholder="Ej · Gastos de acondicionamiento de Carles Buigas no acreditados documentalmente · recalculo base amortizable.">Gastos de acondicionamiento de Carles Buigas no acreditados documentalmente · Hacienda recalcula coste adquisición y base amortizable del inmueble.</textarea>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="wiz-foot">
+    <div class="wiz-foot-status">
+      <strong>Corrección año 2022</strong> · notificada 28/11/2023 · firmada 12/01/2024
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" onclick="showPage('ejercicios')">← Cancelar</button>
+      <button class="btn btn-gold" onclick="showPage('wiz-2')">
+        Continuar · qué cambia
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 03 · WIZARD paso 2 · ELIGE QUÉ CAMBIA -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page wiz" id="page-wiz-2">
+
+  <div class="wiz-topbar">
+    <div class="wiz-tb-brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Corrección · inspección</div></div>
+    </div>
+    <div class="stepper">
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Paralela</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item active"><span class="stepper-circle">2</span><span class="stepper-label">Qué cambia</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">3</span><span class="stepper-label">Delta</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">4</span><span class="stepper-label">Impacto año</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">5</span><span class="stepper-label">Cascada</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+      <span class="wiz-tb-badge">Año 2022</span>
+      <div class="wiz-tb-close" onclick="showPage('ejercicios')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+  </div>
+
+  <div class="wiz-content">
+    <div class="wiz-inner">
+      <div class="wiz-step-head">
+        <div class="wiz-step-kick">Paso 2 de 5</div>
+        <h2>¿Qué ha cambiado Hacienda?</h2>
+        <p>Marca las categorías afectadas por la paralela. En el siguiente paso rellenarás los valores concretos de cada una. Puedes elegir varias.</p>
+      </div>
+
+      <div class="cat-grid">
+
+        <div class="cat-item selected">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Inmueble</div>
+            <div class="cat-sub">coste adquisición · base amortizable · amortización</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Préstamo</div>
+            <div class="cat-sub">intereses deducidos · capital pendiente</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Contrato · rentas</div>
+            <div class="cat-sub">rentas declaradas · reducción IRPF</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Gastos deducibles</div>
+            <div class="cat-sub">IBI · comunidad · suministros · conservación</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Rendimientos · otros</div>
+            <div class="cat-sub">actividades · mobiliario · ganancias patrimoniales</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Deducciones</div>
+            <div class="cat-sub">autonómicas · rehabilitación · donativos</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">M130 · modelos</div>
+            <div class="cat-sub">pagos fraccionados · retenciones</div>
+          </div>
+        </div>
+
+        <div class="cat-item">
+          <div class="cat-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="cat-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="cat-title">Otro</div>
+            <div class="cat-sub">cualquier otra cosa · describirás qué</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="info-banner" style="margin-top: 20px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div><strong>Tu caso 2022.</strong> Hacienda corrigió el coste de adquisición de Carles Buigas (gastos no acreditados) · lo que a su vez cambia base amortizable y amortización anual. Basta con marcar <strong>Inmueble</strong> · Atlas propagará el resto.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="wiz-foot">
+    <div class="wiz-foot-status">
+      <strong>1 categoría seleccionada</strong> · Inmueble · SF12 Carles Buigas
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" onclick="showPage('wiz-1')">← Volver</button>
+      <button class="btn btn-gold" onclick="showPage('wiz-3')">
+        Continuar · delta
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 04 · WIZARD paso 3 · CAPTURA DELTA -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page wiz" id="page-wiz-3">
+
+  <div class="wiz-topbar">
+    <div class="wiz-tb-brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Corrección · inspección</div></div>
+    </div>
+    <div class="stepper">
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Paralela</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Qué cambia</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item active"><span class="stepper-circle">3</span><span class="stepper-label">Delta</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">4</span><span class="stepper-label">Impacto año</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">5</span><span class="stepper-label">Cascada</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+      <span class="wiz-tb-badge">Año 2022</span>
+      <div class="wiz-tb-close" onclick="showPage('ejercicios')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+  </div>
+
+  <div class="wiz-content">
+    <div class="wiz-inner">
+      <div class="wiz-step-head">
+        <div class="wiz-step-kick">Paso 3 de 5</div>
+        <h2>Captura la corrección</h2>
+        <p>Atlas tiene tu valor v1 · necesitamos el v2 que dice Hacienda. Por defecto solo pedimos lo que cambia · si quieres ver todas las casillas del año lado a lado · abre la comparativa completa.</p>
+      </div>
+
+      <!-- Delta 1 · Coste adquisición SF12 -->
+      <div class="delta-card">
+        <div class="delta-hd">
+          <div class="delta-hd-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+          </div>
+          <div style="flex: 1;">
+            <div class="delta-hd-title">Coste adquisición · SF12 Carles Buigas</div>
+            <div class="delta-hd-sub">Casilla C_COSTEAD · base del cálculo amortización</div>
+          </div>
+        </div>
+
+        <div class="delta-compare">
+          <div class="delta-box v1">
+            <div class="delta-box-lab">Valor v1 · declarado</div>
+            <div class="delta-box-val">128.450 €</div>
+            <div class="delta-box-sub">tu declaración · 27/06/2023</div>
+          </div>
+          <div class="delta-arrow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="delta-box v2">
+            <div class="delta-box-lab">Valor v2 · paralela</div>
+            <input class="form-input mono" value="98.831" style="font-size: 20px; font-weight: 700; padding: 4px 0; border: none; background: transparent; color: var(--gold-ink);"/>
+            <div class="delta-box-sub">Hacienda · 12/01/2024</div>
+          </div>
+        </div>
+
+        <div class="delta-diff">
+          <div>Diferencia aplicada</div>
+          <div class="delta-diff-val">−29.619 €</div>
+        </div>
+
+        <div class="delta-motivo">
+          <label class="form-label" style="margin-bottom: 6px; display: block;">Motivo de la corrección <span class="form-label-sub">tal como aparece en la paralela</span></label>
+          <textarea class="form-textarea">Gastos de acondicionamiento e impuestos indirectos no acreditados documentalmente. Se excluye del coste de adquisición el importe de 29.619 € · base amortizable recalculada.</textarea>
+        </div>
+      </div>
+
+      <!-- Derivado · base amortizable -->
+      <div class="delta-card" style="border-left: 3px solid var(--gold);">
+        <div class="delta-hd">
+          <div class="delta-hd-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <div style="flex: 1;">
+            <div class="delta-hd-title">Base amortizable · SF12</div>
+            <div class="delta-hd-sub">Casilla C_BASEAMOR · calculada automáticamente a partir del coste</div>
+          </div>
+          <span class="chip-dot" style="background: var(--brand-wash); color: var(--brand);">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            auto
+          </span>
+        </div>
+
+        <div class="delta-compare">
+          <div class="delta-box v1">
+            <div class="delta-box-lab">Valor v1 · declarado</div>
+            <div class="delta-box-val">75.383,16 €</div>
+            <div class="delta-box-sub">coste × (1 − valor suelo 41,3%)</div>
+          </div>
+          <div class="delta-arrow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="delta-box v2">
+            <div class="delta-box-lab">Valor v2 · paralela</div>
+            <div class="delta-box-val" style="color: var(--gold-ink);">57.989,36 €</div>
+            <div class="delta-box-sub">recalculado · 98.831 × 58,7%</div>
+          </div>
+        </div>
+
+        <div class="delta-diff">
+          <div>Diferencia aplicada</div>
+          <div class="delta-diff-val">−17.393,80 €</div>
+        </div>
+      </div>
+
+      <!-- Derivado · amortización anual -->
+      <div class="delta-card" style="border-left: 3px solid var(--gold);">
+        <div class="delta-hd">
+          <div class="delta-hd-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div style="flex: 1;">
+            <div class="delta-hd-title">Amortización anual · SF12</div>
+            <div class="delta-hd-sub">Casilla 0115 · 3% de la base amortizable</div>
+          </div>
+          <span class="chip-dot" style="background: var(--brand-wash); color: var(--brand);">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            auto
+          </span>
+        </div>
+
+        <div class="delta-compare">
+          <div class="delta-box v1">
+            <div class="delta-box-lab">Valor v1 · declarado</div>
+            <div class="delta-box-val">2.261,49 €</div>
+            <div class="delta-box-sub">75.383,16 × 3%</div>
+          </div>
+          <div class="delta-arrow">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div class="delta-box v2">
+            <div class="delta-box-lab">Valor v2 · paralela</div>
+            <div class="delta-box-val" style="color: var(--gold-ink);">1.739,68 €</div>
+            <div class="delta-box-sub">57.989,36 × 3%</div>
+          </div>
+        </div>
+
+        <div class="delta-diff">
+          <div>Diferencia aplicada</div>
+          <div class="delta-diff-val">−521,81 € · año</div>
+        </div>
+
+        <div class="cascade-note" style="margin-top: 12px;">
+          <strong>Este cambio cascada hacia adelante.</strong> La amortización anual reducida afecta a todos los años posteriores al 2022 · 2023 · 2024 · 2025 en curso. Verás el detalle en el paso 5.
+        </div>
+      </div>
+
+      <!-- Comparativa completa expandible -->
+      <div class="delta-compare-full">
+        <div class="delta-compare-full-hd" onclick="toggleFull()">
+          <div>
+            <div class="delta-compare-full-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px; margin-right: 5px; color: var(--ink-3);"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+              Ver comparativa completa del año 2022
+            </div>
+            <div class="delta-compare-full-sub">todas las casillas del IRPF 2022 · v1 vs v2 · las cambiadas destacadas</div>
+          </div>
+          <span id="full-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--ink-4);"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </div>
+
+        <div id="full-body" style="display: none;">
+          <table class="compare-tbl">
+            <thead>
+              <tr>
+                <th>Casilla</th>
+                <th>Concepto</th>
+                <th class="r">v1 · declarado</th>
+                <th class="r">v2 · paralela</th>
+                <th class="r">Δ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">0002</td>
+                <td>Rendimiento trabajo</td>
+                <td class="r">42.820,00</td>
+                <td class="r">42.820,00</td>
+                <td class="r" style="color: var(--ink-5);">=</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">0102</td>
+                <td>Rendimiento capital inmobiliario · SF12</td>
+                <td class="r">8.700,00</td>
+                <td class="r">8.700,00</td>
+                <td class="r" style="color: var(--ink-5);">=</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">0115</td>
+                <td>Amortización SF12 · casilla 0115</td>
+                <td class="r">2.261,49</td>
+                <td class="r">1.739,68</td>
+                <td class="r neg-col">−521,81</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">C_BASEAMOR</td>
+                <td>Base amortizable SF12</td>
+                <td class="r">75.383,16</td>
+                <td class="r">57.989,36</td>
+                <td class="r neg-col">−17.393,80</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">C_COSTEAD</td>
+                <td>Coste adquisición SF12</td>
+                <td class="r">128.450,00</td>
+                <td class="r">98.831,00</td>
+                <td class="r neg-col">−29.619,00</td>
+              </tr>
+              <tr>
+                <td class="mono">0105</td>
+                <td>Intereses financieros SF12</td>
+                <td class="r">1.847,20</td>
+                <td class="r">1.847,20</td>
+                <td class="r" style="color: var(--ink-5);">=</td>
+              </tr>
+              <tr>
+                <td class="mono">0106</td>
+                <td>Gastos conservación · reparación</td>
+                <td class="r">382,00</td>
+                <td class="r">382,00</td>
+                <td class="r" style="color: var(--ink-5);">=</td>
+              </tr>
+              <tr>
+                <td class="mono">0110</td>
+                <td>IBI SF12</td>
+                <td class="r">245,00</td>
+                <td class="r">245,00</td>
+                <td class="r" style="color: var(--ink-5);">=</td>
+              </tr>
+              <tr style="font-weight: 700;">
+                <td colspan="5" style="padding: 12px 10px 8px; color: var(--ink-4); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;">Resultados finales</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">0500</td>
+                <td>Base liquidable general</td>
+                <td class="r">46.728,31</td>
+                <td class="r">47.250,12</td>
+                <td class="r pos-col">+521,81</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">0620</td>
+                <td>Cuota líquida autonómica + estatal</td>
+                <td class="r">3.952,18</td>
+                <td class="r">4.166,92</td>
+                <td class="r pos-col">+214,74</td>
+              </tr>
+              <tr class="changed">
+                <td class="mono">0670</td>
+                <td>Resultado declaración</td>
+                <td class="r pos-col">−243,00 (dev)</td>
+                <td class="r neg-col">+487,00 (ing)</td>
+                <td class="r neg-col">+730,00</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="wiz-foot">
+    <div class="wiz-foot-status">
+      <strong>3 valores corregidos</strong> · SF12 coste adquisición + 2 derivados automáticos
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" onclick="showPage('wiz-2')">← Volver</button>
+      <button class="btn btn-gold" onclick="showPage('wiz-4')">
+        Continuar · impacto año
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 05 · WIZARD paso 4 · IMPACTO AÑO -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page wiz" id="page-wiz-4">
+
+  <div class="wiz-topbar">
+    <div class="wiz-tb-brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Corrección · inspección</div></div>
+    </div>
+    <div class="stepper">
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Paralela</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Qué cambia</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Delta</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item active"><span class="stepper-circle">4</span><span class="stepper-label">Impacto año</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item"><span class="stepper-circle">5</span><span class="stepper-label">Cascada</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+      <span class="wiz-tb-badge">Año 2022</span>
+      <div class="wiz-tb-close" onclick="showPage('ejercicios')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+  </div>
+
+  <div class="wiz-content">
+    <div class="wiz-inner">
+      <div class="wiz-step-head">
+        <div class="wiz-step-kick">Paso 4 de 5</div>
+        <h2>Impacto económico del año 2022</h2>
+        <p>Así queda tu declaración 2022 con la paralela aplicada. El recargo de Hacienda lo calcula Hacienda · copia el total que aparece en el documento · Atlas lo guarda para contabilidad.</p>
+      </div>
+
+      <div class="impact-big">
+        <div class="impact-kick">2022 · comparativa resultados</div>
+        <div class="impact-title">De devolución a ingreso · +730 € de diferencia</div>
+        <div class="impact-sub">Tu declaración original 2022 resultaba en una pequeña devolución (243 €). Con la paralela aplicada · pasa a ingreso complementario de 487 € · más intereses de demora que calcula Hacienda.</div>
+      </div>
+
+      <!-- 3 columnas v1 / v2 / diff -->
+      <div class="impact-compare-row">
+        <div class="impact-col">
+          <div class="impact-col-kick">v1 · declarado original</div>
+          <div class="impact-col-val pos">+243 €</div>
+          <div class="impact-col-sub">devolución · 27/06/2023</div>
+        </div>
+        <div class="impact-col highlight">
+          <div class="impact-col-kick">v2 · tras paralela</div>
+          <div class="impact-col-val neg">−487 €</div>
+          <div class="impact-col-sub">a ingresar · 12/01/2024</div>
+        </div>
+        <div class="impact-col">
+          <div class="impact-col-kick">Diferencia</div>
+          <div class="impact-col-val neg">−730 €</div>
+          <div class="impact-col-sub">cambio en resultado</div>
+        </div>
+      </div>
+
+      <!-- Breakdown detallado -->
+      <div class="impact-breakdown">
+        <div style="font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; margin-bottom: 14px;">
+          Desglose · casillas clave
+        </div>
+
+        <div class="impact-breakdown-row">
+          <div>
+            <div class="ib-lab">Rendimiento neto capital inmobiliario</div>
+            <div class="ib-sub">suma de los 4 inmuebles</div>
+          </div>
+          <div class="ib-val">4.712,12 €</div>
+          <div class="ib-val highlight">5.233,93 €</div>
+          <div class="ib-diff pos">+521,81 €</div>
+        </div>
+
+        <div class="impact-breakdown-row">
+          <div>
+            <div class="ib-lab">Base imponible general</div>
+            <div class="ib-sub">suma rendimientos</div>
+          </div>
+          <div class="ib-val">47.532,12 €</div>
+          <div class="ib-val highlight">48.053,93 €</div>
+          <div class="ib-diff pos">+521,81 €</div>
+        </div>
+
+        <div class="impact-breakdown-row">
+          <div>
+            <div class="ib-lab">Cuota íntegra estatal + autonómica</div>
+            <div class="ib-sub">tramos IRPF aplicados</div>
+          </div>
+          <div class="ib-val">10.827,40 €</div>
+          <div class="ib-val highlight">11.042,14 €</div>
+          <div class="ib-diff pos">+214,74 €</div>
+        </div>
+
+        <div class="impact-breakdown-row">
+          <div>
+            <div class="ib-lab">Cuota líquida</div>
+            <div class="ib-sub">tras deducciones</div>
+          </div>
+          <div class="ib-val">3.952,18 €</div>
+          <div class="ib-val highlight">4.166,92 €</div>
+          <div class="ib-diff pos">+214,74 €</div>
+        </div>
+
+        <div class="impact-breakdown-row total">
+          <div>
+            <div class="ib-lab">Resultado declaración</div>
+            <div class="ib-sub">a devolver (+) / a ingresar (−)</div>
+          </div>
+          <div class="ib-val pos-col">+243,00 €</div>
+          <div class="ib-val highlight neg-col">−487,00 €</div>
+          <div class="ib-diff neg">−730,00 €</div>
+        </div>
+      </div>
+
+      <!-- Recargo / intereses demora -->
+      <div class="form-card">
+        <div class="form-card-title">Importes a ingresar en Hacienda</div>
+        <div class="form-card-sub">Copia los importes exactos que aparecen en tu paralela firmada · Atlas no recalcula intereses de demora · los guarda tal cual</div>
+
+        <div class="form-row-3">
+          <div class="form-row">
+            <label class="form-label">Principal adicional · €</label>
+            <input class="form-input mono" value="487,00"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Intereses de demora · €</label>
+            <input class="form-input mono" value="28,14"/>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Total a ingresar · €</label>
+            <input class="form-input mono" value="515,14" style="font-weight: 700; border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink);"/>
+          </div>
+        </div>
+
+        <div class="form-row-2" style="margin-top: 6px;">
+          <div class="form-row">
+            <label class="form-label">Estado del pago</label>
+            <select class="form-select">
+              <option>Pagado · ingreso realizado</option>
+              <option>Pendiente · plazo voluntario</option>
+              <option>Pendiente · vía ejecutiva</option>
+              <option>Aplazado · plan de pagos firmado</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label class="form-label">Fecha del pago</label>
+            <input class="form-input mono" value="18/01/2024"/>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="wiz-foot">
+    <div class="wiz-foot-status">
+      <strong>Impacto 2022</strong> · 515,14 € a ingresar · principal + intereses · pagado 18/01/2024
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" onclick="showPage('wiz-3')">← Volver</button>
+      <button class="btn btn-gold" onclick="showPage('wiz-5')">
+        Continuar · ver cascada
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 06 · WIZARD paso 5 · PREVIEW CASCADA (crítico) -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page wiz" id="page-wiz-5">
+
+  <div class="wiz-topbar">
+    <div class="wiz-tb-brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Corrección · inspección</div></div>
+    </div>
+    <div class="stepper">
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Paralela</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Qué cambia</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Delta</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item done"><span class="stepper-circle">✓</span><span class="stepper-label">Impacto año</span></div>
+      <div class="stepper-line"></div>
+      <div class="stepper-item active"><span class="stepper-circle">5</span><span class="stepper-label">Cascada</span></div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; justify-content: flex-end;">
+      <span class="wiz-tb-badge">Año 2022</span>
+      <div class="wiz-tb-close" onclick="showPage('ejercicios')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+    </div>
+  </div>
+
+  <div class="wiz-content">
+    <div class="wiz-inner">
+      <div class="wiz-step-head">
+        <div class="wiz-step-kick">Paso 5 de 5 · revisa con calma antes de aplicar</div>
+        <h2>Cómo cascada la corrección hacia adelante</h2>
+        <p>Así van a cambiar los años posteriores al 2022. Atlas no reescribe años declarados · solo marca que los valores calculados vivos difieren de los declarados. Los años en curso sí se recalculan directamente.</p>
+      </div>
+
+      <div class="info-banner gold">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div><strong>Regla importante · los años declarados no se reescriben.</strong> Las declaraciones ya presentadas son verdad consumida. Atlas deja constancia del desfase con los valores corregidos · pero no los rescribe. Si Hacienda también te ha corregido 2023 o 2024 · aplica paralelas separadas para cada año.</div>
+      </div>
+
+      <!-- 2023 -->
+      <div class="cascade-year-card">
+        <div class="cascade-year-hd">
+          <div class="cascade-year-badge">2023</div>
+          <div>
+            <div class="cascade-year-title">2023 · declarado</div>
+            <div class="cascade-year-sub">presentado 25/06/2024 · tiene paralela propia M130 aplicada</div>
+          </div>
+          <span class="cascade-impact-count">3 valores</span>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización acumulada SF12</div>
+            <div class="cc-label-sub">base cálculo futura venta · casilla C_AMORT</div>
+          </div>
+          <div class="cc-from">6.784,47 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">5.218,84 €</div>
+          <div class="cc-diff neg">−1.565,63 €</div>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización anual declarada vs calculada</div>
+            <div class="cc-label-sub">la declarada fue 2.261,49 € · la correcta sería 1.739,68 €</div>
+          </div>
+          <div class="cc-from">2.261,49 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">1.739,68 €</div>
+          <div class="cc-diff neg">−521,81 €</div>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Base amortizable de referencia</div>
+            <div class="cc-label-sub">nuevo valor consolidado para años siguientes</div>
+          </div>
+          <div class="cc-from">75.383,16 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">57.989,36 €</div>
+          <div class="cc-diff neg">−17.393,80 €</div>
+        </div>
+
+        <div class="cascade-note">
+          <strong>No se reescribe la declaración 2023.</strong> El año queda marcado como "desfase · amortización declarada excesiva" · Atlas lo muestra en Amortizaciones con aviso. Si quieres regularizar 2023 también · aplica una paralela separada (ya tienes una por M130 · distinta a esta).
+        </div>
+      </div>
+
+      <!-- 2024 -->
+      <div class="cascade-year-card">
+        <div class="cascade-year-hd">
+          <div class="cascade-year-badge">2024</div>
+          <div>
+            <div class="cascade-year-title">2024 · declarado</div>
+            <div class="cascade-year-sub">presentado 28/06/2025 · no tiene paralela propia</div>
+          </div>
+          <span class="cascade-impact-count">2 valores</span>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización acumulada SF12</div>
+            <div class="cc-label-sub">sigue acumulando desfase · más años · mayor brecha</div>
+          </div>
+          <div class="cc-from">9.045,96 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">6.958,52 €</div>
+          <div class="cc-diff neg">−2.087,44 €</div>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización anual declarada vs calculada</div>
+            <div class="cc-label-sub">misma diferencia que 2023 · se mantiene</div>
+          </div>
+          <div class="cc-from">2.261,49 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">1.739,68 €</div>
+          <div class="cc-diff neg">−521,81 €</div>
+        </div>
+
+        <div class="cascade-note">
+          <strong>Año declarado · no se reescribe.</strong> Quedará marcado con aviso similar al 2023. Puedes optar por regularizar con una declaración complementaria voluntaria si lo consideras · Atlas te ayudaría.
+        </div>
+      </div>
+
+      <!-- 2025 · en curso -->
+      <div class="cascade-year-card" style="border-left: 3px solid var(--brand);">
+        <div class="cascade-year-hd">
+          <div class="cascade-year-badge curso">2025</div>
+          <div>
+            <div class="cascade-year-title">2025 · en curso · sin declarar todavía</div>
+            <div class="cascade-year-sub">campaña abril-junio 2026 · valores se aplicarán directamente</div>
+          </div>
+          <span class="cascade-impact-count" style="background: var(--brand-wash); color: var(--brand);">Directo</span>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización anual SF12 · año 2025</div>
+            <div class="cc-label-sub">se usa el valor corregido desde el inicio</div>
+          </div>
+          <div class="cc-from">2.261,49 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">1.739,68 €</div>
+          <div class="cc-diff neg">−521,81 €</div>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Amortización acumulada SF12 · cierre 2025</div>
+            <div class="cc-label-sub">recalculada con base corregida</div>
+          </div>
+          <div class="cc-from">11.307,45 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">8.698,20 €</div>
+          <div class="cc-diff neg">−2.609,25 €</div>
+        </div>
+
+        <div class="cascade-change">
+          <div>
+            <div class="cc-label">Base amortizable de referencia 2025</div>
+            <div class="cc-label-sub">valor corregido · aplicable directamente</div>
+          </div>
+          <div class="cc-from">75.383,16 €</div>
+          <div class="cc-arr">→</div>
+          <div class="cc-to">57.989,36 €</div>
+          <div class="cc-diff neg">−17.393,80 €</div>
+        </div>
+
+        <div style="background: var(--pos-wash); border: 1px solid rgba(30,107,58,0.22); border-left: 3px solid var(--pos); padding: 10px 14px; border-radius: 6px; margin-top: 12px; font-size: 11.5px; color: #134021; line-height: 1.5;">
+          <strong>Año en curso · sí se reescribe.</strong> La declaración 2025 que presentarás en abril-junio 2026 saldrá ya con los valores corregidos · sin desfase. Atlas también regenerará proyecciones hasta fin de vida útil del inmueble.
+        </div>
+      </div>
+
+      <!-- Confirmación obligatoria -->
+      <div class="cascade-check" onclick="toggleCheck()">
+        <div class="cascade-check-box" id="cheq-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" id="cheq-tick" style="display: none;"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="cascade-check-text">
+          <strong>Entiendo los efectos de aplicar esta corrección.</strong> El año 2022 pasará a tener versión v2 con los nuevos valores. Los años 2023 y 2024 quedarán marcados con desfase de amortización · sin reescribirse. El año 2025 se recalculará directamente. Esta acción queda registrada y puede deshacerse durante los siguientes 30 días · después será permanente.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="wiz-foot">
+    <div class="wiz-foot-status">
+      <strong>Cascada preparada</strong> · 3 años afectados · 2023/2024 desfase · 2025 reescrito
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" onclick="showPage('wiz-4')">← Volver</button>
+      <button class="btn btn-gold" onclick="showPage('final')" id="btn-apply">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Aplicar corrección · archivar v1 · activar v2
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- 07 · VISTA FINAL · año 2022 v2 aplicada -->
+<!-- ═══════════════════════════════════════ -->
+<div class="page" id="page-final">
+  <div class="app">
+
+    <!-- Sidebar Atlas -->
+    <aside class="side">
+      <div class="side-brand">
+        <div class="brand-mark">A</div>
+        <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+      </div>
+      <nav class="nav" style="margin-top: 14px;">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+      </nav>
+      <div class="nav-section">Mis activos</div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      </nav>
+      <div class="nav-section">Operativa</div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+        <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+      </nav>
+      <div class="nav-sep"></div>
+      <nav class="nav">
+        <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+      </nav>
+      <div class="side-foot">
+        <div class="avatar">JA</div>
+        <div><div class="side-foot-name">José Antonio</div><div class="side-foot-sub">activo</div></div>
+      </div>
+    </aside>
+
+    <main class="main">
+
+      <!-- Breadcrumb + título -->
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 14px;">
+        <span onclick="showPage('ejercicios')" style="cursor: pointer;">Fiscal</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        <span onclick="showPage('ejercicios')" style="cursor: pointer;">Ejercicios</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        <span style="color: var(--ink);">2022 · con paralela aplicada</span>
+      </div>
+
+      <!-- Éxito · año v2 aplicado -->
+      <div class="final-year-card">
+        <div class="final-year-hd">
+          <div class="final-year-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div style="flex: 1;">
+            <div class="final-year-title">2022 <span style="font-family: 'JetBrains Mono', monospace; font-size: 15px; padding: 3px 9px; border-radius: 4px; background: var(--gold); color: #fff; margin-left: 8px; vertical-align: 4px; letter-spacing: 0.04em;">v2</span></div>
+            <div class="final-year-sub">Paralela SF12 aplicada · 12/01/2024 · Atlas ha cascadado los cambios a años posteriores</div>
+          </div>
+        </div>
+
+        <!-- Tabs versiones -->
+        <div class="versions-tabs">
+          <div class="versions-tab">v1 · original · 27/06/2023</div>
+          <div class="versions-tab active">v2 · tras paralela · activa</div>
+          <div class="versions-tab">Comparativa v1 vs v2</div>
+        </div>
+
+        <div class="final-actions">
+          <button class="btn btn-ghost">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            Ver documento paralela
+          </button>
+          <button class="btn btn-ghost">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar diferencias
+          </button>
+          <button class="btn btn-ghost" style="margin-left: auto; color: var(--neg); border-color: var(--neg-wash);" onclick="showToast('Deshacer · solo disponible 30 días · pedirá confirmación')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v5h5"/><path d="M3 8a9 9 0 0 1 9-5 9 9 0 1 1-9 9"/></svg>
+            Deshacer corrección
+          </button>
+        </div>
+      </div>
+
+      <!-- Resumen datos 2022 v2 -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Resumen fiscal 2022 · versión activa (v2)</div>
+            <div class="card-sub">tras aplicación paralela · valores corregidos</div>
+          </div>
+          <span class="chip-dot">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            Aplicada 12/01/2024 · hace 2 años
+          </span>
+        </div>
+        <div class="card-body" style="padding: 20px 26px;">
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px;">
+            <div style="padding: 16px 18px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--line);">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700;">Base liquidable</div>
+              <div class="mono" style="font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-top: 6px;">48.053,93 €</div>
+              <div style="font-size: 10.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">v1 · 47.532,12 €</div>
+            </div>
+            <div style="padding: 16px 18px; border-radius: 10px; background: var(--card-alt); border: 1px solid var(--line);">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700;">Cuota líquida</div>
+              <div class="mono" style="font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-top: 6px;">4.166,92 €</div>
+              <div style="font-size: 10.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">v1 · 3.952,18 €</div>
+            </div>
+            <div style="padding: 16px 18px; border-radius: 10px; background: var(--neg-wash); border: 1px solid rgba(164,51,40,0.2);">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--neg); font-weight: 700;">Resultado</div>
+              <div class="mono" style="font-size: 18px; font-weight: 700; color: var(--neg); letter-spacing: -0.02em; margin-top: 6px;">−487,00 €</div>
+              <div style="font-size: 10.5px; color: #7A2A22; margin-top: 3px; font-family: 'JetBrains Mono', monospace;">a ingresar · pagado</div>
+            </div>
+            <div style="padding: 16px 18px; border-radius: 10px; background: var(--gold-wash); border: 1px solid rgba(184,138,62,0.3);">
+              <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--gold-ink); font-weight: 700;">Total pagado Hacienda</div>
+              <div class="mono" style="font-size: 18px; font-weight: 700; color: var(--gold-ink); letter-spacing: -0.02em; margin-top: 6px;">515,14 €</div>
+              <div style="font-size: 10.5px; color: var(--gold-ink); margin-top: 3px; font-family: 'JetBrains Mono', monospace;">487 + 28,14 demora</div>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 10px;">
+            Cambios respecto a v1
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 14px; font-size: 12.5px;">
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--line-2);"><strong>Coste adquisición SF12</strong></div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-4); text-align: right;">128.450 → 98.831</div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--neg); font-weight: 700; text-align: right;">−29.619 €</div>
+
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--line-2);"><strong>Base amortizable SF12</strong></div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-4); text-align: right;">75.383 → 57.989</div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--neg); font-weight: 700; text-align: right;">−17.394 €</div>
+
+            <div style="padding: 10px 0; border-bottom: 1px solid var(--line-2);"><strong>Amortización anual SF12</strong></div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-4); text-align: right;">2.261 → 1.740</div>
+            <div class="mono" style="padding: 10px 0; border-bottom: 1px solid var(--line-2); color: var(--neg); font-weight: 700; text-align: right;">−521 €</div>
+
+            <div style="padding: 10px 0;"><strong>Cascada hacia adelante</strong></div>
+            <div style="padding: 10px 0; color: var(--ink-4); text-align: right;">2023 · 2024 · 2025</div>
+            <div style="padding: 10px 0; color: var(--gold-ink); font-weight: 700; text-align: right;">3 años afectados</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Estado cascada aplicada -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Años afectados por la cascada</div>
+            <div class="card-sub">el 2025 se ha recalculado directamente · 2023 y 2024 tienen desfase marcado</div>
+          </div>
+        </div>
+        <div class="card-body" style="padding: 4px 0 12px;">
+          <div style="padding: 14px 26px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-bottom: 1px solid var(--line-2);">
+            <div class="cascade-year-badge" style="width: 36px; height: 36px; font-size: 13px;">2023</div>
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink);">2023 · marcado con desfase</div>
+              <div style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px;">amortización declarada 2.261 € · correcta 1.740 € · desfase visible en Amortizaciones</div>
+            </div>
+            <span class="chip-dot" style="background: var(--warn-wash); color: var(--warn);">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="12"/><circle cx="12" cy="17" r="0.5"/></svg>
+              Desfase
+            </span>
+          </div>
+
+          <div style="padding: 14px 26px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; border-bottom: 1px solid var(--line-2);">
+            <div class="cascade-year-badge" style="width: 36px; height: 36px; font-size: 13px;">2024</div>
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink);">2024 · marcado con desfase</div>
+              <div style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px;">mismo desfase · declaración no reescrita</div>
+            </div>
+            <span class="chip-dot" style="background: var(--warn-wash); color: var(--warn);">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="12"/><circle cx="12" cy="17" r="0.5"/></svg>
+              Desfase
+            </span>
+          </div>
+
+          <div style="padding: 14px 26px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;">
+            <div class="cascade-year-badge curso" style="width: 36px; height: 36px; font-size: 13px;">2025</div>
+            <div>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink);">2025 · recalculado directamente</div>
+              <div style="font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px;">año en curso · valores corregidos aplicados desde el origen · declaración abril-junio 2026 ya sale bien</div>
+            </div>
+            <span class="chip-dot" style="background: var(--pos-wash); color: var(--pos);">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              Reescrito
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const pg = document.getElementById('page-' + id);
+    if (pg) pg.classList.add('active');
+    const sel = document.querySelector('.demo-sel select');
+    if (sel) sel.value = id;
+    window.scrollTo(0, 0);
+  }
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+  function toggleFull() {
+    const b = document.getElementById('full-body');
+    const a = document.getElementById('full-arrow');
+    if (b.style.display === 'none') {
+      b.style.display = 'block';
+      a.style.transform = 'rotate(180deg)';
+    } else {
+      b.style.display = 'none';
+      a.style.transform = '';
+    }
+  }
+  function toggleCheck() {
+    const box = document.getElementById('cheq-box');
+    const tick = document.getElementById('cheq-tick');
+    box.classList.toggle('checked');
+    tick.style.display = box.classList.contains('checked') ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>

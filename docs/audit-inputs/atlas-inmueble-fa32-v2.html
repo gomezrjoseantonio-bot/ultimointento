@@ -1,0 +1,1347 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Fuertes Acevedo 32 · Detalle</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F5F4F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF6;
+    --line:      #E6E3DC;
+    --line-2:    #EFECE5;
+    --ink:       #141B2E;
+    --ink-2:     #2C3547;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --brand:       #1E2954;
+    --brand-2:     #2A3875;
+    --brand-ink:   #0C1230;
+    --brand-wash:  #E8EAF0;
+    --gold:        #B88A3E;
+    --gold-2:      #C59A47;
+    --gold-wash:   #F3EAD6;
+    --gold-ink:    #7C5C1F;
+    --pos:         #1E6B3A;
+    --pos-wash:    #E4F0E8;
+    --neg:         #A43328;
+    --neg-wash:    #F5E3E0;
+    --warn:        #8A6213;
+    --warn-wash:   #F5ECD6;
+
+    /* ▼ COLORES DE HABITACIÓN (metadatos físicos del usuario) ▼
+       Estos colores son identidad de la habitación física, NO colores de sistema.
+       Solo se usan dentro del componente de habitación. */
+    --room-green:      #4A7C59;
+    --room-green-wash: #E3EAE5;
+    --room-red:        #A23E3E;
+    --room-red-wash:   #EFDAD9;
+    --room-yellow:     #C89828;
+    --room-yellow-wash:#F4E9CC;
+    --room-blue:       #3B5A7F;
+    --room-blue-wash:  #DCE2EA;
+    --room-bw:         #2C2C2C;
+    --room-bw-wash:    #E5E5E5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═════════════ SIDEBAR ═════════════ */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═════════════ MAIN ═════════════ */
+  .main { padding: 22px 32px 48px; max-width: 1460px; }
+
+  /* Topbar */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* Breadcrumb */
+  .crumbs { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-4); margin-bottom: 10px; }
+  .crumbs a { cursor: pointer; }
+  .crumbs a:hover { color: var(--gold); }
+  .crumbs svg { color: var(--ink-5); }
+  .crumbs .current { color: var(--ink); font-weight: 500; }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13px; color: var(--ink-4); margin-top: 5px; }
+  .page-sub .dot { display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--ink-5); margin: 0 8px; vertical-align: middle; }
+  .page-head-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Tabs internos */
+  .tabs-inner { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+  .tabs-inner button { padding: 11px 18px; font-size: 13.5px; font-weight: 500; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .tabs-inner button:hover { color: var(--ink-2); }
+  .tabs-inner button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+  .tab-count { margin-left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--ink-3); }
+  .tabs-inner button.active .tab-count { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -0.015em; }
+  .card-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .card-action { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; font-weight: 500; cursor: pointer; }
+  .card-action:hover { background: var(--gold-wash); }
+
+  /* Grid */
+  .row { display: grid; gap: 14px; margin-bottom: 14px; }
+  .row-3 { grid-template-columns: repeat(3, 1fr); }
+
+  /* ═══════════ HERO INMUEBLE ═══════════ */
+  .hero-inmueble {
+    display: grid; grid-template-columns: 400px 1fr; gap: 22px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .hero-photo {
+    position: relative;
+    background: linear-gradient(135deg, #2A3544 0%, #4A5568 100%);
+    min-height: 280px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 16px;
+    color: #fff;
+  }
+  .hero-photo::before {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(circle at 30% 40%, rgba(255,255,255,0.08) 0, transparent 40%),
+      radial-gradient(circle at 70% 70%, rgba(184,138,62,0.15) 0, transparent 50%);
+  }
+  .photo-ico {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    color: rgba(255,255,255,0.5);
+  }
+  .photo-count {
+    position: relative; z-index: 1;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+    color: rgba(255,255,255,0.9); font-size: 11px;
+    width: fit-content;
+  }
+  .photo-chips { position: relative; z-index: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .photo-chip {
+    padding: 4px 10px; border-radius: 999px;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(10px);
+    color: #fff; font-size: 11px; font-weight: 500;
+  }
+  .hero-info { padding: 20px 24px 20px 0; display: flex; flex-direction: column; }
+  .hero-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+  .hero-h1 { font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .hero-addr { font-size: 13px; color: var(--ink-4); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+  .hero-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 500;
+    background: var(--bg); color: var(--ink-3); border: 1px solid var(--line);
+  }
+  .tag.ok { background: var(--pos-wash); color: var(--pos); border-color: rgba(30,107,58,.2); }
+  .tag.warn { background: var(--warn-wash); color: var(--warn); border-color: rgba(138,98,19,.2); }
+
+  .hero-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line-2); }
+  .fact { }
+  .fact-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .fact-val { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--ink); margin-top: 3px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .fact-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .fact-sub.pos { color: var(--pos); }
+  .fact-sub.neg { color: var(--neg); }
+
+  /* ═══════════ 3 KPIs DE RENTABILIDAD ═══════════ */
+  .kpi-big { position: relative; overflow: hidden; }
+  .kpi-big::before {
+    content: ""; position: absolute; top: 0; right: 0;
+    width: 100px; height: 100%;
+    background: radial-gradient(circle at top right, rgba(184,138,62,.05), transparent 60%);
+  }
+  .kpi-big-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; position: relative; }
+  .kpi-big-ico { width: 32px; height: 32px; border-radius: 8px; background: var(--brand-wash); color: var(--brand); display: flex; align-items: center; justify-content: center; }
+  .kpi-big-ico.gold { background: var(--gold-wash); color: var(--gold-ink); }
+  .kpi-big-ico.pos { background: var(--pos-wash); color: var(--pos); }
+  .kpi-big-lab { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .kpi-big-sub { font-size: 11px; color: var(--ink-4); }
+  .kpi-big-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 28px; color: var(--ink); letter-spacing: -0.025em; font-variant-numeric: tabular-nums; line-height: 1; position: relative; }
+  .kpi-big-val.pos { color: var(--pos); }
+  .kpi-big-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); font-size: 11.5px; color: var(--ink-4); position: relative; line-height: 1.5; }
+  .kpi-big-footer strong { color: var(--ink); font-weight: 600; }
+  .kpi-big-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; }
+  .kpi-big-trend.pos { color: var(--pos); }
+  .kpi-big-trend.neg { color: var(--neg); }
+
+  /* ═══════════ HABITACIONES GRID ═══════════ */
+  .rooms-section-hd {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 14px; padding: 0 2px;
+  }
+  .rooms-section-title { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .rooms-section-sub { font-size: 12px; color: var(--ink-4); margin-top: 3px; }
+
+  .rooms-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+  .room {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all .12s;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .room:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(14,20,35,.08); }
+  .room-color-band {
+    height: 44px;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 14px;
+    color: #fff;
+    position: relative;
+  }
+  .room-color-band .room-num { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .room-color-band .room-color-name { font-size: 10px; font-weight: 500; opacity: .75; letter-spacing: 0.04em; text-transform: lowercase; margin-top: 2px; }
+  .room-body {
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1;
+  }
+  .room-tenant { display: flex; align-items: center; gap: 9px; margin-bottom: 4px; }
+  .room-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 10px; color: #fff; flex-shrink: 0;
+    letter-spacing: -0.02em;
+  }
+  .room-avatar.vacant {
+    background: var(--line); color: var(--ink-4);
+    border: 1.5px dashed var(--ink-5); box-sizing: border-box;
+  }
+  .room-tenant-name { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.15; }
+  .room-tenant-since { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  .room-meta-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line-2); }
+  .room-rent { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px; color: var(--ink); letter-spacing: -0.02em; }
+  .room-rent-sub { font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  .room-stay-type { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--ink-4); padding: 2px 7px; border-radius: 4px; background: var(--bg); font-weight: 500; }
+  .room-stay-type svg { color: var(--ink-4); }
+
+  /* Estado ortogonal al color */
+  .room.status-vacant .room-color-band { opacity: .45; }
+  .room.status-vacant { border-style: dashed; background: var(--card-alt); }
+
+  .room.status-overdue { border: 2px solid var(--neg); }
+  .room.status-overdue .status-badge { background: var(--neg); color: #fff; }
+
+  .room.status-ending-soon { border: 2px solid var(--gold); }
+  .room.status-ending-soon .status-badge { background: var(--gold); color: #fff; }
+
+  .status-badge {
+    position: absolute; top: 10px; right: 10px;
+    padding: 3px 8px; border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em;
+    z-index: 2; line-height: 1;
+  }
+
+  /* ═══════════ HEATMAP OCUPACIÓN ═══════════ */
+  .heatmap-section { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .heatmap-card { padding: 20px 22px; }
+  .heatmap {
+    display: grid;
+    grid-template-columns: 80px repeat(12, 1fr);
+    gap: 3px;
+    margin-top: 10px;
+  }
+  .heatmap-header { text-align: center; font-size: 10px; color: var(--ink-4); font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 4px 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .heatmap-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--ink-2);
+    padding: 0 6px 0 0;
+  }
+  .heatmap-label .room-color-dot {
+    width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+  }
+  .heatmap-cell {
+    aspect-ratio: 1.6;
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+  }
+  .heatmap-cell:hover::after {
+    content: attr(data-tooltip);
+    position: absolute; bottom: 100%; left: 50%;
+    transform: translateX(-50%);
+    background: var(--brand-ink); color: #fff;
+    padding: 5px 9px; border-radius: 5px;
+    font-size: 11px; white-space: nowrap;
+    margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    z-index: 10;
+  }
+  /* Heatmap intensidad */
+  .heatmap-cell.h-0   { background: var(--line); }
+  .heatmap-cell.h-20  { background: var(--pos-wash); }
+  .heatmap-cell.h-40  { background: #CFE3D6; }
+  .heatmap-cell.h-60  { background: #9FC5AC; }
+  .heatmap-cell.h-80  { background: #6BA37F; }
+  .heatmap-cell.h-100 { background: var(--pos); }
+
+  .heatmap-legend {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2);
+    font-size: 11px; color: var(--ink-4);
+  }
+  .legend-scale { display: flex; gap: 3px; }
+  .legend-scale-cell { width: 16px; height: 10px; border-radius: 2px; }
+
+  /* Ranking habitaciones por rendimiento */
+  .ranking-list { display: flex; flex-direction: column; gap: 10px; }
+  .rank-row {
+    display: grid; grid-template-columns: 20px 1fr auto; gap: 10px;
+    align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line-2);
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-pos { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-4); font-weight: 600; }
+  .rank-room { display: flex; align-items: center; gap: 8px; }
+  .rank-color-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .rank-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .rank-metric { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  .rank-right { text-align: right; }
+  .rank-pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.015em; }
+  .rank-income { font-size: 10.5px; color: var(--pos); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Actividad reciente */
+  .activity-row { display: grid; grid-template-columns: 34px 1fr auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--line-2); }
+  .activity-row:last-child { border-bottom: none; }
+  .act-ico { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .act-ico.in { background: var(--pos-wash); color: var(--pos); }
+  .act-ico.out { background: var(--neg-wash); color: var(--neg); }
+  .act-ico.doc { background: var(--brand-wash); color: var(--brand); }
+  .act-concept { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+  .act-meta { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+  .act-right { text-align: right; }
+  .act-amt { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.015em; }
+  .act-amt.pos { color: var(--pos); }
+  .act-amt.neg { color: var(--neg); }
+  .act-time { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+  /* Banner info */
+  .note { background: #FBF5E6; border: 1px solid #E8D59E; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12.5px; color: #6B5410; display: flex; align-items: center; gap: 10px; }
+  .note strong { color: #4A3A00; }
+  .note svg { flex-shrink: 0; color: #8A6213; }
+
+  /* Placeholder tabs */
+  .placeholder { padding: 80px 40px; text-align: center; color: var(--ink-4); }
+  .placeholder-ico { width: 64px; height: 64px; border-radius: 50%; background: var(--bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--ink-4); }
+  .placeholder h3 { font-size: 18px; color: var(--ink); font-weight: 700; margin-bottom: 8px; letter-spacing: -0.015em; }
+  .placeholder p { font-size: 13px; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ═════════ DRAWER HABITACIÓN ═════════ */
+  .drawer-backdrop { position: fixed; inset: 0; background: rgba(14,20,35,.4); display: none; z-index: 200; animation: fadeIn .12s; }
+  .drawer-backdrop.open { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .drawer { position: fixed; top: 0; right: 0; width: 520px; height: 100vh; background: var(--card); z-index: 201; display: none; flex-direction: column; box-shadow: -12px 0 32px rgba(14,20,35,.12); animation: slideIn .2s; }
+  .drawer.open { display: flex; }
+  .drawer-hero {
+    padding: 24px 28px 20px; color: #fff;
+    position: relative;
+    transition: background .25s;
+  }
+  .drawer-close {
+    position: absolute; top: 16px; right: 16px;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .drawer-close:hover { background: rgba(255,255,255,0.25); }
+  .drawer-room-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.18em; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; }
+  .drawer-room-title { font-size: 26px; font-weight: 700; letter-spacing: -0.025em; }
+  .drawer-room-status { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); border-radius: 999px; font-size: 12px; font-weight: 500; }
+  .drawer-bd { padding: 22px 28px; overflow-y: auto; flex: 1; }
+  .drawer-section { margin-bottom: 24px; }
+  .drawer-section-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; margin-bottom: 10px; }
+  .tenant-card { display: flex; gap: 14px; padding: 14px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 10px; }
+  .tenant-card-avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; color: #fff; flex-shrink: 0; }
+  .tenant-card-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .tenant-card-meta { font-size: 11.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 3px; }
+  .tenant-card-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .tenant-btn { padding: 5px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); font-size: 11px; color: var(--ink-3); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+  .tenant-btn:hover { border-color: var(--ink-5); color: var(--ink); }
+
+  .contract-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .contract-fld { }
+  .contract-fld-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 3px; }
+  .contract-fld-val { font-size: 13px; font-weight: 600; color: var(--ink); font-family: 'JetBrains Mono', monospace; letter-spacing: -0.01em; }
+
+  .drawer-heatmap { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; }
+  .drawer-heatmap-month { aspect-ratio: 0.9; border-radius: 3px; cursor: pointer; }
+  .drawer-heatmap-labels { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; margin-top: 4px; font-size: 9px; color: var(--ink-4); text-align: center; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; }
+
+  .history-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line-2); font-size: 12px; }
+  .history-row:last-child { border-bottom: none; }
+  .history-name { color: var(--ink); font-weight: 600; }
+  .history-range { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink-4); margin-top: 2px; }
+  .history-dur { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-3); font-weight: 600; }
+
+  .mini-mov { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-2); font-size: 11.5px; align-items: center; }
+  .mini-mov:last-child { border-bottom: none; }
+  .mini-mov-concept { color: var(--ink); font-weight: 500; }
+  .mini-mov-meta { color: var(--ink-4); font-size: 10px; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .mini-mov-amt { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .mini-mov-amt.pos { color: var(--pos); }
+  .mini-mov-amt.neg { color: var(--neg); }
+
+  .drawer-ft { padding: 14px 28px; border-top: 1px solid var(--line); display: flex; gap: 8px; background: var(--card-alt); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═════════ SIDEBAR ═════════ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Panel
+      </a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>Declaración</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- ═════════ MAIN ═════════ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Detalle de <strong>Fuertes Acevedo 32</strong> · tab Resumen completo. Click en cualquier habitación del grid para abrir drawer lateral con detalle.
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="crumbs">
+      <a>Inmuebles</a>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      <span class="current">Fuertes Acevedo 32</span>
+    </div>
+
+    <!-- Page head (título + acciones) - oculto porque el título aparece en el hero -->
+
+    <!-- Tabs internos -->
+    <div class="tabs-inner">
+      <button id="tab-resumen" class="active" onclick="showTab('resumen')">Resumen</button>
+      <button id="tab-contratos" onclick="showTab('contratos')">Contratos<span class="tab-count">4</span></button>
+      <button id="tab-cobros" onclick="showTab('cobros')">Cobros<span class="tab-count">12</span></button>
+      <button id="tab-gastos" onclick="showTab('gastos')">Gastos<span class="tab-count">28</span></button>
+      <button id="tab-documentos" onclick="showTab('documentos')">Documentos<span class="tab-count">17</span></button>
+      <button id="tab-fiscalidad" onclick="showTab('fiscalidad')">Fiscalidad</button>
+    </div>
+
+    <!-- ═══════════════ PAGE · RESUMEN ═══════════════ -->
+    <div class="page active" id="page-resumen">
+
+      <!-- HERO INMUEBLE -->
+      <div class="hero-inmueble">
+        <div class="hero-photo">
+          <span class="photo-count">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            50 fotos
+          </span>
+          <div class="photo-ico">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="photo-chips">
+            <span class="photo-chip">Fotos</span>
+            <span class="photo-chip">Plano</span>
+            <span class="photo-chip">Virtual tour</span>
+            <span class="photo-chip">Mapa</span>
+          </div>
+        </div>
+        <div class="hero-info">
+          <div class="hero-title-row">
+            <div>
+              <div class="hero-h1">Fuertes Acevedo 32</div>
+              <div class="hero-addr">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Oviedo · La Argañosa · 4ª planta exterior
+              </div>
+              <div class="hero-tags">
+                <span class="tag">Alquiler habitaciones</span>
+                <span class="tag">5 dormitorios</span>
+                <span class="tag">2 baños</span>
+                <span class="tag">96 m²</span>
+                <span class="tag ok">Reformado 2023</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+            </button>
+          </div>
+          <div class="hero-facts">
+            <div class="fact">
+              <div class="fact-lab">Valor actual</div>
+              <div class="fact-val">195.000 €</div>
+              <div class="fact-sub pos">▲ +4,2% anual</div>
+            </div>
+            <div class="fact">
+              <div class="fact-lab">Hipoteca</div>
+              <div class="fact-val">78.450 €</div>
+              <div class="fact-sub">cuota 617 €/mes</div>
+            </div>
+            <div class="fact">
+              <div class="fact-lab">Renta mensual</div>
+              <div class="fact-val">1.520 €</div>
+              <div class="fact-sub">4/5 habitaciones</div>
+            </div>
+            <div class="fact">
+              <div class="fact-lab">Rentabilidad neta</div>
+              <div class="fact-val" style="color: var(--pos)">6,4%</div>
+              <div class="fact-sub pos">▲ +0,6 pp vs 2025</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 KPIs DE RENTABILIDAD -->
+      <div class="row row-3">
+        <div class="card kpi-big">
+          <div class="kpi-big-head">
+            <div class="kpi-big-ico pos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div>
+              <div class="kpi-big-lab">Cashflow 2026</div>
+              <div class="kpi-big-sub">rentas − gastos − intereses</div>
+            </div>
+          </div>
+          <div class="kpi-big-val pos">+ 8.420 €</div>
+          <div class="kpi-big-footer">
+            <strong>702 €/mes</strong> disponible para disfrute o ahorro · después de operación completa del piso
+            <div style="margin-top:6px"><span class="kpi-big-trend pos">▲ + 1.240 €</span> vs 2025</div>
+          </div>
+        </div>
+
+        <div class="card kpi-big">
+          <div class="kpi-big-head">
+            <div class="kpi-big-ico gold">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>
+            </div>
+            <div>
+              <div class="kpi-big-lab">Revalorización</div>
+              <div class="kpi-big-sub">ganancia latente sobre valor</div>
+            </div>
+          </div>
+          <div class="kpi-big-val">+ 7.800 €</div>
+          <div class="kpi-big-footer">
+            Comprado en <strong>142.500 €</strong> (nov 2022) · valor estimado hoy <strong>195.000 €</strong> · plusvalía latente <strong>+36,8%</strong>
+            <div style="margin-top:6px"><span class="kpi-big-trend pos">▲ +4,2%</span> últimos 12 meses</div>
+          </div>
+        </div>
+
+        <div class="card kpi-big">
+          <div class="kpi-big-head">
+            <div class="kpi-big-ico">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div>
+              <div class="kpi-big-lab">Amortización deuda</div>
+              <div class="kpi-big-sub">capital devuelto al banco</div>
+            </div>
+          </div>
+          <div class="kpi-big-val">+ 3.180 €</div>
+          <div class="kpi-big-footer">
+            De la cuota mensual de <strong>617 €</strong>, una parte va a capital (patrimonio propio) y otra a intereses (gasto)
+            <div style="margin-top:6px">Hipoteca termina <strong>marzo 2048</strong> · quedan 22 años</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HABITACIONES GRID -->
+      <div class="rooms-section-hd">
+        <div>
+          <div class="rooms-section-title">Habitaciones</div>
+          <div class="rooms-section-sub">5 habitaciones · 4 ocupadas · 1 libre · mezcla corta y larga estancia</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-ghost btn-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            Configurar colores
+          </button>
+        </div>
+      </div>
+
+      <div class="rooms-grid">
+
+        <!-- Hab 1 · verde · A. Fuentes · largo -->
+        <div class="room" onclick="openDrawer('green')">
+          <div class="room-color-band" style="background: var(--room-green)">
+            <span class="room-num">Hab 1</span>
+            <span class="room-color-name">verde</span>
+          </div>
+          <div class="room-body">
+            <div class="room-tenant">
+              <div class="room-avatar" style="background: var(--room-green)">AF</div>
+              <div>
+                <div class="room-tenant-name">A. Fuentes</div>
+                <div class="room-tenant-since">desde oct 2024</div>
+              </div>
+            </div>
+            <div class="room-meta-row">
+              <div>
+                <div class="room-rent mono">380 €</div>
+                <div class="room-rent-sub">/mes</div>
+              </div>
+              <div class="room-stay-type">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                Larga
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hab 2 · roja · L. Villanueva · largo -->
+        <div class="room" onclick="openDrawer('red')">
+          <div class="room-color-band" style="background: var(--room-red)">
+            <span class="room-num">Hab 2</span>
+            <span class="room-color-name">roja</span>
+          </div>
+          <div class="room-body">
+            <div class="room-tenant">
+              <div class="room-avatar" style="background: var(--room-red)">LV</div>
+              <div>
+                <div class="room-tenant-name">L. Villanueva</div>
+                <div class="room-tenant-since">desde feb 2025</div>
+              </div>
+            </div>
+            <div class="room-meta-row">
+              <div>
+                <div class="room-rent mono">380 €</div>
+                <div class="room-rent-sub">/mes</div>
+              </div>
+              <div class="room-stay-type">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                Larga
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hab 3 · amarilla · M. Gómez · corto · VENCE PRONTO -->
+        <div class="room status-ending-soon" onclick="openDrawer('yellow')">
+          <span class="status-badge">VENCE 18D</span>
+          <div class="room-color-band" style="background: var(--room-yellow)">
+            <span class="room-num">Hab 3</span>
+            <span class="room-color-name">amarilla</span>
+          </div>
+          <div class="room-body">
+            <div class="room-tenant">
+              <div class="room-avatar" style="background: var(--room-yellow)">MG</div>
+              <div>
+                <div class="room-tenant-name">M. Gómez</div>
+                <div class="room-tenant-since">desde dic 2025</div>
+              </div>
+            </div>
+            <div class="room-meta-row">
+              <div>
+                <div class="room-rent mono">480 €</div>
+                <div class="room-rent-sub">/mes · corta</div>
+              </div>
+              <div class="room-stay-type">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Corta
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hab 4 · azul · LIBRE · corto típico -->
+        <div class="room status-vacant" onclick="openDrawer('blue')">
+          <div class="room-color-band" style="background: var(--room-blue)">
+            <span class="room-num">Hab 4</span>
+            <span class="room-color-name">azul</span>
+          </div>
+          <div class="room-body">
+            <div class="room-tenant">
+              <div class="room-avatar vacant">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div>
+                <div class="room-tenant-name" style="color: var(--ink-3)">Libre</div>
+                <div class="room-tenant-since">desde 1 abr · 20 días</div>
+              </div>
+            </div>
+            <div class="room-meta-row">
+              <div>
+                <div class="room-rent mono" style="color: var(--ink-4)">—</div>
+                <div class="room-rent-sub">sin inquilino</div>
+              </div>
+              <div class="room-stay-type">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Corta
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hab 5 · blanco/negro · J. Martín · corto -->
+        <div class="room" onclick="openDrawer('bw')">
+          <div class="room-color-band" style="background: var(--room-bw)">
+            <span class="room-num">Hab 5</span>
+            <span class="room-color-name">negra</span>
+          </div>
+          <div class="room-body">
+            <div class="room-tenant">
+              <div class="room-avatar" style="background: var(--room-bw)">JM</div>
+              <div>
+                <div class="room-tenant-name">J. Martín</div>
+                <div class="room-tenant-since">desde feb 2026</div>
+              </div>
+            </div>
+            <div class="room-meta-row">
+              <div>
+                <div class="room-rent mono">450 €</div>
+                <div class="room-rent-sub">/mes · corta</div>
+              </div>
+              <div class="room-stay-type">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                Corta
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- HEATMAP + RANKING -->
+      <div class="heatmap-section">
+        <div class="card heatmap-card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Ocupación por habitación · 2026</div>
+              <div class="card-sub">Intensidad = días ocupados / días del mes · hover para detalle</div>
+            </div>
+          </div>
+
+          <div class="heatmap">
+            <div></div>
+            <div class="heatmap-header">Ene</div>
+            <div class="heatmap-header">Feb</div>
+            <div class="heatmap-header">Mar</div>
+            <div class="heatmap-header">Abr</div>
+            <div class="heatmap-header">May</div>
+            <div class="heatmap-header">Jun</div>
+            <div class="heatmap-header">Jul</div>
+            <div class="heatmap-header">Ago</div>
+            <div class="heatmap-header">Sep</div>
+            <div class="heatmap-header">Oct</div>
+            <div class="heatmap-header">Nov</div>
+            <div class="heatmap-header">Dic</div>
+
+            <!-- Hab 1 verde · larga estancia · prácticamente llena -->
+            <div class="heatmap-label"><span class="room-color-dot" style="background: var(--room-green)"></span>Hab 1</div>
+            <div class="heatmap-cell h-100" data-tooltip="Ene · 31/31 días · A. Fuentes"></div>
+            <div class="heatmap-cell h-100" data-tooltip="Feb · 28/28 días"></div>
+            <div class="heatmap-cell h-100" data-tooltip="Mar · 31/31 días"></div>
+            <div class="heatmap-cell h-100" data-tooltip="Abr · 20/20 días"></div>
+            <div class="heatmap-cell h-0" data-tooltip="May · futuro"></div>
+            <div class="heatmap-cell h-0" data-tooltip="Jun · futuro"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+
+            <!-- Hab 2 roja · larga estancia -->
+            <div class="heatmap-label"><span class="room-color-dot" style="background: var(--room-red)"></span>Hab 2</div>
+            <div class="heatmap-cell h-100" data-tooltip="Ene · 31/31 · L. Villanueva"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+
+            <!-- Hab 3 amarilla · corta estancia · más rotación -->
+            <div class="heatmap-label"><span class="room-color-dot" style="background: var(--room-yellow)"></span>Hab 3</div>
+            <div class="heatmap-cell h-100" data-tooltip="Ene · 31/31 · M. Gómez"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-80" data-tooltip="Abr · 16/20 días"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+
+            <!-- Hab 4 azul · más rotación + vacante -->
+            <div class="heatmap-label"><span class="room-color-dot" style="background: var(--room-blue)"></span>Hab 4</div>
+            <div class="heatmap-cell h-100" data-tooltip="Ene · 31/31"></div>
+            <div class="heatmap-cell h-80" data-tooltip="Feb · 22/28"></div>
+            <div class="heatmap-cell h-60" data-tooltip="Mar · 18/31"></div>
+            <div class="heatmap-cell h-0" data-tooltip="Abr · 0/20 · vacante"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+
+            <!-- Hab 5 negra · corta estancia -->
+            <div class="heatmap-label"><span class="room-color-dot" style="background: var(--room-bw)"></span>Hab 5</div>
+            <div class="heatmap-cell h-20" data-tooltip="Ene · 8/31 días"></div>
+            <div class="heatmap-cell h-100" data-tooltip="Feb · 28/28 · J. Martín"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-100"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+            <div class="heatmap-cell h-0"></div>
+          </div>
+
+          <div class="heatmap-legend">
+            <div>Ocupación media YTD · <strong style="color:var(--ink); font-family:'JetBrains Mono',monospace">87%</strong> · objetivo 92%</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span>0%</span>
+              <div class="legend-scale">
+                <span class="legend-scale-cell h-0"></span>
+                <span class="legend-scale-cell h-20"></span>
+                <span class="legend-scale-cell h-40"></span>
+                <span class="legend-scale-cell h-60"></span>
+                <span class="legend-scale-cell h-80"></span>
+                <span class="legend-scale-cell h-100"></span>
+              </div>
+              <span>100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ranking rendimiento por habitación -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Rendimiento por habitación</div>
+              <div class="card-sub">Ingresos YTD · ocupación</div>
+            </div>
+          </div>
+          <div class="ranking-list">
+            <div class="rank-row">
+              <div class="rank-pos">1</div>
+              <div class="rank-room">
+                <span class="rank-color-dot" style="background: var(--room-green)"></span>
+                <div>
+                  <div class="rank-name">Hab 1</div>
+                  <div class="rank-metric">larga · A. Fuentes</div>
+                </div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-pct">100%</div>
+                <div class="rank-income">1.520 €</div>
+              </div>
+            </div>
+            <div class="rank-row">
+              <div class="rank-pos">2</div>
+              <div class="rank-room">
+                <span class="rank-color-dot" style="background: var(--room-red)"></span>
+                <div>
+                  <div class="rank-name">Hab 2</div>
+                  <div class="rank-metric">larga · L. Villanueva</div>
+                </div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-pct">100%</div>
+                <div class="rank-income">1.520 €</div>
+              </div>
+            </div>
+            <div class="rank-row">
+              <div class="rank-pos">3</div>
+              <div class="rank-room">
+                <span class="rank-color-dot" style="background: var(--room-yellow)"></span>
+                <div>
+                  <div class="rank-name">Hab 3</div>
+                  <div class="rank-metric">corta · M. Gómez</div>
+                </div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-pct">96%</div>
+                <div class="rank-income">1.845 €</div>
+              </div>
+            </div>
+            <div class="rank-row">
+              <div class="rank-pos">4</div>
+              <div class="rank-room">
+                <span class="rank-color-dot" style="background: var(--room-bw)"></span>
+                <div>
+                  <div class="rank-name">Hab 5</div>
+                  <div class="rank-metric">corta · J. Martín</div>
+                </div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-pct">75%</div>
+                <div class="rank-income">1.372 €</div>
+              </div>
+            </div>
+            <div class="rank-row">
+              <div class="rank-pos">5</div>
+              <div class="rank-room">
+                <span class="rank-color-dot" style="background: var(--room-blue)"></span>
+                <div>
+                  <div class="rank-name">Hab 4</div>
+                  <div class="rank-metric">corta · vacante</div>
+                </div>
+              </div>
+              <div class="rank-right">
+                <div class="rank-pct" style="color: var(--neg)">61%</div>
+                <div class="rank-income">1.120 €</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: baseline;">
+            <div class="sc" style="font-size: 10px">Total ingresos YTD</div>
+            <div class="mono" style="font-weight: 700; font-size: 18px; color: var(--ink); letter-spacing: -0.02em;">7.377 €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVIDAD RECIENTE -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Actividad reciente</div>
+            <div class="card-sub">Últimos 30 días · cobros, gastos, documentos</div>
+          </div>
+          <a class="card-action">Ver toda →</a>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div>
+            <div class="act-concept">Cobro renta Hab 2 · L. Villanueva</div>
+            <div class="act-meta">Sabadell · <span style="display:inline-flex; align-items:center; gap:4px"><span style="width:8px; height:8px; border-radius:2px; background:var(--room-red); display:inline-block"></span><span style="color: var(--room-red); font-weight: 600">Hab 2</span></span> · larga estancia</div>
+          </div>
+          <div class="act-right">
+            <div class="act-amt pos">+ 380 €</div>
+            <div class="act-time">hoy 09:12</div>
+          </div>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          <div>
+            <div class="act-concept">Luz marzo · Iberdrola</div>
+            <div class="act-meta">factura #3487 · común al piso · Santander</div>
+          </div>
+          <div class="act-right">
+            <div class="act-amt neg">− 45 €</div>
+            <div class="act-time">18 abr</div>
+          </div>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div>
+            <div class="act-concept">Cobro renta Hab 1 · A. Fuentes</div>
+            <div class="act-meta">Sabadell · <span style="display:inline-flex; align-items:center; gap:4px"><span style="width:8px; height:8px; border-radius:2px; background:var(--room-green); display:inline-block"></span><span style="color: var(--room-green); font-weight: 600">Hab 1</span></span> · larga estancia</div>
+          </div>
+          <div class="act-right">
+            <div class="act-amt pos">+ 380 €</div>
+            <div class="act-time">5 abr</div>
+          </div>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico doc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg></div>
+          <div>
+            <div class="act-concept">Contrato actualizado · M. Gómez</div>
+            <div class="act-meta"><span style="display:inline-flex; align-items:center; gap:4px; background: var(--room-yellow); color: #fff; padding: 1px 7px 1px 5px; border-radius: 3px; font-size: 10px; font-weight: 600"><span style="width:6px; height:6px; border-radius:50%; background:#fff; display:inline-block; opacity:.9"></span>Hab 3</span> · vence en 18 días · pendiente renovación</div>
+          </div>
+          <div class="act-right">
+            <div class="act-time">4 abr</div>
+          </div>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          <div>
+            <div class="act-concept">Comunidad · Admin Fincas Oviedo</div>
+            <div class="act-meta">cuota mensual común · Santander</div>
+          </div>
+          <div class="act-right">
+            <div class="act-amt neg">− 94 €</div>
+            <div class="act-time">4 abr</div>
+          </div>
+        </div>
+
+        <div class="activity-row">
+          <div class="act-ico out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></div>
+          <div>
+            <div class="act-concept">Cuota hipoteca</div>
+            <div class="act-meta">617 € · capital 265 € + intereses 352 € · Unicaja</div>
+          </div>
+          <div class="act-right">
+            <div class="act-amt neg">− 617 €</div>
+            <div class="act-time">3 abr</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════ TABS PLACEHOLDER ═══════════════ -->
+    <div class="page" id="page-contratos">
+      <div class="placeholder">
+        <div class="placeholder-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>
+        </div>
+        <h3>Contratos</h3>
+        <p>Listado detallado de los 4 contratos vigentes en FA32 · histórico completo de inquilinos anteriores · acciones de renovación, rescisión, generación de nuevos contratos · envío a firma digital · alertas de vencimiento.</p>
+      </div>
+    </div>
+    <div class="page" id="page-cobros">
+      <div class="placeholder">
+        <div class="placeholder-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3>Cobros</h3>
+        <p>Tabla con los 12 cobros registrados en FA32 este año · filtros por habitación / inquilino / estado · match con contratos · incidencias e impagos · vista trimestral y anual para fiscal.</p>
+      </div>
+    </div>
+    <div class="page" id="page-gastos">
+      <div class="placeholder">
+        <div class="placeholder-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+        </div>
+        <h3>Gastos</h3>
+        <p>28 gastos del año agrupados en categorías · amortizables (hipoteca capital, mejoras), deducibles (suministros, comunidad, seguros, IBI, reparaciones), no deducibles · clasificación automática con OCR · subtotales fiscales casilla por casilla.</p>
+      </div>
+    </div>
+    <div class="page" id="page-documentos">
+      <div class="placeholder">
+        <div class="placeholder-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        </div>
+        <h3>Documentos</h3>
+        <p>17 documentos vinculados al inmueble · escritura, nota simple, cédula habitabilidad, CEE, IBI, contratos, facturas de reforma, fotos antes/después, certificado catastral · búsqueda instantánea · arrastrar y soltar.</p>
+      </div>
+    </div>
+    <div class="page" id="page-fiscalidad">
+      <div class="placeholder">
+        <div class="placeholder-ico">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>
+        </div>
+        <h3>Fiscalidad</h3>
+        <p>Resultado fiscal por ejercicio · ingresos imputables · gastos deducibles por casilla Modelo 100 · reducción por alquiler vivienda habitual (50% / 60% / 70% / 90% según Ley Vivienda) · amortización acumulada del inmueble · mobiliario amortizado · ganancia patrimonial latente.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═════════ DRAWER HABITACIÓN ═════════ -->
+<div class="drawer-backdrop" id="backdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hero" id="drawerHero">
+    <div class="drawer-close" onclick="closeDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <div class="drawer-room-label" id="drawerLabel">Habitación verde</div>
+    <div class="drawer-room-title" id="drawerTitle">Hab 1 · verde</div>
+    <div class="drawer-room-status" id="drawerStatus">● Ocupada · al día</div>
+  </div>
+
+  <div class="drawer-bd">
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Inquilino actual</div>
+      <div class="tenant-card">
+        <div class="tenant-card-avatar" id="tenantAvatar">AF</div>
+        <div style="flex: 1">
+          <div class="tenant-card-name" id="tenantName">A. Fuentes</div>
+          <div class="tenant-card-meta">DNI 12·345·678-X · <a style="color:var(--gold); cursor:pointer">+34 698···412</a> · <a style="color:var(--gold); cursor:pointer">fuentes@mail.com</a></div>
+          <div class="tenant-card-actions">
+            <button class="tenant-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>Llamar</button>
+            <button class="tenant-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email</button>
+            <button class="tenant-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Contrato</div>
+      <div class="contract-fields">
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Desde</div>
+          <div class="contract-fld-val" id="contractFrom">01/10/2024</div>
+        </div>
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Vence</div>
+          <div class="contract-fld-val" id="contractTo">30/09/2026</div>
+        </div>
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Renta mensual</div>
+          <div class="contract-fld-val" id="contractRent">380 €</div>
+        </div>
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Fianza</div>
+          <div class="contract-fld-val" id="contractDeposit">380 €</div>
+        </div>
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Tipo</div>
+          <div class="contract-fld-val" id="contractType">Larga estancia</div>
+        </div>
+        <div class="contract-fld">
+          <div class="contract-fld-lab">Reducción fiscal</div>
+          <div class="contract-fld-val" id="contractReduction">60%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Ocupación 2026 · <span id="hmPct" style="color: var(--ink); font-family: 'JetBrains Mono', monospace">100%</span></div>
+      <div class="drawer-heatmap" id="drawerHeatmap">
+        <div class="drawer-heatmap-month h-100"></div>
+        <div class="drawer-heatmap-month h-100"></div>
+        <div class="drawer-heatmap-month h-100"></div>
+        <div class="drawer-heatmap-month h-100"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+        <div class="drawer-heatmap-month h-0"></div>
+      </div>
+      <div class="drawer-heatmap-labels">
+        <span>E</span><span>F</span><span>M</span><span>A</span><span>M</span><span>J</span><span>J</span><span>A</span><span>S</span><span>O</span><span>N</span><span>D</span>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Histórico de inquilinos</div>
+      <div class="history-row">
+        <div>
+          <div class="history-name">A. Fuentes <span style="color: var(--ink-4); font-weight: normal; font-size: 10.5px; margin-left: 4px">actual</span></div>
+          <div class="history-range">oct 2024 — hoy · larga</div>
+        </div>
+        <div class="history-dur">18 meses</div>
+      </div>
+      <div class="history-row">
+        <div>
+          <div class="history-name">P. Rodríguez</div>
+          <div class="history-range">mar 2024 — sep 2024</div>
+        </div>
+        <div class="history-dur">6 meses</div>
+      </div>
+      <div class="history-row">
+        <div>
+          <div class="history-name">C. Suárez</div>
+          <div class="history-range">oct 2023 — feb 2024</div>
+        </div>
+        <div class="history-dur">5 meses</div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Últimos cobros</div>
+      <div class="mini-mov">
+        <div>
+          <div class="mini-mov-concept">Renta abril</div>
+          <div class="mini-mov-meta">5 abr · Sabadell</div>
+        </div>
+        <div class="mini-mov-amt pos">+ 380 €</div>
+      </div>
+      <div class="mini-mov">
+        <div>
+          <div class="mini-mov-concept">Renta marzo</div>
+          <div class="mini-mov-meta">5 mar · Sabadell</div>
+        </div>
+        <div class="mini-mov-amt pos">+ 380 €</div>
+      </div>
+      <div class="mini-mov">
+        <div>
+          <div class="mini-mov-concept">Renta febrero</div>
+          <div class="mini-mov-meta">5 feb · Sabadell</div>
+        </div>
+        <div class="mini-mov-amt pos">+ 380 €</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer-ft">
+    <button class="btn btn-ghost btn-sm" style="flex: 1; justify-content: center">Ver contrato completo</button>
+    <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center">Notificar renovación</button>
+  </div>
+</div>
+
+<script>
+  function showTab(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelectorAll('.tabs-inner button').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  const roomsData = {
+    green:  { label: 'Habitación verde',    title: 'Hab 1 · verde',    status: '● Ocupada · al día',       color: '#4A7C59',
+              name: 'A. Fuentes',   avatar: 'AF', from: '01/10/2024', to: '30/09/2026', rent: '380 €', deposit: '380 €',
+              type: 'Larga estancia', reduction: '60%', pct: '100%' },
+    red:    { label: 'Habitación roja',     title: 'Hab 2 · roja',     status: '● Ocupada · al día',       color: '#A23E3E',
+              name: 'L. Villanueva', avatar: 'LV', from: '15/02/2025', to: '14/02/2027', rent: '380 €', deposit: '380 €',
+              type: 'Larga estancia', reduction: '60%', pct: '100%' },
+    yellow: { label: 'Habitación amarilla', title: 'Hab 3 · amarilla', status: '⚠ Vence en 18 días',       color: '#C89828',
+              name: 'M. Gómez',      avatar: 'MG', from: '10/12/2025', to: '09/05/2026', rent: '480 €', deposit: '480 €',
+              type: 'Corta estancia', reduction: 'No aplica', pct: '96%' },
+    blue:   { label: 'Habitación azul',     title: 'Hab 4 · azul',     status: '○ Libre · 20 días',        color: '#3B5A7F',
+              name: '—',             avatar: '?',  from: '—',          to: '—',          rent: '—',     deposit: '—',
+              type: 'Corta estancia', reduction: '—', pct: '61%' },
+    bw:     { label: 'Habitación negra',    title: 'Hab 5 · negra',    status: '● Ocupada · al día',       color: '#2C2C2C',
+              name: 'J. Martín',     avatar: 'JM', from: '01/02/2026', to: '31/07/2026', rent: '450 €', deposit: '450 €',
+              type: 'Corta estancia', reduction: 'No aplica', pct: '75%' }
+  };
+
+  function openDrawer(roomKey) {
+    const r = roomsData[roomKey];
+    document.getElementById('drawerHero').style.background = r.color;
+    document.getElementById('drawerLabel').textContent = r.label;
+    document.getElementById('drawerTitle').textContent = r.title;
+    document.getElementById('drawerStatus').textContent = r.status;
+    document.getElementById('tenantName').textContent = r.name;
+    document.getElementById('tenantAvatar').textContent = r.avatar;
+    document.getElementById('tenantAvatar').style.background = r.color;
+    document.getElementById('contractFrom').textContent = r.from;
+    document.getElementById('contractTo').textContent = r.to;
+    document.getElementById('contractRent').textContent = r.rent;
+    document.getElementById('contractDeposit').textContent = r.deposit;
+    document.getElementById('contractType').textContent = r.type;
+    document.getElementById('contractReduction').textContent = r.reduction;
+    document.getElementById('hmPct').textContent = r.pct;
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('backdrop').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('backdrop').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+</script>
+
+</body>
+</html>

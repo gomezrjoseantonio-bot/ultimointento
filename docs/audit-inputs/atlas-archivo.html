@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Archivo</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar principal */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .nav a.active .chip { background: rgba(184,138,62,.25); color: #E8D9AE; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+
+  /* Topbar */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+
+  /* KPI strip · patrón Pulso */
+  .kpi-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; padding: 18px 24px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 18px;
+  }
+  .kpi-cell { padding: 0 24px; border-left: 1px solid var(--line-2); }
+  .kpi-cell:first-child { border-left: none; padding-left: 0; }
+  .kpi-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 6px; }
+  .kpi-val.pos { color: var(--pos); }
+  .kpi-val.gold { color: var(--gold-ink); }
+  .kpi-val.warn { color: var(--warn); }
+
+  /* Entrada · bandeja de documentos sin clasificar */
+  .entrada-card {
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-left: 3px solid var(--gold-ink); border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 16px;
+    display: grid; grid-template-columns: 40px 1fr auto auto;
+    gap: 14px; align-items: center;
+  }
+  .entrada-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--gold-ink); color: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .entrada-title { font-size: 13.5px; font-weight: 700; color: #4A3A00; letter-spacing: -0.005em; }
+  .entrada-desc { font-size: 11.5px; color: #6B5410; margin-top: 3px; line-height: 1.45; }
+  .entrada-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    padding: 6px 12px; border-radius: 7px;
+    background: #4A3A00; color: #fff;
+  }
+
+  /* Layout · 2 columnas · filtros + grid */
+  .arch-layout { display: grid; grid-template-columns: 260px 1fr; gap: 18px; }
+
+  /* Panel filtros · izquierda */
+  .filter-panel {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 18px;
+    align-self: start; position: sticky; top: 20px;
+    max-height: calc(100vh - 40px); overflow-y: auto;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 8px; }
+  .filter-group-title {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--ink-4); font-weight: 700; margin-bottom: 2px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .filter-clear { font-size: 10px; color: var(--gold); font-weight: 600; cursor: pointer; text-transform: none; letter-spacing: 0; }
+  .filter-clear:hover { text-decoration: underline; }
+
+  .filter-item {
+    display: grid; grid-template-columns: 16px 1fr auto;
+    gap: 10px; padding: 6px 8px; border-radius: 6px;
+    cursor: pointer; align-items: center;
+  }
+  .filter-item:hover { background: var(--card-alt); }
+  .filter-item.active { background: var(--gold-wash); }
+  .filter-item.active .filter-item-nom { color: var(--gold-ink); font-weight: 600; }
+  .filter-cb {
+    width: 14px; height: 14px; border: 1.5px solid var(--ink-5);
+    border-radius: 3px; background: var(--card);
+    position: relative; flex-shrink: 0;
+  }
+  .filter-item.active .filter-cb { border-color: var(--gold-ink); background: var(--gold-ink); }
+  .filter-item.active .filter-cb::after {
+    content: ''; position: absolute; top: 1px; left: 4px;
+    width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .filter-item-nom { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+  .filter-item-count {
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
+    color: var(--ink-4); font-weight: 500;
+  }
+  .filter-item.active .filter-item-count { color: var(--gold-ink); }
+
+  .filter-search {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 12px; color: var(--ink-2);
+    background: var(--card-alt); outline: none;
+  }
+  .filter-search:focus { border-color: var(--gold); }
+
+  /* Zona documentos · derecha */
+  .docs-zone { display: flex; flex-direction: column; gap: 14px; }
+
+  /* Barra superior de la zona · tabs + acciones */
+  .docs-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .docs-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); flex: 1; }
+  .docs-tabs button { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .docs-tabs button:hover { color: var(--ink-2); }
+  .docs-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+  .docs-tabs button .tc { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; margin-left: 6px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--ink-4); font-weight: 500; }
+  .docs-tabs button.active .tc { background: var(--gold-wash); color: var(--gold-ink); }
+
+  .docs-actions { display: flex; gap: 8px; align-items: center; }
+  .view-toggle { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .view-toggle button { padding: 5px 10px; border-radius: 5px; color: var(--ink-4); display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; }
+  .view-toggle button:hover { color: var(--ink-2); }
+  .view-toggle button.active { background: var(--card-alt); color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* Meta · contador + selección + acciones bulk */
+  .docs-meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink-4); }
+  .docs-meta-left { display: flex; align-items: center; gap: 14px; }
+  .docs-meta-count { font-family: 'JetBrains Mono', monospace; color: var(--ink-2); font-weight: 600; }
+  .docs-meta-sep { color: var(--ink-5); }
+
+  /* Zona docs · lista */
+  .docs-list {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; overflow: hidden;
+  }
+  .doc-row {
+    display: grid; grid-template-columns: 22px 44px 1fr 160px 120px 110px 100px 28px;
+    gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line-2);
+    align-items: center; cursor: pointer;
+  }
+  .doc-row:last-child { border-bottom: none; }
+  .doc-row:hover { background: var(--card-alt); }
+  .doc-row:hover .doc-nom { color: var(--gold); }
+  .doc-row.header {
+    background: var(--card-alt); padding: 10px 22px; cursor: default;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-4); font-weight: 600;
+  }
+  .doc-row.header:hover { background: var(--card-alt); }
+  .doc-row.header .r { text-align: right; }
+  .doc-row.header .c { text-align: center; }
+
+  .doc-cb {
+    width: 16px; height: 16px; border: 1.5px solid var(--ink-5);
+    border-radius: 3px; background: var(--card); cursor: pointer;
+  }
+  .doc-cb:hover { border-color: var(--ink-3); }
+  .doc-row.selected { background: var(--gold-wash); }
+  .doc-row.selected .doc-cb {
+    border-color: var(--gold-ink); background: var(--gold-ink);
+    position: relative;
+  }
+  .doc-row.selected .doc-cb::after {
+    content: ''; position: absolute; top: 1px; left: 4px;
+    width: 4px; height: 7px; border: solid #fff; border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  .doc-icon {
+    width: 44px; height: 44px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .doc-icon.pdf { background: var(--neg-wash); color: var(--neg); }
+  .doc-icon.xml { background: var(--brand-wash); color: var(--brand); }
+  .doc-icon.img { background: var(--pos-wash); color: var(--pos); }
+  .doc-icon.xlsx { background: #E4F1E8; color: #1E6B3A; }
+  .doc-icon.docx { background: var(--brand-wash); color: var(--brand); }
+
+  .doc-nom { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; line-height: 1.3; }
+  .doc-path { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.01em; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .doc-path-sep { color: var(--ink-5); }
+
+  .doc-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .doc-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    padding: 3px 7px; border-radius: 4px; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .doc-tag.inmueble { background: var(--brand-wash); color: var(--brand); }
+  .doc-tag.fiscal { background: var(--pos-wash); color: var(--pos); }
+  .doc-tag.contrato { background: var(--gold-wash); color: var(--gold-ink); }
+  .doc-tag.factura { background: var(--bg); color: var(--ink-3); }
+  .doc-tag.recibo { background: var(--bg); color: var(--ink-3); }
+  .doc-tag.escritura { background: var(--brand-wash); color: var(--brand); }
+  .doc-tag.aeat { background: var(--neg-wash); color: var(--neg); }
+
+  .doc-fecha {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+    color: var(--ink-2); text-align: left;
+  }
+  .doc-fecha-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+  .doc-size {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
+    color: var(--ink-3); text-align: right;
+  }
+  .doc-importe {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    color: var(--ink); text-align: right;
+  }
+  .doc-importe.pos { color: var(--pos); }
+  .doc-importe.neg { color: var(--neg); }
+  .doc-importe.muted { color: var(--ink-4); font-weight: 500; }
+
+  .doc-arrow { color: var(--ink-5); text-align: right; }
+  .doc-row:hover .doc-arrow { color: var(--gold); }
+
+  /* Dropzone · arrastra aquí */
+  .dropzone {
+    margin-top: 14px; padding: 24px;
+    border: 2px dashed var(--line); border-radius: 12px;
+    background: var(--card-alt); text-align: center;
+    transition: all .14s; cursor: pointer;
+  }
+  .dropzone:hover { border-color: var(--gold); background: var(--gold-wash); }
+  .dropzone-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--card); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px; color: var(--ink-4);
+  }
+  .dropzone:hover .dropzone-icon { color: var(--gold-ink); border-color: var(--gold); }
+  .dropzone-title { font-size: 13px; font-weight: 700; color: var(--ink-2); letter-spacing: -0.005em; margin-bottom: 3px; }
+  .dropzone-sub { font-size: 11.5px; color: var(--ink-4); }
+  .dropzone-sub strong { color: var(--ink-3); font-weight: 600; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR principal -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a onclick="showToast('Ir a Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a onclick="showToast('Ir a Inversiones')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a onclick="showToast('Ir a Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="showToast('Ir a Financiación')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación <span class="chip">13</span></a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a onclick="showToast('Ir a Mi Plan')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Ir a Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>Fiscal <span class="chip">3</span></a>
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo <span class="chip">247</span></a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Ajustes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar documento por nombre, inmueble, importe, tipo…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <h1>Archivo</h1>
+        <div class="page-sub">tus documentos organizados por inmueble · ejercicio fiscal · tipo</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar selección como ZIP · para enviar al gestor o presentar en inspección')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar ZIP
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Subir documento · PDF · XML · imagen · se puede arrastrar o seleccionar')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir documento
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <div class="kpi-lab">Documentos totales</div>
+        <div class="kpi-val">247</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-lab">Espacio usado</div>
+        <div class="kpi-val">1,2 GB</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-lab">Sin clasificar</div>
+        <div class="kpi-val warn">6</div>
+      </div>
+      <div class="kpi-cell">
+        <div class="kpi-lab">Última subida</div>
+        <div class="kpi-val" style="font-size: 18px;">hace 12 min</div>
+      </div>
+    </div>
+
+    <!-- Entrada · bandeja con documentos pendientes -->
+    <div class="entrada-card">
+      <div class="entrada-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>
+      </div>
+      <div>
+        <div class="entrada-title">Tienes 6 documentos en la bandeja de entrada</div>
+        <div class="entrada-desc">ATLAS ha detectado documentos nuevos · pendientes de vincular a inmueble · ejercicio fiscal · aceptar el OCR propuesto</div>
+      </div>
+      <span class="entrada-count">6</span>
+      <button class="btn btn-ghost" onclick="showToast('Abrir bandeja de entrada · clasificar documentos pendientes con OCR asistido')" style="padding: 7px 14px; font-size: 12px;">Abrir bandeja →</button>
+    </div>
+
+    <!-- Layout 2 cols · filtros + docs -->
+    <div class="arch-layout">
+
+      <!-- Panel filtros -->
+      <aside class="filter-panel">
+        <input type="text" class="filter-search" placeholder="Buscar dentro del archivo…"/>
+
+        <div class="filter-group">
+          <div class="filter-group-title">
+            <span>Por inmueble</span>
+            <span class="filter-clear" onclick="showToast('Limpiar filtro inmueble')">Limpiar</span>
+          </div>
+          <div class="filter-item active" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Todos</div>
+            <div class="filter-item-count">247</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Tenderina 64 · 4D</div>
+            <div class="filter-item-count">42</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Tenderina 64 · 4I</div>
+            <div class="filter-item-count">38</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Fuertes Acevedo 32</div>
+            <div class="filter-item-count">51</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Carles Buigas 15</div>
+            <div class="filter-item-count">29</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Sant Fruitós</div>
+            <div class="filter-item-count">24</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Manresa</div>
+            <div class="filter-item-count">18</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Tenderina 48 · vendido</div>
+            <div class="filter-item-count">31</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Sin asignar</div>
+            <div class="filter-item-count">14</div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group-title"><span>Por ejercicio</span></div>
+          <div class="filter-item active" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Todos</div>
+            <div class="filter-item-count">247</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2026 · en curso</div>
+            <div class="filter-item-count">38</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2025</div>
+            <div class="filter-item-count">61</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2024</div>
+            <div class="filter-item-count">54</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2023</div>
+            <div class="filter-item-count">47</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2022</div>
+            <div class="filter-item-count">33</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">2021 y anteriores</div>
+            <div class="filter-item-count">14</div>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <div class="filter-group-title"><span>Por tipo</span></div>
+          <div class="filter-item active" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Todos</div>
+            <div class="filter-item-count">247</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Contratos</div>
+            <div class="filter-item-count">30</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Facturas</div>
+            <div class="filter-item-count">89</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Recibos · rentas</div>
+            <div class="filter-item-count">64</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Declaraciones IRPF</div>
+            <div class="filter-item-count">15</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Escrituras</div>
+            <div class="filter-item-count">12</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">AEAT · requerimientos</div>
+            <div class="filter-item-count">7</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Suministros · luz · agua</div>
+            <div class="filter-item-count">18</div>
+          </div>
+          <div class="filter-item" onclick="this.classList.toggle('active')">
+            <div class="filter-cb"></div>
+            <div class="filter-item-nom">Bancarios</div>
+            <div class="filter-item-count">12</div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Zona documentos -->
+      <div class="docs-zone">
+
+        <!-- Tabs + vista -->
+        <div class="docs-top">
+          <div class="docs-tabs">
+            <button class="active">Todos<span class="tc">247</span></button>
+            <button onclick="showToast('Ver bandeja de entrada · 6 sin clasificar')">Sin clasificar<span class="tc">6</span></button>
+            <button onclick="showToast('Ver documentos destacados · marcados con estrella')">Destacados<span class="tc">14</span></button>
+            <button onclick="showToast('Ver documentos compartidos con el gestor')">Compartidos<span class="tc">32</span></button>
+          </div>
+          <div class="docs-actions">
+            <div class="view-toggle">
+              <button class="active" onclick="showToast('Vista de lista · más compacta')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Lista
+              </button>
+              <button onclick="showToast('Vista de cuadrícula · previews grandes')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Cuadrícula
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Meta · resultado + ordenación -->
+        <div class="docs-meta">
+          <div class="docs-meta-left">
+            <span><span class="docs-meta-count">247</span> documentos · 1,2 GB</span>
+            <span class="docs-meta-sep">·</span>
+            <span>ordenados por fecha · más recientes primero</span>
+          </div>
+          <div>
+            <span style="color: var(--gold); font-weight: 600; cursor: pointer;" onclick="showToast('Cambiar ordenación · fecha · nombre · tamaño · importe')">Ordenar →</span>
+          </div>
+        </div>
+
+        <!-- Lista de documentos -->
+        <div class="docs-list">
+          <div class="doc-row header">
+            <div></div>
+            <div></div>
+            <div>Documento</div>
+            <div>Etiquetas</div>
+            <div>Fecha</div>
+            <div class="r">Importe</div>
+            <div class="r">Tamaño</div>
+            <div></div>
+          </div>
+
+          <!-- Doc 1 · Declaración IRPF 2024 -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Declaración IRPF 2024 · Modelo 100')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Declaración IRPF 2024 · Modelo 100 · firmada</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>2025<span class="doc-path-sep">/</span>fiscal<span class="doc-path-sep">/</span>irpf-2024-m100-firmada.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag fiscal">IRPF</span>
+              <span class="doc-tag inmueble">2024</span>
+            </div>
+            <div>
+              <div class="doc-fecha">28/06/2025</div>
+              <div class="doc-fecha-sub">subido hace 12 min</div>
+            </div>
+            <div class="doc-importe muted">—</div>
+            <div class="doc-size">2,4 MB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 2 · Contrato T64-4D H2 · firmado -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Contrato Tenderina 64 · H2 · firmado')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Contrato arrendamiento Tenderina 64 · habitación 2</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>T64-4D<span class="doc-path-sep">/</span>contratos<span class="doc-path-sep">/</span>contrato-h2-2026.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag inmueble">T64-4D</span>
+              <span class="doc-tag contrato">Contrato</span>
+            </div>
+            <div>
+              <div class="doc-fecha">15/04/2026</div>
+              <div class="doc-fecha-sub">hace 9 días</div>
+            </div>
+            <div class="doc-importe">420 €/m</div>
+            <div class="doc-size">680 KB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 3 · Factura pintura H2 y H4 · FA32 -->
+          <div class="doc-row selected" onclick="this.classList.toggle('selected')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Factura pintura · habitaciones 2 y 4 · Fuertes Acevedo</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>FA32<span class="doc-path-sep">/</span>gastos<span class="doc-path-sep">/</span>factura-pintura-0412-2026.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag inmueble">FA32</span>
+              <span class="doc-tag factura">Factura</span>
+            </div>
+            <div>
+              <div class="doc-fecha">08/04/2026</div>
+              <div class="doc-fecha-sub">hace 16 días</div>
+            </div>
+            <div class="doc-importe neg">−1.280 €</div>
+            <div class="doc-size">420 KB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 4 · Recibo renta FA32-H1 marzo -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Recibo renta FA32 · habitación 1 · marzo')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Recibo cobro renta · Fuertes Acevedo · habitación 1 · marzo 2026</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>FA32<span class="doc-path-sep">/</span>rentas<span class="doc-path-sep">/</span>recibo-h1-032026.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag inmueble">FA32</span>
+              <span class="doc-tag recibo">Recibo</span>
+            </div>
+            <div>
+              <div class="doc-fecha">01/04/2026</div>
+              <div class="doc-fecha-sub">hace 23 días</div>
+            </div>
+            <div class="doc-importe pos">+450 €</div>
+            <div class="doc-size">128 KB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 5 · XML datos fiscales AEAT 2025 -->
+          <div class="doc-row" onclick="showToast('Abrir preview · XML datos fiscales AEAT 2025')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon xml">XML</div>
+            <div>
+              <div class="doc-nom">Datos fiscales AEAT · ejercicio 2025 · previo campaña</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>2026<span class="doc-path-sep">/</span>fiscal<span class="doc-path-sep">/</span>datos-fiscales-2025.xml
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag fiscal">AEAT</span>
+              <span class="doc-tag inmueble">2025</span>
+            </div>
+            <div>
+              <div class="doc-fecha">28/03/2026</div>
+              <div class="doc-fecha-sub">hace 27 días</div>
+            </div>
+            <div class="doc-importe muted">—</div>
+            <div class="doc-size">84 KB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 6 · Requerimiento paralela 2023 -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Notificación paralela IRPF 2023 · resuelto')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Notificación paralela IRPF 2023 · ref 202310069491715K · resuelto</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>2024<span class="doc-path-sep">/</span>aeat<span class="doc-path-sep">/</span>paralela-irpf-2023-resuelta.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag aeat">AEAT</span>
+              <span class="doc-tag fiscal">IRPF 2023</span>
+            </div>
+            <div>
+              <div class="doc-fecha">15/10/2024</div>
+              <div class="doc-fecha-sub">hace 18 meses</div>
+            </div>
+            <div class="doc-importe pos">+5.509 €</div>
+            <div class="doc-size">1,1 MB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 7 · Escritura compraventa T64-4D -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Escritura compraventa Tenderina 64 · 4D')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Escritura compraventa · Tenderina 64 · 4D · notaría Oviedo</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>T64-4D<span class="doc-path-sep">/</span>escrituras<span class="doc-path-sep">/</span>escritura-compraventa-2019.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag inmueble">T64-4D</span>
+              <span class="doc-tag escritura">Escritura</span>
+            </div>
+            <div>
+              <div class="doc-fecha">12/03/2019</div>
+              <div class="doc-fecha-sub">hace 7 años</div>
+            </div>
+            <div class="doc-importe neg">−96.500 €</div>
+            <div class="doc-size">3,8 MB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <!-- Doc 8 · Recibo comunidad Buigas Q1 -->
+          <div class="doc-row" onclick="showToast('Abrir preview · Comunidad Buigas Q1 2026')">
+            <div class="doc-cb"></div>
+            <div class="doc-icon pdf">PDF</div>
+            <div>
+              <div class="doc-nom">Cuota comunidad Carles Buigas 15 · primer trimestre 2026</div>
+              <div class="doc-path">
+                ATLAS/Archivo<span class="doc-path-sep">/</span>CB15<span class="doc-path-sep">/</span>gastos<span class="doc-path-sep">/</span>comunidad-q1-2026.pdf
+              </div>
+            </div>
+            <div class="doc-tags">
+              <span class="doc-tag inmueble">CB15</span>
+              <span class="doc-tag factura">Comunidad</span>
+            </div>
+            <div>
+              <div class="doc-fecha">31/03/2026</div>
+              <div class="doc-fecha-sub">hace 24 días</div>
+            </div>
+            <div class="doc-importe neg">−285 €</div>
+            <div class="doc-size">210 KB</div>
+            <div class="doc-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+        <!-- Dropzone -->
+        <div class="dropzone" onclick="showToast('Subir documento · arrastra archivo o click para seleccionar')">
+          <div class="dropzone-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div class="dropzone-title">Arrastra un documento aquí para subirlo</div>
+          <div class="dropzone-sub">ATLAS detecta automáticamente el <strong>tipo</strong> · <strong>importe</strong> · <strong>inmueble</strong> vinculado · soporta PDF · XML · imágenes · Excel · Word</div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>

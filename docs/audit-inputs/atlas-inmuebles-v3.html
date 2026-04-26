@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Inmuebles v2</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F5F4F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF6;
+    --line:      #E6E3DC;
+    --line-2:    #EFECE5;
+    --ink:       #141B2E;
+    --ink-2:     #2C3547;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --brand:       #1E2954;
+    --brand-2:     #2A3875;
+    --brand-ink:   #0C1230;
+    --brand-wash:  #E8EAF0;
+    --gold:        #B88A3E;
+    --gold-2:      #C59A47;
+    --gold-wash:   #F3EAD6;
+    --gold-ink:    #7C5C1F;
+    --pos:         #1E6B3A;
+    --pos-wash:    #E4F0E8;
+    --neg:         #A43328;
+    --neg-wash:    #F5E3E0;
+    --warn:        #8A6213;
+    --warn-wash:   #F5ECD6;
+    --room-green:  #4A7C59;
+    --room-red:    #A23E3E;
+    --room-yellow: #C89828;
+    --room-blue:   #3B5A7F;
+    --room-bw:     #2C2C2C;
+    /* Estados inmueble */
+    --state-occupied: #1E2954;
+    --state-attention: #B88A3E;
+    --state-overdue: #A43328;
+    --state-vacant: #8A92A0;
+    --state-reform: #8A6213;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+
+  /* Topbar */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 18px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13px; color: var(--ink-4); margin-top: 5px; }
+  .page-sub .dot { display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--ink-5); margin: 0 8px; vertical-align: middle; }
+  .page-head-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* KPIs strip */
+  .kpi-strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 16px 18px; position: relative; overflow: hidden; }
+  .kpi.emph { background: linear-gradient(135deg, #FFFFFF 0%, #FBFAF5 100%); }
+  .kpi.emph::before { content: ""; position: absolute; top: 0; right: 0; width: 80px; height: 100%; background: radial-gradient(circle at top right, rgba(184,138,62,.06), transparent 60%); }
+  .kpi-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 22px; color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; margin-top: 6px; position: relative; }
+  .kpi-val.pos { color: var(--pos); }
+  .kpi-hint { font-size: 11px; color: var(--ink-4); margin-top: 5px; font-family: 'JetBrains Mono', monospace; position: relative; }
+  .kpi-hint.pos { color: var(--pos); }
+  .kpi-unit { font-size: 14px; color: var(--ink-4); font-weight: 500; margin-left: 3px; }
+
+  /* Filtros */
+  .filters { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .filter-chip { padding: 5px 12px; border-radius: 6px; font-size: 12px; color: var(--ink-3); font-weight: 500; border: 1px solid var(--line); background: var(--card-alt); cursor: pointer; }
+  .filter-chip:hover { border-color: var(--ink-5); }
+  .filter-chip.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .filter-chip.gold.active { background: var(--gold); border-color: var(--gold); }
+  .filter-divider { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  .filter-search { flex: 1; min-width: 200px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); }
+  .filter-search input { border: none; outline: none; font-size: 12px; flex: 1; background: transparent; height: 30px; }
+  .filter-search svg { color: var(--ink-4); }
+  .view-toggle { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .view-toggle button { padding: 5px 9px; border-radius: 5px; font-size: 11px; color: var(--ink-3); display: flex; align-items: center; gap: 4px; }
+  .view-toggle button.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+  /* LAYOUT principal · 2 columnas: grid + aside */
+  .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 14px; align-items: start; }
+
+  /* GRID DE INMUEBLES */
+  .inm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+  .inm-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; overflow: hidden;
+    cursor: pointer; transition: all .14s;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .inm-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 8px 22px rgba(14,20,35,0.06); }
+
+  /* Photo placeholder · más bajo en 3 cols */
+  .inm-photo {
+    aspect-ratio: 16 / 8;
+    background-color: #EFEAD9;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(139, 119, 79, 0.08) 0,
+      rgba(139, 119, 79, 0.08) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-label {
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(60, 50, 30, 0.28);
+    font-size: 10px; letter-spacing: 0.5em;
+    font-weight: 500;
+  }
+
+  .inm-state-badge {
+    position: absolute; top: 10px; left: 10px;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 999px;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--card); color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .inm-state-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; }
+  .inm-state-badge.occupied { color: var(--state-occupied); }
+  .inm-state-badge.occupied::before { background: var(--state-occupied); }
+  .inm-state-badge.attention { color: var(--state-attention); }
+  .inm-state-badge.attention::before { background: var(--state-attention); }
+  .inm-state-badge.overdue { color: var(--state-overdue); }
+  .inm-state-badge.overdue::before { background: var(--state-overdue); }
+  .inm-state-badge.vacant { color: var(--state-vacant); }
+  .inm-state-badge.vacant::before { background: var(--state-vacant); }
+  .inm-state-badge.reform { color: var(--state-reform); }
+  .inm-state-badge.reform::before { background: var(--state-reform); }
+
+  .inm-ast {
+    position: absolute; top: 10px; right: 10px;
+    padding: 3px 8px; border-radius: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.02em;
+    background: rgba(12, 18, 48, 0.85); color: #fff;
+    backdrop-filter: blur(8px);
+  }
+
+  .inm-card-body { padding: 13px 15px 15px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
+
+  .inm-card-name { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; line-height: 1.15; }
+
+  .inm-card-loc { display: flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--ink-4); }
+  .inm-card-loc svg { color: var(--ink-5); flex-shrink: 0; }
+
+  .inm-card-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 1px; }
+  .inm-card-chip { font-size: 10px; color: var(--ink-3); padding: 2px 7px; background: var(--bg); border-radius: 4px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+  .inm-card-chip svg { color: var(--ink-4); }
+  .inm-card-chip.type { background: var(--brand-wash); color: var(--brand); font-weight: 600; }
+
+  /* Mini-rooms dentro de la card */
+  .card-rooms {
+    display: flex; flex-direction: column; gap: 6px;
+    padding-top: 9px; margin-top: 2px;
+    border-top: 1px solid var(--line-2);
+  }
+  .card-rooms-head {
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 2px;
+  }
+  .card-rooms-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .card-rooms-ctx { font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .card-rooms-grid { display: flex; gap: 3px; margin-top: 2px; }
+  .mini-room {
+    width: 22px; height: 22px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 9.5px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em; position: relative;
+  }
+  .mini-room.vacant { opacity: .3; border: 1.5px dashed var(--ink-5); background-color: var(--line) !important; color: var(--ink-4); }
+  .mini-room.overdue::after {
+    content: ""; position: absolute; top: -3px; right: -3px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--neg); border: 1.5px solid var(--card);
+  }
+  .mini-room.ending::after {
+    content: ""; position: absolute; top: -3px; right: -3px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gold); border: 1.5px solid var(--card);
+  }
+
+  /* Para pisos completos · inquilino */
+  .tenant-row {
+    display: flex; align-items: center; gap: 8px;
+    padding-top: 9px; margin-top: 2px;
+    border-top: 1px solid var(--line-2);
+  }
+  .tenant-avi {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--brand); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .tenant-name { font-size: 11.5px; font-weight: 600; color: var(--ink); line-height: 1.15; }
+  .tenant-date { font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-left: auto; white-space: nowrap; }
+
+  /* Para en reforma */
+  .reform-row {
+    display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
+    padding-top: 9px; margin-top: 2px;
+    border-top: 1px solid var(--line-2);
+    align-items: start;
+  }
+  .reform-block-lab { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .reform-block-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12.5px; color: var(--ink); margin-top: 2px; letter-spacing: -0.015em; }
+  .reform-progress { height: 3px; background: var(--line-2); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .reform-progress-fill { height: 100%; background: var(--state-reform); border-radius: 2px; }
+
+  /* Métricas de la card */
+  .card-metrics {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px;
+    padding-top: 9px; margin-top: 2px;
+    border-top: 1px solid var(--line-2);
+  }
+  .cmetric-lab { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .cmetric-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; color: var(--ink); margin-top: 2px; letter-spacing: -0.02em; line-height: 1; }
+  .cmetric-val.pos { color: var(--pos); }
+  .cmetric-val.mu { color: var(--ink-4); }
+
+  /* ═════════ ASIDE (mapa + resumen) ═════════ */
+  .aside-widget { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 14px; }
+  .aside-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .aside-title { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .aside-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .aside-link { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; cursor: pointer; font-weight: 500; }
+  .aside-link:hover { background: var(--gold-wash); }
+
+  /* MAPA CARTERA */
+  .portfolio-map {
+    aspect-ratio: 1.1;
+    background-color: #EFEAD9;
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgba(139, 119, 79, 0.09) 0,
+      rgba(139, 119, 79, 0.09) 1px,
+      transparent 1px,
+      transparent 14px
+    );
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .map-pin {
+    position: absolute; width: 22px; height: 30px;
+    transform: translate(-50%, -100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .map-pin svg { width: 100%; height: 100%; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25)); }
+
+  .map-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .map-legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+  .map-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .map-legend-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink); font-size: 13px; }
+
+  /* RESUMEN CARTERA */
+  .summary-list { display: flex; flex-direction: column; }
+  .summary-row {
+    display: grid; grid-template-columns: 1fr auto; gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--line-2);
+    align-items: baseline;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-lab { font-size: 12.5px; color: var(--ink-3); }
+  .summary-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; letter-spacing: -0.015em; }
+  .summary-val.pos { color: var(--pos); }
+
+  /* Note */
+  .note { background: #FBF5E6; border: 1px solid #E8D59E; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 12.5px; color: #6B5410; display: flex; align-items: center; gap: 10px; }
+  .note strong { color: #4A3A00; }
+  .note svg { flex-shrink: 0; color: #8A6213; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>Declaración</a>
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Listado Inmuebles v2 · grid por defecto · mapa + resumen cartera como <strong>widgets laterales</strong> siempre visibles · <strong>plusvalía latente</strong> añadida · <strong>AST-XX IDs</strong> y estado <strong>En reforma</strong> incorporados.
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <h1>Inmuebles</h1>
+        <div class="page-sub">8 activos<span class="dot"></span>6 por habitaciones · 2 completos · 1 en reforma<span class="dot"></span>valoración total <strong style="color:var(--ink)">1.220.000 €</strong></div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+        <button class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo inmueble
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-strip">
+      <div class="kpi emph">
+        <div class="kpi-lab">Valor cartera</div>
+        <div class="kpi-val">1.220.000<span class="kpi-unit">€</span></div>
+        <div class="kpi-hint pos">▲ +6,2% · 12m</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lab">Renta mensual</div>
+        <div class="kpi-val">8.240<span class="kpi-unit">€</span></div>
+        <div class="kpi-hint">98.880 € anual bruto</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lab">Ocupación media</div>
+        <div class="kpi-val">87<span class="kpi-unit">%</span></div>
+        <div class="kpi-hint">27 / 31 unidades</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lab">Rentabilidad neta</div>
+        <div class="kpi-val pos">5,4<span class="kpi-unit">%</span></div>
+        <div class="kpi-hint pos">▲ +0,3 pp vs 2025</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lab">Cashflow anual</div>
+        <div class="kpi-val pos">+ 32.400<span class="kpi-unit">€</span></div>
+        <div class="kpi-hint">2.700 € / mes</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <div class="filter-search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar por nombre, AST, inquilino, dirección…" />
+      </div>
+      <div class="filter-divider"></div>
+      <button class="filter-chip active">Todos · 8</button>
+      <button class="filter-chip">Por habitaciones · 5</button>
+      <button class="filter-chip">Completos · 2</button>
+      <button class="filter-chip">En reforma · 1</button>
+      <div class="filter-divider"></div>
+      <button class="filter-chip">Oviedo · 6</button>
+      <button class="filter-chip">Cataluña · 2</button>
+      <div class="filter-divider"></div>
+      <button class="filter-chip gold active">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:3px; vertical-align:middle"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Con alertas · 2
+      </button>
+      <div style="margin-left: auto">
+        <div class="view-toggle">
+          <button class="active"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Grid</button>
+          <button><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Lista</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYOUT PRINCIPAL · grid + aside -->
+    <div class="main-layout">
+
+      <!-- GRID INMUEBLES -->
+      <div class="inm-grid">
+
+        <!-- AST-01 · FA32 · habitaciones mixta · ATENCIÓN -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge attention">Atención</span>
+            <span class="inm-ast">AST-01</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Fuertes Acevedo 32</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · La Argañosa · 4ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Habitaciones</span>
+              <span class="inm-card-chip">5 hab</span>
+              <span class="inm-card-chip">Mixta</span>
+              <span class="inm-card-chip">96 m²</span>
+            </div>
+            <div class="card-rooms">
+              <div class="card-rooms-head">
+                <span class="card-rooms-lab">Ocupación 4 / 5</span>
+                <span class="card-rooms-ctx" style="color: var(--gold-ink)">Hab 3 vence 18d</span>
+              </div>
+              <div class="card-rooms-grid">
+                <div class="mini-room" style="background: var(--room-green)">1</div>
+                <div class="mini-room" style="background: var(--room-red)">2</div>
+                <div class="mini-room ending" style="background: var(--room-yellow)">3</div>
+                <div class="mini-room vacant">4</div>
+                <div class="mini-room" style="background: var(--room-bw)">5</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">195.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">1.520 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">6,4%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 702 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-02 · Tenderina 64 · 4D · IMPAGO -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge overdue">Impago</span>
+            <span class="inm-ast">AST-02</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Tenderina 64 · 4D</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · Tenderina · 4ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Habitaciones</span>
+              <span class="inm-card-chip">5 hab</span>
+              <span class="inm-card-chip">Largo plazo</span>
+              <span class="inm-card-chip">88 m²</span>
+            </div>
+            <div class="card-rooms">
+              <div class="card-rooms-head">
+                <span class="card-rooms-lab">Ocupación 5 / 5</span>
+                <span class="card-rooms-ctx" style="color: var(--neg)">Hab 1 · 3d retraso</span>
+              </div>
+              <div class="card-rooms-grid">
+                <div class="mini-room overdue" style="background: var(--room-green)">1</div>
+                <div class="mini-room" style="background: var(--room-red)">2</div>
+                <div class="mini-room" style="background: var(--room-yellow)">3</div>
+                <div class="mini-room" style="background: var(--room-blue)">4</div>
+                <div class="mini-room" style="background: var(--room-bw)">5</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">135.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">1.450 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">5,8%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 580 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-03 · Tenderina 64 · 4IZ · OCUPADO -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge occupied">Ocupado</span>
+            <span class="inm-ast">AST-03</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Tenderina 64 · 4IZ</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · Tenderina · 4ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Habitaciones</span>
+              <span class="inm-card-chip">5 hab</span>
+              <span class="inm-card-chip">Largo plazo</span>
+              <span class="inm-card-chip">88 m²</span>
+            </div>
+            <div class="card-rooms">
+              <div class="card-rooms-head">
+                <span class="card-rooms-lab">Ocupación 5 / 5</span>
+                <span class="card-rooms-ctx" style="color: var(--pos)">Todo al día</span>
+              </div>
+              <div class="card-rooms-grid">
+                <div class="mini-room" style="background: var(--room-green)">1</div>
+                <div class="mini-room" style="background: var(--room-red)">2</div>
+                <div class="mini-room" style="background: var(--room-yellow)">3</div>
+                <div class="mini-room" style="background: var(--room-blue)">4</div>
+                <div class="mini-room" style="background: var(--room-bw)">5</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">128.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">1.380 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">5,5%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 523 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-04 · Uría 14 · ATENCIÓN 1 libre -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge attention">Atención</span>
+            <span class="inm-ast">AST-04</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Calle Uría 14</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · Centro · 2ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Habitaciones</span>
+              <span class="inm-card-chip">4 hab</span>
+              <span class="inm-card-chip">Largo plazo</span>
+              <span class="inm-card-chip">78 m²</span>
+            </div>
+            <div class="card-rooms">
+              <div class="card-rooms-head">
+                <span class="card-rooms-lab">Ocupación 3 / 4</span>
+                <span class="card-rooms-ctx" style="color: var(--gold-ink)">Hab 3 libre · 12d</span>
+              </div>
+              <div class="card-rooms-grid">
+                <div class="mini-room" style="background: var(--room-green)">1</div>
+                <div class="mini-room" style="background: var(--room-red)">2</div>
+                <div class="mini-room vacant">3</div>
+                <div class="mini-room" style="background: var(--room-blue)">4</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">168.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">1.140 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">4,9%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 412 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-05 · Nueva 22 · OCUPADO -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge occupied">Ocupado</span>
+            <span class="inm-ast">AST-05</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Calle Nueva 22</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · Centro · 3ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Habitaciones</span>
+              <span class="inm-card-chip">4 hab</span>
+              <span class="inm-card-chip">Largo plazo</span>
+              <span class="inm-card-chip">72 m²</span>
+            </div>
+            <div class="card-rooms">
+              <div class="card-rooms-head">
+                <span class="card-rooms-lab">Ocupación 4 / 4</span>
+                <span class="card-rooms-ctx" style="color: var(--pos)">Todo al día</span>
+              </div>
+              <div class="card-rooms-grid">
+                <div class="mini-room" style="background: var(--room-green)">1</div>
+                <div class="mini-room" style="background: var(--room-red)">2</div>
+                <div class="mini-room" style="background: var(--room-yellow)">3</div>
+                <div class="mini-room" style="background: var(--room-blue)">4</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">148.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">1.120 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">5,7%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 498 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-06 · Milicias Nacionales 7 · piso completo -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge occupied">Ocupado</span>
+            <span class="inm-ast">AST-06</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Milicias Nacionales 7</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Oviedo · Centro · bajo
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Piso completo</span>
+              <span class="inm-card-chip">3 hab · 2 baños</span>
+              <span class="inm-card-chip">Largo plazo</span>
+              <span class="inm-card-chip">84 m²</span>
+            </div>
+            <div class="tenant-row">
+              <div class="tenant-avi">LP</div>
+              <div>
+                <div class="tenant-name">L. Pérez</div>
+                <div style="font-size: 10px; color: var(--ink-4); font-family: .JetBrains Mono., monospace">desde mar 2023</div>
+              </div>
+              <div class="tenant-date">próx 1 may</div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">142.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">780 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">5,9%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 345 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-07 · Sant Fruitós · piso completo familiar -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge occupied">Ocupado</span>
+            <span class="inm-ast">AST-07</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Sant Fruitós de Bages</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Cataluña · Bages · 2ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Piso completo</span>
+              <span class="inm-card-chip">3 hab · 2 baños</span>
+              <span class="inm-card-chip">Familiar</span>
+              <span class="inm-card-chip">92 m²</span>
+            </div>
+            <div class="tenant-row">
+              <div class="tenant-avi" style="background: var(--room-green)">GF</div>
+              <div>
+                <div class="tenant-name">Familia García</div>
+                <div style="font-size: 10px; color: var(--ink-4); font-family: .JetBrains Mono., monospace">desde ene 2022</div>
+              </div>
+              <div class="tenant-date">próx 1 may</div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">180.000 €</div></div>
+              <div><div class="cmetric-lab">Renta mes</div><div class="cmetric-val">850 €</div></div>
+              <div><div class="cmetric-lab">Rent. neta</div><div class="cmetric-val pos">4,9%</div></div>
+              <div><div class="cmetric-lab">Cashflow</div><div class="cmetric-val pos">+ 320 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AST-08 · Manresa · EN REFORMA -->
+        <div class="inm-card">
+          <div class="inm-photo">
+            <span class="photo-label">FOTO</span>
+            <span class="inm-state-badge reform">En reforma</span>
+            <span class="inm-ast">AST-08</span>
+          </div>
+          <div class="inm-card-body">
+            <div class="inm-card-name">Manresa · Carrer Guimerà</div>
+            <div class="inm-card-loc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Cataluña · Manresa · 4ª
+            </div>
+            <div class="inm-card-chips">
+              <span class="inm-card-chip type">Piso completo</span>
+              <span class="inm-card-chip">2 hab · 1 baño</span>
+              <span class="inm-card-chip">Familiar</span>
+              <span class="inm-card-chip">68 m²</span>
+            </div>
+            <div class="reform-row">
+              <div>
+                <div class="reform-block-lab">Presupuesto</div>
+                <div class="reform-block-val">28.400 €</div>
+              </div>
+              <div>
+                <div class="reform-block-lab">Avance</div>
+                <div class="reform-block-val" style="color: var(--state-reform)">62 %</div>
+                <div class="reform-progress"><div class="reform-progress-fill" style="width: 62%"></div></div>
+              </div>
+              <div style="text-align: right;">
+                <div class="reform-block-lab">Fin est.</div>
+                <div class="reform-block-val" style="font-size: 11.5px; white-space: nowrap">15 jun 26</div>
+              </div>
+            </div>
+            <div class="card-metrics">
+              <div><div class="cmetric-lab">Valor</div><div class="cmetric-val">124.000 €</div></div>
+              <div><div class="cmetric-lab">Renta esperada</div><div class="cmetric-val mu">720 €</div></div>
+              <div><div class="cmetric-lab">Constructora</div><div class="cmetric-val" style="font-size: 13px">Lena S.L.</div></div>
+              <div><div class="cmetric-lab">Facturas obra</div><div class="cmetric-val" style="font-size: 13px">14 docs</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ASIDE · Mapa + Resumen Cartera -->
+      <aside>
+
+        <!-- MAPA CARTERA -->
+        <div class="aside-widget">
+          <div class="aside-title-row">
+            <div>
+              <div class="aside-title">Mapa de cartera</div>
+              <div class="aside-sub">Oviedo · Cataluña</div>
+            </div>
+            <a class="aside-link">Ampliar →</a>
+          </div>
+          <div class="portfolio-map">
+            <!-- Pins ubicación (Oviedo concentrados, Cataluña más separado) -->
+            <!-- AST-01 FA32 Oviedo atención -->
+            <div class="map-pin" style="left: 30%; top: 38%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#B88A3E"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-02 T64-4D Oviedo impago -->
+            <div class="map-pin" style="left: 34%; top: 28%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#A43328"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-03 T64-4IZ Oviedo ocupado -->
+            <div class="map-pin" style="left: 38%; top: 32%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#1E2954"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-04 Uría 14 Oviedo atención -->
+            <div class="map-pin" style="left: 26%; top: 46%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#B88A3E"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-05 Nueva 22 Oviedo ocupado -->
+            <div class="map-pin" style="left: 31%; top: 52%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#1E2954"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-06 Milicias Oviedo ocupado -->
+            <div class="map-pin" style="left: 36%; top: 48%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#1E2954"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-07 Sant Fruitós Cataluña ocupado -->
+            <div class="map-pin" style="left: 80%; top: 60%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#1E2954"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+            <!-- AST-08 Manresa Cataluña reforma -->
+            <div class="map-pin" style="left: 78%; top: 72%">
+              <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" fill="#8A6213"/>
+                <circle cx="12" cy="12" r="4" fill="#FFFFFF"/>
+              </svg>
+            </div>
+          </div>
+          <div class="map-legend">
+            <div class="map-legend-row">
+              <span class="map-legend-dot" style="background: var(--state-occupied)"></span>
+              Ocupado
+              <span class="map-legend-count">4</span>
+            </div>
+            <div class="map-legend-row">
+              <span class="map-legend-dot" style="background: var(--state-attention)"></span>
+              Atención
+              <span class="map-legend-count">2</span>
+            </div>
+            <div class="map-legend-row">
+              <span class="map-legend-dot" style="background: var(--state-overdue)"></span>
+              Impago
+              <span class="map-legend-count">1</span>
+            </div>
+            <div class="map-legend-row">
+              <span class="map-legend-dot" style="background: var(--state-reform)"></span>
+              En reforma
+              <span class="map-legend-count">1</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESUMEN CARTERA -->
+        <div class="aside-widget">
+          <div class="aside-title-row">
+            <div>
+              <div class="aside-title">Resumen cartera</div>
+              <div class="aside-sub">Métricas consolidadas</div>
+            </div>
+          </div>
+          <div class="summary-list">
+            <div class="summary-row">
+              <span class="summary-lab">Metros totales</span>
+              <span class="summary-val">666 m²</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-lab">Precio medio m²</span>
+              <span class="summary-val">1.832 €</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-lab">Deuda hipotecaria</span>
+              <span class="summary-val">396.000 €</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-lab">LTV cartera</span>
+              <span class="summary-val">32,5 %</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-lab">Plusvalía latente</span>
+              <span class="summary-val pos">+ 280.000 €</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-lab">Cash-on-cash</span>
+              <span class="summary-val pos">7,8 %</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>

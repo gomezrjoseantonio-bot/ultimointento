@@ -1,0 +1,1994 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Inversiones</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar principal */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .nav a.active .chip { background: rgba(184,138,62,.25); color: #E8D9AE; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  .main-container { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ═══ TOP BAR PERSISTENT ═══ */
+  .persistent-bar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--brand-ink); color: #fff;
+    display: grid; grid-template-columns: 1fr auto auto auto auto;
+    gap: 32px; align-items: center;
+    padding: 14px 32px;
+    box-shadow: 0 2px 12px rgba(14,20,35,0.08);
+  }
+  .pbar-title { display: flex; align-items: center; gap: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255,255,255,0.55); font-weight: 600; }
+  .pbar-title-dot { width: 6px; height: 6px; background: var(--gold); border-radius: 50%; box-shadow: 0 0 0 4px rgba(184,138,62,0.18); }
+  .pbar-stat { display: flex; flex-direction: column; padding-left: 24px; border-left: 1px solid rgba(255,255,255,0.12); }
+  .pbar-stat:first-of-type { border-left: none; padding-left: 0; }
+  .pbar-stat-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(255,255,255,0.5); font-weight: 600; }
+  .pbar-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: #fff; letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
+  .pbar-stat-val.pos { color: #6FD48A; }
+  .pbar-stat-val.gold { color: #E8D9AE; }
+  .pbar-stat-sub { font-size: 10px; color: rgba(255,255,255,0.5); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 28px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+
+  /* ═══ GALERÍA ═══ */
+  .gallery-hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  .gallery-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 700; }
+  .gallery-count { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-3); font-weight: 500; }
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 40px; }
+
+  .carta {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 24px;
+    aspect-ratio: 4 / 3; min-height: 300px;
+    display: flex; flex-direction: column;
+    cursor: pointer; transition: all .18s ease-out;
+    position: relative; overflow: hidden;
+  }
+  .carta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(14,20,35,0.06);
+    border-color: var(--gold);
+  }
+  .carta::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .carta.plan::before { background: linear-gradient(90deg, var(--brand), var(--brand-2)); }
+  .carta.prestamo::before { background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
+  .carta.accion::before { background: linear-gradient(90deg, var(--ink-3), var(--ink-4)); }
+  .carta.add::before { display: none; }
+
+  .carta-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .carta-marca { display: flex; align-items: center; gap: 10px; }
+  .carta-logo {
+    width: 38px; height: 38px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; color: #fff;
+  }
+  .carta-logo.myi { background: #7C3AED; }
+  .carta-logo.smartflip { background: #059669; }
+  .carta-logo.unihouser { background: #B88A3E; }
+  .carta-logo.bbva { background: #004481; }
+  .carta-logo.bnp { background: #00915A; }
+  .carta-entidad-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 700; }
+  .carta-entidad-nom { font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-top: 2px; }
+  .carta-tipo {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px;
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .carta-tipo.plan { background: var(--brand-wash); color: var(--brand); }
+  .carta-tipo.prestamo { background: var(--gold-wash); color: var(--gold-ink); }
+  .carta-tipo.accion { background: var(--bg); color: var(--ink-3); border: 1px solid var(--line); }
+
+  .carta-nom { font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 16px; }
+  .carta-valor { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700; color: var(--ink); letter-spacing: -0.028em; line-height: 1; }
+  .carta-valor-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+  .carta-valor-sub .delta { font-weight: 700; }
+  .carta-valor-sub .delta.pos { color: var(--pos); }
+  .carta-valor-sub .delta.neg { color: var(--neg); }
+  .carta-valor-sub .delta.gold { color: var(--gold-ink); }
+
+  .carta-viz { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line-2); }
+  .carta-viz-sparkline { width: 100%; height: 48px; }
+
+  .carta-viz-cobros { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+  .carta-viz-mes {
+    flex: 1; height: 32px; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .carta-viz-mes.cobrado { background: var(--pos-wash); color: var(--pos); }
+  .carta-viz-mes.pendiente { background: var(--gold-wash); color: var(--gold-ink); border: 1px solid var(--gold); }
+  .carta-viz-mes.futuro { background: var(--bg); color: var(--ink-5); border: 1px dashed var(--line); }
+
+  .carta-viz-accion-info { display: flex; flex-direction: column; gap: 6px; padding: 6px 0; }
+  .carta-viz-row { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+  .carta-viz-row .k { color: var(--ink-4); }
+  .carta-viz-row .v { color: var(--ink-2); font-weight: 700; }
+
+  .carta-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+  .carta-footer-meta { font-weight: 600; }
+  .carta-footer-cta { font-size: 11px; color: var(--gold); font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 0.08em; display: inline-flex; align-items: center; gap: 4px; }
+  .carta:hover .carta-footer-cta { color: var(--gold-ink); }
+
+  .carta.add {
+    background: transparent; border: 2px dashed var(--line);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+    color: var(--ink-4); cursor: pointer;
+  }
+  .carta.add:hover { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .carta.add svg { opacity: 0.5; }
+  .carta.add:hover svg { opacity: 1; }
+  .carta-add-title { font-size: 13px; font-weight: 700; letter-spacing: -0.005em; }
+  .carta-add-sub { font-size: 11px; color: var(--ink-4); text-align: center; max-width: 200px; line-height: 1.45; }
+  .carta.add:hover .carta-add-sub { color: var(--gold-ink); }
+
+  /* Cerradas · colapsable */
+  .cerradas-sec { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 22px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: all .14s; }
+  .cerradas-sec:hover { background: var(--card-alt); border-color: var(--ink-5); }
+  .cerradas-sec-left { display: flex; align-items: center; gap: 14px; }
+  .cerradas-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--bg); color: var(--ink-3); display: flex; align-items: center; justify-content: center; }
+  .cerradas-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; display: flex; align-items: center; gap: 6px; }
+  .cerradas-count { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 2px 7px; border-radius: 4px; background: var(--bg); color: var(--ink-3); font-weight: 500; }
+  .cerradas-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+  .cerradas-right { display: flex; align-items: center; gap: 22px; }
+  .cerradas-total-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--pos); letter-spacing: -0.015em; text-align: right; }
+  .cerradas-total-lab { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-weight: 500; text-align: right; }
+  .cerradas-arrow { color: var(--ink-5); }
+
+  /* ═══ DETALLE ═══ */
+  .detail-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font-size: 12px; color: var(--ink-3); cursor: pointer; font-weight: 500; }
+  .back-btn:hover { border-color: var(--ink-5); color: var(--ink); }
+
+  .detail-hero { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0; margin-bottom: 18px; overflow: hidden; }
+  .detail-hero-top { padding: 10px 28px; display: flex; align-items: center; gap: 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid var(--line-2); }
+  .detail-hero-top.plan { background: var(--brand-wash); color: var(--brand); }
+  .detail-hero-top.prestamo { background: var(--gold-wash); color: var(--gold-ink); }
+  .detail-hero-body { padding: 24px 28px 28px; display: grid; grid-template-columns: 48px 1fr auto auto auto auto; gap: 24px; align-items: center; }
+  .detail-hero-logo { width: 48px; height: 48px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #fff; }
+  .detail-hero-logo.myi { background: #7C3AED; }
+  .detail-hero-logo.smartflip { background: #059669; }
+  .detail-hero-nom { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.022em; line-height: 1.15; }
+  .detail-hero-meta { font-size: 11.5px; color: var(--ink-3); margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+  .detail-hero-meta strong { color: var(--ink-2); font-weight: 700; }
+  .detail-hero-stat { padding-left: 22px; border-left: 1px solid var(--line-2); text-align: right; }
+  .detail-hero-stat-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .detail-hero-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+  .detail-hero-stat-val.pos { color: var(--pos); }
+  .detail-hero-stat-val.gold { color: var(--gold-ink); }
+  .detail-hero-stat-val.neg { color: var(--neg); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .card-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .card-action { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  .card-action:hover { background: var(--gold-wash); }
+  .chart-svg { width: 100%; height: 220px; display: block; }
+  .cols-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+
+  /* Calendar 12 meses */
+  .cal-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; margin-top: 12px; }
+  .cal-mes { text-align: center; padding: 10px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--card-alt); cursor: pointer; }
+  .cal-mes:hover { border-color: var(--ink-5); }
+  .cal-mes.cobrado { background: var(--pos-wash); border-color: var(--pos); }
+  .cal-mes.pendiente { background: var(--gold-wash); border-color: var(--gold); }
+  .cal-mes.futuro { background: var(--card-alt); border-style: dashed; }
+  .cal-mes-nom { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); font-weight: 700; }
+  .cal-mes.cobrado .cal-mes-nom { color: var(--pos); }
+  .cal-mes.pendiente .cal-mes-nom { color: var(--gold-ink); }
+  .cal-mes-imp { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; color: var(--ink); margin-top: 4px; letter-spacing: -0.01em; }
+  .cal-mes.cobrado .cal-mes-imp { color: var(--pos); }
+  .cal-mes.pendiente .cal-mes-imp { color: var(--gold-ink); }
+  .cal-mes.futuro .cal-mes-imp { color: var(--ink-4); font-weight: 500; }
+
+  /* Lista aportaciones */
+  .apo-list { display: flex; flex-direction: column; }
+  .apo-row { display: grid; grid-template-columns: 100px 1fr 120px; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-2); align-items: center; }
+  .apo-row:last-child { border-bottom: none; }
+  .apo-fecha { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-2); font-weight: 600; }
+  .apo-concepto { font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+  .apo-concepto-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .apo-amount { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--pos); text-align: right; }
+
+  /* Fiscal nota */
+  .fiscal-nota { background: var(--gold-wash); border-left: 3px solid var(--gold-ink); border-radius: 8px; padding: 14px 16px; margin-top: 12px; font-size: 11.5px; color: #4A3A00; line-height: 1.55; }
+  .fiscal-nota strong { font-weight: 700; }
+
+  /* Stat row */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--card-alt); border-radius: 8px; border: 1px solid var(--line-2); }
+  .stat-row.highlight { background: var(--pos-wash); border-color: var(--pos); border-left-width: 3px; }
+  .stat-row-lab { font-size: 12px; color: var(--ink-3); font-weight: 500; }
+  .stat-row.highlight .stat-row-lab { color: var(--pos); font-weight: 700; }
+  .stat-row-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--ink); }
+  .stat-row-val.pos { color: var(--pos); }
+  .stat-row-val.gold { color: var(--gold-ink); }
+
+  /* ═══ INTERFAZ ACCIONES ═══ */
+  .detail-hero-top.accion { background: var(--bg); color: var(--ink-3); border-bottom: 1px solid var(--line); }
+  .detail-hero-logo.bnp { background: #00915A; }
+
+  /* Precio actual · bloque hero */
+  .price-block {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 14px;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 28px;
+  }
+  .price-main { }
+  .price-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .price-dot-live { width: 7px; height: 7px; background: var(--pos); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  .price-val { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1; }
+  .price-delta { display: flex; gap: 14px; align-items: baseline; margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .price-delta-pill { padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 11.5px; letter-spacing: -0.01em; }
+  .price-delta-pill.pos { background: var(--pos-wash); color: var(--pos); }
+  .price-delta-pill.neg { background: var(--neg-wash); color: var(--neg); }
+  .price-delta-label { color: var(--ink-4); font-weight: 500; }
+
+  .price-range {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; padding-left: 28px; border-left: 1px solid var(--line-2);
+  }
+  .price-range-cell { padding: 0 20px; border-left: 1px solid var(--line-2); }
+  .price-range-cell:first-child { border-left: none; padding-left: 0; }
+  .price-range-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; }
+  .price-range-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--ink-2); margin-top: 4px; letter-spacing: -0.01em; }
+  .price-range-val.pos { color: var(--pos); }
+  .price-range-val.neg { color: var(--neg); }
+
+  /* Period selector · gráfica acciones */
+  .period-selector { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .period-selector button { padding: 5px 10px; border-radius: 5px; font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .period-selector button:hover { color: var(--ink-2); }
+  .period-selector button.active { background: var(--ink); color: #fff; }
+
+  /* Dividendos · tabla */
+  .divi-table { width: 100%; border-collapse: collapse; }
+  .divi-table thead th { padding: 8px 20px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; text-align: left; border-bottom: 1px solid var(--line-2); }
+  .divi-table thead th.r { text-align: right; }
+  .divi-table thead th.c { text-align: center; }
+  .divi-table tbody td { padding: 10px 20px; border-bottom: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); }
+  .divi-table tbody td.r { text-align: right; }
+  .divi-table tbody td.c { text-align: center; }
+  .divi-table tbody tr:last-child td { border-bottom: none; }
+  .divi-table tbody tr:hover { background: var(--card-alt); cursor: pointer; }
+  .divi-fecha { color: var(--ink); font-weight: 700; }
+  .divi-amount { color: var(--pos); font-weight: 700; }
+  .divi-badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; padding: 3px 7px; border-radius: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .divi-badge.cobrado { background: var(--pos-wash); color: var(--pos); }
+  .divi-badge.anunciado { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* RSU · detalle info */
+  .rsu-info { display: flex; flex-direction: column; gap: 10px; }
+  .rsu-row { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 10px 14px; background: var(--card-alt); border-radius: 8px; border: 1px solid var(--line-2); }
+  .rsu-row.highlight { background: var(--pos-wash); border-color: var(--pos); border-left-width: 3px; }
+  .rsu-row-lab { font-size: 12px; color: var(--ink-3); font-weight: 500; }
+  .rsu-row.highlight .rsu-row-lab { color: var(--pos); font-weight: 700; }
+  .rsu-row-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .rsu-row-val.pos { color: var(--pos); }
+  .rsu-row-val.gold { color: var(--gold-ink); }
+
+  /* ═══ CERRADAS · vista histórica ═══ */
+  .cer-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .cer-info-banner {
+    background: var(--brand-wash); border-left: 3px solid var(--brand);
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 18px;
+    display: flex; align-items: start; gap: 12px;
+    font-size: 12px; color: var(--brand-ink); line-height: 1.5;
+  }
+  .cer-info-banner svg { color: var(--brand); flex-shrink: 0; margin-top: 1px; }
+  .cer-info-banner strong { font-weight: 700; }
+
+  /* Totales agregados · banda horizontal */
+  .cer-totales {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; padding: 20px 26px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 18px;
+  }
+  .cer-tot-cell { padding: 0 24px; border-left: 1px solid var(--line-2); }
+  .cer-tot-cell:first-child { border-left: none; padding-left: 0; }
+  .cer-tot-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .cer-tot-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 6px; }
+  .cer-tot-val.pos { color: var(--pos); }
+  .cer-tot-val.neg { color: var(--neg); }
+  .cer-tot-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Ejercicio fiscal · bloque por año */
+  .cer-ejercicio {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+  }
+  .cer-ejer-head {
+    padding: 16px 24px;
+    display: grid; grid-template-columns: auto 1fr auto auto auto;
+    gap: 18px; align-items: center;
+    background: var(--card-alt); border-bottom: 1px solid var(--line-2);
+  }
+  .cer-ejer-year {
+    font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.025em; line-height: 1;
+    padding: 4px 12px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; border-left: 3px solid var(--brand);
+  }
+  .cer-ejer-info-nom { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .cer-ejer-info-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .cer-ejer-casilla {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px;
+    background: var(--brand-wash); color: var(--brand);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .cer-ejer-total {
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700;
+    letter-spacing: -0.02em; text-align: right;
+  }
+  .cer-ejer-total.pos { color: var(--pos); }
+  .cer-ejer-total.neg { color: var(--neg); }
+  .cer-ejer-total-lab { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-top: 2px; text-align: right; }
+  .cer-ejer-action {
+    font-size: 11px; color: var(--gold); font-weight: 700; padding: 6px 12px;
+    border-radius: 6px; cursor: pointer; border: 1px solid var(--gold-wash);
+  }
+  .cer-ejer-action:hover { background: var(--gold-wash); }
+
+  /* Filas operación cerrada · detalle */
+  .cer-op-row {
+    display: grid; grid-template-columns: 100px 1fr 120px 120px 120px 110px;
+    gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line-2);
+    align-items: center;
+  }
+  .cer-op-row:last-child { border-bottom: none; }
+  .cer-op-row:hover { background: var(--card-alt); }
+  .cer-op-row.header {
+    padding: 9px 24px; background: var(--card-alt); cursor: default;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-4); font-weight: 600;
+  }
+  .cer-op-row.header:hover { background: var(--card-alt); }
+  .cer-op-row.header .r { text-align: right; }
+  .cer-op-row.header .c { text-align: center; }
+  .cer-op-fecha { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-2); font-weight: 600; }
+  .cer-op-activo { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+  .cer-op-activo-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .cer-op-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--ink-2); text-align: right; }
+  .cer-op-num.ganancia.pos { color: var(--pos); font-weight: 700; }
+  .cer-op-num.ganancia.neg { color: var(--neg); font-weight: 700; }
+  .cer-op-doc {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--gold); font-weight: 700;
+    padding: 4px 9px; border-radius: 5px; cursor: pointer;
+  }
+  .cer-op-doc:hover { background: var(--gold-wash); }
+
+  /* Compensaciones pendientes · aviso */
+  .comp-pendientes {
+    background: var(--warn-wash); border-left: 3px solid var(--warn);
+    border-radius: 8px; padding: 14px 18px; margin-top: 12px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+  }
+  .comp-pend-icon { color: var(--warn); }
+  .comp-pend-title { font-size: 12.5px; font-weight: 700; color: #6B4A10; letter-spacing: -0.005em; }
+  .comp-pend-desc { font-size: 11px; color: #6B4A10; margin-top: 3px; line-height: 1.5; }
+  .comp-pend-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--warn); }
+  .comp-pend-val-lab { font-size: 10px; color: #6B4A10; margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-weight: 500; text-align: right; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a onclick="showToast('Ir a Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones <span class="chip">5</span></a>
+      <a onclick="showToast('Ir a Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="showToast('Ir a Financiación')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación <span class="chip">13</span></a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a onclick="showToast('Ir a Mi Plan')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Ir a Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Fiscal <span class="chip">3</span></a>
+      <a onclick="showToast('Ir a Archivo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo <span class="chip">247</span></a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Ajustes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <div class="main-container">
+
+    <!-- PERSISTENT BAR -->
+    <div class="persistent-bar">
+      <div class="pbar-title">
+        <div class="pbar-title-dot"></div>
+        Mi cartera de inversiones
+      </div>
+      <div class="pbar-stat">
+        <div class="pbar-stat-lab">Valor total</div>
+        <div class="pbar-stat-val">242.352 €</div>
+      </div>
+      <div class="pbar-stat">
+        <div class="pbar-stat-lab">Rentabilidad</div>
+        <div class="pbar-stat-val pos">+28,7%</div>
+        <div class="pbar-stat-sub">+53.996 € latente</div>
+      </div>
+      <div class="pbar-stat">
+        <div class="pbar-stat-lab">Cobrado abril</div>
+        <div class="pbar-stat-val gold">+750 €</div>
+        <div class="pbar-stat-sub">SmartFlip</div>
+      </div>
+      <div class="pbar-stat">
+        <div class="pbar-stat-lab">Previsto año</div>
+        <div class="pbar-stat-val gold">+11.250 €</div>
+        <div class="pbar-stat-sub">intereses P2P</div>
+      </div>
+    </div>
+
+    <main class="main">
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA GALERÍA (default) -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page active" id="page-galeria">
+
+      <!-- Page head -->
+      <div class="page-head">
+        <div>
+          <h1>Inversiones</h1>
+          <div class="page-sub">tus posiciones activas · click en cualquier carta para ver su detalle</div>
+        </div>
+        <div class="tb-actions">
+          <button class="btn btn-ghost" onclick="showToast('Añadir aportación a una posición existente')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Aportar
+          </button>
+          <button class="btn btn-gold" onclick="showToast('Wizard · nueva posición · tipo · entidad · condiciones')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="12 5 12 19"/><polyline points="5 12 12 5 19 12"/></svg>
+            Nueva posición
+          </button>
+        </div>
+      </div>
+
+      <!-- Gallery header -->
+      <div class="gallery-hd">
+        <div class="gallery-title">Posiciones activas</div>
+        <div class="gallery-count">5 activas · ordenadas por valor</div>
+      </div>
+
+      <!-- Grid · 5 cartas + añadir -->
+      <div class="gallery-grid">
+
+        <!-- CARTA 1 · Indexado SP500 · plan PP estrella -->
+        <div class="carta plan" onclick="showPage('sp500')">
+          <div class="carta-top">
+            <div class="carta-marca">
+              <div class="carta-logo myi">MyI</div>
+              <div>
+                <div class="carta-entidad-lab">Plan pensiones</div>
+                <div class="carta-entidad-nom">MyInvestor</div>
+              </div>
+            </div>
+            <span class="carta-tipo plan">Plan PP</span>
+          </div>
+
+          <div class="carta-nom">Indexado SP 500</div>
+
+          <div>
+            <div class="carta-valor">93.832 €</div>
+            <div class="carta-valor-sub">aportado 40.000 € · <span class="delta pos">+53.832 € · +134,6%</span></div>
+          </div>
+
+          <div class="carta-viz">
+            <svg class="carta-viz-sparkline" viewBox="0 0 300 48" preserveAspectRatio="none">
+              <path d="M 5 42 L 30 40 L 55 36 L 80 32 L 105 28 L 130 23 L 155 20 L 180 16 L 205 14 L 230 10 L 255 8 L 280 6"
+                    stroke="var(--brand)" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M 5 42 L 30 40 L 55 36 L 80 32 L 105 28 L 130 23 L 155 20 L 180 16 L 205 14 L 230 10 L 255 8 L 280 6 L 280 48 L 5 48 Z"
+                    fill="var(--brand-wash)" opacity="0.7"/>
+              <circle cx="280" cy="6" r="3" fill="var(--brand)"/>
+            </svg>
+          </div>
+
+          <div class="carta-footer">
+            <span class="carta-footer-meta">CAGR +13,8% · desde 2018</span>
+            <span class="carta-footer-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- CARTA 2 · SmartFlip · préstamo P2P -->
+        <div class="carta prestamo" onclick="showPage('smartflip')">
+          <div class="carta-top">
+            <div class="carta-marca">
+              <div class="carta-logo smartflip">SF</div>
+              <div>
+                <div class="carta-entidad-lab">Préstamo P2P</div>
+                <div class="carta-entidad-nom">SmartFlip</div>
+              </div>
+            </div>
+            <span class="carta-tipo prestamo">Préstamo</span>
+          </div>
+
+          <div class="carta-nom">SmartFlip · 10% TIN</div>
+
+          <div>
+            <div class="carta-valor">90.000 €</div>
+            <div class="carta-valor-sub">interés anual <span class="delta gold">9.000 €</span> · cobro mensual</div>
+          </div>
+
+          <div class="carta-viz">
+            <div class="carta-viz-cobros">
+              <div class="carta-viz-mes cobrado">E</div>
+              <div class="carta-viz-mes cobrado">F</div>
+              <div class="carta-viz-mes cobrado">M</div>
+              <div class="carta-viz-mes pendiente">A</div>
+              <div class="carta-viz-mes futuro">M</div>
+              <div class="carta-viz-mes futuro">J</div>
+              <div class="carta-viz-mes futuro">J</div>
+              <div class="carta-viz-mes futuro">A</div>
+              <div class="carta-viz-mes futuro">S</div>
+              <div class="carta-viz-mes futuro">O</div>
+              <div class="carta-viz-mes futuro">N</div>
+              <div class="carta-viz-mes futuro">D</div>
+            </div>
+          </div>
+
+          <div class="carta-footer">
+            <span class="carta-footer-meta">vence ene 2029 · 3 de 12 cobrados</span>
+            <span class="carta-footer-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- CARTA 3 · Plan Orange BBVA · plan PP empresa -->
+        <div class="carta plan" onclick="showPage('plan-orange')">
+          <div class="carta-top">
+            <div class="carta-marca">
+              <div class="carta-logo bbva">BBV</div>
+              <div>
+                <div class="carta-entidad-lab">Plan pensiones</div>
+                <div class="carta-entidad-nom">BBVA · empresa</div>
+              </div>
+            </div>
+            <span class="carta-tipo plan">Plan PP</span>
+          </div>
+
+          <div class="carta-nom">Plan Orange</div>
+
+          <div>
+            <div class="carta-valor">35.491 €</div>
+            <div class="carta-valor-sub">aportado 36.327 € · <span class="delta neg">−836 € · −2,3%</span></div>
+          </div>
+
+          <div class="carta-viz">
+            <svg class="carta-viz-sparkline" viewBox="0 0 300 48" preserveAspectRatio="none">
+              <path d="M 5 22 L 30 20 L 55 18 L 80 19 L 105 21 L 130 24 L 155 28 L 180 26 L 205 29 L 230 31 L 255 32 L 280 34"
+                    stroke="var(--neg)" stroke-width="2" fill="none" stroke-linecap="round"/>
+              <path d="M 5 22 L 30 20 L 55 18 L 80 19 L 105 21 L 130 24 L 155 28 L 180 26 L 205 29 L 230 31 L 255 32 L 280 34 L 280 48 L 5 48 Z"
+                    fill="var(--neg-wash)" opacity="0.4"/>
+              <circle cx="280" cy="34" r="3" fill="var(--neg)"/>
+            </svg>
+          </div>
+
+          <div class="carta-footer">
+            <span class="carta-footer-meta">aportación 3.500 € + 1.500 € empresa/año</span>
+            <span class="carta-footer-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- CARTA 4 · Unihouser · préstamo empresa propia -->
+        <div class="carta prestamo" onclick="showPage('unihouser')">
+          <div class="carta-top">
+            <div class="carta-marca">
+              <div class="carta-logo unihouser">UH</div>
+              <div>
+                <div class="carta-entidad-lab">Préstamo a empresa</div>
+                <div class="carta-entidad-nom">Unihouser · propia</div>
+              </div>
+            </div>
+            <span class="carta-tipo prestamo">Préstamo</span>
+          </div>
+
+          <div class="carta-nom">Unihouser · 8% TIN</div>
+
+          <div>
+            <div class="carta-valor">16.000 €</div>
+            <div class="carta-valor-sub">pendiente de 30.000 € · <span class="delta pos">amortizado 46,7%</span></div>
+          </div>
+
+          <div class="carta-viz">
+            <div class="carta-viz-cobros">
+              <div class="carta-viz-mes cobrado">E</div>
+              <div class="carta-viz-mes cobrado">F</div>
+              <div class="carta-viz-mes cobrado">M</div>
+              <div class="carta-viz-mes pendiente">A</div>
+              <div class="carta-viz-mes futuro">M</div>
+              <div class="carta-viz-mes futuro">J</div>
+              <div class="carta-viz-mes futuro">J</div>
+              <div class="carta-viz-mes futuro">A</div>
+              <div class="carta-viz-mes futuro">S</div>
+              <div class="carta-viz-mes futuro">O</div>
+              <div class="carta-viz-mes futuro">N</div>
+              <div class="carta-viz-mes futuro">D</div>
+            </div>
+          </div>
+
+          <div class="carta-footer">
+            <span class="carta-footer-meta">420 €/mes · vence sep 2030</span>
+            <span class="carta-footer-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- CARTA 5 · Acciones Orange RSU -->
+        <div class="carta accion" onclick="showPage('acciones')">
+          <div class="carta-top">
+            <div class="carta-marca">
+              <div class="carta-logo bnp">BNP</div>
+              <div>
+                <div class="carta-entidad-lab">Acciones · RSU</div>
+                <div class="carta-entidad-nom">BNP Paribas</div>
+              </div>
+            </div>
+            <span class="carta-tipo accion">Acción</span>
+          </div>
+
+          <div class="carta-nom">Orange SA</div>
+
+          <div>
+            <div class="carta-valor">7.029 €</div>
+            <div class="carta-valor-sub">aportado 7.029 € · <span class="delta" style="color: var(--ink-3);">0,0% · neutro</span></div>
+          </div>
+
+          <div class="carta-viz">
+            <div class="carta-viz-accion-info">
+              <div class="carta-viz-row">
+                <span class="k">Precio acción</span>
+                <span class="v">11,24 €</span>
+              </div>
+              <div class="carta-viz-row">
+                <span class="k">Número acciones</span>
+                <span class="v">625</span>
+              </div>
+              <div class="carta-viz-row">
+                <span class="k">Consolidación RSU</span>
+                <span class="v">100% · 2024</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="carta-footer">
+            <span class="carta-footer-meta">disponible · liquidable</span>
+            <span class="carta-footer-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- CARTA 6 · AÑADIR -->
+        <div class="carta add" onclick="showToast('Wizard · nueva posición · tipo · entidad · condiciones')">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="16"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+          </svg>
+          <div class="carta-add-title">Añadir posición</div>
+          <div class="carta-add-sub">planes pensión · préstamos · fondos · acciones · crypto · depósitos</div>
+        </div>
+
+      </div>
+
+      <!-- Cerradas · colapsable -->
+      <div class="gallery-hd" style="margin-top: 18px;">
+        <div class="gallery-title">Histórico fiscal</div>
+        <div class="gallery-count">desde XML IRPF · 2020-2024</div>
+      </div>
+
+      <div class="cerradas-sec" onclick="showPage('cerradas')">
+        <div class="cerradas-sec-left">
+          <div class="cerradas-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div>
+            <div class="cerradas-title">Posiciones cerradas <span class="cerradas-count">3 operaciones</span></div>
+            <div class="cerradas-sub">importadas desde declaraciones IRPF · ganancia/pérdida patrimonial declarada</div>
+          </div>
+        </div>
+        <div class="cerradas-right">
+          <div>
+            <div class="cerradas-total-val">+4.820 €</div>
+            <div class="cerradas-total-lab">ganancia neta declarada</div>
+          </div>
+          <span class="cerradas-arrow">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page galería -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DETALLE · SmartFlip · interfaz préstamo P2P -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-smartflip">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <!-- Hero detalle -->
+      <div class="detail-hero">
+        <div class="detail-hero-top prestamo">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>
+          Préstamo P2P · cobro mensual · vencimiento único
+        </div>
+        <div class="detail-hero-body">
+          <div class="detail-hero-logo smartflip">SF</div>
+          <div>
+            <div class="detail-hero-nom">SmartFlip · préstamo particular</div>
+            <div class="detail-hero-meta">firmado <strong>15/01/2024</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>5 años<span style="color: var(--ink-5); margin: 0 6px;">·</span>TIN <strong>10,0%</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>IRPF <strong>base ahorro</strong></div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Capital</div>
+            <div class="detail-hero-stat-val">90.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Interés anual</div>
+            <div class="detail-hero-stat-val gold">9.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Cobrado 2026</div>
+            <div class="detail-hero-stat-val pos">+3.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Vencimiento</div>
+            <div class="detail-hero-stat-val" style="font-size: 14px;">ene 2029</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendario 12 meses 2026 -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Calendario de cobros · año 2026</div>
+            <div class="card-sub">12 cuotas de 750 € · 9.000 € anuales · capital devuelto al vencimiento · ene 2029</div>
+          </div>
+          <div class="card-action" onclick="showToast('Ver calendario completo 5 años · 45.000 € total intereses · 90.000 € capital al final')">Ver 5 años →</div>
+        </div>
+
+        <div class="cal-grid">
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">ENE</div><div class="cal-mes-imp">+750 €</div></div>
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">FEB</div><div class="cal-mes-imp">+750 €</div></div>
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">MAR</div><div class="cal-mes-imp">+750 €</div></div>
+          <div class="cal-mes pendiente"><div class="cal-mes-nom">ABR</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">MAY</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">JUN</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">JUL</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">AGO</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">SEP</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">OCT</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">NOV</div><div class="cal-mes-imp">750 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">DIC</div><div class="cal-mes-imp">750 €</div></div>
+        </div>
+      </div>
+
+      <!-- 2 cols · gráfica 5 años + resumen operación -->
+      <div class="cols-2" style="margin-top: 14px;">
+
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Intereses acumulados · 5 años</div>
+              <div class="card-sub">desde firma ene 2024 hasta vencimiento ene 2029</div>
+            </div>
+          </div>
+
+          <svg class="chart-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+            <g stroke="var(--line-2)" stroke-width="1" fill="none">
+              <line x1="50" y1="30" x2="870" y2="30"/>
+              <line x1="50" y1="85" x2="870" y2="85"/>
+              <line x1="50" y1="140" x2="870" y2="140"/>
+              <line x1="50" y1="195" x2="870" y2="195"/>
+            </g>
+            <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+              <text x="45" y="34" text-anchor="end">50K</text>
+              <text x="45" y="89" text-anchor="end">35K</text>
+              <text x="45" y="144" text-anchor="end">20K</text>
+              <text x="45" y="199" text-anchor="end">5K</text>
+            </g>
+            <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+              <text x="50" y="215">ene 24</text>
+              <text x="215" y="215">ene 25</text>
+              <text x="380" y="215">ene 26</text>
+              <text x="545" y="215">ene 27</text>
+              <text x="710" y="215">ene 28</text>
+              <text x="870" y="215">ene 29</text>
+            </g>
+
+            <path d="M 50 200 L 215 170 L 380 135 L 545 100 L 710 65 L 870 30"
+                  stroke="var(--gold)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M 50 200 L 215 170 L 380 135 L 545 100 L 710 65 L 870 30 L 870 200 L 50 200 Z"
+                  fill="url(#gradInd)" opacity="0.3"/>
+            <defs>
+              <linearGradient id="gradInd" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#B88A3E" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="#B88A3E" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+
+            <circle cx="380" cy="135" r="5" fill="#fff" stroke="var(--gold)" stroke-width="2.5"/>
+            <line x1="380" y1="30" x2="380" y2="200" stroke="var(--gold)" stroke-width="1" stroke-dasharray="3 3" opacity="0.45"/>
+            <rect x="355" y="12" width="50" height="14" rx="3" fill="var(--gold)"/>
+            <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fff" font-weight="700">HOY</text>
+
+            <text x="390" y="131" font-family="JetBrains Mono" font-size="10" fill="var(--ink-2)" font-weight="700">15.750 €</text>
+            <text x="862" y="22" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="var(--gold-ink)" font-weight="700">45.000 € · vencimiento</text>
+          </svg>
+        </div>
+
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Resumen de la operación</div>
+              <div class="card-sub">proyección total a vencimiento</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="stat-row">
+              <span class="stat-row-lab">Capital prestado</span>
+              <span class="stat-row-val">90.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Intereses totales · 5 años</span>
+              <span class="stat-row-val gold">+45.000 €</span>
+            </div>
+            <div class="stat-row highlight">
+              <span class="stat-row-lab">Devolución total al vencimiento</span>
+              <span class="stat-row-val pos" style="font-size: 16px;">135.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Rentabilidad total</span>
+              <span class="stat-row-val pos">+50,0%</span>
+            </div>
+          </div>
+
+          <div class="fiscal-nota">
+            <strong>Fiscalidad · IRPF base ahorro</strong> · los intereses tributan con retención del <strong>19%</strong> (hasta 6.000 €) · <strong>21%</strong> (6.000-50.000 €) · <strong>23%</strong> (50.000-200.000 €). El capital <strong>queda bloqueado</strong> hasta enero 2029 · no hay liquidez anticipada.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page smartflip -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DETALLE · Indexado SP500 · interfaz plan de pensiones -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-sp500">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <!-- Hero -->
+      <div class="detail-hero">
+        <div class="detail-hero-top plan">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Plan de pensiones · revalorización · liquidez en jubilación
+        </div>
+        <div class="detail-hero-body">
+          <div class="detail-hero-logo myi">MyI</div>
+          <div>
+            <div class="detail-hero-nom">Indexado SP 500 · MyInvestor</div>
+            <div class="detail-hero-meta">abierto <strong>2018</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>8 años<span style="color: var(--ink-5); margin: 0 6px;">·</span>estrategia <strong>indexación SP500</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>TER <strong>0,41%</strong></div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Valor actual</div>
+            <div class="detail-hero-stat-val pos">93.832 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Aportado</div>
+            <div class="detail-hero-stat-val">40.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Ganancia</div>
+            <div class="detail-hero-stat-val pos">+53.832 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">CAGR</div>
+            <div class="detail-hero-stat-val pos">+13,8%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evolución 8 años · valor vs aportado -->
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Evolución histórica · 8 años</div>
+            <div class="card-sub">valor del fondo vs capital aportado acumulado</div>
+          </div>
+          <div class="card-action" onclick="showToast('Cambiar período · 1 año · 3 años · 8 años · desde inicio')">8 años →</div>
+        </div>
+
+        <svg class="chart-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+          <g stroke="var(--line-2)" stroke-width="1" fill="none">
+            <line x1="50" y1="30" x2="870" y2="30"/>
+            <line x1="50" y1="85" x2="870" y2="85"/>
+            <line x1="50" y1="140" x2="870" y2="140"/>
+            <line x1="50" y1="195" x2="870" y2="195"/>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+            <text x="45" y="34" text-anchor="end">110K</text>
+            <text x="45" y="89" text-anchor="end">80K</text>
+            <text x="45" y="144" text-anchor="end">50K</text>
+            <text x="45" y="199" text-anchor="end">20K</text>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+            <text x="50" y="215">2018</text>
+            <text x="170" y="215">2019</text>
+            <text x="290" y="215">2020</text>
+            <text x="410" y="215">2021</text>
+            <text x="530" y="215">2022</text>
+            <text x="650" y="215">2023</text>
+            <text x="770" y="215">2024</text>
+            <text x="870" y="215">hoy</text>
+          </g>
+
+          <!-- Línea aportado · escalones -->
+          <path d="M 50 198 L 170 185 L 290 172 L 410 158 L 530 144 L 650 130 L 770 118 L 870 113"
+                stroke="var(--ink-5)" stroke-width="1.5" stroke-dasharray="4 3" fill="none" stroke-linecap="round"/>
+
+          <!-- Línea valor · sube con volatilidad -->
+          <path d="M 50 198 L 170 175 L 290 150 L 410 105 L 530 130 L 650 100 L 770 60 L 870 32"
+                stroke="var(--brand)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 50 198 L 170 175 L 290 150 L 410 105 L 530 130 L 650 100 L 770 60 L 870 32 L 870 200 L 50 200 Z"
+                fill="url(#gradSP)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="gradSP" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#1E2954" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#1E2954" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <circle cx="870" cy="32" r="5" fill="#fff" stroke="var(--brand)" stroke-width="2.5"/>
+          <text x="862" y="22" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="var(--brand)" font-weight="700">93.832 €</text>
+          <text x="862" y="108" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">aport 40K</text>
+        </svg>
+
+        <div style="display: flex; gap: 22px; padding-top: 12px; border-top: 1px solid var(--line-2); margin-top: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3);">
+            <div style="width: 18px; border-top: 2px solid var(--brand);"></div>Valor del fondo
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3);">
+            <div style="width: 18px; border-top: 1px dashed var(--ink-5);"></div>Capital aportado acumulado
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 cols · aportaciones + resumen fiscal -->
+      <div class="cols-2">
+
+        <!-- Aportaciones históricas -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Historial de aportaciones</div>
+              <div class="card-sub">8 años · aportación anual recurrente</div>
+            </div>
+            <div class="card-action" onclick="showToast('Nueva aportación · máximo 1.500 €/año deducible IRPF')">Aportar →</div>
+          </div>
+
+          <div class="apo-list">
+            <div class="apo-row">
+              <div class="apo-fecha">15/01/2025</div>
+              <div>
+                <div class="apo-concepto">Aportación anual 2025</div>
+                <div class="apo-concepto-sub">deducida en IRPF · casilla 0465</div>
+              </div>
+              <div class="apo-amount">+1.500 €</div>
+            </div>
+            <div class="apo-row">
+              <div class="apo-fecha">16/01/2024</div>
+              <div>
+                <div class="apo-concepto">Aportación anual 2024</div>
+                <div class="apo-concepto-sub">límite anual reducido a 1.500 €</div>
+              </div>
+              <div class="apo-amount">+1.500 €</div>
+            </div>
+            <div class="apo-row">
+              <div class="apo-fecha">20/01/2023</div>
+              <div>
+                <div class="apo-concepto">Aportación anual 2023</div>
+                <div class="apo-concepto-sub">último año con límite 2.000 €</div>
+              </div>
+              <div class="apo-amount">+1.500 €</div>
+            </div>
+            <div class="apo-row">
+              <div class="apo-fecha">14/01/2022</div>
+              <div>
+                <div class="apo-concepto">Aportación anual 2022</div>
+                <div class="apo-concepto-sub">deducida · casilla 0465</div>
+              </div>
+              <div class="apo-amount">+1.500 €</div>
+            </div>
+            <div class="apo-row">
+              <div class="apo-fecha">2018-2021</div>
+              <div>
+                <div class="apo-concepto">Aportaciones acumuladas previas</div>
+                <div class="apo-concepto-sub">4 aportaciones · reducido a resumen</div>
+              </div>
+              <div class="apo-amount">+34.000 €</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen y fiscalidad -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Rendimiento y fiscalidad</div>
+              <div class="card-sub">implicación fiscal presente y futura</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="stat-row">
+              <span class="stat-row-lab">Total aportado</span>
+              <span class="stat-row-val">40.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Ganancia latente</span>
+              <span class="stat-row-val pos">+53.832 €</span>
+            </div>
+            <div class="stat-row highlight">
+              <span class="stat-row-lab">Valor hoy</span>
+              <span class="stat-row-val pos" style="font-size: 16px;">93.832 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Rentabilidad total</span>
+              <span class="stat-row-val pos">+134,6%</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">CAGR anualizado</span>
+              <span class="stat-row-val pos">+13,8%</span>
+            </div>
+          </div>
+
+          <div class="fiscal-nota">
+            <strong>Fiscalidad · IRPF base general</strong> · las aportaciones <strong>reducen tu base imponible</strong> hasta 1.500 €/año (casilla 0465). El rescate tributa como <strong>rendimiento del trabajo</strong> · no como base del ahorro · planifica la liquidación en años de menor renta. <strong>Liquidez solo en jubilación</strong> o supuestos especiales (enfermedad grave · paro larga duración · 10 años de antigüedad desde 2025).
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page sp500 -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DETALLE · Acciones Orange · interfaz acciones cotizadas -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-acciones">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <!-- Hero -->
+      <div class="detail-hero">
+        <div class="detail-hero-top accion">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Acción cotizada · liquidez disponible · dividendos periódicos
+        </div>
+        <div class="detail-hero-body">
+          <div class="detail-hero-logo bnp">BNP</div>
+          <div>
+            <div class="detail-hero-nom">Orange SA · ORA · Euronext Paris</div>
+            <div class="detail-hero-meta">broker <strong>BNP Paribas</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>origen <strong>RSU empleado</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>ISIN <strong>FR0000133308</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>divisa <strong>EUR</strong></div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Nº acciones</div>
+            <div class="detail-hero-stat-val">625</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Valor total</div>
+            <div class="detail-hero-stat-val">7.029 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Dividendos 2025</div>
+            <div class="detail-hero-stat-val pos">+437,50 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Yield dividendo</div>
+            <div class="detail-hero-stat-val pos">6,2%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Precio actual · bloque destacado -->
+      <div class="price-block">
+        <div class="price-main">
+          <div class="price-lab">
+            <span class="price-dot-live"></span>
+            Precio · Euronext Paris · en vivo
+          </div>
+          <div class="price-val">11,24 €</div>
+          <div class="price-delta">
+            <span class="price-delta-pill pos">+0,08 €</span>
+            <span class="price-delta-pill pos">+0,72%</span>
+            <span class="price-delta-label">vs cierre ayer · 11,16 €</span>
+          </div>
+        </div>
+
+        <div class="price-range">
+          <div class="price-range-cell">
+            <div class="price-range-lab">Rango día</div>
+            <div class="price-range-val">11,12 · 11,28 €</div>
+          </div>
+          <div class="price-range-cell">
+            <div class="price-range-lab">Rango 52 sem</div>
+            <div class="price-range-val">9,85 · 12,04 €</div>
+          </div>
+          <div class="price-range-cell">
+            <div class="price-range-lab">Cap. mercado</div>
+            <div class="price-range-val">29,8 B €</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfica precio con period selector -->
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Evolución del precio</div>
+            <div class="card-sub">cotización histórica · Orange SA · mercado Euronext</div>
+          </div>
+          <div class="period-selector">
+            <button>1D</button>
+            <button>1S</button>
+            <button>1M</button>
+            <button class="active">1A</button>
+            <button>5A</button>
+            <button>MAX</button>
+          </div>
+        </div>
+
+        <svg class="chart-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+          <g stroke="var(--line-2)" stroke-width="1" fill="none">
+            <line x1="50" y1="30" x2="870" y2="30"/>
+            <line x1="50" y1="85" x2="870" y2="85"/>
+            <line x1="50" y1="140" x2="870" y2="140"/>
+            <line x1="50" y1="195" x2="870" y2="195"/>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+            <text x="45" y="34" text-anchor="end">12,50</text>
+            <text x="45" y="89" text-anchor="end">11,50</text>
+            <text x="45" y="144" text-anchor="end">10,50</text>
+            <text x="45" y="199" text-anchor="end">9,50</text>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+            <text x="50" y="215">abr 25</text>
+            <text x="186" y="215">jun 25</text>
+            <text x="322" y="215">ago 25</text>
+            <text x="458" y="215">oct 25</text>
+            <text x="594" y="215">dic 25</text>
+            <text x="730" y="215">feb 26</text>
+            <text x="870" y="215">hoy</text>
+          </g>
+
+          <!-- Línea media histórica · gris dashed -->
+          <line x1="50" y1="95" x2="870" y2="95" stroke="var(--ink-5)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="862" y="92" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">media 10,92 €</text>
+
+          <!-- Línea precio · volátil -->
+          <path d="M 50 140 L 130 125 L 210 165 L 290 155 L 370 145 L 450 110 L 530 85 L 610 95 L 690 70 L 770 80 L 820 60 L 870 65"
+                stroke="var(--ink)" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 50 140 L 130 125 L 210 165 L 290 155 L 370 145 L 450 110 L 530 85 L 610 95 L 690 70 L 770 80 L 820 60 L 870 65 L 870 200 L 50 200 Z"
+                fill="url(#gradAcc)" opacity="0.2"/>
+          <defs>
+            <linearGradient id="gradAcc" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#141B2E" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#141B2E" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Punto dividendo pasado · marker oro -->
+          <circle cx="530" cy="85" r="4" fill="var(--gold)"/>
+          <text x="530" y="78" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--gold-ink)" font-weight="700">DIV</text>
+
+          <circle cx="370" cy="145" r="4" fill="var(--gold)"/>
+          <text x="370" y="158" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="var(--gold-ink)" font-weight="700">DIV</text>
+
+          <!-- Punto hoy -->
+          <circle cx="870" cy="65" r="5" fill="#fff" stroke="var(--ink)" stroke-width="2.5"/>
+          <text x="862" y="56" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="var(--ink)" font-weight="700">11,24 €</text>
+        </svg>
+
+        <div style="display: flex; gap: 22px; padding-top: 12px; border-top: 1px solid var(--line-2); margin-top: 14px; font-size: 11.5px; color: var(--ink-3);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 18px; border-top: 2px solid var(--ink);"></div>Precio cotización
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 18px; border-top: 1px dashed var(--ink-5);"></div>Media período
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 10px; height: 10px; border-radius: 50%; background: var(--gold);"></div>Pago de dividendo
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 cols · posición + dividendos -->
+      <div class="cols-2">
+
+        <!-- Posición y RSU -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Mi posición · RSU consolidada</div>
+              <div class="card-sub">acciones recibidas como compensación de empleado Orange</div>
+            </div>
+          </div>
+
+          <div class="rsu-info">
+            <div class="rsu-row">
+              <span class="rsu-row-lab">Número de acciones</span>
+              <span class="rsu-row-val">625 ORA</span>
+            </div>
+            <div class="rsu-row">
+              <span class="rsu-row-lab">Precio medio de adquisición</span>
+              <span class="rsu-row-val">11,25 €</span>
+            </div>
+            <div class="rsu-row">
+              <span class="rsu-row-lab">Capital invertido · RSU declaradas</span>
+              <span class="rsu-row-val">7.029 €</span>
+            </div>
+            <div class="rsu-row">
+              <span class="rsu-row-lab">Plusvalía latente si vendiese hoy</span>
+              <span class="rsu-row-val" style="color: var(--ink-3);">−6 € · −0,09%</span>
+            </div>
+            <div class="rsu-row highlight">
+              <span class="rsu-row-lab">Valor de mercado actual</span>
+              <span class="rsu-row-val pos" style="font-size: 15px;">7.025 €</span>
+            </div>
+          </div>
+
+          <div class="fiscal-nota" style="margin-top: 14px;">
+            <strong>RSU · fiscalidad doble</strong> · las RSU tributaron como <strong>rendimiento del trabajo</strong> al consolidarse (2024) · ya están declaradas. Al <strong>vender</strong> tributarás solo por la diferencia entre precio de venta y precio de consolidación · en la <strong>base del ahorro</strong> (19-23%).
+          </div>
+        </div>
+
+        <!-- Dividendos · histórico -->
+        <div class="card" style="padding: 0;">
+          <div class="card-hd" style="padding: 22px 24px 14px;">
+            <div>
+              <div class="card-title">Dividendos · histórico y previsión</div>
+              <div class="card-sub">Orange paga 2 dividendos anuales · junio y diciembre</div>
+            </div>
+          </div>
+
+          <table class="divi-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="r">Por acción</th>
+                <th class="r">Cobrado</th>
+                <th class="c">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr onclick="showToast('Próximo dividendo · 4 jun 2026 · 0,40 € × 625 = 250 €')">
+                <td class="divi-fecha">04/06/2026</td>
+                <td>Dividendo final 2025</td>
+                <td class="r" style="color: var(--gold-ink); font-weight: 700;">0,40 €</td>
+                <td class="r" style="color: var(--gold-ink); font-weight: 700;">250,00 €</td>
+                <td class="c"><span class="divi-badge anunciado">Anunciado</span></td>
+              </tr>
+              <tr onclick="showToast('Dividendo cobrado · 5 dic 2025')">
+                <td class="divi-fecha">05/12/2025</td>
+                <td>Dividendo interino 2025</td>
+                <td class="r">0,30 €</td>
+                <td class="r divi-amount">+187,50 €</td>
+                <td class="c"><span class="divi-badge cobrado">Cobrado</span></td>
+              </tr>
+              <tr onclick="showToast('Dividendo cobrado · 5 jun 2025')">
+                <td class="divi-fecha">05/06/2025</td>
+                <td>Dividendo final 2024</td>
+                <td class="r">0,40 €</td>
+                <td class="r divi-amount">+250,00 €</td>
+                <td class="c"><span class="divi-badge cobrado">Cobrado</span></td>
+              </tr>
+              <tr onclick="showToast('Dividendo cobrado · 6 dic 2024')">
+                <td class="divi-fecha">06/12/2024</td>
+                <td>Dividendo interino 2024</td>
+                <td class="r">0,30 €</td>
+                <td class="r divi-amount">+187,50 €</td>
+                <td class="c"><span class="divi-badge cobrado">Cobrado</span></td>
+              </tr>
+              <tr style="background: var(--card-alt);">
+                <td class="divi-fecha">Total cobrado · 2024-2025</td>
+                <td style="color: var(--ink-3);">4 pagos</td>
+                <td class="r">1,40 €</td>
+                <td class="r divi-amount" style="font-size: 13px;">+875 €</td>
+                <td class="c" style="font-size: 10.5px; color: var(--ink-3);">acumulado</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page acciones -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA · Cerradas · vista histórica fiscal expandida -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-cerradas">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <div class="cer-head">
+        <div>
+          <h1>Histórico fiscal de inversiones</h1>
+          <div class="page-sub">posiciones cerradas · importadas desde tus declaraciones IRPF 2020-2024</div>
+        </div>
+      </div>
+
+      <!-- Info banner · verdad consumida -->
+      <div class="cer-info-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <div>
+          <strong>Verdad consumida · solo lectura</strong> · estas operaciones están <strong>declaradas en IRPF</strong> y forman parte del histórico fiscal. ATLAS no las recalcula · solo las muestra para tu consulta y referencia. Las pérdidas pendientes de compensar sí se arrastran a ejercicios futuros.
+        </div>
+      </div>
+
+      <!-- Totales agregados -->
+      <div class="cer-totales">
+        <div class="cer-tot-cell">
+          <div class="cer-tot-lab">Total operaciones</div>
+          <div class="cer-tot-val">3</div>
+          <div class="cer-tot-sub">en 3 ejercicios</div>
+        </div>
+        <div class="cer-tot-cell">
+          <div class="cer-tot-lab">Ganancias declaradas</div>
+          <div class="cer-tot-val pos">+4.920 €</div>
+          <div class="cer-tot-sub">2020 y 2023</div>
+        </div>
+        <div class="cer-tot-cell">
+          <div class="cer-tot-lab">Pérdidas declaradas</div>
+          <div class="cer-tot-val neg">−100 €</div>
+          <div class="cer-tot-sub">2024 · ETF VWCE</div>
+        </div>
+        <div class="cer-tot-cell">
+          <div class="cer-tot-lab">Neto acumulado</div>
+          <div class="cer-tot-val pos">+4.820 €</div>
+          <div class="cer-tot-sub">tras compensaciones</div>
+        </div>
+      </div>
+
+      <!-- Ejercicio 2024 -->
+      <div class="cer-ejercicio">
+        <div class="cer-ejer-head">
+          <div class="cer-ejer-year">2024</div>
+          <div>
+            <div class="cer-ejer-info-nom">Declaración IRPF 2024 · declarada</div>
+            <div class="cer-ejer-info-sub">presentada 26/06/2025 · 1 operación de venta</div>
+          </div>
+          <span class="cer-ejer-casilla">Casilla 0326</span>
+          <div>
+            <div class="cer-ejer-total neg">−100 €</div>
+            <div class="cer-ejer-total-lab">Pérdida patrimonial</div>
+          </div>
+          <span class="cer-ejer-action" onclick="showToast('Abrir declaración IRPF 2024 · archivo XML + PDF en Archivo')">
+            Ver declaración →
+          </span>
+        </div>
+
+        <div class="cer-op-row header">
+          <div>Fecha venta</div>
+          <div>Activo</div>
+          <div class="r">Adquisición</div>
+          <div class="r">Venta</div>
+          <div class="r">G/P patrimonial</div>
+          <div class="c">Documento</div>
+        </div>
+
+        <div class="cer-op-row" onclick="showToast('Detalle venta ETF VWCE · 2024')">
+          <div class="cer-op-fecha">18/10/2024</div>
+          <div>
+            <div class="cer-op-activo">VWCE · Vanguard FTSE All-World</div>
+            <div class="cer-op-activo-sub">ETF · MyInvestor · 20 participaciones</div>
+          </div>
+          <div class="cer-op-num">2.100 €</div>
+          <div class="cer-op-num">2.000 €</div>
+          <div class="cer-op-num ganancia neg">−100 €</div>
+          <div style="text-align: center;">
+            <span class="cer-op-doc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              PDF
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ejercicio 2023 -->
+      <div class="cer-ejercicio">
+        <div class="cer-ejer-head">
+          <div class="cer-ejer-year">2023</div>
+          <div>
+            <div class="cer-ejer-info-nom">Declaración IRPF 2023 · corregida por paralela</div>
+            <div class="cer-ejer-info-sub">presentada 21/06/2024 · paralela resuelta 15/10/2024 · 1 operación</div>
+          </div>
+          <span class="cer-ejer-casilla">Casilla 0325</span>
+          <div>
+            <div class="cer-ejer-total pos">+3.120 €</div>
+            <div class="cer-ejer-total-lab">Ganancia patrimonial</div>
+          </div>
+          <span class="cer-ejer-action" onclick="showToast('Abrir declaración IRPF 2023 v2 · corregida · Archivo')">
+            Ver declaración →
+          </span>
+        </div>
+
+        <div class="cer-op-row header">
+          <div>Fecha venta</div>
+          <div>Activo</div>
+          <div class="r">Adquisición</div>
+          <div class="r">Venta</div>
+          <div class="r">G/P patrimonial</div>
+          <div class="c">Documento</div>
+        </div>
+
+        <div class="cer-op-row" onclick="showToast('Detalle venta fondo Bankinter · 2023')">
+          <div class="cer-op-fecha">04/09/2023</div>
+          <div>
+            <div class="cer-op-activo">Bankinter Eurostoxx · FI</div>
+            <div class="cer-op-activo-sub">fondo inversión · 450 participaciones</div>
+          </div>
+          <div class="cer-op-num">8.880 €</div>
+          <div class="cer-op-num">12.000 €</div>
+          <div class="cer-op-num ganancia pos">+3.120 €</div>
+          <div style="text-align: center;">
+            <span class="cer-op-doc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              PDF
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ejercicio 2020 -->
+      <div class="cer-ejercicio">
+        <div class="cer-ejer-head">
+          <div class="cer-ejer-year">2020</div>
+          <div>
+            <div class="cer-ejer-info-nom">Declaración IRPF 2020 · declarada · prescribe 2025</div>
+            <div class="cer-ejer-info-sub">presentada 24/06/2021 · 1 operación de venta</div>
+          </div>
+          <span class="cer-ejer-casilla">Casilla 0325</span>
+          <div>
+            <div class="cer-ejer-total pos">+1.800 €</div>
+            <div class="cer-ejer-total-lab">Ganancia patrimonial</div>
+          </div>
+          <span class="cer-ejer-action" onclick="showToast('Abrir declaración IRPF 2020 · Archivo')">
+            Ver declaración →
+          </span>
+        </div>
+
+        <div class="cer-op-row header">
+          <div>Fecha venta</div>
+          <div>Activo</div>
+          <div class="r">Adquisición</div>
+          <div class="r">Venta</div>
+          <div class="r">G/P patrimonial</div>
+          <div class="c">Documento</div>
+        </div>
+
+        <div class="cer-op-row" onclick="showToast('Detalle venta acciones BBVA · 2020')">
+          <div class="cer-op-fecha">11/05/2020</div>
+          <div>
+            <div class="cer-op-activo">BBVA · acciones ordinarias</div>
+            <div class="cer-op-activo-sub">400 acciones · broker BNP Paribas</div>
+          </div>
+          <div class="cer-op-num">2.400 €</div>
+          <div class="cer-op-num">4.200 €</div>
+          <div class="cer-op-num ganancia pos">+1.800 €</div>
+          <div style="text-align: center;">
+            <span class="cer-op-doc">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              PDF
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Compensaciones pendientes · aviso -->
+      <div class="comp-pendientes">
+        <div class="comp-pend-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+        </div>
+        <div>
+          <div class="comp-pend-title">Pérdidas pendientes de compensar</div>
+          <div class="comp-pend-desc">la pérdida de <strong>−100 €</strong> del ETF VWCE (2024) puede compensarse con futuras ganancias patrimoniales hasta <strong>2028</strong> · ATLAS aplicará la compensación automáticamente al declarar nuevas operaciones positivas.</div>
+        </div>
+        <div>
+          <div class="comp-pend-val">−100 €</div>
+          <div class="comp-pend-val-lab">vence 2028</div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page cerradas -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DETALLE · Plan Orange BBVA · plan pensión EMPRESA -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-plan-orange">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <!-- Hero -->
+      <div class="detail-hero">
+        <div class="detail-hero-top plan">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Plan de pensiones · sistema empleo · aportación empresa + trabajador
+        </div>
+        <div class="detail-hero-body">
+          <div class="detail-hero-logo bbva">BBV</div>
+          <div>
+            <div class="detail-hero-nom">Plan Orange · BBVA AM</div>
+            <div class="detail-hero-meta">abierto <strong>2009</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>17 años<span style="color: var(--ink-5); margin: 0 6px;">·</span>estrategia <strong>renta fija mixta</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>TER <strong>1,38%</strong></div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Valor actual</div>
+            <div class="detail-hero-stat-val neg">35.491 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Aportado total</div>
+            <div class="detail-hero-stat-val">36.327 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Pérdida latente</div>
+            <div class="detail-hero-stat-val neg">−836 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">CAGR</div>
+            <div class="detail-hero-stat-val neg">−0,1%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Evolución 17 años · valor vs aportado -->
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Evolución histórica · 17 años</div>
+            <div class="card-sub">valor del plan vs capital aportado · estrategia conservadora ha rendido por debajo de la inflación</div>
+          </div>
+          <div class="card-action" onclick="showToast('Cambiar período · 1 año · 5 años · 17 años · desde inicio')">17 años →</div>
+        </div>
+
+        <svg class="chart-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+          <g stroke="var(--line-2)" stroke-width="1" fill="none">
+            <line x1="50" y1="30" x2="870" y2="30"/>
+            <line x1="50" y1="85" x2="870" y2="85"/>
+            <line x1="50" y1="140" x2="870" y2="140"/>
+            <line x1="50" y1="195" x2="870" y2="195"/>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+            <text x="45" y="34" text-anchor="end">45K</text>
+            <text x="45" y="89" text-anchor="end">30K</text>
+            <text x="45" y="144" text-anchor="end">15K</text>
+            <text x="45" y="199" text-anchor="end">0</text>
+          </g>
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+            <text x="50" y="215">2009</text>
+            <text x="195" y="215">2013</text>
+            <text x="340" y="215">2017</text>
+            <text x="485" y="215">2020</text>
+            <text x="630" y="215">2023</text>
+            <text x="870" y="215">hoy</text>
+          </g>
+
+          <!-- Línea aportado · escalones · 36.327 € -->
+          <path d="M 50 199 L 195 175 L 340 145 L 485 122 L 630 95 L 870 65"
+                stroke="var(--ink-5)" stroke-width="1.5" stroke-dasharray="4 3" fill="none" stroke-linecap="round"/>
+
+          <!-- Línea valor · plano y pegado al aportado · termina por debajo -->
+          <path d="M 50 199 L 195 178 L 340 155 L 485 138 L 630 100 L 870 68"
+                stroke="var(--neg)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 50 199 L 195 178 L 340 155 L 485 138 L 630 100 L 870 68 L 870 200 L 50 200 Z"
+                fill="url(#gradPO)" opacity="0.2"/>
+          <defs>
+            <linearGradient id="gradPO" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#A43328" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#A43328" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <circle cx="870" cy="68" r="5" fill="#fff" stroke="var(--neg)" stroke-width="2.5"/>
+          <text x="862" y="58" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="var(--neg)" font-weight="700">35.491 €</text>
+          <text x="862" y="60" text-anchor="end" font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" dy="-12">aport 36.327 €</text>
+        </svg>
+
+        <div style="display: flex; gap: 22px; padding-top: 12px; border-top: 1px solid var(--line-2); margin-top: 14px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3);">
+            <div style="width: 18px; border-top: 2px solid var(--neg);"></div>Valor del plan
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3);">
+            <div style="width: 18px; border-top: 1px dashed var(--ink-5);"></div>Capital aportado acumulado
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 cols · estructura aportación + fiscal -->
+      <div class="cols-2">
+
+        <!-- Estructura aportación -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Estructura de la aportación · 2026</div>
+              <div class="card-sub">aportación de empresa + aportación voluntaria del trabajador</div>
+            </div>
+            <div class="card-action" onclick="showToast('Aportación voluntaria · máximo 1.500 €/año individual')">Aportar →</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="stat-row">
+              <span class="stat-row-lab">Aportación empresa · convenio</span>
+              <span class="stat-row-val">1.500 €/año</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Aportación trabajador · voluntaria</span>
+              <span class="stat-row-val">2.000 €/año</span>
+            </div>
+            <div class="stat-row highlight">
+              <span class="stat-row-lab">Total aportado anual</span>
+              <span class="stat-row-val pos" style="font-size: 16px;">3.500 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Tope conjunto legal · LIRPF 2026</span>
+              <span class="stat-row-val" style="color: var(--ink-3);">10.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Margen disponible este año</span>
+              <span class="stat-row-val gold">+6.500 €</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2);">
+            <div style="font-size: 11px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px;">Histórico aportaciones · 5 años</div>
+            <div class="cal-grid" style="grid-template-columns: repeat(5, 1fr);">
+              <div class="cal-mes cobrado"><div class="cal-mes-nom">2022</div><div class="cal-mes-imp">3.500 €</div></div>
+              <div class="cal-mes cobrado"><div class="cal-mes-nom">2023</div><div class="cal-mes-imp">3.500 €</div></div>
+              <div class="cal-mes cobrado"><div class="cal-mes-nom">2024</div><div class="cal-mes-imp">3.500 €</div></div>
+              <div class="cal-mes cobrado"><div class="cal-mes-nom">2025</div><div class="cal-mes-imp">3.500 €</div></div>
+              <div class="cal-mes pendiente"><div class="cal-mes-nom">2026</div><div class="cal-mes-imp">3.500 €</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resumen fiscal · ventaja PP -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Ventaja fiscal · campaña 2025</div>
+              <div class="card-sub">reducción base imponible IRPF · ahorrado en cuota</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="stat-row">
+              <span class="stat-row-lab">Aportación trabajador deducible</span>
+              <span class="stat-row-val">2.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Tipo marginal IRPF aplicable</span>
+              <span class="stat-row-val">37,0%</span>
+            </div>
+            <div class="stat-row highlight">
+              <span class="stat-row-lab">Ahorro IRPF efectivo · 2025</span>
+              <span class="stat-row-val pos" style="font-size: 16px;">+740 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Ahorro acumulado · 17 años</span>
+              <span class="stat-row-val pos">+5.860 €</span>
+            </div>
+          </div>
+
+          <div class="fiscal-nota">
+            <strong>Fiscalidad PP empleo</strong> · las aportaciones reducen la base IRPF hasta <strong>1.500 €</strong> individual + <strong>8.500 €</strong> empresa. Al rescatar (jubilación · incapacidad · 10 años) tributará como <strong>rendimiento del trabajo</strong> · no como base ahorro. Forma del rescate (capital · renta · mixto) determina la presión fiscal final.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page plan-orange -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- DETALLE · Unihouser · préstamo a empresa propia -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-unihouser">
+
+      <div class="detail-head">
+        <button class="back-btn" onclick="showPage('galeria')">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a cartera
+        </button>
+      </div>
+
+      <!-- Hero -->
+      <div class="detail-hero">
+        <div class="detail-hero-top prestamo">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>
+          Préstamo a empresa propia · cuota mensual · amortización francesa
+        </div>
+        <div class="detail-hero-body">
+          <div class="detail-hero-logo unihouser">UH</div>
+          <div>
+            <div class="detail-hero-nom">Unihouser · préstamo accionista</div>
+            <div class="detail-hero-meta">firmado <strong>15/09/2023</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>7 años<span style="color: var(--ink-5); margin: 0 6px;">·</span>TIN <strong>8,0%</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>IRPF <strong>base ahorro</strong></div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Capital pendiente</div>
+            <div class="detail-hero-stat-val">16.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Capital prestado</div>
+            <div class="detail-hero-stat-val">30.000 €</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Amortizado</div>
+            <div class="detail-hero-stat-val pos">14.000 € · 46,7%</div>
+          </div>
+          <div class="detail-hero-stat">
+            <div class="detail-hero-stat-lab">Vencimiento</div>
+            <div class="detail-hero-stat-val" style="font-size: 14px;">sep 2030</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendario 12 meses 2026 -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Calendario de cuotas · año 2026</div>
+            <div class="card-sub">12 cuotas de 420 € · cuota constante · interés decreciente · capital creciente</div>
+          </div>
+          <div class="card-action" onclick="showToast('Ver cuadro completo · 7 años · interés total ~5.040 €')">Ver 7 años →</div>
+        </div>
+
+        <div class="cal-grid">
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">ENE</div><div class="cal-mes-imp">+420 €</div></div>
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">FEB</div><div class="cal-mes-imp">+420 €</div></div>
+          <div class="cal-mes cobrado"><div class="cal-mes-nom">MAR</div><div class="cal-mes-imp">+420 €</div></div>
+          <div class="cal-mes pendiente"><div class="cal-mes-nom">ABR</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">MAY</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">JUN</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">JUL</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">AGO</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">SEP</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">OCT</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">NOV</div><div class="cal-mes-imp">420 €</div></div>
+          <div class="cal-mes futuro"><div class="cal-mes-nom">DIC</div><div class="cal-mes-imp">420 €</div></div>
+        </div>
+      </div>
+
+      <!-- 2 cols · evolución capital + resumen -->
+      <div class="cols-2" style="margin-top: 14px;">
+
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Capital pendiente · 7 años</div>
+              <div class="card-sub">desde firma sep 2023 hasta vencimiento sep 2030</div>
+            </div>
+          </div>
+
+          <svg class="chart-svg" viewBox="0 0 900 220" preserveAspectRatio="none">
+            <g stroke="var(--line-2)" stroke-width="1" fill="none">
+              <line x1="50" y1="30" x2="870" y2="30"/>
+              <line x1="50" y1="85" x2="870" y2="85"/>
+              <line x1="50" y1="140" x2="870" y2="140"/>
+              <line x1="50" y1="195" x2="870" y2="195"/>
+            </g>
+            <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+              <text x="45" y="34" text-anchor="end">30K</text>
+              <text x="45" y="89" text-anchor="end">20K</text>
+              <text x="45" y="144" text-anchor="end">10K</text>
+              <text x="45" y="199" text-anchor="end">0</text>
+            </g>
+            <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+              <text x="50" y="215">sep 23</text>
+              <text x="187" y="215">2024</text>
+              <text x="324" y="215">2025</text>
+              <text x="461" y="215">2026</text>
+              <text x="598" y="215">2027</text>
+              <text x="735" y="215">2028</text>
+              <text x="870" y="215">sep 30</text>
+            </g>
+
+            <!-- Capital pendiente · curva amortización francesa · decreciente -->
+            <path d="M 50 30 L 187 60 L 324 92 L 461 122 L 598 152 L 735 180 L 870 195"
+                  stroke="var(--brand)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M 50 30 L 187 60 L 324 92 L 461 122 L 598 152 L 735 180 L 870 195 L 870 200 L 50 200 Z"
+                  fill="url(#gradUH)" opacity="0.25"/>
+            <defs>
+              <linearGradient id="gradUH" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#1E2954" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="#1E2954" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+
+            <circle cx="461" cy="122" r="5" fill="#fff" stroke="var(--brand)" stroke-width="2.5"/>
+            <line x1="461" y1="30" x2="461" y2="200" stroke="var(--brand)" stroke-width="1" stroke-dasharray="3 3" opacity="0.45"/>
+            <rect x="436" y="12" width="50" height="14" rx="3" fill="var(--brand)"/>
+            <text x="461" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fff" font-weight="700">HOY</text>
+
+            <text x="471" y="118" font-family="JetBrains Mono" font-size="10" fill="var(--ink-2)" font-weight="700">16.000 €</text>
+            <text x="862" y="190" text-anchor="end" font-family="JetBrains Mono" font-size="10" fill="var(--brand)" font-weight="700">0 € · vencimiento</text>
+          </svg>
+        </div>
+
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Resumen de la operación</div>
+              <div class="card-sub">proyección total a vencimiento sep 2030</div>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="stat-row">
+              <span class="stat-row-lab">Capital prestado · sep 2023</span>
+              <span class="stat-row-val">30.000 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Cuota mensual constante</span>
+              <span class="stat-row-val">420 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Intereses totales · 7 años</span>
+              <span class="stat-row-val gold">+5.280 €</span>
+            </div>
+            <div class="stat-row highlight">
+              <span class="stat-row-lab">Devolución total al vencimiento</span>
+              <span class="stat-row-val pos" style="font-size: 16px;">35.280 €</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-row-lab">Rentabilidad total</span>
+              <span class="stat-row-val pos">+17,6%</span>
+            </div>
+          </div>
+
+          <div class="fiscal-nota">
+            <strong>Fiscalidad · IRPF base ahorro</strong> · los intereses tributan al <strong>19/21/23%</strong> según escala. Cada cuota mensual lleva una parte de capital y otra de interés · solo el interés es renta del ahorro (capital es devolución). Al ser préstamo a sociedad propia · es cobro de capital mobiliario · NO confunde con dividendos.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page unihouser -->
+
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById('page-' + id);
+    if (page) page.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

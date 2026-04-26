@@ -1,0 +1,2665 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Financiación</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .nav a.active .chip { background: rgba(184,138,62,.25); color: #E8D9AE; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+
+  /* Tabs internos · del módulo */
+  .tabs-inner { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; }
+  .tabs-inner button { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .tabs-inner button:hover { color: var(--ink-2); }
+  .tabs-inner button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+  .tabs-inner button svg { opacity: 0.7; }
+  .tabs-inner button.active svg { opacity: 1; color: var(--gold); }
+  .tab-count { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--ink-3); }
+  .tabs-inner button.active .tab-count { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Navegación páginas */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-head { display: none; }
+  .page-head.active { display: flex; }
+
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 14px; }
+  .breadcrumb .back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); color: var(--ink-3); cursor: pointer; font-weight: 500; }
+  .breadcrumb .back-btn:hover { border-color: var(--ink-5); color: var(--ink-2); }
+  .breadcrumb a { color: var(--gold); font-weight: 500; cursor: pointer; }
+
+  /* ═══ HERO DEUDA VIVA ═══ */
+  .deuda-hero-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 3px solid var(--neg);
+    border-radius: 14px; padding: 28px 32px; margin-bottom: 18px;
+  }
+  .dh-body { display: grid; grid-template-columns: 1fr auto auto auto; gap: 32px; align-items: center; }
+  .dh-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 700; }
+  .dh-val { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 700; color: var(--neg); letter-spacing: -0.03em; line-height: 1; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .dh-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 12px; font-family: 'JetBrains Mono', monospace; }
+  .dh-sub strong { color: var(--ink-2); font-weight: 700; }
+  .dh-stat { text-align: right; padding-left: 28px; border-left: 1px solid var(--line-2); }
+  .dh-stat-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .dh-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+  .dh-stat-val.neg { color: var(--neg); }
+  .dh-stat-val.pos { color: var(--pos); }
+  .dh-stat-val.gold { color: var(--gold-ink); }
+
+  /* ═══ CALENDARIO ═══ */
+  .cal-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; flex-wrap: wrap; }
+  .cal-tool-grp { display: flex; align-items: center; gap: 6px; }
+  .cal-tool-grp-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; margin-right: 4px; }
+  .cal-pill { padding: 6px 12px; font-size: 11.5px; font-weight: 600; color: var(--ink-3); background: transparent; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .cal-pill:hover { color: var(--ink); border-color: var(--ink-4); }
+  .cal-pill.active { color: var(--gold-ink); background: var(--gold-wash); border-color: var(--gold); }
+
+  .cal-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cal-table th { padding: 10px 8px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); border-bottom: 1px solid var(--line); text-align: left; background: var(--card-alt); }
+  .cal-table th.r { text-align: right; }
+  .cal-table th.month { text-align: center; min-width: 64px; font-family: 'JetBrains Mono', monospace; }
+  .cal-table td { padding: 9px 8px; border-bottom: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; color: var(--ink-2); vertical-align: middle; }
+  .cal-table td.label { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+  .cal-table td.r { text-align: right; }
+  .cal-table td.c { text-align: center; }
+  .cal-table tr.total td { background: var(--brand-wash); font-weight: 700; color: var(--brand); border-top: 2px solid var(--brand); }
+  .cal-table tr.year-row td { background: var(--gold-wash); font-weight: 700; color: var(--gold-ink); border-top: 2px solid var(--gold); }
+  .cal-table tr.ended td { color: var(--ink-5); text-decoration: line-through; }
+  .cal-table .end-cell { color: var(--pos); font-weight: 700; }
+
+  .prest-row-name { display: flex; align-items: center; gap: 10px; }
+  .prest-row-logo { width: 26px; height: 26px; border-radius: 5px; display: grid; place-items: center; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .prest-row-logo.unicaja { background: #007844; }
+  .prest-row-logo.ing { background: #FF6200; }
+  .prest-row-logo.sabadell { background: #00529B; }
+  .prest-row-logo.unicaja-pp { background: #6A8E2A; }
+  .prest-row-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .prest-row-nom { font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prest-row-meta { font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+
+  .escalon-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; gap: 14px; align-items: center; }
+  .escalon-year { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--ink); min-width: 60px; }
+  .escalon-info { flex: 1; }
+  .escalon-info-nom { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  .escalon-info-sub { font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .escalon-libera { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--pos); }
+  .escalon-libera-lab { font-size: 9.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+
+  .yr-bar { display: flex; align-items: center; gap: 0; height: 22px; border-radius: 4px; overflow: hidden; background: var(--card-alt); }
+  .yr-bar-seg { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .yr-bar-seg.t1 { background: var(--brand); }
+  .yr-bar-seg.t2 { background: var(--brand-2); }
+  .yr-bar-seg.t3 { background: var(--gold); }
+  .yr-bar-seg.t4 { background: var(--gold-2); }
+
+  /* KPI strip */
+  .kpi-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; padding: 18px 24px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 18px;
+  }
+  .kpi-cell { padding: 0 24px; border-left: 1px solid var(--line-2); }
+  .kpi-cell:first-child { border-left: none; padding-left: 0; }
+  .kpi-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 6px; }
+  .kpi-val.neg { color: var(--neg); }
+  .kpi-val.pos { color: var(--pos); }
+  .kpi-val.gold { color: var(--gold-ink); }
+
+  /* Distribución · barra por tipo */
+  .dist-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px 24px; margin-bottom: 18px; }
+  .dist-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .dist-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .dist-sub { font-size: 11.5px; color: var(--ink-4); }
+  .dist-track { display: flex; height: 14px; border-radius: 6px; overflow: hidden; gap: 2px; }
+  .dist-seg { height: 100%; cursor: pointer; transition: opacity .14s; }
+  .dist-seg:hover { opacity: 0.85; }
+  .dist-seg.hipotecas { background: var(--brand); }
+  .dist-seg.personales { background: var(--gold); }
+  .dist-seg.pignora { background: var(--pos); }
+  .dist-leg { display: flex; gap: 26px; margin-top: 14px; flex-wrap: wrap; }
+  .dist-leg-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+  .dist-leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .dist-leg-dot.hipotecas { background: var(--brand); }
+  .dist-leg-dot.personales { background: var(--gold); }
+  .dist-leg-dot.pignora { background: var(--pos); }
+  .dist-leg-nom { color: var(--ink-3); font-weight: 500; }
+  .dist-leg-val { color: var(--ink); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .dist-leg-pct { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+  /* Sección · 2 cols */
+  .cols-2 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .card-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .card-action { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+  .card-action:hover { background: var(--gold-wash); }
+
+  /* Próximas cuotas · lista */
+  .cuota-row {
+    display: grid; grid-template-columns: 32px 1fr auto auto;
+    gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-2);
+    align-items: center; cursor: pointer;
+  }
+  .cuota-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .cuota-row:first-child { padding-top: 0; }
+  .cuota-row:hover .cuota-nom { color: var(--gold); }
+  .cuota-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; color: #fff;
+  }
+  .cuota-icon.unicaja { background: #F2AA00; }
+  .cuota-icon.ing { background: #FF6200; }
+  .cuota-icon.sabadell { background: #006CB3; }
+  .cuota-icon.santander { background: #EC0000; }
+  .cuota-nom { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; }
+  .cuota-meta { font-size: 11px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .cuota-fecha {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.04em;
+    background: var(--bg); color: var(--ink-3);
+  }
+  .cuota-fecha.urgente { background: var(--gold-wash); color: var(--gold-ink); }
+  .cuota-imp { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--neg); text-align: right; white-space: nowrap; }
+
+  /* Top deducibles */
+  .dedu-row {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line-2);
+    align-items: center; cursor: pointer;
+  }
+  .dedu-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .dedu-row:first-child { padding-top: 0; }
+  .dedu-row:hover .dedu-nom { color: var(--gold); }
+  .dedu-nom { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; }
+  .dedu-meta { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+  .dedu-meta .chip { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--brand-wash); color: var(--brand); letter-spacing: 0.04em; text-transform: uppercase; margin-left: 4px; }
+  .dedu-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--pos); text-align: right; white-space: nowrap; }
+  .dedu-val-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-weight: 500; text-align: right; }
+
+  /* ═══ LISTADO DE PRÉSTAMOS ═══ */
+  .prest-filter { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+  .prest-filter-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-right: 4px; }
+  .prest-pill { padding: 5px 12px; border-radius: 14px; font-size: 11.5px; font-weight: 500; background: var(--card); border: 1px solid var(--line); color: var(--ink-3); cursor: pointer; }
+  .prest-pill:hover { border-color: var(--ink-5); }
+  .prest-pill.active { background: var(--brand-ink); color: #fff; border-color: var(--brand-ink); font-weight: 600; }
+  .prest-pill .chip-count { margin-left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.8; }
+
+  .prest-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+  .prest-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 14px;
+    position: relative; overflow: hidden;
+  }
+  .prest-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .prest-card.hipoteca::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--brand); }
+  .prest-card.personal::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+  .prest-card.pignora::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--pos); }
+
+  .prest-head { display: grid; grid-template-columns: 44px 1fr auto; gap: 14px; align-items: center; }
+  .prest-logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .prest-logo.unicaja { background: #F2AA00; }
+  .prest-logo.ing { background: #FF6200; }
+  .prest-logo.sabadell { background: #006CB3; }
+  .prest-logo.santander { background: #EC0000; }
+  .prest-head-info { min-width: 0; }
+  .prest-ast { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 3px; }
+  .prest-nom { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; line-height: 1.25; }
+  .prest-type {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .prest-type.hipoteca { background: var(--brand-wash); color: var(--brand); }
+  .prest-type.personal { background: var(--gold-wash); color: var(--gold-ink); }
+  .prest-type.pignora { background: var(--pos-wash); color: var(--pos); }
+
+  /* Números del préstamo */
+  .prest-numbers {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;
+    padding: 14px 16px; background: var(--card-alt);
+    border-radius: 10px; border: 1px solid var(--line-2);
+  }
+  .prest-num-block { padding: 0 16px; border-left: 1px solid var(--line); }
+  .prest-num-block:first-child { border-left: none; padding-left: 0; }
+  .prest-num-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .prest-num-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-top: 4px; line-height: 1; }
+  .prest-num-val.neg { color: var(--neg); }
+  .prest-num-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Barra amortización */
+  .prest-progress { display: flex; flex-direction: column; gap: 6px; }
+  .prest-prog-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-4); }
+  .prest-prog-top .pct { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; font-size: 12px; }
+  .prest-prog-bar { height: 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--line-2); overflow: hidden; }
+  .prest-prog-fill { height: 100%; border-radius: 4px; }
+  .prest-prog-fill.hipoteca { background: var(--brand); }
+  .prest-prog-fill.personal { background: var(--gold); }
+  .prest-prog-fill.pignora { background: var(--pos); }
+
+  /* Destinos + Garantías · chips */
+  .prest-dg { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line-2); }
+  .prest-dg-row { display: grid; grid-template-columns: 80px 1fr; gap: 12px; align-items: start; }
+  .prest-dg-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; padding-top: 4px; }
+  .prest-dg-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .prest-dg-chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 5px; letter-spacing: 0.04em;
+    background: var(--bg); color: var(--ink-2); border: 1px solid var(--line);
+  }
+  .prest-dg-chip.inmueble { background: var(--brand-wash); color: var(--brand); border-color: transparent; }
+  .prest-dg-chip.persona { background: var(--gold-wash); color: var(--gold-ink); border-color: transparent; }
+  .prest-dg-chip.pignora { background: var(--pos-wash); color: var(--pos); border-color: transparent; }
+  .prest-dg-chip.cancel { background: var(--neg-wash); color: var(--neg); border-color: transparent; }
+  .prest-dg-chip .pct { opacity: 0.7; margin-left: 4px; font-weight: 500; }
+
+  /* Footer del préstamo */
+  .prest-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--line-2); }
+  .prest-footer-item { display: flex; flex-direction: column; gap: 2px; }
+  .prest-footer-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); font-weight: 600; }
+  .prest-footer-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .prest-footer-val.pos { color: var(--pos); }
+  .prest-cta {
+    font-size: 11.5px; color: var(--gold); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* ═══ DETALLE DE PRÉSTAMO ═══ */
+
+  /* Hero del préstamo · identidad */
+  .pd-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 3px solid var(--brand);
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 16px;
+  }
+  .pd-hero-body { display: grid; grid-template-columns: 56px 1fr auto auto auto auto; gap: 24px; align-items: center; }
+  .pd-hero-logo {
+    width: 56px; height: 56px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: #fff;
+  }
+  .pd-hero-logo.unicaja { background: #F2AA00; }
+  .pd-hero-logo.ing { background: #FF6200; }
+  .pd-hero-logo.sabadell { background: #006CB3; }
+  .pd-hero-logo.santander { background: #EC0000; }
+  .pd-hero-ast { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 4px; }
+  .pd-hero-nom { font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.2; }
+  .pd-hero-meta { font-size: 11.5px; color: var(--ink-3); margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
+  .pd-hero-meta strong { color: var(--ink-2); font-weight: 700; }
+  .pd-hero-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 4px 10px; border-radius: 5px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .pd-hero-badge.hipoteca { background: var(--brand-wash); color: var(--brand); }
+  .pd-hero-badge.personal { background: var(--gold-wash); color: var(--gold-ink); }
+  .pd-hero-badge.pignora { background: var(--pos-wash); color: var(--pos); }
+  .pd-hero-stat { text-align: right; padding-left: 20px; border-left: 1px solid var(--line-2); }
+  .pd-hero-stat-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .pd-hero-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+  .pd-hero-stat-val.neg { color: var(--neg); }
+  .pd-hero-stat-val.pos { color: var(--pos); }
+
+  /* Tabs internos del préstamo */
+  .pd-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+  .pd-tabs button { padding: 12px 18px; font-size: 13px; font-weight: 500; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .pd-tabs button:hover { color: var(--ink-2); }
+  .pd-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+
+  /* Dos columnas Destinos + Garantías · cards grandes */
+  .pd-dg { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .pd-dg-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 24px; }
+  .pd-dg-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .pd-dg-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .pd-dg-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .pd-dg-tag {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase;
+    background: var(--brand-ink); color: #fff;
+  }
+  .pd-dg-tag.fiscal { background: var(--pos); }
+  .pd-dg-tag.info { background: var(--ink-5); color: var(--ink); }
+
+  /* Items de destino/garantía */
+  .pd-dg-item {
+    display: grid; grid-template-columns: 36px 1fr auto;
+    gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line-2);
+    align-items: center;
+  }
+  .pd-dg-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .pd-dg-item:first-child { padding-top: 0; }
+  .pd-dg-item-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .pd-dg-item-icon.inmueble { background: var(--brand-wash); color: var(--brand); }
+  .pd-dg-item-icon.persona { background: var(--gold-wash); color: var(--gold-ink); }
+  .pd-dg-item-icon.pignora { background: var(--pos-wash); color: var(--pos); }
+  .pd-dg-item-icon.cancel { background: var(--neg-wash); color: var(--neg); }
+  .pd-dg-item-nom { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; }
+  .pd-dg-item-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .pd-dg-item-right { text-align: right; }
+  .pd-dg-item-imp { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .pd-dg-item-pct { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Nota fiscal · clave destino determina deducibilidad */
+  .pd-nota {
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-left: 3px solid var(--gold-ink); border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 14px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .pd-nota-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: var(--gold-ink); color: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; font-size: 14px;
+  }
+  .pd-nota-body { flex: 1; }
+  .pd-nota-title { font-size: 13px; font-weight: 700; color: #4A3A00; margin-bottom: 3px; }
+  .pd-nota-desc { font-size: 12px; color: #6B5410; line-height: 1.5; }
+  .pd-nota-desc strong { color: #4A3A00; font-weight: 700; }
+
+  /* Tabla intereses deducibles · grid anual */
+  .pd-dedu-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .pd-dedu-head { padding: 18px 24px 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .pd-dedu-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .pd-dedu-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+
+  .pd-dedu-table { width: 100%; border-collapse: collapse; }
+  .pd-dedu-table thead th {
+    padding: 9px 22px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-4); font-weight: 600; text-align: left;
+    background: var(--card-alt); border-top: 1px solid var(--line);
+  }
+  .pd-dedu-table thead th.r { text-align: right; }
+  .pd-dedu-table tbody td {
+    padding: 11px 22px; border-top: 1px solid var(--line-2);
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--ink-2);
+  }
+  .pd-dedu-table tbody td.anio { color: var(--ink); font-weight: 700; }
+  .pd-dedu-table tbody td.r { text-align: right; }
+  .pd-dedu-table tbody td .pos { color: var(--pos); font-weight: 700; }
+  .pd-dedu-table tbody td .neg { color: var(--neg); }
+  .pd-dedu-table tbody td .muted { color: var(--ink-4); }
+  .pd-dedu-table tbody .total-row td { background: var(--card-alt); font-weight: 700; color: var(--ink); border-top: 1px solid var(--line); }
+  .pd-dedu-chip {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; font-weight: 700; padding: 2px 6px; border-radius: 3px;
+    background: var(--brand-wash); color: var(--brand); letter-spacing: 0.04em; text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .pd-dedu-chip.cancel { background: var(--neg-wash); color: var(--neg); }
+
+  /* Gráfica · evolución capital vivo vs amortizado */
+  .pd-chart-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; margin-bottom: 14px; }
+  .pd-chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .pd-chart-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .pd-chart-legend { display: flex; gap: 20px; font-size: 11.5px; color: var(--ink-3); flex-wrap: wrap; }
+  .pd-chart-leg-item { display: flex; align-items: center; gap: 6px; }
+  .pd-chart-leg-item .dot { width: 10px; height: 10px; border-radius: 2px; }
+  .pd-chart-leg-item .dot.capital { background: var(--neg); }
+  .pd-chart-leg-item .dot.amort { background: var(--pos); }
+  .pd-chart-leg-item .dash { width: 18px; border-top: 1px dashed var(--gold); }
+  .pd-chart { width: 100%; height: 230px; display: block; }
+
+  /* Cuadro de amortización · tabla grande con filtros */
+  .pd-cuadro-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 14px; }
+  .pd-cuadro-head { padding: 18px 24px 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .pd-cuadro-filters { display: flex; gap: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .pd-cuadro-filters button { padding: 5px 12px; font-size: 11.5px; font-weight: 500; color: var(--ink-3); border-radius: 5px; }
+  .pd-cuadro-filters button.active { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,35,.04); }
+
+  .pd-cuadro-table { width: 100%; border-collapse: collapse; }
+  .pd-cuadro-table thead th {
+    padding: 10px 22px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-4); font-weight: 600; text-align: left;
+    background: var(--card-alt); border-top: 1px solid var(--line);
+  }
+  .pd-cuadro-table thead th.r { text-align: right; }
+  .pd-cuadro-table thead th.c { text-align: center; }
+  .pd-cuadro-table tbody td {
+    padding: 11px 22px; border-top: 1px solid var(--line-2);
+    font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--ink-2);
+  }
+  .pd-cuadro-table tbody tr { cursor: pointer; }
+  .pd-cuadro-table tbody tr:hover { background: var(--card-alt); }
+  .pd-cuadro-table tbody tr.pagada { background: var(--pos-wash); }
+  .pd-cuadro-table tbody tr.actual { background: var(--gold-wash); }
+  .pd-cuadro-table tbody tr.actual td { font-weight: 700; color: var(--ink); }
+  .pd-cuadro-table tbody td.r { text-align: right; }
+  .pd-cuadro-table tbody td.c { text-align: center; }
+  .pd-cuadro-table tbody td.anio { color: var(--ink); font-weight: 600; }
+  .pd-cuadro-badge {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .pd-cuadro-badge.pagada { background: var(--pos-wash); color: var(--pos); }
+  .pd-cuadro-badge.actual { background: var(--gold-ink); color: #fff; }
+  .pd-cuadro-badge.futura { background: var(--bg); color: var(--ink-4); }
+
+  /* ═══ SNOWBALL · simulador de amortización ═══ */
+
+  .sn-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 4px solid var(--gold);
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+  }
+  .sn-hero::after {
+    content: ''; position: absolute; top: 0; right: -60px; width: 400px; height: 100%;
+    background: radial-gradient(circle at 85% 50%, rgba(184,138,62,0.06) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .sn-hero-body { display: grid; grid-template-columns: 1fr auto 1fr auto; gap: 32px; align-items: center; position: relative; z-index: 1; }
+  .sn-hero-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; margin-bottom: 6px; }
+  .sn-hero-lab.gold { color: var(--gold-ink); }
+  .sn-hero-fecha { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; }
+  .sn-hero-sub { font-size: 12px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  .sn-hero-arrow { color: var(--gold); display: flex; align-items: center; justify-content: center; }
+  .sn-hero-impact-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .sn-hero-impact-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--pos); letter-spacing: -0.02em; line-height: 1; }
+
+  .sn-grid { display: grid; grid-template-columns: 340px 1fr; gap: 14px; margin-bottom: 16px; }
+
+  .sn-strat {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+    align-self: start;
+  }
+  .sn-strat-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+
+  .sn-strat-opts { display: flex; flex-direction: column; gap: 8px; }
+  .sn-strat-opt {
+    display: grid; grid-template-columns: 20px 1fr; gap: 12px;
+    padding: 14px 16px; border: 1px solid var(--line); border-radius: 9px;
+    cursor: pointer; transition: all .14s; align-items: start;
+  }
+  .sn-strat-opt:hover { border-color: var(--ink-5); background: var(--card-alt); }
+  .sn-strat-opt.active { border-color: var(--gold); background: var(--gold-wash); }
+  .sn-strat-opt-radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--ink-5); background: var(--card);
+    position: relative; flex-shrink: 0; margin-top: 2px;
+  }
+  .sn-strat-opt.active .sn-strat-opt-radio { border-color: var(--gold); background: var(--card); }
+  .sn-strat-opt.active .sn-strat-opt-radio::after {
+    content: ''; position: absolute; inset: 3px;
+    background: var(--gold); border-radius: 50%;
+  }
+  .sn-strat-opt-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .sn-strat-opt-desc { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; line-height: 1.45; }
+  .sn-strat-opt-desc strong { color: var(--ink-2); font-weight: 600; }
+
+  .sn-extra-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .sn-extra-lab { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .sn-extra-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: var(--gold-ink); letter-spacing: -0.015em; }
+  .sn-extra-slider {
+    appearance: none; -webkit-appearance: none;
+    width: 100%; height: 6px; background: var(--bg);
+    border-radius: 3px; border: 1px solid var(--line-2); outline: none; cursor: pointer;
+  }
+  .sn-extra-slider::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); border: 2px solid #fff;
+    cursor: pointer; box-shadow: 0 1px 3px rgba(14,20,35,0.15);
+  }
+  .sn-extra-range { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500; margin-top: 6px; }
+
+  .sn-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sn-preset { padding: 5px 10px; font-size: 11px; font-weight: 600; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; color: var(--ink-3); cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .sn-preset:hover { border-color: var(--ink-5); color: var(--ink-2); }
+  .sn-preset.active { background: var(--brand-ink); color: #fff; border-color: var(--brand-ink); }
+
+  .sn-list-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 0; overflow: hidden; }
+  .sn-list-head { padding: 18px 24px 14px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--line-2); }
+  .sn-list-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .sn-list-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+
+  .sn-row {
+    display: grid; grid-template-columns: 30px 40px 1fr 110px 120px 140px 90px;
+    gap: 14px; padding: 16px 24px; border-bottom: 1px solid var(--line-2);
+    align-items: center;
+  }
+  .sn-row:last-child { border-bottom: none; }
+  .sn-row.attacked { background: var(--gold-wash); }
+  .sn-row-order {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--ink-4);
+  }
+  .sn-row.attacked .sn-row-order { background: var(--gold); color: #fff; }
+
+  .sn-row-logo {
+    width: 40px; height: 40px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #fff;
+  }
+  .sn-row-logo.unicaja { background: #F2AA00; }
+  .sn-row-logo.ing { background: #FF6200; }
+  .sn-row-logo.sabadell { background: #006CB3; }
+  .sn-row-logo.santander { background: #EC0000; }
+
+  .sn-row-nom { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; }
+  .sn-row-meta { font-size: 11px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  .sn-row-cell { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+  .sn-row-cell-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); font-weight: 600; }
+  .sn-row-cell-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .sn-row-cell-val.neg { color: var(--neg); }
+  .sn-row-cell-val.pos { color: var(--pos); }
+  .sn-row-cell-val.gold { color: var(--gold-ink); }
+
+  .sn-row-bar { display: flex; flex-direction: column; gap: 4px; }
+  .sn-row-bar-top { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-4); }
+  .sn-row-bar-top .pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink-2); }
+  .sn-row-bar-track { height: 6px; background: var(--bg); border-radius: 3px; border: 1px solid var(--line-2); overflow: hidden; }
+  .sn-row-bar-fill { height: 100%; background: var(--brand); border-radius: 3px; }
+  .sn-row.attacked .sn-row-bar-fill { background: var(--gold); }
+
+  .sn-row-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 4px 9px; border-radius: 5px; letter-spacing: 0.06em; text-transform: uppercase;
+    text-align: center;
+  }
+  .sn-row-badge.activo { background: var(--gold); color: #fff; }
+  .sn-row-badge.espera { background: var(--bg); color: var(--ink-4); border: 1px solid var(--line); }
+
+  .sn-chart-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; margin-bottom: 16px; }
+  .sn-chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .sn-chart-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .sn-chart-legend { display: flex; gap: 20px; font-size: 11.5px; color: var(--ink-3); flex-wrap: wrap; }
+  .sn-chart-leg-item { display: flex; align-items: center; gap: 6px; }
+  .sn-chart-leg-item .line { width: 16px; border-top: 2px solid; }
+  .sn-chart-leg-item .line.base { border-color: var(--neg); }
+  .sn-chart-leg-item .line.snowball { border-color: var(--gold); }
+  .sn-chart { width: 100%; height: 240px; display: block; }
+
+  .sn-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; padding: 20px 26px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 14px;
+  }
+  .sn-summary-cell { padding: 0 24px; border-left: 1px solid var(--line-2); }
+  .sn-summary-cell:first-child { border-left: none; padding-left: 0; }
+  .sn-summary-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .sn-summary-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 6px; }
+  .sn-summary-val.pos { color: var(--pos); }
+  .sn-summary-val.gold { color: var(--gold-ink); }
+
+  .sn-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 0; }
+
+  /* Toast · restaurar base */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a onclick="showToast('Ir a Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a onclick="showToast('Ir a Inversiones')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a onclick="showToast('Ir a Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación <span class="chip">13</span></a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a onclick="showToast('Ir a Mi Plan')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Ir a Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>Fiscal <span class="chip">3</span></a>
+      <a onclick="showToast('Ir a Archivo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Ajustes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar préstamo, banco, inmueble…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+      </div>
+    </div>
+
+    <!-- Page head Dashboard -->
+    <div class="page-head active" id="page-head-dashboard">
+      <div>
+        <h1>Financiación</h1>
+        <div class="page-sub">tus hipotecas y préstamos · destino determina deducibilidad fiscal</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showPage('snowball')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Snowball
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Wizard · Crear préstamo · tipo · destinos · garantías · cuadro amortización')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear préstamo
+        </button>
+      </div>
+    </div>
+
+    <!-- Page head Listado -->
+    <div class="page-head" id="page-head-listado">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('dashboard')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('dashboard')">Financiación</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Listado</span>
+        </div>
+        <h1>Listado de préstamos</h1>
+        <div class="page-sub">13 préstamos activos · visualiza destinos y garantías</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-gold" onclick="showToast('Wizard · Crear préstamo')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear préstamo
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA DASHBOARD -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- Tabs internos · Dashboard · Listado · Snowball -->
+      <div class="tabs-inner">
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </button>
+        <button onclick="showPage('listado')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Listado <span class="tab-count">13</span>
+        </button>
+        <button onclick="showPage('snowball')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Snowball
+        </button>
+        <button onclick="showPage('calendario')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          Calendario
+        </button>
+      </div>
+
+      <!-- Hero deuda viva -->
+      <div class="deuda-hero-card">
+        <div class="dh-body">
+          <div>
+            <div class="dh-lab">Deuda viva total</div>
+            <div class="dh-val">−475.045 €</div>
+            <div class="dh-sub"><strong>13 préstamos activos</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>5 hipotecas + 8 personales<span style="color: var(--ink-5); margin: 0 6px;">·</span>repartidos en <strong>4 entidades</strong></div>
+          </div>
+          <div class="dh-stat">
+            <div class="dh-stat-lab">Capital amortizado</div>
+            <div class="dh-stat-val pos">+127.850 €</div>
+          </div>
+          <div class="dh-stat">
+            <div class="dh-stat-lab">Ratio amortización</div>
+            <div class="dh-stat-val gold">21,2%</div>
+          </div>
+          <div class="dh-stat">
+            <div class="dh-stat-lab">Últ. pago</div>
+            <div class="dh-stat-val">hace 3 d</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI strip · 4 métricas -->
+      <div class="kpi-strip">
+        <div class="kpi-cell">
+          <div class="kpi-lab">Cuota total mes</div>
+          <div class="kpi-val neg">−3.875 €</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-lab">Intereses año en curso</div>
+          <div class="kpi-val neg">−12.480 €</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-lab">Intereses deducibles</div>
+          <div class="kpi-val pos">+9.245 €</div>
+        </div>
+        <div class="kpi-cell">
+          <div class="kpi-lab">TIN medio ponderado</div>
+          <div class="kpi-val">2,68%</div>
+        </div>
+      </div>
+
+      <!-- Distribución · tipos de préstamo -->
+      <div class="dist-card">
+        <div class="dist-head">
+          <div>
+            <div class="dist-title">Distribución de la deuda por tipo</div>
+            <div class="dist-sub">por volumen de capital vivo</div>
+          </div>
+          <div class="card-action" onclick="showToast('Ver análisis detallado por tipo y garantía')">Ver análisis →</div>
+        </div>
+        <div class="dist-track">
+          <div class="dist-seg hipotecas" style="width: 82.4%" onclick="showToast('Hipotecas · 391.437 € · 82% · 5 préstamos')"></div>
+          <div class="dist-seg personales" style="width: 14.8%" onclick="showToast('Préstamos personales · 70.308 € · 15% · 7 préstamos')"></div>
+          <div class="dist-seg pignora" style="width: 2.8%" onclick="showToast('Pignoraticia · 13.300 € · 3% · 1 préstamo')"></div>
+        </div>
+        <div class="dist-leg">
+          <div class="dist-leg-item">
+            <div class="dist-leg-dot hipotecas"></div>
+            <span class="dist-leg-nom">Hipotecas</span>
+            <span class="dist-leg-val">391.437 €</span>
+            <span class="dist-leg-pct">82%</span>
+          </div>
+          <div class="dist-leg-item">
+            <div class="dist-leg-dot personales"></div>
+            <span class="dist-leg-nom">Personales</span>
+            <span class="dist-leg-val">70.308 €</span>
+            <span class="dist-leg-pct">15%</span>
+          </div>
+          <div class="dist-leg-item">
+            <div class="dist-leg-dot pignora"></div>
+            <span class="dist-leg-nom">Pignoraticia</span>
+            <span class="dist-leg-val">13.300 €</span>
+            <span class="dist-leg-pct">3%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2 columnas · Próximas cuotas + Top deducibles -->
+      <div class="cols-2">
+
+        <!-- Izquierda · Próximas cuotas del mes -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Próximas cuotas del mes</div>
+              <div class="card-sub">5 cuotas previstas · total −3.875 €</div>
+            </div>
+            <div class="card-action" onclick="showToast('Ver todas las cuotas del año · calendario completo')">Ver todas →</div>
+          </div>
+
+          <div class="cuota-row" onclick="showToast('Ver detalle cuota Unicaja · 28 abril · 1.240 €')">
+            <div class="cuota-icon unicaja">UN</div>
+            <div>
+              <div class="cuota-nom">Unicaja · hipoteca T64 (doble)</div>
+              <div class="cuota-meta">capital 687 € · intereses 553 €</div>
+            </div>
+            <span class="cuota-fecha urgente">28 abr · 4 d</span>
+            <span class="cuota-imp">−1.240 €</span>
+          </div>
+
+          <div class="cuota-row" onclick="showToast('Ver detalle cuota ING · 30 abril · 1.480 €')">
+            <div class="cuota-icon ing">ING</div>
+            <div>
+              <div class="cuota-nom">ING · hipoteca T48/Buigas</div>
+              <div class="cuota-meta">capital 612 € · intereses 868 €</div>
+            </div>
+            <span class="cuota-fecha urgente">30 abr · 6 d</span>
+            <span class="cuota-imp">−1.480 €</span>
+          </div>
+
+          <div class="cuota-row" onclick="showToast('Ver detalle cuota Sabadell · 5 mayo · 485 €')">
+            <div class="cuota-icon sabadell">SB</div>
+            <div>
+              <div class="cuota-nom">Sabadell · personal Cangas</div>
+              <div class="cuota-meta">capital 412 € · intereses 73 €</div>
+            </div>
+            <span class="cuota-fecha">5 may · 12 d</span>
+            <span class="cuota-imp">−485 €</span>
+          </div>
+
+          <div class="cuota-row" onclick="showToast('Ver detalle cuota Santander · 10 mayo · 430 €')">
+            <div class="cuota-icon santander">SA</div>
+            <div>
+              <div class="cuota-nom">Santander · personal Cangas</div>
+              <div class="cuota-meta">capital 368 € · intereses 62 €</div>
+            </div>
+            <span class="cuota-fecha">10 may · 17 d</span>
+            <span class="cuota-imp">−430 €</span>
+          </div>
+
+          <div class="cuota-row" onclick="showToast('Ver detalle cuota Unicaja · pignora · 15 mayo · 240 €')">
+            <div class="cuota-icon unicaja">UN</div>
+            <div>
+              <div class="cuota-nom">Unicaja · pignoraticia plan pensiones</div>
+              <div class="cuota-meta">capital 198 € · intereses 42 €</div>
+            </div>
+            <span class="cuota-fecha">15 may · 22 d</span>
+            <span class="cuota-imp">−240 €</span>
+          </div>
+        </div>
+
+        <!-- Derecha · Top préstamos con impacto fiscal -->
+        <div class="card">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Top impacto fiscal</div>
+              <div class="card-sub">intereses deducibles · año 2025</div>
+            </div>
+            <div class="card-action" onclick="showToast('Ver ficha fiscal completa · reparto por inmueble')">Detalle →</div>
+          </div>
+
+          <div class="dedu-row" onclick="showToast('Ver detalle intereses deducibles ING')">
+            <div>
+              <div class="dedu-nom">ING · hipoteca T48</div>
+              <div class="dedu-meta">81,6% deducible<span class="chip">T48</span></div>
+            </div>
+            <div>
+              <div class="dedu-val">+4.285 €</div>
+              <div class="dedu-val-sub">casilla 0105</div>
+            </div>
+          </div>
+
+          <div class="dedu-row" onclick="showToast('Ver detalle intereses deducibles Unicaja')">
+            <div>
+              <div class="dedu-nom">Unicaja · hipoteca T64</div>
+              <div class="dedu-meta">100% deducible<span class="chip">T64-4D</span><span class="chip">T64-4IZ</span></div>
+            </div>
+            <div>
+              <div class="dedu-val">+3.420 €</div>
+              <div class="dedu-val-sub">casilla 0105</div>
+            </div>
+          </div>
+
+          <div class="dedu-row" onclick="showToast('Ver detalle intereses deducibles pignoraticia Cangas')">
+            <div>
+              <div class="dedu-nom">Unicaja · pignora Cangas</div>
+              <div class="dedu-meta">100% deducible<span class="chip">Cangas</span></div>
+            </div>
+            <div>
+              <div class="dedu-val">+1.540 €</div>
+              <div class="dedu-val-sub">casilla 0105</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page dashboard -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA LISTADO -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page" id="page-listado">
+
+      <!-- Tabs internos -->
+      <div class="tabs-inner">
+        <button onclick="showPage('dashboard')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Listado <span class="tab-count">13</span>
+        </button>
+        <button onclick="showPage('snowball')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Snowball
+        </button>
+        <button onclick="showPage('calendario')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          Calendario
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="prest-filter">
+        <div class="prest-filter-lab">Mostrar</div>
+        <button class="prest-pill active">Todos<span class="chip-count">13</span></button>
+        <button class="prest-pill">Hipotecas<span class="chip-count">5</span></button>
+        <button class="prest-pill">Personales<span class="chip-count">7</span></button>
+        <button class="prest-pill">Pignoraticia<span class="chip-count">1</span></button>
+      </div>
+
+      <!-- Grid de 4 préstamos representativos -->
+      <div class="prest-grid">
+
+        <!-- ═══ PRÉSTAMO 1 · UNICAJA · Hipoteca T64 (doble inmueble) ═══ -->
+        <div class="prest-card hipoteca" onclick="showToast('Abrir detalle préstamo Unicaja · próxima sesión')">
+          <div class="prest-head">
+            <div class="prest-logo unicaja">UN</div>
+            <div class="prest-head-info">
+              <div class="prest-ast">PREST · 01 · hipoteca</div>
+              <div class="prest-nom">Unicaja · hipoteca T64</div>
+            </div>
+            <span class="prest-type hipoteca">Hipoteca</span>
+          </div>
+
+          <div class="prest-numbers">
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Capital vivo</div>
+              <div class="prest-num-val neg">−142.800 €</div>
+              <div class="prest-num-sub">inicial 180.000 €</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Cuota mes</div>
+              <div class="prest-num-val">1.240 €</div>
+              <div class="prest-num-sub">TIN 2,15%</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Vencimiento</div>
+              <div class="prest-num-val">2044</div>
+              <div class="prest-num-sub">18 años rest.</div>
+            </div>
+          </div>
+
+          <div class="prest-progress">
+            <div class="prest-prog-top">
+              <span>Amortizado</span>
+              <span class="pct">20,7%</span>
+            </div>
+            <div class="prest-prog-bar"><div class="prest-prog-fill hipoteca" style="width: 20.7%;"></div></div>
+          </div>
+
+          <div class="prest-dg">
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Destino</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">T64-4D · adquisición<span class="pct">50%</span></span>
+                <span class="prest-dg-chip inmueble">T64-4IZ · adquisición<span class="pct">50%</span></span>
+              </div>
+            </div>
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Garantía</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">T64-4D · hipotecaria</span>
+                <span class="prest-dg-chip inmueble">T64-4IZ · hipotecaria</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prest-footer">
+            <div class="prest-footer-item">
+              <span class="prest-footer-lab">Intereses deducibles 2025</span>
+              <span class="prest-footer-val pos">+3.420 € · 100%</span>
+            </div>
+            <span class="prest-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- ═══ PRÉSTAMO 2 · ING · Hipoteca T48 + cancelación (caso complejo) ═══ -->
+        <div class="prest-card hipoteca" onclick="showPage('detalle')">
+          <div class="prest-head">
+            <div class="prest-logo ing">ING</div>
+            <div class="prest-head-info">
+              <div class="prest-ast">PREST · 02 · hipoteca</div>
+              <div class="prest-nom">ING · hipoteca T48 + cancelación</div>
+            </div>
+            <span class="prest-type hipoteca">Hipoteca</span>
+          </div>
+
+          <div class="prest-numbers">
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Capital vivo</div>
+              <div class="prest-num-val neg">−116.450 €</div>
+              <div class="prest-num-sub">inicial 147.000 €</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Cuota mes</div>
+              <div class="prest-num-val">1.480 €</div>
+              <div class="prest-num-sub">TIN 3,20%</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Vencimiento</div>
+              <div class="prest-num-val">2039</div>
+              <div class="prest-num-sub">13 años rest.</div>
+            </div>
+          </div>
+
+          <div class="prest-progress">
+            <div class="prest-prog-top">
+              <span>Amortizado</span>
+              <span class="pct">20,8%</span>
+            </div>
+            <div class="prest-prog-bar"><div class="prest-prog-fill hipoteca" style="width: 20.8%;"></div></div>
+          </div>
+
+          <div class="prest-dg">
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Destino</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">T48 · adquisición<span class="pct">81,6%</span></span>
+                <span class="prest-dg-chip cancel">Cancelar deuda<span class="pct">18,4%</span></span>
+              </div>
+            </div>
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Garantía</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">Buigas 15 · hipotecaria</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prest-footer">
+            <div class="prest-footer-item">
+              <span class="prest-footer-lab">Intereses deducibles 2025</span>
+              <span class="prest-footer-val pos">+4.285 € · 81,6%</span>
+            </div>
+            <span class="prest-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- ═══ PRÉSTAMO 3 · SABADELL · Personal Cangas ═══ -->
+        <div class="prest-card personal" onclick="showToast('Abrir detalle préstamo Sabadell · personal Cangas')">
+          <div class="prest-head">
+            <div class="prest-logo sabadell">SB</div>
+            <div class="prest-head-info">
+              <div class="prest-ast">PREST · 03 · personal</div>
+              <div class="prest-nom">Sabadell · personal Cangas</div>
+            </div>
+            <span class="prest-type personal">Personal</span>
+          </div>
+
+          <div class="prest-numbers">
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Capital vivo</div>
+              <div class="prest-num-val neg">−18.420 €</div>
+              <div class="prest-num-sub">inicial 30.000 €</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Cuota mes</div>
+              <div class="prest-num-val">485 €</div>
+              <div class="prest-num-sub">TIN 4,75%</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Vencimiento</div>
+              <div class="prest-num-val">2029</div>
+              <div class="prest-num-sub">3 años rest.</div>
+            </div>
+          </div>
+
+          <div class="prest-progress">
+            <div class="prest-prog-top">
+              <span>Amortizado</span>
+              <span class="pct">38,6%</span>
+            </div>
+            <div class="prest-prog-bar"><div class="prest-prog-fill personal" style="width: 38.6%;"></div></div>
+          </div>
+
+          <div class="prest-dg">
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Destino</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">Cangas · adquisición<span class="pct">100%</span></span>
+              </div>
+            </div>
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Garantía</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip persona">Jose A. · personal</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prest-footer">
+            <div class="prest-footer-item">
+              <span class="prest-footer-lab">Intereses deducibles 2025</span>
+              <span class="prest-footer-val pos">+846 € · 100%</span>
+            </div>
+            <span class="prest-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- ═══ PRÉSTAMO 4 · UNICAJA PIGNORATICIA · Plan pensiones Orange ═══ -->
+        <div class="prest-card pignora" onclick="showToast('Abrir detalle préstamo pignoraticia · garantía plan pensiones')">
+          <div class="prest-head">
+            <div class="prest-logo unicaja">UN</div>
+            <div class="prest-head-info">
+              <div class="prest-ast">PREST · 04 · pignoraticia</div>
+              <div class="prest-nom">Unicaja · pignora Cangas</div>
+            </div>
+            <span class="prest-type pignora">Pignoraticia</span>
+          </div>
+
+          <div class="prest-numbers">
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Capital vivo</div>
+              <div class="prest-num-val neg">−13.300 €</div>
+              <div class="prest-num-sub">inicial 25.000 €</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Cuota mes</div>
+              <div class="prest-num-val">240 €</div>
+              <div class="prest-num-sub">TIN 3,40%</div>
+            </div>
+            <div class="prest-num-block">
+              <div class="prest-num-lab">Vencimiento</div>
+              <div class="prest-num-val">2031</div>
+              <div class="prest-num-sub">5 años rest.</div>
+            </div>
+          </div>
+
+          <div class="prest-progress">
+            <div class="prest-prog-top">
+              <span>Amortizado</span>
+              <span class="pct">46,8%</span>
+            </div>
+            <div class="prest-prog-bar"><div class="prest-prog-fill pignora" style="width: 46.8%;"></div></div>
+          </div>
+
+          <div class="prest-dg">
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Destino</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip inmueble">Cangas · reforma<span class="pct">100%</span></span>
+              </div>
+            </div>
+            <div class="prest-dg-row">
+              <div class="prest-dg-lab">Garantía</div>
+              <div class="prest-dg-chips">
+                <span class="prest-dg-chip pignora">Plan pensiones Orange · pignoraticia</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="prest-footer">
+            <div class="prest-footer-item">
+              <span class="prest-footer-lab">Intereses deducibles 2025</span>
+              <span class="prest-footer-val pos">+1.540 € · 100%</span>
+            </div>
+            <span class="prest-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page listado -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA DETALLE DE PRÉSTAMO · caso ING · destino ≠ garantía -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-detalle">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('listado')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('dashboard')">Financiación</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <a onclick="showPage('listado')">Listado</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">ING · hipoteca T48</span>
+        </div>
+        <h1 style="font-size: 22px;">Detalle del préstamo</h1>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Simular amortización anticipada · ahorro intereses · nueva fecha fin')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M2 12h20"/></svg>
+          Amortizar
+        </button>
+        <button class="btn btn-ghost" onclick="showToast('Editar destinos o garantías · recalcula imputación fiscal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          Editar
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-detalle">
+
+      <!-- Hero del préstamo -->
+      <div class="pd-hero">
+        <div class="pd-hero-body">
+          <div class="pd-hero-logo ing">ING</div>
+          <div>
+            <div class="pd-hero-ast">PREST · 02 · hipoteca · prestamo-ing-t48</div>
+            <div class="pd-hero-nom">ING · hipoteca T48 + cancelación</div>
+            <div class="pd-hero-meta">firmada <strong>15/09/2019</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>TIN <strong>3,20%</strong> fijo<span style="color: var(--ink-5); margin: 0 6px;">·</span>20 años · vence <strong>sep 2039</strong></div>
+          </div>
+          <span class="pd-hero-badge hipoteca">Hipoteca</span>
+          <div class="pd-hero-stat">
+            <div class="pd-hero-stat-lab">Capital vivo</div>
+            <div class="pd-hero-stat-val neg">−116.450 €</div>
+          </div>
+          <div class="pd-hero-stat">
+            <div class="pd-hero-stat-lab">Cuota mes</div>
+            <div class="pd-hero-stat-val">1.480 €</div>
+          </div>
+          <div class="pd-hero-stat">
+            <div class="pd-hero-stat-lab">Amortizado</div>
+            <div class="pd-hero-stat-val pos">20,8%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs internos · resumen default -->
+      <div class="pd-tabs">
+        <button class="active">Resumen</button>
+        <button onclick="showToast('Ver cuadro de amortización completo · 240 cuotas')">Cuadro amortización</button>
+        <button onclick="showToast('Ver movimientos vinculados en Tesorería · pagos recibidos')">Movimientos</button>
+        <button onclick="showToast('Documentos del préstamo · escritura · condiciones · sellos')">Documentos</button>
+      </div>
+
+      <!-- Nota fiscal · explicación del caso -->
+      <div class="pd-nota">
+        <div class="pd-nota-icon">i</div>
+        <div class="pd-nota-body">
+          <div class="pd-nota-title">Caso · destino diferente de garantía</div>
+          <div class="pd-nota-desc">
+            Este préstamo se firmó para comprar <strong>T48</strong> y cancelar una deuda anterior · pero el banco pidió como garantía <strong>Buigas 15</strong> porque T48 estaba en construcción. La deducibilidad depende del <strong>destino</strong> · no de la garantía · por eso solo el <strong>81,6%</strong> de los intereses son deducibles fiscalmente.
+          </div>
+        </div>
+      </div>
+
+      <!-- Dos columnas · Destinos · Garantías -->
+      <div class="pd-dg">
+
+        <!-- Destinos · determina fiscalidad -->
+        <div class="pd-dg-card">
+          <div class="pd-dg-head">
+            <div>
+              <div class="pd-dg-title">Destino del capital</div>
+              <div class="pd-dg-sub">para qué se pidió el dinero · determina la deducibilidad</div>
+            </div>
+            <span class="pd-dg-tag fiscal">Fiscal</span>
+          </div>
+
+          <div class="pd-dg-item">
+            <div class="pd-dg-item-icon inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+            </div>
+            <div>
+              <div class="pd-dg-item-nom">T48 · adquisición</div>
+              <div class="pd-dg-item-sub">Tenderina 48 · Oviedo · deducible</div>
+            </div>
+            <div class="pd-dg-item-right">
+              <div class="pd-dg-item-imp">120.000 €</div>
+              <div class="pd-dg-item-pct">81,6%</div>
+            </div>
+          </div>
+
+          <div class="pd-dg-item">
+            <div class="pd-dg-item-icon cancel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </div>
+            <div>
+              <div class="pd-dg-item-nom">Cancelación de deuda</div>
+              <div class="pd-dg-item-sub">préstamo anterior · no deducible</div>
+            </div>
+            <div class="pd-dg-item-right">
+              <div class="pd-dg-item-imp">27.000 €</div>
+              <div class="pd-dg-item-pct">18,4%</div>
+            </div>
+          </div>
+
+          <div class="pd-dg-item" style="padding-top: 12px;">
+            <div style="grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink-3); padding-top: 12px; border-top: 1px solid var(--line); font-family: 'JetBrains Mono', monospace;">
+              <span>Total destinado</span>
+              <span style="color: var(--ink); font-weight: 700;">147.000 € · 100%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Garantías · informativo -->
+        <div class="pd-dg-card">
+          <div class="pd-dg-head">
+            <div>
+              <div class="pd-dg-title">Garantía</div>
+              <div class="pd-dg-sub">qué responde si no pagas · informativo · no afecta fiscalidad</div>
+            </div>
+            <span class="pd-dg-tag info">Informativo</span>
+          </div>
+
+          <div class="pd-dg-item">
+            <div class="pd-dg-item-icon inmueble">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+            </div>
+            <div>
+              <div class="pd-dg-item-nom">Buigas 15 · hipotecaria</div>
+              <div class="pd-dg-item-sub">Sant Fruitós · Barcelona · piso diferente al destino</div>
+            </div>
+            <div class="pd-dg-item-right">
+              <div class="pd-dg-item-imp">Hipoteca</div>
+              <div class="pd-dg-item-pct">tipo 1</div>
+            </div>
+          </div>
+
+          <div style="padding: 40px 0 10px; text-align: center; color: var(--ink-4); font-size: 11.5px; font-style: italic;">
+            la garantía se registra para tener constancia<br/>pero no cambia los cálculos fiscales
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla intereses deducibles por año -->
+      <div class="pd-dedu-card">
+        <div class="pd-dedu-head">
+          <div>
+            <div class="pd-dedu-title">Intereses deducibles · reparto por destino y año</div>
+            <div class="pd-dedu-sub">81,6% del interés anual se imputa a T48 · casilla 0105</div>
+          </div>
+          <div class="card-action" onclick="showToast('Ver cálculo detallado · fundamento fiscal · artículo Ley IRPF')">Fundamento →</div>
+        </div>
+
+        <table class="pd-dedu-table">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th class="r">Intereses pagados</th>
+              <th>Destino T48 · 81,6%</th>
+              <th class="r">Deducible</th>
+              <th>No deducible · 18,4%</th>
+              <th class="r">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="anio">2022</td>
+              <td class="r">5.460 €</td>
+              <td><span class="pd-dedu-chip">T48 adquisición</span></td>
+              <td class="r"><span class="pos">+4.455 €</span></td>
+              <td><span class="pd-dedu-chip cancel">Cancelación</span></td>
+              <td class="r"><span class="muted">1.005 €</span></td>
+            </tr>
+            <tr>
+              <td class="anio">2023</td>
+              <td class="r">5.310 €</td>
+              <td><span class="pd-dedu-chip">T48 adquisición</span></td>
+              <td class="r"><span class="pos">+4.333 €</span></td>
+              <td><span class="pd-dedu-chip cancel">Cancelación</span></td>
+              <td class="r"><span class="muted">977 €</span></td>
+            </tr>
+            <tr>
+              <td class="anio">2024</td>
+              <td class="r">5.150 €</td>
+              <td><span class="pd-dedu-chip">T48 adquisición</span></td>
+              <td class="r"><span class="pos">+4.202 €</span></td>
+              <td><span class="pd-dedu-chip cancel">Cancelación</span></td>
+              <td class="r"><span class="muted">948 €</span></td>
+            </tr>
+            <tr style="background: var(--gold-wash);">
+              <td class="anio">2025</td>
+              <td class="r">5.250 €</td>
+              <td><span class="pd-dedu-chip">T48 adquisición</span></td>
+              <td class="r"><span class="pos">+4.285 €</span></td>
+              <td><span class="pd-dedu-chip cancel">Cancelación</span></td>
+              <td class="r"><span class="muted">965 €</span></td>
+            </tr>
+            <tr>
+              <td class="anio muted">2026 proy.</td>
+              <td class="r muted">5.080 €</td>
+              <td><span class="pd-dedu-chip">T48 adquisición</span></td>
+              <td class="r"><span style="color: var(--pos); font-weight: 500;">+4.145 €</span></td>
+              <td><span class="pd-dedu-chip cancel">Cancelación</span></td>
+              <td class="r"><span class="muted">935 €</span></td>
+            </tr>
+            <tr class="total-row">
+              <td class="anio">Total 2022–2025</td>
+              <td class="r">21.170 €</td>
+              <td></td>
+              <td class="r"><span class="pos">+17.275 €</span></td>
+              <td></td>
+              <td class="r"><span class="muted">3.895 €</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Gráfica · evolución capital vivo vs amortizado -->
+      <div class="pd-chart-card">
+        <div class="pd-chart-head">
+          <div class="pd-chart-title">Evolución del préstamo · 20 años</div>
+          <div class="pd-chart-legend">
+            <div class="pd-chart-leg-item"><div class="dot capital"></div>Capital vivo</div>
+            <div class="pd-chart-leg-item"><div class="dot amort"></div>Capital amortizado</div>
+            <div class="pd-chart-leg-item"><div class="dash"></div>Hoy · abril 2026</div>
+          </div>
+        </div>
+
+        <svg class="pd-chart" viewBox="0 0 900 230" preserveAspectRatio="none">
+          <!-- Grid -->
+          <g stroke="var(--line-2)" stroke-width="1" fill="none">
+            <line x1="50" y1="30" x2="870" y2="30"/>
+            <line x1="50" y1="80" x2="870" y2="80"/>
+            <line x1="50" y1="130" x2="870" y2="130"/>
+            <line x1="50" y1="180" x2="870" y2="180"/>
+          </g>
+
+          <!-- Eje Y -->
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+            <text x="45" y="34" text-anchor="end">150K €</text>
+            <text x="45" y="84" text-anchor="end">100K €</text>
+            <text x="45" y="134" text-anchor="end">50K €</text>
+            <text x="45" y="184" text-anchor="end">0 €</text>
+          </g>
+
+          <!-- Eje X · años -->
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+            <text x="50" y="220">2019</text>
+            <text x="151" y="220">2022</text>
+            <text x="252" y="220">2025</text>
+            <text x="353" y="220">2028</text>
+            <text x="454" y="220">2031</text>
+            <text x="555" y="220">2034</text>
+            <text x="656" y="220">2037</text>
+            <text x="757" y="220">2039</text>
+          </g>
+
+          <!-- Capital vivo · rojo · baja de 147K a 0 en 20 años -->
+          <path d="M 50 31 L 151 55 L 252 88 L 353 120 L 454 147 L 555 167 L 656 180 L 870 185"
+                stroke="var(--neg)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Área capital vivo -->
+          <path d="M 50 31 L 151 55 L 252 88 L 353 120 L 454 147 L 555 167 L 656 180 L 870 185 L 870 185 L 50 185 Z"
+                fill="url(#gradVivo)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="gradVivo" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#A43328" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#A43328" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Capital amortizado · verde · sube de 0 a 147K -->
+          <path d="M 50 185 L 151 158 L 252 125 L 353 93 L 454 66 L 555 46 L 656 33 L 870 30"
+                stroke="var(--pos)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Línea hoy · abril 2026 -->
+          <line x1="252" y1="30" x2="252" y2="195" stroke="var(--gold)" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.65"/>
+          <rect x="231" y="10" width="42" height="14" rx="3" fill="var(--gold)"/>
+          <text x="252" y="20" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fff" font-weight="700">HOY</text>
+
+          <!-- Punto hoy · capital vivo 116K -->
+          <circle cx="252" cy="88" r="5" fill="#fff" stroke="var(--neg)" stroke-width="2.5"/>
+          <text x="262" y="82" font-family="JetBrains Mono" font-size="10" fill="var(--neg)" font-weight="700">−116.450 €</text>
+
+          <!-- Punto hoy · capital amortizado 30.5K -->
+          <circle cx="252" cy="125" r="5" fill="#fff" stroke="var(--pos)" stroke-width="2.5"/>
+          <text x="262" y="141" font-family="JetBrains Mono" font-size="10" fill="var(--pos)" font-weight="700">+30.550 €</text>
+        </svg>
+      </div>
+
+      <!-- Cuadro de amortización · muestra de 10 cuotas alrededor de hoy -->
+      <div class="pd-cuadro-card">
+        <div class="pd-cuadro-head">
+          <div>
+            <div class="pd-chart-title">Cuadro de amortización · abril 2026</div>
+            <div class="pd-dedu-sub">240 cuotas totales · mostrando ventana actual</div>
+          </div>
+          <div class="pd-cuadro-filters">
+            <button class="active">Mes actual</button>
+            <button>3 meses</button>
+            <button>Año</button>
+            <button>Completo</button>
+          </div>
+        </div>
+
+        <table class="pd-cuadro-table">
+          <thead>
+            <tr>
+              <th>Cuota</th>
+              <th>Fecha</th>
+              <th class="r">Cuota total</th>
+              <th class="r">Capital</th>
+              <th class="r">Interés</th>
+              <th class="r">Capital vivo</th>
+              <th class="c">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="pagada" onclick="showToast('Ver detalle cuota #78 · enero 2026')">
+              <td class="anio">#78</td>
+              <td>31/01/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">608 €</td>
+              <td class="r">872 €</td>
+              <td class="r">118.280 €</td>
+              <td class="c"><span class="pd-cuadro-badge pagada">Pagada</span></td>
+            </tr>
+            <tr class="pagada" onclick="showToast('Ver detalle cuota #79 · febrero 2026')">
+              <td class="anio">#79</td>
+              <td>28/02/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">609 €</td>
+              <td class="r">871 €</td>
+              <td class="r">117.671 €</td>
+              <td class="c"><span class="pd-cuadro-badge pagada">Pagada</span></td>
+            </tr>
+            <tr class="pagada" onclick="showToast('Ver detalle cuota #80 · marzo 2026')">
+              <td class="anio">#80</td>
+              <td>31/03/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">611 €</td>
+              <td class="r">869 €</td>
+              <td class="r">117.060 €</td>
+              <td class="c"><span class="pd-cuadro-badge pagada">Pagada</span></td>
+            </tr>
+            <tr class="actual" onclick="showToast('Ver detalle cuota #81 · abril 2026 · ACTUAL')">
+              <td class="anio">#81</td>
+              <td>30/04/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">612 €</td>
+              <td class="r">868 €</td>
+              <td class="r">116.448 €</td>
+              <td class="c"><span class="pd-cuadro-badge actual">En curso · 6 d</span></td>
+            </tr>
+            <tr onclick="showToast('Ver detalle cuota #82 · mayo 2026')">
+              <td class="anio">#82</td>
+              <td>31/05/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">614 €</td>
+              <td class="r">866 €</td>
+              <td class="r">115.834 €</td>
+              <td class="c"><span class="pd-cuadro-badge futura">Pendiente</span></td>
+            </tr>
+            <tr onclick="showToast('Ver detalle cuota #83 · junio 2026')">
+              <td class="anio">#83</td>
+              <td>30/06/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">615 €</td>
+              <td class="r">865 €</td>
+              <td class="r">115.219 €</td>
+              <td class="c"><span class="pd-cuadro-badge futura">Pendiente</span></td>
+            </tr>
+            <tr onclick="showToast('Ver detalle cuota #84 · julio 2026')">
+              <td class="anio">#84</td>
+              <td>31/07/2026</td>
+              <td class="r">1.480 €</td>
+              <td class="r">617 €</td>
+              <td class="r">863 €</td>
+              <td class="r">114.602 €</td>
+              <td class="c"><span class="pd-cuadro-badge futura">Pendiente</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    <!-- /page detalle -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA SNOWBALL · simulador -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-snowball">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('dashboard')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('dashboard')">Financiación</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Snowball</span>
+        </div>
+        <h1>Snowball</h1>
+        <div class="page-sub">simula amortizaciones anticipadas · ve cuánto ahorras en intereses</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Resetear todos los parámetros al plan actual · sin amortización extra')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Resetear
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Aplicar este plan · genera órdenes de amortización automáticas')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 6 9 17 4 12"/></svg>
+          Aplicar plan
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-snowball">
+
+      <!-- Tabs internos -->
+      <div class="tabs-inner">
+        <button onclick="showPage('dashboard')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </button>
+        <button onclick="showPage('listado')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Listado <span class="tab-count">13</span>
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Snowball
+        </button>
+        <button onclick="showPage('calendario')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          Calendario
+        </button>
+      </div>
+
+      <!-- Hero comparativo · dos fechas fin + ahorro -->
+      <div class="sn-hero">
+        <div class="sn-hero-body">
+          <div>
+            <div class="sn-hero-lab">Sin amortización extra</div>
+            <div class="sn-hero-fecha">septiembre 2044</div>
+            <div class="sn-hero-sub">intereses totales · 89.420 €</div>
+          </div>
+          <div class="sn-hero-arrow">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+          <div>
+            <div class="sn-hero-lab gold">Con este plan snowball</div>
+            <div class="sn-hero-fecha">marzo 2038</div>
+            <div class="sn-hero-sub">intereses totales · 52.180 €</div>
+          </div>
+          <div class="sn-hero-impact">
+            <div class="sn-hero-impact-lab">Ahorras</div>
+            <div class="sn-hero-impact-val">−6,5 años</div>
+            <div class="sn-hero-sub" style="color: var(--pos); font-weight: 700; margin-top: 4px;">+37.240 € en intereses</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid · estrategia + préstamos -->
+      <div class="sn-grid">
+
+        <!-- Panel estrategia · izquierda -->
+        <div class="sn-strat">
+          <div class="sn-strat-title">Estrategia de ataque</div>
+
+          <div class="sn-strat-opts">
+            <div class="sn-strat-opt active" onclick="showToast('Estrategia avalancha · mayor ahorro matemático')">
+              <div class="sn-strat-opt-radio"></div>
+              <div>
+                <div class="sn-strat-opt-title">Avalancha</div>
+                <div class="sn-strat-opt-desc">atacar primero el préstamo con <strong>mayor tipo de interés</strong> · máximo ahorro matemático</div>
+              </div>
+            </div>
+
+            <div class="sn-strat-opt" onclick="showToast('Estrategia bola de nieve · mayor motivación psicológica')">
+              <div class="sn-strat-opt-radio"></div>
+              <div>
+                <div class="sn-strat-opt-title">Bola de nieve</div>
+                <div class="sn-strat-opt-desc">atacar primero el préstamo con <strong>menor capital vivo</strong> · cierras antes préstamos enteros</div>
+              </div>
+            </div>
+
+            <div class="sn-strat-opt" onclick="showToast('Estrategia no deducibles primero · optimiza fiscal')">
+              <div class="sn-strat-opt-radio"></div>
+              <div>
+                <div class="sn-strat-opt-title">No deducibles primero</div>
+                <div class="sn-strat-opt-desc">eliminar antes <strong>préstamos sin deducibilidad</strong> · mantiene el escudo fiscal más tiempo</div>
+              </div>
+            </div>
+
+            <div class="sn-strat-opt" onclick="showToast('Estrategia manual · tu decides el orden préstamo por préstamo')">
+              <div class="sn-strat-opt-radio"></div>
+              <div>
+                <div class="sn-strat-opt-title">Manual</div>
+                <div class="sn-strat-opt-desc">elige tú el orden · arrastra préstamos para priorizar</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sn-extra-head">
+              <div class="sn-extra-lab">Cantidad extra al mes</div>
+              <div class="sn-extra-val">+500 €</div>
+            </div>
+            <input type="range" class="sn-extra-slider" min="0" max="2000" value="500" step="50"
+                   oninput="showToast('Simular amortización extra de ' + this.value + ' €/mes')"/>
+            <div class="sn-extra-range"><span>0 €</span><span>máx · 2.000 €</span></div>
+          </div>
+
+          <div>
+            <div style="font-size: 11px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 8px;">Presets</div>
+            <div class="sn-presets">
+              <button class="sn-preset">250 €</button>
+              <button class="sn-preset active">500 €</button>
+              <button class="sn-preset">1.000 €</button>
+              <button class="sn-preset">1.500 €</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Lista préstamos ordenados por estrategia -->
+        <div class="sn-list-card">
+          <div class="sn-list-head">
+            <div>
+              <div class="sn-list-title">Orden de ataque · estrategia avalancha</div>
+              <div class="sn-list-sub">ordenado de mayor a menor TIN · primero recibe la amortización extra</div>
+            </div>
+          </div>
+
+          <!-- #1 · Sabadell personal Cangas · TIN más alto -->
+          <div class="sn-row attacked">
+            <div class="sn-row-order">1</div>
+            <div class="sn-row-logo sabadell">SB</div>
+            <div>
+              <div class="sn-row-nom">Sabadell · personal Cangas</div>
+              <div class="sn-row-meta">vence 2029 · personal</div>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">TIN</span>
+              <span class="sn-row-cell-val gold">4,75%</span>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">Capital vivo</span>
+              <span class="sn-row-cell-val neg">−18.420 €</span>
+            </div>
+            <div class="sn-row-bar">
+              <div class="sn-row-bar-top">
+                <span>amortizado</span>
+                <span class="pct">38,6%</span>
+              </div>
+              <div class="sn-row-bar-track"><div class="sn-row-bar-fill" style="width: 38.6%;"></div></div>
+            </div>
+            <span class="sn-row-badge activo">En ataque</span>
+          </div>
+
+          <!-- #2 · Santander personal Cangas -->
+          <div class="sn-row">
+            <div class="sn-row-order">2</div>
+            <div class="sn-row-logo santander">SA</div>
+            <div>
+              <div class="sn-row-nom">Santander · personal Cangas</div>
+              <div class="sn-row-meta">vence 2028 · personal</div>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">TIN</span>
+              <span class="sn-row-cell-val">4,40%</span>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">Capital vivo</span>
+              <span class="sn-row-cell-val neg">−14.680 €</span>
+            </div>
+            <div class="sn-row-bar">
+              <div class="sn-row-bar-top">
+                <span>amortizado</span>
+                <span class="pct">41,3%</span>
+              </div>
+              <div class="sn-row-bar-track"><div class="sn-row-bar-fill" style="width: 41.3%;"></div></div>
+            </div>
+            <span class="sn-row-badge espera">En espera</span>
+          </div>
+
+          <!-- #3 · Unicaja pignoraticia Cangas -->
+          <div class="sn-row">
+            <div class="sn-row-order">3</div>
+            <div class="sn-row-logo unicaja">UN</div>
+            <div>
+              <div class="sn-row-nom">Unicaja · pignora Cangas</div>
+              <div class="sn-row-meta">vence 2031 · pignoraticia</div>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">TIN</span>
+              <span class="sn-row-cell-val">3,40%</span>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">Capital vivo</span>
+              <span class="sn-row-cell-val neg">−13.300 €</span>
+            </div>
+            <div class="sn-row-bar">
+              <div class="sn-row-bar-top">
+                <span>amortizado</span>
+                <span class="pct">46,8%</span>
+              </div>
+              <div class="sn-row-bar-track"><div class="sn-row-bar-fill" style="width: 46.8%;"></div></div>
+            </div>
+            <span class="sn-row-badge espera">En espera</span>
+          </div>
+
+          <!-- #4 · ING hipoteca T48 -->
+          <div class="sn-row">
+            <div class="sn-row-order">4</div>
+            <div class="sn-row-logo ing">ING</div>
+            <div>
+              <div class="sn-row-nom">ING · hipoteca T48</div>
+              <div class="sn-row-meta">vence 2039 · hipoteca</div>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">TIN</span>
+              <span class="sn-row-cell-val">3,20%</span>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">Capital vivo</span>
+              <span class="sn-row-cell-val neg">−116.450 €</span>
+            </div>
+            <div class="sn-row-bar">
+              <div class="sn-row-bar-top">
+                <span>amortizado</span>
+                <span class="pct">20,8%</span>
+              </div>
+              <div class="sn-row-bar-track"><div class="sn-row-bar-fill" style="width: 20.8%;"></div></div>
+            </div>
+            <span class="sn-row-badge espera">En espera</span>
+          </div>
+
+          <!-- #5 · Unicaja hipoteca T64 · TIN más bajo -->
+          <div class="sn-row">
+            <div class="sn-row-order">5</div>
+            <div class="sn-row-logo unicaja">UN</div>
+            <div>
+              <div class="sn-row-nom">Unicaja · hipoteca T64</div>
+              <div class="sn-row-meta">vence 2044 · hipoteca</div>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">TIN</span>
+              <span class="sn-row-cell-val">2,15%</span>
+            </div>
+            <div class="sn-row-cell">
+              <span class="sn-row-cell-lab">Capital vivo</span>
+              <span class="sn-row-cell-val neg">−142.800 €</span>
+            </div>
+            <div class="sn-row-bar">
+              <div class="sn-row-bar-top">
+                <span>amortizado</span>
+                <span class="pct">20,7%</span>
+              </div>
+              <div class="sn-row-bar-track"><div class="sn-row-bar-fill" style="width: 20.7%;"></div></div>
+            </div>
+            <span class="sn-row-badge espera">En espera</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Gráfica comparativa · curva deuda con vs sin snowball -->
+      <div class="sn-chart-card">
+        <div class="sn-chart-head">
+          <div class="sn-chart-title">Evolución de la deuda total · próximos 20 años</div>
+          <div class="sn-chart-legend">
+            <div class="sn-chart-leg-item"><div class="line base"></div>Plan base · sin amortización</div>
+            <div class="sn-chart-leg-item"><div class="line snowball"></div>Con snowball · 500 €/mes</div>
+          </div>
+        </div>
+
+        <svg class="sn-chart" viewBox="0 0 900 240" preserveAspectRatio="none">
+          <!-- Grid -->
+          <g stroke="var(--line-2)" stroke-width="1" fill="none">
+            <line x1="50" y1="30" x2="870" y2="30"/>
+            <line x1="50" y1="85" x2="870" y2="85"/>
+            <line x1="50" y1="140" x2="870" y2="140"/>
+            <line x1="50" y1="195" x2="870" y2="195"/>
+          </g>
+
+          <!-- Eje Y -->
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+            <text x="45" y="34" text-anchor="end">500K €</text>
+            <text x="45" y="89" text-anchor="end">350K €</text>
+            <text x="45" y="144" text-anchor="end">200K €</text>
+            <text x="45" y="199" text-anchor="end">50K €</text>
+          </g>
+
+          <!-- Eje X -->
+          <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+            <text x="50" y="225">2026</text>
+            <text x="173" y="225">2029</text>
+            <text x="296" y="225">2032</text>
+            <text x="419" y="225">2035</text>
+            <text x="542" y="225">2038</text>
+            <text x="665" y="225">2041</text>
+            <text x="788" y="225">2044</text>
+            <text x="870" y="225">2046</text>
+          </g>
+
+          <!-- Plan base · rojo · baja lentamente -->
+          <path d="M 50 30 L 173 55 L 296 82 L 419 112 L 542 145 L 665 175 L 788 200 L 870 210"
+                stroke="var(--neg)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+          <!-- Punto fin base · 2044 -->
+          <circle cx="788" cy="200" r="5" fill="#fff" stroke="var(--neg)" stroke-width="2.5"/>
+          <text x="788" y="190" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--neg)" font-weight="700">sep 2044</text>
+
+          <!-- Con snowball · oro · baja más rápido -->
+          <path d="M 50 30 L 173 44 L 296 64 L 419 90 L 542 130 L 665 175 L 788 200 L 870 210"
+                stroke="var(--gold)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0"/>
+
+          <path d="M 50 30 L 150 40 L 250 56 L 350 78 L 450 108 L 550 145 L 580 200 L 870 200"
+                stroke="var(--gold)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Área bajo oro -->
+          <path d="M 50 30 L 150 40 L 250 56 L 350 78 L 450 108 L 550 145 L 580 200 L 870 200 L 870 210 L 50 210 Z"
+                fill="url(#gradSn)" opacity="0.3"/>
+          <defs>
+            <linearGradient id="gradSn" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#B88A3E" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#B88A3E" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Punto fin snowball · 2038 -->
+          <circle cx="580" cy="200" r="6" fill="#fff" stroke="var(--gold)" stroke-width="2.8"/>
+          <text x="580" y="190" text-anchor="middle" font-family="Inter" font-size="10.5" fill="var(--gold-ink)" font-weight="700">mar 2038</text>
+
+          <!-- Línea diferencia -->
+          <line x1="580" y1="210" x2="788" y2="210" stroke="var(--pos)" stroke-width="2"/>
+          <text x="684" y="205" text-anchor="middle" font-family="Inter" font-size="10" fill="var(--pos)" font-weight="700">−6,5 años</text>
+        </svg>
+      </div>
+
+      <!-- Summary · 4 métricas del ahorro -->
+      <div class="sn-summary">
+        <div class="sn-summary-cell">
+          <div class="sn-summary-lab">Años ahorrados</div>
+          <div class="sn-summary-val pos">−6,5</div>
+        </div>
+        <div class="sn-summary-cell">
+          <div class="sn-summary-lab">Intereses ahorrados</div>
+          <div class="sn-summary-val pos">+37.240 €</div>
+        </div>
+        <div class="sn-summary-cell">
+          <div class="sn-summary-lab">Extra aportado total</div>
+          <div class="sn-summary-val gold">72.500 €</div>
+        </div>
+        <div class="sn-summary-cell">
+          <div class="sn-summary-lab">ROI del snowball</div>
+          <div class="sn-summary-val pos">51,4%</div>
+        </div>
+      </div>
+
+      <div class="sn-actions">
+        <button class="btn btn-ghost" onclick="showToast('Guardar este plan como escenario · añadir a biblioteca de simulaciones')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+          Guardar como escenario
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Aplicar plan · genera amortizaciones programadas')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="20 6 9 17 4 12"/></svg>
+          Aplicar plan
+        </button>
+      </div>
+
+    </div>
+    <!-- /page snowball -->
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- ═══ PAGE · CALENDARIO DE AMORTIZACIÓN · BOTTOM-UP ═══ -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <div class="page-head" id="page-head-calendario">
+      <div>
+        <h1>Calendario de amortización</h1>
+        <div class="page-sub">cuotas mes a mes con desglose interés/amortización · vista bottom-up por préstamo · alimenta Mi Plan &gt; Proyección y Tesorería</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar calendario a Excel · 4 préstamos · 18 años')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Excel
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-calendario">
+
+      <!-- Tabs internos · navegación entre las 4 vistas -->
+      <div class="tabs-inner">
+        <button onclick="showPage('dashboard')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+          Dashboard
+        </button>
+        <button onclick="showPage('listado')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Listado <span class="tab-count">13</span>
+        </button>
+        <button onclick="showPage('snowball')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Snowball
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          Calendario
+        </button>
+      </div>
+
+      <!-- KPIs strip · totales del año seleccionado -->
+      <div style="background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 28px; margin-bottom: 18px;">
+        <div class="kpi-strip">
+          <div class="kpi-cell">
+            <div class="kpi-lab">Cuota mensual hogar</div>
+            <div class="kpi-val">3.445 €</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">4 préstamos activos · 2026</div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-lab">Total año 2026</div>
+            <div class="kpi-val neg">−41.340 €</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">12 cuotas · cuota constante</div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-lab">Intereses 2026 · deducibles</div>
+            <div class="kpi-val gold">9.124 €</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">trazables a inmuebles + PP</div>
+          </div>
+          <div class="kpi-cell">
+            <div class="kpi-lab">Amortización 2026</div>
+            <div class="kpi-val pos">32.216 €</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace;">capital que pagas a banco</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toolbar · año + filtros préstamo -->
+      <div class="cal-toolbar">
+        <div class="cal-tool-grp">
+          <span class="cal-tool-grp-lab">Año</span>
+          <button class="cal-pill" onclick="showToast('2024 · ya cerrado · vista solo lectura')">2024</button>
+          <button class="cal-pill" onclick="showToast('2025 · ya cerrado')">2025</button>
+          <button class="cal-pill active">2026</button>
+          <button class="cal-pill" onclick="showToast('2027 · proyección')">2027</button>
+          <button class="cal-pill" onclick="showToast('2028 · proyección')">2028</button>
+          <button class="cal-pill" onclick="showToast('2029 · proyección · Sabadell vence septiembre')">2029</button>
+          <button class="cal-pill" onclick="showToast('Vista 18 años · todos los vencimientos')">18 años</button>
+        </div>
+        <div style="margin-left: auto; display: flex; gap: 6px;">
+          <span class="cal-tool-grp-lab">Mostrar</span>
+          <button class="cal-pill active">Todos</button>
+          <button class="cal-pill" onclick="showToast('Solo hipotecas · 2 activas')">Hipotecas</button>
+          <button class="cal-pill" onclick="showToast('Solo personales y pignoraticias')">Personales</button>
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════ -->
+      <!-- TABLA · Cuotas mensuales del año · 12 columnas + total -->
+      <!-- ═════════════════════════════════════════════════ -->
+      <div class="card" style="padding: 0; margin-bottom: 18px; overflow-x: auto;">
+
+        <div style="padding: 18px 22px 14px; border-bottom: 1px solid var(--line);">
+          <div style="font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 2px;">Cuotas mes a mes · 2026</div>
+          <div style="font-size: 11px; color: var(--ink-4);">cada celda es la cuota mensual del préstamo · clic en una fila para ver el cuadro completo</div>
+        </div>
+
+        <table class="cal-table">
+          <thead>
+            <tr>
+              <th style="min-width: 240px;">Préstamo</th>
+              <th class="month">ENE</th>
+              <th class="month">FEB</th>
+              <th class="month">MAR</th>
+              <th class="month">ABR</th>
+              <th class="month">MAY</th>
+              <th class="month">JUN</th>
+              <th class="month">JUL</th>
+              <th class="month">AGO</th>
+              <th class="month">SEP</th>
+              <th class="month">OCT</th>
+              <th class="month">NOV</th>
+              <th class="month">DIC</th>
+              <th class="r" style="min-width: 92px;">Total año</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr style="cursor: pointer;" onclick="showToast('Cuadro completo Unicaja T64 · 18 años')">
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo unicaja">UNI</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Unicaja · hipoteca T64</div>
+                    <div class="prest-row-meta">TIN 2,15% · vence 2044</div>
+                  </div>
+                </div>
+              </td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="c">1.240</td>
+              <td class="r" style="font-weight: 700;">14.880</td>
+            </tr>
+
+            <tr style="cursor: pointer;" onclick="showPage('detalle')">
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo ing">ING</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">ING · hipoteca T48 + cancelación</div>
+                    <div class="prest-row-meta">TIN 3,20% · vence 2039</div>
+                  </div>
+                </div>
+              </td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="c">1.480</td>
+              <td class="r" style="font-weight: 700;">17.760</td>
+            </tr>
+
+            <tr style="cursor: pointer;" onclick="showToast('Cuadro completo Sabadell personal · 3 años · vence sep 2029')">
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo sabadell">SAB</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Sabadell · personal Cangas</div>
+                    <div class="prest-row-meta">TIN 4,75% · vence sep 2029</div>
+                  </div>
+                </div>
+              </td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="c">485</td>
+              <td class="r" style="font-weight: 700;">5.820</td>
+            </tr>
+
+            <tr style="cursor: pointer;" onclick="showToast('Cuadro completo Unicaja pignora PP Orange')">
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo unicaja-pp">UPP</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Unicaja · pignora PP Orange</div>
+                    <div class="prest-row-meta">TIN 3,40% · vence 2031</div>
+                  </div>
+                </div>
+              </td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="c">240</td>
+              <td class="r" style="font-weight: 700;">2.880</td>
+            </tr>
+
+            <tr class="total">
+              <td class="label">Total cuota mensual hogar</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="c">3.445</td>
+              <td class="r">41.340</td>
+            </tr>
+
+          </tbody>
+        </table>
+
+      </div>
+
+      <!-- ═════════════════════════════════════════════════ -->
+      <!-- DESGLOSE INTERÉS / AMORTIZACIÓN del año 2026 · cada préstamo -->
+      <!-- ═════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom: 18px;">
+        <div class="card-hd" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--ink);">Desglose interés vs amortización · 2026</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 2px;">amortización francesa · interés decreciente · capital creciente con el tiempo</div>
+          </div>
+          <span style="font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace;">año 18 hasta vencimiento más largo</span>
+        </div>
+
+        <table class="cal-table">
+          <thead>
+            <tr>
+              <th style="min-width: 220px;">Préstamo</th>
+              <th class="r">Cuota anual</th>
+              <th class="r">Interés (deducible)</th>
+              <th class="r">Amortización (capital)</th>
+              <th style="width: 30%;">Composición</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo unicaja">UNI</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Unicaja · hipoteca T64</div>
+                    <div class="prest-row-meta">2,15% · cap. vivo 142.800 €</div>
+                  </div>
+                </div>
+              </td>
+              <td class="r">14.880 €</td>
+              <td class="r" style="color: var(--gold-ink); font-weight: 700;">3.012 €</td>
+              <td class="r" style="color: var(--pos); font-weight: 700;">11.868 €</td>
+              <td>
+                <div class="yr-bar">
+                  <div class="yr-bar-seg t3" style="width: 20%;">20%</div>
+                  <div class="yr-bar-seg t1" style="width: 80%;">80%</div>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo ing">ING</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">ING · hipoteca T48 + cancelación</div>
+                    <div class="prest-row-meta">3,20% · cap. vivo 116.450 €</div>
+                  </div>
+                </div>
+              </td>
+              <td class="r">17.760 €</td>
+              <td class="r" style="color: var(--gold-ink); font-weight: 700;">3.690 €</td>
+              <td class="r" style="color: var(--pos); font-weight: 700;">14.070 €</td>
+              <td>
+                <div class="yr-bar">
+                  <div class="yr-bar-seg t3" style="width: 21%;">21%</div>
+                  <div class="yr-bar-seg t1" style="width: 79%;">79%</div>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo sabadell">SAB</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Sabadell · personal Cangas</div>
+                    <div class="prest-row-meta">4,75% · cap. vivo 18.420 €</div>
+                  </div>
+                </div>
+              </td>
+              <td class="r">5.820 €</td>
+              <td class="r" style="color: var(--ink-3); font-weight: 700;">868 €</td>
+              <td class="r" style="color: var(--pos); font-weight: 700;">4.952 €</td>
+              <td>
+                <div class="yr-bar">
+                  <div class="yr-bar-seg t3" style="width: 15%;">15%</div>
+                  <div class="yr-bar-seg t1" style="width: 85%;">85%</div>
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td class="label">
+                <div class="prest-row-name">
+                  <div class="prest-row-logo unicaja-pp">UPP</div>
+                  <div class="prest-row-info">
+                    <div class="prest-row-nom">Unicaja · pignora PP Orange</div>
+                    <div class="prest-row-meta">3,40% · cap. vivo 13.300 €</div>
+                  </div>
+                </div>
+              </td>
+              <td class="r">2.880 €</td>
+              <td class="r" style="color: var(--ink-3); font-weight: 700;">554 €</td>
+              <td class="r" style="color: var(--pos); font-weight: 700;">2.326 €</td>
+              <td>
+                <div class="yr-bar">
+                  <div class="yr-bar-seg t3" style="width: 19%;">19%</div>
+                  <div class="yr-bar-seg t1" style="width: 81%;">81%</div>
+                </div>
+              </td>
+            </tr>
+
+            <tr class="total">
+              <td class="label">Total hogar · 2026</td>
+              <td class="r">41.340 €</td>
+              <td class="r">8.124 €</td>
+              <td class="r">33.216 €</td>
+              <td>
+                <div class="yr-bar">
+                  <div class="yr-bar-seg t3" style="width: 20%;">20%</div>
+                  <div class="yr-bar-seg t1" style="width: 80%;">80%</div>
+                </div>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+
+        <div style="margin-top: 14px; padding: 12px 14px; background: var(--gold-wash); border-left: 3px solid var(--gold); border-radius: 4px; font-size: 11.5px; color: var(--gold-ink); line-height: 1.55;">
+          <strong>Trazabilidad fiscal</strong> · de los 8.124 € de intereses · solo son deducibles los trazables a inmuebles que generen rentas (Unicaja T64 al 100% · ING T48 al 81,6% · resto del ING como cancelación de deuda no deducible) · y los del préstamo pignoraticio (PP Orange · si destino fue inmueble). Sabadell personal Cangas no es deducible.
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════ -->
+      <!-- ESCALONES · cuándo termina cada préstamo y cuánto libera -->
+      <!-- ═════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom: 18px;">
+        <div class="card-hd" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--ink);">Escalones de cashflow · vencimientos</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 2px;">cada vencimiento libera la cuota mensual del préstamo · alimenta tu plan de libertad financiera en Mi Plan</div>
+          </div>
+          <span class="card-action" onclick="showToast('Ver impacto en Mi Plan · proyección 18 años con escalones')">Ver en Mi Plan →</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+
+          <div class="escalon-card">
+            <div class="escalon-year">2029</div>
+            <div class="escalon-info">
+              <div class="escalon-info-nom">Sabadell · personal Cangas</div>
+              <div class="escalon-info-sub">37 cuotas restantes · sep 2029 · TIN 4,75%</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="escalon-libera-lab">libera</div>
+              <div class="escalon-libera">+485 €/mes</div>
+            </div>
+          </div>
+
+          <div class="escalon-card">
+            <div class="escalon-year">2031</div>
+            <div class="escalon-info">
+              <div class="escalon-info-nom">Unicaja · pignora PP Orange</div>
+              <div class="escalon-info-sub">60 cuotas restantes · TIN 3,40%</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="escalon-libera-lab">libera</div>
+              <div class="escalon-libera">+240 €/mes</div>
+            </div>
+          </div>
+
+          <div class="escalon-card">
+            <div class="escalon-year">2039</div>
+            <div class="escalon-info">
+              <div class="escalon-info-nom">ING · hipoteca T48</div>
+              <div class="escalon-info-sub">156 cuotas restantes · TIN 3,20%</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="escalon-libera-lab">libera</div>
+              <div class="escalon-libera">+1.480 €/mes</div>
+            </div>
+          </div>
+
+          <div class="escalon-card">
+            <div class="escalon-year">2044</div>
+            <div class="escalon-info">
+              <div class="escalon-info-nom">Unicaja · hipoteca T64</div>
+              <div class="escalon-info-sub">216 cuotas restantes · TIN 2,15%</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="escalon-libera-lab">libera</div>
+              <div class="escalon-libera">+1.240 €/mes</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="margin-top: 14px; padding: 12px 14px; background: var(--brand-wash); border-left: 3px solid var(--brand); border-radius: 4px; font-size: 11.5px; color: var(--brand); line-height: 1.55;">
+          <strong>Lectura</strong> · en 2029 (3 años) recuperas <strong>485 €/mes</strong> · en 2031 son <strong>725 €/mes</strong> acumulados · en 2039 saltas a <strong>2.205 €/mes</strong> y en 2044 quedas libre con <strong>3.445 €/mes</strong> liberados respecto a hoy. Esto es lo que mueve la curva de libertad financiera.
+        </div>
+      </div>
+
+      <!-- ═════════════════════════════════════════════════ -->
+      <!-- VISTA PLURIANUAL · cuota anual hogar · año a año -->
+      <!-- ═════════════════════════════════════════════════ -->
+      <div class="card">
+        <div class="card-hd" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px;">
+          <div>
+            <div style="font-size: 14px; font-weight: 700; color: var(--ink);">Cuota anual hogar · 18 años</div>
+            <div style="font-size: 11px; color: var(--ink-4); margin-top: 2px;">visión plurianual · los escalones bajan la cuota total cuando vence cada préstamo</div>
+          </div>
+        </div>
+
+        <table class="cal-table">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th class="r">Unicaja T64</th>
+              <th class="r">ING T48</th>
+              <th class="r">Sabadell</th>
+              <th class="r">Unicaja PP</th>
+              <th class="r" style="background: var(--brand-wash); color: var(--brand);">Total año</th>
+              <th class="r" style="background: var(--gold-wash); color: var(--gold-ink);">Mensual medio</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <tr>
+              <td class="label" style="font-weight: 700;">2026</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r">5.820</td>
+              <td class="r">2.880</td>
+              <td class="r" style="color: var(--brand); font-weight: 700;">41.340</td>
+              <td class="r" style="color: var(--gold-ink); font-weight: 700;">3.445</td>
+            </tr>
+            <tr>
+              <td class="label">2027</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r">5.820</td>
+              <td class="r">2.880</td>
+              <td class="r" style="font-weight: 700;">41.340</td>
+              <td class="r">3.445</td>
+            </tr>
+            <tr>
+              <td class="label">2028</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r">5.820</td>
+              <td class="r">2.880</td>
+              <td class="r" style="font-weight: 700;">41.340</td>
+              <td class="r">3.445</td>
+            </tr>
+            <tr class="year-row">
+              <td class="label" style="font-weight: 700;">2029 · vence Sabadell sep</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r end-cell">4.365</td>
+              <td class="r">2.880</td>
+              <td class="r" style="font-weight: 700;">39.885</td>
+              <td class="r">3.324</td>
+            </tr>
+            <tr>
+              <td class="label">2030</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r ended">—</td>
+              <td class="r">2.880</td>
+              <td class="r" style="font-weight: 700;">35.520</td>
+              <td class="r">2.960</td>
+            </tr>
+            <tr class="year-row">
+              <td class="label" style="font-weight: 700;">2031 · vence Unicaja PP</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r ended">—</td>
+              <td class="r end-cell">2.880</td>
+              <td class="r" style="font-weight: 700;">35.520</td>
+              <td class="r">2.960</td>
+            </tr>
+            <tr>
+              <td class="label">2032</td>
+              <td class="r">14.880</td>
+              <td class="r">17.760</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="font-weight: 700;">32.640</td>
+              <td class="r">2.720</td>
+            </tr>
+            <tr>
+              <td class="label">2033 · 2038</td>
+              <td class="r">14.880 ×</td>
+              <td class="r">17.760 ×</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="font-weight: 700;">32.640 / año</td>
+              <td class="r">2.720</td>
+            </tr>
+            <tr class="year-row">
+              <td class="label" style="font-weight: 700;">2039 · vence ING T48</td>
+              <td class="r">14.880</td>
+              <td class="r end-cell">17.760</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="font-weight: 700;">32.640</td>
+              <td class="r">2.720</td>
+            </tr>
+            <tr>
+              <td class="label">2040 · 2043</td>
+              <td class="r">14.880 ×</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="font-weight: 700;">14.880 / año</td>
+              <td class="r">1.240</td>
+            </tr>
+            <tr class="year-row">
+              <td class="label" style="font-weight: 700;">2044 · vence Unicaja T64</td>
+              <td class="r end-cell">14.880</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="font-weight: 700;">14.880</td>
+              <td class="r">1.240</td>
+            </tr>
+            <tr style="background: var(--pos-wash); font-weight: 700;">
+              <td class="label" style="color: var(--pos);">2045 · libre de financiación</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r ended">—</td>
+              <td class="r" style="color: var(--pos);">0</td>
+              <td class="r" style="color: var(--pos);">0</td>
+            </tr>
+
+          </tbody>
+        </table>
+
+      </div>
+
+    </div>
+    <!-- /page calendario -->
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.page-head').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById('page-' + id);
+    const head = document.getElementById('page-head-' + id);
+    if (page) page.classList.add('active');
+    if (head) head.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>

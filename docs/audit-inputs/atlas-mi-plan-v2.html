@@ -1,0 +1,3295 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Mi Plan</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar · canónico */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .nav a.active .chip { background: rgba(184,138,62,.25); color: #E8D9AE; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .page-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+
+  /* ═══ HERO LIBERTAD ═══ · protagonismo oro · emocional pero sobrio */
+  .hero-libertad {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 4px solid var(--gold);
+    border-radius: 14px; padding: 32px 36px;
+    margin-bottom: 22px; position: relative; overflow: hidden;
+  }
+  .hero-libertad::after {
+    content: ''; position: absolute; top: 0; right: -100px; width: 500px; height: 100%;
+    background: radial-gradient(circle at 80% 50%, rgba(184,138,62,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .hero-body { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; position: relative; z-index: 1; }
+  .hero-left { }
+  .hero-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--gold-ink); font-weight: 700; margin-bottom: 10px; }
+  .hero-fecha { font-family: 'JetBrains Mono', monospace; font-size: 46px; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hero-quedan { font-size: 13.5px; color: var(--ink-3); margin-top: 14px; font-weight: 500; }
+  .hero-quedan strong { color: var(--ink); font-weight: 700; }
+  .hero-progreso { margin-top: 18px; max-width: 460px; }
+  .hero-progreso-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 11.5px; color: var(--ink-4); }
+  .hero-progreso-top .mono { color: var(--ink); font-weight: 700; }
+  .hero-track { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; border: 1px solid var(--line-2); position: relative; }
+  .hero-fill { height: 100%; background: linear-gradient(90deg, var(--gold-2), var(--gold)); border-radius: 5px; }
+
+  .hero-right { text-align: right; display: flex; flex-direction: column; gap: 18px; }
+  .hero-stat { }
+  .hero-stat-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; }
+  .hero-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-top: 3px; }
+  .hero-stat-val.pos { color: var(--pos); }
+
+  /* ═══ Gráfica pasado + futuro ═══ */
+  .evolucion { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px 28px; margin-bottom: 22px; }
+  .evo-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .evo-title { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .evo-sub { font-size: 12px; color: var(--ink-4); margin-top: 3px; }
+  .evo-toggle { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .evo-toggle button { padding: 5px 12px; font-size: 11.5px; font-weight: 500; color: var(--ink-3); border-radius: 5px; }
+  .evo-toggle button.active { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,35,.04); }
+
+  .chart-wrap { position: relative; }
+  .chart { display: block; width: 100%; height: 280px; }
+
+  .chart-legend { display: flex; gap: 22px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+  .leg-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3); }
+  .leg-item .dot { width: 10px; height: 10px; border-radius: 2px; }
+  .leg-item .dot.pasado { background: var(--brand); }
+  .leg-item .dot.futuro { background: var(--gold); }
+  .leg-item .dot.meta { background: var(--pos); }
+  .leg-item .dot.gasto { background: var(--neg); }
+  .leg-item .dash { width: 18px; border-top: 1px dashed var(--neg); }
+
+  /* ═══ Grid 4 sub-módulos ═══ */
+  .sec-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 600; margin-bottom: 12px; }
+
+  .submods { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .submod {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px 22px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 4px;
+    min-height: 170px;
+  }
+  .submod:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+
+  .submod-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .submod-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--gold-wash); color: var(--gold-ink);
+  }
+  .submod-arrow { color: var(--ink-5); }
+  .submod:hover .submod-arrow { color: var(--gold); transform: translateX(2px); transition: all .14s; }
+  .submod-nom { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .submod-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; margin-top: 8px; }
+  .submod-sub { font-size: 12px; color: var(--ink-3); margin-top: 4px; line-height: 1.5; }
+  .submod-sub strong { color: var(--ink-2); font-weight: 600; }
+  .submod-footer { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; }
+  .submod-footer-lab { font-size: 10.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .submod-footer-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .submod-footer-val.pos { color: var(--pos); }
+  .submod-footer-val.neg { color: var(--neg); }
+
+  .submod-pill { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--gold-wash); color: var(--gold-ink); }
+  .submod-pill.verde { background: var(--pos-wash); color: var(--pos); }
+  .submod-pill.rojo { background: var(--neg-wash); color: var(--neg); }
+
+  /* ═══ Reto del mes ═══ */
+  .reto-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 22px 26px; margin-bottom: 14px;
+    position: relative;
+  }
+  .reto-head { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: start; margin-bottom: 16px; }
+  .reto-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    border: 1px solid #E8D59E;
+  }
+  .reto-body { min-width: 0; }
+  .reto-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--gold-ink); font-weight: 700; margin-bottom: 3px; }
+  .reto-titulo { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .reto-desc { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; line-height: 1.5; }
+  .reto-action { padding: 9px 14px; border-radius: 7px; background: var(--gold); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .reto-action:hover { background: var(--gold-2); }
+
+  .reto-progreso { display: grid; grid-template-columns: 1fr auto auto auto; gap: 22px; align-items: center; padding: 14px 16px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 10px; }
+  .reto-prog-bar-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .reto-prog-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-3); }
+  .reto-prog-top strong { color: var(--ink); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .reto-prog-bar { height: 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--line-2); overflow: hidden; }
+  .reto-prog-fill { height: 100%; background: var(--gold); border-radius: 4px; }
+  .reto-stat { text-align: center; }
+  .reto-stat-lab { font-size: 9.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 2px; }
+  .reto-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--ink); }
+  .reto-stat-val.gold { color: var(--gold-ink); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+
+  /* Navegación páginas · solo muestra una a la vez */
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-head { display: none; }
+  .page-head.active { display: flex; }
+
+  /* Breadcrumb · común en subpáginas */
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 14px; }
+  .breadcrumb .back-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); color: var(--ink-3); cursor: pointer; font-weight: 500; }
+  .breadcrumb .back-btn:hover { border-color: var(--ink-5); color: var(--ink-2); }
+  .breadcrumb a { color: var(--gold); font-weight: 500; cursor: pointer; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* Tabs horizontales de sub-módulos (dentro de Mi Plan) */
+  .submod-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 22px; overflow-x: auto; }
+  .submod-tabs button { padding: 12px 16px; font-size: 13px; font-weight: 500; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+  .submod-tabs button:hover { color: var(--ink-2); }
+  .submod-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+  .submod-tabs button svg { opacity: 0.7; }
+  .submod-tabs button.active svg { opacity: 1; color: var(--gold); }
+
+  /* ═══ PROYECCIÓN · columna vertebral Mi Plan v2 ═══ */
+  .proy-banner {
+    display: flex; gap: 10px; padding: 12px 16px;
+    background: var(--gold-wash); border-left: 3px solid var(--gold);
+    border-radius: 6px; font-size: 11.5px; color: var(--gold-ink);
+    line-height: 1.5; margin-bottom: 18px;
+  }
+  .proy-banner svg { flex-shrink: 0; margin-top: 2px; }
+  .proy-banner strong { font-weight: 700; }
+
+  .proy-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; margin-bottom: 16px; }
+  .proy-kpi { padding: 0 22px; border-right: 1px solid var(--line-2); }
+  .proy-kpi:last-child { border-right: none; }
+  .proy-kpi:first-child { padding-left: 0; }
+  .proy-kpi:last-child { padding-right: 0; }
+  .proy-kpi-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; }
+  .proy-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 8px; }
+  .proy-kpi-val.pos { color: var(--pos); }
+  .proy-kpi-val.neg { color: var(--neg); }
+  .proy-kpi-val.gold { color: var(--gold-ink); }
+  .proy-kpi-sub { font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+
+  .proy-year-bar { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .proy-year-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 700; margin-right: 8px; }
+  .proy-pill { padding: 6px 12px; font-size: 11.5px; font-weight: 600; color: var(--ink-3); background: transparent; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .proy-pill:hover { color: var(--ink); border-color: var(--ink-4); }
+  .proy-pill.active { color: var(--gold-ink); background: var(--gold-wash); border-color: var(--gold); }
+
+  .proy-table-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .proy-table-hd { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  .proy-table-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .proy-table-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .proy-table-helper { font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+
+  .proy-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .proy-table th { padding: 10px 8px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); border-bottom: 1px solid var(--line); text-align: left; background: var(--card-alt); }
+  .proy-table th.r { text-align: right; }
+  .proy-table th.m { text-align: right; min-width: 60px; font-family: 'JetBrains Mono', monospace; }
+  .proy-table td { padding: 9px 8px; border-bottom: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; color: var(--ink-2); }
+  .proy-table td.lbl { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+  .proy-table td.r { text-align: right; }
+  .proy-table td.m { text-align: right; }
+
+  .proy-table tr.proy-clickable { cursor: pointer; }
+  .proy-table tr.proy-clickable:hover { background: var(--card-alt); }
+
+  .proy-table tr.proy-grp td { background: var(--bg); padding: 8px 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-3); }
+  .proy-table tr.proy-grp.pos td { color: var(--pos); }
+  .proy-table tr.proy-grp.neg td { color: var(--neg); }
+
+  .proy-table tr.proy-subtotal td { background: var(--card-alt); font-weight: 700; color: var(--ink); border-top: 1px solid var(--line-2); }
+  .proy-table tr.proy-subtotal.pos td { color: var(--pos); }
+  .proy-table tr.proy-subtotal.neg td { color: var(--neg); }
+
+  .proy-table tr.proy-result td { background: var(--brand-wash); font-weight: 700; color: var(--brand); border-top: 2px solid var(--brand); padding: 12px 8px; font-size: 12px; }
+  .proy-table tr.proy-result.accumulated td { background: var(--gold-wash); color: var(--gold-ink); border-top: 1px solid var(--gold); }
+
+  .proy-tag { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; margin-right: 8px; }
+  .proy-tag.personal { background: var(--brand-wash); color: var(--brand); }
+  .proy-tag.inmuebles { background: #E8F0E4; color: #3E7A3A; }
+  .proy-tag.financiacion { background: #FAEDD8; color: #7C5C1F; }
+  .proy-tag.inversiones { background: var(--pos-wash); color: var(--pos); }
+  .proy-tag.fiscal { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Sources · de dónde viene cada fila */
+  .proy-sources { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; margin-bottom: 16px; }
+  .proy-sources-hd { margin-bottom: 14px; }
+  .proy-sources-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .proy-sources-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .proy-sources-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  @media (max-width: 1280px) { .proy-sources-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 800px) { .proy-sources-grid { grid-template-columns: 1fr; } }
+  .proy-source { padding: 12px 14px; background: var(--card-alt); border-radius: 8px; border-left: 3px solid var(--line); }
+  .proy-source-tag { display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+  .proy-source-tag.personal { background: var(--brand-wash); color: var(--brand); }
+  .proy-source-tag.inmuebles { background: #E8F0E4; color: #3E7A3A; }
+  .proy-source-tag.financiacion { background: #FAEDD8; color: #7C5C1F; }
+  .proy-source-tag.inversiones { background: var(--pos-wash); color: var(--pos); }
+  .proy-source-tag.fiscal { background: var(--gold-wash); color: var(--gold-ink); }
+  .proy-source-desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.45; }
+  .proy-source-rows { font-size: 10.5px; color: var(--ink-4); margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+  /* Vista plurianual · 18 años */
+  .proy-multi-year { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .proy-multi-hd { padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  .proy-multi-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .proy-multi-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+
+  .proy-multi-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .proy-multi-table th { padding: 10px 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); border-bottom: 1px solid var(--line); text-align: left; background: var(--card-alt); }
+  .proy-multi-table th.r { text-align: right; }
+  .proy-multi-table td { padding: 10px 14px; border-bottom: 1px solid var(--line-2); font-family: 'JetBrains Mono', monospace; color: var(--ink-2); }
+  .proy-multi-table td.r { text-align: right; }
+  .proy-multi-table td.year { font-weight: 700; color: var(--ink); }
+  .proy-multi-table td.hito { font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 11px; color: var(--ink-4); }
+  .proy-multi-table td.ended { color: var(--ink-5); }
+
+  .proy-multi-hito td { background: var(--gold-wash); }
+  .proy-multi-hito td.year { color: var(--gold-ink); }
+  .proy-multi-hito td.hito { color: var(--gold-ink); font-weight: 600; }
+
+  .proy-multi-libre td { background: var(--pos-wash); }
+  .proy-multi-libre td.year { color: var(--pos); }
+  .proy-multi-libre td.hito { color: var(--pos); font-weight: 700; }
+
+  /* ═══ OBJETIVOS · listado de cards ═══ */
+  .obj-filter { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; }
+  .obj-filter-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-right: 4px; }
+  .obj-pill { padding: 5px 12px; border-radius: 14px; font-size: 11.5px; font-weight: 500; background: var(--card); border: 1px solid var(--line); color: var(--ink-3); cursor: pointer; }
+  .obj-pill:hover { border-color: var(--ink-5); }
+  .obj-pill.active { background: var(--brand-ink); color: #fff; border-color: var(--brand-ink); font-weight: 600; }
+  .obj-pill .chip-count { margin-left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.8; }
+
+  .obj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .obj-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 14px;
+    position: relative; overflow: hidden;
+  }
+  .obj-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .obj-card.en-riesgo::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--neg); }
+  .obj-card.completada::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--pos); }
+  .obj-card.en-progreso::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+  .obj-card.en-pausa::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--ink-5); }
+
+  .obj-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .obj-head-left { flex: 1; min-width: 0; }
+  .obj-ast { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .obj-nom { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; line-height: 1.25; }
+  .obj-cat { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; font-weight: 500; }
+  .obj-estado {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .obj-estado.en-progreso { background: var(--gold-wash); color: var(--gold-ink); }
+  .obj-estado.completada { background: var(--pos-wash); color: var(--pos); }
+  .obj-estado.en-pausa { background: var(--bg); color: var(--ink-3); }
+  .obj-estado.en-riesgo { background: var(--neg-wash); color: var(--neg); }
+
+  /* Números centrales del objetivo */
+  .obj-numbers {
+    display: grid; grid-template-columns: 1fr auto 1fr;
+    gap: 16px; align-items: center;
+    padding: 14px 16px; background: var(--card-alt);
+    border-radius: 10px; border: 1px solid var(--line-2);
+  }
+  .obj-num-block { text-align: left; }
+  .obj-num-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .obj-num-val { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+  .obj-num-val.pos { color: var(--pos); }
+  .obj-num-val.sub { font-size: 12px; color: var(--ink-3); margin-top: 3px; font-weight: 500; }
+  .obj-num-arrow { color: var(--ink-5); }
+
+  /* Barra de progreso */
+  .obj-progress { display: flex; flex-direction: column; gap: 6px; }
+  .obj-prog-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-4); }
+  .obj-prog-top .pct { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; font-size: 12px; }
+  .obj-prog-bar { height: 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--line-2); overflow: hidden; position: relative; }
+  .obj-prog-fill { height: 100%; border-radius: 4px; }
+  .obj-prog-fill.progreso { background: var(--gold); }
+  .obj-prog-fill.ok { background: var(--pos); }
+  .obj-prog-fill.riesgo { background: var(--neg); }
+  .obj-prog-fill.pausa { background: var(--ink-5); }
+
+  /* Footer del objetivo · ritmo y fecha */
+  .obj-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--line-2); }
+  .obj-footer-item { display: flex; flex-direction: column; gap: 2px; }
+  .obj-footer-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); font-weight: 600; }
+  .obj-footer-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .obj-footer-val.neg { color: var(--neg); }
+  .obj-footer-val.pos { color: var(--pos); }
+
+  /* Card "crear nuevo" · empty-ish */
+  .obj-card-new {
+    background: var(--card-alt); border: 2px dashed var(--line); border-radius: 12px;
+    padding: 22px 24px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    min-height: 280px; color: var(--ink-3);
+  }
+  .obj-card-new:hover { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .obj-card-new svg { margin-bottom: 10px; opacity: 0.6; }
+  .obj-card-new:hover svg { opacity: 1; }
+  .obj-card-new-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; color: var(--ink-2); }
+  .obj-card-new:hover .obj-card-new-title { color: var(--gold-ink); }
+  .obj-card-new-sub { font-size: 11.5px; line-height: 1.5; max-width: 220px; }
+
+  /* ═══ RETOS · reto activo + histórico + biblioteca ═══ */
+
+  /* Reto activo grande · hero del submódulo */
+  .reto-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 4px solid var(--gold);
+    border-radius: 14px; padding: 28px 32px; margin-bottom: 18px;
+    position: relative; overflow: hidden;
+  }
+  .reto-hero::after {
+    content: ''; position: absolute; top: 0; right: -60px; width: 400px; height: 100%;
+    background: radial-gradient(circle at 85% 50%, rgba(184,138,62,0.05) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .reto-hero-body { position: relative; z-index: 1; }
+  .reto-hero-top { display: grid; grid-template-columns: 56px 1fr auto; gap: 18px; align-items: center; margin-bottom: 22px; }
+  .reto-hero-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: var(--gold-wash); color: var(--gold-ink);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    border: 1px solid #E8D59E;
+  }
+  .reto-hero-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-ink); font-weight: 700; margin-bottom: 4px; }
+  .reto-hero-titulo { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.15; }
+  .reto-hero-estado {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+    padding: 4px 10px; border-radius: 5px; letter-spacing: 0.08em; text-transform: uppercase;
+    background: var(--gold-wash); color: var(--gold-ink);
+  }
+  .reto-hero-desc { font-size: 13px; color: var(--ink-3); line-height: 1.6; margin-bottom: 22px; max-width: 720px; }
+  .reto-hero-desc strong { color: var(--ink); font-weight: 700; }
+
+  /* Panel progreso · 4 bloques */
+  .reto-panel { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 20px; padding: 20px 22px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 11px; align-items: center; }
+  .reto-panel-bar { display: flex; flex-direction: column; gap: 8px; }
+  .reto-panel-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink-3); }
+  .reto-panel-top strong { color: var(--ink); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .reto-panel-track { height: 10px; background: var(--bg); border-radius: 5px; border: 1px solid var(--line-2); overflow: hidden; }
+  .reto-panel-fill { height: 100%; background: linear-gradient(90deg, var(--gold-2), var(--gold)); border-radius: 5px; }
+  .reto-panel-stat { text-align: center; padding: 0 8px; border-left: 1px solid var(--line); }
+  .reto-panel-stat-lab { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 4px; }
+  .reto-panel-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .reto-panel-stat-val.gold { color: var(--gold-ink); }
+
+  /* Acciones */
+  .reto-hero-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+
+  /* Histórico de retos · tabla */
+  .hist-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 6px; }
+  .hist-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .hist-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .hist-filter { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .hist-filter button { padding: 5px 12px; font-size: 11.5px; font-weight: 500; color: var(--ink-3); border-radius: 5px; }
+  .hist-filter button.active { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,35,.04); }
+
+  .hist-table { background: var(--card); border: 1px solid var(--line); border-radius: 11px; overflow: hidden; margin-bottom: 22px; }
+  .hist-row { display: grid; grid-template-columns: 110px 1fr 120px 140px 110px 28px; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line-2); align-items: center; cursor: pointer; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row:hover { background: var(--card-alt); }
+  .hist-row:hover .hist-titulo { color: var(--gold); }
+  .hist-row.header { background: var(--card-alt); padding: 10px 20px; cursor: default; }
+  .hist-row.header:hover { background: var(--card-alt); }
+  .hist-row.header div { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .hist-mes { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: 0.04em; }
+  .hist-titulo { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; }
+  .hist-titulo-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .hist-resultado { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink); text-align: right; }
+  .hist-resultado.pos { color: var(--pos); }
+  .hist-resultado.neg { color: var(--neg); }
+  .hist-resultado-sub { font-size: 10.5px; color: var(--ink-4); font-family: 'Inter', sans-serif; font-weight: 500; margin-top: 2px; text-align: right; }
+  .hist-badge {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase;
+    white-space: nowrap; display: inline-block;
+  }
+  .hist-badge.completado { background: var(--pos-wash); color: var(--pos); }
+  .hist-badge.parcial { background: var(--gold-wash); color: var(--gold-ink); }
+  .hist-badge.fallido { background: var(--neg-wash); color: var(--neg); }
+  .hist-badge.en-curso { background: var(--brand-wash); color: var(--brand); }
+  .hist-arrow { color: var(--ink-5); }
+  .hist-row:hover .hist-arrow { color: var(--gold); }
+
+  /* Stats histórico · mini band arriba de la tabla */
+  .hist-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .hist-stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; }
+  .hist-stat-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .hist-stat-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 19px; color: var(--ink); letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
+  .hist-stat-val.pos { color: var(--pos); }
+  .hist-stat-val.gold { color: var(--gold-ink); }
+  .hist-stat-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Biblioteca de retos propuestos */
+  .bib-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .bib-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 11px; padding: 18px 20px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 8px;
+    position: relative; min-height: 180px;
+  }
+  .bib-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .bib-cat { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .bib-cat-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .bib-cat-dot.colchon { background: var(--gold); }
+  .bib-cat-dot.ahorro { background: var(--pos); }
+  .bib-cat-dot.ingresos { background: var(--brand); }
+  .bib-cat-dot.gastos { background: var(--neg); }
+  .bib-cat-dot.fiscal { background: var(--brand-2); }
+  .bib-titulo { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; line-height: 1.25; }
+  .bib-desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; flex: 1; }
+  .bib-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--line-2); margin-top: auto; }
+  .bib-dur { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+  .bib-cta { font-size: 11px; color: var(--gold); font-weight: 700; }
+
+  /* ═══ FONDOS DE AHORRO ═══ */
+
+  /* Hero · distribución de la tesorería */
+  .fondos-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    border-radius: 14px; padding: 26px 28px; margin-bottom: 18px;
+  }
+  .fh-head { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; margin-bottom: 18px; }
+  .fh-left-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 700; margin-bottom: 6px; }
+  .fh-left-val { font-family: 'JetBrains Mono', monospace; font-size: 36px; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .fh-left-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 8px; font-weight: 500; }
+  .fh-left-sub strong { color: var(--ink); font-weight: 700; }
+  .fh-right { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .fh-right-stat { text-align: right; }
+  .fh-right-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .fh-right-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--ink); margin-top: 2px; }
+  .fh-right-val.pos { color: var(--pos); }
+
+  /* Barra composición · asignado vs no asignado */
+  .fh-comp { margin-top: 8px; }
+  .fh-comp-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; margin-bottom: 10px; }
+  .fh-comp-track { display: flex; height: 14px; border-radius: 7px; overflow: hidden; gap: 2px; }
+  .fh-comp-seg { height: 100%; transition: opacity .1s; cursor: pointer; }
+  .fh-comp-seg:hover { opacity: 0.85; }
+  .fh-comp-seg.colchon { background: var(--gold); }
+  .fh-comp-seg.piso { background: var(--brand); }
+  .fh-comp-seg.reforma { background: var(--pos); }
+  .fh-comp-seg.impuestos { background: var(--brand-2); }
+  .fh-comp-seg.sin { background: var(--ink-5); }
+  .fh-comp-leg { display: flex; gap: 22px; margin-top: 14px; flex-wrap: wrap; font-size: 11.5px; }
+  .fh-comp-leg-item { display: flex; align-items: center; gap: 8px; }
+  .fh-comp-leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .fh-comp-leg-dot.colchon { background: var(--gold); }
+  .fh-comp-leg-dot.piso { background: var(--brand); }
+  .fh-comp-leg-dot.reforma { background: var(--pos); }
+  .fh-comp-leg-dot.impuestos { background: var(--brand-2); }
+  .fh-comp-leg-dot.sin { background: var(--ink-5); }
+  .fh-comp-leg-nom { color: var(--ink-3); font-weight: 500; }
+  .fh-comp-leg-val { color: var(--ink); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .fh-comp-leg-pct { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+  /* Aviso · tesorería sin asignar */
+  .sin-asignar-box {
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-left: 3px solid var(--gold-ink);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 18px;
+    display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: center;
+  }
+  .sin-asignar-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--gold-ink); color: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .sin-asignar-body { min-width: 0; }
+  .sin-asignar-title { font-size: 13.5px; font-weight: 700; color: #4A3A00; letter-spacing: -0.005em; }
+  .sin-asignar-desc { font-size: 12px; color: #6B5410; margin-top: 2px; line-height: 1.5; }
+  .sin-asignar-desc strong { color: #3D2F00; font-weight: 700; }
+
+  /* Grid fondos · 2 columnas */
+  .fondos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Card fondo */
+  .fondo-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px;
+    cursor: pointer; transition: all .14s;
+    display: flex; flex-direction: column; gap: 16px;
+    position: relative; overflow: hidden;
+  }
+  .fondo-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .fondo-card.colchon { border-left: 3px solid var(--gold); padding-left: 23px; }
+  .fondo-card.piso { border-left: 3px solid var(--brand); padding-left: 23px; }
+  .fondo-card.reforma { border-left: 3px solid var(--pos); padding-left: 23px; }
+  .fondo-card.impuestos { border-left: 3px solid var(--brand-2); padding-left: 23px; }
+
+  .fondo-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .fondo-head-left { flex: 1; min-width: 0; }
+  .fondo-cat {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 5px; margin-bottom: 5px;
+    color: var(--ink-4);
+  }
+  .fondo-cat-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .fondo-cat-dot.colchon { background: var(--gold); }
+  .fondo-cat-dot.piso { background: var(--brand); }
+  .fondo-cat-dot.reforma { background: var(--pos); }
+  .fondo-cat-dot.impuestos { background: var(--brand-2); }
+  .fondo-nom { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; line-height: 1.2; }
+  .fondo-obj { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+
+  .fondo-kpi { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 16px; background: var(--card-alt); border-radius: 10px; border: 1px solid var(--line-2); }
+  .fondo-kpi-block { }
+  .fondo-kpi-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .fondo-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; margin-top: 4px; }
+  .fondo-kpi-val.meta { color: var(--ink-3); }
+  .fondo-kpi-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Barra progreso del fondo */
+  .fondo-prog { display: flex; flex-direction: column; gap: 6px; }
+  .fondo-prog-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-4); }
+  .fondo-prog-top .pct { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; font-size: 12px; }
+  .fondo-prog-bar { height: 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--line-2); overflow: hidden; }
+  .fondo-prog-fill { height: 100%; border-radius: 4px; }
+  .fondo-prog-fill.colchon { background: var(--gold); }
+  .fondo-prog-fill.piso { background: var(--brand); }
+  .fondo-prog-fill.reforma { background: var(--pos); }
+  .fondo-prog-fill.impuestos { background: var(--brand-2); }
+
+  /* Cuentas origen · mini lista */
+  .fondo-origen { padding-top: 12px; border-top: 1px solid var(--line-2); }
+  .fondo-origen-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; margin-bottom: 8px; }
+  .fondo-origen-list { display: flex; flex-direction: column; gap: 7px; }
+  .fondo-origen-item { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; }
+  .fondo-origen-banco { display: flex; align-items: center; gap: 8px; color: var(--ink-3); }
+  .fondo-origen-logo { width: 18px; height: 18px; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 8px; font-weight: 700; letter-spacing: 0.05em; }
+  .fondo-origen-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink-2); font-size: 12px; }
+
+  /* Footer acciones */
+  .fondo-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--line-2); }
+  .fondo-ritmo { display: flex; flex-direction: column; gap: 2px; }
+  .fondo-ritmo-lab { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .fondo-ritmo-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink-2); }
+  .fondo-ritmo-val.pos { color: var(--pos); }
+  .fondo-cta { font-size: 11px; color: var(--gold); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+
+  /* Card "crear nuevo fondo" */
+  .fondo-card-new {
+    background: var(--card-alt); border: 2px dashed var(--line); border-radius: 12px;
+    padding: 26px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    min-height: 320px; color: var(--ink-3);
+  }
+  .fondo-card-new:hover { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .fondo-card-new svg { margin-bottom: 10px; opacity: 0.6; }
+  .fondo-card-new:hover svg { opacity: 1; }
+  .fondo-card-new-title { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; color: var(--ink-2); }
+  .fondo-card-new:hover .fondo-card-new-title { color: var(--gold-ink); }
+  .fondo-card-new-sub { font-size: 11.5px; line-height: 1.5; max-width: 240px; }
+
+  /* ═══ PRESUPUESTO · 50/30/20 + zero-based ═══ */
+
+  /* Toggle de vista */
+  .bud-toggle {
+    display: inline-flex; gap: 2px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 3px;
+    margin-bottom: 16px;
+  }
+  .bud-toggle button { padding: 8px 18px; font-size: 12.5px; font-weight: 500; color: var(--ink-3); border-radius: 6px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: none; background: none; }
+  .bud-toggle button:hover { color: var(--ink); }
+  .bud-toggle button.active { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(14,20,35,.04); }
+
+  /* Hero · 4 stats banda horizontal */
+  .bud-hero-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; padding: 18px 24px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  .bud-hero-stat { padding: 0 24px; border-left: 1px solid var(--line-2); }
+  .bud-hero-stat:first-child { border-left: none; padding-left: 0; }
+  .bud-hero-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .bud-hero-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; margin-top: 6px; }
+  .bud-hero-val.pos { color: var(--pos); }
+  .bud-hero-val.neg { color: var(--neg); }
+  .bud-hero-val.warn { color: var(--gold-ink); }
+
+  /* ═══ VISTA 50/30/20 ═══ */
+  .bud-503020 {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 26px 30px; margin-bottom: 14px;
+  }
+  .bud-503020-grid { display: grid; grid-template-columns: 260px 1fr; gap: 40px; align-items: center; }
+
+  .bud-donut { width: 240px; height: 240px; position: relative; margin: 0 auto; }
+  .bud-donut-center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; pointer-events: none;
+  }
+  .bud-donut-center-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; margin-bottom: 10px; }
+  .bud-donut-center-nums { display: flex; align-items: baseline; gap: 14px; margin-bottom: 10px; }
+  .bud-donut-center-num { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+  .bud-donut-center-num.necesidades { color: var(--brand); }
+  .bud-donut-center-num.caprichos { color: var(--gold-ink); }
+  .bud-donut-center-num.ahorro { color: var(--pos); }
+  .bud-donut-center-sep { color: var(--ink-5); font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 400; }
+  .bud-donut-center-sub { font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+
+  /* Bloques 50/30/20 · lado derecho */
+  .bud-503020-blocks { display: flex; flex-direction: column; gap: 12px; }
+  .bud-block {
+    display: grid; grid-template-columns: 14px 1fr auto auto;
+    gap: 16px; padding: 16px 18px; border-radius: 10px;
+    border: 1px solid var(--line-2); align-items: center;
+    background: var(--card-alt);
+  }
+  .bud-block-dot { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .bud-block-dot.necesidades { background: var(--brand); }
+  .bud-block-dot.caprichos { background: var(--gold); }
+  .bud-block-dot.ahorro { background: var(--pos); }
+  .bud-block-info { min-width: 0; }
+  .bud-block-title { font-size: 13.5px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .bud-block-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; }
+  .bud-block-real { text-align: right; }
+  .bud-block-real-pct { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); line-height: 1; }
+  .bud-block-real-val { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .bud-block-diff {
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700;
+    padding: 4px 10px; border-radius: 5px; min-width: 56px; text-align: center;
+  }
+  .bud-block-diff.pos { background: var(--pos-wash); color: var(--pos); }
+  .bud-block-diff.neg { background: var(--neg-wash); color: var(--neg); }
+  .bud-block-diff.neutral { background: var(--bg); color: var(--ink-3); }
+
+  /* Trend chart */
+  .bud-trend {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 14px;
+  }
+  .bud-trend-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .bud-trend-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .bud-trend-chart { width: 100%; height: 120px; display: block; }
+  .bud-trend-leg { display: flex; gap: 20px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+  .bud-trend-leg-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3); }
+  .bud-trend-leg-line { width: 18px; border-top: 2px solid; }
+  .bud-trend-leg-line.ingresos { border-color: var(--pos); }
+  .bud-trend-leg-line.gastos { border-color: var(--neg); }
+  .bud-trend-leg-line.ahorrado { border-color: var(--gold); }
+
+  /* ═══ VISTA ZERO-BASED · tabla categorías ═══ */
+  .bud-zb-table { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .bud-zb-row {
+    display: grid; grid-template-columns: 36px 1.3fr 0.9fr 0.9fr 1.4fr 0.9fr 24px;
+    gap: 16px; padding: 14px 22px; border-bottom: 1px solid var(--line-2);
+    align-items: center; cursor: pointer;
+  }
+  .bud-zb-row:last-child { border-bottom: none; }
+  .bud-zb-row:hover { background: var(--card-alt); }
+  .bud-zb-row:hover .bud-zb-cat { color: var(--gold); }
+  .bud-zb-row.header {
+    background: var(--card-alt); padding: 10px 22px; cursor: default;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-4); font-weight: 600;
+  }
+  .bud-zb-row.header:hover { background: var(--card-alt); }
+  .bud-zb-row.header .r { text-align: right; }
+  .bud-zb-row.total {
+    background: var(--card-alt); padding: 14px 22px; cursor: default;
+    border-top: 1px solid var(--line); border-bottom: none;
+  }
+  .bud-zb-row.total:hover { background: var(--card-alt); }
+
+  .bud-zb-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .bud-zb-icon.vivienda { background: var(--brand-wash); color: var(--brand); }
+  .bud-zb-icon.alim { background: var(--pos-wash); color: var(--pos); }
+  .bud-zb-icon.trans { background: var(--brand-wash); color: var(--brand); }
+  .bud-zb-icon.supl { background: var(--gold-wash); color: var(--gold-ink); }
+  .bud-zb-icon.ocio { background: var(--gold-wash); color: var(--gold-ink); }
+  .bud-zb-icon.salud { background: var(--pos-wash); color: var(--pos); }
+  .bud-zb-icon.ahorro { background: var(--pos-wash); color: var(--pos); }
+  .bud-zb-icon.otros { background: var(--bg); color: var(--ink-3); }
+
+  .bud-zb-cat { font-size: 13px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; }
+  .bud-zb-tipo { font-size: 11px; color: var(--ink-4); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+  .bud-zb-amount { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--ink); text-align: right; }
+  .bud-zb-amount.muted { color: var(--ink-4); font-weight: 500; }
+
+  .bud-zb-bar-wrap { display: flex; flex-direction: column; gap: 4px; padding-right: 8px; }
+  .bud-zb-bar-top { display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; }
+  .bud-zb-bar-top .pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink-2); }
+  .bud-zb-bar-top .pct.warn { color: var(--gold-ink); }
+  .bud-zb-bar-top .pct.neg { color: var(--neg); }
+  .bud-zb-bar { height: 6px; background: var(--bg); border-radius: 3px; border: 1px solid var(--line-2); overflow: hidden; }
+  .bud-zb-bar-fill { height: 100%; border-radius: 3px; }
+  .bud-zb-bar-fill.ok { background: var(--pos); }
+  .bud-zb-bar-fill.warn { background: var(--gold); }
+  .bud-zb-bar-fill.over { background: var(--neg); }
+
+  .bud-zb-diff {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+    text-align: right;
+  }
+  .bud-zb-diff.pos { color: var(--pos); }
+  .bud-zb-diff.neg { color: var(--neg); }
+
+  .bud-zb-arrow { color: var(--ink-5); text-align: right; }
+  .bud-zb-row:hover .bud-zb-arrow { color: var(--gold); }
+
+  /* ═══ LIBERTAD FINANCIERA · SIMULADOR ═══ */
+
+  /* Hero proyección · grande · con CTA editar objetivo */
+  .lib-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 4px solid var(--gold);
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 16px;
+    position: relative; overflow: hidden;
+  }
+  .lib-hero::after {
+    content: ''; position: absolute; top: 0; right: -60px; width: 420px; height: 100%;
+    background: radial-gradient(circle at 85% 50%, rgba(184,138,62,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .lib-hero-body { display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: center; position: relative; z-index: 1; }
+  .lib-hero-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--gold-ink); font-weight: 700; margin-bottom: 8px; }
+  .lib-hero-fecha { font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1; }
+  .lib-hero-fecha .delta { font-size: 16px; color: var(--pos); margin-left: 14px; letter-spacing: 0; }
+  .lib-hero-fecha .delta.neg { color: var(--neg); }
+  .lib-hero-sub { font-size: 13px; color: var(--ink-3); margin-top: 10px; font-weight: 500; }
+  .lib-hero-sub strong { color: var(--ink); font-weight: 700; }
+
+  .lib-hero-stats { display: flex; gap: 26px; }
+  .lib-hero-stat { text-align: right; }
+  .lib-hero-stat-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .lib-hero-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1; }
+  .lib-hero-stat-val.pos { color: var(--pos); }
+  .lib-hero-stat-val.gold { color: var(--gold-ink); }
+
+  /* ═══ LAYOUT · gráfica + controles ═══ */
+  .lib-sim-grid { display: grid; grid-template-columns: 1fr 380px; gap: 14px; margin-bottom: 16px; }
+
+  /* Gráfica reactiva */
+  .lib-chart-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; }
+  .lib-chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+  .lib-chart-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .lib-chart-legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-3); }
+  .lib-chart-leg-item { display: flex; align-items: center; gap: 6px; }
+  .lib-chart-leg-item .line { width: 16px; border-top: 2px solid; }
+  .lib-chart-leg-item .dash { width: 16px; border-top: 1px dashed; }
+  .lib-chart-leg-item .line.base { border-color: var(--brand); }
+  .lib-chart-leg-item .line.sim { border-color: var(--gold); }
+  .lib-chart-leg-item .dash.meta { border-color: var(--neg); }
+
+  .lib-chart { width: 100%; height: 280px; display: block; }
+
+  /* Panel de controles · sliders */
+  .lib-controls-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .lib-controls-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .lib-controls-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .lib-controls-reset { font-size: 11.5px; color: var(--gold); font-weight: 600; cursor: pointer; padding: 3px 8px; border-radius: 5px; }
+  .lib-controls-reset:hover { background: var(--gold-wash); }
+
+  /* Slider + input */
+  .lib-control { display: flex; flex-direction: column; gap: 8px; }
+  .lib-control-top { display: flex; justify-content: space-between; align-items: baseline; }
+  .lib-control-lab { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .lib-control-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .lib-control-val.pos { color: var(--pos); }
+  .lib-control-val.gold { color: var(--gold-ink); }
+  .lib-control-slider {
+    appearance: none; -webkit-appearance: none;
+    width: 100%; height: 6px; background: var(--bg);
+    border-radius: 3px; border: 1px solid var(--line-2); outline: none; cursor: pointer;
+  }
+  .lib-control-slider::-webkit-slider-thumb {
+    appearance: none; -webkit-appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); border: 2px solid #fff;
+    cursor: pointer; box-shadow: 0 1px 3px rgba(14,20,35,0.15);
+  }
+  .lib-control-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); border: 2px solid #fff;
+    cursor: pointer; box-shadow: 0 1px 3px rgba(14,20,35,0.15);
+  }
+  .lib-control-range { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+  /* Delta indicator · muestra el impacto en la fecha meta */
+  .lib-impact {
+    background: var(--gold-wash); border: 1px solid #E8D59E;
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .lib-impact-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--gold-ink); color: #fff;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .lib-impact-body { flex: 1; }
+  .lib-impact-title { font-size: 12px; font-weight: 700; color: #4A3A00; }
+  .lib-impact-desc { font-size: 11px; color: #6B5410; margin-top: 2px; line-height: 1.4; }
+
+  /* ═══ ESCENARIOS GUARDADOS ═══ */
+  .lib-esc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .lib-esc-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 11px; padding: 18px 20px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 10px;
+    position: relative;
+  }
+  .lib-esc-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .lib-esc-card.active { border-color: var(--gold); background: var(--gold-wash); }
+
+  .lib-esc-head { display: flex; justify-content: space-between; align-items: center; }
+  .lib-esc-badge { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .lib-esc-badge.actual { background: var(--brand-ink); color: #fff; }
+  .lib-esc-badge.opt { background: var(--pos-wash); color: var(--pos); }
+  .lib-esc-badge.agr { background: var(--gold-wash); color: var(--gold-ink); }
+  .lib-esc-badge.cons { background: var(--bg); color: var(--ink-3); }
+  .lib-esc-menu { color: var(--ink-5); cursor: pointer; }
+  .lib-esc-menu:hover { color: var(--ink-3); }
+  .lib-esc-titulo { font-size: 13.5px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; line-height: 1.25; }
+  .lib-esc-desc { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; flex: 1; }
+  .lib-esc-footer { display: flex; justify-content: space-between; align-items: baseline; padding-top: 10px; border-top: 1px solid var(--line-2); }
+  .lib-esc-footer-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; }
+  .lib-esc-footer-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .lib-esc-footer-val.pos { color: var(--pos); }
+  .lib-esc-footer-val.neg { color: var(--neg); }
+
+  .lib-esc-card-new {
+    background: var(--card-alt); border: 2px dashed var(--line); border-radius: 11px;
+    padding: 18px 20px; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    min-height: 170px; color: var(--ink-3); gap: 6px;
+  }
+  .lib-esc-card-new:hover { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .lib-esc-card-new-title { font-size: 12.5px; font-weight: 700; letter-spacing: -0.005em; color: var(--ink-2); }
+  .lib-esc-card-new:hover .lib-esc-card-new-title { color: var(--gold-ink); }
+  .lib-esc-card-new-sub { font-size: 10.5px; line-height: 1.5; max-width: 180px; }
+
+  /* ═══ BANDAS HORIZONTALES DE MÉTRICAS · patrón Pulso del mes ═══ */
+  /* Usado en Objetivos (obj-kpis) y Retos (hist-stats) · misma visual */
+  .obj-kpis, .hist-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 0; margin-bottom: 18px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 11px; padding: 16px 22px;
+  }
+  .obj-kpi, .hist-stat {
+    padding: 0 22px; border-left: 1px solid var(--line-2);
+    background: transparent; border-radius: 0;
+  }
+  .obj-kpi:first-child, .hist-stat:first-child { border-left: none; padding-left: 0; }
+  .obj-kpi-lab, .hist-stat-lab {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--ink-4); font-weight: 600;
+  }
+  .obj-kpi-val, .hist-stat-val {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 20px; color: var(--ink); letter-spacing: -0.02em;
+    line-height: 1; margin-top: 6px;
+  }
+  .obj-kpi-val.pos, .hist-stat-val.pos { color: var(--pos); }
+  .obj-kpi-val.gold, .hist-stat-val.gold { color: var(--gold-ink); }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a onclick="showToast('Ir a Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a onclick="showToast('Ir a Inversiones')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a onclick="showToast('Ir a Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="showToast('Ir a Financiación')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Ir a Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>Fiscal <span class="chip">3</span></a>
+      <a onclick="showToast('Ir a Archivo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Ajustes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar objetivo, escenario, reto…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head active" id="page-head-landing">
+      <div>
+        <h1>Mi Plan</h1>
+        <div class="page-sub">tu brújula hacia la libertad financiera<span style="color: var(--ink-5); margin: 0 8px;">·</span>revisado por última vez <strong style="color: var(--ink-2);">hace 3 días</strong></div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Editar objetivo de libertad · ingresos meta · año límite · configuración personal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          Editar objetivo
+        </button>
+        <button class="btn btn-primary" onclick="showPage('libertad')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Simular escenario
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA LANDING -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page active" id="page-landing">
+
+
+    <!-- ═══ HERO LIBERTAD ═══ -->
+    <div class="hero-libertad">
+      <div class="hero-body">
+        <div class="hero-left">
+          <div class="hero-lab">Libertad financiera · estimada</div>
+          <div class="hero-fecha">septiembre 2031</div>
+          <div class="hero-quedan">faltan <strong>5 años y 5 meses</strong><span style="color: var(--ink-5); margin: 0 8px;">·</span>hoy cubres el <strong>54% de tus gastos</strong> con renta pasiva</div>
+
+          <div class="hero-progreso">
+            <div class="hero-progreso-top">
+              <span>Progreso hacia meta</span>
+              <span><span class="mono">54</span> / 100</span>
+            </div>
+            <div class="hero-track">
+              <div class="hero-fill" style="width: 54%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-right">
+          <div class="hero-stat">
+            <div class="hero-stat-lab">Renta pasiva hoy</div>
+            <div class="hero-stat-val">2.230 €/mes</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-lab">Meta · gastos de vida</div>
+            <div class="hero-stat-val">4.120 €/mes</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-lab">Falta por cubrir</div>
+            <div class="hero-stat-val pos">1.890 €/mes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ EVOLUCIÓN PASADO + FUTURO ═══ -->
+    <div class="evolucion">
+      <div class="evo-head">
+        <div>
+          <div class="evo-title">Renta pasiva · tu camino desde 2020</div>
+          <div class="evo-sub">línea navy = histórico real<span style="color: var(--ink-5); margin: 0 6px;">·</span>línea oro = proyección a meta<span style="color: var(--ink-5); margin: 0 6px;">·</span>línea discontinua roja = gasto de vida necesario</div>
+        </div>
+        <div class="evo-toggle">
+          <button class="active">Mensual</button>
+          <button>Anual</button>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <svg class="chart" viewBox="0 0 900 280" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Grid horizontal sutil · líneas de referencia -->
+          <g stroke="#EFECE5" stroke-width="1" fill="none">
+            <line x1="50" y1="50" x2="870" y2="50"/>
+            <line x1="50" y1="105" x2="870" y2="105"/>
+            <line x1="50" y1="160" x2="870" y2="160"/>
+            <line x1="50" y1="215" x2="870" y2="215"/>
+          </g>
+
+          <!-- Eje Y labels · euros/mes -->
+          <g font-family="JetBrains Mono" font-size="9" fill="#8A92A0" font-weight="600">
+            <text x="45" y="55" text-anchor="end">5.000 €</text>
+            <text x="45" y="110" text-anchor="end">3.750 €</text>
+            <text x="45" y="165" text-anchor="end">2.500 €</text>
+            <text x="45" y="220" text-anchor="end">1.250 €</text>
+            <text x="45" y="265" text-anchor="end">0 €</text>
+          </g>
+
+          <!-- Eje X años · desde 2020 a 2031 -->
+          <g font-family="JetBrains Mono" font-size="9.5" fill="#8A92A0" font-weight="600" text-anchor="middle">
+            <text x="50" y="275">2020</text>
+            <text x="124" y="275">2021</text>
+            <text x="198" y="275">2022</text>
+            <text x="272" y="275">2023</text>
+            <text x="346" y="275">2024</text>
+            <text x="420" y="275">2025</text>
+            <text x="494" y="275">2026</text>
+            <text x="568" y="275">2027</text>
+            <text x="642" y="275">2028</text>
+            <text x="716" y="275">2029</text>
+            <text x="790" y="275">2030</text>
+            <text x="864" y="275">2031</text>
+          </g>
+
+          <!-- Línea meta · gasto de vida mensual 4.120€ ≈ y=75 -->
+          <line x1="50" y1="78" x2="870" y2="78" stroke="#A43328" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.7"/>
+          <text x="862" y="72" text-anchor="end" font-family="Inter" font-size="10" fill="#A43328" font-weight="700">meta · 4.120 €/mes</text>
+
+          <!-- Área bajo curva · pasado (navy sutil) -->
+          <path d="M 50 260 L 50 245 L 100 240 L 150 230 L 198 215 L 250 200 L 300 185 L 346 170 L 400 155 L 450 145 L 494 141 L 494 260 Z"
+                fill="url(#gradPasado)" opacity="0.5"/>
+          <linearGradient id="gradPasado" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#1E2954" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#1E2954" stop-opacity="0"/>
+          </linearGradient>
+
+          <!-- Línea pasado -->
+          <path d="M 50 245 L 100 240 L 150 230 L 198 215 L 250 200 L 300 185 L 346 170 L 400 155 L 450 145 L 494 141"
+                stroke="#1E2954" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Área bajo curva · futuro (oro sutil) -->
+          <path d="M 494 141 L 540 130 L 590 118 L 642 105 L 694 92 L 746 82 L 796 76 L 850 74 L 850 260 L 494 260 Z"
+                fill="url(#gradFuturo)" opacity="0.45"/>
+          <linearGradient id="gradFuturo" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#B88A3E" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="#B88A3E" stop-opacity="0"/>
+          </linearGradient>
+
+          <!-- Línea futuro -->
+          <path d="M 494 141 L 540 130 L 590 118 L 642 105 L 694 92 L 746 82 L 796 76 L 850 74"
+                stroke="#B88A3E" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="1 0"/>
+
+          <!-- Línea vertical HOY · abril 2026 -->
+          <line x1="494" y1="45" x2="494" y2="260" stroke="#A43328" stroke-width="1.5" opacity="0.55"/>
+          <rect x="478" y="30" width="32" height="14" rx="3" fill="#A43328"/>
+          <text x="494" y="41" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fff" font-weight="700">HOY</text>
+
+          <!-- Punto meta · donde la línea oro cruza la meta roja · año 2031 aprox -->
+          <circle cx="850" cy="74" r="6" fill="#fff" stroke="#1E6B3A" stroke-width="2.5"/>
+          <text x="855" y="60" font-family="Inter" font-size="10.5" fill="#1E6B3A" font-weight="700">meta sep 2031</text>
+
+          <!-- Punto actual · 2.230€/mes -->
+          <circle cx="494" cy="141" r="5.5" fill="#B88A3E" stroke="#fff" stroke-width="2"/>
+          <text x="504" y="133" font-family="JetBrains Mono" font-size="10" fill="#141B2E" font-weight="700">2.230 €</text>
+
+          <!-- Línea de comienzo de patrimonio · 2020 -->
+          <circle cx="50" cy="245" r="4" fill="#1E2954" stroke="#fff" stroke-width="1.5"/>
+          <text x="57" y="240" font-family="JetBrains Mono" font-size="9" fill="#5B6474" font-weight="600">primer piso</text>
+        </svg>
+      </div>
+
+      <div class="chart-legend">
+        <div class="leg-item"><div class="dot pasado"></div>Renta pasiva · histórico real (2020–hoy)</div>
+        <div class="leg-item"><div class="dot futuro"></div>Proyección · según plan actual</div>
+        <div class="leg-item"><div class="dash"></div>Meta · cubrir gastos de vida (4.120 €/mes)</div>
+        <div class="leg-item"><div class="dot meta"></div>Punto estimado de libertad financiera</div>
+      </div>
+    </div>
+
+    <!-- ═══ Grid 4 sub-módulos ═══ -->
+    <div class="sec-title">Áreas de tu plan</div>
+    <div class="submods">
+
+      <!-- Objetivos -->
+      <div class="submod" onclick="showPage('objetivos')">
+        <div class="submod-hd">
+          <div class="submod-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <div class="submod-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="submod-nom">Objetivos</div>
+        <div class="submod-val">4 metas</div>
+        <div class="submod-sub"><strong>2 en progreso</strong> · 1 completada · 1 en pausa</div>
+        <div class="submod-footer">
+          <span class="submod-footer-lab">Próxima meta</span>
+          <span class="submod-pill">colchón 12 meses</span>
+        </div>
+      </div>
+
+      <!-- Libertad financiera -->
+      <div class="submod" onclick="showPage('libertad')">
+        <div class="submod-hd">
+          <div class="submod-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          </div>
+          <div class="submod-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="submod-nom">Libertad financiera</div>
+        <div class="submod-val">54%</div>
+        <div class="submod-sub"><strong>2.230 €</strong> de <strong>4.120 €</strong> necesarios · renta pasiva mensual</div>
+        <div class="submod-footer">
+          <span class="submod-footer-lab">Proyección</span>
+          <span class="submod-footer-val pos">sep 2031</span>
+        </div>
+      </div>
+
+      <!-- Fondos de ahorro -->
+      <div class="submod" onclick="showPage('fondos')">
+        <div class="submod-hd">
+          <div class="submod-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          </div>
+          <div class="submod-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="submod-nom">Fondos de ahorro</div>
+        <div class="submod-val">18.400 €</div>
+        <div class="submod-sub"><strong>3 fondos</strong> · colchón · próximo piso · reforma T64</div>
+        <div class="submod-footer">
+          <span class="submod-footer-lab">Mayor fondo</span>
+          <span class="submod-footer-val">9.800 €</span>
+        </div>
+      </div>
+
+      <!-- Proyección -->
+      <div class="submod" onclick="showPage('proyeccion')">
+        <div class="submod-hd">
+          <div class="submod-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          </div>
+          <div class="submod-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="submod-nom">Proyección</div>
+        <div class="submod-val">+31.214 €</div>
+        <div class="submod-sub">resultado caja proyectado <strong>2026</strong> · mes a mes navegable hasta 2044</div>
+        <div class="submod-footer">
+          <span class="submod-footer-lab">Caja anual</span>
+          <span class="submod-pill verde">positivo</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ RETO DEL MES ═══ -->
+    <div class="reto-card">
+      <div class="reto-head">
+        <div class="reto-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div class="reto-body">
+          <div class="reto-lab">Reto de abril 2026</div>
+          <div class="reto-titulo">Primer paso hacia colchón de 12 meses</div>
+          <div class="reto-desc">Tu colchón de emergencia cubre 9 meses de gastos de vida. Objetivo del mes · subir a 10 meses ahorrando <strong>4.120 €</strong> en la cuenta marcada como colchón antes del cierre. ATLAS te muestra el progreso automáticamente en Tesorería.</div>
+        </div>
+        <button class="reto-action" onclick="showPage('retos')">Ver detalle →</button>
+      </div>
+
+      <div class="reto-progreso">
+        <div class="reto-prog-bar-wrap">
+          <div class="reto-prog-top">
+            <span>Ahorrado este mes</span>
+            <span><strong>1.650 €</strong> de <strong>4.120 €</strong> · 40%</span>
+          </div>
+          <div class="reto-prog-bar">
+            <div class="reto-prog-fill" style="width: 40%;"></div>
+          </div>
+        </div>
+        <div class="reto-stat">
+          <div class="reto-stat-lab">Días restantes</div>
+          <div class="reto-stat-val">12 d</div>
+        </div>
+        <div class="reto-stat">
+          <div class="reto-stat-lab">Ritmo necesario</div>
+          <div class="reto-stat-val">206 €/día</div>
+        </div>
+        <div class="reto-stat">
+          <div class="reto-stat-lab">Si completas</div>
+          <div class="reto-stat-val gold">10 de 12</div>
+        </div>
+      </div>
+    </div>
+
+    </div>
+    <!-- /page landing -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA OBJETIVOS -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-objetivos">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('landing')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('landing')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Objetivos</span>
+        </div>
+        <h1>Objetivos</h1>
+        <div class="page-sub">metas medibles con fecha y progreso automático</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar objetivos como PDF con su progreso')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Abrir wizard · Crear nuevo objetivo · tipo · valor · fecha · categoría')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear objetivo
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-objetivos">
+
+      <!-- Tabs submod -->
+      <div class="submod-tabs">
+        <button onclick="showPage('proyeccion')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          Proyección
+        </button>
+        <button onclick="showPage('libertad')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Libertad financiera
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Objetivos
+        </button>
+        <button onclick="showPage('fondos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          Fondos de ahorro
+        </button>
+        <button onclick="showPage('retos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Retos
+        </button>
+      </div>
+
+      <!-- Filtros -->
+      <div class="obj-filter">
+        <div class="obj-filter-lab">Mostrar</div>
+        <button class="obj-pill active">Todas<span class="chip-count">4</span></button>
+        <button class="obj-pill">En progreso<span class="chip-count">2</span></button>
+        <button class="obj-pill">En pausa<span class="chip-count">1</span></button>
+        <button class="obj-pill">En riesgo<span class="chip-count">1</span></button>
+        <button class="obj-pill">Completadas<span class="chip-count">3</span></button>
+      </div>
+
+      <!-- KPIs resumen objetivos -->
+      <div class="obj-kpis">
+        <div class="obj-kpi">
+          <div class="obj-kpi-lab">Metas activas</div>
+          <div class="obj-kpi-val">4</div>
+        </div>
+        <div class="obj-kpi">
+          <div class="obj-kpi-lab">Completadas 2025</div>
+          <div class="obj-kpi-val pos">3</div>
+        </div>
+        <div class="obj-kpi">
+          <div class="obj-kpi-lab">Progreso medio</div>
+          <div class="obj-kpi-val gold">47%</div>
+        </div>
+        <div class="obj-kpi">
+          <div class="obj-kpi-lab">Próxima fecha</div>
+          <div class="obj-kpi-val">30 abr</div>
+        </div>
+      </div>
+
+      <!-- Grid de objetivos -->
+      <div class="obj-grid">
+
+        <!-- Objetivo 1 · Libertad financiera -->
+        <div class="obj-card en-progreso" onclick="showToast('Ver detalle objetivo Libertad financiera · editar · historial')">
+          <div class="obj-head">
+            <div class="obj-head-left">
+              <div class="obj-ast">OBJ · 01 · libertad</div>
+              <div class="obj-nom">Alcanzar libertad financiera</div>
+              <div class="obj-cat">renta pasiva cubre gastos de vida</div>
+            </div>
+            <span class="obj-estado en-progreso">En progreso</span>
+          </div>
+
+          <div class="obj-numbers">
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor actual</div>
+              <div class="obj-num-val">2.230 €</div>
+              <div class="obj-num-sub">renta pasiva · mes</div>
+            </div>
+            <svg class="obj-num-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor meta</div>
+              <div class="obj-num-val pos">4.120 €</div>
+              <div class="obj-num-sub">cubrir gastos de vida</div>
+            </div>
+          </div>
+
+          <div class="obj-progress">
+            <div class="obj-prog-top">
+              <span>Progreso</span>
+              <span class="pct">54%</span>
+            </div>
+            <div class="obj-prog-bar"><div class="obj-prog-fill progreso" style="width: 54%;"></div></div>
+          </div>
+
+          <div class="obj-footer">
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Fecha objetivo</span>
+              <span class="obj-footer-val">sep 2031</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Ritmo necesario</span>
+              <span class="obj-footer-val">+31 €/mes</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">En ruta</span>
+              <span class="obj-footer-val pos">sí</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Objetivo 2 · Colchón 24 meses · en progreso -->
+        <div class="obj-card en-progreso" onclick="showToast('Ver detalle objetivo Colchón emergencia')">
+          <div class="obj-head">
+            <div class="obj-head-left">
+              <div class="obj-ast">OBJ · 02 · colchón</div>
+              <div class="obj-nom">Colchón de 24 meses</div>
+              <div class="obj-cat">tesorería líquida · emergencia</div>
+            </div>
+            <span class="obj-estado en-progreso">En progreso</span>
+          </div>
+
+          <div class="obj-numbers">
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor actual</div>
+              <div class="obj-num-val">9 meses</div>
+              <div class="obj-num-sub">37.080 € en 3 bancos</div>
+            </div>
+            <svg class="obj-num-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor meta</div>
+              <div class="obj-num-val pos">24 meses</div>
+              <div class="obj-num-sub">98.880 € · 2028</div>
+            </div>
+          </div>
+
+          <div class="obj-progress">
+            <div class="obj-prog-top">
+              <span>Progreso</span>
+              <span class="pct">37%</span>
+            </div>
+            <div class="obj-prog-bar"><div class="obj-prog-fill progreso" style="width: 37%;"></div></div>
+          </div>
+
+          <div class="obj-footer">
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Fecha objetivo</span>
+              <span class="obj-footer-val">dic 2028</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Ritmo necesario</span>
+              <span class="obj-footer-val">+1.869 €/mes</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">En ruta</span>
+              <span class="obj-footer-val pos">sí</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Objetivo 3 · 10 pisos · en riesgo -->
+        <div class="obj-card en-riesgo" onclick="showToast('Ver detalle objetivo 10 pisos · en riesgo')">
+          <div class="obj-head">
+            <div class="obj-head-left">
+              <div class="obj-ast">OBJ · 03 · cartera</div>
+              <div class="obj-nom">Alcanzar 10 inmuebles</div>
+              <div class="obj-cat">cartera en gestión · 2 en CB Santa Catalina</div>
+            </div>
+            <span class="obj-estado en-riesgo">En riesgo</span>
+          </div>
+
+          <div class="obj-numbers">
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor actual</div>
+              <div class="obj-num-val">6 pisos</div>
+              <div class="obj-num-sub">T48 vendido nov 2025</div>
+            </div>
+            <svg class="obj-num-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor meta</div>
+              <div class="obj-num-val pos">10 pisos</div>
+              <div class="obj-num-sub">para dic 2030</div>
+            </div>
+          </div>
+
+          <div class="obj-progress">
+            <div class="obj-prog-top">
+              <span>Progreso</span>
+              <span class="pct">60%</span>
+            </div>
+            <div class="obj-prog-bar"><div class="obj-prog-fill riesgo" style="width: 60%;"></div></div>
+          </div>
+
+          <div class="obj-footer">
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Fecha objetivo</span>
+              <span class="obj-footer-val">dic 2030</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Ritmo necesario</span>
+              <span class="obj-footer-val neg">1 piso/año</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">En ruta</span>
+              <span class="obj-footer-val neg">ajustado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Objetivo 4 · Pagar hipoteca CB15 · en pausa -->
+        <div class="obj-card en-pausa" onclick="showToast('Ver detalle objetivo Pagar hipoteca CB15 · en pausa')">
+          <div class="obj-head">
+            <div class="obj-head-left">
+              <div class="obj-ast">OBJ · 04 · financiación</div>
+              <div class="obj-nom">Amortizar hipoteca CB15</div>
+              <div class="obj-cat">pagar íntegramente antes de plazo</div>
+            </div>
+            <span class="obj-estado en-pausa">En pausa</span>
+          </div>
+
+          <div class="obj-numbers">
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Pendiente</div>
+              <div class="obj-num-val">38.420 €</div>
+              <div class="obj-num-sub">capital vivo</div>
+            </div>
+            <svg class="obj-num-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor meta</div>
+              <div class="obj-num-val pos">0 €</div>
+              <div class="obj-num-sub">antes de dic 2032</div>
+            </div>
+          </div>
+
+          <div class="obj-progress">
+            <div class="obj-prog-top">
+              <span>Progreso</span>
+              <span class="pct">72%</span>
+            </div>
+            <div class="obj-prog-bar"><div class="obj-prog-fill pausa" style="width: 72%;"></div></div>
+          </div>
+
+          <div class="obj-footer">
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Fecha objetivo</span>
+              <span class="obj-footer-val">dic 2032</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Decisión</span>
+              <span class="obj-footer-val">pausada</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Motivo</span>
+              <span class="obj-footer-val">priorizado colchón</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Objetivo 5 · Ahorrar 80K para próximo piso · completada parcial -->
+        <div class="obj-card en-progreso" onclick="showToast('Ver detalle objetivo Próximo piso')">
+          <div class="obj-head">
+            <div class="obj-head-left">
+              <div class="obj-ast">OBJ · 05 · próxima compra</div>
+              <div class="obj-nom">Ahorrar 80.000 € para próximo piso</div>
+              <div class="obj-cat">entrada + gastos + reserva</div>
+            </div>
+            <span class="obj-estado en-progreso">En progreso</span>
+          </div>
+
+          <div class="obj-numbers">
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Ahorrado</div>
+              <div class="obj-num-val">14.200 €</div>
+              <div class="obj-num-sub">fondo "próximo piso"</div>
+            </div>
+            <svg class="obj-num-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            <div class="obj-num-block">
+              <div class="obj-num-lab">Valor meta</div>
+              <div class="obj-num-val pos">80.000 €</div>
+              <div class="obj-num-sub">para dic 2027</div>
+            </div>
+          </div>
+
+          <div class="obj-progress">
+            <div class="obj-prog-top">
+              <span>Progreso</span>
+              <span class="pct">18%</span>
+            </div>
+            <div class="obj-prog-bar"><div class="obj-prog-fill progreso" style="width: 18%;"></div></div>
+          </div>
+
+          <div class="obj-footer">
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Fecha objetivo</span>
+              <span class="obj-footer-val">dic 2027</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">Ritmo necesario</span>
+              <span class="obj-footer-val">+3.266 €/mes</span>
+            </div>
+            <div class="obj-footer-item">
+              <span class="obj-footer-lab">En ruta</span>
+              <span class="obj-footer-val pos">sí</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card crear nuevo -->
+        <div class="obj-card-new" onclick="showToast('Abrir wizard · Crear nuevo objetivo · guiado por tipo')">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <div class="obj-card-new-title">Crear nuevo objetivo</div>
+          <div class="obj-card-new-sub">define una meta con valor · fecha y ATLAS calculará el progreso automáticamente desde tus datos</div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page objetivos -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA RETOS -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-retos">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('landing')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('landing')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Retos</span>
+        </div>
+        <h1>Retos</h1>
+        <div class="page-sub">un objetivo mensual con métrica clara</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Configurar · cadencia · tipos de reto preferidos · notificaciones')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          Preferencias
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-retos">
+
+      <!-- Tabs submod -->
+      <div class="submod-tabs">
+        <button onclick="showPage('proyeccion')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          Proyección
+        </button>
+        <button onclick="showPage('libertad')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Libertad financiera
+        </button>
+        <button onclick="showPage('objetivos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Objetivos
+        </button>
+        <button onclick="showPage('fondos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          Fondos de ahorro
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Retos
+        </button>
+      </div>
+
+      <!-- ═══ RETO ACTIVO HERO ═══ -->
+      <div class="reto-hero">
+        <div class="reto-hero-body">
+
+          <div class="reto-hero-top">
+            <div class="reto-hero-icon">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div>
+              <div class="reto-hero-lab">Reto activo · abril 2026</div>
+              <div class="reto-hero-titulo">Primer paso hacia colchón de 12 meses</div>
+            </div>
+            <span class="reto-hero-estado">En curso · 12 días</span>
+          </div>
+
+          <div class="reto-hero-desc">
+            Tu colchón de emergencia cubre <strong>9 meses de gastos de vida</strong>. El objetivo del mes es subir a 10 meses ahorrando <strong>4.120 €</strong> en tu cuenta marcada como "colchón" antes del cierre. ATLAS detecta automáticamente los ingresos y te muestra el progreso en tiempo real leyendo directamente de Tesorería. Si lo completas · desbloqueas el siguiente reto · "subir a 11 meses" en mayo.
+          </div>
+
+          <div class="reto-panel">
+            <div class="reto-panel-bar">
+              <div class="reto-panel-top">
+                <span>Ahorrado este mes</span>
+                <span><strong>1.650 €</strong> de <strong>4.120 €</strong> · 40%</span>
+              </div>
+              <div class="reto-panel-track"><div class="reto-panel-fill" style="width: 40%;"></div></div>
+            </div>
+            <div class="reto-panel-stat">
+              <div class="reto-panel-stat-lab">Días restantes</div>
+              <div class="reto-panel-stat-val">12 d</div>
+            </div>
+            <div class="reto-panel-stat">
+              <div class="reto-panel-stat-lab">Ritmo necesario</div>
+              <div class="reto-panel-stat-val">206 €/día</div>
+            </div>
+            <div class="reto-panel-stat">
+              <div class="reto-panel-stat-lab">Si completas</div>
+              <div class="reto-panel-stat-val gold">10 de 12</div>
+            </div>
+          </div>
+
+          <div class="reto-hero-actions">
+            <button class="btn btn-ghost" onclick="showToast('Pausar reto · se retoma el próximo mes')">Pausar</button>
+            <button class="btn btn-ghost" onclick="showToast('Ver tesorería · seguimiento del fondo colchón en tiempo real')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              Ver en Tesorería
+            </button>
+            <button class="btn btn-gold" onclick="showToast('Marcar progreso manual · registrar avance fuera de tesorería')">Registrar avance</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══ HISTÓRICO DE RETOS ═══ -->
+      <div class="sec-divider">
+        <div>
+          <div class="sec-divider-title">Histórico de retos</div>
+        </div>
+        <div class="hist-filter">
+          <button class="active">Últimos 12 meses</button>
+          <button>Todos</button>
+        </div>
+      </div>
+
+      <!-- Stats histórico -->
+      <div class="hist-stats">
+        <div class="hist-stat">
+          <div class="hist-stat-lab">Completados</div>
+          <div class="hist-stat-val pos">11</div>
+        </div>
+        <div class="hist-stat">
+          <div class="hist-stat-lab">Racha actual</div>
+          <div class="hist-stat-val gold">3 meses</div>
+        </div>
+        <div class="hist-stat">
+          <div class="hist-stat-lab">Racha récord</div>
+          <div class="hist-stat-val">5 meses</div>
+        </div>
+        <div class="hist-stat">
+          <div class="hist-stat-lab">Impacto acumulado</div>
+          <div class="hist-stat-val pos">+14.820 €</div>
+        </div>
+      </div>
+
+      <!-- Tabla histórico -->
+      <div class="hist-table">
+        <div class="hist-row header">
+          <div>Mes</div>
+          <div>Reto</div>
+          <div style="text-align: center;">Estado</div>
+          <div style="text-align: right;">Resultado</div>
+          <div style="text-align: center;">Impacto</div>
+          <div></div>
+        </div>
+
+        <!-- En curso · abril 2026 -->
+        <div class="hist-row" onclick="showToast('Ver reto activo · abril 2026')">
+          <div class="hist-mes">abr 2026</div>
+          <div>
+            <div class="hist-titulo">Primer paso hacia colchón de 12 meses</div>
+            <div class="hist-titulo-sub">categoría · colchón</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge en-curso">En curso</span></div>
+          <div>
+            <div class="hist-resultado">1.650 € / 4.120 €</div>
+            <div class="hist-resultado-sub">40% completado</div>
+          </div>
+          <div style="text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-4); font-weight: 600;">en curso</div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Marzo 2026 · completado -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto marzo 2026 completado')">
+          <div class="hist-mes">mar 2026</div>
+          <div>
+            <div class="hist-titulo">Reducir gastos de ocio un 15%</div>
+            <div class="hist-titulo-sub">categoría · gastos</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge completado">Completado</span></div>
+          <div>
+            <div class="hist-resultado pos">−18% logrado</div>
+            <div class="hist-resultado-sub">objetivo −15%</div>
+          </div>
+          <div style="text-align: center;"><span class="td-amount pos" style="font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px; color: var(--pos);">+420 €</span></div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Febrero 2026 · completado -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto febrero 2026')">
+          <div class="hist-mes">feb 2026</div>
+          <div>
+            <div class="hist-titulo">Revisar y renegociar 2 suministros</div>
+            <div class="hist-titulo-sub">categoría · gastos</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge completado">Completado</span></div>
+          <div>
+            <div class="hist-resultado pos">3 renegociados</div>
+            <div class="hist-resultado-sub">objetivo 2</div>
+          </div>
+          <div style="text-align: center;"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px; color: var(--pos);">+28 €/mes</span></div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Enero 2026 · completado -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto enero 2026')">
+          <div class="hist-mes">ene 2026</div>
+          <div>
+            <div class="hist-titulo">Presentar IRPF 2024 con 15 días de antelación</div>
+            <div class="hist-titulo-sub">categoría · fiscal</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge completado">Completado</span></div>
+          <div>
+            <div class="hist-resultado pos">−21 días</div>
+            <div class="hist-resultado-sub">antes de plazo</div>
+          </div>
+          <div style="text-align: center; font-family:'JetBrains Mono', monospace; font-weight:600; font-size:11.5px; color: var(--ink-3);">cumplido</div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Diciembre 2025 · parcial -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto diciembre 2025 parcial')">
+          <div class="hist-mes">dic 2025</div>
+          <div>
+            <div class="hist-titulo">Subir rentas 3% al renovar FA32-H1</div>
+            <div class="hist-titulo-sub">categoría · ingresos</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge parcial">Parcial</span></div>
+          <div>
+            <div class="hist-resultado">+2,2% logrado</div>
+            <div class="hist-resultado-sub">objetivo +3%</div>
+          </div>
+          <div style="text-align: center;"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px; color: var(--pos);">+11 €/mes</span></div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Noviembre 2025 · fallido -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto noviembre 2025 fallido')">
+          <div class="hist-mes">nov 2025</div>
+          <div>
+            <div class="hist-titulo">Cerrar venta T48 antes de fin de mes</div>
+            <div class="hist-titulo-sub">categoría · cartera · reto extraordinario</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge completado">Completado</span></div>
+          <div>
+            <div class="hist-resultado pos">Vendido</div>
+            <div class="hist-resultado-sub">cerrado 26/11</div>
+          </div>
+          <div style="text-align: center;"><span style="font-family:'JetBrains Mono', monospace; font-weight:700; font-size:12px; color: var(--pos);">+52.400 €</span></div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+        <!-- Octubre 2025 · fallido -->
+        <div class="hist-row" onclick="showToast('Ver detalle reto octubre 2025 fallido')">
+          <div class="hist-mes">oct 2025</div>
+          <div>
+            <div class="hist-titulo">Ahorrar 3.000 € extra para fondo próximo piso</div>
+            <div class="hist-titulo-sub">categoría · ahorro</div>
+          </div>
+          <div style="text-align: center;"><span class="hist-badge fallido">No completado</span></div>
+          <div>
+            <div class="hist-resultado">1.100 € / 3.000 €</div>
+            <div class="hist-resultado-sub">37% completado</div>
+          </div>
+          <div style="text-align: center; font-family:'JetBrains Mono', monospace; font-weight:600; font-size:11.5px; color: var(--ink-4);">parcial</div>
+          <div class="hist-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+
+      </div>
+
+      <!-- ═══ BIBLIOTECA DE RETOS PROPUESTOS ═══ -->
+      <div class="sec-divider">
+        <div>
+          <div class="sec-divider-title">Retos propuestos para mayo 2026</div>
+        </div>
+        <div class="sec-divider-action" onclick="showToast('Ver biblioteca completa · 23 retos disponibles por categoría')">Ver todos →</div>
+      </div>
+
+      <div class="bib-grid">
+
+        <div class="bib-card" onclick="showToast('Activar reto · Segundo paso colchón · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot colchon"></span>Colchón · continuidad</div>
+          <div class="bib-titulo">Segundo paso · subir a 11 meses de colchón</div>
+          <div class="bib-desc">ATLAS sugiere continuar la racha · ahorrar otros 4.120 € en mayo para llegar a 11 meses de gastos cubiertos · queda 1 mes para la meta anual.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">30 días · mensual</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+        <div class="bib-card" onclick="showToast('Activar reto · Subir rentas · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot ingresos"></span>Ingresos · rentas</div>
+          <div class="bib-titulo">Subir 3 rentas en renovación · T64 + SF12</div>
+          <div class="bib-desc">3 contratos vencen en mayo · la zona ha subido 4% según mercado · negocia una subida del 3% en al menos 2 de los 3 contratos.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">30 días · mensual</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+        <div class="bib-card" onclick="showToast('Activar reto · Zero-based gastos · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot gastos"></span>Gastos · disciplina</div>
+          <div class="bib-titulo">Mes zero-based · no salirte en ninguna categoría</div>
+          <div class="bib-desc">Aplica el presupuesto zero-based durante el mes completo · mantente dentro del rango en las 8 categorías · reto de disciplina.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">30 días · mensual</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+        <div class="bib-card" onclick="showToast('Activar reto · IVA 2T · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot fiscal"></span>Fiscal · obligaciones</div>
+          <div class="bib-titulo">IVA 2T-2026 presentado antes del 10 de julio</div>
+          <div class="bib-desc">Adelantar la presentación del IVA 2T al 10 de julio (10 días antes del plazo) para evitar la presión del último momento · reto de anticipación.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">45 días · trimestral</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+        <div class="bib-card" onclick="showToast('Activar reto · Revisar cartera inversión · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot ahorro"></span>Ahorro · inversiones</div>
+          <div class="bib-titulo">Revisar y rebalancear cartera de inversión</div>
+          <div class="bib-desc">Tu cartera no se ha revisado en 8 meses · analiza cada posición · rebalancea según tu tesis actual y deja el informe en tu archivo.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">30 días · mensual</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+        <div class="bib-card" onclick="showToast('Activar reto · Ver 3 pisos nuevos · mayo 2026')">
+          <div class="bib-cat"><span class="bib-cat-dot ingresos"></span>Cartera · ampliación</div>
+          <div class="bib-titulo">Visitar 3 pisos para evaluar compra próxima</div>
+          <div class="bib-desc">Tu objetivo es 10 pisos para 2030 · estás en 6 · visitar 3 candidatos este mes te mantiene activo en el mercado y afina tu criterio.</div>
+          <div class="bib-footer">
+            <span class="bib-dur">30 días · mensual</span>
+            <span class="bib-cta">Activar →</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page retos -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA FONDOS DE AHORRO -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-fondos">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('landing')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('landing')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Fondos de ahorro</span>
+        </div>
+        <h1>Fondos de ahorro</h1>
+        <div class="page-sub">tu tesorería organizada por propósito</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Abrir Tesorería · ver movimientos reales en las cuentas origen')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          Ver Tesorería
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Crear nuevo fondo · nombre · meta · fecha · cuentas origen')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear fondo
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-fondos">
+
+      <!-- Tabs submod -->
+      <div class="submod-tabs">
+        <button onclick="showPage('proyeccion')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          Proyección
+        </button>
+        <button onclick="showPage('libertad')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Libertad financiera
+        </button>
+        <button onclick="showPage('objetivos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Objetivos
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          Fondos de ahorro
+        </button>
+        <button onclick="showPage('retos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Retos
+        </button>
+      </div>
+
+      <!-- ═══ HERO · tesorería total con distribución ═══ -->
+      <div class="fondos-hero">
+        <div class="fh-head">
+          <div>
+            <div class="fh-left-lab">Tesorería total bajo tu control</div>
+            <div class="fh-left-val">36.000 €</div>
+            <div class="fh-left-sub"><strong>18.400 €</strong> asignados a fondos<span style="color: var(--ink-5); margin: 0 6px;">·</span><strong>17.600 €</strong> libres por categorizar<span style="color: var(--ink-5); margin: 0 6px;">·</span>repartidos en <strong>3 bancos</strong></div>
+          </div>
+          <div class="fh-right">
+            <div class="fh-right-stat">
+              <div class="fh-right-lab">Ahorro mes</div>
+              <div class="fh-right-val pos">+1.650 €</div>
+            </div>
+            <div class="fh-right-stat">
+              <div class="fh-right-lab">Objetivo mes</div>
+              <div class="fh-right-val">4.120 €</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fh-comp">
+          <div class="fh-comp-title">Distribución de la tesorería</div>
+          <div class="fh-comp-track">
+            <div class="fh-comp-seg colchon" style="width: 27.2%;" onclick="showToast('Colchón · 9.800 € · 27% del total')"></div>
+            <div class="fh-comp-seg piso" style="width: 15%;" onclick="showToast('Próximo piso · 5.400 € · 15% del total')"></div>
+            <div class="fh-comp-seg reforma" style="width: 8.9%;" onclick="showToast('Reforma T64 · 3.200 € · 9% del total')"></div>
+            <div class="fh-comp-seg impuestos" style="width: 0%;" onclick="showToast('Impuestos · vacío')"></div>
+            <div class="fh-comp-seg sin" style="width: 48.9%;" onclick="showToast('Sin asignar · 17.600 € · 49% del total')"></div>
+          </div>
+          <div class="fh-comp-leg">
+            <div class="fh-comp-leg-item">
+              <div class="fh-comp-leg-dot colchon"></div>
+              <span class="fh-comp-leg-nom">Colchón de emergencia</span>
+              <span class="fh-comp-leg-val">9.800 €</span>
+              <span class="fh-comp-leg-pct">27%</span>
+            </div>
+            <div class="fh-comp-leg-item">
+              <div class="fh-comp-leg-dot piso"></div>
+              <span class="fh-comp-leg-nom">Próximo piso</span>
+              <span class="fh-comp-leg-val">5.400 €</span>
+              <span class="fh-comp-leg-pct">15%</span>
+            </div>
+            <div class="fh-comp-leg-item">
+              <div class="fh-comp-leg-dot reforma"></div>
+              <span class="fh-comp-leg-nom">Reforma T64</span>
+              <span class="fh-comp-leg-val">3.200 €</span>
+              <span class="fh-comp-leg-pct">9%</span>
+            </div>
+            <div class="fh-comp-leg-item">
+              <div class="fh-comp-leg-dot sin"></div>
+              <span class="fh-comp-leg-nom">Sin asignar</span>
+              <span class="fh-comp-leg-val">17.600 €</span>
+              <span class="fh-comp-leg-pct">49%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aviso · tesorería sin asignar -->
+      <div class="sin-asignar-box">
+        <div class="sin-asignar-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="sin-asignar-body">
+          <div class="sin-asignar-title">Tienes 17.600 € sin propósito claro</div>
+          <div class="sin-asignar-desc">casi la mitad de tu tesorería no está asignada a ningún fondo · <strong>dar propósito al dinero</strong> acelera el plan · crea un fondo nuevo o aumenta los existentes para reducir esta cifra.</div>
+        </div>
+        <button class="btn btn-gold" onclick="showToast('Wizard · asignar 17.600 € a fondos existentes o crear nuevo')">Asignar</button>
+      </div>
+
+      <!-- ═══ Grid de fondos ═══ -->
+      <div class="fondos-grid">
+
+        <!-- FONDO 1 · Colchón de emergencia -->
+        <div class="fondo-card colchon" onclick="showToast('Abrir detalle fondo Colchón · historial · ajustar meta')">
+          <div class="fondo-head">
+            <div class="fondo-head-left">
+              <div class="fondo-cat">
+                <span class="fondo-cat-dot colchon"></span>Colchón de emergencia
+              </div>
+              <div class="fondo-nom">Cubrir 24 meses de gastos</div>
+              <div class="fondo-obj">objetivo meses · <strong style="color: var(--ink-2); font-weight: 600;">98.880 €</strong></div>
+            </div>
+            <div class="fondo-menu">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+
+          <div class="fondo-kpi">
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Acumulado</div>
+              <div class="fondo-kpi-val">9.800 €</div>
+              <div class="fondo-kpi-sub">cubre 9 meses de gastos</div>
+            </div>
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Meta</div>
+              <div class="fondo-kpi-val meta">98.880 €</div>
+              <div class="fondo-kpi-sub">24 meses · dic 2028</div>
+            </div>
+          </div>
+
+          <div class="fondo-prog">
+            <div class="fondo-prog-top">
+              <span>Progreso</span>
+              <span class="pct">10%</span>
+            </div>
+            <div class="fondo-prog-bar"><div class="fondo-prog-fill colchon" style="width: 10%;"></div></div>
+          </div>
+
+          <div class="fondo-origen">
+            <div class="fondo-origen-lab">Cuentas que alimentan este fondo</div>
+            <div class="fondo-origen-list">
+              <div class="fondo-origen-item">
+                <div class="fondo-origen-banco">
+                  <div class="fondo-origen-logo" style="background: #EC0000;">SA</div>
+                  Santander · cuenta colchón<span class="masked">···· 2715</span>
+                </div>
+                <span class="fondo-origen-val">6.200 €</span>
+              </div>
+              <div class="fondo-origen-item">
+                <div class="fondo-origen-banco">
+                  <div class="fondo-origen-logo" style="background: #F2AA00;">UN</div>
+                  Unicaja · depósito 4437<span class="masked">···· 4437</span>
+                </div>
+                <span class="fondo-origen-val">3.600 €</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fondo-footer">
+            <div class="fondo-ritmo">
+              <span class="fondo-ritmo-lab">Ritmo necesario</span>
+              <span class="fondo-ritmo-val">+2.780 €/mes</span>
+            </div>
+            <span class="fondo-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- FONDO 2 · Próximo piso -->
+        <div class="fondo-card piso" onclick="showToast('Abrir detalle fondo Próximo piso')">
+          <div class="fondo-head">
+            <div class="fondo-head-left">
+              <div class="fondo-cat">
+                <span class="fondo-cat-dot piso"></span>Próxima compra
+              </div>
+              <div class="fondo-nom">Entrada próximo piso</div>
+              <div class="fondo-obj">objetivo cartera · <strong style="color: var(--ink-2); font-weight: 600;">80.000 €</strong></div>
+            </div>
+            <div class="fondo-menu">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+
+          <div class="fondo-kpi">
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Acumulado</div>
+              <div class="fondo-kpi-val">5.400 €</div>
+              <div class="fondo-kpi-sub">+850 € este mes</div>
+            </div>
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Meta</div>
+              <div class="fondo-kpi-val meta">80.000 €</div>
+              <div class="fondo-kpi-sub">entrada + gastos · dic 2027</div>
+            </div>
+          </div>
+
+          <div class="fondo-prog">
+            <div class="fondo-prog-top">
+              <span>Progreso</span>
+              <span class="pct">7%</span>
+            </div>
+            <div class="fondo-prog-bar"><div class="fondo-prog-fill piso" style="width: 7%;"></div></div>
+          </div>
+
+          <div class="fondo-origen">
+            <div class="fondo-origen-lab">Cuentas que alimentan este fondo</div>
+            <div class="fondo-origen-list">
+              <div class="fondo-origen-item">
+                <div class="fondo-origen-banco">
+                  <div class="fondo-origen-logo" style="background: #006CB3;">SB</div>
+                  Sabadell · inversión<span class="masked">···· 0842</span>
+                </div>
+                <span class="fondo-origen-val">5.400 €</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fondo-footer">
+            <div class="fondo-ritmo">
+              <span class="fondo-ritmo-lab">Ritmo necesario</span>
+              <span class="fondo-ritmo-val">+3.266 €/mes</span>
+            </div>
+            <span class="fondo-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- FONDO 3 · Reforma T64 -->
+        <div class="fondo-card reforma" onclick="showToast('Abrir detalle fondo Reforma T64')">
+          <div class="fondo-head">
+            <div class="fondo-head-left">
+              <div class="fondo-cat">
+                <span class="fondo-cat-dot reforma"></span>Reforma prevista
+              </div>
+              <div class="fondo-nom">Reforma Tenderina 64 · cocina + baño</div>
+              <div class="fondo-obj">objetivo mantenimiento · <strong style="color: var(--ink-2); font-weight: 600;">12.000 €</strong></div>
+            </div>
+            <div class="fondo-menu">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+
+          <div class="fondo-kpi">
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Acumulado</div>
+              <div class="fondo-kpi-val">3.200 €</div>
+              <div class="fondo-kpi-sub">+400 € este mes</div>
+            </div>
+            <div class="fondo-kpi-block">
+              <div class="fondo-kpi-lab">Meta</div>
+              <div class="fondo-kpi-val meta">12.000 €</div>
+              <div class="fondo-kpi-sub">presupuesto obra · jul 2027</div>
+            </div>
+          </div>
+
+          <div class="fondo-prog">
+            <div class="fondo-prog-top">
+              <span>Progreso</span>
+              <span class="pct">27%</span>
+            </div>
+            <div class="fondo-prog-bar"><div class="fondo-prog-fill reforma" style="width: 27%;"></div></div>
+          </div>
+
+          <div class="fondo-origen">
+            <div class="fondo-origen-lab">Cuentas que alimentan este fondo</div>
+            <div class="fondo-origen-list">
+              <div class="fondo-origen-item">
+                <div class="fondo-origen-banco">
+                  <div class="fondo-origen-logo" style="background: #006CB3;">SB</div>
+                  Sabadell · inmuebles<span class="masked">···· 0842</span>
+                </div>
+                <span class="fondo-origen-val">3.200 €</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="fondo-footer">
+            <div class="fondo-ritmo">
+              <span class="fondo-ritmo-lab">Ritmo necesario</span>
+              <span class="fondo-ritmo-val">+587 €/mes</span>
+            </div>
+            <span class="fondo-cta">Ver detalle →</span>
+          </div>
+        </div>
+
+        <!-- Card crear nuevo fondo -->
+        <div class="fondo-card-new" onclick="showToast('Wizard · Crear fondo · nombre · meta · fecha · cuentas origen')">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <div class="fondo-card-new-title">Crear nuevo fondo</div>
+          <div class="fondo-card-new-sub">asigna propósito a parte de tu tesorería · ATLAS hará el seguimiento desde tus cuentas reales</div>
+        </div>
+
+      </div>
+
+      <!-- Movimientos recientes de fondos -->
+      <div class="sec-divider">
+        <div>
+          <div class="sec-divider-title">Movimientos recientes entre fondos</div>
+        </div>
+        <div class="sec-divider-action" onclick="showToast('Ver historial completo · 47 movimientos vinculados a fondos este año')">Ver todos →</div>
+      </div>
+
+      <div class="fondo-movs">
+        <div class="fondo-mov-row">
+          <div class="fondo-mov-icon in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+          <div>
+            <div class="fondo-mov-titulo">Aporte desde renta abril · FA32-H1 + H2</div>
+            <div class="fondo-mov-sub">22/04/2026 · Santander ···· 2715 · origen rentas</div>
+          </div>
+          <span class="fondo-mov-badge colchon">colchón</span>
+          <span class="fondo-mov-imp pos">+850 €</span>
+        </div>
+
+        <div class="fondo-mov-row">
+          <div class="fondo-mov-icon in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+          <div>
+            <div class="fondo-mov-titulo">Aporte nómina abril · transferencia automática</div>
+            <div class="fondo-mov-sub">18/04/2026 · Sabadell ···· 0842 · regla recurrente</div>
+          </div>
+          <span class="fondo-mov-badge proximo">próximo piso</span>
+          <span class="fondo-mov-imp pos">+500 €</span>
+        </div>
+
+        <div class="fondo-mov-row">
+          <div class="fondo-mov-icon in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+          <div>
+            <div class="fondo-mov-titulo">Aporte desde renta abril · T64-4D</div>
+            <div class="fondo-mov-sub">15/04/2026 · Sabadell ···· 0842 · origen rentas</div>
+          </div>
+          <span class="fondo-mov-badge reforma">reforma T64</span>
+          <span class="fondo-mov-imp pos">+400 €</span>
+        </div>
+
+        <div class="fondo-mov-row">
+          <div class="fondo-mov-icon out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          </div>
+          <div>
+            <div class="fondo-mov-titulo">Retirada · factura pintura H2 · H4</div>
+            <div class="fondo-mov-sub">08/04/2026 · Sabadell ···· 0842 · gasto mantenimiento</div>
+          </div>
+          <span class="fondo-mov-badge reforma">reforma T64</span>
+          <span class="fondo-mov-imp neg">−1.280 €</span>
+        </div>
+
+        <div class="fondo-mov-row">
+          <div class="fondo-mov-icon in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+          <div>
+            <div class="fondo-mov-titulo">Aporte marzo · excedente de presupuesto</div>
+            <div class="fondo-mov-sub">31/03/2026 · Santander ···· 2715 · regla cierre de mes</div>
+          </div>
+          <span class="fondo-mov-badge colchon">colchón</span>
+          <span class="fondo-mov-imp pos">+800 €</span>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page fondos -->
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA MI PRESUPUESTO -->
+    <!-- ═══════════════════════════════════════ -->
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA PROYECCIÓN · columna vertebral Mi Plan v2 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-proyeccion">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('landing')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('landing')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Proyección</span>
+        </div>
+        <h1>Proyección de caja</h1>
+        <div class="page-sub">mes a mes navegable por años · ATLAS proyecta sumando lo que tienes en Personal · Inmuebles · Financiación · Inversiones · Fiscal · sin recalcular nada</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar proyección 18 años a Excel')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Excel
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-proyeccion">
+
+      <!-- Tabs submod · Proyección activa -->
+      <div class="submod-tabs">
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          Proyección
+        </button>
+        <button onclick="showPage('libertad')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Libertad financiera
+        </button>
+        <button onclick="showPage('objetivos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Objetivos
+        </button>
+        <button onclick="showPage('fondos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          Fondos de ahorro
+        </button>
+        <button onclick="showPage('retos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Retos
+        </button>
+      </div>
+
+      <!-- Banner explicativo -->
+      <div class="proy-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div>
+          <strong>Esta vista no se edita aquí.</strong> ATLAS lee los catálogos de cada módulo y los proyecta · si quieres cambiar un valor · ve al módulo origen (clic en la fila para saltar). Cambios ahí se reflejan inmediatamente aquí.
+        </div>
+      </div>
+
+      <!-- KPIs strip · resumen del año seleccionado -->
+      <div class="proy-kpis">
+        <div class="proy-kpi">
+          <div class="proy-kpi-lab">Año seleccionado</div>
+          <div class="proy-kpi-val">2026</div>
+          <div class="proy-kpi-sub">vista activa · cambia abajo</div>
+        </div>
+        <div class="proy-kpi">
+          <div class="proy-kpi-lab">Ingresos previstos</div>
+          <div class="proy-kpi-val pos">+128.420 €</div>
+          <div class="proy-kpi-sub">trabajo + alquileres + intereses</div>
+        </div>
+        <div class="proy-kpi">
+          <div class="proy-kpi-lab">Salidas previstas</div>
+          <div class="proy-kpi-val neg">−87.890 €</div>
+          <div class="proy-kpi-sub">personal + inmuebles + cuotas + IRPF</div>
+        </div>
+        <div class="proy-kpi">
+          <div class="proy-kpi-lab">Resultado caja anual</div>
+          <div class="proy-kpi-val gold">+40.530 €</div>
+          <div class="proy-kpi-sub">ahorro neto · va a fondos</div>
+        </div>
+      </div>
+
+      <!-- Selector de año -->
+      <div class="proy-year-bar">
+        <div class="proy-year-lab">Año</div>
+        <button class="proy-pill" onclick="showToast('2024 · cerrado · vista solo lectura')">2024</button>
+        <button class="proy-pill" onclick="showToast('2025 · cerrado · vista solo lectura')">2025</button>
+        <button class="proy-pill active">2026</button>
+        <button class="proy-pill" onclick="showToast('2027 · proyección')">2027</button>
+        <button class="proy-pill" onclick="showToast('2028 · proyección')">2028</button>
+        <button class="proy-pill" onclick="showToast('2029 · vence Sabadell · cuota baja a 2.960 €/mes')">2029</button>
+        <button class="proy-pill" onclick="showToast('2031 · vence pignora PP · cuota baja a 2.720 €/mes')">2031</button>
+        <span style="margin-left: auto;"></span>
+        <button class="proy-pill" onclick="showToast('Vista plurianual · 18 años · resumen al pie')">Ver 18 años ↓</button>
+      </div>
+
+      <!-- TABLA PRINCIPAL · 12 columnas + total -->
+      <div class="proy-table-wrap">
+
+        <div class="proy-table-hd">
+          <div>
+            <div class="proy-table-title">Proyección mes a mes · 2026</div>
+            <div class="proy-table-sub">cada fila lee de su módulo origen · clic para saltar y editar</div>
+          </div>
+          <span class="proy-table-helper">+ ingresos · − salidas · resultado en negro</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+          <table class="proy-table">
+            <thead>
+              <tr>
+                <th style="min-width: 280px;">Concepto</th>
+                <th class="m">ENE</th>
+                <th class="m">FEB</th>
+                <th class="m">MAR</th>
+                <th class="m">ABR</th>
+                <th class="m">MAY</th>
+                <th class="m">JUN</th>
+                <th class="m">JUL</th>
+                <th class="m">AGO</th>
+                <th class="m">SEP</th>
+                <th class="m">OCT</th>
+                <th class="m">NOV</th>
+                <th class="m">DIC</th>
+                <th class="r" style="min-width: 100px;">Total año</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <!-- ═══ INGRESOS ═══ -->
+              <tr class="proy-grp pos"><td colspan="14">↑ Ingresos · entran a tu caja</td></tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Personal → Ingresos → Nómina Orange')">
+                <td class="lbl">
+                  <span class="proy-tag personal">Personal</span>
+                  Nómina Orange España · líquido
+                </td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">10.500</td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">15.592</td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">7.500</td>
+                <td class="m">15.592</td>
+                <td class="r">109.184</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inmuebles → Buigas 15 → Cobros')">
+                <td class="lbl">
+                  <span class="proy-tag inmuebles">Inmuebles</span>
+                  Renta Buigas 15 · alquiler
+                </td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="m">850</td>
+                <td class="r">10.200</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inmuebles → Tenderina 64 → Cobros')">
+                <td class="lbl">
+                  <span class="proy-tag inmuebles">Inmuebles</span>
+                  Renta Tenderina 64 · habitación
+                </td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="m">450</td>
+                <td class="r">5.400</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inversiones → SmartFlip')">
+                <td class="lbl">
+                  <span class="proy-tag inversiones">Inversiones</span>
+                  Intereses SmartFlip · préstamo
+                </td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="m">750</td>
+                <td class="r">9.000</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inversiones → Unihouser')">
+                <td class="lbl">
+                  <span class="proy-tag inversiones">Inversiones</span>
+                  Cobros Unihouser · cuota préstamo
+                </td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="m">420</td>
+                <td class="r">5.040</td>
+              </tr>
+
+              <tr class="proy-subtotal pos">
+                <td class="lbl">Total ingresos</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">12.970</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">18.062</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">9.970</td>
+                <td class="m">18.062</td>
+                <td class="r">138.824</td>
+              </tr>
+
+              <!-- ═══ GASTOS PERSONALES ═══ -->
+              <tr class="proy-grp neg"><td colspan="14">↓ Gastos personales · hogar</td></tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Personal → Mi vivienda · alquiler')">
+                <td class="lbl">
+                  <span class="proy-tag personal">Personal</span>
+                  Alquiler vivienda habitual
+                </td>
+                <td class="m">−1.350</td>
+                <td class="m">−1.350</td>
+                <td class="m">−1.350</td>
+                <td class="m">−1.350</td>
+                <td class="m">−1.350</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="m">−1.378</td>
+                <td class="r">−16.398</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Personal → Gastos → Compromisos recurrentes')">
+                <td class="lbl">
+                  <span class="proy-tag personal">Personal</span>
+                  Compromisos recurrentes · 9 ítems
+                </td>
+                <td class="m">−1.124</td>
+                <td class="m">−964</td>
+                <td class="m">−934</td>
+                <td class="m">−929</td>
+                <td class="m">−916</td>
+                <td class="m">−903</td>
+                <td class="m">−910</td>
+                <td class="m">−912</td>
+                <td class="m">−1.532</td>
+                <td class="m">−927</td>
+                <td class="m">−942</td>
+                <td class="m">−956</td>
+                <td class="r">−11.949</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Personal → Gastos · movimientos categorizados')">
+                <td class="lbl">
+                  <span class="proy-tag personal">Personal</span>
+                  Gastos categorizados · alimentación, ocio, etc.
+                </td>
+                <td class="m">−1.860</td>
+                <td class="m">−1.840</td>
+                <td class="m">−1.820</td>
+                <td class="m">−1.811</td>
+                <td class="m">−1.820</td>
+                <td class="m">−1.890</td>
+                <td class="m">−2.150</td>
+                <td class="m">−2.150</td>
+                <td class="m">−1.840</td>
+                <td class="m">−1.820</td>
+                <td class="m">−1.860</td>
+                <td class="m">−2.020</td>
+                <td class="r">−22.881</td>
+              </tr>
+
+              <tr class="proy-subtotal neg">
+                <td class="lbl">Total gastos personales</td>
+                <td class="m">−4.334</td>
+                <td class="m">−4.154</td>
+                <td class="m">−4.104</td>
+                <td class="m">−4.090</td>
+                <td class="m">−4.086</td>
+                <td class="m">−4.171</td>
+                <td class="m">−4.438</td>
+                <td class="m">−4.440</td>
+                <td class="m">−4.750</td>
+                <td class="m">−4.125</td>
+                <td class="m">−4.180</td>
+                <td class="m">−4.354</td>
+                <td class="r">−51.228</td>
+              </tr>
+
+              <!-- ═══ GASTOS INMUEBLES ═══ -->
+              <tr class="proy-grp neg"><td colspan="14">↓ Gastos de inmuebles de inversión</td></tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inmuebles → opex consolidado · 6 inmuebles')">
+                <td class="lbl">
+                  <span class="proy-tag inmuebles">Inmuebles</span>
+                  Comunidades · 6 inmuebles
+                </td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="m">−312</td>
+                <td class="r">−3.744</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inmuebles → opex · IBI')">
+                <td class="lbl">
+                  <span class="proy-tag inmuebles">Inmuebles</span>
+                  IBI · 6 inmuebles · pagos jun + nov
+                </td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">−1.245</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">−1.245</td>
+                <td class="m">—</td>
+                <td class="r">−2.490</td>
+              </tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Inmuebles → opex · seguros y otros')">
+                <td class="lbl">
+                  <span class="proy-tag inmuebles">Inmuebles</span>
+                  Seguros · suministros · mantenimiento
+                </td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−420</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="m">−228</td>
+                <td class="r">−2.928</td>
+              </tr>
+
+              <tr class="proy-subtotal neg">
+                <td class="lbl">Total gastos inmuebles</td>
+                <td class="m">−540</td>
+                <td class="m">−540</td>
+                <td class="m">−540</td>
+                <td class="m">−732</td>
+                <td class="m">−540</td>
+                <td class="m">−1.785</td>
+                <td class="m">−540</td>
+                <td class="m">−540</td>
+                <td class="m">−540</td>
+                <td class="m">−540</td>
+                <td class="m">−1.785</td>
+                <td class="m">−540</td>
+                <td class="r">−9.162</td>
+              </tr>
+
+              <!-- ═══ FINANCIACIÓN ═══ -->
+              <tr class="proy-grp neg"><td colspan="14">↓ Cuotas de préstamos · 4 activos</td></tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Financiación → Calendario · cuotas mes a mes')">
+                <td class="lbl">
+                  <span class="proy-tag financiacion">Financiación</span>
+                  Cuotas hipotecas + personales + pignora
+                </td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="m">−3.445</td>
+                <td class="r">−41.340</td>
+              </tr>
+
+              <!-- ═══ FISCAL ═══ -->
+              <tr class="proy-grp neg"><td colspan="14">↓ Obligaciones fiscales · NO entran en 50/30/20</td></tr>
+
+              <tr class="proy-clickable" onclick="showToast('Saltar a Fiscal → IRPF anual')">
+                <td class="lbl">
+                  <span class="proy-tag fiscal">Fiscal</span>
+                  IRPF anual · campaña 2025 · resultado a pagar
+                </td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">−4.200</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">—</td>
+                <td class="m">−1.680</td>
+                <td class="m">—</td>
+                <td class="r">−5.880</td>
+              </tr>
+
+              <!-- ═══ RESULTADO CAJA ═══ -->
+              <tr class="proy-result">
+                <td class="lbl">Resultado caja del mes</td>
+                <td class="m">+1.651</td>
+                <td class="m">+1.831</td>
+                <td class="m">+4.881</td>
+                <td class="m">+1.703</td>
+                <td class="m">+1.899</td>
+                <td class="m">+8.461</td>
+                <td class="m">+1.547</td>
+                <td class="m">+1.545</td>
+                <td class="m">+1.235</td>
+                <td class="m">+1.860</td>
+                <td class="m">−1.220</td>
+                <td class="m">+9.723</td>
+                <td class="r">+31.214</td>
+              </tr>
+
+              <tr class="proy-result accumulated">
+                <td class="lbl">Caja acumulada · saldo objetivo</td>
+                <td class="m">42.184</td>
+                <td class="m">44.015</td>
+                <td class="m">48.896</td>
+                <td class="m">50.599</td>
+                <td class="m">52.498</td>
+                <td class="m">60.959</td>
+                <td class="m">62.506</td>
+                <td class="m">64.051</td>
+                <td class="m">65.286</td>
+                <td class="m">67.146</td>
+                <td class="m">65.926</td>
+                <td class="m">75.649</td>
+                <td class="r">75.649</td>
+              </tr>
+
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══ FUENTES DE DATOS · explica de dónde sale cada cosa ═══ -->
+      <div class="proy-sources">
+        <div class="proy-sources-hd">
+          <div class="proy-sources-title">¿De dónde salen estos números?</div>
+          <div class="proy-sources-sub">cada módulo aporta filas distintas · si quieres cambiar algo · ve al origen</div>
+        </div>
+        <div class="proy-sources-grid">
+          <div class="proy-source">
+            <div class="proy-source-tag personal">Personal</div>
+            <div class="proy-source-desc">Nóminas + autónomo · catálogo de compromisos recurrentes · vivienda habitual · gastos categorizados</div>
+            <div class="proy-source-rows">5 filas</div>
+          </div>
+          <div class="proy-source">
+            <div class="proy-source-tag inmuebles">Inmuebles</div>
+            <div class="proy-source-desc">Rentas activas (contracts + rentaMensual) · opex recurrentes (comunidad · IBI · seguros) · mantenimiento</div>
+            <div class="proy-source-rows">5 filas</div>
+          </div>
+          <div class="proy-source">
+            <div class="proy-source-tag financiacion">Financiación</div>
+            <div class="proy-source-desc">Calendario de cuotas · cuadro de amortización por préstamo · cambia automáticamente cuando vence un préstamo</div>
+            <div class="proy-source-rows">1 fila</div>
+          </div>
+          <div class="proy-source">
+            <div class="proy-source-tag inversiones">Inversiones</div>
+            <div class="proy-source-desc">Calendarios de cobro de préstamos P2P · cuotas Unihouser · dividendos previstos · NO valor de mercado</div>
+            <div class="proy-source-rows">2 filas</div>
+          </div>
+          <div class="proy-source">
+            <div class="proy-source-tag fiscal">Fiscal</div>
+            <div class="proy-source-desc">Modelos trimestrales (M303 · M130 · RETA si autónomo) · resultado IRPF anual · 2º plazo nov</div>
+            <div class="proy-source-rows">1 fila</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VISTA PLURIANUAL · 18 años · resumen anual ═══ -->
+      <div class="proy-multi-year">
+        <div class="proy-multi-hd">
+          <div>
+            <div class="proy-multi-title">Vista plurianual · 18 años</div>
+            <div class="proy-multi-sub">resultado anual de caja · refleja vencimientos de préstamos y cambios estructurales</div>
+          </div>
+        </div>
+
+        <table class="proy-multi-table">
+          <thead>
+            <tr>
+              <th>Año</th>
+              <th class="r">Ingresos</th>
+              <th class="r">Salidas</th>
+              <th class="r">Cuotas préstamos</th>
+              <th class="r">IRPF</th>
+              <th class="r" style="background: var(--gold-wash); color: var(--gold-ink);">Resultado</th>
+              <th>Hito</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="year">2026</td><td class="r">+138.824</td><td class="r">−60.390</td><td class="r">−41.340</td><td class="r">−5.880</td><td class="r" style="font-weight: 700;">+31.214</td><td class="hito">año actual</td></tr>
+            <tr><td class="year">2027</td><td class="r">+141.600</td><td class="r">−61.598</td><td class="r">−41.340</td><td class="r">−6.100</td><td class="r" style="font-weight: 700;">+32.562</td><td class="hito">—</td></tr>
+            <tr><td class="year">2028</td><td class="r">+144.432</td><td class="r">−62.830</td><td class="r">−41.340</td><td class="r">−6.300</td><td class="r" style="font-weight: 700;">+33.962</td><td class="hito">—</td></tr>
+            <tr class="proy-multi-hito"><td class="year">2029</td><td class="r">+147.321</td><td class="r">−64.087</td><td class="r">−39.885</td><td class="r">−6.500</td><td class="r" style="font-weight: 700;">+36.849</td><td class="hito">vence Sabadell · libera 485 €/mes</td></tr>
+            <tr><td class="year">2030</td><td class="r">+150.267</td><td class="r">−65.368</td><td class="r">−35.520</td><td class="r">−6.700</td><td class="r" style="font-weight: 700;">+42.679</td><td class="hito">—</td></tr>
+            <tr class="proy-multi-hito"><td class="year">2031</td><td class="r">+153.273</td><td class="r">−66.676</td><td class="r">−35.520</td><td class="r">−6.900</td><td class="r" style="font-weight: 700;">+44.177</td><td class="hito">vence pignora PP · libera 240 €/mes</td></tr>
+            <tr><td class="year">2032</td><td class="r">+156.338</td><td class="r">−68.009</td><td class="r">−32.640</td><td class="r">−7.100</td><td class="r" style="font-weight: 700;">+48.589</td><td class="hito">—</td></tr>
+            <tr><td class="year">2033 · 2038</td><td class="r">~ +163.000 / año</td><td class="r">~ −71.000 / año</td><td class="r">−32.640</td><td class="r">~ −7.500 / año</td><td class="r" style="font-weight: 700;">~ +51.860 / año</td><td class="hito">6 años en cruise · sin cambios</td></tr>
+            <tr class="proy-multi-hito"><td class="year">2039</td><td class="r">+178.290</td><td class="r">−77.800</td><td class="r">−32.640</td><td class="r">−8.500</td><td class="r" style="font-weight: 700;">+59.350</td><td class="hito">vence ING T48 · libera 1.480 €/mes</td></tr>
+            <tr><td class="year">2040 · 2043</td><td class="r">~ +185.000 / año</td><td class="r">~ −81.000 / año</td><td class="r">−14.880</td><td class="r">~ −9.000 / año</td><td class="r" style="font-weight: 700;">~ +80.120 / año</td><td class="hito">salto fuerte · solo Unicaja T64</td></tr>
+            <tr class="proy-multi-hito"><td class="year">2044</td><td class="r">+195.420</td><td class="r">−85.300</td><td class="r">−14.880</td><td class="r">−9.500</td><td class="r" style="font-weight: 700;">+85.740</td><td class="hito">vence Unicaja T64 · libera 1.240 €/mes</td></tr>
+            <tr class="proy-multi-libre"><td class="year">2045</td><td class="r">+198.460</td><td class="r">−86.700</td><td class="r" class="ended">0</td><td class="r">−9.700</td><td class="r" style="font-weight: 700;">+102.060</td><td class="hito">libre de financiación</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    <!-- /page proyeccion -->
+
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- PÁGINA LIBERTAD FINANCIERA · SIMULADOR -->
+    <!-- ═══════════════════════════════════════ -->
+    <div class="page-head" id="page-head-libertad">
+      <div style="flex: 1;">
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showPage('landing')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showPage('landing')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Libertad financiera</span>
+        </div>
+        <h1>Libertad financiera</h1>
+        <div class="page-sub">simulador de escenarios · mueve variables y ve cómo cambia tu fecha de libertad</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Editar objetivo · cuánto necesitas al mes · año límite · supuestos base')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          Editar objetivo
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Guardar escenario actual · dale nombre · se añade a la biblioteca')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar escenario
+        </button>
+      </div>
+    </div>
+
+    <div class="page" id="page-libertad">
+
+      <!-- Tabs submod -->
+      <div class="submod-tabs">
+        <button onclick="showPage('proyeccion')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          Proyección
+        </button>
+        <button class="active">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Libertad financiera
+        </button>
+        <button onclick="showPage('objetivos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          Objetivos
+        </button>
+        <button onclick="showPage('fondos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          Fondos de ahorro
+        </button>
+        <button onclick="showPage('retos')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Retos
+        </button>
+      </div>
+
+      <!-- Hero · fecha proyectada con delta del escenario -->
+      <div class="lib-hero">
+        <div class="lib-hero-body">
+          <div>
+            <div class="lib-hero-lab">Proyección · escenario actual</div>
+            <div class="lib-hero-fecha">septiembre 2031 <span class="delta" id="fecha-delta">↓ 8 meses antes que el plan base</span></div>
+            <div class="lib-hero-sub">cubres el <strong>100% de gastos</strong> con renta pasiva · <strong>actualmente 54%</strong> · ritmo necesario <strong>+31 €/mes</strong> de renta extra</div>
+          </div>
+          <div class="lib-hero-stats">
+            <div class="lib-hero-stat">
+              <div class="lib-hero-stat-lab">Renta pasiva meta</div>
+              <div class="lib-hero-stat-val pos">4.120 €/m</div>
+            </div>
+            <div class="lib-hero-stat">
+              <div class="lib-hero-stat-lab">Años restantes</div>
+              <div class="lib-hero-stat-val gold">5,4</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Layout gráfica + controles ═══ -->
+      <div class="lib-sim-grid">
+
+        <!-- Gráfica reactiva -->
+        <div class="lib-chart-card">
+          <div class="lib-chart-head">
+            <div class="lib-chart-title">Curva de renta pasiva · plan base vs escenario</div>
+            <div class="lib-chart-legend">
+              <div class="lib-chart-leg-item"><div class="line base"></div>Plan base · sin cambios</div>
+              <div class="lib-chart-leg-item"><div class="line sim"></div>Escenario simulado</div>
+              <div class="lib-chart-leg-item"><div class="dash meta"></div>Meta gastos de vida</div>
+            </div>
+          </div>
+
+          <svg class="lib-chart" viewBox="0 0 900 280" preserveAspectRatio="none">
+            <!-- Grid horizontal -->
+            <g stroke="var(--line-2)" stroke-width="1" fill="none">
+              <line x1="50" y1="50" x2="870" y2="50"/>
+              <line x1="50" y1="105" x2="870" y2="105"/>
+              <line x1="50" y1="160" x2="870" y2="160"/>
+              <line x1="50" y1="215" x2="870" y2="215"/>
+            </g>
+
+            <!-- Eje Y -->
+            <g font-family="JetBrains Mono" font-size="9" fill="var(--ink-4)" font-weight="600">
+              <text x="45" y="55" text-anchor="end">5.000 €</text>
+              <text x="45" y="110" text-anchor="end">3.750 €</text>
+              <text x="45" y="165" text-anchor="end">2.500 €</text>
+              <text x="45" y="220" text-anchor="end">1.250 €</text>
+              <text x="45" y="265" text-anchor="end">0 €</text>
+            </g>
+
+            <!-- Eje X · años -->
+            <g font-family="JetBrains Mono" font-size="9.5" fill="var(--ink-4)" font-weight="600" text-anchor="middle">
+              <text x="50" y="275">2026</text>
+              <text x="187" y="275">2027</text>
+              <text x="324" y="275">2028</text>
+              <text x="461" y="275">2029</text>
+              <text x="598" y="275">2030</text>
+              <text x="735" y="275">2031</text>
+              <text x="870" y="275">2032</text>
+            </g>
+
+            <!-- Línea meta · 4.120€ = y ≈ 78 -->
+            <line x1="50" y1="78" x2="870" y2="78" stroke="var(--neg)" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.65"/>
+            <text x="862" y="72" text-anchor="end" font-family="Inter" font-size="10" fill="var(--neg)" font-weight="700">meta · 4.120 €/mes</text>
+
+            <!-- Plan base · curva suave desde 2.230€ (y=141) a 4.120€ llegando en 2032 -->
+            <path d="M 50 141 L 187 135 L 324 125 L 461 112 L 598 100 L 735 90 L 870 80"
+                  stroke="var(--brand)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+
+            <!-- Escenario simulado · llega antes · curva más agresiva -->
+            <path d="M 50 141 L 187 128 L 324 108 L 461 90 L 598 78 L 735 72 L 870 70"
+                  stroke="var(--gold)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <!-- Área bajo escenario · oro sutil -->
+            <path d="M 50 141 L 187 128 L 324 108 L 461 90 L 598 78 L 735 72 L 870 70 L 870 260 L 50 260 Z"
+                  fill="url(#libGrad)" opacity="0.3"/>
+            <defs>
+              <linearGradient id="libGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#B88A3E" stop-opacity="0.18"/>
+                <stop offset="100%" stop-color="#B88A3E" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Punto hoy · 2.230€ abril 2026 -->
+            <circle cx="50" cy="141" r="5" fill="#B88A3E" stroke="#fff" stroke-width="2"/>
+            <text x="60" y="133" font-family="JetBrains Mono" font-size="10" fill="var(--ink)" font-weight="700">hoy · 2.230 €</text>
+
+            <!-- Punto meta escenario · septiembre 2031 cruza meta -->
+            <circle cx="620" cy="78" r="6" fill="#fff" stroke="var(--pos)" stroke-width="2.5"/>
+            <line x1="620" y1="78" x2="620" y2="265" stroke="var(--pos)" stroke-width="1" stroke-dasharray="2 2" opacity="0.45"/>
+            <text x="628" y="65" font-family="Inter" font-size="10.5" fill="var(--pos)" font-weight="700">libertad · sep 2031</text>
+
+            <!-- Punto meta plan base · cruza meta más tarde -->
+            <circle cx="780" cy="83" r="4.5" fill="#fff" stroke="var(--brand)" stroke-width="2"/>
+            <text x="788" y="78" font-family="Inter" font-size="9.5" fill="var(--brand-2)" font-weight="600">plan base · may 2032</text>
+          </svg>
+        </div>
+
+        <!-- Panel controles · sliders -->
+        <div class="lib-controls-card">
+          <div class="lib-controls-head">
+            <div class="lib-controls-title">Variables del escenario</div>
+            <div class="lib-controls-reset" onclick="showToast('Resetear al plan base · deshace todos los cambios')">Resetear</div>
+          </div>
+
+          <!-- Slider 1 · Nº inmuebles -->
+          <div class="lib-control">
+            <div class="lib-control-top">
+              <div class="lib-control-lab">Inmuebles en cartera</div>
+              <div class="lib-control-val">8 pisos</div>
+            </div>
+            <input type="range" class="lib-control-slider" min="6" max="15" value="8"
+                   oninput="showToast('Simular con ' + this.value + ' inmuebles · impacta renta pasiva proyectada')"/>
+            <div class="lib-control-range"><span>actual · 6</span><span>meta · 10</span><span>máx · 15</span></div>
+          </div>
+
+          <!-- Slider 2 · Renta media por inmueble -->
+          <div class="lib-control">
+            <div class="lib-control-top">
+              <div class="lib-control-lab">Renta media mensual · por piso</div>
+              <div class="lib-control-val">575 €</div>
+            </div>
+            <input type="range" class="lib-control-slider" min="400" max="900" value="575" step="25"
+                   oninput="showToast('Simular renta media ' + this.value + ' €/mes por inmueble')"/>
+            <div class="lib-control-range"><span>400 €</span><span>actual · 575</span><span>900 €</span></div>
+          </div>
+
+          <!-- Slider 3 · Gastos de vida mensuales -->
+          <div class="lib-control">
+            <div class="lib-control-top">
+              <div class="lib-control-lab">Gastos de vida mensuales</div>
+              <div class="lib-control-val">4.120 €</div>
+            </div>
+            <input type="range" class="lib-control-slider" min="2500" max="6000" value="4120" step="50"
+                   oninput="showToast('Simular gastos de vida ' + this.value + ' €/mes')"/>
+            <div class="lib-control-range"><span>2.500 €</span><span>actual · 4.120</span><span>6.000 €</span></div>
+          </div>
+
+          <!-- Slider 4 · Inflación anual -->
+          <div class="lib-control">
+            <div class="lib-control-top">
+              <div class="lib-control-lab">Inflación anual proyectada</div>
+              <div class="lib-control-val">2,5%</div>
+            </div>
+            <input type="range" class="lib-control-slider" min="0" max="6" value="2.5" step="0.1"
+                   oninput="showToast('Simular inflación ' + this.value + '% anual')"/>
+            <div class="lib-control-range"><span>0%</span><span>BCE · 2%</span><span>6%</span></div>
+          </div>
+
+          <!-- Slider 5 · Subida anual rentas -->
+          <div class="lib-control">
+            <div class="lib-control-top">
+              <div class="lib-control-lab">Subida anual de rentas</div>
+              <div class="lib-control-val gold">+3,0%</div>
+            </div>
+            <input type="range" class="lib-control-slider" min="0" max="8" value="3" step="0.25"
+                   oninput="showToast('Simular subida anual rentas ' + this.value + '%')"/>
+            <div class="lib-control-range"><span>0%</span><span>IPC · 2,5%</span><span>8%</span></div>
+          </div>
+
+          <!-- Impact bar · delta sobre plan base -->
+          <div class="lib-impact">
+            <div class="lib-impact-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="lib-impact-body">
+              <div class="lib-impact-title">Impacto · 8 meses antes</div>
+              <div class="lib-impact-desc">este escenario adelanta tu libertad financiera de <strong>may 2032</strong> a <strong>sep 2031</strong></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ═══ ESCENARIOS GUARDADOS ═══ -->
+      <div class="sec-divider">
+        <div>
+          <div class="sec-divider-title">Escenarios guardados</div>
+        </div>
+        <div class="sec-divider-action" onclick="showToast('Ver todos los escenarios · comparar varios a la vez')">Comparar →</div>
+      </div>
+
+      <div class="lib-esc-grid">
+
+        <!-- Escenario 1 · Plan actual (activo) -->
+        <div class="lib-esc-card active" onclick="showToast('Aplicar escenario Plan actual · escenario activo')">
+          <div class="lib-esc-head">
+            <span class="lib-esc-badge actual">Activo</span>
+            <div class="lib-esc-menu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+          <div class="lib-esc-titulo">Plan actual</div>
+          <div class="lib-esc-desc">6 pisos · renta media 575 € · subida 3% anual · inflación 2,5% · gastos vida 4.120 €</div>
+          <div class="lib-esc-footer">
+            <span class="lib-esc-footer-lab">Libertad en</span>
+            <span class="lib-esc-footer-val">sep 2031</span>
+          </div>
+        </div>
+
+        <!-- Escenario 2 · Agresivo · compro 2 pisos más -->
+        <div class="lib-esc-card" onclick="showToast('Aplicar escenario Agresivo · +2 pisos · ver curva cambiar')">
+          <div class="lib-esc-head">
+            <span class="lib-esc-badge agr">Agresivo</span>
+            <div class="lib-esc-menu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+          <div class="lib-esc-titulo">+2 pisos para 2028</div>
+          <div class="lib-esc-desc">comprar 2 pisos adicionales en 2027 y 2028 · usar 40% entrada · hipoteca 25 años</div>
+          <div class="lib-esc-footer">
+            <span class="lib-esc-footer-lab">Libertad en</span>
+            <span class="lib-esc-footer-val pos">mar 2030</span>
+          </div>
+        </div>
+
+        <!-- Escenario 3 · Optimista · subidas rentas altas -->
+        <div class="lib-esc-card" onclick="showToast('Aplicar escenario Optimista')">
+          <div class="lib-esc-head">
+            <span class="lib-esc-badge opt">Optimista</span>
+            <div class="lib-esc-menu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+          <div class="lib-esc-titulo">Mercado tensionado</div>
+          <div class="lib-esc-desc">subida rentas 5% anual · zona tensionada · mantener cartera actual</div>
+          <div class="lib-esc-footer">
+            <span class="lib-esc-footer-lab">Libertad en</span>
+            <span class="lib-esc-footer-val pos">may 2030</span>
+          </div>
+        </div>
+
+        <!-- Escenario 4 · Conservador -->
+        <div class="lib-esc-card" onclick="showToast('Aplicar escenario Conservador')">
+          <div class="lib-esc-head">
+            <span class="lib-esc-badge cons">Conservador</span>
+            <div class="lib-esc-menu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+            </div>
+          </div>
+          <div class="lib-esc-titulo">Inflación alta · 4,5%</div>
+          <div class="lib-esc-desc">escenario pesimista con inflación sostenida · gastos suben más rápido que rentas</div>
+          <div class="lib-esc-footer">
+            <span class="lib-esc-footer-lab">Libertad en</span>
+            <span class="lib-esc-footer-val neg">ago 2033</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+    <!-- /page libertad -->
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.page-head').forEach(p => p.classList.remove('active'));
+    const page = document.getElementById('page-' + id);
+    const head = document.getElementById('page-head-' + id);
+    if (page) page.classList.add('active');
+    if (head) head.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function switchBudView(vista) {
+    document.getElementById('vista-503020').style.display = (vista === '503020') ? 'block' : 'none';
+    document.getElementById('vista-zerobased').style.display = (vista === 'zerobased') ? 'block' : 'none';
+    document.getElementById('btn-503020').classList.toggle('active', vista === '503020');
+    document.getElementById('btn-zerobased').classList.toggle('active', vista === 'zerobased');
+  }
+</script>
+</body>
+</html>

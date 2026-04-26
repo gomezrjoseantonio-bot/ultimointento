@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Mi Plan v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5; --line-3: #F3F1EB;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═══ Sidebar ═══ */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═══ Main ═══ */
+  .main { padding: 22px 32px 60px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+  /* ═══ Page head ═══ */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
+  .page-head h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .page-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+  .page-sub strong { color: var(--ink-2); font-weight: 600; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { color: #fff; background: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-ink); border-color: var(--gold-ink); }
+
+  /* ═══ Banda alerta del momento ═══ */
+  .alerta { background: var(--gold-wash); border: 1px solid #E8D49B; border-radius: 9px; padding: 12px 18px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+  .alerta-icon { width: 30px; height: 30px; border-radius: 50%; background: var(--card); border: 1px solid var(--gold); display: flex; align-items: center; justify-content: center; color: var(--gold-ink); flex-shrink: 0; }
+  .alerta-body { flex: 1; }
+  .alerta-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-ink); padding: 2px 8px; border-radius: 4px; background: rgba(184,138,62,0.18); display: inline-block; margin-right: 10px; vertical-align: middle; }
+  .alerta-text { font-size: 13px; color: var(--gold-ink); display: inline; vertical-align: middle; }
+  .alerta-text strong { font-weight: 700; }
+  .alerta-cta { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; background: var(--gold); color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+  .alerta-cta:hover { background: var(--gold-ink); }
+
+  /* ═══ Hero compacto Libertad ═══ */
+  .hero-compact { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 22px 26px; margin-bottom: 20px; border-top: 4px solid var(--gold); }
+  .hero-c-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 36px; align-items: center; }
+  .hero-c-tag { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-ink); }
+  .hero-c-titulo { font-size: 24px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; line-height: 1.25; margin-top: 8px; }
+  .hero-c-titulo strong { color: var(--gold-ink); font-weight: 700; }
+  .hero-c-sub { font-size: 13px; color: var(--ink-3); margin-top: 10px; line-height: 1.5; }
+  .hero-c-sub strong { color: var(--ink-2); font-weight: 600; }
+  .hero-c-cta { margin-top: 14px; display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; background: var(--brand); color: #fff; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .hero-c-cta:hover { background: var(--brand-ink); }
+  .hero-c-cta svg { transition: transform 0.15s; }
+  .hero-c-cta:hover svg { transform: translateX(2px); }
+
+  .hero-c-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding-left: 28px; border-left: 1px solid var(--line-2); }
+  .hero-c-stat { padding: 4px 0; }
+  .hero-c-stat-lab { font-size: 11px; color: var(--ink-4); font-weight: 600; letter-spacing: .04em; }
+  .hero-c-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 4px; letter-spacing: -0.025em; line-height: 1.1; }
+  .hero-c-stat-val.warn { color: var(--warn); }
+  .hero-c-stat-val.pos { color: var(--pos); }
+  .hero-c-stat-val.gold { color: var(--gold-ink); }
+  .hero-c-stat-val.brand { color: var(--brand); }
+  .hero-c-stat-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+
+  /* ═══ Grid 5 cards de tabs ═══ */
+  .sec-title { display: flex; align-items: baseline; justify-content: space-between; margin: 6px 0 12px; }
+  .sec-title h2 { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .sec-title-sub { font-size: 12px; color: var(--ink-4); }
+
+  .tabs-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+  .lan-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 16px 18px 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s; border-top-width: 3px; display: flex; flex-direction: column; min-height: 220px; }
+  .lan-card:hover { border-color: var(--ink-5); box-shadow: 0 1px 4px rgba(0,0,0,0.05); transform: translateY(-1px); }
+  .lan-card.proyeccion { border-top-color: var(--brand); }
+  .lan-card.libertad { border-top-color: var(--gold); }
+  .lan-card.objetivos { border-top-color: var(--gold-soft); }
+  .lan-card.fondos { border-top-color: var(--brand); }
+  .lan-card.retos { border-top-color: var(--gold-soft); }
+
+  .lan-card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .lan-card-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .lan-card.proyeccion .lan-card-icon { background: var(--brand-wash); color: var(--brand); }
+  .lan-card.libertad .lan-card-icon { background: var(--gold-wash); color: var(--gold-ink); }
+  .lan-card.objetivos .lan-card-icon { background: #F3EBDB; color: #8A6926; }
+  .lan-card.fondos .lan-card-icon { background: var(--brand-wash); color: var(--brand); }
+  .lan-card.retos .lan-card-icon { background: #F3EBDB; color: #8A6926; }
+  .lan-card-arrow { width: 26px; height: 26px; border-radius: 50%; background: var(--card-alt); border: 1px solid var(--line-2); display: flex; align-items: center; justify-content: center; color: var(--ink-4); transition: all 0.15s; }
+  .lan-card:hover .lan-card-arrow { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  .lan-card-tit { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+  .lan-card.libertad .lan-card-tit { color: var(--gold-ink); }
+  .lan-card.proyeccion .lan-card-tit { color: var(--brand); }
+  .lan-card.fondos .lan-card-tit { color: var(--brand); }
+  .lan-card.objetivos .lan-card-tit { color: #8A6926; }
+  .lan-card.retos .lan-card-tit { color: #8A6926; }
+
+  .lan-card-val { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--ink); margin-top: 6px; letter-spacing: -0.025em; line-height: 1.05; }
+  .lan-card-val.pos { color: var(--pos); }
+  .lan-card-val.brand { color: var(--brand); }
+  .lan-card-val.gold { color: var(--gold-ink); }
+  .lan-card-sub { font-size: 12px; color: var(--ink-3); margin-top: 6px; line-height: 1.4; }
+  .lan-card-sub strong { color: var(--ink-2); font-weight: 600; }
+
+  .lan-card-foot { margin-top: auto; padding-top: 12px; display: flex; justify-content: space-between; align-items: baseline; border-top: 1px dashed var(--line-2); gap: 8px; }
+  .lan-card-foot-lab { font-size: 10.5px; color: var(--ink-4); font-weight: 600; letter-spacing: .04em; }
+  .lan-card-foot-val { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+  .lan-card-foot-val.pos { color: var(--pos); }
+  .lan-card-foot-val.warn { color: var(--warn); }
+  .lan-card-foot-val.brand { color: var(--brand); }
+  .lan-card-foot-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 11px; font-weight: 700; letter-spacing: .04em; }
+  .lan-card-foot-pill.pos { background: var(--pos-wash); color: var(--pos); }
+  .lan-card-foot-pill.gold { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Mini-bar para reto · progreso */
+  .lan-card-mini-bar { height: 4px; background: var(--line-2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .lan-card-mini-fill { height: 100%; background: var(--gold); border-radius: 3px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--brand-ink); color: #fff; padding: 11px 18px; border-radius: 8px; font-size: 12.5px; opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 100; max-width: 480px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+    <nav class="nav" style="margin-top: 14px;">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+      <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div>
+        <div class="side-foot-name">José Antonio</div>
+        <div class="side-foot-sub">activo</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar inmueble, contrato, movimiento..." />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <h1>Mi Plan</h1>
+        <div class="page-sub">tu brújula hacia la libertad financiera · datos al cierre de <strong>abril 2026</strong> · revisado <strong>hoy</strong></div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Compartir plan · genera PDF + link de solo lectura · útil para asesor o pareja')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Compartir plan
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Ir directamente al simulador de Libertad financiera')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          Ir al simulador
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ BANDA ALERTA DEL MOMENTO ═══ -->
+    <div class="alerta">
+      <div class="alerta-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="alerta-body">
+        <span class="alerta-tag">Atención</span>
+        <span class="alerta-text"><strong>17.600 €</strong> de tu tesorería líquida (49% del total) sigue sin propósito asignado · es ahorro inerte · pulsa para repartir entre fondos</span>
+      </div>
+      <button class="alerta-cta" onclick="showToast('Ir a Fondos de ahorro → wizard de asignación · ATLAS sugiere distribución óptima')">
+        Asignar ahora
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <!-- ═══ HERO COMPACTO LIBERTAD ═══ -->
+    <div class="hero-compact">
+      <div class="hero-c-grid">
+        <div>
+          <div class="hero-c-tag">Libertad financiera · estimada</div>
+          <div class="hero-c-titulo">Si todo sigue igual · serás libre en <strong>septiembre de 2040</strong></div>
+          <div class="hero-c-sub">faltan <strong>14 años y 5 meses</strong> · tu renta pasiva cubre hoy el <strong>49%</strong> de tu vida en libertad · te falta cerrar un gap de <strong>1.793 €/mes</strong></div>
+          <button class="hero-c-cta" onclick="showToast('Ir a Libertad financiera · toggle escenarios alquiler vs casa propia · simulador completo')">
+            Ver simulador completo
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div class="hero-c-stats">
+          <div class="hero-c-stat">
+            <div class="hero-c-stat-lab">Año libertad</div>
+            <div class="hero-c-stat-val gold">2040</div>
+            <div class="hero-c-stat-sub">en 14 años · plan híbrido</div>
+          </div>
+          <div class="hero-c-stat">
+            <div class="hero-c-stat-lab">Tasa de libertad</div>
+            <div class="hero-c-stat-val brand">49%</div>
+            <div class="hero-c-stat-sub">renta cubre vida libertad</div>
+          </div>
+          <div class="hero-c-stat">
+            <div class="hero-c-stat-lab">Renta pasiva</div>
+            <div class="hero-c-stat-val pos">1.707 €</div>
+            <div class="hero-c-stat-sub">por mes · neta operativa</div>
+          </div>
+          <div class="hero-c-stat">
+            <div class="hero-c-stat-lab">Gap mensual</div>
+            <div class="hero-c-stat-val warn">-1.793 €</div>
+            <div class="hero-c-stat-sub">por mes · falta cubrir</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Section title ═══ -->
+    <div class="sec-title">
+      <div>
+        <h2>Áreas de tu plan</h2>
+        <div class="sec-title-sub">5 vistas que sintetizan toda tu información financiera · pulsa cualquiera para abrir</div>
+      </div>
+    </div>
+
+    <!-- ═══ GRID 5 CARDS ═══ -->
+    <div class="tabs-grid">
+
+      <!-- ─── PROYECCIÓN ─── -->
+      <div class="lan-card proyeccion" onclick="showToast('Ir a Proyección · cashflow estructural mes a mes · waterfall + pulso + tabla')">
+        <div class="lan-card-hd">
+          <div class="lan-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+          </div>
+          <div class="lan-card-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+        <div class="lan-card-tit">Proyección</div>
+        <div class="lan-card-val pos">+31.214 €</div>
+        <div class="lan-card-sub">resultado caja proyectado <strong>2026</strong> · 10 meses positivos · 1 mes en pérdida (NOV)</div>
+        <div class="lan-card-foot">
+          <span class="lan-card-foot-lab">Mes actual</span>
+          <span class="lan-card-foot-val pos">+1.703 € · ABR</span>
+        </div>
+      </div>
+
+      <!-- ─── LIBERTAD FINANCIERA ─── -->
+      <div class="lan-card libertad" onclick="showToast('Ir a Libertad financiera · trayectoria 18 años + composición + simulador con sliders')">
+        <div class="lan-card-hd">
+          <div class="lan-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+          </div>
+          <div class="lan-card-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+        <div class="lan-card-tit">Libertad financiera</div>
+        <div class="lan-card-val gold">49%</div>
+        <div class="lan-card-sub">renta pasiva cubre <strong>49%</strong> de tu vida libertad · serás libre <strong>sep 2040</strong></div>
+        <div class="lan-card-foot">
+          <span class="lan-card-foot-lab">Año estimado</span>
+          <span class="lan-card-foot-pill gold">2040 · en 14 años</span>
+        </div>
+      </div>
+
+      <!-- ─── OBJETIVOS ─── -->
+      <div class="lan-card objetivos" onclick="showToast('Ir a Objetivos · 4 metas con fecha · acumular · amortizar · comprar · reducir')">
+        <div class="lan-card-hd">
+          <div class="lan-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <div class="lan-card-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+        <div class="lan-card-tit">Objetivos</div>
+        <div class="lan-card-val">4</div>
+        <div class="lan-card-sub"><strong>2 en riesgo</strong> · 1 en pausa · 1 en progreso · próxima fecha 30 jun</div>
+        <div class="lan-card-foot">
+          <span class="lan-card-foot-lab">En riesgo</span>
+          <span class="lan-card-foot-val warn">colchón · piso</span>
+        </div>
+      </div>
+
+      <!-- ─── FONDOS DE AHORRO ─── -->
+      <div class="lan-card fondos" onclick="showToast('Ir a Fondos de ahorro · 4 fondos etiquetando 36.000 € de tesorería · 17.600 € sin propósito')">
+        <div class="lan-card-hd">
+          <div class="lan-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+          </div>
+          <div class="lan-card-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+        <div class="lan-card-tit">Fondos de ahorro</div>
+        <div class="lan-card-val brand">36.000 €</div>
+        <div class="lan-card-sub"><strong>4 fondos</strong> activos · colchón · piso · reforma · impuestos</div>
+        <div class="lan-card-foot">
+          <span class="lan-card-foot-lab">Sin propósito</span>
+          <span class="lan-card-foot-val warn">17.600 € · 49%</span>
+        </div>
+      </div>
+
+      <!-- ─── RETOS ─── -->
+      <div class="lan-card retos" onclick="showToast('Ir a Retos · reto activo de abril 2026 · histórico de retos completados')">
+        <div class="lan-card-hd">
+          <div class="lan-card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <div class="lan-card-arrow">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+        <div class="lan-card-tit">Reto del mes</div>
+        <div class="lan-card-val">40%</div>
+        <div class="lan-card-sub"><strong>Primer paso colchón</strong> · ahorrado 1.650 € de 4.120 € · quedan 12 días</div>
+        <div class="lan-card-mini-bar"><div class="lan-card-mini-fill" style="width: 40%;"></div></div>
+        <div class="lan-card-foot">
+          <span class="lan-card-foot-lab">Ritmo necesario</span>
+          <span class="lan-card-foot-val">206 €/día</span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+</body>
+</html>

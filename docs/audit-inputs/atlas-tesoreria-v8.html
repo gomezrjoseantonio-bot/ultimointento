@@ -1,0 +1,2539 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Tesorería completa</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F8F6F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF5;
+    --line:      #E8E4DA;
+    --line-2:    #F0ECE3;
+    --ink:       #0E1423;
+    --ink-2:     #2A3447;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --brand:       #1E2954;
+    --brand-2:     #2A3875;
+    --brand-ink:   #0C1230;
+    --brand-wash:  #E8EAF0;
+    --gold:        #C59A47;
+    --gold-dim:    #B88A3E;
+    --gold-wash:   #F5ECD6;
+    --gold-ink:    #7C5C1F;
+    --pos:         #1E6B3A;
+    --pos-wash:    #E4F0E8;
+    --neg:         #A43328;
+    --neg-wash:    #F5E3E0;
+    --warn:        #8A6213;
+    --warn-wash:   #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .serif { font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+  input, select { font: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═════════════ SIDEBAR ═════════════ */
+  .side {
+    background: var(--brand-ink); color: #BFC5D4;
+    padding: 22px 0; position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #E8D9AE, #C59A47);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-ink); font-weight: 700; font-size: 15px;
+  }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub  { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a {
+    display: flex; align-items: center; gap: 11px;
+    padding: 9px 12px; border-radius: 7px;
+    color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer;
+  }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip {
+    margin-left: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 1px 6px; border-radius: 4px;
+    background: rgba(255,255,255,.07); color: rgba(255,255,255,.7);
+  }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #C59A47); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub  { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═════════════ MAIN ═════════════ */
+  .main { padding: 22px 32px 48px; max-width: 1440px; }
+
+  /* Topbar */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .search {
+    flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px;
+  }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-dim); }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 20px; }
+  h1 { font-size: 26px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.02em; }
+  h1.serif { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: -0.03em; }
+  .page-sub { font-size: 13px; color: var(--ink-4); margin-top: 5px; }
+  .page-sub .dot { display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--ink-5); margin: 0 8px; vertical-align: middle; }
+  .page-head-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Tabs internos */
+  .tabs-inner { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+  .tabs-inner button {
+    padding: 11px 18px; font-size: 13.5px; font-weight: 500; color: var(--ink-4);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+  }
+  .tabs-inner button:hover { color: var(--ink-2); }
+  .tabs-inner button.active { color: var(--ink); border-bottom-color: var(--gold); font-weight: 600; }
+  .tab-count { margin-left: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: var(--bg); color: var(--ink-3); }
+  .tabs-inner button.active .tab-count { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Card */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+  .card-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+  .card-action { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; font-weight: 500; }
+  .card-action:hover { background: var(--gold-wash); }
+
+  /* Grid */
+  .row { display: grid; gap: 14px; margin-bottom: 14px; }
+  .row-hero { grid-template-columns: 1.45fr 1fr; }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  .row-3 { grid-template-columns: repeat(3, 1fr); }
+  .row-5 { grid-template-columns: repeat(6, 1fr); }
+  @media (max-width: 1280px) { .row-5 { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 800px) { .row-5 { grid-template-columns: repeat(2, 1fr); } }
+  .row-12-5 { grid-template-columns: 1fr 380px; }
+
+  /* HERO · saldo consolidado */
+  .hero {
+    background: linear-gradient(135deg, #FFFFFF 0%, #FBFAF5 100%);
+    border: 1px solid var(--line); border-radius: 12px; padding: 24px 26px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ""; position: absolute; top: 0; right: 0;
+    width: 140px; height: 100%;
+    background: radial-gradient(circle at top right, rgba(197,154,71,.06), transparent 60%);
+  }
+  .hero-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; position: relative; }
+  .delta { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+  .delta.pos { background: var(--pos-wash); color: var(--pos); }
+  .delta.neg { background: var(--neg-wash); color: var(--neg); }
+  .hero-big { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 50px; color: var(--ink); letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 10px; position: relative; }
+  .hero-big .cur { font-size: 20px; color: var(--ink-4); font-weight: 400; margin-left: 6px; vertical-align: top; font-style: italic; letter-spacing: 0; }
+  .hero-sub { margin-top: 12px; font-size: 13px; color: var(--ink-3); position: relative; }
+  .hero-sub strong { color: var(--ink); font-weight: 600; }
+
+  /* KPI */
+  .kpi-stack { display: flex; flex-direction: column; gap: 10px; }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
+  .kpi-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 26px; color: var(--ink); margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1; }
+  .kpi-val.pos { color: var(--pos); }
+  .kpi-val.neg { color: var(--neg); }
+  .kpi-hint { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Cuenta card */
+  .acc {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 11px; padding: 14px 16px;
+    cursor: pointer; position: relative; transition: border-color .1s;
+  }
+  .acc:hover { border-color: var(--gold); }
+  .acc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .acc-logo {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 10px; font-weight: 700;
+    letter-spacing: -0.02em; flex-shrink: 0;
+  }
+  .acc-name { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+  .acc-type { font-size: 11px; color: var(--ink-4); margin-top: 1px; font-family: 'JetBrains Mono', monospace; }
+  .acc-bal {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 26px; color: var(--ink);
+    font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+    line-height: 1; margin-top: 4px;
+  }
+  .acc-delta { font-size: 11px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  .acc-delta.pos { color: var(--pos); }
+  .acc-delta.neg { color: var(--neg); }
+  .acc-pending {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+    font-size: 11.5px;
+  }
+  .acc-pending .pending-label { color: var(--ink-3); }
+  .acc-pending .pending-count {
+    background: var(--gold-wash); color: var(--gold-ink);
+    padding: 2px 8px; border-radius: 999px;
+    font-weight: 600; font-size: 10.5px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .acc.add {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; color: var(--ink-4); border-style: dashed; min-height: 180px;
+  }
+  .acc.add:hover { color: var(--brand); border-color: var(--brand); }
+
+  /* Tabla */
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; padding: 10px 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); border-bottom: 1px solid var(--line); }
+  thead th.r { text-align: right; }
+  thead th.c { text-align: center; }
+  tbody td { padding: 10px 8px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--line-2); font-variant-numeric: tabular-nums; vertical-align: middle; }
+  tbody td.r { text-align: right; }
+  tbody td.c { text-align: center; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; transition: background-color .08s; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr.selected { background: var(--gold-wash); }
+  .t-strong { color: var(--ink); font-weight: 600; }
+  .t-muted { color: var(--ink-4); }
+
+  .pos-col { color: var(--pos); font-weight: 600; }
+  .neg-col { color: var(--neg); font-weight: 600; }
+
+  /* CHECKBOX conciliación */
+  .check-cell { width: 36px; text-align: center; }
+  .chk {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 1.5px solid var(--ink-5); background: var(--card);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; vertical-align: middle; transition: all .1s;
+  }
+  .chk:hover { border-color: var(--gold); }
+  .chk.pending { border-style: dashed; border-color: var(--gold); background: var(--gold-wash); }
+  .chk.done {
+    background: var(--pos); border-color: var(--pos);
+    color: #fff;
+  }
+  .chk.done svg { opacity: 1; }
+  .chk svg { opacity: 0; }
+
+  /* Row status pill */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10.5px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .pill-pending { background: var(--gold-wash); color: var(--gold-ink); }
+  .pill-done { background: var(--pos-wash); color: var(--pos); }
+  .pill-overdue { background: var(--neg-wash); color: var(--neg); }
+  .pill-future { background: var(--bg); color: var(--ink-4); }
+
+  /* Chip cuenta */
+  .chip-acc {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 6px 2px 4px; border-radius: 4px;
+    background: var(--bg); font-size: 11px; color: var(--ink-3);
+  }
+  .chip-acc .chip-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Inmueble tag */
+  .tag-inm {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--ink-3);
+    padding: 1px 6px; background: var(--card-alt); border-radius: 4px;
+  }
+
+  /* Página toggle */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Banner info */
+  .note {
+    background: #FBF5E6; border: 1px solid #E8D59E;
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 14px;
+    font-size: 12.5px; color: #6B5410;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .note strong { color: #4A3A00; }
+  .note svg { flex-shrink: 0; color: #8A6213; }
+
+  /* DRAWER LATERAL · Detalle movimiento */
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(14,20,35,.35);
+    display: none; z-index: 200;
+    animation: fadeIn .12s;
+  }
+  .drawer-backdrop.open { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .drawer {
+    position: fixed; top: 0; right: 0;
+    width: 440px; height: 100vh;
+    background: var(--card); z-index: 201;
+    display: none; flex-direction: column;
+    box-shadow: -12px 0 32px rgba(14,20,35,.1);
+    animation: slideIn .18s;
+  }
+  .drawer.open { display: flex; }
+  .drawer-hd { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+  .drawer-hd h2 { font-size: 16px; font-weight: 600; color: var(--ink); }
+  .drawer-close { width: 32px; height: 32px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: var(--ink-4); }
+  .drawer-close:hover { background: var(--bg); color: var(--ink); }
+  .drawer-bd { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .drawer-ft { padding: 16px 24px; border-top: 1px solid var(--line); display: flex; gap: 8px; background: var(--card-alt); }
+  .drawer-big { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 32px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
+  .drawer-big.neg { color: var(--neg); }
+  .drawer-big.pos { color: var(--pos); }
+
+  .fld { margin-bottom: 14px; }
+  .fld-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; margin-bottom: 4px; }
+  .fld-val { font-size: 13.5px; color: var(--ink); font-weight: 500; }
+  .fld input, .fld select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 6px; background: var(--card);
+    font-size: 13px; color: var(--ink); outline: none;
+  }
+  .fld input:focus, .fld select:focus { border-color: var(--gold); }
+
+  /* Proyección */
+  .proj-month {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .proj-month.today { border-color: var(--gold); background: linear-gradient(180deg, #FFFFFF 0%, #FBF5E6 100%); }
+  .proj-month-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .proj-month.today .proj-month-lab { color: var(--gold-ink); }
+  .proj-month-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1; }
+  .proj-month-flow { font-size: 11px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; }
+
+  /* CONCILIACIÓN EXTRACTO */
+  .upload-zone {
+    border: 2px dashed var(--line); border-radius: 10px;
+    padding: 36px 24px; text-align: center; background: var(--card-alt);
+    cursor: pointer; transition: all .1s;
+  }
+  .upload-zone:hover { border-color: var(--gold); background: #FBF5E6; }
+  .upload-ico { width: 48px; height: 48px; border-radius: 50%; background: var(--gold-wash); color: var(--gold-ink); display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; }
+  .upload-t { font-size: 15px; font-weight: 600; color: var(--ink); }
+  .upload-sub { font-size: 12px; color: var(--ink-4); margin-top: 4px; }
+
+  /* Match row */
+  .match-row {
+    display: grid; grid-template-columns: 1fr 20px 1fr 90px;
+    gap: 14px; align-items: center;
+    padding: 12px 14px; border: 1px solid var(--line);
+    border-radius: 8px; margin-bottom: 8px;
+    background: var(--card);
+  }
+  .match-row.match { border-left: 3px solid var(--pos); }
+  .match-row.nomatch { border-left: 3px solid var(--warn); }
+  .match-side { font-size: 12px; }
+  .match-concept { font-weight: 600; color: var(--ink); }
+  .match-meta { color: var(--ink-4); font-size: 11px; margin-top: 2px; }
+  .match-amount { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .match-arrow { color: var(--ink-5); text-align: center; }
+
+  /* Filtros bar */
+  .filters-bar {
+    display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px;
+  }
+  .filt-chip {
+    padding: 4px 11px; border-radius: 6px;
+    font-size: 12px; color: var(--ink-3); font-weight: 500;
+    border: 1px solid var(--line); background: var(--card-alt);
+    cursor: pointer;
+  }
+  .filt-chip:hover { border-color: var(--ink-5); }
+  .filt-chip.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .filt-chip.gold.active { background: var(--gold); border-color: var(--gold); }
+  .filt-divider { width: 1px; background: var(--line); margin: 2px 4px; }
+  .filt-search {
+    flex: 1; min-width: 180px; display: flex; align-items: center; gap: 6px;
+    padding: 0 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+  }
+  .filt-search input { border: none; outline: none; font-size: 12px; flex: 1; background: transparent; height: 28px; }
+  .filt-search svg { color: var(--ink-4); }
+
+  /* Bulk bar · seleccionar múltiples */
+  .bulk-bar {
+    background: var(--brand-ink); color: #fff;
+    border-radius: 10px; padding: 10px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px;
+    animation: slideDown .18s;
+  }
+  @keyframes slideDown { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .bulk-bar .count { font-size: 13px; font-weight: 600; }
+  .bulk-bar .count .mono { color: var(--gold); margin-right: 6px; font-weight: 700; }
+  .bulk-actions { display: flex; gap: 6px; }
+  .bulk-actions button {
+    background: rgba(255,255,255,.1); color: #fff;
+    padding: 5px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 500;
+  }
+  .bulk-actions button:hover { background: rgba(255,255,255,.15); }
+  .bulk-actions button.primary { background: var(--gold); }
+
+  /* MÓVIL mockup */
+  .mobile-section {
+    background: var(--brand-ink);
+    padding: 50px 30px 80px; margin: 24px -32px -48px;
+    display: flex; gap: 40px; justify-content: center; flex-wrap: wrap;
+    border-top: 6px solid var(--gold);
+  }
+  .mobile-section-hd {
+    width: 100%; text-align: center; color: #fff;
+    margin-bottom: 20px;
+  }
+  .mobile-section-hd h2 { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.025em; }
+  .mobile-section-hd p { font-size: 13px; color: rgba(255,255,255,.6); margin-top: 6px; }
+  .phone {
+    width: 370px; background: #1A2030;
+    border-radius: 36px; padding: 14px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.4);
+  }
+  .phone-screen {
+    background: var(--bg); border-radius: 26px; overflow: hidden;
+    height: 720px; display: flex; flex-direction: column;
+  }
+  .phone-caption { text-align: center; color: rgba(255,255,255,.7); font-size: 12px; margin-top: 14px; font-family: 'JetBrains Mono', monospace; }
+  .phone-statusbar {
+    padding: 10px 20px 6px; display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--ink); font-weight: 600; font-family: 'JetBrains Mono', monospace;
+  }
+  .phone-head { padding: 10px 18px 14px; background: var(--bg); }
+  .phone-h1 { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 20px; color: var(--ink); letter-spacing: -0.025em; }
+  .phone-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; }
+  .phone-hero {
+    margin: 0 16px 12px; padding: 16px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .phone-hero-big { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; line-height: 1; margin: 4px 0 6px; }
+  .phone-hero-sub { font-size: 11px; color: var(--ink-3); }
+  .phone-tabs { display: flex; gap: 0; margin: 0 16px 10px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .phone-tabs button { flex: 1; padding: 6px; font-size: 11.5px; font-weight: 500; color: var(--ink-4); border-radius: 6px; }
+  .phone-tabs button.active { background: var(--brand); color: #fff; }
+  .phone-content { flex: 1; overflow-y: auto; padding: 0 16px 16px; }
+  .phone-mov {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 10px;
+    padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); margin-bottom: 7px; align-items: center;
+  }
+  .phone-mov.done { background: var(--pos-wash); border-color: rgba(30,107,58,.2); }
+  .phone-mov.pending { border-style: dashed; border-color: var(--gold); }
+  .phone-mov-concept { font-size: 12.5px; font-weight: 600; color: var(--ink); line-height: 1.2; }
+  .phone-mov-meta { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; }
+  .phone-mov-amt { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+  .phone-mov-amt.pos { color: var(--pos); }
+  .phone-mov-amt.neg { color: var(--neg); }
+  .phone-date-sep { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); margin: 10px 4px 6px; display: flex; align-items: center; justify-content: space-between; }
+  .phone-date-sep .count-pending { background: var(--gold-wash); color: var(--gold-ink); padding: 1px 7px; border-radius: 999px; font-size: 10px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0; }
+  .phone-tabbar {
+    display: flex; justify-content: space-around;
+    padding: 10px 6px 14px;
+    background: var(--card); border-top: 1px solid var(--line);
+  }
+  .phone-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--ink-4); font-size: 10px; font-weight: 500; padding: 4px 10px; }
+  .phone-tab.active { color: var(--brand); }
+  .phone-tab svg { width: 20px; height: 20px; }
+
+  /* Selector 30/60/90 */
+  .range-tabs-flow { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+  .range-tabs-flow button { padding: 4px 11px; font-size: 11.5px; font-weight: 500; color: var(--ink-3); border-radius: 5px; }
+  .range-tabs-flow button.active { background: var(--brand); color: #fff; }
+  .range-tabs-flow button:not(.active):hover { color: var(--ink); }
+
+  /* ═══ TESORERÍA v4 · vista año (12 mes-cards) + drawer telescópico ═══ */
+  .anyo-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; margin-top: 8px;
+  }
+  @media (max-width: 1100px) { .anyo-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 800px) { .anyo-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .mes-card {
+    background: var(--card-alt);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: border-color .12s, transform .12s, box-shadow .12s;
+    position: relative;
+  }
+  .mes-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(14,20,35,.04); }
+  .mes-card.past { opacity: 0.78; }
+  .mes-card.current { border-color: var(--gold); background: var(--gold-wash); }
+  .mes-card.current:hover { border-color: var(--gold); }
+
+  .mes-card-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .mes-card-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .mes-card-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-4); padding: 2px 6px; border-radius: 4px; background: var(--bg); font-family: 'JetBrains Mono', monospace; }
+  .mes-card-tag.now { background: var(--gold); color: #fff; }
+  .mes-card-tag.warn { background: rgba(197,154,71,.16); color: var(--gold-ink); }
+  .mes-card-tag.good { background: var(--pos-wash); color: var(--pos); }
+
+  .mes-card-saldo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; font-weight: 700;
+    color: var(--ink); letter-spacing: -0.025em;
+    margin-bottom: 8px;
+  }
+
+  .mes-card-row {
+    display: flex; justify-content: space-between;
+    font-size: 10.5px; color: var(--ink-4);
+    padding: 2px 0;
+  }
+  .mes-card-row .mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 11px; }
+  .mes-card-row .mono.pos { color: var(--pos); }
+  .mes-card-row .mono.neg { color: var(--neg); }
+
+  .mes-card-bar { margin-top: 8px; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+  .mes-card-bar-fill { height: 100%; transition: width .3s; }
+
+  /* Border-left de salud · sustituye barra */
+  .mes-card.health-pos { border-left: 3px solid var(--pos); padding-left: 11px; }
+  .mes-card.health-gold { border-left: 3px solid var(--gold); padding-left: 11px; }
+  .mes-card.health-neg { border-left: 3px solid var(--neg); padding-left: 11px; }
+  .mes-card.current.health-gold { border-left-color: var(--gold); }
+
+  /* Badge tag debajo del nombre */
+  .mes-card-name { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .mes-card-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-4); padding: 2px 6px; border-radius: 4px; background: var(--bg); font-family: 'JetBrains Mono', monospace; display: inline-block; margin-bottom: 10px; }
+  .mes-card-tag.now { background: var(--gold); color: #fff; }
+  .mes-card-tag.warn { background: rgba(197,154,71,.16); color: var(--gold-ink); }
+  .mes-card-tag.good { background: var(--pos-wash); color: var(--pos); }
+  .mes-card.health-neg .mes-card-tag.warn { background: rgba(164,51,40,.12); color: var(--neg); }
+  .row.row-2-cal { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+  @media (max-width: 1100px) { .row.row-2-cal { grid-template-columns: 1fr; } }
+
+  /* Pendientes del día · cards verticales */
+  .pend-card {
+    display: grid; grid-template-columns: 32px 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    background: var(--card-alt); border: 1px solid var(--line);
+    border-radius: 8px; cursor: pointer;
+    transition: border-color .12s, opacity .26s, transform .26s;
+  }
+  .pend-card:hover { border-color: var(--gold); }
+  .pend-card.removed { opacity: 0; transform: translateX(-12px); pointer-events: none; }
+  .pend-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pend-info .t-strong { color: var(--ink); font-weight: 600; }
+  .pend-info .t-muted { color: var(--ink-4); }
+
+  /* Carrusel cuentas */
+  .cuentas-wrap { margin-bottom: 14px; }
+  .cuentas-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px; }
+  .cuentas-hd-tit { display: flex; align-items: baseline; gap: 8px; }
+  .cuentas-hd-lab { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); }
+  .cuentas-hd-rng { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--ink); }
+  .cuentas-hd-de { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-4); }
+  .cuentas-hd-arrows { display: flex; gap: 6px; }
+  .cuentas-arr { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--line); background: var(--card); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-3); transition: border-color .12s, color .12s; }
+  .cuentas-arr:hover:not(:disabled) { border-color: var(--ink-3); color: var(--ink); }
+  .cuentas-arr:disabled { opacity: 0.3; cursor: default; }
+  .acc { cursor: pointer; transition: border-color .12s, transform .12s; }
+  .acc:hover { border-color: var(--gold); transform: translateY(-1px); }
+  .pending-check { font-family: 'JetBrains Mono', monospace; color: var(--pos); font-weight: 700; }
+
+  /* Slot vacío · ocupa espacio en grid sin ser visible */
+  .acc-empty-slot { visibility: hidden; }
+
+  /* ═══ Drawer telescópico ═══ */
+  .drawer-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(14,20,35,0.42);
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s ease;
+    z-index: 100;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 44%; max-width: 640px; min-width: 380px;
+    background: var(--card);
+    border-left: 1px solid var(--line);
+    box-shadow: -8px 0 24px rgba(14,20,35,0.08);
+    transform: translateX(100%);
+    transition: transform .26s cubic-bezier(.32,.72,0,1);
+    z-index: 101;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .drawer.open { transform: translateX(0); }
+
+  .drawer-head {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    flex-shrink: 0;
+  }
+  .drawer-back-btn {
+    display: none;
+    width: 30px; height: 30px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card);
+    align-items: center; justify-content: center;
+    cursor: pointer; color: var(--ink-3);
+    transition: border-color .12s, color .12s;
+  }
+  .drawer-back-btn:hover { border-color: var(--ink-3); color: var(--ink); }
+  .drawer.level-day .drawer-back-btn { display: inline-flex; }
+
+  .drawer-title-wrap { flex: 1; min-width: 0; }
+  .drawer-title { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.02em; }
+  .drawer-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  .drawer-close {
+    width: 30px; height: 30px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--ink-3);
+    transition: border-color .12s, color .12s;
+  }
+  .drawer-close:hover { border-color: var(--neg); color: var(--neg); }
+
+  .drawer-body { flex: 1; overflow-y: auto; padding: 18px 24px; }
+
+  /* Drawer · resumen mes · KPIs */
+  .drawer-kpis {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 0; padding: 14px 0; margin-bottom: 16px;
+    background: var(--card-alt); border-radius: 10px;
+  }
+  .drawer-kpi { padding: 0 14px; border-right: 1px solid var(--line-2); }
+  .drawer-kpi:last-child { border-right: none; }
+  .drawer-kpi-lab { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-4); font-weight: 700; }
+  .drawer-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--ink); margin-top: 5px; }
+  .drawer-kpi-val.pos { color: var(--pos); }
+  .drawer-kpi-val.neg { color: var(--neg); }
+
+  /* Drawer · sección de eventos */
+  .drawer-section { margin-bottom: 22px; }
+  .drawer-section-hd {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--ink-4);
+    margin-bottom: 10px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .drawer-section-hd.pos-hd { color: var(--pos); }
+  .drawer-section-hd.neg-hd { color: var(--neg); }
+
+  .drawer-evt {
+    display: grid; grid-template-columns: 1fr auto;
+    gap: 10px; padding: 10px 12px;
+    border: 1px solid var(--line-2); border-radius: 8px;
+    margin-bottom: 6px; align-items: center;
+    background: var(--card);
+    transition: border-color .12s;
+  }
+  .drawer-evt:hover { border-color: var(--ink-5); }
+  .drawer-evt-info { min-width: 0; }
+  .drawer-evt-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .drawer-evt-meta { font-size: 10.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .drawer-evt-amt { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
+  .drawer-evt-amt.pos { color: var(--pos); }
+  .drawer-evt-amt.neg { color: var(--neg); }
+
+  /* Drawer · mini calendario diario · clic abre vista día */
+  .drawer-mini-cal {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 3px; margin-top: 8px;
+  }
+  .drawer-mini-day {
+    aspect-ratio: 1; padding: 5px 4px; border-radius: 5px;
+    background: var(--card-alt); border: 1px solid transparent;
+    cursor: pointer; font-size: 10px;
+    display: flex; flex-direction: column;
+    transition: border-color .12s, background .12s;
+  }
+  .drawer-mini-day:hover { border-color: var(--gold); background: var(--gold-wash); }
+  .drawer-mini-day.other { opacity: 0.3; cursor: default; }
+  .drawer-mini-day.other:hover { border-color: transparent; background: var(--card-alt); }
+  .drawer-mini-day.today { background: var(--gold); color: #fff; }
+  .drawer-mini-day-num { font-weight: 700; color: var(--ink); }
+  .drawer-mini-day.today .drawer-mini-day-num { color: #fff; }
+  .drawer-mini-day-amt {
+    font-family: 'JetBrains Mono', monospace; font-size: 8.5px;
+    font-weight: 600; margin-top: auto;
+    line-height: 1.1;
+  }
+  .drawer-mini-day-amt.pos { color: var(--pos); }
+  .drawer-mini-day-amt.neg { color: var(--neg); }
+  .drawer-mini-day-warn { position: absolute; bottom: 2px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--neg); }
+
+  /* Drawer · vista día · tabla por cuenta */
+  .drawer-day-cuenta {
+    display: grid; grid-template-columns: 32px 1fr auto auto;
+    gap: 12px; padding: 12px 14px;
+    border-bottom: 1px solid var(--line-2);
+    align-items: center; font-size: 12px;
+  }
+  .drawer-day-cuenta:last-child { border-bottom: none; }
+  .drawer-day-cuenta.warn { background: rgba(164,51,40,.06); border-left: 3px solid var(--neg); padding-left: 11px; }
+  .drawer-day-cuenta-logo { width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; }
+  .drawer-day-cuenta-info { min-width: 0; }
+  .drawer-day-cuenta-name { font-weight: 600; color: var(--ink); }
+  .drawer-day-cuenta-meta { font-size: 10px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .drawer-day-cuenta-flow { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+  .drawer-day-cuenta-saldo { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12.5px; min-width: 90px; text-align: right; }
+  .drawer-day-cuenta-saldo.warn { color: var(--neg); }
+
+  /* Calendario de caja */
+  .cal-arrow { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3); background: var(--card); }
+  .cal-arrow:hover { border-color: var(--ink-5); color: var(--ink); }
+  .cal-dow { display: grid; grid-template-columns: repeat(7, 1fr); font-size: 10.5px; color: var(--ink-4); text-align: center; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--line-2); margin-bottom: 4px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-day { aspect-ratio: 1; padding: 5px 6px; border-radius: 6px; position: relative; font-size: 11px; color: var(--ink); display: flex; flex-direction: column; cursor: pointer; min-height: 48px; }
+  .cal-day:hover { background: var(--bg); }
+  .cal-day.other { color: var(--ink-5); opacity: .5; }
+  .cal-day.today { background: var(--brand-ink); color: #fff; }
+  .cal-day.today .cal-day-num { color: #fff; }
+  .cal-day-num { font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .cal-day-amt { font-size: 9px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; margin-top: 1px; line-height: 1.1; font-weight: 600; }
+  .cal-day.today .cal-day-amt { color: rgba(255,255,255,.85); }
+  .cal-day-amt.pos { color: var(--pos); }
+  .cal-day-amt.neg { color: var(--neg); }
+  .cal-day-dots { display: flex; gap: 2px; margin-top: auto; padding-top: 2px; flex-wrap: wrap; }
+  .cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+  .cal-dot.cobro { background: var(--pos); }
+  .cal-dot.pago { background: var(--neg); }
+  .cal-dot.impuesto { background: var(--brand); }
+  .cal-dot.vence { background: var(--gold); }
+  .cal-day.today .cal-dot { background: rgba(255,255,255,.8); }
+  .cal-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); font-size: 11px; color: var(--ink-3); }
+  .cal-legend-item { display: flex; align-items: center; gap: 6px; }
+  .cal-legend-item::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--dot, var(--ink-5)); }
+  .cal-foot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: flex-end; }
+  .cal-foot-lab { font-size: 10px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+  .cal-foot-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 4px; }
+  .cal-foot-val.neg { color: var(--neg); }
+  .cal-foot-val.pos { color: var(--pos); }
+
+  /* Section separator */
+  .sec-sep {
+    margin: 32px -32px 22px;
+    padding: 14px 32px;
+    background: var(--bg);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    font-family: 'Inter', sans-serif; font-size: 17px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--ink); letter-spacing: -0.015em;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .sec-sep small { font-size: 12px; color: var(--ink-4); font-family: 'Inter', sans-serif; font-weight: 400; letter-spacing: 0; font-style: italic; }
+
+  /* ME · footer nota para decisiones */
+  .decisions {
+    background: var(--brand-ink); color: #C5CAD5;
+    padding: 32px; border-radius: 14px; margin-top: 40px;
+  }
+  .decisions h2 { font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 16px; letter-spacing: -0.025em; }
+  .decisions ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .decisions li { padding: 12px 14px; background: rgba(255,255,255,.04); border-radius: 8px; border-left: 2px solid var(--gold); }
+  .decisions li strong { color: #fff; font-weight: 600; }
+  .decisions li .mono { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═════════════ SIDEBAR ═════════════ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+
+    <nav class="nav" style="padding-top: 10px;">
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+        Panel
+      </a>
+    </nav>
+
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+        Inmuebles <span class="chip">8</span>
+      </a>
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>
+        Inversiones
+      </a>
+      <a class="active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Tesorería
+      </a>
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>
+        Financiación
+      </a>
+    </nav>
+
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        Contratos <span class="chip">30</span>
+      </a>
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+        Mi Plan
+      </a>
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4h16v16H4z"/><path d="M4 9h16"/><path d="M9 4v16"/></svg>
+        Declaración
+      </a>
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+        Archivo
+      </a>
+    </nav>
+
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+        Ajustes
+      </a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- ═════════════ MAIN ═════════════ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar inmuebles, contratos, movimientos, facturas…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn" title="Inbox">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg>
+          <span class="badge">12</span>
+        </button>
+        <button class="icon-btn" title="Alertas">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="badge neg">3</span>
+        </button>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Nuevo
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Mockup Tesorería completo · navega con los <strong>tabs internos</strong> · abajo verás la <strong>versión móvil</strong> de modo 1 (toque manual). Todas las filas de movimientos son <strong>clicables</strong>.
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <h1 class="serif">Tesorería</h1>
+        <div class="page-sub">8 cuentas<span class="dot"></span>saldo consolidado <strong style="color:var(--ink)">38.192 €</strong><span class="dot"></span>última sync hace 12 min</div>
+      </div>
+      <div class="page-head-actions">
+        <button class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+        <button class="btn btn-ghost" onclick="showPage('extracto')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir extracto
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs internos -->
+    <div class="tabs-inner">
+      <button id="tab-general" class="active" onclick="showPage('general')">Vista general</button>
+      <button id="tab-movimientos" onclick="showPage('movimientos')">Conciliación bancaria<span class="tab-count">247</span></button>
+    </div>
+
+    <!-- ═══════════════ PAGE · VISTA GENERAL ═══════════════ -->
+    <div class="page active" id="page-general">
+
+      <div class="row row-hero">
+        <div class="hero">
+          <div class="hero-top">
+            <div style="display:flex; align-items:center; gap:10px">
+              <span class="sc">Saldo consolidado</span>
+              <span class="delta pos">▲ + 1.842 € · 30d</span>
+            </div>
+          </div>
+          <div class="hero-big">38.192<span class="cur">EUR</span></div>
+          <div class="hero-sub">Proyección fin de mes <strong>26.192 €</strong> · próximas salidas <strong>12.000 €</strong> · colchón emergencia <strong>19 de 24 meses</strong> objetivo</div>
+        </div>
+        <div class="kpi-stack">
+          <div class="kpi">
+            <div class="kpi-lab">Entradas · abril</div>
+            <div class="kpi-val pos mono">+ 7.842 €</div>
+            <div class="kpi-hint">29 de 30 rentas cobradas · 1 nómina</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-lab">Salidas · abril</div>
+            <div class="kpi-val neg mono">− 6.000 €</div>
+            <div class="kpi-hint">4 hipotecas · 8 suministros · comunidad</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carrusel de cuentas · 10 cuentas en bloques de 5 -->
+      <div class="cuentas-wrap" id="cuentas-wrap">
+        <div class="cuentas-hd">
+          <div class="cuentas-hd-tit">
+            <span class="cuentas-hd-lab">MIS CUENTAS</span>
+            <span class="cuentas-hd-rng" id="cuentas-rango">1-5</span>
+            <span class="cuentas-hd-de" id="cuentas-de-10">de 10</span>
+          </div>
+          <div class="cuentas-hd-arrows">
+            <button class="cuentas-arr" id="cuentas-arr-prev" onclick="moverCuentas(-1)" aria-label="Anteriores">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="cuentas-arr" id="cuentas-arr-next" onclick="moverCuentas(1)" aria-label="Siguientes">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Página 1 · cuentas 1-5 -->
+        <div class="row row-5 cuentas-pag" data-pag="1">
+        <div class="acc" onclick="irAMovimientos('santander')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('santander')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#EC0000">SA</div>
+            <div><div class="acc-name">Santander</div><div class="acc-type">···· 2715</div></div>
+          </div>
+          <div class="acc-bal">18.420 €</div>
+          <div class="acc-delta pos">+ 820 € · 30d</div>
+          <div class="acc-pending">
+            <span class="pending-label">Pendiente conciliar</span>
+            <span class="pending-count">3</span>
+          </div>
+        </div>
+        <div class="acc" onclick="irAMovimientos('sabadell')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('sabadell')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#006CB3">SB</div>
+            <div><div class="acc-name">Sabadell</div><div class="acc-type">···· 0842</div></div>
+          </div>
+          <div class="acc-bal">12.140 €</div>
+          <div class="acc-delta pos">+ 1.520 € · 30d</div>
+          <div class="acc-pending">
+            <span class="pending-label">Pendiente conciliar</span>
+            <span class="pending-count">5</span>
+          </div>
+        </div>
+        <div class="acc" onclick="irAMovimientos('unicaja')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('unicaja')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#F2AA00">UN</div>
+            <div><div class="acc-name">Unicaja</div><div class="acc-type">···· 4437</div></div>
+          </div>
+          <div class="acc-bal">3.280 €</div>
+          <div class="acc-delta neg">− 617 € · 30d</div>
+          <div class="acc-pending">
+            <span class="pending-label">Todo al día</span>
+            <span class="pending-count" style="background:var(--pos-wash); color:var(--pos)">✓</span>
+          </div>
+        </div>
+        <div class="acc" onclick="irAMovimientos('myinvestor')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('myinvestor')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#00B6B6">MI</div>
+            <div><div class="acc-name">MyInvestor</div><div class="acc-type">···· 4812</div></div>
+          </div>
+          <div class="acc-bal">2.540 €</div>
+          <div class="acc-delta pos">+ 40 € · 30d</div>
+          <div class="acc-pending">
+            <span class="pending-label">Todo al día</span>
+            <span class="pending-count" style="background:var(--pos-wash); color:var(--pos)">✓</span>
+          </div>
+        </div>
+        <div class="acc" onclick="irAMovimientos('tradere')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('tradere')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#0F0F0F">TR</div>
+            <div><div class="acc-name">Trade Republic</div><div class="acc-type">···· 7729</div></div>
+          </div>
+          <div class="acc-bal">1.812 €</div>
+          <div class="acc-delta neg">− 162 € · 30d</div>
+          <div class="acc-pending">
+            <span class="pending-label">Pendiente conciliar</span>
+            <span class="pending-count">2</span>
+          </div>
+        </div>
+          <div class="acc acc-new" onclick="nuevaCuenta()">
+            <div class="acc-new-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div class="acc-new-text">Nueva cuenta</div>
+            <div class="acc-new-sub">añade banco · cripto · plataforma</div>
+          </div>
+        </div>
+
+        <!-- Página 2 · cuentas 6-10 -->
+        <div class="row row-5 cuentas-pag" data-pag="2" style="display: none;">
+          <div class="acc" onclick="irAMovimientos('bbva')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('bbva')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+              <div class="acc-logo" style="background:#072146">BB</div>
+              <div><div class="acc-name">BBVA</div><div class="acc-type">···· 4823</div></div>
+            </div>
+            <div class="acc-bal">2.180 €</div>
+            <div class="acc-delta neg">− 215 € · 30d</div>
+            <div class="acc-pending">
+              <span class="pending-label">Pendiente conciliar</span>
+              <span class="pending-count">1</span>
+            </div>
+          </div>
+          <div class="acc" onclick="irAMovimientos('caixa')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('caixa')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+              <div class="acc-logo" style="background:#0064A8">CB</div>
+              <div><div class="acc-name">CaixaBank</div><div class="acc-type">···· 1187</div></div>
+            </div>
+            <div class="acc-bal">680 €</div>
+            <div class="acc-delta pos">+ 60 € · 30d</div>
+            <div class="acc-pending">
+              <span class="pending-label">Todo al día</span>
+              <span class="pending-check">✓</span>
+            </div>
+          </div>
+          <div class="acc" onclick="irAMovimientos('ing-ahorro')">
+            <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('ing-ahorro')" aria-label="Editar cuenta">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <div class="acc-head">
+              <div class="acc-logo" style="background:#FF6200">IN</div>
+              <div><div class="acc-name">ING · Ahorro</div><div class="acc-type">···· 5530</div></div>
+            </div>
+            <div class="acc-bal">8.420 €</div>
+            <div class="acc-delta pos">+ 0 € · 30d</div>
+            <div class="acc-pending">
+              <span class="pending-label">Todo al día</span>
+              <span class="pending-check">✓</span>
+            </div>
+          </div>
+          <div class="acc" onclick="irAMovimientos('revolut')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('revolut')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+              <div class="acc-logo" style="background:#0075EB">RV</div>
+              <div><div class="acc-name">Revolut</div><div class="acc-type">···· 3892</div></div>
+            </div>
+            <div class="acc-bal">340 €</div>
+            <div class="acc-delta pos">+ 120 € · 30d</div>
+            <div class="acc-pending">
+              <span class="pending-label">Pendiente conciliar</span>
+              <span class="pending-count">1</span>
+            </div>
+          </div>
+          <div class="acc" onclick="irAMovimientos('n26')">
+          <button class="acc-edit-btn" onclick="event.stopPropagation(); editarCuenta('n26')" aria-label="Editar cuenta">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div class="acc-head">
+              <div class="acc-logo" style="background:#36A18B">N2</div>
+              <div><div class="acc-name">N26</div><div class="acc-type">···· 2056</div></div>
+            </div>
+            <div class="acc-bal">920 €</div>
+            <div class="acc-delta pos">+ 80 € · 30d</div>
+            <div class="acc-pending">
+              <span class="pending-label">Todo al día</span>
+              <span class="pending-check">✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Página 3 · Card Nueva cuenta sola · estética coherente con grid de 5 -->
+        <div class="row row-5 cuentas-pag" data-pag="3" style="display: none;">
+          <div class="acc acc-new" onclick="nuevaCuenta()">
+            <div class="acc-new-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <div class="acc-new-text">Nueva cuenta</div>
+            <div class="acc-new-sub">añade banco · cripto · plataforma</div>
+          </div>
+          <div class="acc-empty-slot"></div>
+          <div class="acc-empty-slot"></div>
+          <div class="acc-empty-slot"></div>
+          <div class="acc-empty-slot"></div>
+        </div>
+      </div>
+
+      <!-- Gráfica anual ancho completo -->
+      <div class="row" style="margin-bottom: 14px;">
+
+        <!-- Flujo anual -->
+        <div class="card">
+          <div class="card-hd" style="margin-bottom: 8px;">
+            <div>
+              <div class="card-title">Flujo de caja anual · 2026</div>
+            </div>
+          </div>
+          <svg viewBox="0 0 1200 240" style="width:100%; height: 220px;">
+            <defs>
+              <linearGradient id="gradFlowReal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E2954" stop-opacity=".18"/><stop offset="1" stop-color="#1E2954" stop-opacity="0"/></linearGradient>
+              <linearGradient id="gradFlowGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C59A47" stop-opacity=".14"/><stop offset="1" stop-color="#C59A47" stop-opacity="0"/></linearGradient>
+            </defs>
+            <!-- Grid horizontal -->
+            <line x1="60" y1="40" x2="1180" y2="40" stroke="#F0ECE3"/>
+            <line x1="60" y1="100" x2="1180" y2="100" stroke="#E8E4DA" stroke-dasharray="2 3"/>
+            <line x1="60" y1="160" x2="1180" y2="160" stroke="#F0ECE3"/>
+            <!-- Etiquetas Y -->
+            <text x="50" y="44" text-anchor="end" fill="#8A92A0" font-size="9.5" font-family="'JetBrains Mono', monospace">60K</text>
+            <text x="50" y="104" text-anchor="end" fill="#8A92A0" font-size="9.5" font-family="'JetBrains Mono', monospace">40K</text>
+            <text x="50" y="164" text-anchor="end" fill="#8A92A0" font-size="9.5" font-family="'JetBrains Mono', monospace">20K</text>
+
+            <!-- Línea de colchón emergencia · 10.000 € (configurable en Ajustes) -->
+            <line x1="60" y1="194" x2="1180" y2="194" stroke="#A43328" stroke-width="1" stroke-dasharray="3 4" opacity="0.5"/>
+            <text x="68" y="190" fill="#A43328" font-size="9" font-family="'JetBrains Mono', monospace" opacity="0.7">colchón emergencia · 10K</text>
+
+            <!-- Línea PREVISTO (todo el año · gris discontinuo) -->
+            <path d="M85 95 L177 90 L268 110 L360 100 L452 80 L543 130 L635 50 L727 35 L818 75 L910 65 L1002 95 L1094 12" stroke="#8A92A0" stroke-width="1.8" stroke-dasharray="5 4" fill="none"/>
+
+            <!-- Línea REAL (ene a abril · sólida navy · meses cerrados + en curso) -->
+            <path d="M85 102 L177 88 L268 118 L360 100" stroke="#1E2954" stroke-width="2.6" fill="none"/>
+            <path d="M85 102 L177 88 L268 118 L360 100 L360 220 L85 220 Z" fill="url(#gradFlowReal)"/>
+
+            <!-- Punto HOY · entre marzo y abril -->
+            <line x1="360" y1="20" x2="360" y2="220" stroke="#C59A47" stroke-dasharray="2 3" stroke-width="1"/>
+            <circle cx="360" cy="100" r="6" fill="#1E2954" stroke="#fff" stroke-width="2.5"/>
+            <text x="360" y="32" text-anchor="middle" fill="#7C5C1F" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">HOY · 38.192 €</text>
+
+            <!-- Puntos por mes en línea PREVISTO (oro suave para futuros) -->
+            <circle cx="85" cy="95" r="4" fill="#1E2954" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="177" cy="90" r="4" fill="#1E2954" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="268" cy="110" r="4" fill="#1E2954" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="360" cy="100" r="4" fill="#1E2954" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="452" cy="80" r="4" fill="#C59A47" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="543" cy="130" r="4" fill="#A43328" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="635" cy="50" r="4" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="727" cy="35" r="4" fill="#C59A47" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="818" cy="75" r="4" fill="#A43328" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="910" cy="65" r="4" fill="#C59A47" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="1002" cy="95" r="4" fill="#C59A47" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="1094" cy="12" r="6" fill="#C59A47" stroke="#fff" stroke-width="2.5"/>
+
+            <!-- Cierre año -->
+            <text x="1170" y="16" text-anchor="end" fill="#7C5C1F" font-size="10.5" font-family="'JetBrains Mono', monospace" font-weight="700">+62.840 €</text>
+
+            <!-- Eje X · meses -->
+            <text x="85" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">ENE</text>
+            <text x="177" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">FEB</text>
+            <text x="268" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">MAR</text>
+            <text x="360" y="232" text-anchor="middle" fill="#0C1230" font-size="10" font-family="'JetBrains Mono', monospace" font-weight="700">ABR</text>
+            <text x="452" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">MAY</text>
+            <text x="543" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">JUN</text>
+            <text x="635" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">JUL</text>
+            <text x="727" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">AGO</text>
+            <text x="818" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">SEP</text>
+            <text x="910" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">OCT</text>
+            <text x="1002" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">NOV</text>
+            <text x="1094" y="232" text-anchor="middle" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">DIC</text>
+          </svg>
+
+          <!-- Leyenda visual -->
+          <div style="display: flex; gap: 18px; padding-top: 10px; flex-wrap: wrap; font-size: 11px; color: var(--ink-3);">
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width:18px; height:2.5px; background: #1E2954; border-radius:2px;"></span>Real · meses cerrados + en curso</span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width:18px; height:2.5px; background: linear-gradient(to right, #8A92A0 50%, transparent 50%) repeat-x; background-size: 8px 100%; border-radius:2px;"></span>Previsto · proyección anual</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:14px; padding-top: 12px; border-top: 1px solid var(--line-2);">
+            <div>
+              <div class="sc" style="font-size: 9.5px">Saldo inicio año</div>
+              <div class="mono" style="color:var(--ink-3); font-weight:600; font-size:15px; margin-top:3px">38.533 €</div>
+            </div>
+            <div>
+              <div class="sc" style="font-size: 9.5px">Entradas previstas año</div>
+              <div id="kpi-entradas" class="mono" style="color:var(--pos); font-weight:600; font-size:15px; margin-top:3px">+ 154.804 €</div>
+            </div>
+            <div>
+              <div class="sc" style="font-size: 9.5px">Salidas previstas año</div>
+              <div id="kpi-salidas" class="mono" style="color:var(--neg); font-weight:600; font-size:15px; margin-top:3px">− 130.156 €</div>
+            </div>
+            <div>
+              <div class="sc" style="font-size: 9.5px">Balance neto año</div>
+              <div id="kpi-balance" class="mono" style="color:var(--pos); font-weight:600; font-size:15px; margin-top:3px">+ 24.648 €</div>
+            </div>
+            <div>
+              <div class="sc" style="font-size: 9.5px">Saldo cierre año</div>
+              <div class="mono" style="color:var(--gold-ink); font-weight:700; font-size:15px; margin-top:3px">62.840 €</div>
+            </div>
+          </div>
+          <div id="hitos-strip" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 6px;">
+            <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; font-size:10.5px; background:var(--card-alt);"><span style="width:6px; height:6px; border-radius:50%; background:var(--pos)"></span><span style="color:var(--ink-4); font-family:'JetBrains Mono',monospace">jul</span>· Paga extra Orange<span class="mono" style="color:var(--pos); font-weight:600; margin-left: 2px">+ 8.092 €</span></span>
+            <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; font-size:10.5px; background:var(--card-alt);"><span style="width:6px; height:6px; border-radius:50%; background:var(--neg)"></span><span style="color:var(--ink-4); font-family:'JetBrains Mono',monospace">sep</span>· Mes de tensión<span class="mono" style="color:var(--neg); font-weight:600; margin-left: 2px">− 10.840 €</span></span>
+            <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border:1px solid var(--line); border-radius:999px; font-size:10.5px; background:var(--card-alt);"><span style="width:6px; height:6px; border-radius:50%; background:var(--pos)"></span><span style="color:var(--ink-4); font-family:'JetBrains Mono',monospace">dic</span>· Cierre + extra<span class="mono" style="color:var(--pos); font-weight:600; margin-left: 2px">+ 14.660 €</span></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Fila: Calendario anual · Pendientes del día -->
+      <div class="row row-2-cal">
+
+        <!-- Calendario anual · 12 mes-cards -->
+        <div class="card" id="caja-calendario-anyo">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Calendario anual · 2026</div>
+              <div class="card-sub">12 meses · clic en uno para abrir el desglose</div>
+            </div>
+            <div class="cal-foot-val" style="font-size: 12.5px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace;">cierre previsto · <strong style="color: var(--ink)">42.840 €</strong></div>
+          </div>
+
+          <div class="anyo-grid">
+            <!-- Mes ENERO -->
+            <div class="mes-card past health-pos" onclick="abrirDrawerMes('enero')">
+              <div class="mes-card-name">Enero</div>
+              <div class="mes-card-tag">cerrado</div>
+              <div class="mes-card-saldo">40.184 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−8.319</span></div>
+            </div>
+
+            <div class="mes-card past health-pos" onclick="abrirDrawerMes('febrero')">
+              <div class="mes-card-name">Febrero</div>
+              <div class="mes-card-tag">cerrado</div>
+              <div class="mes-card-saldo">42.015 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−8.139</span></div>
+            </div>
+
+            <div class="mes-card past health-neg" onclick="abrirDrawerMes('marzo')">
+              <div class="mes-card-name">Marzo</div>
+              <div class="mes-card-tag">cerrado</div>
+              <div class="mes-card-saldo">36.892 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+12.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−18.093</span></div>
+            </div>
+
+            <div class="mes-card current health-gold" onclick="abrirDrawerMes('abril')">
+              <div class="mes-card-name">Abril</div>
+              <div class="mes-card-tag now">en curso · hoy</div>
+              <div class="mes-card-saldo">38.192 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−8.670</span></div>
+            </div>
+
+            <div class="mes-card future health-pos" onclick="abrirDrawerMes('mayo')">
+              <div class="mes-card-name">Mayo</div>
+              <div class="mes-card-tag">previsto</div>
+              <div class="mes-card-saldo">42.840 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−5.322</span></div>
+            </div>
+
+            <div class="mes-card future health-neg" onclick="abrirDrawerMes('junio')">
+              <div class="mes-card-name">Junio</div>
+              <div class="mes-card-tag warn">irpf</div>
+              <div class="mes-card-saldo">35.720 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+18.062</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−25.182</span></div>
+            </div>
+
+            <div class="mes-card future health-pos" onclick="abrirDrawerMes('julio')">
+              <div class="mes-card-name">Julio</div>
+              <div class="mes-card-tag good">paga extra</div>
+              <div class="mes-card-saldo">53.180 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+18.062</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−7.602</span></div>
+            </div>
+
+            <div class="mes-card future health-pos" onclick="abrirDrawerMes('agosto')">
+              <div class="mes-card-name">Agosto</div>
+              <div class="mes-card-tag">previsto</div>
+              <div class="mes-card-saldo">57.730 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−5.420</span></div>
+            </div>
+
+            <div class="mes-card future health-neg" onclick="abrirDrawerMes('septiembre')">
+              <div class="mes-card-name">Septiembre</div>
+              <div class="mes-card-tag warn">tensión</div>
+              <div class="mes-card-saldo">46.890 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−20.810</span></div>
+            </div>
+
+            <div class="mes-card future health-pos" onclick="abrirDrawerMes('octubre')">
+              <div class="mes-card-name">Octubre</div>
+              <div class="mes-card-tag">previsto</div>
+              <div class="mes-card-saldo">51.420 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−5.440</span></div>
+            </div>
+
+            <div class="mes-card future health-gold" onclick="abrirDrawerMes('noviembre')">
+              <div class="mes-card-name">Noviembre</div>
+              <div class="mes-card-tag warn">irpf 2º plazo</div>
+              <div class="mes-card-saldo">48.180 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+9.970</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−13.210</span></div>
+            </div>
+
+            <div class="mes-card future health-pos" onclick="abrirDrawerMes('diciembre')">
+              <div class="mes-card-name">Diciembre</div>
+              <div class="mes-card-tag good">paga extra</div>
+              <div class="mes-card-saldo">62.840 €</div>
+              <div class="mes-card-row"><span>Entradas</span><span class="mono pos">+18.062</span></div>
+              <div class="mes-card-row"><span>Salidas</span><span class="mono neg">−3.402</span></div>
+            </div>
+          </div>
+
+          <div class="cal-foot" style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-2);">
+            <div>
+              <div class="cal-foot-lab">Resultado anual previsto</div>
+              <div class="cal-foot-val pos">+ 24.648 €</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="cal-foot-lab">Caja inicio · 1 ene</div>
+              <div class="cal-foot-val" style="color: var(--ink)">38.533 €</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pendientes del día · cards de movimientos por conciliar -->
+        <div class="card" id="caja-pendientes-dia">
+          <div class="card-hd">
+            <div>
+              <div class="card-title">Pendientes del día</div>
+              <div class="card-sub">marca ✓ los que veas confirmados en el banco · si hay más · van apareciendo</div>
+            </div>
+            <a class="card-action" onclick="showPage('movimientos')">Ir a conciliación →</a>
+          </div>
+
+          <div id="pendientes-stack" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Renta Hab 2 FA32</span>
+                <span class="t-muted" style="font-size:11px">L. Villanueva · Sabadell ···· 0842</span>
+              </div>
+              <div class="pos-col mono" style="font-size:13px">+ 380 €</div>
+            </div>
+
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Luz marzo · Iberdrola</span>
+                <span class="t-muted" style="font-size:11px">FA32 · Santander · factura #3487</span>
+              </div>
+              <div class="neg-col mono" style="font-size:13px">− 45 €</div>
+            </div>
+
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Comunidad FA32</span>
+                <span class="t-muted" style="font-size:11px">Admin Fincas Oviedo · Santander</span>
+              </div>
+              <div class="neg-col mono" style="font-size:13px">− 94 €</div>
+            </div>
+
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Renta Hab 1 FA32</span>
+                <span class="t-muted" style="font-size:11px">A. Fuentes · Sabadell · ayer</span>
+              </div>
+              <div class="pos-col mono" style="font-size:13px">+ 380 €</div>
+            </div>
+
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Agua Tenderina 64</span>
+                <span class="t-muted" style="font-size:11px">AquaOvi · Santander · bimestral</span>
+              </div>
+              <div class="neg-col mono" style="font-size:13px">− 28 €</div>
+            </div>
+
+            <div class="pend-card" onclick="openDrawer()">
+              <div class="chk pending" onclick="event.stopPropagation(); marcarConciliado(this);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="pend-info">
+                <span class="t-strong" style="font-size:12.5px">Cuota hipoteca T64-4D</span>
+                <span class="t-muted" style="font-size:11px">Unicaja ···· 4437 · vence 3 may</span>
+              </div>
+              <div class="neg-col mono" style="font-size:13px">− 617 €</div>
+            </div>
+          </div>
+
+          <div id="pend-empty" style="display: none; text-align: center; padding: 32px 12px; color: var(--ink-4); font-size: 12px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--pos)" stroke-width="1.6" style="margin-bottom: 10px;"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 16 9"/></svg>
+            <div style="font-weight: 600; color: var(--ink-3); font-size: 13px;">Todo conciliado hoy</div>
+            <div style="margin-top: 4px;">no hay pendientes · vuelve a comprobar mañana</div>
+          </div>
+
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line-2); font-size: 11px; color: var(--ink-4); display: flex; justify-content: space-between;">
+            <span>Quedan <strong id="pend-count" style="color: var(--ink-3);">6</strong> · de 22 hoy</span>
+            <span class="mono">22/04 · martes</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE · CUENTAS ═══════════════ -->
+    <div class="page" id="page-cuentas">
+
+      <div class="filters-bar">
+        <div class="filt-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Buscar cuenta…" />
+        </div>
+        <div class="filt-divider"></div>
+        <button class="filt-chip active">Todas · 8</button>
+        <button class="filt-chip">Operativa · 3</button>
+        <button class="filt-chip">Rentas · 2</button>
+        <button class="filt-chip">Hipotecas · 2</button>
+        <button class="filt-chip">Broker · 1</button>
+        <div class="filt-divider"></div>
+        <button class="filt-chip gold active">Con pendientes · 3</button>
+      </div>
+
+      <!-- Grid completo de 8 cuentas -->
+      <div class="row row-3">
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#EC0000">SA</div>
+            <div style="flex:1"><div class="acc-name">Santander · Operativa</div><div class="acc-type">ES21 0049 **** **** 2715</div></div>
+          </div>
+          <div class="acc-bal">18.420 €</div>
+          <div class="acc-delta pos">+ 820 € · 30d · 42 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#006CB3">SB</div>
+            <div style="flex:1"><div class="acc-name">Sabadell · Rentas</div><div class="acc-type">ES31 0081 **** **** 0842</div></div>
+          </div>
+          <div class="acc-bal">12.140 €</div>
+          <div class="acc-delta pos">+ 1.520 € · 30d · 28 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#F2AA00">UN</div>
+            <div style="flex:1"><div class="acc-name">Unicaja · Hipotecas</div><div class="acc-type">ES77 2048 **** **** 4437</div></div>
+          </div>
+          <div class="acc-bal">3.280 €</div>
+          <div class="acc-delta neg">− 617 € · 30d · 4 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#00B6B6">MI</div>
+            <div style="flex:1"><div class="acc-name">MyInvestor · Ahorro</div><div class="acc-type">ES19 1491 **** **** 4812</div></div>
+          </div>
+          <div class="acc-bal">2.540 €</div>
+          <div class="acc-delta pos">+ 40 € · 30d · 1 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#0F0F0F">TR</div>
+            <div style="flex:1"><div class="acc-name">Trade Republic · Broker</div><div class="acc-type">DE89 **** **** **** 7729</div></div>
+          </div>
+          <div class="acc-bal">1.812 €</div>
+          <div class="acc-delta neg">− 162 € · 30d · 8 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#008751">BK</div>
+            <div style="flex:1"><div class="acc-name">Bankinter · Cataluña</div><div class="acc-type">ES22 0128 **** **** 9841</div></div>
+          </div>
+          <div class="acc-bal">—</div>
+          <div class="acc-delta">Cuenta cerrada · nov 2025</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center; color:var(--ink-4)">Ver histórico</button>
+          </div>
+        </div>
+
+        <div class="acc">
+          <div class="acc-head">
+            <div class="acc-logo" style="background:#6B46C1">N26</div>
+            <div style="flex:1"><div class="acc-name">N26 · Personal</div><div class="acc-type">ES55 **** **** **** 0312</div></div>
+          </div>
+          <div class="acc-bal">− 186 €</div>
+          <div class="acc-delta neg">− 812 € · 30d · 15 mov</div>
+          <div style="display:flex; gap:6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-2);">
+            <button class="btn btn-ghost btn-sm" style="flex:1; justify-content:center">Ver movimientos</button>
+            <button class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="acc add">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          <div style="font-size: 13px; font-weight: 500">Añadir cuenta</div>
+          <div style="font-size: 11px; color: var(--ink-5); text-align: center; max-width: 180px;">Manual o con IBAN</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE · MOVIMIENTOS ═══════════════ -->
+    <div class="page" id="page-movimientos">
+
+      <div class="filters-bar">
+        <div class="filt-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input placeholder="Buscar concepto, proveedor, NIF…" />
+        </div>
+        <div class="filt-divider"></div>
+        <button class="filt-chip">Todos · 247</button>
+        <button class="filt-chip gold active">Pendientes · 10</button>
+        <button class="filt-chip">Confirmados · 237</button>
+        <div class="filt-divider"></div>
+        <button class="filt-chip">Ingresos</button>
+        <button class="filt-chip">Gastos</button>
+        <button class="filt-chip">Hipotecas</button>
+        <div class="filt-divider"></div>
+        <button class="filt-chip">30 días</button>
+        <button class="filt-chip active">Abril</button>
+        <button class="filt-chip">2026</button>
+      </div>
+
+      <!-- Bulk selection bar (aparece cuando hay seleccionados) -->
+      <div class="bulk-bar">
+        <div class="count"><span class="mono">3</span> movimientos seleccionados</div>
+        <div class="bulk-actions">
+          <button>Asignar cuenta</button>
+          <button>Asignar inmueble</button>
+          <button>Categorizar</button>
+          <button class="primary">Confirmar todos</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding: 0;">
+        <table>
+          <thead>
+            <tr>
+              <th class="check-cell"><div class="chk" style="opacity:.6"></div></th>
+              <th style="width:60px">Fecha</th>
+              <th>Concepto</th>
+              <th>Cuenta</th>
+              <th>Inmueble</th>
+              <th>Categoría</th>
+              <th class="c" style="width:90px">Estado</th>
+              <th class="r" style="width:120px">Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Grupo 22 abr · pendientes -->
+            <tr class="selected" onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk done" style="background:var(--gold); border-color:var(--gold)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">22/04</td>
+              <td class="t-strong">Renta Hab 2 · L. Villanueva</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#006CB3"></span>Sabadell</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Renta habitación</td>
+              <td class="c"><span class="pill pill-pending">● pendiente</span></td>
+              <td class="r pos-col mono">+ 380 €</td>
+            </tr>
+            <tr class="selected" onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk done" style="background:var(--gold); border-color:var(--gold)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">22/04</td>
+              <td class="t-strong">Luz marzo · Iberdrola</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#EC0000"></span>Santander</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Suministros</td>
+              <td class="c"><span class="pill pill-pending">● pendiente</span></td>
+              <td class="r neg-col mono">− 45 €</td>
+            </tr>
+            <tr class="selected" onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk done" style="background:var(--gold); border-color:var(--gold)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">21/04</td>
+              <td class="t-strong">Comunidad · Admin Fincas Oviedo</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#EC0000"></span>Santander</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Comunidad</td>
+              <td class="c"><span class="pill pill-pending">● pendiente</span></td>
+              <td class="r neg-col mono">− 94 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">20/04</td>
+              <td class="t-strong">Cobro renta Hab 2 · L. Villanueva</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#006CB3"></span>Sabadell</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Renta habitación</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r pos-col mono">+ 380 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">19/04</td>
+              <td class="t-strong">Nómina Orange</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#EC0000"></span>Santander</span></td>
+              <td class="t-muted">—</td>
+              <td class="t-muted">Nómina</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r pos-col mono">+ 2.800 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">18/04</td>
+              <td class="t-strong">Luz marzo · Iberdrola</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#EC0000"></span>Santander</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Suministros</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r neg-col mono">− 45 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">17/04</td>
+              <td class="t-strong">Cobro renta Hab 5 · J. Martín</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#006CB3"></span>Sabadell</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Renta habitación</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r pos-col mono">+ 380 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">16/04</td>
+              <td class="t-strong">Comunidad · Admin Fincas Oviedo</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#EC0000"></span>Santander</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Comunidad</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r neg-col mono">− 94 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">15/04</td>
+              <td class="t-strong">Cobro renta Hab 3 · R. López</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#006CB3"></span>Sabadell</span></td>
+              <td><span class="tag-inm">T64-4IZ</span></td>
+              <td class="t-muted">Renta habitación</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r pos-col mono">+ 290 €</td>
+            </tr>
+            <tr onclick="openDrawer()">
+              <td class="check-cell" onclick="event.stopPropagation()"><div class="chk pending" onclick="event.stopPropagation(); this.classList.remove('pending'); this.classList.add('done');"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></td>
+              <td class="mono">14/04</td>
+              <td class="t-strong">Cuota hipoteca FA32</td>
+              <td><span class="chip-acc"><span class="chip-dot" style="background:#F2AA00"></span>Unicaja</span></td>
+              <td><span class="tag-inm">FA32</span></td>
+              <td class="t-muted">Hipoteca</td>
+              <td class="c"><span class="pill pill-done">✓ conf.</span></td>
+              <td class="r neg-col mono">− 617 €</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="text-align:center; margin-top:16px; color: var(--ink-4); font-size: 12px;">
+        Mostrando 10 de 247 movimientos · <a style="color:var(--gold); cursor:pointer">cargar más</a>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE · PROYECCIÓN ═══════════════ -->
+    <div class="page" id="page-proyeccion">
+
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Saldo proyectado 12 meses</div>
+            <div class="card-sub">Basado en reglas recurrentes · contratos vigentes · hipotecas</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="filt-chip active">Mensual</button>
+            <button class="filt-chip">Semanal</button>
+          </div>
+        </div>
+        <svg viewBox="0 0 1200 240" style="width:100%; height: 220px;">
+          <defs>
+            <linearGradient id="gradGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C59A47" stop-opacity=".2"/><stop offset="1" stop-color="#C59A47" stop-opacity="0"/></linearGradient>
+          </defs>
+          <line x1="0" y1="120" x2="1200" y2="120" stroke="#E8E4DA" stroke-dasharray="2 3"/>
+          <text x="8" y="116" fill="#8A92A0" font-size="10" font-family="'JetBrains Mono', monospace">Saldo hoy · 38.192 €</text>
+          <line x1="0" y1="180" x2="1200" y2="180" stroke="#F5ECD6"/>
+          <text x="8" y="176" fill="#8A6213" font-size="9" font-family="'JetBrains Mono', monospace">Umbral colchón · 10.000 €</text>
+          <path d="M50 120 L150 100 L250 135 L350 115 L450 95 L550 140 L650 125 L750 90 L850 70 L950 85 L1050 65 L1150 50 L1150 240 L50 240 Z" fill="url(#gradGold)"/>
+          <path d="M50 120 L150 100 L250 135 L350 115 L450 95 L550 140 L650 125 L750 90 L850 70 L950 85 L1050 65 L1150 50" stroke="#C59A47" stroke-width="2.5" fill="none"/>
+          <!-- Puntos mensuales -->
+          <g font-family="'JetBrains Mono', monospace" font-size="9">
+            <circle cx="50" cy="120" r="5" fill="#C59A47" stroke="#fff" stroke-width="2"/>
+            <text x="50" y="108" text-anchor="middle" fill="#7C5C1F" font-size="9" font-weight="600">hoy</text>
+            <circle cx="150" cy="100" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="250" cy="135" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="350" cy="115" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="450" cy="95" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="550" cy="140" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="650" cy="125" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="750" cy="90" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="850" cy="70" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="950" cy="85" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="1050" cy="65" r="3" fill="#fff" stroke="#C59A47" stroke-width="2"/>
+            <circle cx="1150" cy="50" r="5" fill="#C59A47" stroke="#fff" stroke-width="2"/>
+            <text x="1150" y="38" text-anchor="middle" fill="#7C5C1F" font-size="10" font-weight="700">54.200 €</text>
+          </g>
+          <g font-family="'JetBrains Mono', monospace" font-size="10" fill="#8A92A0">
+            <text x="50" y="232" text-anchor="middle">abr</text>
+            <text x="150" y="232" text-anchor="middle">may</text>
+            <text x="250" y="232" text-anchor="middle">jun</text>
+            <text x="350" y="232" text-anchor="middle">jul</text>
+            <text x="450" y="232" text-anchor="middle">ago</text>
+            <text x="550" y="232" text-anchor="middle">sep</text>
+            <text x="650" y="232" text-anchor="middle">oct</text>
+            <text x="750" y="232" text-anchor="middle">nov</text>
+            <text x="850" y="232" text-anchor="middle">dic</text>
+            <text x="950" y="232" text-anchor="middle">ene</text>
+            <text x="1050" y="232" text-anchor="middle">feb</text>
+            <text x="1150" y="232" text-anchor="middle">mar</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Mes por mes -->
+      <div class="row" style="grid-template-columns: repeat(6, 1fr); gap: 8px;">
+        <div class="proj-month today"><div class="proj-month-lab">Abril · hoy</div><div class="proj-month-val">38.192 €</div><div class="proj-month-flow" style="color:var(--ink-3)">actual</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Mayo</div><div class="proj-month-val">42.840 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.648 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Junio</div><div class="proj-month-val">35.720 €</div><div class="proj-month-flow" style="color:var(--neg)">− 7.120 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Julio</div><div class="proj-month-val">40.180 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.460 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Agosto</div><div class="proj-month-val">44.730 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.550 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Sept.</div><div class="proj-month-val">33.890 €</div><div class="proj-month-flow" style="color:var(--neg)">− 10.840 €<br><span style="color:var(--neg); font-weight:600">IRPF</span></div></div>
+        <div class="proj-month"><div class="proj-month-lab">Octubre</div><div class="proj-month-val">38.420 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.530 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Novbre.</div><div class="proj-month-val">43.180 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.760 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Dicbre.</div><div class="proj-month-val">47.840 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.660 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Enero</div><div class="proj-month-val">44.120 €</div><div class="proj-month-flow" style="color:var(--neg)">− 3.720 €<br><span style="color:var(--neg); font-weight:600">IBI</span></div></div>
+        <div class="proj-month"><div class="proj-month-lab">Febrero</div><div class="proj-month-val">49.680 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 5.560 €</div></div>
+        <div class="proj-month"><div class="proj-month-lab">Marzo</div><div class="proj-month-val">54.200 €</div><div class="proj-month-flow" style="color:var(--pos)">+ 4.520 €</div></div>
+      </div>
+
+      <!-- Detalle mes seleccionado -->
+      <div class="card" style="margin-top: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Detalle · Mayo 2026 <span style="color:var(--ink-4); font-weight: normal">(previsto)</span></div>
+            <div class="card-sub">Eventos recurrentes y conocidos</div>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 60px">Día</th>
+              <th>Concepto</th>
+              <th>Origen</th>
+              <th class="r">Importe</th>
+              <th class="r" style="width:110px">Saldo tras</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="mono">01/05</td><td class="t-strong">Renta FA32 · 4 habs</td><td>Contratos · FA32</td><td class="r pos-col mono">+ 1.520 €</td><td class="r mono">39.712 €</td></tr>
+            <tr><td class="mono">01/05</td><td class="t-strong">Renta T64-4D · 5 habs</td><td>Contratos · T64-4D</td><td class="r pos-col mono">+ 1.450 €</td><td class="r mono">41.162 €</td></tr>
+            <tr><td class="mono">01/05</td><td class="t-strong">Renta T64-4IZ · 5 habs</td><td>Contratos · T64-4IZ</td><td class="r pos-col mono">+ 1.380 €</td><td class="r mono">42.542 €</td></tr>
+            <tr><td class="mono">03/05</td><td class="t-strong">Cuota hipoteca FA32</td><td>Préstamo · Unicaja</td><td class="r neg-col mono">− 617 €</td><td class="r mono">41.925 €</td></tr>
+            <tr><td class="mono">05/05</td><td class="t-strong">Cuota hipoteca T64-4D</td><td>Préstamo · Sabadell</td><td class="r neg-col mono">− 489 €</td><td class="r mono">41.436 €</td></tr>
+            <tr><td class="mono">05/05</td><td class="t-strong">Cuota hipoteca T64-4IZ</td><td>Préstamo · Sabadell</td><td class="r neg-col mono">− 412 €</td><td class="r mono">41.024 €</td></tr>
+            <tr><td class="mono">10/05</td><td class="t-strong">Comunidad FA32</td><td>Regla recurrente · mensual</td><td class="r neg-col mono">− 94 €</td><td class="r mono">40.930 €</td></tr>
+            <tr><td class="mono">15/05</td><td class="t-strong">Luz · suministros abril</td><td>Regla recurrente · mensual</td><td class="r neg-col mono">− 180 €</td><td class="r mono">40.750 €</td></tr>
+            <tr><td class="mono">25/05</td><td class="t-strong">Nómina Orange</td><td>Regla recurrente · mensual</td><td class="r pos-col mono">+ 2.800 €</td><td class="r mono">43.550 €</td></tr>
+            <tr><td class="mono">28/05</td><td class="t-strong">Alquiler piso Madrid</td><td>Regla recurrente · mensual</td><td class="r neg-col mono">− 710 €</td><td class="r mono">42.840 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ═══════════════ PAGE · SUBIR EXTRACTO ═══════════════ -->
+    <div class="page" id="page-extracto">
+
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Subir extracto bancario</div>
+            <div class="card-sub">Opcional · si prefieres marcar movimientos uno a uno, usa la vista de Movimientos</div>
+          </div>
+        </div>
+        <!-- Paso 1: elegir cuenta + upload -->
+        <div style="display:grid; grid-template-columns:1fr 2fr; gap:14px;">
+          <div>
+            <div class="fld">
+              <div class="fld-lab">Cuenta destino</div>
+              <select>
+                <option>Sabadell · Rentas · ···0842</option>
+                <option>Santander · Operativa · ···2715</option>
+                <option>Unicaja · Hipotecas · ···4437</option>
+              </select>
+            </div>
+            <div class="fld">
+              <div class="fld-lab">Formato</div>
+              <select>
+                <option>Detectar automáticamente</option>
+                <option>Excel Sabadell (.xlsx)</option>
+                <option>CSV genérico</option>
+                <option>Norma 43 (.txt)</option>
+              </select>
+            </div>
+            <div class="fld" style="margin-bottom: 0;">
+              <div class="fld-lab">Período</div>
+              <div style="display:flex; gap:6px;">
+                <input type="text" placeholder="01/04/2026" style="flex:1"/>
+                <input type="text" placeholder="22/04/2026" style="flex:1"/>
+              </div>
+            </div>
+          </div>
+          <div class="upload-zone">
+            <div class="upload-ico">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="upload-t">Arrastra el extracto aquí</div>
+            <div class="upload-sub">o haz click para elegir · .xlsx · .csv · .txt · máximo 10 MB</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado matching -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Matching · 14 movimientos encontrados en extracto</div>
+            <div class="card-sub">11 emparejados con previsiones · 3 sin match · revisa y aprueba</div>
+          </div>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost btn-sm">Descartar</button>
+            <button class="btn btn-gold btn-sm">Aprobar 11 matches</button>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: auto 1fr; gap: 10px 20px; margin-bottom: 14px; font-size: 12px;">
+          <span class="sc" style="text-align: right">Extracto</span>
+          <span style="color:var(--ink-4)">lo que dice el banco</span>
+          <span class="sc" style="text-align: right">ATLAS</span>
+          <span style="color:var(--ink-4)">lo que ya había previsto</span>
+        </div>
+
+        <!-- Rows de matching -->
+        <div class="match-row match">
+          <div class="match-side">
+            <div class="match-concept">TRANSF BIZUM L VILLANUEVA</div>
+            <div class="match-meta">22/04 · Sabadell ···0842</div>
+          </div>
+          <div class="match-arrow">↔</div>
+          <div class="match-side">
+            <div class="match-concept">Renta Hab 2 FA32 · L. Villanueva</div>
+            <div class="match-meta">22/04 previsto · <span class="pill pill-pending">pendiente</span></div>
+          </div>
+          <div class="match-amount pos-col">+ 380 €</div>
+        </div>
+
+        <div class="match-row match">
+          <div class="match-side">
+            <div class="match-concept">RECIBO IBERDROLA CLIENTES SAU</div>
+            <div class="match-meta">22/04 · Santander ···2715</div>
+          </div>
+          <div class="match-arrow">↔</div>
+          <div class="match-side">
+            <div class="match-concept">Luz marzo · Iberdrola · FA32</div>
+            <div class="match-meta">22/04 previsto · <span class="pill pill-pending">pendiente</span></div>
+          </div>
+          <div class="match-amount neg-col">− 45 €</div>
+        </div>
+
+        <div class="match-row match">
+          <div class="match-side">
+            <div class="match-concept">BIZUM A FUENTES</div>
+            <div class="match-meta">20/04 · Sabadell ···0842</div>
+          </div>
+          <div class="match-arrow">↔</div>
+          <div class="match-side">
+            <div class="match-concept">Renta Hab 1 FA32 · A. Fuentes</div>
+            <div class="match-meta">20/04 previsto · <span class="pill pill-pending">pendiente</span></div>
+          </div>
+          <div class="match-amount pos-col">+ 380 €</div>
+        </div>
+
+        <div class="match-row nomatch">
+          <div class="match-side">
+            <div class="match-concept">DEV COMPRA AMAZON</div>
+            <div class="match-meta">18/04 · Santander ···2715</div>
+          </div>
+          <div class="match-arrow">⚠</div>
+          <div class="match-side" style="color:var(--warn)">
+            <div class="match-concept">Sin match en previsiones</div>
+            <div class="match-meta">sugerencia: <a style="color:var(--gold); cursor:pointer">crear gasto personal</a></div>
+          </div>
+          <div class="match-amount neg-col">− 28 €</div>
+        </div>
+
+        <div class="match-row nomatch">
+          <div class="match-side">
+            <div class="match-concept">TRANSFERENCIA RECIBIDA · NIF ****7712K</div>
+            <div class="match-meta">16/04 · Sabadell ···0842</div>
+          </div>
+          <div class="match-arrow">⚠</div>
+          <div class="match-side" style="color:var(--warn)">
+            <div class="match-concept">Sin match en previsiones</div>
+            <div class="match-meta">sugerencia: <a style="color:var(--gold); cursor:pointer">asignar a contrato</a> o <a style="color:var(--gold); cursor:pointer">ignorar</a></div>
+          </div>
+          <div class="match-amount pos-col">+ 290 €</div>
+        </div>
+
+        <div class="match-row match">
+          <div class="match-side">
+            <div class="match-concept">CUOTA PRÉSTAMO FA32</div>
+            <div class="match-meta">14/04 · Unicaja ···4437</div>
+          </div>
+          <div class="match-arrow">↔</div>
+          <div class="match-side">
+            <div class="match-concept">Cuota hipoteca FA32</div>
+            <div class="match-meta">14/04 previsto · <span class="pill pill-pending">pendiente</span></div>
+          </div>
+          <div class="match-amount neg-col">− 617 €</div>
+        </div>
+
+        <div style="text-align:center; color: var(--ink-4); font-size: 12px; margin-top: 12px;">
+          … 8 matches más (colapsados)
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ MÓVIL · TOQUE MANUAL ═══════════════ -->
+    <div class="mobile-section">
+
+      <div class="mobile-section-hd">
+        <h2>Modo móvil · toque manual</h2>
+        <p>El 70% de usuarios nunca sube un extracto · revisan desde el sofá, tocan ○ para confirmar, cierran.</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-statusbar">
+              <span>9:41</span>
+              <span>● ● ●   ▲</span>
+            </div>
+            <div class="phone-head">
+              <div class="phone-h1">Tesorería</div>
+              <div class="phone-sub">38.192 € · 8 cuentas · 5 pendientes</div>
+            </div>
+            <div class="phone-hero">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div class="sc" style="font-size:9.5px">Saldo consolidado</div>
+                <span class="delta pos">▲ + 1.842 €</span>
+              </div>
+              <div class="phone-hero-big">38.192 €</div>
+              <div class="phone-hero-sub">Flujo próx. 30d <strong>− 12.000 €</strong></div>
+            </div>
+            <div class="phone-tabs">
+              <button class="active">Por confirmar</button>
+              <button>Recientes</button>
+              <button>Cuentas</button>
+            </div>
+            <div class="phone-content">
+
+              <div class="phone-date-sep">
+                <span>Hoy · 22 abr</span>
+                <span class="count-pending">3</span>
+              </div>
+              <div class="phone-mov pending">
+                <div class="chk pending" style="width:22px; height:22px;"></div>
+                <div>
+                  <div class="phone-mov-concept">Renta Hab 2 FA32</div>
+                  <div class="phone-mov-meta">L. Villanueva · Sabadell</div>
+                </div>
+                <div class="phone-mov-amt pos">+ 380 €</div>
+              </div>
+              <div class="phone-mov pending">
+                <div class="chk pending" style="width:22px; height:22px;"></div>
+                <div>
+                  <div class="phone-mov-concept">Luz marzo · Iberdrola</div>
+                  <div class="phone-mov-meta">FA32 · Santander</div>
+                </div>
+                <div class="phone-mov-amt neg">− 45 €</div>
+              </div>
+              <div class="phone-mov pending">
+                <div class="chk pending" style="width:22px; height:22px;"></div>
+                <div>
+                  <div class="phone-mov-concept">Comunidad FA32</div>
+                  <div class="phone-mov-meta">Admin Fincas · Santander</div>
+                </div>
+                <div class="phone-mov-amt neg">− 94 €</div>
+              </div>
+
+              <div class="phone-date-sep">
+                <span>Ayer · 21 abr</span>
+                <span class="count-pending">2</span>
+              </div>
+              <div class="phone-mov pending">
+                <div class="chk pending" style="width:22px; height:22px;"></div>
+                <div>
+                  <div class="phone-mov-concept">Renta Hab 1 FA32</div>
+                  <div class="phone-mov-meta">A. Fuentes · Sabadell</div>
+                </div>
+                <div class="phone-mov-amt pos">+ 380 €</div>
+              </div>
+              <div class="phone-mov pending">
+                <div class="chk pending" style="width:22px; height:22px;"></div>
+                <div>
+                  <div class="phone-mov-concept">Agua Tenderina 64</div>
+                  <div class="phone-mov-meta">AquaOvi · Santander</div>
+                </div>
+                <div class="phone-mov-amt neg">− 28 €</div>
+              </div>
+
+              <div class="phone-date-sep">
+                <span>19 abr</span>
+              </div>
+              <div class="phone-mov done">
+                <div class="chk done" style="width:22px; height:22px; background:var(--pos); border-color:var(--pos)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div>
+                  <div class="phone-mov-concept">Nómina Orange</div>
+                  <div class="phone-mov-meta">Santander</div>
+                </div>
+                <div class="phone-mov-amt pos">+ 2.800 €</div>
+              </div>
+            </div>
+            <div class="phone-tabbar">
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/></svg>Inmuebles</div>
+              <div class="phone-tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>Contratos</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption">A · entrada · 5 pendientes agrupados por fecha</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; align-items:center">
+        <div class="phone">
+          <div class="phone-screen">
+            <div class="phone-statusbar">
+              <span>9:41</span>
+              <span>● ● ●   ▲</span>
+            </div>
+            <div class="phone-head">
+              <div class="phone-h1">Tesorería</div>
+              <div class="phone-sub">38.192 € · 8 cuentas · 0 pendientes</div>
+            </div>
+            <div class="phone-hero" style="background: #E4F0E8; border-color: rgba(30,107,58,.2)">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <div class="sc" style="font-size:9.5px; color:var(--pos)">Todo al día ✓</div>
+                <span class="delta pos">3 confirmados</span>
+              </div>
+              <div class="phone-hero-big">38.192 €</div>
+              <div class="phone-hero-sub">Bien hecho · vuelve mañana</div>
+            </div>
+            <div class="phone-tabs">
+              <button class="active">Por confirmar</button>
+              <button>Recientes</button>
+              <button>Cuentas</button>
+            </div>
+            <div class="phone-content" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top: 60px; gap: 14px;">
+              <div style="width: 80px; height: 80px; border-radius: 50%; background: var(--pos-wash); color: var(--pos); display: flex; align-items: center; justify-content: center;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div style="text-align: center; padding: 0 24px;">
+                <div class="serif" style="font-size: 22px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em">No tienes nada pendiente</div>
+                <div style="font-size: 12.5px; color: var(--ink-4); margin-top: 8px; line-height: 1.5">Las próximas previsiones aparecerán aquí cuando toque. Nada que revisar hoy.</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top: 8px">Ver confirmados recientes →</button>
+            </div>
+            <div class="phone-tabbar">
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/></svg>Inmuebles</div>
+              <div class="phone-tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/></svg>Contratos</div>
+              <div class="phone-tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-caption">B · estado limpio · todo confirmado</div>
+      </div>
+
+    </div>
+
+    <!-- ═════════ DRAWER TELESCÓPICO · MES → DÍA ═════════ -->
+    <div class="drawer-overlay" id="caja-drawer-overlay" onclick="cerrarDrawerCaja()"></div>
+    <div class="drawer" id="caja-drawer">
+      <div class="drawer-head">
+        <button class="drawer-back-btn" onclick="volverAMes()" aria-label="Volver al mes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="drawer-title-wrap">
+          <div class="drawer-title" id="drawer-title">Julio 2026</div>
+          <div class="drawer-sub" id="drawer-sub">previsto · 22 eventos · clic en un día para ver el detalle</div>
+        </div>
+        <button class="drawer-close" onclick="cerrarDrawerCaja()" aria-label="Cerrar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="drawer-body" id="drawer-body">
+        <!-- Contenido inyectado por JS -->
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═════════ DRAWER DETALLE MOVIMIENTO ═════════ -->
+<div class="drawer-backdrop" id="backdrop" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hd">
+    <div>
+      <div class="sc" style="margin-bottom: 4px">Movimiento previsto</div>
+      <h2>Renta Hab 2 FA32</h2>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-bd">
+    <div class="drawer-big pos mono">+ 380,00 €</div>
+    <div style="color:var(--ink-4); font-size: 13px; margin-bottom: 18px;">previsto · pendiente de confirmación</div>
+
+    <div class="fld">
+      <div class="fld-lab">Concepto</div>
+      <input type="text" value="Renta Hab 2 FA32"/>
+    </div>
+    <div class="fld">
+      <div class="fld-lab">Fecha prevista</div>
+      <input type="text" value="22/04/2026"/>
+    </div>
+    <div class="fld">
+      <div class="fld-lab">Cuenta destino</div>
+      <select>
+        <option>Sabadell · Rentas · ···0842</option>
+        <option>Santander · Operativa · ···2715</option>
+      </select>
+    </div>
+    <div class="fld">
+      <div class="fld-lab">Inmueble</div>
+      <select>
+        <option>Fuertes Acevedo 32 · Habitación 2</option>
+        <option>Tenderina 64 · 4D</option>
+      </select>
+    </div>
+    <div class="fld">
+      <div class="fld-lab">Contrato asociado</div>
+      <div class="fld-val" style="padding: 6px 10px; background: var(--bg); border-radius: 6px; font-size: 12.5px;">
+        L. Villanueva · desde feb 2025 · vence feb 2027
+      </div>
+    </div>
+    <div class="fld">
+      <div class="fld-lab">Categoría</div>
+      <div class="fld-val">
+        <span class="pill pill-done" style="background: var(--brand-wash); color: var(--brand)">Renta habitación</span>
+      </div>
+    </div>
+    <div class="fld" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);">
+      <div class="fld-lab">Origen</div>
+      <div style="font-size: 12px; color: var(--ink-3); line-height: 1.5;">
+        Generado automáticamente desde el contrato activo de L. Villanueva · regla recurrente mensual día 20-25.
+      </div>
+    </div>
+  </div>
+  <div class="drawer-ft">
+    <button class="btn btn-ghost" style="flex:1">Editar</button>
+    <button class="btn btn-gold" style="flex:1" onclick="closeDrawer()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+      Confirmar pago
+    </button>
+  </div>
+</div>
+
+<script>
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelectorAll('.tabs-inner button').forEach(b => b.classList.remove('active'));
+    const tab = document.getElementById('tab-' + id);
+    if (tab) tab.classList.add('active');
+    window.scrollTo(0, 0);
+  }
+  function openDrawer() {
+    document.getElementById('drawer').classList.add('open');
+    document.getElementById('backdrop').classList.add('open');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('backdrop').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+  // ═══════ TESORERÍA v6 · carrusel cuentas + clic abre Movimientos ═══════
+  let cuentasPag = 1;
+  function moverCuentas(delta) {
+    const nuevaPag = cuentasPag + delta;
+    if (nuevaPag < 1 || nuevaPag > 3) return;
+    cuentasPag = nuevaPag;
+    document.querySelectorAll('.cuentas-pag').forEach(p => {
+      p.style.display = (parseInt(p.dataset.pag) === cuentasPag) ? '' : 'none';
+    });
+    const rango = document.getElementById('cuentas-rango');
+    const de10 = document.getElementById('cuentas-de-10');
+    if (rango) {
+      if (cuentasPag === 1) rango.textContent = '1-5';
+      else if (cuentasPag === 2) rango.textContent = '6-10';
+      else rango.textContent = 'Añadir cuenta';
+    }
+    if (de10) de10.style.display = (cuentasPag === 3) ? 'none' : '';
+    const prev = document.getElementById('cuentas-arr-prev');
+    const next = document.getElementById('cuentas-arr-next');
+    if (prev) prev.disabled = cuentasPag === 1;
+    if (next) next.disabled = cuentasPag === 3;
+  }
+  // Inicializar estado · prev disabled en página 1
+  document.addEventListener('DOMContentLoaded', () => {
+    const prev = document.getElementById('cuentas-arr-prev');
+    if (prev) prev.disabled = true;
+  });
+
+  function irAMovimientos(cuentaId) {
+    showPage('movimientos');
+  }
+
+  // ═══════ TESORERÍA v5 · marcar pendiente como conciliado ═══════
+  function marcarConciliado(chk) {
+    const card = chk.closest('.pend-card');
+    if (!card) return;
+    chk.classList.remove('pending');
+    chk.classList.add('done');
+    setTimeout(() => {
+      card.classList.add('removed');
+      setTimeout(() => {
+        card.style.display = 'none';
+        // Actualizar contador
+        const stack = document.getElementById('pendientes-stack');
+        const restantes = stack.querySelectorAll('.pend-card:not(.removed):not([style*="display: none"])').length;
+        const counter = document.getElementById('pend-count');
+        if (counter) counter.textContent = restantes;
+        // Si queda 0 · mostrar estado vacío
+        if (restantes === 0) {
+          stack.style.display = 'none';
+          const empty = document.getElementById('pend-empty');
+          if (empty) empty.style.display = 'block';
+        }
+      }, 260);
+    }, 200);
+  }
+
+  // ═══════ DRAWER TELESCÓPICO · mes → día ═══════
+  const datosMeses = {
+    enero:      { titulo: 'Enero 2026',      sub: 'cerrado · 18 eventos', estado: 'past', kEnt: '+ 9.970', kSal: '− 8.319', kBal: '+ 1.651', balCol: 'var(--pos)' },
+    febrero:    { titulo: 'Febrero 2026',    sub: 'cerrado · 17 eventos', estado: 'past', kEnt: '+ 9.970', kSal: '− 8.139', kBal: '+ 1.831', balCol: 'var(--pos)' },
+    marzo:      { titulo: 'Marzo 2026',      sub: 'cerrado · 24 eventos · IVA 1T', estado: 'past', kEnt: '+12.970', kSal: '−18.093', kBal: '−5.123', balCol: 'var(--neg)' },
+    abril:      { titulo: 'Abril 2026',      sub: 'mes en curso · hoy 25 abr · 14 eventos restantes', estado: 'current', kEnt: '+ 9.970', kSal: '− 8.670', kBal: '+ 1.300', balCol: 'var(--pos)' },
+    mayo:       { titulo: 'Mayo 2026',       sub: 'previsto · 19 eventos', estado: 'future', kEnt: '+ 9.970', kSal: '− 5.322', kBal: '+ 4.648', balCol: 'var(--pos)' },
+    junio:      { titulo: 'Junio 2026',      sub: 'previsto · IRPF anual + IBI · 22 eventos', estado: 'future', kEnt: '+18.062', kSal: '−25.182', kBal: '−7.120', balCol: 'var(--neg)' },
+    julio:      { titulo: 'Julio 2026',      sub: 'previsto · paga extra · 22 eventos', estado: 'future', kEnt: '+18.062', kSal: '− 7.602', kBal: '+10.460', balCol: 'var(--pos)' },
+    agosto:     { titulo: 'Agosto 2026',     sub: 'previsto · 16 eventos', estado: 'future', kEnt: '+ 9.970', kSal: '− 5.420', kBal: '+ 4.550', balCol: 'var(--pos)' },
+    septiembre: { titulo: 'Septiembre 2026', sub: 'previsto · TENSIÓN · 24 eventos', estado: 'future', kEnt: '+ 9.970', kSal: '−20.810', kBal: '−10.840', balCol: 'var(--neg)' },
+    octubre:    { titulo: 'Octubre 2026',    sub: 'previsto · 19 eventos', estado: 'future', kEnt: '+ 9.970', kSal: '− 5.440', kBal: '+ 4.530', balCol: 'var(--pos)' },
+    noviembre:  { titulo: 'Noviembre 2026',  sub: 'previsto · 2º plazo IRPF + IBI · 21 eventos', estado: 'future', kEnt: '+ 9.970', kSal: '−13.210', kBal: '−3.240', balCol: 'var(--neg)' },
+    diciembre:  { titulo: 'Diciembre 2026',  sub: 'previsto · paga extra · 18 eventos', estado: 'future', kEnt: '+18.062', kSal: '− 3.402', kBal: '+14.660', balCol: 'var(--pos)' }
+  };
+
+  // Eventos sintéticos por mes (para el contenido del drawer)
+  const ingresosMes = [
+    { nom: 'Nómina Orange España', meta: 'Personal · Santander 2715', amt: '+ 8.420 €' },
+    { nom: 'Renta FA32 · 4 habs', meta: 'Inmuebles · Sabadell 0842', amt: '+ 1.520 €' },
+    { nom: 'Renta T64-4D', meta: 'Inmuebles · Unicaja 4437', amt: '+ 1.450 €' },
+    { nom: 'Renta T64-4IZ', meta: 'Inmuebles · Unicaja 4437', amt: '+ 1.380 €' },
+    { nom: 'Cuota Unihouser', meta: 'Inversiones · Sabadell 0842', amt: '+ 420 €' },
+    { nom: 'Intereses SmartFlip', meta: 'Inversiones · MyInvestor 4812', amt: '+ 750 €' }
+  ];
+  const gastosMes = [
+    { nom: 'Hipoteca Unicaja T64', meta: 'Financiación · Unicaja 4437', amt: '− 1.240 €' },
+    { nom: 'Hipoteca ING T48', meta: 'Financiación · Santander 2715', amt: '− 1.480 €' },
+    { nom: 'Préstamo personal Sabadell', meta: 'Financiación · Sabadell 0842', amt: '− 485 €' },
+    { nom: 'Pignoraticia PP Orange', meta: 'Financiación · Unicaja 4437', amt: '− 240 €' },
+    { nom: 'Comunidades · 6 inmuebles', meta: 'Inmuebles · Unicaja 4437', amt: '− 312 €' },
+    { nom: 'Suministros agrupado', meta: 'Inmuebles + Personal · BBVA 4823', amt: '− 188 €' },
+    { nom: 'Sanitas seguro salud', meta: 'Personal · BBVA 4823', amt: '− 195 €' },
+    { nom: 'Alquiler vivienda Madrid', meta: 'Personal · Santander 2715', amt: '− 1.378 €' }
+  ];
+
+  // Eventos sintéticos del día (para vista día por cuenta)
+  const cuentasDia = [
+    { logo: 'SA', nom: 'Santander', meta: '···· 2715', col: '#EC0000', flow: '+ 8.420 / − 1.378', saldo: '+25.062 €', warn: false },
+    { logo: 'SB', nom: 'Sabadell',  meta: '···· 0842', col: '#006CB3', flow: '+ 1.940 / − 485',   saldo: '+13.595 €', warn: false },
+    { logo: 'UN', nom: 'Unicaja',   meta: '···· 4437', col: '#F2AA00', flow: '+ 2.830 / − 1.792', saldo: '+ 4.318 €', warn: false },
+    { logo: 'MI', nom: 'MyInvestor',meta: '···· 4812', col: '#00B6B6', flow: '+ 750 / —',         saldo: '+ 3.290 €', warn: false },
+    { logo: 'BB', nom: 'BBVA',      meta: '···· 4823', col: '#072146', flow: '— / − 383',         saldo: '−  120 €',  warn: true  },
+    { logo: 'TR', nom: 'Trade R.',  meta: '···· 7729', col: '#0F0F0F', flow: '— / —',             saldo: '+ 1.812 €', warn: false }
+  ];
+
+  function abrirDrawerMes(mesId) {
+    const drawer = document.getElementById('caja-drawer');
+    const overlay = document.getElementById('caja-drawer-overlay');
+    drawer.classList.remove('level-day');
+    drawer.dataset.mes = mesId;
+
+    const m = datosMeses[mesId];
+    document.getElementById('drawer-title').textContent = m.titulo;
+    document.getElementById('drawer-sub').textContent = m.sub;
+
+    const body = document.getElementById('drawer-body');
+    body.innerHTML = `
+      <!-- KPIs del mes -->
+      <div class="drawer-kpis">
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Entradas</div>
+          <div class="drawer-kpi-val pos">${m.kEnt} €</div>
+        </div>
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Salidas</div>
+          <div class="drawer-kpi-val neg">${m.kSal} €</div>
+        </div>
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Balance neto</div>
+          <div class="drawer-kpi-val" style="color: ${m.balCol}">${m.kBal} €</div>
+        </div>
+      </div>
+
+      <!-- Mini calendario diario · ARRIBA -->
+      <div class="drawer-section">
+        <div class="drawer-section-hd">Día a día · clic para ver el detalle</div>
+        <div class="cal-dow" style="grid-template-columns: repeat(7, 1fr); display: grid; font-size: 10px; color: var(--ink-4); text-align: center; font-weight: 600; padding-bottom: 4px;">
+          <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
+        </div>
+        <div class="drawer-mini-cal">
+          ${gen30diasMini(mesId)}
+        </div>
+      </div>
+
+      <!-- Ingresos previstos · ABAJO -->
+      <div class="drawer-section">
+        <div class="drawer-section-hd pos-hd">↑ Ingresos previstos</div>
+        ${ingresosMes.map(e => `
+          <div class="drawer-evt">
+            <div class="drawer-evt-info">
+              <div class="drawer-evt-name">${e.nom}</div>
+              <div class="drawer-evt-meta">${e.meta}</div>
+            </div>
+            <div class="drawer-evt-amt pos">${e.amt}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Gastos previstos · ABAJO -->
+      <div class="drawer-section">
+        <div class="drawer-section-hd neg-hd">↓ Gastos previstos</div>
+        ${gastosMes.map(e => `
+          <div class="drawer-evt">
+            <div class="drawer-evt-info">
+              <div class="drawer-evt-name">${e.nom}</div>
+              <div class="drawer-evt-meta">${e.meta}</div>
+            </div>
+            <div class="drawer-evt-amt neg">${e.amt}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    overlay.classList.add('open');
+    drawer.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function gen30diasMini(mesId) {
+    // Genera celdas de mini-calendario · 35 días · destacando algunos con importes
+    const eventos = {
+      1: { amt: '−412', col: 'neg' },
+      5: { amt: '+4.4K', col: 'pos' },
+      12: { amt: '+780', col: 'pos' },
+      18: { amt: '−2.1K', col: 'neg' },
+      22: { today: true, amt: '+241', col: 'pos' },
+      25: { amt: '+2.8K', col: 'pos' },
+      30: { amt: '−318', col: 'neg' }
+    };
+    let html = '';
+    // 31 mar (other)
+    html += `<div class="drawer-mini-day other"><span class="drawer-mini-day-num">31</span></div>`;
+    for (let d = 1; d <= 30; d++) {
+      const e = eventos[d];
+      const cls = e?.today ? 'today' : '';
+      const amt = e?.amt ? `<span class="drawer-mini-day-amt ${e.col}">${e.amt}</span>` : '';
+      html += `<div class="drawer-mini-day ${cls}" onclick="abrirDrawerDia(${d}, '${mesId}')"><span class="drawer-mini-day-num">${d}</span>${amt}</div>`;
+    }
+    // 1-4 may (other)
+    for (let d = 1; d <= 4; d++) {
+      html += `<div class="drawer-mini-day other"><span class="drawer-mini-day-num">${d}</span></div>`;
+    }
+    return html;
+  }
+
+  function abrirDrawerDia(dia, mesId) {
+    const drawer = document.getElementById('caja-drawer');
+    drawer.classList.add('level-day');
+
+    const m = datosMeses[mesId];
+    const mesNombre = m.titulo.split(' ')[0];
+
+    document.getElementById('drawer-title').textContent = `${dia} ${mesNombre.toLowerCase()}`;
+    document.getElementById('drawer-sub').textContent = `desglose por cuenta · saldo inicio y fin de día`;
+
+    const body = document.getElementById('drawer-body');
+    body.innerHTML = `
+      <div class="drawer-kpis">
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Saldo inicio día</div>
+          <div class="drawer-kpi-val">38.192 €</div>
+        </div>
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Movimientos</div>
+          <div class="drawer-kpi-val pos">+ 9.728 €</div>
+        </div>
+        <div class="drawer-kpi">
+          <div class="drawer-kpi-lab">Saldo fin día</div>
+          <div class="drawer-kpi-val">47.920 €</div>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <div class="drawer-section-hd">Saldo proyectado por cuenta · fin de día</div>
+        ${cuentasDia.map(c => `
+          <div class="drawer-day-cuenta ${c.warn ? 'warn' : ''}">
+            <div class="drawer-day-cuenta-logo" style="background: ${c.col};">${c.logo}</div>
+            <div class="drawer-day-cuenta-info">
+              <div class="drawer-day-cuenta-name">${c.nom}</div>
+              <div class="drawer-day-cuenta-meta">${c.meta}</div>
+            </div>
+            <div class="drawer-day-cuenta-flow">${c.flow}</div>
+            <div class="drawer-day-cuenta-saldo ${c.warn ? 'warn' : ''}">${c.saldo}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div style="font-size: 11px; color: var(--ink-4); padding: 12px 14px; background: var(--card-alt); border-radius: 8px; line-height: 1.5;">
+        <strong style="color: var(--ink-3);">BBVA bajo umbral.</strong> El saldo de BBVA queda en −120 € · por debajo del umbral de 200 € que tienes configurado en Ajustes. Considera transferir desde Santander antes del cargo de las 14:30.
+      </div>
+    `;
+  }
+
+  function volverAMes() {
+    const drawer = document.getElementById('caja-drawer');
+    if (drawer.dataset.mes) abrirDrawerMes(drawer.dataset.mes);
+  }
+
+  function cerrarDrawerCaja() {
+    document.getElementById('caja-drawer').classList.remove('open', 'level-day');
+    document.getElementById('caja-drawer-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') cerrarDrawerCaja();
+  });
+</script>
+
+</body>
+</html>

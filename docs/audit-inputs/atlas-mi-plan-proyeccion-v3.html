@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Mi Plan · Proyección v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5; --line-3: #F3F1EB;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═══ Sidebar canónico ═══ */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═══ Main ═══ */
+  .main { padding: 22px 32px 60px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+
+  /* ═══ Page head ═══ */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 6px; }
+  .breadcrumb a { color: var(--ink-3); cursor: pointer; }
+  .breadcrumb a:hover { color: var(--ink-2); }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--ink-3); padding: 2px 8px 2px 4px; border-radius: 5px; }
+  .back-btn:hover { background: var(--card-alt); color: var(--ink-2); }
+  .page-head h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .page-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { color: #fff; background: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-ink); border-color: var(--gold-ink); }
+
+  /* ═══ Sub-tabs (Mi Plan) ═══ */
+  .submod-tabs { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 1px solid var(--line-2); }
+  .submod-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+  .submod-tabs button:hover { color: var(--ink-2); }
+  .submod-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); }
+
+  /* ═══ Banner anti-confusión ═══ */
+  .proy-banner { display: flex; align-items: flex-start; gap: 12px; padding: 11px 16px; background: var(--brand-wash); border: 1px solid #D5D9E5; border-left: 3px solid var(--brand); border-radius: 7px; font-size: 12.5px; color: var(--brand); margin-bottom: 18px; }
+  .proy-banner svg { flex-shrink: 0; margin-top: 1px; color: var(--brand); }
+  .proy-banner strong { color: var(--brand-ink); }
+
+  /* ═══ KPIs strip ═══ */
+  .proy-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-bottom: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .proy-kpi { padding: 14px 18px; border-right: 1px solid var(--line-2); }
+  .proy-kpi:last-child { border-right: none; }
+  .proy-kpi-lab { font-size: 11.5px; color: var(--ink-3); font-weight: 600; letter-spacing: .03em; }
+  .proy-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 5px; letter-spacing: -0.025em; }
+  .proy-kpi-val.pos { color: var(--pos); }
+  .proy-kpi-val.neg { color: var(--neg); }
+  .proy-kpi-val.gold { color: var(--gold); }
+  .proy-kpi-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; }
+
+  /* ═══ Year selector ═══ */
+  .proy-year-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; }
+  .proy-year-lab { font-size: 11px; font-weight: 600; color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; padding-right: 4px; border-right: 1px solid var(--line-2); margin-right: 4px; }
+  .proy-pill { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--ink-3); padding: 5px 11px; border-radius: 14px; background: transparent; border: 1px solid transparent; cursor: pointer; }
+  .proy-pill:hover { background: var(--card-alt); color: var(--ink-2); }
+  .proy-pill.active { background: var(--brand); color: #fff; }
+  .proy-pill.cerrado { color: var(--ink-4); }
+  .proy-pill.hito { color: var(--gold-ink); }
+  .proy-pill.hito::after { content: " ◆"; font-size: 9px; color: var(--gold); }
+
+  /* ═══ Card base ═══ */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 18px 20px; margin-bottom: 18px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  .card-title { font-size: 15.5px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .card-sub { font-size: 12px; color: var(--ink-3); margin-top: 3px; }
+
+  /* ═══ Waterfall hero ═══ */
+  .wf-hero { padding: 22px 24px 16px; }
+  .wf-toggle { display: flex; gap: 0; background: var(--card-alt); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .wf-toggle button { padding: 6px 14px; font-size: 12px; font-weight: 600; color: var(--ink-3); cursor: pointer; }
+  .wf-toggle button.active { background: var(--brand); color: #fff; }
+  .wf-svg-wrap { width: 100%; overflow-x: auto; padding: 4px 0 12px; }
+  .wf-svg-wrap svg { width: 100%; min-width: 920px; display: block; }
+  .wf-views { width: 100%; }
+  .wf-view { display: none; }
+  .wf-view.active { display: block; }
+  .wf-bar { cursor: pointer; transition: opacity 0.15s; }
+  .wf-bar:hover { opacity: 0.78; }
+  .wf-mes-current { stroke: var(--gold); stroke-width: 2; fill: none; }
+  .wf-legend { display: flex; gap: 18px; padding-top: 10px; border-top: 1px solid var(--line-2); margin-top: 8px; flex-wrap: wrap; }
+  .wf-leg-item { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--ink-3); }
+  .wf-leg-dot { width: 11px; height: 11px; border-radius: 2px; }
+  .wf-leg-dot.regular { background: var(--gold-soft); }
+  .wf-leg-dot.atipico { background: var(--gold); border: 1px solid var(--gold-ink); }
+  .wf-leg-dot.alerta { background: var(--neg); }
+  .wf-leg-dot.actual { background: transparent; border: 2px solid var(--gold-ink); }
+
+  /* ═══ Mes detail ═══ */
+  .mes-card { padding: 0; overflow: hidden; }
+  .mes-head { padding: 16px 22px; background: var(--card-alt); border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .mes-head-left h3 { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .mes-head-sub { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .mes-helper { font-size: 11.5px; color: var(--ink-4); display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--gold-wash); border-radius: 12px; color: var(--gold-ink); }
+  .mes-grid { display: grid; grid-template-columns: 1fr 220px 1fr; padding: 22px 24px; gap: 30px; align-items: start; }
+  .mes-side-title { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); margin-bottom: 10px; font-weight: 600; }
+  .mes-side-title.ingresos { color: var(--pos); }
+  .mes-side-title.gastos { color: var(--neg); }
+  .mes-line { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px dashed var(--line-2); cursor: pointer; transition: background 0.12s; padding-left: 6px; padding-right: 6px; border-radius: 4px; }
+  .mes-line:hover { background: var(--card-alt); }
+  .mes-line:last-child { border-bottom: none; }
+  .mes-line-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .mes-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--brand-wash); color: var(--brand); flex-shrink: 0; }
+  .mes-tag.inmuebles { background: #E8E1D5; color: #5B4416; }
+  .mes-tag.financiacion { background: #E1E5EE; color: #2A3875; }
+  .mes-tag.fiscal { background: #EFE3DD; color: #854F0B; }
+  .mes-tag.inversiones { background: #DDE9DD; color: #2A5C32; }
+  .mes-line-name { font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mes-line-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; flex-shrink: 0; padding-left: 12px; }
+  .mes-line-val.pos { color: var(--pos); }
+  .mes-line-val.neg { color: var(--neg); }
+  .mes-subtotal { display: flex; justify-content: space-between; padding: 10px 6px 4px; margin-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .mes-subtotal .mono { font-size: 14px; }
+
+  .mes-result { background: var(--brand-wash); border-radius: 10px; padding: 22px 18px; text-align: center; align-self: center; border: 1px solid #D5D9E5; }
+  .mes-result-lab { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--brand); font-weight: 700; }
+  .mes-result-num { font-family: 'JetBrains Mono', monospace; font-size: 36px; font-weight: 700; color: var(--brand-ink); letter-spacing: -0.03em; margin: 12px 0 8px; }
+  .mes-result-num.neg { color: var(--neg); }
+  .mes-result-help { font-size: 11.5px; color: var(--ink-3); padding-top: 14px; margin-top: 12px; border-top: 1px solid #D5D9E5; line-height: 1.45; }
+  .mes-result-arrow-lab { font-size: 11px; color: var(--ink-4); }
+  .mes-foot { padding: 14px 22px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; background: var(--card-alt); }
+  .mes-foot-info { font-size: 11.5px; color: var(--ink-4); }
+  .ver-tabla { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--brand); cursor: pointer; padding: 6px 12px; border-radius: 6px; border: 1px dashed var(--brand-wash); background: transparent; }
+  .ver-tabla:hover { background: var(--brand-wash); border-style: solid; }
+
+  /* ═══ Plurianual ═══ */
+  .plur { padding: 22px 24px 16px; }
+  .plur-svg-wrap { width: 100%; overflow-x: auto; padding: 8px 0 6px; }
+  .plur-svg-wrap svg { width: 100%; min-width: 940px; display: block; }
+  .plur-hitos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-2); }
+  .hito { padding: 12px 14px; background: var(--card-alt); border: 1px solid var(--line); border-radius: 8px; border-top: 3px solid var(--gold); }
+  .hito.libre { border-top-color: var(--pos); background: var(--pos-wash); border-color: #C0DBC8; }
+  .hito-year { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--ink); }
+  .hito-event { font-size: 11.5px; color: var(--ink-2); margin-top: 5px; line-height: 1.35; font-weight: 600; }
+  .hito-impact { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--gold-ink); margin-top: 5px; font-weight: 600; }
+  .hito.libre .hito-impact { color: var(--pos); }
+
+  /* ═══ Tabla completa plegable ═══ */
+  .tabla-card { padding: 0; overflow: hidden; display: none; }
+  .tabla-card.open { display: block; }
+  .tabla-head { padding: 16px 22px; background: var(--card-alt); border-bottom: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; }
+  .tabla-head h3 { font-size: 15px; font-weight: 700; color: var(--ink); }
+  .tabla-head-sub { font-size: 12px; color: var(--ink-4); margin-top: 2px; }
+  .tabla-close { font-size: 12px; color: var(--ink-3); cursor: pointer; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); display: inline-flex; align-items: center; gap: 5px; }
+  .tabla-close:hover { border-color: var(--ink-5); }
+  .tabla-wrap { padding: 12px 16px 18px; overflow-x: auto; }
+  .tabla-wrap table { width: 100%; border-collapse: collapse; min-width: 940px; font-size: 11.5px; }
+  .tabla-wrap th, .tabla-wrap td { padding: 7px 6px; text-align: right; font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+  .tabla-wrap th { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--ink-3); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+  .tabla-wrap th.lbl, .tabla-wrap td.lbl { text-align: left; padding-left: 10px; font-family: 'Inter', sans-serif; font-size: 12px; color: var(--ink-2); font-weight: 500; min-width: 240px; position: sticky; left: 0; background: var(--card); border-right: 1px solid var(--line-2); }
+  .tabla-wrap td.tot { font-weight: 700; color: var(--ink); border-left: 1px solid var(--line-2); padding-left: 10px; }
+  .tabla-wrap th.actual, .tabla-wrap td.actual { background: var(--gold-wash); color: var(--gold-ink); font-weight: 700; }
+  .tabla-wrap tr.grp td { font-family: 'Inter', sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding-top: 14px; padding-bottom: 4px; text-align: left; padding-left: 10px; background: transparent; }
+  .tabla-wrap tr.grp.pos td { color: var(--pos); }
+  .tabla-wrap tr.grp.neg td { color: var(--neg); }
+  .tabla-wrap tr.subtotal td { font-weight: 700; border-top: 1px solid var(--line-2); color: var(--ink); }
+  .tabla-wrap tr.subtotal td.lbl { background: var(--card-alt); }
+  .tabla-wrap tr.result td { font-weight: 700; background: var(--brand-wash); color: var(--brand-ink); border-top: 2px solid var(--brand); padding-top: 10px; padding-bottom: 10px; }
+  .tabla-wrap tr.result td.lbl { background: var(--brand-wash); border-right-color: var(--brand-wash); }
+  .tabla-wrap td.neg-val { color: var(--neg); }
+  .tabla-wrap td.pos-val { color: var(--pos); }
+  .tabla-wrap td.zero { color: var(--ink-5); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--brand-ink); color: #fff; padding: 11px 18px; border-radius: 8px; font-size: 12.5px; opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 100; max-width: 480px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+    <nav class="nav" style="margin-top: 14px;">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+      <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div>
+        <div class="side-foot-name">José Antonio</div>
+        <div class="side-foot-sub">activo</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar inmueble, contrato, movimiento..." />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showToast('Volver al landing de Mi Plan')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showToast('Ir a Mi Plan')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Proyección</span>
+        </div>
+        <h1>Proyección de caja</h1>
+        <div class="page-sub">la forma de tu año · mes a mes · y cómo cambia hasta 2044 cuando cierras tu última hipoteca</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar Excel · 18 años · una hoja por año')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs Mi Plan -->
+    <div class="submod-tabs">
+      <button class="active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+        Proyección
+      </button>
+      <button onclick="showToast('Ir a Libertad financiera · simulador')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+        Libertad financiera
+      </button>
+      <button onclick="showToast('Ir a Objetivos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Objetivos
+      </button>
+      <button onclick="showToast('Ir a Fondos de ahorro')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+        Fondos de ahorro
+      </button>
+      <button onclick="showToast('Ir a Retos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Retos
+      </button>
+    </div>
+
+    <!-- Banner anti-confusión vs Tesorería -->
+    <div class="proy-banner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong>Esta no es tu Tesorería.</strong> Aquí ves el cashflow estructural de tu plan · ingresos − salidas por concepto · año a año. El saldo bancario proyectado mes a mes vive en <a onclick="showToast('Ir a Tesorería · vista proyección 12 meses')" style="text-decoration: underline; cursor: pointer;">Tesorería · proyección</a>.
+      </div>
+    </div>
+
+    <!-- KPIs anuales -->
+    <div class="proy-kpis">
+      <div class="proy-kpi">
+        <div class="proy-kpi-lab">Año seleccionado</div>
+        <div class="proy-kpi-val">2026</div>
+        <div class="proy-kpi-sub">año en curso · datos previstos</div>
+      </div>
+      <div class="proy-kpi">
+        <div class="proy-kpi-lab">Ingresos previstos</div>
+        <div class="proy-kpi-val pos">+138.824 €</div>
+        <div class="proy-kpi-sub">nómina + alquileres + intereses</div>
+      </div>
+      <div class="proy-kpi">
+        <div class="proy-kpi-lab">Salidas previstas</div>
+        <div class="proy-kpi-val neg">−107.610 €</div>
+        <div class="proy-kpi-sub">personal + inmuebles + cuotas + IRPF</div>
+      </div>
+      <div class="proy-kpi">
+        <div class="proy-kpi-lab">Resultado caja anual</div>
+        <div class="proy-kpi-val gold">+31.214 €</div>
+        <div class="proy-kpi-sub">2.601 €/mes en promedio · 22,5% de tasa</div>
+      </div>
+    </div>
+
+    <!-- Year selector -->
+    <div class="proy-year-bar">
+      <div class="proy-year-lab">Año</div>
+      <button class="proy-pill cerrado" onclick="showToast('2024 · cerrado · vista solo lectura')">2024</button>
+      <button class="proy-pill cerrado" onclick="showToast('2025 · cerrado · vista solo lectura')">2025</button>
+      <button class="proy-pill active">2026</button>
+      <button class="proy-pill" onclick="showToast('2027 · proyección')">2027</button>
+      <button class="proy-pill" onclick="showToast('2028 · proyección')">2028</button>
+      <button class="proy-pill hito" onclick="showToast('2029 · vence Sabadell · libera 485 €/mes')">2029</button>
+      <button class="proy-pill hito" onclick="showToast('2031 · vence pignora PP · libera 240 €/mes')">2031</button>
+      <button class="proy-pill hito" onclick="showToast('2039 · vence ING T48 · libera 1.480 €/mes')">2039</button>
+      <button class="proy-pill hito" onclick="showToast('2044 · vence Unicaja T64 · libera 1.240 €/mes · libre de financiación')">2044</button>
+      <span style="margin-left: auto; font-size: 11px; color: var(--ink-4);">◆ hitos de vencimiento</span>
+    </div>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- HERO · WATERFALL MENSUAL                         -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="card wf-hero">
+      <div class="card-hd">
+        <div>
+          <div class="card-title">Resultado caja del año · 2026</div>
+          <div class="card-sub">cada barra = lo que te queda en caja después de todo · clic en una barra para ver el detalle del mes</div>
+        </div>
+        <div class="wf-toggle">
+          <button class="active" data-mode="cashflow" onclick="cambiarVistaWf('cashflow')">Cashflow</button>
+          <button data-mode="pulso" onclick="cambiarVistaWf('pulso')">Pulso</button>
+        </div>
+      </div>
+
+      <div class="wf-views">
+
+      <!-- ════ VISTA CASHFLOW · waterfall de resultado mensual ════ -->
+      <div class="wf-view wf-view-cashflow active">
+      <div class="wf-svg-wrap">
+        <svg viewBox="0 0 1200 480" xmlns="http://www.w3.org/2000/svg">
+
+          <!-- Grid horizontal -->
+          <g stroke="#EFECE5" stroke-width="1" fill="none">
+            <line x1="80" y1="40" x2="1160" y2="40" stroke-dasharray="2 4"/>
+            <line x1="80" y1="104" x2="1160" y2="104" stroke-dasharray="2 4"/>
+            <line x1="80" y1="176" x2="1160" y2="176" stroke-dasharray="2 4"/>
+            <line x1="80" y1="248" x2="1160" y2="248" stroke-dasharray="2 4"/>
+            <line x1="80" y1="320" x2="1160" y2="320" stroke="#D9D5C9" stroke-dasharray="0"/>
+            <line x1="80" y1="380" x2="1160" y2="380" stroke-dasharray="2 4"/>
+          </g>
+
+          <!-- Y axis labels -->
+          <g font-family="JetBrains Mono" font-size="11" fill="#5B6474" font-weight="600">
+            <text x="72" y="44" text-anchor="end">+10.000 €</text>
+            <text x="72" y="108" text-anchor="end">+7.500 €</text>
+            <text x="72" y="180" text-anchor="end">+5.000 €</text>
+            <text x="72" y="252" text-anchor="end">+2.500 €</text>
+            <text x="72" y="324" text-anchor="end" font-weight="700" fill="#141B2E">0 €</text>
+            <text x="72" y="384" text-anchor="end">−2.000 €</text>
+          </g>
+
+          <!-- ENE · regular · +1.651 -->
+          <g class="wf-bar" onclick="seleccionarMes('ene')">
+            <rect x="95" y="272" width="60" height="48" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="125" y="266" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.651</text>
+            <text x="125" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">ENE</text>
+          </g>
+
+          <!-- FEB · regular · +1.831 -->
+          <g class="wf-bar" onclick="seleccionarMes('feb')">
+            <rect x="185" y="267" width="60" height="53" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="215" y="261" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.831</text>
+            <text x="215" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">FEB</text>
+          </g>
+
+          <!-- MAR · paga extra · +4.881 -->
+          <g class="wf-bar" onclick="seleccionarMes('mar')">
+            <rect x="275" y="180" width="60" height="140" rx="3" fill="#B88A3E" stroke="#7C5C1F" stroke-width="1"/>
+            <text x="305" y="174" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#7C5C1F" font-weight="700">+4.881</text>
+            <text x="305" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#7C5C1F" font-weight="700">MAR</text>
+            <circle cx="305" cy="375" r="2.5" fill="#B88A3E"/>
+          </g>
+
+          <!-- ABR · MES ACTUAL · +1.703 -->
+          <g class="wf-bar" onclick="seleccionarMes('abr')">
+            <rect x="365" y="271" width="60" height="49" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <rect x="362" y="268" width="66" height="55" rx="4" fill="none" stroke="#B88A3E" stroke-width="2.5" stroke-dasharray="3 3"/>
+            <text x="395" y="265" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.703</text>
+            <text x="395" y="360" text-anchor="middle" font-family="Inter" font-size="12" fill="#141B2E" font-weight="700">ABR</text>
+            <rect x="378" y="367" width="34" height="14" rx="3" fill="#B88A3E"/>
+            <text x="395" y="377" text-anchor="middle" font-family="Inter" font-size="9.5" fill="#fff" font-weight="700">HOY</text>
+          </g>
+
+          <!-- MAY · regular · +1.899 -->
+          <g class="wf-bar" onclick="seleccionarMes('may')">
+            <rect x="455" y="265" width="60" height="55" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="485" y="259" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.899</text>
+            <text x="485" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">MAY</text>
+          </g>
+
+          <!-- JUN · paga + IBI + IRPF · +4.461 -->
+          <g class="wf-bar" onclick="seleccionarMes('jun')">
+            <rect x="545" y="192" width="60" height="128" rx="3" fill="#B88A3E" stroke="#7C5C1F" stroke-width="1"/>
+            <text x="575" y="186" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#7C5C1F" font-weight="700">+4.461</text>
+            <text x="575" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#7C5C1F" font-weight="700">JUN</text>
+            <circle cx="575" cy="375" r="2.5" fill="#B88A3E"/>
+          </g>
+
+          <!-- JUL · regular · +1.547 -->
+          <g class="wf-bar" onclick="seleccionarMes('jul')">
+            <rect x="635" y="276" width="60" height="44" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="665" y="270" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.547</text>
+            <text x="665" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">JUL</text>
+          </g>
+
+          <!-- AGO · regular · +1.545 -->
+          <g class="wf-bar" onclick="seleccionarMes('ago')">
+            <rect x="725" y="276" width="60" height="44" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="755" y="270" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.545</text>
+            <text x="755" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">AGO</text>
+          </g>
+
+          <!-- SEP · regular · +1.235 -->
+          <g class="wf-bar" onclick="seleccionarMes('sep')">
+            <rect x="815" y="285" width="60" height="35" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="845" y="279" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.235</text>
+            <text x="845" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">SEP</text>
+          </g>
+
+          <!-- OCT · regular · +1.860 -->
+          <g class="wf-bar" onclick="seleccionarMes('oct')">
+            <rect x="905" y="266" width="60" height="54" rx="3" fill="#D9B576" stroke="#B88A3E" stroke-width="0.5"/>
+            <text x="935" y="260" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#7C5C1F" font-weight="700">+1.860</text>
+            <text x="935" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">OCT</text>
+          </g>
+
+          <!-- NOV · ALERTA · -1.120 (rojo, debajo del 0) -->
+          <g class="wf-bar" onclick="seleccionarMes('nov')">
+            <rect x="995" y="320" width="60" height="34" rx="3" fill="#A43328" stroke="#7A251D" stroke-width="1"/>
+            <text x="1025" y="372" text-anchor="middle" font-family="JetBrains Mono" font-size="11.5" fill="#A43328" font-weight="700">−1.120</text>
+            <text x="1025" y="394" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#A43328" font-weight="700">NOV</text>
+            <circle cx="1025" cy="409" r="2.5" fill="#A43328"/>
+          </g>
+
+          <!-- DIC · paga extra grande · +9.723 -->
+          <g class="wf-bar" onclick="seleccionarMes('dic')">
+            <rect x="1085" y="40" width="60" height="280" rx="3" fill="#B88A3E" stroke="#7C5C1F" stroke-width="1"/>
+            <text x="1115" y="34" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#7C5C1F" font-weight="700">+9.723</text>
+            <text x="1115" y="360" text-anchor="middle" font-family="Inter" font-size="11.5" fill="#7C5C1F" font-weight="700">DIC</text>
+            <circle cx="1115" cy="375" r="2.5" fill="#B88A3E"/>
+          </g>
+
+          <!-- Annotation totales -->
+          <g transform="translate(80, 440)">
+            <text x="0" y="0" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">Resultado anual ·</text>
+            <text x="115" y="0" font-family="JetBrains Mono" font-size="14" fill="#7C5C1F" font-weight="700">+31.214 €</text>
+            <text x="220" y="0" font-family="Inter" font-size="11.5" fill="#8A92A0" font-weight="500">· 10 meses positivos · 1 mes en pérdida (NOV) · 4 meses atípicos (MAR · JUN · NOV · DIC)</text>
+          </g>
+
+        </svg>
+      </div>
+
+      <div class="wf-legend">
+        <div class="wf-leg-item"><div class="wf-leg-dot regular"></div>mes regular</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot atipico"></div>mes atípico · paga · IBI · IRPF</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot alerta"></div>mes en pérdida · alerta</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot actual"></div>mes actual</div>
+      </div>
+      </div><!-- /wf-view-cashflow -->
+
+      <!-- ════ VISTA PULSO · timeline gantt por concepto ════ -->
+      <div class="wf-view wf-view-pulso">
+      <div class="wf-svg-wrap">
+        <svg viewBox="0 0 1200 480" xmlns="http://www.w3.org/2000/svg">
+
+          <!-- Resaltar columna ABR · mes actual -->
+          <rect x="400" y="35" width="80" height="410" fill="#F3EAD6" opacity="0.4"/>
+
+          <!-- Header meses -->
+          <g font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600" text-anchor="middle">
+            <text x="200" y="22">ENE</text>
+            <text x="280" y="22">FEB</text>
+            <text x="360" y="22">MAR</text>
+            <text x="440" y="22" fill="#7C5C1F" font-weight="700">ABR</text>
+            <text x="520" y="22">MAY</text>
+            <text x="600" y="22">JUN</text>
+            <text x="680" y="22">JUL</text>
+            <text x="760" y="22">AGO</text>
+            <text x="840" y="22">SEP</text>
+            <text x="920" y="22">OCT</text>
+            <text x="1000" y="22">NOV</text>
+            <text x="1080" y="22">DIC</text>
+          </g>
+
+          <!-- Línea separadora header -->
+          <line x1="40" y1="40" x2="1160" y2="40" stroke="#D9D5C9" stroke-width="0.5"/>
+
+          <!-- Filas separadoras horizontales -->
+          <g stroke="#EFECE5" stroke-width="0.5" stroke-dasharray="2 4">
+            <line x1="180" y1="115" x2="1160" y2="115"/>
+            <line x1="180" y1="180" x2="1160" y2="180"/>
+            <line x1="180" y1="245" x2="1160" y2="245"/>
+            <line x1="180" y1="310" x2="1160" y2="310"/>
+            <line x1="180" y1="375" x2="1160" y2="375"/>
+          </g>
+
+          <!-- Línea vertical separadora del label -->
+          <line x1="180" y1="40" x2="180" y2="445" stroke="#D9D5C9" stroke-width="0.5"/>
+
+          <!-- Etiquetas de fila · título + subtítulo -->
+          <g font-family="Inter" font-size="13" fill="#141B2E" font-weight="700" text-anchor="end">
+            <text x="170" y="80">Nómina Orange</text>
+            <text x="170" y="145">Rentas pasivas</text>
+            <text x="170" y="210">Vida hogar</text>
+            <text x="170" y="275">Inmuebles</text>
+            <text x="170" y="340">Cuotas préstamos</text>
+            <text x="170" y="405">IRPF anual</text>
+          </g>
+          <g font-family="Inter" font-size="10.5" fill="#8A92A0" font-weight="500" text-anchor="end">
+            <text x="170" y="94">14 pagas · variable + bonus</text>
+            <text x="170" y="159">alquileres + intereses</text>
+            <text x="170" y="224">alquiler + suministros + vida</text>
+            <text x="170" y="289">comunidades + IBI + seguros</text>
+            <text x="170" y="354">4 préstamos · cargo conjunto</text>
+            <text x="170" y="419">2 plazos · jun y nov</text>
+          </g>
+
+          <!-- ═══ ROW 1 · NÓMINA ORANGE · income · verde ═══ -->
+          <g onclick="showToast('Nómina Orange · 14 pagas anuales · líquido · saltar a Personal → Ingresos')" style="cursor: pointer;">
+            <circle cx="200" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="280" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="360" cy="85" r="11" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="360" cy="85" r="9" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="440" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="520" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="600" cy="85" r="14" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="600" cy="85" r="12" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="680" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="760" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="840" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="920" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="1000" cy="85" r="7" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+            <circle cx="1080" cy="85" r="14" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="1080" cy="85" r="12" fill="#1E6B3A" stroke="#fff" stroke-width="1.5"/>
+          </g>
+
+          <!-- ═══ ROW 2 · RENTAS PASIVAS · income · verde ═══ -->
+          <g onclick="showToast('Rentas pasivas · alquileres + intereses Smartflip + Unihouser · saltar a Inmuebles e Inversiones')" style="cursor: pointer;">
+            <circle cx="200" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="280" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="360" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="440" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="520" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="600" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="680" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="760" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="840" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="920" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1000" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1080" cy="150" r="5.5" fill="#1E6B3A" stroke="#fff" stroke-width="1.2"/>
+          </g>
+
+          <!-- ═══ ROW 3 · VIDA HOGAR · expense · gris ═══ -->
+          <g onclick="showToast('Vida hogar · alquiler + suministros + alimentación + ocio · saltar a Personal → Gastos')" style="cursor: pointer;">
+            <circle cx="200" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="280" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="360" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="440" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="520" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="600" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="680" cy="215" r="7" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="760" cy="215" r="7" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="840" cy="215" r="7.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="920" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1000" cy="215" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1080" cy="215" r="7" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+          </g>
+
+          <!-- ═══ ROW 4 · INMUEBLES · expense · gris + IBI estacional ═══ -->
+          <g onclick="showToast('Inmuebles · comunidades constantes + IBI 2 plazos + seguros anuales · saltar a Inmuebles → opex')" style="cursor: pointer;">
+            <!-- Comunidades · 12 markers pequeños -->
+            <circle cx="200" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="280" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="360" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="430" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="520" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="680" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="760" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="840" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="920" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <circle cx="1080" cy="280" r="3.5" fill="#7B838E" stroke="#fff" stroke-width="0.8"/>
+            <!-- Seguro abr (encima del comunidades) -->
+            <circle cx="450" cy="280" r="4" fill="#5B6474" stroke="#fff" stroke-width="1"/>
+            <!-- IBI jun · grande con anillo oro -->
+            <circle cx="600" cy="280" r="11" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="600" cy="280" r="9" fill="#5B6474" stroke="#fff" stroke-width="1.5"/>
+            <!-- IBI nov · grande con anillo oro -->
+            <circle cx="1000" cy="280" r="11" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="1000" cy="280" r="9" fill="#5B6474" stroke="#fff" stroke-width="1.5"/>
+          </g>
+
+          <!-- ═══ ROW 5 · CUOTAS PRÉSTAMOS · expense · gris ═══ -->
+          <g onclick="showToast('Cuotas hipotecas + personal + pignora · 4 préstamos · saltar a Financiación → Calendario')" style="cursor: pointer;">
+            <circle cx="200" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="280" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="360" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="440" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="520" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="600" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="680" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="760" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="840" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="920" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1000" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+            <circle cx="1080" cy="345" r="6.5" fill="#5B6474" stroke="#fff" stroke-width="1.2"/>
+          </g>
+
+          <!-- ═══ ROW 6 · IRPF · expense · estacional rojo ═══ -->
+          <g onclick="showToast('IRPF anual · 1er plazo jun (60%) + 2º plazo nov (40%) · saltar a Fiscal → IRPF')" style="cursor: pointer;">
+            <!-- JUN · 1er plazo 4.200 € · grande con anillo oro -->
+            <circle cx="600" cy="410" r="12" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="600" cy="410" r="10" fill="#A43328" stroke="#fff" stroke-width="1.5"/>
+            <!-- NOV · 2º plazo 1.680 € · mediano con anillo oro -->
+            <circle cx="1000" cy="410" r="9" fill="none" stroke="#B88A3E" stroke-width="2" stroke-dasharray="2 1.5"/>
+            <circle cx="1000" cy="410" r="7" fill="#A43328" stroke="#fff" stroke-width="1.5"/>
+          </g>
+
+          <!-- Línea inferior -->
+          <line x1="40" y1="445" x2="1160" y2="445" stroke="#D9D5C9" stroke-width="0.5"/>
+
+          <!-- Annotation totales -->
+          <g transform="translate(180, 470)">
+            <text x="0" y="0" font-family="Inter" font-size="11.5" fill="#5B6474" font-weight="600">Lectura ·</text>
+            <text x="60" y="0" font-family="Inter" font-size="11.5" fill="#141B2E" font-weight="500">los marcadores con anillo oro son cargos estacionales que rompen el ritmo · 5 puntos atípicos en el año</text>
+          </g>
+
+        </svg>
+      </div>
+
+      <div class="wf-legend">
+        <div class="wf-leg-item"><div class="wf-leg-dot income"></div>ingreso</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot expense"></div>gasto</div>
+        <div class="wf-leg-item"><div class="wf-leg-dot estacional"></div>marcador con anillo oro = cargo estacional</div>
+        <div class="wf-leg-item" style="margin-left: auto; color: var(--ink-4); font-size: 11px;">tamaño del marcador ∝ importe</div>
+      </div>
+      </div><!-- /wf-view-pulso -->
+
+      </div><!-- /wf-views -->
+    </div>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- DETALLE MES SELECCIONADO · default ABRIL         -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="card mes-card">
+      <div class="mes-head">
+        <div class="mes-head-left">
+          <h3 id="mes-titulo">Detalle de abril 2026 · mes en curso</h3>
+          <div class="mes-head-sub">cada partida lee de su módulo origen · clic para saltar y editar allí</div>
+        </div>
+        <div class="mes-helper">↑ clic en cualquier barra del waterfall para cambiar de mes</div>
+      </div>
+
+      <div class="mes-grid">
+
+        <!-- Columna ingresos -->
+        <div>
+          <div class="mes-side-title ingresos">↑ Ingresos · entran a tu caja</div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Personal → Ingresos → Nómina Orange')">
+            <div class="mes-line-left">
+              <span class="mes-tag">Personal</span>
+              <span class="mes-line-name">Nómina Orange España · líquido</span>
+            </div>
+            <span class="mes-line-val pos mono">+7.500</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inmuebles → Buigas 15 → cobros')">
+            <div class="mes-line-left">
+              <span class="mes-tag inmuebles">Inmuebles</span>
+              <span class="mes-line-name">Renta Carles Buigas 15</span>
+            </div>
+            <span class="mes-line-val pos mono">+850</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inmuebles → Tenderina 64 4D → cobros')">
+            <div class="mes-line-left">
+              <span class="mes-tag inmuebles">Inmuebles</span>
+              <span class="mes-line-name">Renta Tenderina 64-4D · habitación</span>
+            </div>
+            <span class="mes-line-val pos mono">+450</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inversiones → Smartflip')">
+            <div class="mes-line-left">
+              <span class="mes-tag inversiones">Inversiones</span>
+              <span class="mes-line-name">Intereses Smartflip · préstamo</span>
+            </div>
+            <span class="mes-line-val pos mono">+750</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inversiones → Unihouser')">
+            <div class="mes-line-left">
+              <span class="mes-tag inversiones">Inversiones</span>
+              <span class="mes-line-name">Cuota cobro Unihouser</span>
+            </div>
+            <span class="mes-line-val pos mono">+420</span>
+          </div>
+
+          <div class="mes-subtotal">
+            <span>Total ingresos abril</span>
+            <span class="mono" style="color: var(--pos);">+9.970 €</span>
+          </div>
+        </div>
+
+        <!-- Columna resultado -->
+        <div class="mes-result">
+          <div class="mes-result-lab">Resultado caja</div>
+          <div class="mes-result-num" id="mes-result-val">+1.703 €</div>
+          <div class="mes-result-arrow-lab">va a tu caja · alimenta fondos</div>
+          <div class="mes-result-help" id="mes-result-help">abril es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale lo justo a +1.703 €</div>
+        </div>
+
+        <!-- Columna gastos -->
+        <div>
+          <div class="mes-side-title gastos">↓ Gastos · salen de tu caja</div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Personal → Mi vivienda · alquiler Madrid')">
+            <div class="mes-line-left">
+              <span class="mes-tag">Personal</span>
+              <span class="mes-line-name">Alquiler vivienda habitual</span>
+            </div>
+            <span class="mes-line-val neg mono">−1.350</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Personal → Compromisos recurrentes')">
+            <div class="mes-line-left">
+              <span class="mes-tag">Personal</span>
+              <span class="mes-line-name">Compromisos recurrentes · 9 ítems</span>
+            </div>
+            <span class="mes-line-val neg mono">−929</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Personal → Gastos categorizados')">
+            <div class="mes-line-left">
+              <span class="mes-tag">Personal</span>
+              <span class="mes-line-name">Gastos categorizados · alimentación, ocio</span>
+            </div>
+            <span class="mes-line-val neg mono">−1.811</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inmuebles → opex consolidado · comunidades')">
+            <div class="mes-line-left">
+              <span class="mes-tag inmuebles">Inmuebles</span>
+              <span class="mes-line-name">Comunidades · 6 inmuebles</span>
+            </div>
+            <span class="mes-line-val neg mono">−312</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Inmuebles → opex · seguros y suministros')">
+            <div class="mes-line-left">
+              <span class="mes-tag inmuebles">Inmuebles</span>
+              <span class="mes-line-name">Seguro vivienda anual T64-4D</span>
+            </div>
+            <span class="mes-line-val neg mono">−420</span>
+          </div>
+
+          <div class="mes-line" onclick="showToast('Saltar a Financiación → Calendario de cuotas · 4 préstamos')">
+            <div class="mes-line-left">
+              <span class="mes-tag financiacion">Financ.</span>
+              <span class="mes-line-name">Cuotas · 4 préstamos activos</span>
+            </div>
+            <span class="mes-line-val neg mono">−3.445</span>
+          </div>
+
+          <div class="mes-subtotal">
+            <span>Total salidas abril</span>
+            <span class="mono" style="color: var(--neg);">−8.267 €</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="mes-foot">
+        <span class="mes-foot-info">11 partidas · de 5 módulos distintos · todas leídas en vivo de su origen</span>
+        <button class="ver-tabla" onclick="toggleTabla()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          Ver tabla completa del año
+        </button>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- TABLA COMPLETA · plegable · solo bajo demanda    -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="card tabla-card" id="tabla-card">
+      <div class="tabla-head">
+        <div>
+          <h3>Tabla completa · concepto a concepto · 12 meses 2026</h3>
+          <div class="tabla-head-sub">útil cuando ya conoces el modelo y quieres comparar partidas mes a mes · clic en el concepto para saltar a su origen</div>
+        </div>
+        <button class="tabla-close" onclick="toggleTabla()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+          Cerrar
+        </button>
+      </div>
+      <div class="tabla-wrap">
+        <table id="tabla-completa-table">
+          <thead>
+            <tr>
+              <th class="lbl">concepto</th>
+              <th>ene</th><th>feb</th><th>mar</th><th class="actual">abr</th>
+              <th>may</th><th>jun</th><th>jul</th><th>ago</th>
+              <th>sep</th><th>oct</th><th>nov</th><th>dic</th>
+              <th>total</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════ -->
+    <!-- TRAYECTORIA PLURIANUAL · 18 AÑOS                 -->
+    <!-- ════════════════════════════════════════════════ -->
+    <div class="card plur">
+      <div class="card-hd">
+        <div>
+          <div class="card-title">Trayectoria a 18 años · 2026 → 2045</div>
+          <div class="card-sub">cómo cambia tu cashflow al vencer cada préstamo · escalones reales · sin maquillaje</div>
+        </div>
+      </div>
+
+      <div class="plur-svg-wrap">
+        <svg viewBox="0 0 1200 360" xmlns="http://www.w3.org/2000/svg">
+
+          <!-- Grid horizontal -->
+          <g stroke="#EFECE5" stroke-width="1" fill="none">
+            <line x1="80" y1="40" x2="1160" y2="40" stroke-dasharray="2 4"/>
+            <line x1="80" y1="100" x2="1160" y2="100" stroke-dasharray="2 4"/>
+            <line x1="80" y1="160" x2="1160" y2="160" stroke-dasharray="2 4"/>
+            <line x1="80" y1="220" x2="1160" y2="220" stroke-dasharray="2 4"/>
+            <line x1="80" y1="280" x2="1160" y2="280" stroke="#D9D5C9"/>
+          </g>
+
+          <!-- Y axis labels -->
+          <g font-family="JetBrains Mono" font-size="11" fill="#5B6474" font-weight="600">
+            <text x="72" y="44" text-anchor="end">+105K</text>
+            <text x="72" y="104" text-anchor="end">+85K</text>
+            <text x="72" y="164" text-anchor="end">+65K</text>
+            <text x="72" y="224" text-anchor="end">+45K</text>
+            <text x="72" y="284" text-anchor="end" font-weight="700" fill="#141B2E">+25K</text>
+          </g>
+
+          <!-- Año X axis · 20 años · 2026-2045 -->
+          <g font-family="JetBrains Mono" font-size="10" fill="#8A92A0" font-weight="600" text-anchor="middle">
+            <text x="100" y="312">2026</text>
+            <text x="155" y="312">2027</text>
+            <text x="210" y="312">2028</text>
+            <text x="265" y="312">2029</text>
+            <text x="320" y="312">2030</text>
+            <text x="375" y="312">2031</text>
+            <text x="430" y="312">2032</text>
+            <text x="485" y="312">2033</text>
+            <text x="540" y="312">2034</text>
+            <text x="595" y="312">2035</text>
+            <text x="650" y="312">2036</text>
+            <text x="705" y="312">2037</text>
+            <text x="760" y="312">2038</text>
+            <text x="815" y="312">2039</text>
+            <text x="870" y="312">2040</text>
+            <text x="925" y="312">2041</text>
+            <text x="980" y="312">2042</text>
+            <text x="1035" y="312">2043</text>
+            <text x="1090" y="312">2044</text>
+            <text x="1145" y="312">2045</text>
+          </g>
+
+          <!-- Área bajo curva oro sutil -->
+          <defs>
+            <linearGradient id="plurGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#B88A3E" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="#B88A3E" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Path resultado anual · escalones reales · cada año a su Y -->
+          <!-- 2026: 31.214 → y=263 -->
+          <!-- 2027: 32.562 → y=259 -->
+          <!-- 2028: 33.962 → y=254 -->
+          <!-- 2029: 36.849 → y=246 (vence Sabadell) -->
+          <!-- 2030: 42.679 → y=229 -->
+          <!-- 2031: 44.177 → y=224 (vence pignora PP) -->
+          <!-- 2032: 48.589 → y=211 -->
+          <!-- 2033-2038: ~51.860 → y=202 (cruise) -->
+          <!-- 2039: 59.350 → y=180 (vence ING T48) -->
+          <!-- 2040-2043: ~80.120 → y=118 (salto fuerte) -->
+          <!-- 2044: 85.740 → y=101 (vence Unicaja T64) -->
+          <!-- 2045: 102.060 → y=52 (libre de financiación) -->
+
+          <path d="M 100 263 L 155 259 L 210 254 L 265 246 L 320 229 L 375 224 L 430 211 L 485 202 L 540 202 L 595 202 L 650 202 L 705 202 L 760 202 L 815 180 L 870 118 L 925 118 L 980 118 L 1035 118 L 1090 101 L 1145 52 L 1145 280 L 100 280 Z"
+                fill="url(#plurGrad)"/>
+
+          <!-- Línea principal -->
+          <path d="M 100 263 L 155 259 L 210 254 L 265 246 L 320 229 L 375 224 L 430 211 L 485 202 L 540 202 L 595 202 L 650 202 L 705 202 L 760 202 L 815 180 L 870 118 L 925 118 L 980 118 L 1035 118 L 1090 101 L 1145 52"
+                stroke="#B88A3E" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+          <!-- Hito 2029 · vence Sabadell -->
+          <line x1="265" y1="40" x2="265" y2="280" stroke="#B88A3E" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5"/>
+          <circle cx="265" cy="246" r="6" fill="#fff" stroke="#B88A3E" stroke-width="2.5"/>
+          <rect x="245" y="20" width="44" height="14" rx="3" fill="#B88A3E"/>
+          <text x="267" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#fff" font-weight="700">2029</text>
+
+          <!-- Hito 2031 · vence pignora -->
+          <line x1="375" y1="40" x2="375" y2="280" stroke="#B88A3E" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5"/>
+          <circle cx="375" cy="224" r="6" fill="#fff" stroke="#B88A3E" stroke-width="2.5"/>
+          <rect x="355" y="20" width="44" height="14" rx="3" fill="#B88A3E"/>
+          <text x="377" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#fff" font-weight="700">2031</text>
+
+          <!-- Hito 2039 · vence ING T48 -->
+          <line x1="815" y1="40" x2="815" y2="280" stroke="#B88A3E" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5"/>
+          <circle cx="815" cy="180" r="7" fill="#fff" stroke="#B88A3E" stroke-width="2.5"/>
+          <rect x="795" y="20" width="44" height="14" rx="3" fill="#B88A3E"/>
+          <text x="817" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#fff" font-weight="700">2039</text>
+
+          <!-- Hito 2044 · vence Unicaja T64 -->
+          <line x1="1090" y1="40" x2="1090" y2="280" stroke="#B88A3E" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5"/>
+          <circle cx="1090" cy="101" r="7" fill="#fff" stroke="#B88A3E" stroke-width="2.5"/>
+          <rect x="1070" y="20" width="44" height="14" rx="3" fill="#B88A3E"/>
+          <text x="1092" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#fff" font-weight="700">2044</text>
+
+          <!-- Hito 2045 · libre · verde pos -->
+          <circle cx="1145" cy="52" r="9" fill="#1E6B3A"/>
+          <circle cx="1145" cy="52" r="5" fill="#fff"/>
+          <text x="1145" y="42" text-anchor="middle" font-family="Inter" font-size="11" fill="#1E6B3A" font-weight="700">libre 2045</text>
+
+          <!-- Punto HOY 2026 -->
+          <circle cx="100" cy="263" r="6" fill="#B88A3E" stroke="#fff" stroke-width="2"/>
+          <text x="100" y="282" text-anchor="middle" font-family="Inter" font-size="10.5" fill="#7C5C1F" font-weight="700">hoy</text>
+          <text x="100" y="252" text-anchor="middle" font-family="JetBrains Mono" font-size="10.5" fill="#141B2E" font-weight="700">+31K</text>
+
+        </svg>
+      </div>
+
+      <div class="plur-hitos">
+        <div class="hito" onclick="showToast('Saltar a Financiación → Sabadell Personal Cangas · 18.420 € pendiente · vence sep 2029')">
+          <div class="hito-year">2029</div>
+          <div class="hito-event">Vence Sabadell · Personal Cangas</div>
+          <div class="hito-impact">+485 €/mes liberados</div>
+        </div>
+        <div class="hito" onclick="showToast('Saltar a Financiación → Unicaja Pignora PP Orange · 13.300 € · vence 2031')">
+          <div class="hito-year">2031</div>
+          <div class="hito-event">Vence pignora PP Orange</div>
+          <div class="hito-impact">+240 €/mes liberados</div>
+        </div>
+        <div class="hito" onclick="showToast('Saltar a Financiación → ING Hipoteca T48 · 116.450 € · vence 2039')">
+          <div class="hito-year">2039</div>
+          <div class="hito-event">Vence ING · Hipoteca T48</div>
+          <div class="hito-impact">+1.480 €/mes liberados</div>
+        </div>
+        <div class="hito" onclick="showToast('Saltar a Financiación → Unicaja Hipoteca T64 · 142.800 € · vence 2044')">
+          <div class="hito-year">2044</div>
+          <div class="hito-event">Vence Unicaja · Hipoteca T64</div>
+          <div class="hito-impact">+1.240 €/mes liberados</div>
+        </div>
+        <div class="hito libre" onclick="showToast('2045 · libre de toda financiación · cashflow neto +102K/año')">
+          <div class="hito-year">2045</div>
+          <div class="hito-event">Libre de financiación</div>
+          <div class="hito-impact">+102K €/año en caja</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  function cambiarVistaWf(modo) {
+    document.querySelectorAll('.wf-toggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === modo));
+    document.querySelectorAll('.wf-view').forEach(v => v.classList.toggle('active', v.classList.contains('wf-view-' + modo)));
+  }
+
+  function toggleTabla() {
+    const t = document.getElementById('tabla-card');
+    const open = t.classList.toggle('open');
+    if (open) {
+      setTimeout(() => t.scrollIntoView({behavior: 'smooth', block: 'start'}), 50);
+    }
+  }
+
+  // ═══ Render tabla completa · datos 2026 ═══
+  const tablaData = [
+    { tipo: 'grp', cls: 'pos', label: '↑ ingresos' },
+    { tipo: 'fila', label: 'Nómina Orange · líquido', valKind: 'pos', origen: 'Personal → Ingresos → Nómina Orange',
+      m: [7500, 7500, 10500, 7500, 7500, 15592, 7500, 7500, 7500, 7500, 7500, 15592] },
+    { tipo: 'fila', label: 'Renta Carles Buigas 15', valKind: 'pos', origen: 'Inmuebles → Buigas 15',
+      m: [850, 850, 850, 850, 850, 850, 850, 850, 850, 850, 850, 850] },
+    { tipo: 'fila', label: 'Renta Tenderina 64-4D · habitación', valKind: 'pos', origen: 'Inmuebles → Tenderina 64',
+      m: [450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450, 450] },
+    { tipo: 'fila', label: 'Intereses Smartflip · préstamo', valKind: 'pos', origen: 'Inversiones → Smartflip',
+      m: [750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750, 750] },
+    { tipo: 'fila', label: 'Cuota cobro Unihouser', valKind: 'pos', origen: 'Inversiones → Unihouser',
+      m: [420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420, 420] },
+    { tipo: 'subtotal', label: 'Total ingresos',
+      m: [9970, 9970, 12970, 9970, 9970, 18062, 9970, 9970, 9970, 9970, 9970, 18062] },
+
+    { tipo: 'grp', cls: 'neg', label: '↓ gastos personales' },
+    { tipo: 'fila', label: 'Alquiler vivienda habitual', valKind: 'neg', origen: 'Personal → Mi vivienda',
+      m: [-1350, -1350, -1350, -1350, -1350, -1378, -1378, -1378, -1378, -1378, -1378, -1378] },
+    { tipo: 'fila', label: 'Compromisos recurrentes · 9 ítems', valKind: 'neg', origen: 'Personal → Compromisos recurrentes',
+      m: [-1124, -964, -934, -929, -916, -903, -910, -912, -1532, -927, -942, -956] },
+    { tipo: 'fila', label: 'Categorizados · alimentación, ocio', valKind: 'neg', origen: 'Personal → Gastos categorizados',
+      m: [-1860, -1840, -1820, -1811, -1820, -1890, -2150, -2150, -1840, -1820, -1860, -2020] },
+    { tipo: 'subtotal', label: 'Total gastos personales',
+      m: [-4334, -4154, -4104, -4090, -4086, -4171, -4438, -4440, -4750, -4125, -4180, -4354] },
+
+    { tipo: 'grp', cls: 'neg', label: '↓ gastos inmuebles' },
+    { tipo: 'fila', label: 'Comunidades · 6 inmuebles', valKind: 'neg', origen: 'Inmuebles → opex · comunidades',
+      m: [-312, -312, -312, -312, -312, -312, -312, -312, -312, -312, -312, -312] },
+    { tipo: 'fila', label: 'IBI · 6 inmuebles · jun + nov', valKind: 'neg', origen: 'Inmuebles → opex · IBI',
+      m: [0, 0, 0, 0, 0, -1245, 0, 0, 0, 0, -1245, 0] },
+    { tipo: 'fila', label: 'Seguros · suministros · mantenimiento', valKind: 'neg', origen: 'Inmuebles → opex · seguros',
+      m: [-228, -228, -228, -420, -228, -228, -228, -228, -228, -228, -228, -228] },
+    { tipo: 'subtotal', label: 'Total gastos inmuebles',
+      m: [-540, -540, -540, -732, -540, -1785, -540, -540, -540, -540, -1785, -540] },
+
+    { tipo: 'grp', cls: 'neg', label: '↓ financiación' },
+    { tipo: 'fila', label: 'Cuotas · 4 préstamos activos', valKind: 'neg', origen: 'Financiación → Calendario',
+      m: [-3445, -3445, -3445, -3445, -3445, -3445, -3445, -3445, -3445, -3445, -3445, -3445] },
+
+    { tipo: 'grp', cls: 'neg', label: '↓ fiscal · no entra en 50/30/20' },
+    { tipo: 'fila', label: 'IRPF · 2025 · 2 plazos', valKind: 'neg', origen: 'Fiscal → IRPF anual',
+      m: [0, 0, 0, 0, 0, -4200, 0, 0, 0, 0, -1680, 0] },
+
+    { tipo: 'result', label: 'Resultado caja del mes',
+      m: [1651, 1831, 4881, 1703, 1899, 4461, 1547, 1545, 1235, 1860, -1120, 9723] }
+  ];
+
+  function fmt(n) {
+    if (n === 0) return '—';
+    const abs = Math.abs(n);
+    const s = abs.toLocaleString('es-ES');
+    return n < 0 ? '−' + s : '+' + s;
+  }
+
+  function renderTabla() {
+    const tbody = document.getElementById('tabla-tbody');
+    if (!tbody) return;
+    let html = '';
+    for (const r of tablaData) {
+      if (r.tipo === 'grp') {
+        html += `<tr class="grp ${r.cls}"><td colspan="14">${r.label}</td></tr>`;
+      } else if (r.tipo === 'subtotal' || r.tipo === 'result') {
+        const tot = r.m.reduce((a, b) => a + b, 0);
+        const cls = r.tipo === 'result' ? 'result' : 'subtotal';
+        let tds = `<td class="lbl">${r.label}</td>`;
+        for (let i = 0; i < 12; i++) {
+          const isAbr = i === 3 ? 'actual' : '';
+          const negStyle = (r.tipo === 'result' && r.m[i] < 0) ? ' style="color: var(--neg);"' : '';
+          tds += `<td class="${isAbr}"${negStyle}>${r.m[i] === 0 ? '—' : fmt(r.m[i])}</td>`;
+        }
+        tds += `<td class="tot">${fmt(tot)}</td>`;
+        html += `<tr class="${cls}">${tds}</tr>`;
+      } else {
+        const tot = r.m.reduce((a, b) => a + b, 0);
+        let tds = `<td class="lbl">${r.label}</td>`;
+        for (let i = 0; i < 12; i++) {
+          const isAbr = i === 3 ? 'actual' : '';
+          const cell = r.m[i] === 0 ? 'zero' : (r.valKind === 'pos' ? 'pos-val' : 'neg-val');
+          const text = r.m[i] === 0 ? '—' : fmt(r.m[i]);
+          tds += `<td class="${cell} ${isAbr}">${text}</td>`;
+        }
+        const totCls = r.valKind === 'pos' ? 'pos-val' : 'neg-val';
+        tds += `<td class="tot ${totCls}">${fmt(tot)}</td>`;
+        html += `<tr onclick="showToast('Saltar a ${r.origen}')" style="cursor: pointer;">${tds}</tr>`;
+      }
+    }
+    tbody.innerHTML = html;
+  }
+
+  renderTabla();
+
+  const datosMes = {
+    ene: { nombre: 'enero',      valor: '+1.651 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'enero es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.651 €' },
+    feb: { nombre: 'febrero',    valor: '+1.831 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'febrero es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.831 €' },
+    mar: { nombre: 'marzo',      valor: '+4.881 €', tipo: 'atipico', sub: 'mes atípico',     mensaje: 'marzo entra tu variable anual de Orange · +12.000 € íntegros como bono · resultado +4.881 €' },
+    abr: { nombre: 'abril',      valor: '+1.703 €', tipo: 'actual',  sub: 'mes en curso',    mensaje: 'abril es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale lo justo a +1.703 €' },
+    may: { nombre: 'mayo',       valor: '+1.899 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'mayo es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.899 €' },
+    jun: { nombre: 'junio',      valor: '+4.461 €', tipo: 'atipico', sub: 'mes atípico',     mensaje: 'junio concentra paga extra Orange + IBI 1er plazo + IRPF 1er plazo · neto +4.461 €' },
+    jul: { nombre: 'julio',      valor: '+1.547 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'julio es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.547 €' },
+    ago: { nombre: 'agosto',     valor: '+1.545 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'agosto es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.545 €' },
+    sep: { nombre: 'septiembre', valor: '+1.235 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'septiembre es un mes regular · gastos personales algo más altos · resultado +1.235 €' },
+    oct: { nombre: 'octubre',    valor: '+1.860 €', tipo: 'regular', sub: 'mes regular',     mensaje: 'octubre es un mes regular · sin pagas extra · sin IBI · sin IRPF · sale a +1.860 €' },
+    nov: { nombre: 'noviembre',  valor: '−1.120 €', tipo: 'alerta',  sub: 'mes en pérdida',  mensaje: 'noviembre es el único mes en pérdida del año · IBI 2º plazo + IRPF 2º plazo te dejan en −1.120 €' },
+    dic: { nombre: 'diciembre',  valor: '+9.723 €', tipo: 'atipico', sub: 'mes atípico',     mensaje: 'diciembre · paga extra de navidad sin gastos atípicos · resultado +9.723 €' }
+  };
+
+  function seleccionarMes(mes) {
+    const d = datosMes[mes];
+    if (!d) return;
+    document.getElementById('mes-titulo').textContent = `Detalle de ${d.nombre} 2026 · ${d.sub}`;
+    const valEl = document.getElementById('mes-result-val');
+    valEl.textContent = d.valor;
+    valEl.classList.toggle('neg', d.tipo === 'alerta');
+    document.getElementById('mes-result-help').textContent = d.mensaje;
+    document.querySelector('.mes-card').scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+</script>
+
+</body>
+</html>

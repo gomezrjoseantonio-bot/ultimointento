@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Panel</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar · idéntico contratos-v4 */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .nav a .chip { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,.07); color: rgba(255,255,255,.7); }
+  .nav a.active .chip { background: rgba(184,138,62,.25); color: #E8D9AE; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main */
+  .main { padding: 22px 32px 48px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .icon-btn:hover { border-color: var(--ink-5); }
+  .badge { position: absolute; top: -4px; right: -4px; background: var(--gold); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; line-height: 1.4; }
+  .badge.neg { background: var(--neg); }
+
+  /* Page head */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; gap: 20px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--ink); line-height: 1.05; letter-spacing: -0.025em; }
+  .saludo-sub { font-size: 13.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+  .saludo-sub strong { color: var(--ink-2); font-weight: 600; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+
+  /* HERO PATRIMONIAL · card blanca grande con borde superior oro */
+  .hero-patrimonial { background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 12px; padding: 28px 32px; margin-bottom: 22px; }
+  .hero-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .hero-lab { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 600; }
+  .hero-valor { font-family: 'JetBrains Mono', monospace; font-size: 44px; font-weight: 700; color: var(--ink); letter-spacing: -0.035em; line-height: 1; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .hero-delta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--pos); }
+  .hero-delta.neg { color: var(--neg); }
+  .hero-delta-meta { color: var(--ink-4); font-weight: 500; }
+  .hero-meta-right { text-align: right; }
+  .hero-meta-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-4); font-weight: 600; }
+  .hero-meta-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; color: var(--ink-2); margin-top: 4px; }
+
+  /* Composición · barra horizontal sutil */
+  .comp-barra { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line-2); }
+  .comp-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .comp-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; }
+  .comp-track { display: flex; height: 12px; border-radius: 6px; overflow: hidden; gap: 2px; }
+  .comp-seg { height: 100%; cursor: pointer; transition: opacity .14s; }
+  .comp-seg:hover { opacity: .85; }
+  .comp-seg.inmuebles { background: var(--brand); }
+  .comp-seg.inversiones { background: var(--gold); }
+  .comp-seg.tesoreria { background: var(--pos); }
+  .comp-seg.financiacion { background: var(--neg); }
+  .comp-leg { display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; }
+  .comp-leg-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+  .comp-leg-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .comp-leg-dot.inmuebles { background: var(--brand); }
+  .comp-leg-dot.inversiones { background: var(--gold); }
+  .comp-leg-dot.tesoreria { background: var(--pos); }
+  .comp-leg-dot.financiacion { background: var(--neg); }
+  .comp-leg-nom { color: var(--ink-3); font-weight: 500; }
+  .comp-leg-val { color: var(--ink); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+  .comp-leg-pct { color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+  /* Sección título */
+  .sec-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.16em; color: var(--ink-4); font-weight: 600; margin-bottom: 12px; }
+
+  /* Cards de activos · 4 columnas · estilo KPI validado */
+  .activos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .activo-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 18px 20px; cursor: pointer; transition: all .14s; position: relative; overflow: hidden; }
+  .activo-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .activo-card.inmuebles { border-left: 3px solid var(--brand); padding-left: 19px; }
+  .activo-card.inversiones { border-left: 3px solid var(--gold); padding-left: 19px; }
+  .activo-card.tesoreria { border-left: 3px solid var(--pos); padding-left: 19px; }
+  .activo-card.financiacion { border-left: 3px solid var(--neg); padding-left: 19px; }
+  .activo-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .activo-nom { font-size: 12px; color: var(--ink-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
+  .activo-icon { color: var(--ink-4); }
+  .activo-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .activo-val.neg { color: var(--neg); }
+  .activo-delta { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 600; color: var(--pos); }
+  .activo-delta.neg { color: var(--neg); }
+  .activo-delta.muted { color: var(--ink-4); font-weight: 500; }
+  .activo-extra { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; }
+  .activo-extra-lab { font-size: 11px; color: var(--ink-4); }
+  .activo-extra-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .activo-cta { font-size: 11px; color: var(--gold); font-weight: 600; margin-top: 8px; opacity: 0; transition: opacity .14s; display: inline-flex; align-items: center; gap: 3px; }
+  .activo-card:hover .activo-cta { opacity: 1; }
+
+  /* Pulso del mes · banda horizontal de 4 métricas */
+  .pulso { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 18px 22px; margin-bottom: 22px; display: grid; grid-template-columns: auto repeat(4, 1fr); gap: 28px; align-items: center; }
+  .pulso-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; border-right: 1px solid var(--line-2); padding-right: 20px; }
+  .pulso-title .mes { display: block; color: var(--ink); font-size: 13px; letter-spacing: -0.005em; text-transform: none; font-weight: 600; margin-top: 2px; }
+  .pulso-item { display: flex; flex-direction: column; gap: 3px; }
+  .pulso-lab { font-size: 10.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .pulso-val { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .pulso-val.pos { color: var(--pos); }
+  .pulso-val.neg { color: var(--neg); }
+
+  /* Dos columnas · alertas + mi plan */
+  .two-cols { display: grid; grid-template-columns: 1.5fr 1fr; gap: 14px; margin-bottom: 22px; }
+
+  /* Card genérica */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 22px; }
+  .card-hd { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .card-title { font-size: 15px; font-weight: 700; color: var(--ink); letter-spacing: -0.015em; }
+  .card-sub { font-size: 12px; color: var(--ink-4); margin-top: 3px; }
+  .card-action { font-size: 12px; color: var(--gold); padding: 4px 8px; border-radius: 6px; font-weight: 500; cursor: pointer; }
+  .card-action:hover { background: var(--gold-wash); }
+
+  /* Lista alertas */
+  .alerta { display: grid; grid-template-columns: 34px 1fr auto; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line-2); align-items: center; cursor: pointer; }
+  .alerta:last-child { border-bottom: none; padding-bottom: 0; }
+  .alerta:first-child { padding-top: 0; }
+  .alerta:hover .alerta-title { color: var(--gold); }
+  .alerta-icon { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .alerta-icon.neg { background: var(--neg-wash); color: var(--neg); }
+  .alerta-icon.warn { background: var(--gold-wash); color: var(--gold-ink); }
+  .alerta-icon.pos { background: var(--pos-wash); color: var(--pos); }
+  .alerta-icon.muted { background: var(--bg); color: var(--ink-3); }
+  .alerta-body { min-width: 0; }
+  .alerta-title { font-size: 13.5px; font-weight: 600; color: var(--ink); letter-spacing: -0.005em; transition: color .1s; }
+  .alerta-meta { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; line-height: 1.4; }
+  .alerta-meta strong { color: var(--ink-2); font-weight: 600; }
+  .alerta-right { text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .alerta-right.neg { color: var(--neg); }
+  .alerta-right.warn { color: var(--warn); }
+  .alerta-right.pos { color: var(--pos); }
+  .alerta-right-sub { font-size: 10.5px; color: var(--ink-4); margin-top: 3px; font-weight: 500; }
+
+  /* Mi Plan card */
+  .plan-main { display: flex; flex-direction: column; gap: 16px; }
+  .plan-meta-grande { text-align: center; padding: 10px 0 18px; border-bottom: 1px solid var(--line-2); }
+  .plan-meta-lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 600; margin-bottom: 8px; }
+  .plan-meta-val { font-family: 'JetBrains Mono', monospace; font-size: 36px; font-weight: 700; color: var(--ink); letter-spacing: -0.03em; line-height: 1; }
+  .plan-meta-sub { font-size: 12px; color: var(--ink-3); margin-top: 8px; font-weight: 500; }
+  .plan-meta-sub strong { color: var(--gold-ink); font-weight: 700; }
+  .plan-progreso { }
+  .plan-progreso-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .plan-progreso-lab { font-size: 11px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+  .plan-progreso-pct { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); }
+  .plan-track { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--line-2); }
+  .plan-fill { height: 100%; background: var(--gold); border-radius: 4px; }
+  .plan-items { display: flex; flex-direction: column; gap: 10px; }
+  .plan-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-2); }
+  .plan-item:last-child { border-bottom: none; }
+  .plan-item-lab { font-size: 12px; color: var(--ink-3); font-weight: 500; }
+  .plan-item-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); }
+
+  /* Mini timeline del año al pie · DOS LÍNEAS separadas */
+  .mini-timeline { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 18px 22px; margin-bottom: 14px; }
+  .mini-tl-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .mini-tl-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .mini-tl-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; }
+
+  /* contenedor que apila 2 filas */
+  .mini-tl-stack { position: relative; }
+
+  /* Fila 1 · MESES limpios */
+  .mini-tl-months-row { display: grid; grid-template-columns: repeat(12, 1fr); border: 1px solid var(--line-2); border-radius: 5px; background: var(--bg); height: 26px; position: relative; }
+  .mini-tl-month { text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-3); padding-top: 7px; border-left: 1px solid var(--line-2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .mini-tl-month:first-child { border-left: none; }
+
+  /* Fila 2 · HITOS con iconos · NO tocan los meses */
+  .mini-tl-events-row { position: relative; height: 34px; margin-top: 6px; }
+  .mini-tl-events-row::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: var(--line-2); }
+
+  /* línea HOY · atraviesa las dos filas · arriba sin pintar sobre meses */
+  .mini-tl-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--neg); z-index: 5; pointer-events: none; }
+  .mini-tl-today-lab { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; color: #fff; background: var(--neg); padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em; white-space: nowrap; }
+
+  /* Evento · chip con icono + label breve · colocado horizontalmente en fila 2 */
+  .mini-tl-evento { position: absolute; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 5px; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #fff; transition: transform .1s, box-shadow .1s; white-space: nowrap; }
+  .mini-tl-evento:hover { transform: translateY(-50%) scale(1.05); box-shadow: 0 3px 8px rgba(14,20,35,0.15); z-index: 10; }
+  .mini-tl-evento.fiscal { background: var(--brand); }
+  .mini-tl-evento.contrato { background: var(--gold); }
+  .mini-tl-evento.deuda { background: var(--neg); }
+  .mini-tl-evento.devolucion { background: var(--pos); }
+  .mini-tl-evento svg { flex-shrink: 0; }
+
+  /* cuando dos eventos caen juntos · el segundo se desplaza a "carril inferior" */
+  .mini-tl-evento.stack-b { top: calc(50% + 16px); }
+
+  .mini-tl-leg { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-2); display: flex; gap: 18px; font-size: 11px; color: var(--ink-3); flex-wrap: wrap; }
+  .mini-tl-leg-item { display: flex; align-items: center; gap: 6px; }
+  .mini-tl-leg-mini { width: 12px; height: 10px; border-radius: 2px; }
+  .mini-tl-leg-mini.fiscal { background: var(--brand); }
+  .mini-tl-leg-mini.contrato { background: var(--gold); }
+  .mini-tl-leg-mini.deuda { background: var(--neg); }
+  .mini-tl-leg-mini.devolucion { background: var(--pos); }
+  .mini-tl-leg-mini.contrato { background: var(--gold); }
+  .mini-tl-leg-mini.deuda { background: var(--neg); }
+  .mini-tl-leg-mini.devolucion { background: var(--pos); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR · canónico final con estructura validada -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Mockup Inmuebles · pendiente revisión Oxford Gold')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles <span class="chip">8</span></a>
+      <a onclick="showToast('Mockup Inversiones · pendiente rediseño v5')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a onclick="showToast('Mockup Tesorería · pendiente revisión Oxford Gold')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="showToast('Mockup Financiación · pendiente diseñar')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Mockup Contratos · ya cerrado en atlas-contratos-v4.html')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos <span class="chip">30</span></a>
+      <a onclick="showToast('Mockup Mi Plan · pendiente diseñar')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Mockup Fiscal · ya cerrado en atlas-fiscal.html')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>Fiscal <span class="chip">3</span></a>
+      <a onclick="showToast('Mockup Archivo · pendiente revisión')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Mockup Ajustes · pendiente diseñar')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Buscar inmueble, contrato, ejercicio, movimiento…"/>
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></svg><span class="badge">12</span></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="badge neg">3</span></button>
+      </div>
+    </div>
+
+    <!-- Page head · saludo sutil -->
+    <div class="page-head">
+      <div>
+        <h1>Buenos días, Jose</h1>
+        <div class="saludo-sub">hoy es <strong>jueves 23 de abril de 2026</strong><span style="color: var(--ink-5); margin: 0 8px;">·</span>campaña IRPF 2025 activa<span style="color: var(--ink-5); margin: 0 8px;">·</span>3 cosas piden tu atención</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+          Últimos 30 días
+        </button>
+      </div>
+    </div>
+
+    <!-- HERO PATRIMONIAL · card blanca grande · borde superior oro -->
+    <div class="hero-patrimonial">
+      <div class="hero-head">
+        <div>
+          <div class="hero-lab">Patrimonio neto</div>
+          <div class="hero-valor">665.955 €</div>
+          <div class="hero-delta">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+            +15.830 € (+2,4%) <span class="hero-delta-meta">· últimos 30 días</span>
+          </div>
+        </div>
+        <div class="hero-meta-right">
+          <div class="hero-meta-lab">Activos totales</div>
+          <div class="hero-meta-val">1.141.000 €</div>
+          <div class="hero-meta-lab" style="margin-top: 10px;">Deuda viva</div>
+          <div class="hero-meta-val" style="color: var(--neg);">−475.045 €</div>
+        </div>
+      </div>
+
+      <!-- Composición -->
+      <div class="comp-barra">
+        <div class="comp-head">
+          <div class="comp-title">Composición del patrimonio</div>
+          <div class="comp-title" style="color: var(--ink-3); text-transform: none; letter-spacing: 0;">click en un segmento para ver detalle del módulo</div>
+        </div>
+        <div class="comp-track">
+          <div class="comp-seg inmuebles" style="width: 78.2%" onclick="showToast('Ir a Inmuebles · 520.800 €')"></div>
+          <div class="comp-seg inversiones" style="width: 13.5%" onclick="showToast('Ir a Inversiones · 89.900 €')"></div>
+          <div class="comp-seg tesoreria" style="width: 5.4%" onclick="showToast('Ir a Tesorería · 36.000 €')"></div>
+          <div class="comp-seg financiacion" style="width: 2.9%" onclick="showToast('Ir a Financiación · −19.745 € apalancamiento restante')"></div>
+        </div>
+        <div class="comp-leg">
+          <div class="comp-leg-item">
+            <div class="comp-leg-dot inmuebles"></div>
+            <span class="comp-leg-nom">Inmuebles</span>
+            <span class="comp-leg-val">520.800 €</span>
+            <span class="comp-leg-pct">78,2%</span>
+          </div>
+          <div class="comp-leg-item">
+            <div class="comp-leg-dot inversiones"></div>
+            <span class="comp-leg-nom">Inversiones</span>
+            <span class="comp-leg-val">89.900 €</span>
+            <span class="comp-leg-pct">13,5%</span>
+          </div>
+          <div class="comp-leg-item">
+            <div class="comp-leg-dot tesoreria"></div>
+            <span class="comp-leg-nom">Tesorería</span>
+            <span class="comp-leg-val">36.000 €</span>
+            <span class="comp-leg-pct">5,4%</span>
+          </div>
+          <div class="comp-leg-item">
+            <div class="comp-leg-dot financiacion"></div>
+            <span class="comp-leg-nom">Otros</span>
+            <span class="comp-leg-val">19.255 €</span>
+            <span class="comp-leg-pct">2,9%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid 4 activos -->
+    <div class="sec-title">Pulso de los 4 activos</div>
+    <div class="activos-grid">
+
+      <div class="activo-card inmuebles" onclick="showToast('Ir a Inmuebles')">
+        <div class="activo-head">
+          <div class="activo-nom">Inmuebles</div>
+          <div class="activo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg></div>
+        </div>
+        <div class="activo-val">520.800 €</div>
+        <div class="activo-delta">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          +1,2% <span style="color: var(--ink-4); font-weight: 500;">· 30d</span>
+        </div>
+        <div class="activo-extra">
+          <span class="activo-extra-lab">Rdto neto mes</span>
+          <span class="activo-extra-val" style="color: var(--pos);">+4.120 €</span>
+        </div>
+        <div class="activo-cta">Ver detalle →</div>
+      </div>
+
+      <div class="activo-card inversiones" onclick="showToast('Ir a Inversiones')">
+        <div class="activo-head">
+          <div class="activo-nom">Inversiones</div>
+          <div class="activo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg></div>
+        </div>
+        <div class="activo-val">89.900 €</div>
+        <div class="activo-delta">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          +3,8% <span style="color: var(--ink-4); font-weight: 500;">· 30d</span>
+        </div>
+        <div class="activo-extra">
+          <span class="activo-extra-lab">Rentab. YTD</span>
+          <span class="activo-extra-val" style="color: var(--pos);">+6,2%</span>
+        </div>
+        <div class="activo-cta">Ver detalle →</div>
+      </div>
+
+      <div class="activo-card tesoreria" onclick="showToast('Ir a Tesorería · 3 bancos')">
+        <div class="activo-head">
+          <div class="activo-nom">Tesorería</div>
+          <div class="activo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg></div>
+        </div>
+        <div class="activo-val">36.000 €</div>
+        <div class="activo-delta neg">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          −4,5% <span style="color: var(--ink-4); font-weight: 500;">· 30d</span>
+        </div>
+        <div class="activo-extra">
+          <span class="activo-extra-lab">Meses colchón</span>
+          <span class="activo-extra-val">9 de 12</span>
+        </div>
+        <div class="activo-cta">Ver detalle →</div>
+      </div>
+
+      <div class="activo-card financiacion" onclick="showToast('Ir a Financiación · 5 hipotecas + 8 préstamos')">
+        <div class="activo-head">
+          <div class="activo-nom">Financiación</div>
+          <div class="activo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg></div>
+        </div>
+        <div class="activo-val neg">−475.045 €</div>
+        <div class="activo-delta muted">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          −2.380 € <span style="color: var(--ink-4); font-weight: 500;">· amortización 30d</span>
+        </div>
+        <div class="activo-extra">
+          <span class="activo-extra-lab">Cuota mes</span>
+          <span class="activo-extra-val">3.875 €</span>
+        </div>
+        <div class="activo-cta">Ver detalle →</div>
+      </div>
+
+    </div>
+
+    <!-- Pulso del mes -->
+    <div class="pulso">
+      <div class="pulso-title">Pulso del mes<span class="mes">abril 2026</span></div>
+      <div class="pulso-item">
+        <span class="pulso-lab">Ingresos cobrados</span>
+        <span class="pulso-val pos">+8.420 €</span>
+      </div>
+      <div class="pulso-item">
+        <span class="pulso-lab">Gastos totales</span>
+        <span class="pulso-val neg">−6.255 €</span>
+      </div>
+      <div class="pulso-item">
+        <span class="pulso-lab">Cashflow neto</span>
+        <span class="pulso-val pos">+2.165 €</span>
+      </div>
+      <div class="pulso-item">
+        <span class="pulso-lab">Saldo fin mes previsto</span>
+        <span class="pulso-val">38.165 €</span>
+      </div>
+    </div>
+
+    <!-- Dos cols · alertas + mi plan -->
+    <div class="two-cols">
+
+      <!-- Alertas y decisiones -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Piden tu atención</div>
+            <div class="card-sub">priorizadas por urgencia · 4 elementos abiertos</div>
+          </div>
+          <div class="card-action" onclick="showToast('Ver todas las alertas · vista completa pendiente')">Ver todas →</div>
+        </div>
+
+        <div class="alerta" onclick="showToast('Navegar a Deuda · IVA 3T-2024')">
+          <div class="alerta-icon neg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="alerta-body">
+            <div class="alerta-title">Deuda IVA 3T-2024 · ejecutivo 5%</div>
+            <div class="alerta-meta"><strong>Apremio 20%</strong> si no pagas antes del 05/12/2026 · queda ventana al 5%</div>
+          </div>
+          <div>
+            <div class="alerta-right neg">977,70 €</div>
+            <div class="alerta-right-sub">227 d</div>
+          </div>
+        </div>
+
+        <div class="alerta" onclick="showToast('Navegar a Vista previa IRPF 2025')">
+          <div class="alerta-icon warn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/></svg>
+          </div>
+          <div class="alerta-body">
+            <div class="alerta-title">IRPF 2025 · borrador listo para presentar</div>
+            <div class="alerta-meta">contraste AEAT completado · sin discrepancias críticas · <strong>ventana 2 abr – 30 jun 2026</strong></div>
+          </div>
+          <div>
+            <div class="alerta-right pos">+4.180 €</div>
+            <div class="alerta-right-sub">devolución</div>
+          </div>
+        </div>
+
+        <div class="alerta" onclick="showToast('Navegar a Contratos · FA32-H3')">
+          <div class="alerta-icon warn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+          </div>
+          <div class="alerta-body">
+            <div class="alerta-title">Contrato FA32-H3 · vence en 45 días</div>
+            <div class="alerta-meta">L. Martín · corta estancia · <strong>decidir renovación</strong> antes del 07/06/2026</div>
+          </div>
+          <div>
+            <div class="alerta-right warn">45 d</div>
+            <div class="alerta-right-sub">decidir</div>
+          </div>
+        </div>
+
+        <div class="alerta" onclick="showToast('Navegar a Calendario fiscal')">
+          <div class="alerta-icon muted">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+          </div>
+          <div class="alerta-body">
+            <div class="alerta-title">IVA 2T-2026 · próxima obligación</div>
+            <div class="alerta-meta">vence <strong>20/07/2026</strong> · borrador en cálculo · autoliquidación</div>
+          </div>
+          <div>
+            <div class="alerta-right">89 d</div>
+            <div class="alerta-right-sub">vence</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mi Plan -->
+      <div class="card">
+        <div class="card-hd">
+          <div>
+            <div class="card-title">Mi Plan · brújula</div>
+            <div class="card-sub">progreso hacia libertad financiera</div>
+          </div>
+          <div class="card-action" onclick="showToast('Abrir módulo Mi Plan')">Abrir →</div>
+        </div>
+
+        <div class="plan-main">
+          <div class="plan-meta-grande">
+            <div class="plan-meta-lab">Renta pasiva cubre</div>
+            <div class="plan-meta-val">54%</div>
+            <div class="plan-meta-sub">de tus gastos · <strong>llegada estimada 2031</strong></div>
+          </div>
+
+          <div class="plan-progreso">
+            <div class="plan-progreso-head">
+              <div class="plan-progreso-lab">Progreso a meta</div>
+              <div class="plan-progreso-pct">54 / 100</div>
+            </div>
+            <div class="plan-track"><div class="plan-fill" style="width: 54%;"></div></div>
+          </div>
+
+          <div class="plan-items">
+            <div class="plan-item">
+              <div class="plan-item-lab">Meses de colchón</div>
+              <div class="plan-item-val">9 / 24</div>
+            </div>
+            <div class="plan-item">
+              <div class="plan-item-lab">Renta pasiva mensual</div>
+              <div class="plan-item-val">2.230 €</div>
+            </div>
+            <div class="plan-item">
+              <div class="plan-item-lab">Gasto vida mensual</div>
+              <div class="plan-item-val">4.120 €</div>
+            </div>
+            <div class="plan-item">
+              <div class="plan-item-lab">Inmuebles activos</div>
+              <div class="plan-item-val">6 de 10 meta</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Mini timeline del año al pie · 2 filas separadas -->
+    <div class="mini-timeline">
+      <div class="mini-tl-head">
+        <div>
+          <div class="mini-tl-title">Próximos 12 meses · hitos relevantes</div>
+          <div class="mini-tl-sub">fiscal · contratos · deudas · devoluciones · línea roja = hoy 23 abr</div>
+        </div>
+        <div class="card-action" onclick="showToast('Abrir calendario fiscal completo')">Ver calendario →</div>
+      </div>
+
+      <div class="mini-tl-stack">
+
+        <!-- FILA 1 · meses limpios -->
+        <div class="mini-tl-months-row">
+          <div class="mini-tl-month">abr</div>
+          <div class="mini-tl-month">may</div>
+          <div class="mini-tl-month">jun</div>
+          <div class="mini-tl-month">jul</div>
+          <div class="mini-tl-month">ago</div>
+          <div class="mini-tl-month">sep</div>
+          <div class="mini-tl-month">oct</div>
+          <div class="mini-tl-month">nov</div>
+          <div class="mini-tl-month">dic</div>
+          <div class="mini-tl-month">ene</div>
+          <div class="mini-tl-month">feb</div>
+          <div class="mini-tl-month">mar</div>
+        </div>
+
+        <!-- FILA 2 · iconos con labels -->
+        <div class="mini-tl-events-row">
+
+          <!-- Contrato FA32-H3 vence · mediados mayo -->
+          <div class="mini-tl-evento contrato" style="left: 9.5%" onclick="showToast('Contrato FA32-H3 · decidir renovación')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            FA32-H3
+          </div>
+
+          <!-- IRPF 2025 · finales junio -->
+          <div class="mini-tl-evento fiscal" style="left: 21%" onclick="showToast('IRPF 2025 · presentar · +4.180 € devolución')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            IRPF 2025
+          </div>
+
+          <!-- IVA 2T · 20 julio -->
+          <div class="mini-tl-evento fiscal" style="left: 27.5%" onclick="showToast('IVA 2T-2026 · vence 20 jul')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            IVA 2T
+          </div>
+
+          <!-- Devolución IRPF · agosto · carril B porque cerca de IVA 2T -->
+          <div class="mini-tl-evento devolucion stack-b" style="left: 37%" onclick="showToast('Devolución IRPF 2025 prevista · +4.180 €')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Devol.
+          </div>
+
+          <!-- IVA 3T · 20 octubre -->
+          <div class="mini-tl-evento fiscal" style="left: 52%" onclick="showToast('IVA 3T-2026 · vence 20 oct')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            IVA 3T
+          </div>
+
+          <!-- Deuda escala a apremio 20% · 6 diciembre -->
+          <div class="mini-tl-evento deuda" style="left: 68%" onclick="showToast('Deuda IVA 3T-2024 · escala a apremio 20% · 186 € extra')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Apremio
+          </div>
+
+          <!-- IVA 4T · 30 enero -->
+          <div class="mini-tl-evento fiscal" style="left: 79%" onclick="showToast('IVA 4T-2026 · vence 30 ene 2027')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            IVA 4T
+          </div>
+
+          <!-- T64 contratos · febrero -->
+          <div class="mini-tl-evento contrato" style="left: 88.5%" onclick="showToast('T64 · vencen 3 contratos de habitación en febrero')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            T64
+          </div>
+
+        </div>
+
+        <!-- línea HOY · atraviesa ambas filas desde 0% · calculado inicio abril ≈ 1.9% -->
+        <div class="mini-tl-today" style="left: 1.9%"><span class="mini-tl-today-lab">hoy</span></div>
+
+      </div>
+
+      <div class="mini-tl-leg">
+        <div class="mini-tl-leg-item"><div class="mini-tl-leg-mini fiscal"></div>Obligación fiscal</div>
+        <div class="mini-tl-leg-item"><div class="mini-tl-leg-mini contrato"></div>Contrato</div>
+        <div class="mini-tl-leg-item"><div class="mini-tl-leg-mini deuda"></div>Deuda crítica</div>
+        <div class="mini-tl-leg-item"><div class="mini-tl-leg-mini devolucion"></div>Devolución</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>

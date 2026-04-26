@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Mi Plan · Objetivos v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5; --line-3: #F3F1EB;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-soft: #D9B576; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* ═══ Sidebar ═══ */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* ═══ Main ═══ */
+  .main { padding: 22px 32px 60px; max-width: 1520px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .tb-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+  /* ═══ Page head ═══ */
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line-2); }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-4); margin-bottom: 6px; }
+  .breadcrumb a { color: var(--ink-3); cursor: pointer; }
+  .breadcrumb a:hover { color: var(--ink-2); }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--ink-3); padding: 2px 8px 2px 4px; border-radius: 5px; }
+  .back-btn:hover { background: var(--card-alt); color: var(--ink-2); }
+  .page-head h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .page-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; border: 1px solid transparent; }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-gold { color: #fff; background: var(--gold); border-color: var(--gold); }
+  .btn-gold:hover { background: var(--gold-ink); border-color: var(--gold-ink); }
+
+  /* ═══ Tabs Mi Plan ═══ */
+  .submod-tabs { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 1px solid var(--line-2); }
+  .submod-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; font-size: 13.5px; font-weight: 600; color: var(--ink-4); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; }
+  .submod-tabs button:hover { color: var(--ink-2); }
+  .submod-tabs button.active { color: var(--ink); border-bottom-color: var(--gold); }
+
+  /* ═══ KPIs strip ═══ */
+  .obj-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-bottom: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .obj-kpi { padding: 14px 18px; border-right: 1px solid var(--line-2); display: flex; flex-direction: column; min-height: 92px; }
+  .obj-kpi:last-child { border-right: none; }
+  .obj-kpi-lab { font-size: 11.5px; color: var(--ink-3); font-weight: 600; letter-spacing: .03em; }
+  .obj-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 5px; letter-spacing: -0.025em; line-height: 1.15; }
+  .obj-kpi-val.warn { color: var(--warn); }
+  .obj-kpi-val.brand { color: var(--brand); }
+  .obj-kpi-val.gold { color: var(--gold); }
+  .obj-kpi-sub { font-size: 11px; color: var(--ink-4); margin-top: auto; padding-top: 6px; line-height: 1.35; }
+
+  /* ═══ Filters ═══ */
+  .obj-filter { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 10px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; flex-wrap: wrap; }
+  .obj-filter-lab { font-size: 11px; font-weight: 600; color: var(--ink-3); letter-spacing: .1em; text-transform: uppercase; padding-right: 4px; border-right: 1px solid var(--line-2); margin-right: 4px; }
+  .obj-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--ink-3); padding: 5px 12px; border-radius: 14px; background: transparent; border: 1px solid transparent; cursor: pointer; }
+  .obj-pill:hover { background: var(--card-alt); color: var(--ink-2); }
+  .obj-pill.active { background: var(--brand); color: #fff; }
+  .obj-pill .chip-count { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; padding: 1px 6px; border-radius: 8px; background: rgba(255,255,255,.18); }
+  .obj-pill:not(.active) .chip-count { background: var(--line-2); color: var(--ink-4); }
+
+  /* ═══ Grid de objetivos ═══ */
+  .obj-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
+  /* ═══ Card objetivo ═══ */
+  .obj-card { background: var(--card); border: 1px solid var(--line); border-radius: 11px; padding: 0; overflow: hidden; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; border-top-width: 3px; }
+  .obj-card:hover { border-color: var(--ink-5); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .obj-card.acumular { border-top-color: var(--gold-soft); }
+  .obj-card.amortizar { border-top-color: var(--brand); }
+  .obj-card.comprar { border-top-color: var(--gold); }
+  .obj-card.reducir { border-top-color: var(--ink-3); }
+
+  .obj-head { padding: 16px 20px 10px; display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; border-bottom: 1px solid var(--line-2); }
+  .obj-head-left { flex: 1; min-width: 0; }
+  .obj-ast { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+  .obj-card.acumular .obj-ast { color: var(--gold-ink); }
+  .obj-card.amortizar .obj-ast { color: var(--brand); }
+  .obj-card.comprar .obj-ast { color: var(--gold-ink); }
+  .obj-card.reducir .obj-ast { color: var(--ink-3); }
+  .obj-nom { font-size: 16px; font-weight: 700; color: var(--ink); margin-top: 4px; letter-spacing: -0.015em; }
+  .obj-cat { font-size: 12px; color: var(--ink-3); margin-top: 4px; line-height: 1.4; }
+
+  .obj-estado { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 4px 10px; border-radius: 12px; flex-shrink: 0; white-space: nowrap; }
+  .obj-estado.en-progreso { background: var(--brand-wash); color: var(--brand); }
+  .obj-estado.en-riesgo { background: var(--warn-wash); color: var(--warn); }
+  .obj-estado.en-pausa { background: var(--card-alt); color: var(--ink-3); border: 1px solid var(--line-2); }
+  .obj-estado.completado { background: var(--pos-wash); color: var(--pos); }
+
+  /* Numbers · actual → meta */
+  .obj-numbers { padding: 16px 20px; display: flex; align-items: center; gap: 12px; background: var(--card-alt); border-bottom: 1px solid var(--line-2); }
+  .obj-num-block { flex: 1; min-width: 0; }
+  .obj-num-lab { font-size: 10.5px; color: var(--ink-4); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .obj-num-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 3px; letter-spacing: -0.025em; }
+  .obj-num-val.meta { color: var(--gold-ink); }
+  .obj-num-sub { font-size: 11px; color: var(--ink-4); margin-top: 3px; line-height: 1.3; }
+  .obj-num-arrow { color: var(--ink-5); flex-shrink: 0; }
+
+  /* Progress */
+  .obj-progress { padding: 14px 20px 10px; }
+  .obj-prog-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--ink-3); font-weight: 600; margin-bottom: 7px; }
+  .obj-prog-top .pct { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--ink); font-weight: 700; }
+  .obj-prog-bar { height: 6px; background: var(--line-2); border-radius: 4px; overflow: hidden; }
+  .obj-prog-fill { height: 100%; border-radius: 4px; }
+  .obj-prog-fill.acumular { background: var(--gold-soft); }
+  .obj-prog-fill.amortizar { background: var(--brand); }
+  .obj-prog-fill.comprar { background: var(--gold); }
+  .obj-prog-fill.reducir { background: var(--ink-3); }
+
+  /* Ritmo + ruta */
+  .obj-ritmo { padding: 8px 20px 14px; }
+  .obj-ritmo-row { display: flex; justify-content: space-between; align-items: baseline; padding: 6px 0; font-size: 12px; }
+  .obj-ritmo-lab { color: var(--ink-3); font-weight: 500; }
+  .obj-ritmo-val { font-family: 'JetBrains Mono', monospace; color: var(--ink-2); font-weight: 600; }
+
+  .obj-ruta { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: 8px; margin-top: 10px; font-size: 12px; line-height: 1.45; }
+  .obj-ruta.si-ruta { background: var(--pos-wash); color: var(--pos); border: 1px solid #C0DBC8; }
+  .obj-ruta.no-ruta { background: var(--warn-wash); color: var(--warn); border: 1px solid #E8D49B; }
+  .obj-ruta.en-pausa { background: var(--card-alt); color: var(--ink-3); border: 1px solid var(--line-2); }
+  .obj-ruta svg { flex-shrink: 0; margin-top: 1px; }
+  .obj-ruta-title { font-weight: 700; display: block; margin-bottom: 2px; }
+  .obj-ruta strong { font-weight: 700; }
+
+  /* Vínculo */
+  .obj-vinculo { padding: 11px 20px; border-top: 1px solid var(--line-2); background: var(--card-alt); display: flex; justify-content: space-between; align-items: center; }
+  .obj-vinculo-lab { font-size: 10.5px; color: var(--ink-4); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  .obj-vinculo-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--brand); padding: 4px 10px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); transition: all 0.12s; }
+  .obj-vinculo-link:hover { border-color: var(--brand); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--brand-ink); color: #fff; padding: 11px 18px; border-radius: 8px; font-size: 12.5px; opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 100; max-width: 480px; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">Patrimonio & Renta</div>
+      </div>
+    </div>
+    <nav class="nav" style="margin-top: 14px;">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>Inversiones</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>Tesorería</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>Financiación</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+    </nav>
+    <div class="nav-section">Operativa</div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+      <a class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Fiscal</a>
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div>
+        <div class="side-foot-name">José Antonio</div>
+        <div class="side-foot-sub">activo</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Buscar inmueble, contrato, movimiento..." />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="tb-actions">
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
+      </div>
+    </div>
+
+    <!-- Page head -->
+    <div class="page-head">
+      <div>
+        <div class="breadcrumb">
+          <span class="back-btn" onclick="showToast('Volver al landing de Mi Plan')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Volver
+          </span>
+          <a onclick="showToast('Ir a Mi Plan')">Mi Plan</a>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span style="color:var(--ink-3); font-weight:600;">Objetivos</span>
+        </div>
+        <h1>Objetivos</h1>
+        <div class="page-sub">metas concretas con fecha · ATLAS lee de tus fondos · préstamos y categorías para decirte si vas en ruta</div>
+      </div>
+      <div class="tb-actions">
+        <button class="btn btn-ghost" onclick="showToast('Exportar lista de objetivos a PDF · una página por objetivo')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar
+        </button>
+        <button class="btn btn-gold" onclick="showToast('Wizard nuevo objetivo · elige tipo · vincula a fondo, préstamo o categoría · pon valor meta y fecha')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Crear objetivo
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs Mi Plan -->
+    <div class="submod-tabs">
+      <button onclick="showToast('Ir a Proyección')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="20" x2="21" y2="20"/><line x1="3" y1="4" x2="3" y2="20"/><polyline points="8 14 11 11 14 14 20 8"/></svg>
+        Proyección
+      </button>
+      <button onclick="showToast('Ir a Libertad financiera · simulador')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>
+        Libertad financiera
+      </button>
+      <button class="active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Objetivos
+      </button>
+      <button onclick="showToast('Ir a Fondos de ahorro')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+        Fondos de ahorro
+      </button>
+      <button onclick="showToast('Ir a Retos')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Retos
+      </button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="obj-kpis">
+      <div class="obj-kpi">
+        <div class="obj-kpi-lab">Metas activas</div>
+        <div class="obj-kpi-val brand">4</div>
+        <div class="obj-kpi-sub">2 acumular · 1 amortizar · 1 reducir</div>
+      </div>
+      <div class="obj-kpi">
+        <div class="obj-kpi-lab">En riesgo</div>
+        <div class="obj-kpi-val warn">2</div>
+        <div class="obj-kpi-sub">colchón · próximo piso</div>
+      </div>
+      <div class="obj-kpi">
+        <div class="obj-kpi-lab">En pausa</div>
+        <div class="obj-kpi-val">1</div>
+        <div class="obj-kpi-sub">amortizar pignora · decisión pendiente</div>
+      </div>
+      <div class="obj-kpi">
+        <div class="obj-kpi-lab">Próxima fecha</div>
+        <div class="obj-kpi-val gold">30 jun</div>
+        <div class="obj-kpi-sub">suscripciones digitales</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="obj-filter">
+      <div class="obj-filter-lab">Mostrar</div>
+      <button class="obj-pill active">Todas <span class="chip-count">4</span></button>
+      <button class="obj-pill" onclick="showToast('Filtrar · solo en progreso')">En progreso <span class="chip-count">1</span></button>
+      <button class="obj-pill" onclick="showToast('Filtrar · solo en riesgo')">En riesgo <span class="chip-count">2</span></button>
+      <button class="obj-pill" onclick="showToast('Filtrar · solo en pausa')">En pausa <span class="chip-count">1</span></button>
+      <button class="obj-pill" onclick="showToast('Filtrar · solo completadas · histórico 2025')">Completadas <span class="chip-count">3</span></button>
+      <span style="margin-left: auto; font-size: 11px; color: var(--ink-4);">tipos · acumular · amortizar · comprar · reducir</span>
+    </div>
+
+    <!-- Grid de objetivos -->
+    <div class="obj-grid">
+
+      <!-- ════════════════════════════════════════════════════ -->
+      <!-- OBJ-01 · ACUMULAR · Colchón 12 meses                 -->
+      <!-- ════════════════════════════════════════════════════ -->
+      <div class="obj-card acumular" onclick="showToast('Abrir detalle · Colchón 12 meses · historial · ajustar meta · ver evolución')">
+        <div class="obj-head">
+          <div class="obj-head-left">
+            <div class="obj-ast">OBJ-01 · acumular</div>
+            <div class="obj-nom">Colchón de 12 meses</div>
+            <div class="obj-cat">tesorería líquida que cubra 12 meses de gasto vida · seguridad ante imprevistos</div>
+          </div>
+          <span class="obj-estado en-riesgo">En riesgo</span>
+        </div>
+
+        <div class="obj-numbers">
+          <div class="obj-num-block">
+            <div class="obj-num-lab">Valor actual</div>
+            <div class="obj-num-val">9.800 €</div>
+            <div class="obj-num-sub">cubre 2,4 meses de gasto vida</div>
+          </div>
+          <svg class="obj-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="obj-num-block" style="text-align: right;">
+            <div class="obj-num-lab">Meta</div>
+            <div class="obj-num-val meta">49.440 €</div>
+            <div class="obj-num-sub">12 × 4.120 € gasto vida</div>
+          </div>
+        </div>
+
+        <div class="obj-progress">
+          <div class="obj-prog-top">
+            <span>Progreso</span>
+            <span class="pct">20%</span>
+          </div>
+          <div class="obj-prog-bar"><div class="obj-prog-fill acumular" style="width: 20%;"></div></div>
+        </div>
+
+        <div class="obj-ritmo">
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Fecha objetivo</span>
+            <span class="obj-ritmo-val">dic 2027</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Ritmo necesario</span>
+            <span class="obj-ritmo-val">+1.969 €/mes</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Tu ahorro mes actual</span>
+            <span class="obj-ritmo-val">+1.650 €/mes</span>
+          </div>
+          <div class="obj-ruta no-ruta">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div>
+              <span class="obj-ruta-title">No vas en ruta</span>
+              te faltan <strong>319 €/mes</strong> para llegar a tiempo · sube capacidad de ahorro o amplía la fecha
+            </div>
+          </div>
+        </div>
+
+        <div class="obj-vinculo">
+          <span class="obj-vinculo-lab">Vinculado a</span>
+          <a class="obj-vinculo-link" onclick="event.stopPropagation(); showToast('Saltar a Fondos de ahorro → Colchón emergencia')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg>
+            Fondo · Colchón emergencia
+          </a>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════ -->
+      <!-- OBJ-02 · AMORTIZAR · Liquidar pignora PP             -->
+      <!-- ════════════════════════════════════════════════════ -->
+      <div class="obj-card amortizar" onclick="showToast('Abrir detalle · Liquidar pignora · simulador amortización · efecto en cashflow')">
+        <div class="obj-head">
+          <div class="obj-head-left">
+            <div class="obj-ast">OBJ-02 · amortizar</div>
+            <div class="obj-nom">Liquidar pignora PP Orange antes de 2029</div>
+            <div class="obj-cat">adelantar 2 años el vencimiento natural · libera 240 €/mes para otros fondos</div>
+          </div>
+          <span class="obj-estado en-pausa">En pausa</span>
+        </div>
+
+        <div class="obj-numbers">
+          <div class="obj-num-block">
+            <div class="obj-num-lab">Saldo actual</div>
+            <div class="obj-num-val">13.300 €</div>
+            <div class="obj-num-sub">Unicaja PP · vence natural 2031</div>
+          </div>
+          <svg class="obj-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="obj-num-block" style="text-align: right;">
+            <div class="obj-num-lab">Meta</div>
+            <div class="obj-num-val meta">0 €</div>
+            <div class="obj-num-sub">liquidación total · dic 2028</div>
+          </div>
+        </div>
+
+        <div class="obj-progress">
+          <div class="obj-prog-top">
+            <span>Progreso</span>
+            <span class="pct">0%</span>
+          </div>
+          <div class="obj-prog-bar"><div class="obj-prog-fill amortizar" style="width: 0%;"></div></div>
+        </div>
+
+        <div class="obj-ritmo">
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Fecha objetivo</span>
+            <span class="obj-ritmo-val">dic 2028</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Aporte extra necesario</span>
+            <span class="obj-ritmo-val">+330 €/mes</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Ahorro intereses si liquidas</span>
+            <span class="obj-ritmo-val" style="color: var(--pos);">+1.840 €</span>
+          </div>
+          <div class="obj-ruta en-pausa">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            <div>
+              <span class="obj-ruta-title">Decisión pendiente</span>
+              compite con el colchón · si subes ahorro 330 €/mes lo más eficiente es destinarlo al colchón primero
+            </div>
+          </div>
+        </div>
+
+        <div class="obj-vinculo">
+          <span class="obj-vinculo-lab">Vinculado a</span>
+          <a class="obj-vinculo-link" onclick="event.stopPropagation(); showToast('Saltar a Financiación → Unicaja Pignora PP Orange · simulador amortización')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/><line x1="4" y1="10" x2="4" y2="21"/><line x1="20" y1="10" x2="20" y2="21"/></svg>
+            Préstamo · Unicaja PP
+          </a>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════ -->
+      <!-- OBJ-03 · COMPRAR · Próximo piso                      -->
+      <!-- ════════════════════════════════════════════════════ -->
+      <div class="obj-card comprar" onclick="showToast('Abrir detalle · Próximo piso · simulador capacidad endeudamiento · checklist preparación')">
+        <div class="obj-head">
+          <div class="obj-head-left">
+            <div class="obj-ast">OBJ-03 · comprar</div>
+            <div class="obj-nom">Próximo piso · 6º inmueble</div>
+            <div class="obj-cat">ampliar cartera · entrada 20% sobre piso 200 K + costes notariales y RTPO</div>
+          </div>
+          <span class="obj-estado en-riesgo">En riesgo</span>
+        </div>
+
+        <div class="obj-numbers">
+          <div class="obj-num-block">
+            <div class="obj-num-lab">Acumulado</div>
+            <div class="obj-num-val">5.400 €</div>
+            <div class="obj-num-sub">en cuenta marcada como "próximo piso"</div>
+          </div>
+          <svg class="obj-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="obj-num-block" style="text-align: right;">
+            <div class="obj-num-lab">Meta</div>
+            <div class="obj-num-val meta">80.000 €</div>
+            <div class="obj-num-sub">entrada 40 K + costes 12 K + reserva 28 K</div>
+          </div>
+        </div>
+
+        <div class="obj-progress">
+          <div class="obj-prog-top">
+            <span>Progreso</span>
+            <span class="pct">7%</span>
+          </div>
+          <div class="obj-prog-bar"><div class="obj-prog-fill comprar" style="width: 7%;"></div></div>
+        </div>
+
+        <div class="obj-ritmo">
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Fecha objetivo</span>
+            <span class="obj-ritmo-val">dic 2029</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Ritmo necesario</span>
+            <span class="obj-ritmo-val">+1.972 €/mes</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Capacidad endeudamiento (35%)</span>
+            <span class="obj-ritmo-val">156.800 € · suficiente</span>
+          </div>
+          <div class="obj-ruta no-ruta">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div>
+              <span class="obj-ruta-title">No vas en ruta</span>
+              te faltan <strong>322 €/mes</strong> · si vence Sabadell en 2029 (libera 485) entras en ruta · revisa fecha
+            </div>
+          </div>
+        </div>
+
+        <div class="obj-vinculo">
+          <span class="obj-vinculo-lab">Vinculado a</span>
+          <a class="obj-vinculo-link" onclick="event.stopPropagation(); showToast('Saltar a Fondos de ahorro → Próximo piso')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/></svg>
+            Fondo · Próximo piso
+          </a>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════ -->
+      <!-- OBJ-04 · REDUCIR · Suscripciones                     -->
+      <!-- ════════════════════════════════════════════════════ -->
+      <div class="obj-card reducir" onclick="showToast('Abrir detalle · Suscripciones digitales · ver desglose · marcar para cancelar')">
+        <div class="obj-head">
+          <div class="obj-head-left">
+            <div class="obj-ast">OBJ-04 · reducir</div>
+            <div class="obj-nom">Bajar suscripciones digitales a 80 €/mes</div>
+            <div class="obj-cat">disciplina de gasto · 8 plataformas activas · auditar cuáles se usan de verdad</div>
+          </div>
+          <span class="obj-estado en-progreso">En progreso</span>
+        </div>
+
+        <div class="obj-numbers">
+          <div class="obj-num-block">
+            <div class="obj-num-lab">Gasto actual</div>
+            <div class="obj-num-val">142 €/mes</div>
+            <div class="obj-num-sub">8 plataformas activas hoy</div>
+          </div>
+          <svg class="obj-num-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <div class="obj-num-block" style="text-align: right;">
+            <div class="obj-num-lab">Meta</div>
+            <div class="obj-num-val meta">80 €/mes</div>
+            <div class="obj-num-sub">sostenido 3 meses seguidos</div>
+          </div>
+        </div>
+
+        <div class="obj-progress">
+          <div class="obj-prog-top">
+            <span>Progreso</span>
+            <span class="pct">0%</span>
+          </div>
+          <div class="obj-prog-bar"><div class="obj-prog-fill reducir" style="width: 0%;"></div></div>
+        </div>
+
+        <div class="obj-ritmo">
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Fecha objetivo</span>
+            <span class="obj-ritmo-val">jun 2026</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Bajada necesaria</span>
+            <span class="obj-ritmo-val">−62 €/mes</span>
+          </div>
+          <div class="obj-ritmo-row">
+            <span class="obj-ritmo-lab">Impacto anual</span>
+            <span class="obj-ritmo-val" style="color: var(--pos);">+744 €/año al ahorro</span>
+          </div>
+          <div class="obj-ruta si-ruta">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div>
+              <span class="obj-ruta-title">Acción concreta</span>
+              ATLAS detecta 3 suscripciones sin uso en últimos 90 días · pulsa para cancelar y bajas a 87 €/mes en un clic
+            </div>
+          </div>
+        </div>
+
+        <div class="obj-vinculo">
+          <span class="obj-vinculo-lab">Vinculado a</span>
+          <a class="obj-vinculo-link" onclick="event.stopPropagation(); showToast('Saltar a Personal → Gastos categorizados → Suscripciones')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Personal · suscripciones
+          </a>
+        </div>
+      </div>
+
+      <!-- Card crear nuevo · eliminada · ya está el botón en page-head -->
+
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+</body>
+</html>

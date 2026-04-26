@@ -1,0 +1,1617 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Ajustes</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F1; --card: #FFFFFF; --card-alt: #FBFAF6;
+    --line: #E6E3DC; --line-2: #EFECE5;
+    --ink: #141B2E; --ink-2: #2C3547; --ink-3: #5B6474;
+    --ink-4: #8A92A0; --ink-5: #B8BEC8;
+    --brand: #1E2954; --brand-2: #2A3875; --brand-ink: #0C1230; --brand-wash: #E8EAF0;
+    --gold: #B88A3E; --gold-2: #C59A47; --gold-wash: #F3EAD6; --gold-ink: #7C5C1F;
+    --pos: #1E6B3A; --pos-wash: #E4F0E8;
+    --neg: #A43328; --neg-wash: #F5E3E0;
+    --warn: #8A6213; --warn-wash: #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink-2); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.5; -webkit-font-smoothing: antialiased; letter-spacing: -0.005em; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* Sidebar principal */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* Main · 2 columnas · sidebar interno + contenido */
+  .main { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+  /* Sidebar interno de Ajustes */
+  .setside {
+    background: var(--card); border-right: 1px solid var(--line);
+    padding: 32px 0 22px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .setside-head { padding: 0 24px 22px; border-bottom: 1px solid var(--line-2); margin-bottom: 14px; }
+  .setside-title { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .setside-sub { font-size: 12.5px; color: var(--ink-4); margin-top: 6px; font-weight: 400; }
+
+  .setside-nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .setside-nav a {
+    display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+    border-radius: 8px; color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .setside-nav a:hover { background: var(--card-alt); }
+  .setside-nav a.active { background: var(--gold-wash); color: var(--gold-ink); font-weight: 600; }
+  .setside-nav a.active svg { color: var(--gold-ink); }
+  .setside-nav a svg { color: var(--ink-4); flex-shrink: 0; }
+
+  /* Contenido */
+  .content { padding: 32px 40px 64px; max-width: 920px; }
+
+  .ctn-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+  h1.ctn-title { font-size: 24px; font-weight: 700; color: var(--ink); line-height: 1.1; letter-spacing: -0.025em; }
+  .ctn-sub { font-size: 13px; color: var(--ink-4); margin-top: 4px; font-weight: 400; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; cursor: pointer; }
+  .btn-ghost { background: var(--card); color: var(--ink-2); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--ink-5); }
+  .btn-primary { background: var(--brand); color: #FFFFFF; }
+  .btn-primary:hover { background: var(--brand-2); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+  .btn-neg { background: var(--card); color: var(--neg); border-color: var(--neg-wash); }
+  .btn-neg:hover { background: var(--neg-wash); }
+
+  /* Sección de ajustes · card + lista de rows */
+  .set-section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .set-section-head { padding: 18px 24px 14px; border-bottom: 1px solid var(--line-2); }
+  .set-section-title { font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
+  .set-section-sub { font-size: 12px; color: var(--ink-4); margin-top: 3px; }
+
+  .set-row {
+    display: grid; grid-template-columns: 180px 1fr auto;
+    gap: 20px; padding: 16px 24px; border-bottom: 1px solid var(--line-2);
+    align-items: center;
+  }
+  .set-row:last-child { border-bottom: none; }
+  .set-row-label { font-size: 12.5px; color: var(--ink-3); font-weight: 600; }
+  .set-row-value { font-size: 13px; color: var(--ink); font-weight: 500; }
+  .set-row-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-weight: 400; }
+  .set-row-val-mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--ink-2); font-weight: 600; letter-spacing: -0.015em; }
+
+  .set-link { color: var(--gold); font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 4px 10px; border-radius: 6px; }
+  .set-link:hover { background: var(--gold-wash); }
+
+  /* Input · mockup de campos */
+  .set-input {
+    padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px;
+    background: var(--card-alt); font-size: 13px; color: var(--ink-2);
+    min-width: 260px; font-family: inherit;
+  }
+  .set-input:hover { border-color: var(--ink-5); }
+
+  /* Toggle */
+  .toggle { position: relative; width: 40px; height: 22px; background: var(--line); border-radius: 11px; cursor: pointer; transition: background .14s; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(14,20,35,.15); transition: left .14s; }
+  .toggle.on { background: var(--gold); }
+  .toggle.on::after { left: 20px; }
+
+  /* === EXTRAS sub-pantallas D1-D4 === */
+
+  /* Banner contextual fino */
+  .ctx-banner {
+    display: flex; gap: 10px; padding: 12px 16px;
+    background: var(--gold-wash); border-left: 3px solid var(--gold);
+    border-radius: 6px; font-size: 11.5px; color: var(--gold-ink);
+    line-height: 1.5; margin-bottom: 16px;
+  }
+  .ctx-banner svg { flex-shrink: 0; margin-top: 2px; }
+  .ctx-banner strong { font-weight: 700; }
+
+  /* Header de grupo dentro de set-section */
+  .set-grp-head {
+    padding: 10px 24px; background: var(--card-alt);
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--gold-ink);
+    border-bottom: 1px solid var(--line-2); border-top: 1px solid var(--line-2);
+  }
+
+  /* Variante set-row con descripción debajo del label */
+  .set-row.with-desc {
+    grid-template-columns: 1fr auto auto auto auto;
+    gap: 12px; align-items: center;
+  }
+  .set-row.with-desc .evt-desc { min-width: 0; }
+  .set-row.with-desc .evt-name { font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .set-row.with-desc .evt-sub { font-size: 11px; color: var(--ink-4); line-height: 1.4; }
+  .set-row.with-desc .evt-channel { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 60px; }
+  .set-row.with-desc .evt-channel-lab { font-size: 9.5px; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .set-row.with-desc .evt-anticip-select { padding: 5px 9px; font-size: 11px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink-2); font-family: 'JetBrains Mono', monospace; }
+
+  /* Plantilla · row con icono */
+  .set-row.tpl {
+    grid-template-columns: 36px 1fr auto auto;
+    gap: 14px;
+  }
+  .tpl-icon { width: 36px; height: 36px; border-radius: 7px; display: grid; place-items: center; background: var(--bg); color: var(--ink-3); }
+  .tpl-icon.contrato { background: var(--brand-wash); color: var(--brand); }
+  .tpl-icon.email { background: var(--gold-wash); color: var(--gold-ink); }
+  .tpl-icon.formula { background: var(--pos-wash); color: var(--pos); }
+  .tpl-info { min-width: 0; }
+  .tpl-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .tpl-meta { font-size: 11px; color: var(--ink-4); margin-top: 3px; line-height: 1.45; }
+  .tpl-badge { display: inline-flex; align-items: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 4px; }
+  .tpl-badge.default { background: var(--brand-wash); color: var(--brand); }
+  .tpl-badge.active { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Sesión activa · row con icono */
+  .set-row.ses {
+    grid-template-columns: 36px 1fr auto;
+    gap: 14px;
+  }
+  .set-row.ses.current { background: var(--gold-wash); }
+  .ses-ic { width: 36px; height: 36px; border-radius: 7px; display: grid; place-items: center; background: var(--bg); color: var(--ink-3); }
+  .set-row.ses.current .ses-ic { background: var(--gold); color: #fff; }
+  .ses-info { min-width: 0; }
+  .ses-name { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .ses-meta { font-size: 11px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .ses-badge-cur { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 10px; border-radius: 4px; background: var(--gold); color: #fff; }
+
+  /* Sección con tono peligroso · solo borde */
+  .set-section.danger { border-color: var(--neg); }
+  .set-section.danger .set-section-head { background: var(--neg-wash); border-bottom-color: var(--neg); }
+  .set-section.danger .set-section-title { color: var(--neg); }
+
+  .btn-danger { padding: 8px 16px; background: var(--neg); color: #fff; border: none; border-radius: 7px; font-size: 12.5px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-danger:hover { background: #832318; }
+
+  /* Implicación cruzada · módulo + detalle */
+  .impl-row {
+    display: grid; grid-template-columns: 220px 1fr;
+    gap: 16px; padding: 14px 24px;
+    border-bottom: 1px solid var(--line-2); align-items: center;
+  }
+  .impl-row:last-child { border-bottom: none; }
+  .impl-where { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .impl-where-tag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 7px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+  .impl-where-tag.personal { background: var(--brand-wash); color: var(--brand); }
+  .impl-where-tag.fiscal { background: var(--gold-wash); color: var(--gold-ink); }
+  .impl-detail { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; }
+
+  /* Badge de estado */
+  .set-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700;
+    padding: 3px 9px; border-radius: 5px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .set-badge.ok { background: var(--pos-wash); color: var(--pos); }
+  .set-badge.pending { background: var(--gold-wash); color: var(--gold-ink); }
+  .set-badge.off { background: var(--bg); color: var(--ink-4); }
+  .set-badge.err { background: var(--neg-wash); color: var(--neg); }
+  .set-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* === PERFIL === */
+  .profile-hero { display: grid; grid-template-columns: 88px 1fr auto; gap: 20px; padding: 22px 26px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; align-items: center; }
+  .profile-avatar {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: linear-gradient(135deg, #E8D9AE, #B88A3E);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--brand-ink); font-weight: 700; font-size: 32px;
+    letter-spacing: -0.02em; flex-shrink: 0;
+  }
+  .profile-name { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .profile-meta { font-size: 12.5px; color: var(--ink-4); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+  .profile-meta strong { color: var(--ink-2); font-weight: 600; }
+
+  /* === PLAN & FACTURACIÓN === */
+  .plan-hero {
+    background: var(--card); border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    border-radius: 12px; padding: 24px 28px; margin-bottom: 16px;
+  }
+  .plan-hero-body { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
+  .plan-hero-tag { display: inline-flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-ink); margin-bottom: 8px; }
+  .plan-hero-name { font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.1; }
+  .plan-hero-desc { font-size: 12.5px; color: var(--ink-3); margin-top: 6px; max-width: 460px; line-height: 1.5; }
+  .plan-hero-price { text-align: right; }
+  .plan-hero-amount { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1; }
+  .plan-hero-cycle { font-size: 11.5px; color: var(--ink-4); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Features del plan */
+  .plan-feats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; padding: 18px 0 0; margin-top: 18px; border-top: 1px solid var(--line-2); }
+  .plan-feat { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--ink-3); }
+  .plan-feat-check { width: 18px; height: 18px; border-radius: 50%; background: var(--pos-wash); color: var(--pos); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* Factura */
+  .factura-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 16px; overflow: hidden; }
+  .factura-row {
+    display: grid; grid-template-columns: 120px 1fr 100px 90px 100px 28px;
+    gap: 18px; padding: 14px 24px; border-bottom: 1px solid var(--line-2);
+    align-items: center; cursor: pointer;
+  }
+  .factura-row:last-child { border-bottom: none; }
+  .factura-row:hover { background: var(--card-alt); }
+  .factura-row.header {
+    padding: 10px 24px; background: var(--card-alt); cursor: default;
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-4); font-weight: 600;
+  }
+  .factura-row.header:hover { background: var(--card-alt); }
+  .factura-fecha { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .factura-concepto { font-size: 12.5px; color: var(--ink); font-weight: 500; }
+  .factura-concepto-sub { font-size: 11px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .factura-amount { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--ink); text-align: right; }
+  .factura-status { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; }
+  .factura-status.paid { background: var(--pos-wash); color: var(--pos); }
+  .factura-status.next { background: var(--gold-wash); color: var(--gold-ink); }
+  .factura-dl { color: var(--gold); padding: 4px 8px; border-radius: 5px; font-size: 11.5px; font-weight: 600; text-align: center; }
+  .factura-dl:hover { background: var(--gold-wash); }
+  .factura-arrow { color: var(--ink-5); }
+
+  /* === INTEGRACIONES · cards === */
+  .integ-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .integ-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px 22px; cursor: pointer;
+    transition: all .14s; display: flex; flex-direction: column; gap: 12px;
+  }
+  .integ-card:hover { border-color: var(--gold); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(14,20,35,0.04); }
+  .integ-card-head { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; }
+  .integ-logo {
+    width: 48px; height: 48px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #fff;
+  }
+  .integ-logo.santander { background: #EC0000; }
+  .integ-logo.sabadell { background: #006CB3; }
+  .integ-logo.unicaja { background: #F2AA00; }
+  .integ-logo.aeat { background: var(--brand); }
+  .integ-logo.gdrive { background: #1E8E3E; }
+  .integ-logo.gmail { background: #D93025; }
+  .integ-nom { font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; line-height: 1.15; }
+  .integ-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .integ-body { font-size: 12px; color: var(--ink-3); line-height: 1.5; padding: 12px 0; border-top: 1px solid var(--line-2); }
+  .integ-body strong { color: var(--ink-2); font-weight: 600; }
+  .integ-foot { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+  .integ-foot-meta { font-size: 10.5px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+  .integ-cta { font-size: 11.5px; color: var(--gold); font-weight: 700; }
+
+  /* Navegación páginas */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--brand-ink); color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; z-index: 300; display: none; box-shadow: 0 8px 24px rgba(14,20,35,.2); }
+  .toast.show { display: block; animation: slideUp .2s; }
+  @keyframes slideUp { from { transform: translateX(-50%) translateY(10px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR principal -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div><div class="brand-name">Atlas</div><div class="brand-sub">Patrimonio & Renta</div></div>
+    </div>
+    <nav class="nav" style="padding-top: 10px;">
+      <a onclick="showToast('Ir a Panel')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Panel</a>
+    </nav>
+    <div class="nav-section">Mis activos</div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Inmuebles')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>Inmuebles</a>
+      <a onclick="showToast('Ir a Inversiones')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3v18h18"/><path d="m7 15 4-4 4 4 5-5"/></svg>Inversiones</a>
+      <a onclick="showToast('Ir a Tesorería')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Tesorería</a>
+      <a onclick="showToast('Ir a Financiación')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><line x1="3" y1="21" x2="21" y2="21"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="5 6 12 3 19 6"/></svg>Financiación</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a onclick="showToast('Ir a Contratos')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Contratos</a>
+      <a onclick="showToast('Ir a Mi Plan')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M2 12h20"/><path d="M6 8l-4 4 4 4"/><path d="M18 8l4 4-4 4"/></svg>Mi Plan</a>
+      <a onclick="showToast('Ir a Fiscal')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>Fiscal</a>
+      <a onclick="showToast('Ir a Archivo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>Archivo</a>
+    </nav>
+    <div class="nav-sep"></div>
+    <nav class="nav">
+      <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>Ajustes</a>
+    </nav>
+    <div class="side-foot">
+      <div class="avatar">JA</div>
+      <div style="min-width:0"><div class="side-foot-name">José A.</div><div class="side-foot-sub">Plan Pro</div></div>
+    </div>
+  </aside>
+
+  <!-- MAIN · sidebar interno + contenido -->
+  <main class="main">
+
+    <!-- Sidebar interno Ajustes -->
+    <aside class="setside">
+      <div class="setside-head">
+        <div class="setside-title">Ajustes</div>
+        <div class="setside-sub">tu cuenta · plan · integraciones</div>
+      </div>
+      <nav class="setside-nav">
+        <a class="active" onclick="showPage('perfil')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Perfil
+        </a>
+        <a onclick="showPage('plan')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          Plan &amp; facturación
+        </a>
+        <a onclick="showPage('integraciones')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Integraciones
+        </a>
+        <a onclick="showPage('notificaciones')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          Notificaciones
+        </a>
+        <a onclick="showPage('plantillas')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+          Plantillas
+        </a>
+        <a onclick="showPage('fiscal')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="9" y2="18"/><line x1="15" y1="14" x2="15" y2="18"/><line x1="12" y1="14" x2="12" y2="18"/></svg>
+          Perfil fiscal y convivencia
+        </a>
+        <a onclick="showPage('seguridad')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Seguridad &amp; datos
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Contenido · páginas -->
+    <section class="content">
+      <!-- ═══════════════════════════════════════ -->
+      <!-- PÁGINA PERFIL (default) -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page active" id="page-perfil">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Perfil</h1>
+            <div class="ctn-sub">tu información personal y preferencias de la cuenta</div>
+          </div>
+          <button class="btn btn-gold" onclick="showToast('Guardar cambios del perfil')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+            Guardar cambios
+          </button>
+        </div>
+
+        <!-- Hero con avatar y datos básicos -->
+        <div class="profile-hero">
+          <div class="profile-avatar">JA</div>
+          <div>
+            <div class="profile-name">José A.</div>
+            <div class="profile-meta">cuenta creada <strong>12 abril 2025</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>última sesión <strong>hace 2 horas</strong><span style="color: var(--ink-5); margin: 0 6px;">·</span>ID · <strong>atl-u-8472</strong></div>
+          </div>
+          <button class="btn btn-ghost" onclick="showToast('Cambiar foto de perfil · subir imagen o cambiar iniciales')">Cambiar foto</button>
+        </div>
+
+        <!-- Datos personales -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Datos personales</div>
+            <div class="set-section-sub">nombre · contacto · identificación fiscal</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Nombre completo</div>
+            <div><input type="text" class="set-input" value="José Antonio Gómez"/></div>
+            <span></span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Email</div>
+            <div>
+              <input type="text" class="set-input" value="jose@atlas.pro"/>
+              <div class="set-row-sub" style="margin-top: 6px;">verificado · usado para inicio de sesión y notificaciones</div>
+            </div>
+            <span class="set-badge ok"><span class="dot"></span>Verificado</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Teléfono</div>
+            <div><input type="text" class="set-input" value="+34 612 34 56 78"/></div>
+            <span class="set-badge pending"><span class="dot"></span>Sin verificar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">NIF/NIE</div>
+            <div>
+              <input type="text" class="set-input" value="12345678A" style="font-family: 'JetBrains Mono', monospace;"/>
+              <div class="set-row-sub" style="margin-top: 6px;">usado para declaraciones fiscales · no editable tras firma de contratos</div>
+            </div>
+            <span></span>
+          </div>
+        </div>
+
+        <!-- Preferencias regionales -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Preferencias regionales</div>
+            <div class="set-section-sub">idioma · zona horaria · formato de números y fechas</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Idioma</div>
+            <div class="set-row-val-mono">Español · España</div>
+            <span class="set-link" onclick="showToast('Cambiar idioma · disponibles ES · EN · CA · GL · EU')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Zona horaria</div>
+            <div class="set-row-val-mono">Europe/Madrid · UTC+1</div>
+            <span class="set-link" onclick="showToast('Cambiar zona horaria')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Formato de número</div>
+            <div class="set-row-val-mono">1.234,56 €</div>
+            <span class="set-link" onclick="showToast('Cambiar formato numérico · 1.234,56 € o 1,234.56 €')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Formato de fecha</div>
+            <div class="set-row-val-mono">DD/MM/AAAA</div>
+            <span class="set-link" onclick="showToast('Cambiar formato de fecha')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Día inicio semana</div>
+            <div class="set-row-val-mono">Lunes</div>
+            <span class="set-link" onclick="showToast('Cambiar día de inicio · Lunes o Domingo')">Cambiar</span>
+          </div>
+        </div>
+
+        <!-- Preferencias de interfaz -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Preferencias de interfaz</div>
+            <div class="set-section-sub">cómo quieres ver ATLAS</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Tema</div>
+            <div class="set-row-val-mono">Claro · Oxford Gold</div>
+            <span class="set-link" onclick="showToast('Próximamente · modo oscuro en fase de diseño')">Próximamente</span>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Mostrar cifras agrupadas</div>
+              <div class="set-row-sub" style="margin-top: 2px;">agregados por tipo en vez de cifras individuales</div>
+            </div>
+            <div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on'); showToast('Cifras agrupadas · ' + (this.classList.contains('on') ? 'ACTIVADO' : 'DESACTIVADO'))"></div>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Tutoriales inline</div>
+              <div class="set-row-sub" style="margin-top: 2px;">ayudas contextuales al entrar en secciones nuevas</div>
+            </div>
+            <div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on'); showToast('Tutoriales · ' + (this.classList.contains('on') ? 'ACTIVADO' : 'DESACTIVADO'))"></div>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Resumen semanal por email</div>
+              <div class="set-row-sub" style="margin-top: 2px;">cada lunes · lo más relevante de tu patrimonio</div>
+            </div>
+            <div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on'); showToast('Resumen semanal · ' + (this.classList.contains('on') ? 'ACTIVADO' : 'DESACTIVADO'))"></div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page perfil -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- PÁGINA PLAN & FACTURACIÓN -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-plan">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Plan &amp; facturación</h1>
+            <div class="ctn-sub">tu suscripción · método de pago · historial de facturas</div>
+          </div>
+          <button class="btn btn-ghost" onclick="showToast('Cambiar plan · Pro anual · Pro familia · Business · ver comparativa')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+            Cambiar plan
+          </button>
+        </div>
+
+        <!-- Hero del plan actual -->
+        <div class="plan-hero">
+          <div class="plan-hero-body">
+            <div>
+              <div class="plan-hero-tag">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Plan Pro · mensual
+              </div>
+              <div class="plan-hero-name">Plan Pro</div>
+              <div class="plan-hero-desc">gestión completa de patrimonio inmobiliario · hasta 15 inmuebles · integración con 3 bancos · declaración fiscal automática · simulador de escenarios · soporte prioritario</div>
+            </div>
+            <div class="plan-hero-price">
+              <div class="plan-hero-amount">29 €</div>
+              <div class="plan-hero-cycle">/ mes · IVA incluido</div>
+              <div style="font-size: 11px; color: var(--ink-4); margin-top: 10px; font-family: 'JetBrains Mono', monospace;">próximo cargo · <strong style="color: var(--ink-2);">18 mayo 2026</strong></div>
+            </div>
+          </div>
+
+          <div class="plan-feats">
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Hasta 15 inmuebles en cartera
+            </div>
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Integración bancaria ilimitada
+            </div>
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Declaración fiscal automática
+            </div>
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Simulador libertad financiera
+            </div>
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Snowball de amortización
+            </div>
+            <div class="plan-feat">
+              <div class="plan-feat-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              Soporte prioritario
+            </div>
+          </div>
+        </div>
+
+        <!-- Método de pago -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Método de pago</div>
+            <div class="set-section-sub">tarjeta o cuenta que se cargará cada mes</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Tarjeta predeterminada</div>
+            <div>
+              <div class="set-row-val-mono">Visa · ···· ···· ···· 4821</div>
+              <div class="set-row-sub" style="margin-top: 4px;">caduca 09/2028 · titular José Antonio Gómez</div>
+            </div>
+            <span class="set-link" onclick="showToast('Cambiar tarjeta · añadir nueva o seleccionar otra existente')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Dirección de facturación</div>
+            <div>
+              <div class="set-row-value">Calle Bravo Murillo, 124 · 28020 Madrid</div>
+              <div class="set-row-sub" style="margin-top: 2px;">usado en facturas emitidas</div>
+            </div>
+            <span class="set-link" onclick="showToast('Editar dirección de facturación')">Editar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">CIF/NIF facturación</div>
+            <div class="set-row-val-mono">12345678A</div>
+            <span class="set-link" onclick="showToast('Editar datos fiscales de facturación')">Editar</span>
+          </div>
+        </div>
+
+        <!-- Facturas -->
+        <div class="factura-card">
+          <div class="set-section-head" style="border-bottom: 1px solid var(--line-2);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <div class="set-section-title">Historial de facturas</div>
+                <div class="set-section-sub">últimos 6 meses · descargables en PDF</div>
+              </div>
+              <button class="btn btn-ghost" onclick="showToast('Descargar todas las facturas · ZIP con PDFs')" style="padding: 6px 12px; font-size: 12px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Descargar todas
+              </button>
+            </div>
+          </div>
+
+          <div class="factura-row header">
+            <div>Fecha</div>
+            <div>Concepto</div>
+            <div style="text-align: right;">Importe</div>
+            <div style="text-align: center;">Estado</div>
+            <div style="text-align: center;">Factura</div>
+            <div></div>
+          </div>
+
+          <div class="factura-row" onclick="showToast('Próxima factura · 18 mayo 2026 · 29 €')">
+            <span class="factura-fecha">18/05/2026</span>
+            <div>
+              <div class="factura-concepto">Plan Pro · mayo 2026</div>
+              <div class="factura-concepto-sub">cargo automático</div>
+            </div>
+            <div class="factura-amount">29,00 €</div>
+            <span class="factura-status next">Próxima</span>
+            <span class="factura-dl" style="color: var(--ink-5); cursor: default;">—</span>
+            <span class="factura-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+
+          <div class="factura-row" onclick="showToast('Ver factura · 18 abril 2026 · 29 €')">
+            <span class="factura-fecha">18/04/2026</span>
+            <div>
+              <div class="factura-concepto">Plan Pro · abril 2026</div>
+              <div class="factura-concepto-sub">Visa ···· 4821</div>
+            </div>
+            <div class="factura-amount">29,00 €</div>
+            <span class="factura-status paid">Pagada</span>
+            <span class="factura-dl" onclick="event.stopPropagation(); showToast('Descargar factura abril · PDF')">PDF</span>
+            <span class="factura-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+
+          <div class="factura-row" onclick="showToast('Ver factura · 18 marzo 2026 · 29 €')">
+            <span class="factura-fecha">18/03/2026</span>
+            <div>
+              <div class="factura-concepto">Plan Pro · marzo 2026</div>
+              <div class="factura-concepto-sub">Visa ···· 4821</div>
+            </div>
+            <div class="factura-amount">29,00 €</div>
+            <span class="factura-status paid">Pagada</span>
+            <span class="factura-dl" onclick="event.stopPropagation(); showToast('Descargar factura marzo · PDF')">PDF</span>
+            <span class="factura-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+
+          <div class="factura-row" onclick="showToast('Ver factura · 18 febrero 2026 · 29 €')">
+            <span class="factura-fecha">18/02/2026</span>
+            <div>
+              <div class="factura-concepto">Plan Pro · febrero 2026</div>
+              <div class="factura-concepto-sub">Visa ···· 4821</div>
+            </div>
+            <div class="factura-amount">29,00 €</div>
+            <span class="factura-status paid">Pagada</span>
+            <span class="factura-dl" onclick="event.stopPropagation(); showToast('Descargar factura febrero · PDF')">PDF</span>
+            <span class="factura-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+
+          <div class="factura-row" onclick="showToast('Ver factura · 18 enero 2026 · 29 €')">
+            <span class="factura-fecha">18/01/2026</span>
+            <div>
+              <div class="factura-concepto">Plan Pro · enero 2026</div>
+              <div class="factura-concepto-sub">Visa ···· 4821</div>
+            </div>
+            <div class="factura-amount">29,00 €</div>
+            <span class="factura-status paid">Pagada</span>
+            <span class="factura-dl" onclick="event.stopPropagation(); showToast('Descargar factura enero · PDF')">PDF</span>
+            <span class="factura-arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+          </div>
+        </div>
+
+        <!-- Gestión de la suscripción -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Gestión de la suscripción</div>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Cambiar a facturación anual</div>
+              <div class="set-row-sub" style="margin-top: 2px;">ahorras 58 € al año · equivalente a 2 meses gratis</div>
+            </div>
+            <div></div>
+            <button class="btn btn-ghost" onclick="showToast('Cambiar a facturación anual · 290 €/año en vez de 348 €/año')" style="padding: 7px 12px; font-size: 12px;">Cambiar a anual</button>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label">Pausar suscripción</div>
+              <div class="set-row-sub" style="margin-top: 2px;">conserva tus datos · no facturamos hasta reactivar · máx 3 meses</div>
+            </div>
+            <div></div>
+            <button class="btn btn-ghost" onclick="showToast('Pausar suscripción · conserva datos · sin cargos')" style="padding: 7px 12px; font-size: 12px;">Pausar</button>
+          </div>
+
+          <div class="set-row">
+            <div>
+              <div class="set-row-label" style="color: var(--neg);">Cancelar suscripción</div>
+              <div class="set-row-sub" style="margin-top: 2px;">acceso hasta fin del período pagado · tus datos se conservan 90 días</div>
+            </div>
+            <div></div>
+            <button class="btn btn-neg" onclick="showToast('Cancelar suscripción · requiere confirmación · conserva datos 90 días')" style="padding: 7px 12px; font-size: 12px;">Cancelar plan</button>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page plan -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- PÁGINA INTEGRACIONES -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-integraciones">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Integraciones</h1>
+            <div class="ctn-sub">conecta tus bancos · AEAT · Google · automatiza la captura de datos</div>
+          </div>
+          <button class="btn btn-gold" onclick="showToast('Añadir nueva integración · banco · servicio fiscal · herramienta')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva integración
+          </button>
+        </div>
+
+        <!-- Sección Bancos -->
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; margin: 10px 0 12px;">Bancos conectados</div>
+
+        <div class="integ-grid">
+          <!-- Santander -->
+          <div class="integ-card" onclick="showToast('Gestionar conexión Santander · cuentas · credenciales · permisos')">
+            <div class="integ-card-head">
+              <div class="integ-logo santander">SA</div>
+              <div>
+                <div class="integ-nom">Santander</div>
+                <div class="integ-sub">1 cuenta vinculada</div>
+              </div>
+              <span class="set-badge ok"><span class="dot"></span>Activo</span>
+            </div>
+            <div class="integ-body">
+              <strong>ES12 0049 ···· ···· 2715</strong> · cuenta principal · saldo actualizado hace 2 horas · sincronización automática de movimientos
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">Conectado · 12/09/2025</span>
+              <span class="integ-cta">Gestionar →</span>
+            </div>
+          </div>
+
+          <!-- Sabadell -->
+          <div class="integ-card" onclick="showToast('Gestionar conexión Sabadell')">
+            <div class="integ-card-head">
+              <div class="integ-logo sabadell">SB</div>
+              <div>
+                <div class="integ-nom">Sabadell</div>
+                <div class="integ-sub">2 cuentas vinculadas</div>
+              </div>
+              <span class="set-badge ok"><span class="dot"></span>Activo</span>
+            </div>
+            <div class="integ-body">
+              <strong>ES45 0081 ···· ···· 0842</strong> · inmuebles · <strong>ES45 0081 ···· ···· 5530</strong> · inversión · ambas al día
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">Conectado · 03/11/2025</span>
+              <span class="integ-cta">Gestionar →</span>
+            </div>
+          </div>
+
+          <!-- Unicaja -->
+          <div class="integ-card" onclick="showToast('Gestionar conexión Unicaja')">
+            <div class="integ-card-head">
+              <div class="integ-logo unicaja">UN</div>
+              <div>
+                <div class="integ-nom">Unicaja</div>
+                <div class="integ-sub">1 cuenta vinculada</div>
+              </div>
+              <span class="set-badge ok"><span class="dot"></span>Activo</span>
+            </div>
+            <div class="integ-body">
+              <strong>ES80 2103 ···· ···· 4437</strong> · cuenta colchón · último movimiento hace 5 días · importación CSB43
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">Conectado · 18/01/2026</span>
+              <span class="integ-cta">Gestionar →</span>
+            </div>
+          </div>
+
+          <!-- Añadir banco nuevo -->
+          <div class="integ-card" style="background: var(--card-alt); border-style: dashed; align-items: center; justify-content: center; text-align: center; min-height: 180px;" onclick="showToast('Añadir nuevo banco · buscar entre 180+ bancos españoles')">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink-3);">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink-2);">Conectar otro banco</div>
+              <div style="font-size: 11.5px; color: var(--ink-4); max-width: 220px;">BBVA · CaixaBank · Kutxabank · Openbank · ING · y 180 más</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección Fiscal y servicios -->
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-4); font-weight: 700; margin: 28px 0 12px;">Fiscal y servicios externos</div>
+
+        <div class="integ-grid">
+          <!-- AEAT -->
+          <div class="integ-card" onclick="showToast('Gestionar conexión AEAT · certificado digital · Cl@ve · permisos')">
+            <div class="integ-card-head">
+              <div class="integ-logo aeat">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div class="integ-nom">AEAT · Agencia Tributaria</div>
+                <div class="integ-sub">descarga automática XMLs IRPF</div>
+              </div>
+              <span class="set-badge pending"><span class="dot"></span>Por conectar</span>
+            </div>
+            <div class="integ-body">
+              conecta con <strong>certificado digital</strong> para descargar tus datos fiscales de años anteriores · ATLAS nunca presenta por ti · solo lee
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">Requiere certificado digital</span>
+              <span class="integ-cta">Conectar →</span>
+            </div>
+          </div>
+
+          <!-- Google Drive -->
+          <div class="integ-card" onclick="showToast('Gestionar Google Drive · carpeta sincronizada · documentos subidos')">
+            <div class="integ-card-head">
+              <div class="integ-logo gdrive">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 15 12 3l6 12"/><path d="M9 21 3 9l3-6"/><path d="M15 21 21 9l-3-6"/><path d="M9 21h6"/></svg>
+              </div>
+              <div>
+                <div class="integ-nom">Google Drive</div>
+                <div class="integ-sub">archivo en la nube</div>
+              </div>
+              <span class="set-badge ok"><span class="dot"></span>Activo</span>
+            </div>
+            <div class="integ-body">
+              carpeta <strong>ATLAS/Archivo</strong> sincronizada · <strong>247 documentos</strong> · 1,2 GB · última sincronización hace 12 minutos
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">Conectado · 24/04/2025</span>
+              <span class="integ-cta">Gestionar →</span>
+            </div>
+          </div>
+
+          <!-- Gmail -->
+          <div class="integ-card" onclick="showToast('Gestionar Gmail · importación de facturas desde correos')">
+            <div class="integ-card-head">
+              <div class="integ-logo gmail">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              </div>
+              <div>
+                <div class="integ-nom">Gmail</div>
+                <div class="integ-sub">importación de facturas</div>
+              </div>
+              <span class="set-badge off"><span class="dot"></span>Inactivo</span>
+            </div>
+            <div class="integ-body">
+              <strong>opcional</strong> · ATLAS busca facturas recibidas por email de proveedores conocidos y las propone para imputar · nunca toca correos personales
+            </div>
+            <div class="integ-foot">
+              <span class="integ-foot-meta">No conectado</span>
+              <span class="integ-cta">Conectar →</span>
+            </div>
+          </div>
+
+          <!-- Placeholder · futuros conectores -->
+          <div class="integ-card" style="background: var(--card-alt); border-style: dashed; align-items: center; justify-content: center; text-align: center; min-height: 180px;" onclick="showToast('Próximas integraciones · Unihouser · Idealista · Fotocasa · Stripe · y más')">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink-3);">
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity: 0.5;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div style="font-size: 13px; font-weight: 700; color: var(--ink-2);">Próximas integraciones</div>
+              <div style="font-size: 11.5px; color: var(--ink-4); max-width: 220px;">Unihouser · Idealista · Fotocasa · Stripe · BBDD catastrales</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page integraciones -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- D1 · NOTIFICACIONES -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-notificaciones">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Notificaciones</h1>
+            <div class="ctn-sub">qué eventos te avisan y por qué canal · email · push móvil · in-app</div>
+          </div>
+          <button class="btn btn-gold" onclick="showToast('Preferencias guardadas')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+            Guardar preferencias
+          </button>
+        </div>
+
+        <!-- Activación rápida -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Activación rápida</div>
+            <div class="set-section-sub">activa o silencia todos los canales con un clic</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Modo concentración</div>
+            <div>
+              <div class="set-row-value">Desactivado</div>
+              <div class="set-row-sub">silencia todas las notificaciones · útil en vacaciones</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Resumen semanal</div>
+            <div>
+              <div class="set-row-value">Activo · cada lunes 9:00</div>
+              <div class="set-row-sub">email con flujo de la semana · próximos cobros y cargos · alertas fiscales</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Resumen diario</div>
+            <div>
+              <div class="set-row-value">Desactivado</div>
+              <div class="set-row-sub">solo si hay movimientos importantes · cargo &gt; 500 € · cobro &gt; 1.000 € · vencimiento próximo</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Horario silencio</div>
+            <div class="set-row-val-mono">22:00 a 8:00</div>
+            <span class="set-link" onclick="showToast('Cambiar horario silencio nocturno')">Cambiar</span>
+          </div>
+        </div>
+
+        <!-- Eventos · Tesorería -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Tesorería · cuentas y cobros</div>
+            <div class="set-section-sub">avisos sobre tu caja · cargos previstos · cobros recibidos · saldo bajo</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Nómina cobrada</div>
+            <div class="set-row-sub">cuando llega el extracto bancario y se concilia · ATLAS aporta automáticamente al plan pensiones</div>
+            <span class="set-link" onclick="showToast('Configurar canales · email · push · in-app')">Push · in-app</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Cargo previsto</div>
+            <div class="set-row-sub">aviso 3 días antes de domiciliaciones recurrentes · luz · gas · seguros · alquiler</div>
+            <span class="set-link" onclick="showToast('Configurar canales y anticipación')">Push · in-app · 3d</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Saldo bajo en cuenta</div>
+            <div class="set-row-sub">cuando alguna cuenta del hogar baja del umbral mínimo configurado</div>
+            <span class="set-link" onclick="showToast('Configurar umbrales por cuenta')">Email · push · in-app</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Cobro inquilino retrasado</div>
+            <div class="set-row-sub">renta no recibida en los 5 días siguientes a la fecha pactada</div>
+            <span class="set-link" onclick="showToast('Configurar canales y anticipación')">Email · push · 5d</span>
+          </div>
+        </div>
+
+        <!-- Eventos · Contratos -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Contratos · alquiler</div>
+            <div class="set-section-sub">vencimientos · revisiones IPC · prórrogas</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Vencimiento de contrato</div>
+            <div class="set-row-sub">aviso antes de prórroga obligatoria o fin · permite negociar a tiempo</div>
+            <span class="set-link" onclick="showToast('Configurar anticipación')">Email · in-app · 3 meses</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Revisión IPC anual</div>
+            <div class="set-row-sub">recordatorio de actualizar la renta en aniversario · cálculo automático sugerido</div>
+            <span class="set-link" onclick="showToast('Configurar anticipación')">Email · in-app · 1 mes</span>
+          </div>
+        </div>
+
+        <!-- Eventos · Fiscal -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Fiscal · obligaciones</div>
+            <div class="set-section-sub">modelos trimestrales · campaña anual · solo activos para tu perfil</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Modelo 303 · IVA</div>
+            <div class="set-row-sub">trimestral · vence día 22 de abr · jul · oct · ene · solo si tienes actividad económica</div>
+            <span class="set-link" onclick="showToast('Configurar anticipación M303')">Email · push · 2 sem</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Modelo 130 · IRPF fraccionado</div>
+            <div class="set-row-sub">autónomos en estimación directa · vence día 22 de abr · jul · oct · ene</div>
+            <span class="set-link" onclick="showToast('Configurar anticipación M130')">Email · push · 2 sem</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Campaña IRPF anual</div>
+            <div class="set-row-sub">apertura · borrador disponible · resultado a pagar o devolver · vencimiento</div>
+            <span class="set-link" onclick="showToast('Configurar hitos campaña IRPF')">Email · push · in-app</span>
+          </div>
+        </div>
+
+        <!-- Sistema -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Sistema · cuenta y datos</div>
+            <div class="set-section-sub">seguridad y actividad de tu cuenta</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Inicio sesión nuevo</div>
+            <div class="set-row-sub">acceso desde un dispositivo no reconocido · alerta de seguridad inmediata</div>
+            <span class="set-link" onclick="showToast('Configurar alerta seguridad')">Email · push · ahora</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Pareja co-titular cambia</div>
+            <div class="set-row-sub">si tu pareja edita compromisos · cuentas o ingresos del hogar compartido</div>
+            <span class="set-link" onclick="showToast('Configurar · solo activo si pareja registrada')">No aplica</span>
+          </div>
+        </div>
+
+        <!-- Canales -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Canales y direcciones</div>
+            <div class="set-section-sub">dónde llegan las notificaciones · puedes tener varios destinos</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Email principal</div>
+            <div>
+              <div class="set-row-val-mono">jose.gomez.atlas@gmail.com</div>
+              <div class="set-row-sub" style="margin-top: 4px;">verificado · usado para login y notificaciones</div>
+            </div>
+            <span class="set-badge ok"><span class="dot"></span>Verificado</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Email secundario</div>
+            <div class="set-row-sub">no configurado · útil como respaldo para alertas críticas</div>
+            <span class="set-link" onclick="showToast('Añadir email secundario')">Añadir</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Push móvil</div>
+            <div>
+              <div class="set-row-value">iPhone 14 · Madrid</div>
+              <div class="set-row-sub">activo desde feb 2026</div>
+            </div>
+            <span class="set-link" onclick="showToast('Gestionar dispositivos móviles')">Gestionar</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page notificaciones -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- D2 · PLANTILLAS -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-plantillas">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Plantillas</h1>
+            <div class="ctn-sub">contratos · correos · fórmulas fiscales · evita rehacer lo mismo cada vez</div>
+          </div>
+          <button class="btn btn-gold" onclick="showToast('Crear nueva plantilla · elige tipo · contrato · email · fórmula')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva plantilla
+          </button>
+        </div>
+
+        <!-- Contratos de alquiler -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Contratos de alquiler</div>
+            <div class="set-section-sub">plantillas con cláusulas reusables · se autorrellenan al crear contrato nuevo</div>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon contrato">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Vivienda habitual · 5 años · IPC</div>
+              <div class="tpl-meta">7 cláusulas · LAU 1994 · revisión IPC anual · fianza 2 mensualidades · usado en 4 contratos</div>
+            </div>
+            <span class="tpl-badge default">Por defecto</span>
+            <span class="set-link" onclick="showToast('Editar plantilla · vivienda habitual')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon contrato">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Habitación · estudiantes</div>
+              <div class="tpl-meta">9 cláusulas · 9 meses curso académico · sin IPC · zonas comunes detalladas · usado en 3 contratos</div>
+            </div>
+            <span></span>
+            <span class="set-link" onclick="showToast('Editar plantilla · habitación')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon contrato">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Turístico · corta estancia</div>
+              <div class="tpl-meta">12 cláusulas · LAU temporada · alta turística autonómica · IBI repercutido · sin uso</div>
+            </div>
+            <span></span>
+            <span class="set-link" onclick="showToast('Editar plantilla · turístico')">Editar</span>
+          </div>
+        </div>
+
+        <!-- Correos al inquilino -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Correos al inquilino</div>
+            <div class="set-section-sub">se envían desde Contratos · cobros · gestión inquilino</div>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon email">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Recordatorio de pago · cordial</div>
+              <div class="tpl-meta">tono educado · primer aviso a los 3 días de retraso · enviado 2 veces este año</div>
+            </div>
+            <span class="tpl-badge default">Por defecto</span>
+            <span class="set-link" onclick="showToast('Editar plantilla recordatorio')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon email">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Aviso revisión IPC</div>
+              <div class="tpl-meta">comunica subida de renta con detalle del cálculo · 1 mes antes del aniversario · usado 4 veces</div>
+            </div>
+            <span></span>
+            <span class="set-link" onclick="showToast('Editar plantilla revisión IPC')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon email">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Notificación de no renovación</div>
+              <div class="tpl-meta">comunica que el contrato no se prorroga · 4 meses antes del vencimiento (LAU) · sin uso</div>
+            </div>
+            <span></span>
+            <span class="set-link" onclick="showToast('Editar plantilla no renovación')">Editar</span>
+          </div>
+        </div>
+
+        <!-- Fórmulas fiscales -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Fórmulas fiscales personalizadas</div>
+            <div class="set-section-sub">reglas de prorrateo y deducción · se aplican automáticamente · útil para casos complejos</div>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon formula">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="20" x2="12" y2="4"/><line x1="5" y1="11" x2="19" y2="11"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Prorrateo destino mixto · ING T48</div>
+              <div class="tpl-meta">81,6% adquisición Buigas (deducible) · 18,4% cancelación deuda (no deducible) · aplicado 2024-2039</div>
+            </div>
+            <span class="tpl-badge active">Activa</span>
+            <span class="set-link" onclick="showToast('Editar fórmula prorrateo ING')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon formula">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="20" x2="12" y2="4"/><line x1="5" y1="11" x2="19" y2="11"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Reducción 60% arrendamiento vivienda</div>
+              <div class="tpl-meta">contratos firmados antes 26/05/2023 · aplicada en Buigas · Sant Fruitós y Tenderina</div>
+            </div>
+            <span class="tpl-badge active">Activa</span>
+            <span class="set-link" onclick="showToast('Editar fórmula reducción 60%')">Editar</span>
+          </div>
+
+          <div class="set-row tpl">
+            <div class="tpl-icon formula">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="20" x2="12" y2="4"/><line x1="5" y1="11" x2="19" y2="11"/></svg>
+            </div>
+            <div class="tpl-info">
+              <div class="tpl-name">Amortización 3% capital construcción</div>
+              <div class="tpl-meta">cálculo automático sobre coste construcción de adquisición · ajustado tras paralela 2022 a Buigas</div>
+            </div>
+            <span class="tpl-badge active">Activa</span>
+            <span class="set-link" onclick="showToast('Editar fórmula amortización')">Editar</span>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page plantillas -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- D3 · PERFIL FISCAL Y CONVIVENCIA -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-fiscal">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Perfil fiscal y convivencia</h1>
+            <div class="ctn-sub">datos del contribuyente · pareja co-titular · personas a cargo · alimentan los cálculos IRPF y la lógica del hogar en Personal</div>
+          </div>
+          <button class="btn btn-gold" onclick="showToast('Datos guardados · recalculando IRPF previsto')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+            Guardar cambios
+          </button>
+        </div>
+
+        <div class="ctx-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>Estos datos son la <strong>fuente única de verdad fiscal del hogar</strong>. Alimentan los cálculos de Fiscal · la separación titular vs pareja en Personal · y el ámbito de los gastos compartidos. Si no rellenas correctamente · ATLAS asume contribuyente individual sin cargas.</div>
+        </div>
+
+        <!-- Titular -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Titular · datos fiscales</div>
+            <div class="set-section-sub">contribuyente principal de ATLAS</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Nombre completo</div>
+            <div class="set-row-value">José Antonio Gómez Ramírez</div>
+            <span class="set-link">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">NIF / NIE</div>
+            <div class="set-row-val-mono">53069494F</div>
+            <span></span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Fecha de nacimiento</div>
+            <div class="set-row-val-mono">12/03/1980</div>
+            <span class="set-link">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Estado civil fiscal</div>
+            <div>
+              <div class="set-row-value">Soltero</div>
+              <div class="set-row-sub">determina opciones de declaración conjunta · pareja de hecho · soltero · viudo</div>
+            </div>
+            <span class="set-link">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">CCAA fiscal</div>
+            <div>
+              <div class="set-row-value">Comunidad de Madrid</div>
+              <div class="set-row-sub">determina tarifa autonómica IRPF y deducciones autonómicas</div>
+            </div>
+            <span class="set-link">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Discapacidad reconocida</div>
+            <div class="set-row-value" style="color: var(--ink-4);">No</div>
+            <span class="set-link">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Obligación declarar</div>
+            <div>
+              <div class="set-row-value">Sí · obligado</div>
+              <div class="set-row-sub">por umbrales de rentas del trabajo + capital + actividades</div>
+            </div>
+            <span class="set-badge ok"><span class="dot"></span>Calculado</span>
+          </div>
+        </div>
+
+        <!-- Pareja co-titular -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Pareja co-titular</div>
+            <div class="set-section-sub">solo si hay pareja con la que se comparte hogar · sus ingresos suman al hogar · gastos compartidos se prorratean</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Activar pareja</div>
+            <div>
+              <div class="set-row-value">Desactivado</div>
+              <div class="set-row-sub">activa para registrar los datos de tu pareja y compartir el hogar</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Nombre · NIF</div>
+            <div class="set-row-value" style="color: var(--ink-4);">— sin pareja registrada</div>
+            <span></span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Régimen económico</div>
+            <div class="set-row-sub">gananciales · separación de bienes · pareja de hecho · aplicable cuando registres pareja</div>
+            <span></span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Modalidad declaración</div>
+            <div class="set-row-sub">conjunta o individual · ATLAS calcula cuál sale mejor · aplicable cuando registres pareja</div>
+            <span></span>
+          </div>
+        </div>
+
+        <!-- Personas a cargo -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Personas a cargo</div>
+            <div class="set-section-sub">hijos · ascendientes · descendientes que conviven · afectan al cálculo IRPF (mínimos personales y por descendiente/ascendiente)</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Estado actual</div>
+            <div>
+              <div class="set-row-value">Sin personas a cargo registradas</div>
+              <div class="set-row-sub">si tienes hijos menores · ascendientes que conviven contigo · o cargas familiares · regístralos para que ATLAS aplique los mínimos correspondientes</div>
+            </div>
+            <span class="set-link" onclick="showToast('Añadir persona a cargo · hijo · ascendiente')">+ Añadir</span>
+          </div>
+        </div>
+
+        <!-- Implicaciones -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Implicaciones en otros módulos</div>
+            <div class="set-section-sub">cómo se reflejan estos datos en el resto de la app · cambia los datos arriba para ver los efectos</div>
+          </div>
+
+          <div class="impl-row">
+            <div class="impl-where">
+              <span class="impl-where-tag personal">Personal</span>
+              Panel asalariado solo
+            </div>
+            <div class="impl-detail">no se muestra Panel pareja · KPIs y compromisos solo del titular</div>
+          </div>
+
+          <div class="impl-row">
+            <div class="impl-where">
+              <span class="impl-where-tag fiscal">Fiscal</span>
+              Declaración individual
+            </div>
+            <div class="impl-detail">cálculo IRPF asume contribuyente único · sin opción conjunta</div>
+          </div>
+
+          <div class="impl-row">
+            <div class="impl-where">
+              <span class="impl-where-tag fiscal">Fiscal</span>
+              Mínimo personal · 5.550 €
+            </div>
+            <div class="impl-detail">sin recargos por edad · sin mínimos por ascendientes ni descendientes</div>
+          </div>
+
+          <div class="impl-row">
+            <div class="impl-where">
+              <span class="impl-where-tag personal">Personal</span>
+              Compromisos sin reparto
+            </div>
+            <div class="impl-detail">todos los compromisos recurrentes son del titular · sin prorrateo por persona</div>
+          </div>
+
+          <div class="impl-row">
+            <div class="impl-where">
+              <span class="impl-where-tag fiscal">Fiscal</span>
+              CCAA Madrid · tarifa
+            </div>
+            <div class="impl-detail">deducción por arrendamiento vivienda habitual del 30% si jóvenes &lt; 35 años · revisar al alta</div>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page fiscal -->
+
+      <!-- ═══════════════════════════════════════ -->
+      <!-- D4 · SEGURIDAD Y DATOS -->
+      <!-- ═══════════════════════════════════════ -->
+      <div class="page" id="page-seguridad">
+
+        <div class="ctn-head">
+          <div>
+            <h1 class="ctn-title">Seguridad y datos</h1>
+            <div class="ctn-sub">contraseña · 2FA · sesiones activas · exportar datos · eliminar cuenta</div>
+          </div>
+        </div>
+
+        <!-- Acceso a la cuenta -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Acceso a la cuenta</div>
+            <div class="set-section-sub">cómo te autenticas · contraseña y segundo factor</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Contraseña</div>
+            <div>
+              <div class="set-row-value">Última actualización · 14 ene 2026</div>
+              <div class="set-row-sub">hace 3 meses · recomendado renovar cada 6 meses</div>
+            </div>
+            <span class="set-link" onclick="showToast('Cambiar contraseña')">Cambiar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">2FA · doble factor</div>
+            <div>
+              <div class="set-row-value">Activo · app autenticadora Authy</div>
+              <div class="set-row-sub">alternativa email cuando no tienes acceso al móvil</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Códigos recuperación</div>
+            <div>
+              <div class="set-row-value">10 códigos generados</div>
+              <div class="set-row-sub">de un solo uso · si pierdes el segundo factor · guárdalos en sitio seguro</div>
+            </div>
+            <span class="set-link" onclick="showToast('Generar nuevos códigos · invalida los anteriores')">Generar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Biometría móvil</div>
+            <div>
+              <div class="set-row-value">Activa · Face ID</div>
+              <div class="set-row-sub">en app móvil · sin escribir contraseña al entrar</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+
+        <!-- Sesiones activas -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Sesiones activas</div>
+            <div class="set-section-sub">dispositivos donde tu cuenta está abierta · cierra sesiones desconocidas</div>
+          </div>
+
+          <div class="set-row ses current">
+            <div class="ses-ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="ses-info">
+              <div class="ses-name">MacBook Pro · Chrome 120 · macOS</div>
+              <div class="ses-meta">Madrid · IP 88.27.··.·· · sesión actual</div>
+            </div>
+            <span class="ses-badge-cur">Esta sesión</span>
+          </div>
+
+          <div class="set-row ses">
+            <div class="ses-ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+            </div>
+            <div class="ses-info">
+              <div class="ses-name">iPhone 14 · App Atlas · iOS 17</div>
+              <div class="ses-meta">Madrid · IP 88.27.··.·· · activo hace 2 horas</div>
+            </div>
+            <span class="set-link" onclick="showToast('Cerrar sesión iPhone')">Cerrar</span>
+          </div>
+
+          <div class="set-row ses">
+            <div class="ses-ic">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="ses-info">
+              <div class="ses-name">iMac casa · Safari 17 · macOS</div>
+              <div class="ses-meta">Madrid · IP 90.165.··.·· · activo hace 3 días</div>
+            </div>
+            <span class="set-link" onclick="showToast('Cerrar sesión iMac')">Cerrar</span>
+          </div>
+        </div>
+
+        <!-- Tus datos -->
+        <div class="set-section">
+          <div class="set-section-head">
+            <div class="set-section-title">Tus datos</div>
+            <div class="set-section-sub">portabilidad · derecho a obtener una copia o pedir su eliminación · RGPD</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Exportar datos</div>
+            <div class="set-row-sub">descarga ZIP con CSVs · perfil · inmuebles · contratos · tesorería · fiscal · documentos · enviado por email en 24 h</div>
+            <span class="set-link" onclick="showToast('Solicitar exportación · enviado en 24 h')">Solicitar</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Auditoría accesos</div>
+            <div class="set-row-sub">log de los últimos 90 días · inicios de sesión · cambios sensibles · acceso a documentos</div>
+            <span class="set-link" onclick="showToast('Ver registro auditoría')">Ver registro</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Cifrado documentos</div>
+            <div class="set-row-sub">contratos · escrituras · certificados · cifrados en reposo · acceso solo con tu cuenta</div>
+            <span class="set-badge ok"><span class="dot"></span>Activo</span>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Compartir con pareja</div>
+            <div class="set-row-sub">solo activo si registras pareja co-titular en Perfil fiscal · ahora desactivado por configuración</div>
+            <span class="set-badge off"><span class="dot"></span>No aplica</span>
+          </div>
+        </div>
+
+        <!-- Zona peligrosa -->
+        <div class="set-section danger">
+          <div class="set-section-head">
+            <div class="set-section-title">Zona peligrosa</div>
+            <div class="set-section-sub">acciones irreversibles · sé consciente antes de pulsar</div>
+          </div>
+
+          <div class="set-row">
+            <div class="set-row-label">Eliminar cuenta</div>
+            <div class="set-row-sub">borra inmuebles · contratos · tesorería · fiscal · documentos · 14 años de historial · operación irreversible · te enviaremos confirmación al email</div>
+            <button class="btn-danger" onclick="showToast('Iniciar proceso eliminación · 30 días para revertir · email de confirmación')">Eliminar cuenta</button>
+          </div>
+        </div>
+
+      </div>
+      <!-- /page seguridad -->
+
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let toastTimer;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.setside-nav a').forEach(a => a.classList.remove('active'));
+    const page = document.getElementById('page-' + id);
+    if (page) page.classList.add('active');
+    const nav = document.querySelector('.setside-nav a[onclick*="' + id + '"]');
+    if (nav) nav.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
