@@ -74,31 +74,29 @@ describe('Complete Data Cleanup', () => {
   describe('cleanup safety checks', () => {
     it('should define expected object stores to clear', () => {
       // Define the object stores that should exist in the database
-      // NOTE: rentCalendar, rentPayments removed in V4.5 — migrated to rentaMensual
-      // V63 (TAREA 7 sub-tarea 4): `matchingConfiguration` eliminado;
-      // su configuración vive ahora en `keyval['matchingConfig']`.
+      // NOTE: rentCalendar, rentPayments removed in V4.5
+      // V62-V64 (TAREA 7): rentaMensual, treasuryRecommendations, kpiConfigurations,
+      // gastosPersonalesReal, opexRules, learningLogs, reconciliationAuditLogs eliminados.
       const expectedStores = [
         'properties', 'documents', 'contracts', 'expenses',
-        'rentaMensual', 'accounts', 'movements', 'importBatches',
-        'treasuryEvents', 'treasuryRecommendations',
+        'accounts', 'movements', 'importBatches',
+        'treasuryEvents',
         'ingresos', 'budgets', 'budgetLines',
         'presupuestos', 'presupuestoLineas',
         'aeatCarryForwards', 'propertyDays',
-        'kpiConfigurations', 'keyval',
+        'keyval',
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
-      // Verify we have a comprehensive list of stores (currently 22 stores)
-      expect(expectedStores.length).toBe(22);
+      // Verify we have a comprehensive list of stores (currently 19 stores)
+      expect(expectedStores.length).toBe(19);
       expect(expectedStores).toContain('accounts');
       expect(expectedStores).toContain('movements');
       expect(expectedStores).toContain('properties');
       expect(expectedStores).toContain('documents');
-      expect(expectedStores).toContain('rentaMensual');
-      
+
       // Verify we include all the treasury-related stores
       expect(expectedStores).toContain('treasuryEvents');
-      expect(expectedStores).toContain('treasuryRecommendations');
       expect(expectedStores).toContain('ingresos');
       expect(expectedStores).toContain('gastosInmueble');
       expect(expectedStores).toContain('mejorasInmueble');

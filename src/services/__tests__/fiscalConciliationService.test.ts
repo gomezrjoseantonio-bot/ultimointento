@@ -248,36 +248,7 @@ describe('conciliarEjercicioFiscal', () => {
     expect(result.lineas.every(l => l.real === null)).toBe(true);
   });
 
-  // Test 4: Gasto OPEX con movement_id → fuente='real'
-  it('gasto OPEX pagado con movement_id: fuente=real', async () => {
-    const db = await initDB();
-    await db.add('properties', makeProperty(2));
-    // Añadir regla OPEX para que haya estimado
-    await db.add('opexRules', {
-      propertyId: 2,
-      categoria: 'comunidad',
-      concepto: 'Comunidad',
-      importeEstimado: 50,
-      frecuencia: 'mensual',
-      activo: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    // Gasto pagado en mes 2
-    await db.add('gastosInmueble', makeGasto(1, 2, 48, 2, 'pagado', 77));
-
-    const result = await conciliarEjercicioFiscal(EJERCICIO);
-
-    const lineaOPEX2 = result.lineas.find(
-      l => l.categoria === 'gastos_opex' && l.mes === 2
-    );
-    expect(lineaOPEX2).toBeDefined();
-    expect(lineaOPEX2!.fuente).toBe('real');
-    expect(lineaOPEX2!.real).toBe(48);
-    expect(lineaOPEX2!.movementId).toBe(77);
-  });
-
-  // Test 5: Mixto — 6 meses con real, 6 estimados → cobertura 50%
+  // Test 4: Mixto — 6 meses con real, 6 estimados → cobertura 50%
   it('mixto: 6 meses cobrados, 6 sin cobrar → cobertura 50%', async () => {
     const db = await initDB();
     await db.add('properties', makeProperty(3));
