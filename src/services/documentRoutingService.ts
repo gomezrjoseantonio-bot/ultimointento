@@ -2,8 +2,8 @@
 // Handles automatic routing of documents to their proper destinations following exact requirements
 
 import { RoutingDestinationResult, InboxItem, OCRExtractionResult, ClassificationResult, PropertyDetectionResult } from '../types/inboxTypes';
-// NOTE: bank-statement routing is reintroduced in TAREA 17 sub-tarea 17.5 via the new
-// bankStatementOrchestrator. The legacy `importBankStatement` import was unused.
+import { processFile as orchestratorProcessFile, BankProfileNotDetectedError } from './bankStatementOrchestrator';
+import { initDB, Account } from './db';
 
 export interface RoutingDestination {
   module: 'tesoreria' | 'fiscalidad' | 'inmuebles' | 'personal';
@@ -29,30 +29,37 @@ export async function routeInboxDocument(
   classification: ClassificationResult,
   propertyDetection: PropertyDetectionResult
 ): Promise<RoutingDestinationResult> {
-  
+
   console.log(`[Routing] Processing ${classification.subtype} document:`, {
     supplier: ocrData.supplier_name,
     amount: ocrData.total_amount,
     property: propertyDetection.inmueble_id
   });
 
+  // TAREA 17 sub-task 17.5: bank statements bypass the subtype switch and go
+  // straight to the orchestrator (parse + dedup + match + suggest). The user
+  // then reviews the proposal in /tesoreria/importar.
+  if (classification.documentType === 'extracto_banco') {
+    return await routeExtractoBancario(item);
+  }
+
   switch (classification.subtype) {
     case 'suministro':
       return await routeSuministro(item, ocrData, propertyDetection);
-    
+
     case 'recibo':
       return await routeRecibo(item, ocrData, propertyDetection);
-    
+
     case 'reforma':
       return await routeReforma(item, ocrData, propertyDetection);
-    
+
     case 'factura_generica':
       return await routeFacturaGenerica(item, ocrData, propertyDetection);
-    
+
     case 'fein_completa':
     case 'fein_revision':
       return await routeFEIN(item, ocrData, classification);
-    
+
     default:
       return {
         success: false,
@@ -60,6 +67,106 @@ export async function routeInboxDocument(
         errorMessage: `Tipo de documento no soportado: ${classification.subtype}`
       };
   }
+}
+
+/**
+ * TAREA 17 sub-task 17.5 · route a bank statement document from the inbox to
+ * the orchestrator. Tries to infer the destination account from the file name
+ * (matching banco / IBAN) — falls back to the first active account if no
+ * inference is possible. The user can re-pick the account in the UI before
+ * approving any matches.
+ */
+async function routeExtractoBancario(item: InboxItem): Promise<RoutingDestinationResult> {
+  let file: File;
+  try {
+    file = await fetchInboxFile(item);
+  } catch (err) {
+    console.warn('[Routing] Failed to fetch inbox file for extract', err);
+    return {
+      success: false,
+      requiresReview: true,
+      reviewReason: 'inbox_file_unreadable',
+      message: 'No se pudo leer el extracto desde el inbox. Súbelo manualmente desde /tesoreria/importar.',
+    };
+  }
+
+  const accountId = await inferAccountFromFile(file);
+  if (accountId == null) {
+    return {
+      success: false,
+      requiresReview: true,
+      reviewReason: 'no_destination_account',
+      message: 'No se pudo inferir la cuenta destino. Sube el extracto manualmente desde /tesoreria/importar para elegir cuenta.',
+    };
+  }
+
+  try {
+    const result = await orchestratorProcessFile(file, {
+      accountId,
+      formatHint: 'auto',
+    });
+    return {
+      success: true,
+      requiresReview: true, // user still has to approve matches/suggestions in the UI
+      destRef: {
+        kind: 'movimiento',
+        id: result.importBatchId,
+        path: `/tesoreria/importar?batch=${encodeURIComponent(result.importBatchId)}`,
+      },
+      message: `Extracto procesado · ${result.movementsInserted} nuevos · ${result.duplicatesSkipped} duplicados omitidos · revisa el matching`,
+      warnings: result.warnings,
+    };
+  } catch (error) {
+    if (error instanceof BankProfileNotDetectedError) {
+      return {
+        success: false,
+        requiresReview: true,
+        reviewReason: 'bank_profile_unknown',
+        errorMessage: error.message,
+      };
+    }
+    return {
+      success: false,
+      requiresReview: true,
+      errorMessage: error instanceof Error ? error.message : 'Error desconocido al procesar el extracto bancario',
+    };
+  }
+}
+
+async function fetchInboxFile(item: InboxItem): Promise<File> {
+  if (!item.fileUrl) throw new Error('Inbox item has no fileUrl');
+  const response = await fetch(item.fileUrl);
+  if (!response.ok) throw new Error(`Inbox file fetch failed (${response.status})`);
+  const blob = await response.blob();
+  return new File([blob], item.filename ?? 'extracto', { type: item.mime ?? blob.type });
+}
+
+async function inferAccountFromFile(file: File): Promise<number | null> {
+  const db = await initDB();
+  const accounts = ((await db.getAll('accounts')) ?? []) as Account[];
+  const active = accounts.filter(a => a.status === 'ACTIVE' && a.id != null);
+  if (active.length === 0) return null;
+
+  const filename = file.name.toLowerCase();
+  // 1. Match on the bank name appearing in the filename.
+  const byBank = active.find(a => {
+    const bankName = a.banco?.name?.toLowerCase();
+    return bankName && bankName.length >= 3 && filename.includes(bankName);
+  });
+  if (byBank?.id != null) return byBank.id;
+
+  // 2. Match on the last 4 IBAN digits appearing in the filename.
+  const byTail = active.find(a => {
+    if (!a.iban) return false;
+    const tail = a.iban.slice(-4);
+    return tail.length === 4 && filename.includes(tail);
+  });
+  if (byTail?.id != null) return byTail.id;
+
+  // 3. Single-account install — unambiguous.
+  if (active.length === 1) return active[0].id ?? null;
+
+  return null;
 }
 
 /**

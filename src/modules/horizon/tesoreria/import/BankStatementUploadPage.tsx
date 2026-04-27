@@ -2,11 +2,11 @@
 //
 // New "Subir extracto" page reachable at /tesoreria/importar.
 //
-// This sub-task ships the visual layer with **mock data** so that the layout,
-// states (idle / loading / error / results) and the v5 design checklist can be
-// validated end-to-end. Sub-task 17.5 (`bankStatementOrchestrator`) will swap
-// the mock for a real call and wire `confirmDecisions` for the "Aprobar" /
-// "Aplicar" actions.
+// Sub-task 17.4 shipped the visual layer with mock data. Sub-task 17.5 wires
+// it to bankStatementOrchestrator: processFile parses + dedups + matches +
+// proposes; confirmDecisions applies the user's choices in a single batch
+// and feeds movementLearningRules. cancelImportBatch undoes the whole import
+// when the user picks "Descartar".
 //
 // All visual tokens come from src/index.css (var(--navy-900), var(--grey-N),
 // etc.). No hex literals — per spec §4.6 v5 checklist.
@@ -21,37 +21,32 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import PageHeader, { HeaderSecondaryButton, HeaderPrimaryButton } from '../../../../components/shared/PageHeader';
-import { initDB, Account } from '../../../../services/db';
-import type { MatchResult, MatchScore } from '../../../../services/movementMatchingService';
+import { initDB, Account, Movement, TreasuryEvent } from '../../../../services/db';
+import type { MatchScore } from '../../../../services/movementMatchingService';
 import type { MovementSuggestion } from '../../../../services/movementSuggestionService';
+import {
+  processFile as orchestratorProcessFile,
+  confirmDecisions as orchestratorConfirmDecisions,
+  cancelImportBatch as orchestratorCancelImportBatch,
+  BankProfileNotDetectedError,
+  OrchestratorResult,
+} from '../../../../services/bankStatementOrchestrator';
 
 type FormatHint = 'auto' | 'csv' | 'xlsx' | 'csb43';
 
 type PageStatus = 'idle' | 'loading' | 'error' | 'ready';
 
-interface MockMovement {
-  id: number;
-  date: string;
-  amount: number;
-  description: string;
-}
-
-interface MockTreasuryEvent {
-  id: number;
-  predictedDate: string;
-  amount: number;
-  description: string;
-  providerName?: string;
-}
-
-interface MockResultBundle {
-  movements: Map<number, MockMovement>;
-  events: Map<number, MockTreasuryEvent>;
-  matchResult: MatchResult;
+interface ResultBundle {
+  importBatchId: string;
+  movements: Map<number, Movement>;
+  events: Map<number, TreasuryEvent>;
+  matchResult: OrchestratorResult['matchResult'];
   suggestions: Map<number, MovementSuggestion[]>;
   movementsParsed: number;
   duplicatesSkipped: number;
+  warnings: string[];
 }
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -68,9 +63,10 @@ const BankStatementUploadPage: React.FC = () => {
   const [dragOver, setDragOver] = useState(false);
   const [status, setStatus] = useState<PageStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [bundle, setBundle] = useState<MockResultBundle | null>(null);
+  const [bundle, setBundle] = useState<ResultBundle | null>(null);
   const [approvedMatchIds, setApprovedMatchIds] = useState<Set<number>>(new Set());
   const [multiSelections, setMultiSelections] = useState<Map<number, number>>(new Map());
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     void loadAccounts();
@@ -112,29 +108,41 @@ const BankStatementUploadPage: React.FC = () => {
       setErrorMessage(`Extensión no soportada. Usa ${ACCEPTED_EXTENSIONS.join(' · ')}.`);
       return;
     }
-    runMockProcessing(file);
+    void runOrchestrator(file);
   }
 
-  function runMockProcessing(file: File) {
+  async function runOrchestrator(file: File) {
     setStatus('loading');
     setBundle(null);
     setApprovedMatchIds(new Set());
     setMultiSelections(new Map());
 
-    // Mock latency so the loading state is visible during 17.4 visual review.
-    window.setTimeout(() => {
-      const mock = buildMockBundle(file.name);
-      const initialApproved = new Set(mock.matchResult.matches.map(m => m.movementId));
-      setBundle(mock);
-      setApprovedMatchIds(initialApproved);
-      // Default multi-match selection: highest-score candidate.
+    try {
+      const result = await orchestratorProcessFile(file, {
+        accountId: accountId as number,
+        formatHint,
+        periodStart: periodStart || undefined,
+        periodEnd: periodEnd || undefined,
+      });
+      const hydrated = await hydrateResultBundle(result);
+      const initialApproved = new Set(result.matchResult.matches.map(m => m.movementId));
       const initialMulti = new Map<number, number>();
-      for (const block of mock.matchResult.multiMatches) {
+      for (const block of result.matchResult.multiMatches) {
         if (block.candidates.length > 0) initialMulti.set(block.movementId, block.candidates[0].treasuryEventId);
       }
+      setBundle(hydrated);
+      setApprovedMatchIds(initialApproved);
       setMultiSelections(initialMulti);
       setStatus('ready');
-    }, 400);
+      for (const warning of result.warnings) toast(warning, { icon: '⚠' });
+    } catch (err) {
+      const isProfileError = err instanceof BankProfileNotDetectedError;
+      const message = err instanceof Error ? err.message : 'Error desconocido al procesar el extracto';
+      setErrorMessage(isProfileError
+        ? `${message} Tip: usa el selector "Formato" para forzar CSV / XLSX / Norma 43.`
+        : message);
+      setStatus('error');
+    }
   }
 
   function handleDrop(event: React.DragEvent<HTMLDivElement>) {
@@ -144,18 +152,98 @@ const BankStatementUploadPage: React.FC = () => {
     handleFileChosen(file);
   }
 
-  function handleDiscard() {
+  async function handleDiscard() {
+    if (bundle) {
+      try {
+        const { removed } = await orchestratorCancelImportBatch(bundle.importBatchId);
+        toast.success(`Importación descartada · ${removed} movimientos eliminados`);
+      } catch (err) {
+        toast.error('No se pudo cancelar la importación');
+        console.error(err);
+        return;
+      }
+    }
     setBundle(null);
     setStatus('idle');
     setApprovedMatchIds(new Set());
     setMultiSelections(new Map());
   }
 
-  function handleApproveBatch() {
-    // Wired to bankStatementOrchestrator.confirmDecisions in sub-task 17.5.
-    // For now we just collapse the page back to idle so the visual flow can be
-    // walked through during review.
-    handleDiscard();
+  async function handleApproveBatch() {
+    if (!bundle || confirming) return;
+    setConfirming(true);
+    try {
+      // Approved matches: respect what's checked, plus the user's choice for
+      // each multi-match block (default = highest-score candidate).
+      const matches = Array.from(approvedMatchIds).map(movementId => {
+        const direct = bundle.matchResult.matches.find(m => m.movementId === movementId);
+        if (direct) return { movementId, treasuryEventId: direct.treasuryEventId };
+        const multi = multiSelections.get(movementId);
+        return multi != null ? { movementId, treasuryEventId: multi } : null;
+      }).filter((x): x is { movementId: number; treasuryEventId: number } => x != null);
+
+      await orchestratorConfirmDecisions(bundle.importBatchId, {
+        approvedMatches: matches,
+        approvedSuggestions: [],
+        ignoredMovementIds: [],
+      });
+      toast.success(`${matches.length} matches aprobados`);
+      setBundle(null);
+      setStatus('idle');
+      setApprovedMatchIds(new Set());
+      setMultiSelections(new Map());
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Error confirmando los matches');
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  async function handleApplySuggestion(movementId: number, suggestionIndex: number) {
+    if (!bundle) return;
+    try {
+      await orchestratorConfirmDecisions(bundle.importBatchId, {
+        approvedMatches: [],
+        approvedSuggestions: [{ movementId, suggestionIndex }],
+        ignoredMovementIds: [],
+      });
+      toast.success('Sugerencia aplicada');
+      // Drop the row from the bundle so the user sees immediate feedback.
+      setBundle(prev => {
+        if (!prev) return prev;
+        const nextSinMatch = prev.matchResult.sinMatch.filter(id => id !== movementId);
+        return {
+          ...prev,
+          matchResult: { ...prev.matchResult, sinMatch: nextSinMatch },
+        };
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Error aplicando sugerencia');
+    }
+  }
+
+  async function handleIgnoreMovement(movementId: number) {
+    if (!bundle) return;
+    try {
+      await orchestratorConfirmDecisions(bundle.importBatchId, {
+        approvedMatches: [],
+        approvedSuggestions: [],
+        ignoredMovementIds: [movementId],
+      });
+      setBundle(prev => {
+        if (!prev) return prev;
+        const nextSinMatch = prev.matchResult.sinMatch.filter(id => id !== movementId);
+        return {
+          ...prev,
+          matchResult: { ...prev.matchResult, sinMatch: nextSinMatch },
+        };
+      });
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : 'Error ignorando movimiento');
+    }
   }
 
   const accountLabel = useMemo(() => {
@@ -233,11 +321,60 @@ const BankStatementUploadPage: React.FC = () => {
           }}
           onDiscard={handleDiscard}
           onApprove={handleApproveBatch}
+          confirming={confirming}
+          onApplySuggestion={handleApplySuggestion}
+          onIgnoreMovement={handleIgnoreMovement}
         />
       )}
     </div>
   );
 };
+
+async function hydrateResultBundle(result: OrchestratorResult): Promise<ResultBundle> {
+  const db = await initDB();
+  const movements = new Map<number, Movement>();
+  const events = new Map<number, TreasuryEvent>();
+
+  const movementIds = collectMovementIds(result);
+  const eventIds = collectEventIds(result);
+
+  for (const id of movementIds) {
+    const m = (await db.get('movements', id)) as Movement | undefined;
+    if (m && m.id != null) movements.set(m.id, m);
+  }
+  for (const id of eventIds) {
+    const e = (await db.get('treasuryEvents', id)) as TreasuryEvent | undefined;
+    if (e && e.id != null) events.set(e.id, e);
+  }
+
+  return {
+    importBatchId: result.importBatchId,
+    movements,
+    events,
+    matchResult: result.matchResult,
+    suggestions: result.suggestions,
+    movementsParsed: result.movementsParsed,
+    duplicatesSkipped: result.duplicatesSkipped,
+    warnings: result.warnings,
+  };
+}
+
+function collectMovementIds(result: OrchestratorResult): number[] {
+  const ids = new Set<number>();
+  for (const m of result.matchResult.matches) ids.add(m.movementId);
+  for (const block of result.matchResult.multiMatches) ids.add(block.movementId);
+  for (const id of result.matchResult.sinMatch) ids.add(id);
+  return Array.from(ids);
+}
+
+function collectEventIds(result: OrchestratorResult): number[] {
+  const ids = new Set<number>();
+  for (const m of result.matchResult.matches) ids.add(m.treasuryEventId);
+  for (const block of result.matchResult.multiMatches) {
+    for (const c of block.candidates) ids.add(c.treasuryEventId);
+  }
+  return Array.from(ids);
+}
 
 // ─── Card 1 · upload ─────────────────────────────────────────────────────────
 
@@ -408,13 +545,16 @@ const LoadingCard: React.FC = () => (
 // ─── Card 2 · results ────────────────────────────────────────────────────────
 
 interface ResultsCardProps {
-  bundle: MockResultBundle;
+  bundle: ResultBundle;
   approvedMatchIds: Set<number>;
   onToggleMatch: (movementId: number) => void;
   multiSelections: Map<number, number>;
   onMultiSelect: (movementId: number, treasuryEventId: number) => void;
   onDiscard: () => void;
   onApprove: () => void;
+  confirming: boolean;
+  onApplySuggestion: (movementId: number, suggestionIndex: number) => void;
+  onIgnoreMovement: (movementId: number) => void;
 }
 
 const ResultsCard: React.FC<ResultsCardProps> = ({
@@ -425,6 +565,9 @@ const ResultsCard: React.FC<ResultsCardProps> = ({
   onMultiSelect,
   onDiscard,
   onApprove,
+  confirming,
+  onApplySuggestion,
+  onIgnoreMovement,
 }) => {
   const totalMovements = bundle.movementsParsed;
   const matchedCount = bundle.matchResult.matches.length;
@@ -441,7 +584,7 @@ const ResultsCard: React.FC<ResultsCardProps> = ({
           <HeaderSecondaryButton label="Descartar" onClick={onDiscard} />
           <HeaderPrimaryButton
             icon={CheckCircle2}
-            label={`Aprobar ${approvedMatchIds.size} matches`}
+            label={confirming ? 'Aprobando…' : `Aprobar ${approvedMatchIds.size} matches`}
             onClick={onApprove}
           />
         </div>
@@ -455,39 +598,57 @@ const ResultsCard: React.FC<ResultsCardProps> = ({
       {bundle.matchResult.matches.length > 0 && (
         <SectionHeader label={`Matches automáticos (${bundle.matchResult.matches.length})`} />
       )}
-      {bundle.matchResult.matches.map(match => (
-        <MatchRow
-          key={match.movementId}
-          match={match}
-          movement={bundle.movements.get(match.movementId)!}
-          event={bundle.events.get(match.treasuryEventId)!}
-          checked={approvedMatchIds.has(match.movementId)}
-          onToggle={() => onToggleMatch(match.movementId)}
-        />
-      ))}
+      {bundle.matchResult.matches.map(match => {
+        const movement = bundle.movements.get(match.movementId);
+        const event = bundle.events.get(match.treasuryEventId);
+        if (!movement || !event) return null;
+        return (
+          <MatchRow
+            key={match.movementId}
+            match={match}
+            movement={movement}
+            event={event}
+            checked={approvedMatchIds.has(match.movementId)}
+            onToggle={() => onToggleMatch(match.movementId)}
+          />
+        );
+      })}
 
       {multiCount > 0 && <SectionHeader label={`Múltiples coincidencias · elige una (${multiCount})`} />}
-      {bundle.matchResult.multiMatches.map(block => (
-        <MultiMatchRow
-          key={block.movementId}
-          movement={bundle.movements.get(block.movementId)!}
-          candidates={block.candidates.map(c => ({
-            candidate: c,
-            event: bundle.events.get(c.treasuryEventId)!,
-          }))}
-          selectedId={multiSelections.get(block.movementId)}
-          onSelect={treasuryEventId => onMultiSelect(block.movementId, treasuryEventId)}
-        />
-      ))}
+      {bundle.matchResult.multiMatches.map(block => {
+        const movement = bundle.movements.get(block.movementId);
+        if (!movement) return null;
+        const candidates = block.candidates
+          .map(c => {
+            const event = bundle.events.get(c.treasuryEventId);
+            return event ? { candidate: c, event } : null;
+          })
+          .filter((x): x is { candidate: MatchScore; event: TreasuryEvent } => x != null);
+        return (
+          <MultiMatchRow
+            key={block.movementId}
+            movement={movement}
+            candidates={candidates}
+            selectedId={multiSelections.get(block.movementId)}
+            onSelect={treasuryEventId => onMultiSelect(block.movementId, treasuryEventId)}
+          />
+        );
+      })}
 
       {sinMatchCount > 0 && <SectionHeader label={`Sin match (${sinMatchCount})`} />}
-      {bundle.matchResult.sinMatch.map(movementId => (
-        <SinMatchRow
-          key={movementId}
-          movement={bundle.movements.get(movementId)!}
-          suggestions={bundle.suggestions.get(movementId) ?? []}
-        />
-      ))}
+      {bundle.matchResult.sinMatch.map(movementId => {
+        const movement = bundle.movements.get(movementId);
+        if (!movement) return null;
+        return (
+          <SinMatchRow
+            key={movementId}
+            movement={movement}
+            suggestions={bundle.suggestions.get(movementId) ?? []}
+            onApply={index => onApplySuggestion(movementId, index)}
+            onIgnore={() => onIgnoreMovement(movementId)}
+          />
+        );
+      })}
     </Card>
   );
 };
@@ -664,8 +825,8 @@ const SectionHeader: React.FC<{ label: string }> = ({ label }) => (
 
 interface MatchRowProps {
   match: MatchScore;
-  movement: MockMovement;
-  event: MockTreasuryEvent;
+  movement: Movement;
+  event: TreasuryEvent;
   checked: boolean;
   onToggle: () => void;
 }
@@ -691,15 +852,15 @@ const MatchRow: React.FC<MatchRowProps> = ({ match, movement, event, checked, on
     <SidePanel
       title={event.description}
       subtitle={`${event.predictedDate} previsto`}
-      amount={event.amount}
+      amount={signedEventAmount(event)}
     />
     <ScorePill score={match.score} reasons={match.reasons} />
   </div>
 );
 
 interface MultiMatchRowProps {
-  movement: MockMovement;
-  candidates: { candidate: MatchScore; event: MockTreasuryEvent }[];
+  movement: Movement;
+  candidates: { candidate: MatchScore; event: TreasuryEvent }[];
   selectedId: number | undefined;
   onSelect: (treasuryEventId: number) => void;
 }
@@ -763,11 +924,13 @@ const MultiMatchRow: React.FC<MultiMatchRowProps> = ({ movement, candidates, sel
 );
 
 interface SinMatchRowProps {
-  movement: MockMovement;
+  movement: Movement;
   suggestions: MovementSuggestion[];
+  onApply: (suggestionIndex: number) => void;
+  onIgnore: () => void;
 }
 
-const SinMatchRow: React.FC<SinMatchRowProps> = ({ movement, suggestions }) => (
+const SinMatchRow: React.FC<SinMatchRowProps> = ({ movement, suggestions, onApply, onIgnore }) => (
   <div
     style={{
       display: 'grid',
@@ -816,6 +979,7 @@ const SinMatchRow: React.FC<SinMatchRowProps> = ({ movement, suggestions }) => (
             </span>
             <button
               type="button"
+              onClick={() => suggestion.action.kind === 'ignore' ? onIgnore() : onApply(idx)}
               style={{
                 background: 'var(--navy-900)',
                 color: 'var(--white)',
@@ -835,6 +999,13 @@ const SinMatchRow: React.FC<SinMatchRowProps> = ({ movement, suggestions }) => (
     </div>
   </div>
 );
+
+function signedEventAmount(event: TreasuryEvent): number {
+  const abs = Math.abs(event.amount);
+  if (event.type === 'income') return abs;
+  if (event.type === 'expense') return -abs;
+  return event.amount; // financing — keep stored sign
+}
 
 const SidePanel: React.FC<{ title: string; subtitle: string; amount: number }> = ({ title, subtitle, amount }) => (
   <div>
@@ -902,82 +1073,6 @@ function formatAmount(amount: number): string {
     minimumFractionDigits: 2,
   });
   return formatter.format(amount);
-}
-
-// ─── Mock data builder ───────────────────────────────────────────────────────
-
-function buildMockBundle(filename: string): MockResultBundle {
-  const movements = new Map<number, MockMovement>([
-    [101, { id: 101, date: '2026-04-22', amount: 380, description: 'TRANSF INQUILINO PEREZ ABRIL' }],
-    [102, { id: 102, date: '2026-04-22', amount: 380, description: 'TRANSF INQUILINO LOPEZ ABRIL' }],
-    [103, { id: 103, date: '2026-04-15', amount: -89.4, description: 'RECIBO IBERDROLA CLIENTES SAU' }],
-    [104, { id: 104, date: '2026-04-18', amount: -32.99, description: 'AMAZON COMPRA EU' }],
-    [105, { id: 105, date: '2026-04-22', amount: 320, description: 'BIZUM A FUENTES' }],
-  ]);
-
-  const events = new Map<number, MockTreasuryEvent>([
-    [201, { id: 201, predictedDate: '2026-04-22', amount: 380, description: 'Renta Hab1 Pérez', providerName: 'Inquilino Perez' }],
-    [202, { id: 202, predictedDate: '2026-04-22', amount: 380, description: 'Renta Hab2 López', providerName: 'Inquilino Lopez' }],
-    [203, { id: 203, predictedDate: '2026-04-22', amount: 380, description: 'Renta genérica abril', providerName: undefined }],
-  ]);
-
-  const matchResult: MatchResult = {
-    matches: [
-      { movementId: 101, treasuryEventId: 201, score: 100, reasons: ['fecha_exacta', 'importe_exacto', 'cuenta_match', 'descripcion_proveedor'] },
-      { movementId: 102, treasuryEventId: 202, score: 100, reasons: ['fecha_exacta', 'importe_exacto', 'cuenta_match', 'descripcion_proveedor'] },
-    ],
-    multiMatches: [
-      {
-        movementId: 105,
-        candidates: [
-          { movementId: 105, treasuryEventId: 203, score: 75, reasons: ['fecha_exacta', 'cuenta_match', 'importe_dentro_tolerancia'] },
-        ],
-      },
-    ],
-    sinMatch: [103, 104],
-  };
-
-  const suggestions = new Map<number, MovementSuggestion[]>();
-  suggestions.set(103, [
-    {
-      movementId: 103,
-      via: 'heuristica',
-      confidence: 60,
-      description: 'Posible suministro · proponer crear evento de tesorería en INMUEBLE',
-      action: {
-        kind: 'create_treasury_event',
-        type: 'expense',
-        ambito: 'INMUEBLE',
-        categoryKey: 'inmueble.suministros',
-        sourceType: 'gasto',
-      },
-    },
-  ]);
-  suggestions.set(104, [
-    {
-      movementId: 104,
-      via: 'heuristica',
-      confidence: 50,
-      description: 'Compra online (Amazon) · proponer marcar como gasto personal',
-      action: { kind: 'mark_personal_expense', categoryKey: 'tecnologia' },
-    },
-    {
-      movementId: 104,
-      via: 'heuristica',
-      confidence: 30,
-      description: `Sin patrón claro en el extracto "${filename}" · puedes ignorarlo`,
-      action: { kind: 'ignore' },
-    },
-  ]);
-
-  return {
-    movements,
-    events,
-    matchResult,
-    suggestions,
-    movementsParsed: movements.size,
-    duplicatesSkipped: 0,
-  };
 }
 
 export default BankStatementUploadPage;
