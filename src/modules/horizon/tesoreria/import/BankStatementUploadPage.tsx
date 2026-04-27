@@ -52,6 +52,18 @@ interface ResultBundle {
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_EXTENSIONS = ['.xlsx', '.xls', '.csv', '.txt'];
 
+// Legacy-aware active filter: accounts predating the AccountStatus migration
+// have `status` undefined and rely on `activa`/`isActive` booleans. Mirrors the
+// pattern in src/components/treasury/BalancesBancariosView.tsx.
+function isActiveAccount(acc: Account): boolean {
+  if (acc.id == null) return false;
+  if (acc.deleted_at) return false;
+  if (acc.status === 'DELETED' || acc.status === 'INACTIVE') return false;
+  if (acc.activa === false) return false;
+  if (acc.isActive === false) return false;
+  return true;
+}
+
 const BankStatementUploadPage: React.FC = () => {
   const navigate = useNavigate();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -76,7 +88,7 @@ const BankStatementUploadPage: React.FC = () => {
     try {
       const db = await initDB();
       const list = ((await db.getAll('accounts')) ?? []) as Account[];
-      const active = list.filter(a => a.status === 'ACTIVE' && a.id != null);
+      const active = list.filter(isActiveAccount);
       setAccounts(active);
       if (active.length > 0 && active[0].id != null) setAccountId(active[0].id);
     } catch (error) {
