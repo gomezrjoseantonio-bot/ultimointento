@@ -21,6 +21,7 @@
 import { initDB, ImportBatch, Movement, MovementLearningRule, TreasuryEvent } from './db';
 import { BankParserService } from '../features/inbox/importers/bankParser';
 import { bankProfileMatcher, BankFormat } from '../features/inbox/importers/bankProfileMatcher';
+import { bankProfilesService } from './bankProfilesService';
 import { matchBatch, MatchOptions, MatchResult } from './movementMatchingService';
 import { suggestForUnmatched, MovementSuggestion, SuggestionAction } from './movementSuggestionService';
 import { buildLearnKey, createOrUpdateRule } from './movementLearningService';
@@ -68,15 +69,31 @@ export async function processFile(
   const warnings: string[] = [];
 
   const format = resolveFormat(options.formatHint, file);
-  const profileMatch = await bankProfileMatcher.match(file, format);
-  const bankProfileUsed = options.bankProfileHint ?? profileMatch.profile ?? undefined;
 
-  if (!options.bankProfileHint && (!profileMatch.profile || profileMatch.confidence < PROFILE_CONFIDENCE_THRESHOLD)) {
+  // The user has already picked a destination account in the UI. That account
+  // carries the bank identity in `iban` (Spanish bank-code) and `banco.name`,
+  // so we derive a `bankProfileHint` from it BEFORE running file-content
+  // detection. This is the most reliable signal because the user explicitly
+  // told us which bank they're importing from. File detection becomes a
+  // safety net only when the chosen account has no recognisable bank info
+  // (very rare in production data — would indicate the account row is
+  // malformed).
+  const accountHint = options.bankProfileHint ?? (await deriveBankHintFromAccount(options.accountId));
+
+  const profileMatch = await bankProfileMatcher.match(file, format);
+  const bankProfileUsed = accountHint ?? profileMatch.profile ?? undefined;
+
+  if (!accountHint && (!profileMatch.profile || profileMatch.confidence < PROFILE_CONFIDENCE_THRESHOLD)) {
     throw new BankProfileNotDetectedError();
   }
-  if (!options.bankProfileHint && profileMatch.confidence < 80) {
+  if (!accountHint && profileMatch.confidence < 80) {
     warnings.push(
       `Detectado banco "${profileMatch.profile}" con baja confianza (${profileMatch.confidence}/100). Verifica que es correcto.`
+    );
+  }
+  if (accountHint && profileMatch.profile && profileMatch.profile.toLowerCase() !== accountHint.toLowerCase()) {
+    warnings.push(
+      `La cuenta destino indica "${accountHint}" pero el contenido del archivo apunta a "${profileMatch.profile}". Si es un error, descarta y vuelve a empezar con la cuenta correcta.`
     );
   }
 
@@ -107,6 +124,40 @@ export async function processFile(
     bankProfileUsed,
     warnings,
   };
+}
+
+// Reads the destination account from IndexedDB and infers its bank-profile key
+// from `iban` (Spanish bank-code lookup), then `banco.name`, then `banco.code`.
+// Returns null when no signal is found — callers fall back to file-content
+// detection.
+async function deriveBankHintFromAccount(accountId: number): Promise<string | null> {
+  try {
+    const db = await initDB();
+    const account = (await db.get('accounts', accountId)) as
+      | { iban?: string; banco?: { name?: string; code?: string } }
+      | undefined;
+    if (!account) return null;
+
+    if (account.iban) {
+      const ibanClean = account.iban.replace(/\s+/g, '');
+      const fromIban = bankProfilesService.getBankInfoFromIBAN(ibanClean);
+      if (fromIban?.bankKey) return fromIban.bankKey;
+    }
+
+    // Fall back to banco.name. Loaded profiles are matched case-insensitively
+    // by partial inclusion (e.g. "Banco de Sabadell" → profile "Sabadell").
+    await bankProfilesService.loadProfiles();
+    const profiles = bankProfilesService.getProfiles();
+    const bancoName = account.banco?.name?.toLowerCase().trim();
+    if (bancoName) {
+      const match = profiles.find(p => bancoName.includes(p.bankKey.toLowerCase()));
+      if (match) return match.bankKey;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export async function confirmDecisions(
