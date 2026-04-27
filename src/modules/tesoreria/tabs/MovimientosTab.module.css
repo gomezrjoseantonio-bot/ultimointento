@@ -1,0 +1,223 @@
+.filtersBar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: var(--atlas-v5-font-ui);
+  align-items: center;
+}
+
+.filtChip {
+  padding: 4px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.filtChip:hover { border-color: var(--atlas-v5-ink-5); }
+
+.filtChip.active {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-brand);
+}
+
+.filtSearch {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: var(--atlas-v5-card);
+}
+
+.filtSearch input {
+  border: none;
+  outline: none;
+  font-size: 12px;
+  flex: 1;
+  background: transparent;
+  height: 28px;
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-2);
+}
+
+.filtSearch svg { color: var(--atlas-v5-ink-4); }
+
+.bulkBar {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.bulkCount { font-size: 13px; font-weight: var(--atlas-v5-fw-semibold); }
+
+.bulkCount .num {
+  color: var(--atlas-v5-gold);
+  margin-right: 6px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.bulkActions { display: flex; gap: 6px; }
+
+.bulkActions button {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--atlas-v5-white);
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-medium);
+  border: none;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.bulkActions button:hover { background: rgba(255, 255, 255, 0.15); }
+
+.bulkActions button.primary { background: var(--atlas-v5-gold); }
+.bulkActions button.primary:hover { background: var(--atlas-v5-gold-2); }
+
+.tableWrap {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+}
+
+.table thead th.r { text-align: right; }
+.table thead th.c { text-align: center; }
+
+.table tbody td {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
+.table tbody td.r { text-align: right; }
+.table tbody td.c { text-align: center; }
+.table tbody tr:last-child td { border-bottom: none; }
+
+.table tbody tr {
+  cursor: pointer;
+  transition: background-color 0.08s;
+}
+
+.table tbody tr:hover { background: var(--atlas-v5-bg); }
+.table tbody tr.selected { background: var(--atlas-v5-gold-wash); }
+
+.checkCell { width: 36px; text-align: center; }
+
+.chk {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color 0.1s, background-color 0.1s;
+  padding: 0;
+}
+
+.chk:hover { border-color: var(--atlas-v5-gold); }
+
+.chk.pending {
+  border-style: dashed;
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.chk.done {
+  background: var(--atlas-v5-pos);
+  border-color: var(--atlas-v5-pos);
+  color: var(--atlas-v5-white);
+}
+
+.tStrong { color: var(--atlas-v5-ink); font-weight: var(--atlas-v5-fw-semibold); }
+.tMuted { color: var(--atlas-v5-ink-4); }
+.posCol { color: var(--atlas-v5-pos); font-weight: var(--atlas-v5-fw-semibold); }
+.negCol { color: var(--atlas-v5-neg); font-weight: var(--atlas-v5-fw-semibold); }
+
+.dateCell {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+.amountCell {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chipAcc {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 4px;
+  background: var(--atlas-v5-bg);
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.chipDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: var(--atlas-v5-brand);
+}
+
+.empty {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13.5px;
+}

@@ -80,8 +80,14 @@ const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis
 
 // Financing Module - New standalone financing module
 const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
-const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
+// T20 Fase 2 · Tesorería v5 module (sustituye Tesoreria.tsx + TesoreriaSupervisionPage.tsx)
+const TesoreriaPage = lazyWithPreload(() => import('./modules/tesoreria/TesoreriaPage'));
+const TesoreriaVistaGeneral = lazyWithPreload(() => import('./modules/tesoreria/tabs/VistaGeneralTab'));
+const TesoreriaMovimientos = lazyWithPreload(() => import('./modules/tesoreria/tabs/MovimientosTab'));
+// T17 BankStatementUploadPage · /tesoreria/importar · INTACTO.
 const BankStatementUploadPage = lazyWithPreload(() => import('./modules/horizon/tesoreria/import/BankStatementUploadPage'));
+// T20 Fase 2 · ImportarCuentas re-ubicado per decisión D3 de Jose.
+const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/import/ImportarCuentas'));
 const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
@@ -474,24 +480,49 @@ function App() {
               } />
             </Route>
             
-            <Route path="tesoreria">
+            {/* T20 Fase 2 · Tesorería v5 (sustituye Tesoreria.tsx legacy)
+                Mockup atlas-tesoreria-v8.html · 2 tabs (Vista general + Conciliación bancaria)
+                + ruta /tesoreria/importar (T17 BankStatementUploadPage intacta)
+                + ruta /tesoreria/importar-cuentas (re-ubicado de account/migracion). */}
+            <Route path="tesoreria" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <TesoreriaPage />
+              </React.Suspense>
+            }>
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <Tesoreria />
+                  <TesoreriaVistaGeneral />
                 </React.Suspense>
               } />
-              <Route path="importar" element={
+              <Route path="movimientos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <BankStatementUploadPage />
+                  <TesoreriaMovimientos />
                 </React.Suspense>
               } />
               <Route path="cuenta/:id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <Tesoreria />
+                  <TesoreriaMovimientos />
                 </React.Suspense>
               } />
             </Route>
+            <Route path="tesoreria/importar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <BankStatementUploadPage />
+              </React.Suspense>
+            } />
+            <Route path="tesoreria/importar-cuentas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarCuentasPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
 
+            {/* §3.5 spec · opción (b) · ConciliacionPageV2 mantenida intacta.
+                Tesorería v5 tab "Movimientos" hace punteo simple por checkbox;
+                ConciliacionPageV2 tiene timeline + drag&drop documentos
+                · son flujos distintos · sub-tarea futura decide consolidar. */}
             <Route path="conciliacion">
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
