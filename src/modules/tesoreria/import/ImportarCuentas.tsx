@@ -1,5 +1,7 @@
-// src/pages/account/migracion/ImportarCuentas.tsx
-// ATLAS HORIZON: Excel importer for bank accounts and opening balances
+// src/modules/tesoreria/import/ImportarCuentas.tsx
+// ATLAS HORIZON: Excel importer for bank accounts and opening balances.
+// T20 Fase 2 (sub-tarea 20.2): re-ubicado desde src/pages/account/migracion/ImportarCuentas.tsx
+// per decisión D3 de Jose · cada importador legacy migra a su módulo natural.
 
 import React, { useCallback, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
@@ -268,7 +270,7 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--atlas-blue-light, #EBF3FF)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--atlas-v5-brand-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Wallet size={20} strokeWidth={1.5} style={{ color: 'var(--atlas-blue)' }} aria-hidden="true" />
         </div>
         <div>
@@ -310,7 +312,7 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
             </button>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--atlas-blue-light, #EBF3FF)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--atlas-v5-brand-wash)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}>
             <AlertCircle size={16} style={{ color: 'var(--atlas-blue)', marginTop: '2px', flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: '0.8125rem' }}>
               Nuevas: <strong>{preview.filter((r) => r._accion === 'crear').length}</strong> · A actualizar: <strong>{preview.filter((r) => r._accion === 'actualizar').length}</strong>
@@ -328,7 +330,7 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
               </thead>
               <tbody>
                 {preview.slice(0, PREVIEW_LIMIT).map((row, i) => (
-                  <tr key={`${row.iban}-${i}`} style={{ borderBottom: '1px solid #f2f2f2' }}>
+                  <tr key={`${row.iban}-${i}`} style={{ borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
                     <td style={{ padding: '8px 6px', fontFamily: 'monospace' }}>{row.iban.replace(/(.{4})/g, '$1 ').trim()}</td>
                     <td style={{ padding: '8px 6px' }}>{row.alias || <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
                     <td style={{ padding: '8px 6px' }}>{row.tipo ?? <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
@@ -339,7 +341,7 @@ const ImportarCuentas: React.FC<ImportarCuentasProps> = ({ onBack, onComplete })
                     </td>
                     <td style={{ padding: '8px 6px' }}>{row.fecha_saldo_inicial ?? <span style={{ color: 'var(--text-gray)' }}>—</span>}</td>
                     <td style={{ padding: '8px 6px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: row._accion === 'crear' ? 'var(--ok-light, #E8F8EF)' : '#EEF2FF', color: row._accion === 'crear' ? 'var(--ok)' : '#4F46E5' }}>
+                      <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: row._accion === 'crear' ? 'var(--atlas-v5-pos-wash)' : 'var(--atlas-v5-brand-wash)', color: row._accion === 'crear' ? 'var(--ok)' : 'var(--atlas-v5-brand)' }}>
                         {row._accion === 'crear' ? 'Crear' : 'Actualizar'}
                       </span>
                     </td>

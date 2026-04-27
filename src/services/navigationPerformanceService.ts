@@ -26,7 +26,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/tesoreria')) {
-    await import('../modules/horizon/tesoreria/Tesoreria');
+    await import('../modules/tesoreria/TesoreriaPage');
     return;
   }
   if (href.startsWith('/contratos')) {
