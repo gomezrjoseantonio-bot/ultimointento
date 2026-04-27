@@ -98,8 +98,10 @@ const VistaGeneralTab: React.FC = () => {
   }, [movByYearMonth, currentYear, currentMonthIdx, months, totalSaldo]);
 
   const entradasAnuales = monthCards.reduce((sum, m) => sum + m.entradas, 0);
+  // `salidas` se acumula como suma de `m.amount` cuando el importe es negativo
+  // · ya viene con signo · `entradas + salidas` da el balance neto correcto.
   const salidasAnuales = monthCards.reduce((sum, m) => sum + m.salidas, 0);
-  const saldoInicio = totalSaldo - entradasAnuales - salidasAnuales;
+  const saldoInicio = totalSaldo - (entradasAnuales + salidasAnuales);
 
   const pendientesPorCuenta = useMemo(() => {
     const map = new Map<number, number>();

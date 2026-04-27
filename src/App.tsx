@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -88,6 +88,14 @@ const TesoreriaMovimientos = lazyWithPreload(() => import('./modules/tesoreria/t
 const BankStatementUploadPage = lazyWithPreload(() => import('./modules/horizon/tesoreria/import/BankStatementUploadPage'));
 // T20 Fase 2 · ImportarCuentas re-ubicado per decisión D3 de Jose.
 const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/import/ImportarCuentas'));
+
+// T20 Fase 2 · redirect compat para `/tesoreria/cuenta/:id` legacy hacia
+// `/tesoreria/movimientos?cuenta=:id` (la ruta nueva sigue el patrón de
+// query params para que el filtro re-sincronice al cambiar URL).
+const RedirectCuentaToMovimientos: React.FC = () => {
+  const { id } = useParams();
+  return <Navigate to={`/tesoreria/movimientos?cuenta=${id ?? ''}`} replace />;
+};
 const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
@@ -499,11 +507,7 @@ function App() {
                   <TesoreriaMovimientos />
                 </React.Suspense>
               } />
-              <Route path="cuenta/:id" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <TesoreriaMovimientos />
-                </React.Suspense>
-              } />
+              <Route path="cuenta/:id" element={<RedirectCuentaToMovimientos />} />
             </Route>
             <Route path="tesoreria/importar" element={
               <React.Suspense fallback={<LoadingSpinner />}>

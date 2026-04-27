@@ -85,9 +85,7 @@ const TesoreriaPage: React.FC = () => {
             saldo consolidado{' '}
             <strong>
               <MoneyValue value={totalSaldo} decimals={0} tone="ink" />
-            </strong>{' '}
-            <span> · </span>
-            última sync hace 12 min
+            </strong>
           </>
         }
         actions={[

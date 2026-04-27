@@ -74,11 +74,21 @@ const BankAccountCard: React.FC<BankAccountCardProps> = ({
 
   const allClear = pendingCount === 0;
 
+  const handleActivate = () => onClick?.(id);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleActivate();
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={styles.card}
-      onClick={() => onClick?.(id)}
+      onClick={handleActivate}
+      onKeyDown={handleKeyDown}
       aria-label={`${account.alias ?? account.banco?.name ?? 'Cuenta'} · saldo ${balance} euros`}
     >
       <div className={styles.head}>
@@ -92,30 +102,27 @@ const BankAccountCard: React.FC<BankAccountCardProps> = ({
           <div className={styles.type}>{last4(account.iban)}</div>
         </div>
         {onEdit && (
-          <span
-            role="button"
-            tabIndex={0}
+          <button
+            type="button"
             aria-label="Editar cuenta"
             onClick={(e) => {
               e.stopPropagation();
               onEdit(id);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onEdit(id);
-              }
             }}
             style={{
               color: 'var(--atlas-v5-ink-4)',
               padding: 4,
               borderRadius: 6,
               cursor: 'pointer',
+              background: 'transparent',
+              border: 'none',
+              fontFamily: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
             }}
           >
             <Icons.Edit size={11} strokeWidth={2} />
-          </span>
+          </button>
         )}
       </div>
       <div className={styles.bal}>
@@ -149,7 +156,7 @@ const BankAccountCard: React.FC<BankAccountCardProps> = ({
           {allClear ? '✓' : pendingCount}
         </span>
       </div>
-    </button>
+    </div>
   );
 };
 

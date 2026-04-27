@@ -42,12 +42,21 @@ const MovimientosTab: React.FC = () => {
   const { accounts, movements } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
-  const [searchParams] = useSearchParams();
-  const cuentaParam = searchParams.get('cuenta');
-  const initialAccount = cuentaParam ? Number(cuentaParam) : null;
-  const [accountFilter, setAccountFilter] = useState<number | null>(
-    Number.isFinite(initialAccount) ? initialAccount : null,
-  );
+  const [searchParams, setSearchParams] = useSearchParams();
+  const accountFilter: number | null = (() => {
+    const raw = searchParams.get('cuenta');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
+
+  const setAccountFilter = (next: number | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (next == null) params.delete('cuenta');
+    else params.set('cuenta', String(next));
+    setSearchParams(params, { replace: true });
+  };
+
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const filtered = useMemo(() => {
@@ -187,8 +196,11 @@ const MovimientosTab: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 200).map((m) => {
-                const id = m.id ?? -1;
+              {filtered
+                .slice(0, 200)
+                .filter((m): m is Movement & { id: number } => m.id != null)
+                .map((m) => {
+                const id = m.id;
                 const isSelected = selected.has(id);
                 const reconciled = isReconciled(m);
                 const accountName = accountById.get(m.accountId) ?? `#${m.accountId}`;
