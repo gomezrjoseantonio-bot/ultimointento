@@ -118,6 +118,22 @@ describe('bankProfileMatcher.match · Sabadell layout regression', () => {
     expect(result.confidence).toBeLessThan(60);
   });
 
+  it('detects bank when IBAN groups are separated by multiple spaces (real export alignment)', async () => {
+    // Some exports right-align IBAN chunks for visual layout, producing 2+
+    // spaces between the country checksum and the bank-code group.
+    const csv = [
+      'Resumen;;;',
+      'Cuenta:;ES47   0081   2706   1500   0323   9635;;', // triple-space alignment
+      'Movimientos;15;;',
+    ].join('\n');
+    const file = new File([csv], 'extracto.csv', { type: 'text/csv' });
+
+    const result = await bankProfileMatcher.match(file, 'csv');
+
+    expect(result.profile).toBe('Sabadell');
+    expect(result.signals.ibanScore).toBe(25);
+  });
+
   it('routes to BBVA when IBAN starts with 0182 even if filename is generic', async () => {
     const csv = [
       'Movimientos cuenta;;;',
