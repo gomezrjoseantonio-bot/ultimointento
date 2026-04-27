@@ -5,13 +5,14 @@
    Cero hex hardcoded fuera de este archivo.
    ============================================================ */
 
-/* Tipografía · Inter (UI) + JetBrains Mono (números técnicos)
-   Per GUIA-DISENO-V5-atlas.md §2.3. JetBrains Mono se trae por
-   Google Fonts CDN porque el proyecto aún no tiene el paquete
-   @fontsource/jetbrains-mono. Inter ya viene de @fontsource/inter
-   (cargado vía index.tsx) por lo que aquí solo importamos la mono.
+/* Tipografía · Inter (UI) + JetBrains Mono (números técnicos).
+   Per GUIA-DISENO-V5-atlas.md §2.3.
+
+   No se hacen cargas remotas en runtime. Inter y JetBrains Mono se
+   self-hostean vía @fontsource/* (importados desde src/index.tsx)
+   para evitar dependencias de red, problemas de CSP/privacidad y
+   permitir entornos offline.
 */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* ===== Backgrounds ===== */
@@ -108,7 +109,9 @@
   --atlas-v5-ls-tag: 0.1em;
   --atlas-v5-ls-label: 0.03em;
 
-  /* ===== Espaciado · escala 4px (§2.5) ===== */
+  /* ===== Espaciado · escala canónica §2.5
+     No es múltiplo estricto de 4px · sigue los valores explícitos
+     listados en la guía v5 §2.5 (gap 14-16 · padding card 16-22 · etc.). ===== */
   --atlas-v5-sp-1: 4px;
   --atlas-v5-sp-2: 8px;
   --atlas-v5-sp-3: 12px;

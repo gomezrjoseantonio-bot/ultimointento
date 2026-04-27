@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import styles from './UploadZone.module.css';
+import { Icons } from './icons';
 
 export interface UploadZoneProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onDrop' | 'title'> {
@@ -16,7 +16,7 @@ export interface UploadZoneProps
   onFiles: (files: File[]) => void;
   /** Si true · zona deshabilitada · sin hover ni drag. */
   disabled?: boolean;
-  /** Icono custom · default Lucide `Upload`. */
+  /** Icono custom · default `Icons.Upload`. */
   icon?: React.ReactNode;
   /** id del input · útil para `<label htmlFor>` externo. */
   inputId?: string;
@@ -45,26 +45,57 @@ const UploadZone: React.FC<UploadZoneProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isOver, setIsOver] = useState(false);
 
+  const acceptRules = useMemo(
+    () =>
+      (accept ?? '')
+        .split(',')
+        .map((rule) => rule.trim().toLowerCase())
+        .filter(Boolean),
+    [accept],
+  );
+
+  const matchesAccept = useCallback(
+    (file: File) => {
+      if (acceptRules.length === 0) return true;
+      const fileName = file.name.toLowerCase();
+      const fileType = file.type.toLowerCase();
+      return acceptRules.some((rule) => {
+        if (rule.startsWith('.')) return fileName.endsWith(rule);
+        if (rule.endsWith('/*')) return fileType.startsWith(rule.slice(0, -1));
+        return fileType === rule;
+      });
+    },
+    [acceptRules],
+  );
+
+  const filterFiles = useCallback(
+    (files: File[]) => {
+      const accepted = files.filter((f) => matchesAccept(f));
+      return multiple ? accepted : accepted.slice(0, 1);
+    },
+    [matchesAccept, multiple],
+  );
+
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       event.stopPropagation();
       setIsOver(false);
       if (disabled) return;
-      const list = Array.from(event.dataTransfer.files);
+      const list = filterFiles(Array.from(event.dataTransfer.files));
       if (list.length > 0) onFiles(list);
     },
-    [onFiles, disabled],
+    [onFiles, disabled, filterFiles],
   );
 
   const handleSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
-      const list = Array.from(event.target.files ?? []);
+      const list = filterFiles(Array.from(event.target.files ?? []));
       if (list.length > 0) onFiles(list);
       // Reset · permite re-subir el mismo archivo.
       event.target.value = '';
     },
-    [onFiles],
+    [onFiles, filterFiles],
   );
 
   const handleKey = useCallback(
@@ -110,7 +141,7 @@ const UploadZone: React.FC<UploadZoneProps> = ({
       onDrop={handleDrop}
       {...rest}
     >
-      <div className={styles.iconWrap}>{icon ?? <Upload size={20} strokeWidth={1.8} />}</div>
+      <div className={styles.iconWrap}>{icon ?? <Icons.Upload size={20} strokeWidth={1.8} />}</div>
       <div className={styles.title}>{title}</div>
       {sub != null && <div className={styles.sub}>{sub}</div>}
       <input

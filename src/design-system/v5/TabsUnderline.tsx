@@ -12,14 +12,20 @@ export interface TabsUnderlineProps<TKey extends string = string> {
   items: TabItem<TKey>[];
   active: TKey;
   onChange: (key: TKey) => void;
-  /** Aria-label del tablist · default "Sub-módulos". */
+  /** Aria-label del grupo · default "Sub-módulos". */
   ariaLabel?: string;
   className?: string;
 }
 
 /**
  * Tabs underline · §5 guía v5.
- * Solo UNA tab activa · border-bottom oro · iconos pequeños 14px junto al label.
+ *
+ * Implementación · grupo de botones con `aria-pressed` · NO usa el patrón
+ * ARIA `role="tablist"`/`role="tab"` porque no implementa los requisitos
+ * completos del patrón (roving tabindex · navegación por flechas · Home/End ·
+ * `aria-controls` a un panel). En la app las pestañas son sub-rutas URL-driven
+ * sin un `tabpanel` real · el patrón "toggle button group" es semánticamente
+ * más honesto.
  */
 function TabsUnderline<TKey extends string = string>({
   items,
@@ -31,7 +37,7 @@ function TabsUnderline<TKey extends string = string>({
   const classes = [styles.tabs, className ?? ''].filter(Boolean).join(' ');
 
   return (
-    <div className={classes} role="tablist" aria-label={ariaLabel}>
+    <div className={classes} role="group" aria-label={ariaLabel}>
       {items.map((item) => {
         const isActive = item.key === active;
         const tabClasses = [styles.tab, isActive ? styles.active : '']
@@ -41,8 +47,7 @@ function TabsUnderline<TKey extends string = string>({
           <button
             key={item.key}
             type="button"
-            role="tab"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             disabled={item.disabled}
             onClick={() => onChange(item.key)}
             className={tabClasses}

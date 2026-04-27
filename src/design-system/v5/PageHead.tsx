@@ -1,10 +1,10 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import styles from './PageHead.module.css';
+import { Icons } from './icons';
 
 export interface BreadcrumbItem {
   label: React.ReactNode;
-  /** Si null · es el item activo · no se renderiza como link. */
+  /** Si se omite · es el item activo · no se renderiza como link. */
   onClick?: () => void;
 }
 
@@ -71,7 +71,7 @@ const PageHead: React.FC<PageHeadProps> = ({
                   className={styles.backBtn}
                   aria-label={backLabel}
                 >
-                  <ChevronLeft size={12} strokeWidth={2} />
+                  <Icons.ChevronLeft size={12} strokeWidth={2} />
                   {backLabel}
                 </button>
               )}
@@ -80,7 +80,7 @@ const PageHead: React.FC<PageHeadProps> = ({
                   const isLast = idx === breadcrumb!.length - 1;
                   const sep =
                     idx > 0 ? (
-                      <ChevronRight
+                      <Icons.ChevronRight
                         key={`sep-${idx}`}
                         size={11}
                         strokeWidth={2}
@@ -111,27 +111,31 @@ const PageHead: React.FC<PageHeadProps> = ({
           <h1 className={styles.title}>{title}</h1>
           {sub != null && <div className={styles.sub}>{sub}</div>}
         </div>
-        {actions && actions.length > 0 && (
-          <div className={styles.actions}>
-            {actions.slice(0, 2).map((btn, idx) => {
-              const variant = btn.variant ?? (idx === actions.length - 1 ? 'gold' : 'ghost');
-              const classes = [styles.btn, styles[variant]].join(' ');
-              return (
-                <button
-                  key={`act-${idx}`}
-                  type="button"
-                  className={classes}
-                  onClick={btn.onClick}
-                  disabled={btn.disabled}
-                  aria-label={btn.ariaLabel}
-                >
-                  {btn.icon}
-                  {btn.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {actions && actions.length > 0 && (() => {
+          const visibleActions = actions.slice(0, 2);
+          return (
+            <div className={styles.actions}>
+              {visibleActions.map((btn, idx) => {
+                const variant =
+                  btn.variant ?? (idx === visibleActions.length - 1 ? 'gold' : 'ghost');
+                const classes = [styles.btn, styles[variant]].join(' ');
+                return (
+                  <button
+                    key={`act-${idx}`}
+                    type="button"
+                    className={classes}
+                    onClick={btn.onClick}
+                    disabled={btn.disabled}
+                    aria-label={btn.ariaLabel}
+                  >
+                    {btn.icon}
+                    {btn.label}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
       {tabsSlot}
     </div>

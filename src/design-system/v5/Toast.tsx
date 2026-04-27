@@ -19,7 +19,7 @@ export interface ToastProps {
 
 /**
  * Tarjeta toast individual · estilo guía v5 §12.1.
- * Para uso imperativo en una app real · combinar con `<ToastHost>` y `useToastV5`.
+ * Para uso imperativo · combinar con `<ToastHost>` y `showToastV5`.
  */
 const Toast: React.FC<ToastProps> = ({
   message,
@@ -50,6 +50,7 @@ const hostRef: { current: ToastHostState | null } = { current: null };
 export const ToastHost: React.FC = () => {
   const [items, setItems] = useState<ToastMessage[]>([]);
   const counter = useRef(0);
+  const timers = useRef<number[]>([]);
 
   const remove = useCallback((id: number) => {
     setItems((current) => current.filter((t) => t.id !== id));
@@ -61,11 +62,17 @@ export const ToastHost: React.FC = () => {
         const id = ++counter.current;
         const next: ToastMessage = { id, ...msg };
         setItems((current) => [...current, next]);
-        window.setTimeout(() => remove(id), msg.duration);
+        const timerId = window.setTimeout(() => {
+          remove(id);
+          timers.current = timers.current.filter((t) => t !== timerId);
+        }, msg.duration);
+        timers.current.push(timerId);
       },
     };
     return () => {
       hostRef.current = null;
+      timers.current.forEach((t) => window.clearTimeout(t));
+      timers.current = [];
     };
   }, [remove]);
 

@@ -3,7 +3,7 @@
   gap: 0;
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
-  border-radius: 10px;
+  border-radius: var(--atlas-v5-radius-md);
   overflow: hidden;
   font-family: var(--atlas-v5-font-ui);
 }
