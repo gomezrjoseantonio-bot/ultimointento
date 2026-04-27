@@ -13,8 +13,35 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/horizon/inmuebles/supervision/Supervision');
     return;
   }
+  if (href.startsWith('/inmuebles/analisis')) {
+    await import('../modules/horizon/analisis-cartera/AnalisisCartera');
+    return;
+  }
+  if (href.startsWith('/inmuebles/nuevo') || href.match(/^\/inmuebles\/\d+\/editar/)) {
+    await import('../modules/horizon/inmuebles/cartera/PropertyForm');
+    return;
+  }
+  if (href.startsWith('/inmuebles/importar-valoraciones')) {
+    await import('../modules/inmuebles/import/ImportarValoraciones');
+    return;
+  }
+  if (href.startsWith('/inmuebles/importar-contratos')) {
+    await import('../modules/inmuebles/import/ImportarContratos');
+    return;
+  }
+  if (href.startsWith('/inmuebles/importar')) {
+    await import('../modules/inmuebles/import/ImportarInmuebles');
+    return;
+  }
   if (href.startsWith('/inmuebles')) {
-    await import('../modules/inmuebles/InmueblesPage');
+    // /inmuebles (listado) y /inmuebles/:id (detalle) · ambos pasan por
+    // InmueblesPage Outlet · precargamos también listado/detalle según ruta.
+    await Promise.all([
+      import('../modules/inmuebles/InmueblesPage'),
+      href === '/inmuebles' || href === '/inmuebles/'
+        ? import('../modules/inmuebles/pages/ListadoPage')
+        : import('../modules/inmuebles/pages/DetallePage'),
+    ]);
     return;
   }
   if (href.startsWith('/inversiones')) {
@@ -23,6 +50,10 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
   }
   if (href.startsWith('/tesoreria')) {
     await import('../modules/tesoreria/TesoreriaPage');
+    return;
+  }
+  if (href.startsWith('/contratos/nuevo')) {
+    await import('../modules/inmuebles/wizards/NuevoContratoWizard');
     return;
   }
   if (href.startsWith('/contratos')) {
