@@ -1,10 +1,15 @@
 // TAREA 17 · Bank profile matcher
 //
 // Detects which bank profile (from public/assets/bank-profiles.json) a statement
-// file belongs to. Combines three signals into a 0-100 confidence score:
-//   1. Header aliases (delegates to bankProfilesService.detectBank)
+// file belongs to. Combines four signals into a 0-100 confidence score:
+//   1. Header aliases · scans EVERY non-empty line in the sample and keeps the
+//      best per profile. Real exports (Sabadell, ABANCA…) put a metadata block
+//      ("Cuenta:", "Titular:", "Selección:") BEFORE the actual column-headers
+//      row, so picking only the "first wordy line" misses the headers entirely.
 //   2. Filename hints (e.g. "sabadell-extracto.xlsx" → Sabadell)
 //   3. Distinctive content tokens scanned across the first chunk of the file
+//   4. IBAN bank-code (ES__0081… → Sabadell) — the most reliable signal for
+//      Spanish exports because the IBAN is always printed verbatim near the top.
 //
 // The orchestrator (sub-tarea 17.5) calls this before parsing. If the returned
 // confidence is below 60 and the user did not pass an explicit hint, the
@@ -22,15 +27,17 @@ export interface BankProfileMatchResult {
   profile: string | null;       // bankKey or null when no profile reaches threshold
   confidence: number;            // 0-100
   signals: {
-    headerScore: number;         // 0-50
-    filenameScore: number;       // 0-25
-    contentScore: number;        // 0-25
+    headerScore: number;         // 0-40
+    filenameScore: number;       // 0-20
+    contentScore: number;        // 0-15
+    ibanScore: number;           // 0-25
   };
 }
 
-const HEADER_WEIGHT = 50;
-const FILENAME_WEIGHT = 25;
-const CONTENT_WEIGHT = 25;
+const HEADER_WEIGHT = 40;
+const FILENAME_WEIGHT = 20;
+const CONTENT_WEIGHT = 15;
+const IBAN_WEIGHT = 25;
 
 class BankProfileMatcher {
   async match(file: File, format: BankFormat): Promise<BankProfileMatchResult> {
@@ -41,37 +48,50 @@ class BankProfileMatcher {
       return {
         profile: null,
         confidence: 0,
-        signals: { headerScore: 0, filenameScore: 0, contentScore: 0 },
+        signals: { headerScore: 0, filenameScore: 0, contentScore: 0, ibanScore: 0 },
       };
     }
 
     const sampleText = await this.readSample(file, format);
-    const headerLine = this.firstHeaderLine(sampleText);
+    const candidateLines = this.candidateHeaderLines(sampleText);
     const filename = file.name.toLowerCase();
     const contentLower = sampleText.toLowerCase();
+    const ibanBankKey = this.extractIbanBankKey(sampleText);
 
     let best: BankProfileMatchResult = {
       profile: null,
       confidence: 0,
-      signals: { headerScore: 0, filenameScore: 0, contentScore: 0 },
+      signals: { headerScore: 0, filenameScore: 0, contentScore: 0, ibanScore: 0 },
     };
 
     for (const profile of profiles) {
-      const headerScore = this.scoreHeaders(headerLine, profile);
+      const headerScore = this.scoreBestLine(candidateLines, profile);
       const filenameScore = this.scoreFilename(filename, profile);
       const contentScore = this.scoreContent(contentLower, profile);
-      const confidence = headerScore + filenameScore + contentScore;
+      const ibanScore = ibanBankKey && ibanBankKey.toLowerCase() === profile.bankKey.toLowerCase()
+        ? IBAN_WEIGHT
+        : 0;
+      const confidence = headerScore + filenameScore + contentScore + ibanScore;
 
       if (confidence > best.confidence) {
         best = {
           profile: profile.bankKey,
           confidence,
-          signals: { headerScore, filenameScore, contentScore },
+          signals: { headerScore, filenameScore, contentScore, ibanScore },
         };
       }
     }
 
     return best;
+  }
+
+  private scoreBestLine(candidateLines: string[], profile: BankProfile): number {
+    let bestLineScore = 0;
+    for (const line of candidateLines) {
+      const lineScore = this.scoreHeaders(line, profile);
+      if (lineScore > bestLineScore) bestLineScore = lineScore;
+    }
+    return bestLineScore;
   }
 
   private scoreHeaders(headerLine: string, profile: BankProfile): number {
@@ -125,6 +145,18 @@ class BankProfileMatcher {
     return Math.min(Math.round(score), CONTENT_WEIGHT);
   }
 
+  private extractIbanBankKey(text: string): string | null {
+    if (!text) return null;
+    // Match Spanish IBAN with optional spaces between the four-character chunks.
+    // bankProfilesService.getBankInfoFromIBAN already normalises and looks up
+    // the bank code → bankKey for us.
+    const match = text.match(/ES\d{2}\s?\d{4}/i);
+    if (!match) return null;
+    const ibanCandidate = match[0].replace(/\s+/g, '').toUpperCase();
+    const info = bankProfilesService.getBankInfoFromIBAN(ibanCandidate);
+    return info?.bankKey ?? null;
+  }
+
   private distinctiveAliases(profile: BankProfile): string[] {
     const all = new Set<string>();
     for (const aliases of Object.values(profile.headerAliases) as (string[] | undefined)[]) {
@@ -137,17 +169,23 @@ class BankProfileMatcher {
     return Array.from(all);
   }
 
-  private firstHeaderLine(text: string): string {
-    if (!text) return '';
+  // Returns up to N non-empty lines from the sample where each line has at
+  // least one alphabetic token. Real bank exports interleave metadata blocks
+  // (Cuenta, Divisa, Titular, Selección) before the column-headers row, so
+  // we score every candidate against every profile and let the best win.
+  private candidateHeaderLines(text: string, maxLines = 25): string[] {
+    if (!text) return [];
     const lines = text.split(/\r?\n/);
+    const candidates: string[] = [];
     for (const line of lines) {
       if (!line.trim()) continue;
-      // Skip purely numeric / date lines (CSB43 envelopes etc.)
       const tokens = line.split(/[;,\t|]/).map(t => t.trim()).filter(Boolean);
       const wordy = tokens.filter(t => /[a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/.test(t));
-      if (wordy.length >= 2) return line;
+      if (wordy.length === 0) continue;
+      candidates.push(line);
+      if (candidates.length >= maxLines) break;
     }
-    return lines[0] ?? '';
+    return candidates;
   }
 
   private tokenize(line: string): string[] {
