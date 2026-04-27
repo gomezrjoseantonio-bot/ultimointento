@@ -24,7 +24,7 @@ import { BankProfile } from '../../../types/bankProfiles';
 export type BankFormat = 'csv' | 'xlsx' | 'xls' | 'csb43';
 
 export interface BankProfileMatchResult {
-  profile: string | null;       // bankKey or null when no profile reaches threshold
+  profile: string | null;       // highest-scoring bankKey, or null only when no profiles are loaded or all profiles score 0
   confidence: number;            // 0-100
   signals: {
     headerScore: number;         // 0-40
@@ -147,10 +147,13 @@ class BankProfileMatcher {
 
   private extractIbanBankKey(text: string): string | null {
     if (!text) return null;
-    // Match Spanish IBAN with optional spaces between the four-character chunks.
-    // bankProfilesService.getBankInfoFromIBAN already normalises and looks up
-    // the bank code → bankKey for us.
-    const match = text.match(/ES\d{2}\s?\d{4}/i);
+    // Match Spanish IBAN allowing arbitrary whitespace between the country
+    // checksum and the 4-digit bank code (real exports sometimes align IBAN
+    // groups with multiple spaces, e.g. "ES47  0081  2706 …"). We strip
+    // whitespace from the captured fragment ourselves before delegating to
+    // bankProfilesService.getBankInfoFromIBAN, which expects the canonical
+    // "ES…" prefix without spaces.
+    const match = text.match(/ES\d{2}\s*\d{4}/i);
     if (!match) return null;
     const ibanCandidate = match[0].replace(/\s+/g, '').toUpperCase();
     const info = bankProfilesService.getBankInfoFromIBAN(ibanCandidate);
