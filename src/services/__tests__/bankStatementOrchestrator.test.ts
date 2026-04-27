@@ -318,11 +318,11 @@ describe('bankStatementOrchestrator', () => {
     // Revolut accounts use foreign IBANs (LT/IE), which getBankInfoFromIBAN
     // cannot map to a Spanish profile. The deriveBankHintFromAccount second
     // fallback (banco.name → profile key by case-insensitive substring)
-    // should catch this. Mock bankProfilesService.getProfiles to return a
-    // Revolut profile so the matching can succeed.
-    const realService = jest.requireMock('../bankProfilesService').bankProfilesService;
-    const originalGetProfiles = realService.getProfiles;
-    realService.getProfiles = () => [{ bankKey: 'Revolut' }, { bankKey: 'Sabadell' }];
+    // should catch this. Temporarily override the mocked getProfiles to
+    // include a Revolut entry so the matching can succeed.
+    const mockService = jest.requireMock('../bankProfilesService').bankProfilesService;
+    const originalGetProfiles = mockService.getProfiles;
+    mockService.getProfiles = () => [{ bankKey: 'Revolut' }, { bankKey: 'Sabadell' }];
 
     try {
       stores.accounts.push({
@@ -342,7 +342,7 @@ describe('bankStatementOrchestrator', () => {
       expect(result.bankProfileUsed).toBe('Revolut');
       expect(result.movementsInserted).toBeGreaterThan(0);
     } finally {
-      realService.getProfiles = originalGetProfiles;
+      mockService.getProfiles = originalGetProfiles;
     }
   });
 });
