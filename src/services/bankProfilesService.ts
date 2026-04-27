@@ -181,32 +181,48 @@ class BankProfilesService {
   }
 
   /**
-   * Get comprehensive bank information from IBAN
+   * Get comprehensive bank information from IBAN.
+   *
+   * Recognises Spanish IBANs (ES + 4-digit bank code) for the 9 entities listed
+   * in public/assets/bank-profiles.json. Foreign IBANs (Revolut typically uses
+   * LT or IE) fall back to the bankCode without a key, so callers can still
+   * apply other heuristics if available.
    */
   getBankInfoFromIBAN(iban: string): {
     bankCode: string;
     bankKey?: string;
     logoUrl?: string;
   } | null {
-    if (!iban || !iban.startsWith('ES') || iban.length < 8) {
-      return null;
+    if (!iban || iban.length < 4) return null;
+
+    // Non-Spanish IBANs (Revolut typically): LT (Lithuania) or IE (Ireland).
+    // We don't have access to a non-ES bank-code map, so just return the
+    // country prefix as a soft hint — bankProfileMatcher will use the
+    // filename/content signals to discriminate.
+    const upper = iban.toUpperCase();
+    if (!upper.startsWith('ES')) {
+      return { bankCode: upper.slice(0, 2) };
     }
-    
+
+    if (iban.length < 8) return null;
     const bankCode = iban.substring(4, 8);
-    let bankKey: string | undefined;
-    
-    // Map common bank codes to keys
+
+    // Spanish bank codes → bankKey from bank-profiles.json. Updated 2026-04-27
+    // after user reports of Abanca/Unicaja/Openbank IBANs not being recognised.
     const bankCodeMap: Record<string, string> = {
-      '2100': 'CaixaBank',
-      '0049': 'Santander', 
+      '2080': 'ABANCA',
       '0182': 'BBVA',
+      '0049': 'Santander',
+      '2103': 'Unicaja',
       '0081': 'Sabadell',
       '0128': 'Bankinter',
-      '1465': 'ING'
+      '1465': 'ING',
+      '0073': 'Openbank',
+      '2100': 'CaixaBank',
     };
-    
-    bankKey = bankCodeMap[bankCode];
-    
+
+    const bankKey = bankCodeMap[bankCode];
+
     return {
       bankCode,
       bankKey,

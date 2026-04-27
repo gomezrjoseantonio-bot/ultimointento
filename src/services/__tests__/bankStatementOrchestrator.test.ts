@@ -35,6 +35,27 @@ jest.mock('../movementLearningService', () => ({
   createOrUpdateRule: jest.fn(async () => ({})),
 }));
 
+jest.mock('../bankProfilesService', () => ({
+  // Plain functions (not jest.fn) so the implementations survive
+  // beforeEach's `jest.clearAllMocks()` call further down.
+  bankProfilesService: {
+    loadProfiles: async () => undefined,
+    getProfiles: () => [],
+    getBankInfoFromIBAN: (iban: string) => {
+      if (!iban) return null;
+      const upper = iban.toUpperCase();
+      if (!upper.startsWith('ES')) return { bankCode: upper.slice(0, 2) };
+      const code = upper.substring(4, 8);
+      const map: Record<string, string> = {
+        '0081': 'Sabadell',
+        '2103': 'Unicaja',
+        '2080': 'ABANCA',
+      };
+      return { bankCode: code, bankKey: map[code] };
+    },
+  },
+}));
+
 interface FakeStores {
   movements: Movement[];
   treasuryEvents: TreasuryEvent[];
@@ -265,5 +286,27 @@ describe('bankStatementOrchestrator', () => {
     });
     const file = new File(['mock'], 'banco-desconocido.csv');
     await expect(processFile(file, { accountId: 42 })).rejects.toBeInstanceOf(BankProfileNotDetectedError);
+  });
+
+  it('5. processFile · bypasses BankProfileNotDetectedError when destination account has a known IBAN', async () => {
+    // User reported real bug 2026-04-27: Sabadell/Unicaja/ABANCA exports failed
+    // file detection. Fix: when the user has chosen an account whose IBAN
+    // resolves to a known bank profile, that signal trumps file detection.
+    stores.accounts.push({
+      id: 42,
+      iban: 'ES47 0081 2706 1500 0323 9635', // 0081 → Sabadell
+      banco: { name: 'Banco de Sabadell', code: '0081' },
+    });
+    (bankProfileMatcher.match as jest.Mock).mockResolvedValueOnce({
+      profile: null,
+      confidence: 0,
+      signals: { headerScore: 0, filenameScore: 0, contentScore: 0, ibanScore: 0 },
+    });
+
+    const file = new File(['mock'], '27042026_2706_0003239635.xls');
+    const result = await processFile(file, { accountId: 42 });
+
+    expect(result.bankProfileUsed).toBe('Sabadell');
+    expect(result.movementsInserted).toBeGreaterThan(0);
   });
 });
