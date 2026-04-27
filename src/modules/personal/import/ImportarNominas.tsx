@@ -1,5 +1,7 @@
-// src/pages/account/migracion/ImportarNominas.tsx
-// ATLAS HORIZON: Excel importer for payroll engine configuration
+// src/modules/personal/import/ImportarNominas.tsx
+// ATLAS HORIZON: Excel importer for payroll engine configuration.
+// T20 Fase 3b (sub-tarea 20.3b): re-ubicado per decisión D3 de Jose
+// · cada importador legacy migra a su módulo natural.
 
 import React, { useCallback, useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
@@ -364,7 +366,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--navy-700-light, #E8EAF0)',
+            backgroundColor: 'var(--atlas-v5-brand-wash)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -450,7 +452,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
-              backgroundColor: dragging ? 'var(--atlas-blue-light, #EBF3FF)' : 'var(--bg)',
+              backgroundColor: dragging ? 'var(--atlas-v5-brand-wash)' : 'var(--bg)',
               transition: 'border-color 0.2s, background-color 0.2s',
             }}
           >
@@ -514,7 +516,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
               display: 'flex',
               gap: '8px',
               padding: '10px 12px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-v5-brand-wash)',
               borderRadius: '8px',
               marginBottom: '12px',
             }}
@@ -554,7 +556,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
                     key={i}
                     style={{
                       borderBottom: '1px solid var(--hz-neutral-300)',
-                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-v5-card-alt)',
                     }}
                   >
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)' }}>
@@ -567,7 +569,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+                          backgroundColor: 'var(--atlas-v5-brand-wash)',
                           color: 'var(--atlas-navy-1)',
                         }}
                       >
@@ -611,7 +613,7 @@ const ImportarNominas: React.FC<ImportarNominasProps> = ({ onComplete, onBack })
                 border: 'none',
                 borderRadius: '8px',
                 backgroundColor: importing ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
-                color: '#fff',
+                color: 'var(--atlas-v5-white)',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: importing ? 'not-allowed' : 'pointer',

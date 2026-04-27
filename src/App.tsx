@@ -117,8 +117,15 @@ const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configurac
 const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
 // T20 Fase 3a · PropertyDetail legacy eliminado · sustituido por src/modules/inmuebles/pages/DetallePage.
 
-// Personal section (within Horizon)
-const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
+// T20 Fase 3b · Personal v5 module (sustituye horizon/personal/* + supervision)
+const PersonalPage = lazyWithPreload(() => import('./modules/personal/PersonalPage'));
+const PersonalPanel = lazyWithPreload(() => import('./modules/personal/pages/PanelPage'));
+const PersonalIngresos = lazyWithPreload(() => import('./modules/personal/pages/IngresosPage'));
+const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/GastosPage'));
+const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
+const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
+// T20 Fase 3b · ImportarNominas re-ubicado per decisión D3 de Jose.
+const ImportarNominasPage = lazyWithPreload(() => import('./modules/personal/import/ImportarNominas'));
 
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
@@ -645,14 +652,51 @@ function App() {
             </Route>
             
             {/* Personal section (within Horizon) */}
-            <Route path="personal">
-              <Route index element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="supervision" element={
+            {/* T20 Fase 3b · Personal v5 (sustituye horizon/personal legacy)
+                Mockup atlas-personal-v3.html · 5 tabs (Panel · Ingresos · Gastos ·
+                Mi vivienda · Presupuesto). El hub Gestión Personal sigue intacto
+                en /gestion/personal. */}
+            <Route path="personal" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PersonalPage />
+              </React.Suspense>
+            }>
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalSupervision />
+                  <PersonalPanel />
                 </React.Suspense>
               } />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalIngresos />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalGastos />
+                </React.Suspense>
+              } />
+              <Route path="vivienda" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalVivienda />
+                </React.Suspense>
+              } />
+              <Route path="presupuesto" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalPresupuesto />
+                </React.Suspense>
+              } />
+              {/* Compat · /personal/supervision legacy redirige a panel */}
+              <Route path="supervision" element={<Navigate to="/personal" replace />} />
             </Route>
+            <Route path="personal/importar-nominas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarNominasPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
             
             {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
             <Route path="gestion">

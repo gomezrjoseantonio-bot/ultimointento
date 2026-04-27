@@ -1,0 +1,90 @@
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.headRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.householdBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+  transition: border-color 0.14s, color 0.14s;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.householdBadge:hover {
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.householdBadge svg { color: var(--atlas-v5-ink-4); }
+
+.tabsBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: 18px;
+  overflow-x: auto;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.tabsBar button {
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabsBar button:hover { color: var(--atlas-v5-ink-2); }
+
+.tabsBar button.active {
+  color: var(--atlas-v5-ink);
+  border-bottom-color: var(--atlas-v5-gold);
+}
+
+.tabCount {
+  margin-left: 4px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  padding: 1px 6px;
+  background: var(--atlas-v5-bg);
+  border-radius: 3px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.tabsBar button.active .tabCount {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}

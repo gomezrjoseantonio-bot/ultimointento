@@ -60,6 +60,24 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/inmuebles/pages/ContratosListPage');
     return;
   }
+  if (href.startsWith('/personal/importar-nominas')) {
+    await import('../modules/personal/import/ImportarNominas');
+    return;
+  }
+  if (href.startsWith('/personal')) {
+    // /personal (panel) + sub-tabs · todas pasan por PersonalPage Outlet.
+    const subPage = href.startsWith('/personal/ingresos')
+      ? import('../modules/personal/pages/IngresosPage')
+      : href.startsWith('/personal/gastos')
+        ? import('../modules/personal/pages/GastosPage')
+        : href.startsWith('/personal/vivienda')
+          ? import('../modules/personal/pages/ViviendaPage')
+          : href.startsWith('/personal/presupuesto')
+            ? import('../modules/personal/pages/PresupuestoPage')
+            : import('../modules/personal/pages/PanelPage');
+    await Promise.all([import('../modules/personal/PersonalPage'), subPage]);
+    return;
+  }
   if (href.startsWith('/ajustes') || href.startsWith('/cuenta')) {
     await import('../modules/ajustes/AjustesPage');
   }
@@ -74,6 +92,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href === '/inmuebles' || href.startsWith('/inmuebles/analisis'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'] },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
+  { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
 ];
 
 const getStoresForRoute = (href: string): string[] => {
