@@ -90,8 +90,12 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
 /**
  * Build robust learn key per problem statement v1 format
  * Structure: v1|signo|ngramA|ngramB|ngramC
+ *
+ * Exported for TAREA 17 sub-task 17.3 (movementSuggestionService): the
+ * suggestion engine looks up rules by computing the same learnKey from a
+ * just-imported movement.
  */
-function buildLearnKey(movement: Movement): string {
+export function buildLearnKey(movement: Movement): string {
   const contraparte = normalizeText(movement.counterparty || '');
   const descripcion = normalizeText(movement.description || '');
   
