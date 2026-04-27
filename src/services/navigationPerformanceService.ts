@@ -92,6 +92,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href === '/inmuebles' || href.startsWith('/inmuebles/analisis'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'] },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
+  { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
 ];
 
 const getStoresForRoute = (href: string): string[] => {

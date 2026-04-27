@@ -3,20 +3,40 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { MoneyValue, DateLabel, EmptyState, Icons, showToastV5 } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
+import {
+  computeAutonomoIngresoAnualEstimado,
+  computeCompromisoMonthly,
+  computeCompromisoImporteEnMes,
+  familiaForCategoria,
+  safeDayOfMonth,
+} from '../helpers';
 import styles from './PanelPage.module.css';
 
 const MONTH_LABELS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
-const CATEGORIA_DOTS: Record<string, string> = {
+/**
+ * Mapa de colores por familia de categoría (prefijo antes del '.').
+ * Cubre todos los valores canónicos de `CategoriaGastoCompromiso`.
+ */
+const FAMILIA_DOTS: Record<string, string> = {
   vivienda: 'var(--atlas-v5-brand)',
   alimentacion: 'var(--atlas-v5-room-green)',
   transporte: 'var(--atlas-v5-room-yellow)',
-  ocio: 'var(--atlas-v5-gold)',
   salud: 'var(--atlas-v5-neg)',
-  suministros: 'var(--atlas-v5-brand-2)',
+  educacion: 'var(--atlas-v5-room-blue)',
+  ocio: 'var(--atlas-v5-gold)',
+  viajes: 'var(--atlas-v5-gold-soft)',
   suscripciones: 'var(--atlas-v5-room-blue)',
-  otros: 'var(--atlas-v5-ink-4)',
+  personal: 'var(--atlas-v5-brand-2)',
+  regalos: 'var(--atlas-v5-gold)',
+  tecnologia: 'var(--atlas-v5-room-bw)',
+  ahorro: 'var(--atlas-v5-pos)',
+  obligaciones: 'var(--atlas-v5-warn)',
+  inmueble: 'var(--atlas-v5-brand)',
 };
+
+const colorForFamilia = (fam: string): string =>
+  FAMILIA_DOTS[fam] ?? 'var(--atlas-v5-ink-4)';
 
 const computeIngresoMensualEstimado = (
   nominas: PersonalOutletContext['nominas'],
@@ -27,64 +47,29 @@ const computeIngresoMensualEstimado = (
     .reduce((sum, n) => sum + (n.salarioBrutoAnual ?? 0) / 12, 0);
   const autonomoMensual = autonomos
     .filter((a) => a.activo)
-    .reduce((sum, a) => {
-      const ingresos = (a as { ingresoBrutoAnualEstimado?: number }).ingresoBrutoAnualEstimado ?? 0;
-      return sum + ingresos / 12;
-    }, 0);
+    .reduce(
+      (sum, a) => sum + computeAutonomoIngresoAnualEstimado(a) / 12,
+      0,
+    );
   return nominaMensual + autonomoMensual;
 };
 
 const computeGastoMensualEstimado = (compromisos: CompromisoRecurrente[]): number => {
   return compromisos
     .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
-    .reduce((sum, c) => {
-      switch (c.importe.modo) {
-        case 'fijo':
-          return sum + c.importe.importe;
-        case 'variable':
-          return sum + c.importe.importeMedio;
-        case 'diferenciadoPorMes':
-          return (
-            sum +
-            c.importe.importesPorMes.reduce((s: number, v: number) => s + v, 0) / 12
-          );
-        case 'porPago': {
-          const total = Object.values(c.importe.importesPorPago).reduce((s, v) => s + v, 0);
-          return sum + total / 12;
-        }
-        default:
-          return sum;
-      }
-    }, 0);
+    .reduce((sum, c) => sum + computeCompromisoMonthly(c), 0);
 };
 
-const computeGastoPorCategoria = (
+const computeGastoPorFamilia = (
   compromisos: CompromisoRecurrente[],
 ): Map<string, number> => {
   const map = new Map<string, number>();
   compromisos
     .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
     .forEach((c) => {
-      const monthly = (() => {
-        switch (c.importe.modo) {
-          case 'fijo':
-            return c.importe.importe;
-          case 'variable':
-            return c.importe.importeMedio;
-          case 'diferenciadoPorMes':
-            return (
-              c.importe.importesPorMes.reduce((s: number, v: number) => s + v, 0) / 12
-            );
-          case 'porPago':
-            return (
-              Object.values(c.importe.importesPorPago).reduce((s, v) => s + v, 0) / 12
-            );
-          default:
-            return 0;
-        }
-      })();
-      const cat = (c.categoria ?? 'otros').toLowerCase();
-      map.set(cat, (map.get(cat) ?? 0) + monthly);
+      const monthly = computeCompromisoMonthly(c);
+      const fam = c.categoria ? familiaForCategoria(c.categoria) : 'otros';
+      map.set(fam, (map.get(fam) ?? 0) + monthly);
     });
   return map;
 };
@@ -100,23 +85,26 @@ const computeProximosCompromisos = (
   compromisos
     .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
     .forEach((c) => {
-      // Estimación simple: para mensualDiaFijo · próximo día del mes
+      // Estimación simple para mensualDiaFijo · próximo día del mes (clamped).
       if (c.patron.tipo === 'mensualDiaFijo') {
         const dia = c.patron.dia;
-        const next = new Date(today.getFullYear(), today.getMonth(), dia);
-        if (next < today) next.setMonth(next.getMonth() + 1);
+        const claveDia = safeDayOfMonth(today.getFullYear(), today.getMonth(), dia);
+        let next = new Date(today.getFullYear(), today.getMonth(), claveDia);
+        if (next < today) {
+          const nextMonth = today.getMonth() + 1;
+          const nextDia = safeDayOfMonth(today.getFullYear(), nextMonth, dia);
+          next = new Date(today.getFullYear(), nextMonth, nextDia);
+        }
         if (next <= limit) {
-          const importeMensual =
-            c.importe.modo === 'fijo'
-              ? c.importe.importe
-              : c.importe.modo === 'variable'
-                ? c.importe.importeMedio
-                : 0;
-          items.push({
-            fecha: next.toISOString().slice(0, 10),
-            concepto: c.alias,
-            importe: -Math.abs(importeMensual),
-          });
+          // Importe del mes correspondiente (cubre fijo · variable · porPago · diferenciadoPorMes).
+          const importeMes = computeCompromisoImporteEnMes(c, next.getMonth());
+          if (importeMes !== 0) {
+            items.push({
+              fecha: next.toISOString().slice(0, 10),
+              concepto: c.alias,
+              importe: -Math.abs(importeMes),
+            });
+          }
         }
       }
     });
@@ -139,12 +127,12 @@ const PanelPage: React.FC = () => {
   const ahorroMes = ingresosMes - gastosMes;
   const tasaAhorroPct = ingresosMes > 0 ? (ahorroMes / ingresosMes) * 100 : 0;
 
-  const gastosPorCategoria = useMemo(
-    () => computeGastoPorCategoria(compromisos),
+  const gastosPorFamilia = useMemo(
+    () => computeGastoPorFamilia(compromisos),
     [compromisos],
   );
-  const totalCategorias = Array.from(gastosPorCategoria.values()).reduce((s, v) => s + v, 0);
-  const categoriasOrdenadas = Array.from(gastosPorCategoria.entries())
+  const totalCategorias = Array.from(gastosPorFamilia.values()).reduce((s, v) => s + v, 0);
+  const familiasOrdenadas = Array.from(gastosPorFamilia.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
@@ -246,11 +234,17 @@ const PanelPage: React.FC = () => {
                     >
                       <div
                         className={styles.barSeg}
-                        style={{ background: 'var(--atlas-v5-neg)', height: `${(gastoPct / stackHeightPct) * 100}%` }}
+                        style={{
+                          background: 'var(--atlas-v5-neg)',
+                          height: `${stackHeightPct > 0 ? (gastoPct / stackHeightPct) * 100 : 0}%`,
+                        }}
                       />
                       <div
                         className={styles.barSeg}
-                        style={{ background: 'var(--atlas-v5-gold)', height: `${(ahorroPct / stackHeightPct) * 100}%` }}
+                        style={{
+                          background: 'var(--atlas-v5-gold)',
+                          height: `${stackHeightPct > 0 ? (ahorroPct / stackHeightPct) * 100 : 0}%`,
+                        }}
                       />
                     </div>
                     <span className={styles.barColLab}>{m}</span>
@@ -328,27 +322,27 @@ const PanelPage: React.FC = () => {
             <div>
               <div className={styles.cardTitle}>Distribución de gastos · este mes</div>
               <div className={styles.cardSub}>
-                total <MoneyValue value={gastosMes} decimals={0} /> · {gastosPorCategoria.size} categorías
+                total <MoneyValue value={gastosMes} decimals={0} /> · {gastosPorFamilia.size} categorías
               </div>
             </div>
           </div>
           <div className={styles.cardBody}>
-            {categoriasOrdenadas.length === 0 ? (
+            {familiasOrdenadas.length === 0 ? (
               <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--atlas-v5-ink-4)', fontSize: 12.5 }}>
                 Aún no hay compromisos categorizados.
               </div>
             ) : (
               <div className={styles.donut}>
-                <DonutChart total={totalCategorias} categorias={categoriasOrdenadas} />
+                <DonutChart total={totalCategorias} categorias={familiasOrdenadas} />
                 <div className={styles.donutLegend}>
-                  {categoriasOrdenadas.map(([cat, val]) => {
+                  {familiasOrdenadas.map(([cat, val]) => {
                     const pct = totalCategorias > 0 ? (val / totalCategorias) * 100 : 0;
                     return (
                       <React.Fragment key={cat}>
                         <div>
                           <span
                             className={styles.dot}
-                            style={{ background: CATEGORIA_DOTS[cat] ?? 'var(--atlas-v5-ink-4)' }}
+                            style={{ background: colorForFamilia(cat) ?? 'var(--atlas-v5-ink-4)' }}
                           />
                           {cat[0].toUpperCase() + cat.slice(1)} {pct.toFixed(0)}%
                         </div>
@@ -461,7 +455,7 @@ const DonutChart: React.FC<DonutChartProps> = ({ total, categorias }) => {
             cy="80"
             r={radius}
             fill="none"
-            stroke={CATEGORIA_DOTS[cat] ?? 'var(--atlas-v5-ink-4)'}
+            stroke={colorForFamilia(cat) ?? 'var(--atlas-v5-ink-4)'}
             strokeWidth="28"
             strokeDasharray={`${dash} ${circumference - dash}`}
             strokeDashoffset={-offset}

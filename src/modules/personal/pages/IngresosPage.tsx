@@ -9,6 +9,7 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
+import { computeAutonomoIngresoAnualEstimado } from '../helpers';
 
 const IngresosPage: React.FC = () => {
   const navigate = useNavigate();
@@ -75,9 +76,9 @@ const IngresosPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {nominas.map((n) => (
+                {nominas.map((n, index) => (
                   <tr
-                    key={n.id}
+                    key={n.id ?? `${n.empresa?.nombre ?? 'sin-empresa'}-${n.nombre}-${n.titular}-${index}`}
                     style={{ cursor: 'pointer' }}
                     onClick={() => showToastV5(`Detalle nómina · ${n.nombre}`)}
                   >
@@ -124,17 +125,25 @@ const IngresosPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {autonomos.map((a) => {
-                  const ingreso =
-                    (a as { ingresoBrutoAnualEstimado?: number }).ingresoBrutoAnualEstimado ?? 0;
+                {autonomos.map((a, index) => {
+                  const ingreso = computeAutonomoIngresoAnualEstimado(a);
+                  const tieneEstimacion = ingreso > 0;
                   return (
-                    <tr key={a.id} style={{ cursor: 'pointer' }} onClick={() => showToastV5(`Detalle autónomo · ${a.nombre ?? '#' + a.id}`)}>
+                    <tr
+                      key={a.id ?? `${a.nombre ?? 'sin-nombre'}-${a.titular ?? 'sin-titular'}-${index}`}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => showToastV5(`Detalle autónomo · ${a.nombre ?? '#' + a.id}`)}
+                    >
                       <td style={tdStyle}>
                         <strong>{a.nombre ?? `Actividad #${a.id}`}</strong>
                       </td>
                       <td style={tdStyle}>{a.titular === 'yo' ? 'Titular' : 'Pareja'}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <MoneyValue value={ingreso} decimals={0} />
+                        {tieneEstimacion ? (
+                          <MoneyValue value={ingreso} decimals={0} />
+                        ) : (
+                          <span style={{ color: 'var(--atlas-v5-ink-4)' }}>—</span>
+                        )}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'center' }}>
                         <Pill variant={a.activo ? 'pos' : 'gris'} asTag>

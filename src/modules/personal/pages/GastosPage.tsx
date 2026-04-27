@@ -170,7 +170,7 @@ const GastosPage: React.FC = () => {
               </thead>
               <tbody>
                 {filtered
-                  .filter((c): c is CompromisoRecurrente & { id: string } => c.id != null)
+                  .filter((c): c is CompromisoRecurrente & { id: number } => c.id != null)
                   .map((c) => (
                     <tr
                       key={c.id}
