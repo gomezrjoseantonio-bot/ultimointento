@@ -71,6 +71,15 @@
   --atlas-v5-brand-gdrive: #1E8E3E;
   --atlas-v5-brand-gmail: #D93025;
 
+  /* ===== Colores identificativos de habitaciones (§ T20 Fase 3a)
+     Identidad visual para mini-rooms grid en cards de inmuebles.
+     5 colores · independientes de la semántica pos/neg/warn (no son estado). ===== */
+  --atlas-v5-room-green:  #4A7C59;
+  --atlas-v5-room-red:    #A23E3E;
+  --atlas-v5-room-yellow: #C89828;
+  --atlas-v5-room-blue:   #3B5A7F;
+  --atlas-v5-room-bw:     #2C2C2C;
+
   /* ===== Categorías chart · 6 colores derivados de la paleta ===== */
   --atlas-v5-c1: var(--atlas-v5-brand);
   --atlas-v5-c2: var(--atlas-v5-gold);

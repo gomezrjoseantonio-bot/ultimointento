@@ -74,5 +74,8 @@ export type {
   IconButtonSize,
 } from './IconButton';
 
+export { default as WizardStepper } from './WizardStepper';
+export type { WizardStepperProps, WizardStep } from './WizardStepper';
+
 export { Icons } from './icons';
 export type { IconName, IconComponent } from './icons';

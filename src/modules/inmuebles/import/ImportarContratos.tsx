@@ -218,7 +218,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
       </button>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--warning-light, #FFF8E7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--atlas-v5-warn-wash)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Users size={20} strokeWidth={1.5} style={{ color: 'var(--warning)' }} aria-hidden="true" />
         </div>
         <div>
@@ -273,7 +273,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
             <button onClick={() => setPreview(null)} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}><X size={14} />Cancelar</button>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--atlas-blue-light, #EBF3FF)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--atlas-v5-brand-wash)', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px' }}>
             <AlertCircle size={16} style={{ color: 'var(--atlas-blue)', marginTop: '2px' }} />
             <p style={{ margin: 0, fontSize: '0.8125rem' }}>
               Inmuebles detectados: <strong>{propiedadesDetectadas.ok}</strong> · Sin match: <strong>{propiedadesDetectadas.missing}</strong>.
@@ -292,7 +292,7 @@ const ImportarContratos: React.FC<ImportarContratosProps> = ({ onBack, onComplet
               </thead>
               <tbody>
                 {preview.slice(0, PREVIEW_LIMIT).map((row, idx) => (
-                  <tr key={`${row.idExterno || row.nombreCompania}-${idx}`} style={{ borderBottom: '1px solid #f2f2f2' }}>
+                  <tr key={`${row.idExterno || row.nombreCompania}-${idx}`} style={{ borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
                     <td style={{ padding: '8px 6px' }}>{row.propiedad || '-'}</td>
                     <td style={{ padding: '8px 6px' }}>{row.nombreCompania || '-'}</td>
                     <td style={{ padding: '8px 6px' }}>{row.inicioAlquiler || '-'}</td>

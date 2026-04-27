@@ -2,6 +2,28 @@ import React from 'react';
 import { MoneyValue } from '../../../design-system/v5';
 import styles from './CashflowChart.module.css';
 
+/**
+ * Cashflow anual · SVG con línea sólida (real, meses cerrados/en curso) +
+ * línea dashed (previsto, todos los meses) + colchón emergencia opcional.
+ *
+ * TODO · sub-tarea 20.3c (Mi Plan v2)
+ * --------------------------------------
+ * En Fase 2 (sub-tarea 20.2) la serie `saldoPrevisto` se calcula como
+ * proyección lineal simple · `saldo_actual + acumulado_movs_mes`. Esto
+ * funciona para meses cerrados/en curso pero NO refleja el plan de
+ * presupuesto avanzado del usuario (rentas previstas · cuotas · seasonal
+ * extras como pagas extra · revisiones IPC · etc).
+ *
+ * Cuando se migre Mi Plan v2 (sub-tarea 20.3c) · CC debe conectar la API
+ * de presupuesto que Mi Plan exponga (probablemente
+ * `proyeccionMensualService` o sucesor) y rellenar `saldoPrevisto` con
+ * la proyección oficial · manteniendo `saldoReal` para meses cerrados.
+ *
+ * El componente ya soporta ambas series · sólo hay que cablear datos
+ * reales en `VistaGeneralTab.tsx` cuando la API esté lista.
+ *
+ * Validado por Jose en review T20 Fase 2 · ver docs/TAREA-20-pendientes.md.
+ */
 export interface MonthFlow {
   month: number; // 1-12
   label: string; // "ENE", "FEB", ...

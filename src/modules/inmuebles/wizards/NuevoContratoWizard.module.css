@@ -1,0 +1,193 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 18px;
+  align-items: start;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+@media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
+
+.main {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stepHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stepTitle {
+  font-size: 20px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  line-height: var(--atlas-v5-lh-tight);
+}
+
+.stepSub {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 700px) { .fields { grid-template-columns: 1fr; } }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field.full { grid-column: 1 / -1; }
+
+.label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.input,
+.select {
+  padding: 9px 12px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card-alt);
+  font-size: 13.5px;
+  color: var(--atlas-v5-ink-2);
+  font-family: var(--atlas-v5-font-ui);
+  outline: none;
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--atlas-v5-gold);
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+.input.mono { font-family: var(--atlas-v5-font-mono-tech); }
+
+.help {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.placeholder {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 10px;
+}
+
+.aside {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  font-family: var(--atlas-v5-font-ui);
+  position: sticky;
+  top: 22px;
+}
+
+.asideTitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: 14px;
+}
+
+.asideRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--atlas-v5-line-2);
+  font-size: 12.5px;
+  align-items: baseline;
+}
+
+.asideRow:last-child { border-bottom: none; }
+
+.asideLab { color: var(--atlas-v5-ink-3); }
+
+.asideVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.asideVal.muted { color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-medium); }
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.footerNote {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.footerActions { display: flex; gap: 8px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btnGhost {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  border-color: var(--atlas-v5-line);
+}
+
+.btnGhost:hover:not(:disabled) { border-color: var(--atlas-v5-ink-5); }
+
+.btnGold {
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-gold);
+}
+
+.btnGold:hover:not(:disabled) {
+  background: var(--atlas-v5-gold-2);
+  border-color: var(--atlas-v5-gold-2);
+}

@@ -1,0 +1,307 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-3);
+  margin-bottom: 14px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.breadcrumb button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--atlas-v5-ink-3);
+  font-size: 12.5px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+
+.breadcrumb button:hover { color: var(--atlas-v5-ink-2); }
+
+.breadcrumb .current {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.tabsBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+
+.tabsBar button {
+  padding: 11px 18px;
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-4);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tabsBar button:hover { color: var(--atlas-v5-ink-2); }
+
+.tabsBar button.active {
+  color: var(--atlas-v5-ink);
+  border-bottom-color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.tabCount {
+  margin-left: 4px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+}
+
+.tabsBar button.active .tabCount {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--atlas-v5-card) 0%, var(--atlas-v5-card-alt) 100%);
+  border: 1px solid var(--atlas-v5-line);
+  border-top: 3px solid var(--atlas-v5-gold);
+  border-radius: 14px;
+  padding: 24px 26px;
+  margin-bottom: 16px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.heroTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.heroLeft { flex: 1; min-width: 280px; }
+
+.heroAst {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-gold-ink);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.heroName {
+  font-size: 28px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+  line-height: var(--atlas-v5-lh-tight);
+}
+
+.heroLoc {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heroChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.heroChip {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--atlas-v5-bg);
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.heroActions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.kpisRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 700px) { .kpisRow { grid-template-columns: 1fr; } }
+
+.kpi {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-top: 3px solid var(--atlas-v5-brand);
+  border-radius: 11px;
+  padding: 16px 18px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.kpi.gold { border-top-color: var(--atlas-v5-gold); }
+.kpi.pos { border-top-color: var(--atlas-v5-pos); }
+
+.kpiLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 28px;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+  line-height: 1;
+  margin-top: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiVal.pos { color: var(--atlas-v5-pos); }
+
+.kpiHint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.section {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.sectionHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+}
+
+.sectionSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.habitacionesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.habCard {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.habCard.vacant {
+  border-style: dashed;
+  background: var(--atlas-v5-card);
+}
+
+.habHd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.habNum {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-white);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.habTenant {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.habTenant.muted { color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-medium); }
+
+.habMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  margin-top: 2px;
+}
+
+.habRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 6px;
+}
+
+.habRow .pos { color: var(--atlas-v5-pos); font-weight: var(--atlas-v5-fw-semibold); font-family: var(--atlas-v5-font-mono-num); }
+
+.placeholder {
+  padding: 60px 24px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13.5px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: 12px;
+}
+
+.placeholder strong {
+  display: block;
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: 4px;
+}

@@ -1,0 +1,189 @@
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 1100px) { .kpiStrip { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px)  { .kpiStrip { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.kpi.emph {
+  background: linear-gradient(135deg, var(--atlas-v5-card) 0%, var(--atlas-v5-card-alt) 100%);
+}
+
+.kpiLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 22px;
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-top: 6px;
+}
+
+.kpiVal.pos { color: var(--atlas-v5-pos); }
+
+.kpiHint {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.kpiHint.pos { color: var(--atlas-v5-pos); }
+
+.kpiUnit {
+  font-size: 14px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+  margin-left: 3px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.filterChip {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.filterChip:hover { border-color: var(--atlas-v5-ink-5); }
+
+.filterChip.active {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-brand);
+}
+
+.filterDivider {
+  width: 1px;
+  height: 20px;
+  background: var(--atlas-v5-line);
+  margin: 0 4px;
+}
+
+.filterSearch {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: var(--atlas-v5-card);
+}
+
+.filterSearch input {
+  border: none;
+  outline: none;
+  font-size: 12px;
+  flex: 1;
+  background: transparent;
+  height: 30px;
+  color: var(--atlas-v5-ink-2);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.filterSearch svg { color: var(--atlas-v5-ink-4); }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.summaryCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 20px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.summaryTitle {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+  margin-bottom: 12px;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--atlas-v5-line-2);
+  align-items: baseline;
+}
+
+.summaryRow:last-child { border-bottom: none; }
+
+.summaryLab {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.summaryVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+.summaryVal.pos { color: var(--atlas-v5-pos); }
