@@ -170,14 +170,14 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                   {user.email}
                 </div>
                 <button
-                  onClick={() => { navigate('/cuenta/perfil'); setAccountMenuOpen(false); }}
+                  onClick={() => { navigate('/ajustes/perfil'); setAccountMenuOpen(false); }}
                   className="block px-4 py-2 text-sm w-full text-left"
                   style={{ color: 'var(--grey-700)' }}
                 >
                   Perfil
                 </button>
                 <button
-                  onClick={() => { navigate('/cuenta/plan'); setAccountMenuOpen(false); }}
+                  onClick={() => { navigate('/ajustes/plan'); setAccountMenuOpen(false); }}
                   className="block px-4 py-2 text-sm w-full text-left"
                   style={{ color: 'var(--grey-700)' }}
                 >
@@ -198,7 +198,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
             <button
               onClick={() => {
                 if (collapsed) {
-                  navigate('/cuenta/perfil');
+                  navigate('/ajustes/perfil');
                   return;
                 }
                 setAccountMenuOpen((prev) => !prev);

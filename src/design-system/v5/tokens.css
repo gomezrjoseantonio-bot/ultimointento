@@ -58,6 +58,19 @@
   --atlas-v5-warn-wash: #F5ECD6; /* advertencia tinted */
   --atlas-v5-warn-border: #E8D49B;/* borde sobre fondo warn-wash · usado en alerta · §9.1 */
 
+  /* ===== Colores de marca · bancos y servicios externos (§12.5 guía v5)
+     Aceptados aunque colisionen con la semántica pos/neg/warn porque
+     son identidad de marca · no estado. Solo deben usarse para logos /
+     dots / chips identificativos · nunca para texto o estados. ===== */
+  --atlas-v5-brand-santander: #EC0000;
+  --atlas-v5-brand-sabadell: #024EA5;
+  --atlas-v5-brand-unicaja: #009639;
+  --atlas-v5-brand-bbva: #004481;
+  --atlas-v5-brand-ing: #FF6200;
+  --atlas-v5-brand-caixabank: #0F4C81;
+  --atlas-v5-brand-gdrive: #1E8E3E;
+  --atlas-v5-brand-gmail: #D93025;
+
   /* ===== Categorías chart · 6 colores derivados de la paleta ===== */
   --atlas-v5-c1: var(--atlas-v5-brand);
   --atlas-v5-c2: var(--atlas-v5-gold);

@@ -33,8 +33,8 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/pulse/contratos/lista/ContratosLista');
     return;
   }
-  if (href.startsWith('/cuenta')) {
-    await import('../pages/account/AccountPage');
+  if (href.startsWith('/ajustes') || href.startsWith('/cuenta')) {
+    await import('../modules/ajustes/AjustesPage');
   }
 };
 
