@@ -132,6 +132,13 @@ const ProfileSeederPage = lazyWithPreload(() =>
 // Image Description page - New feature
 const ImageDescriptionPage = lazyWithPreload(() => import('./pages/ImageDescriptionPage'));
 
+// Dev-only · Design System v5 showcase. T20 · Fase 0.
+const ComponentsShowcase = lazyWithPreload(() =>
+  (import.meta as any).env?.DEV
+    ? import('./pages/dev/ComponentsShowcase')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -308,6 +315,18 @@ function App() {
             {/* Auth por email desactivada temporalmente */}
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/register" element={<Navigate to="/" replace />} />
+
+            {/* T20 Fase 0 · Design System v5 showcase · DEV only · sin layout ni auth */}
+            {(import.meta as any).env?.DEV && (
+              <Route
+                path="/dev/components"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <ComponentsShowcase />
+                  </React.Suspense>
+                }
+              />
+            )}
 
             {/* Protected App Routes */}
             <Route path="/" element={

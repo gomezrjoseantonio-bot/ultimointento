@@ -1,0 +1,75 @@
+.strip {
+  display: grid;
+  gap: 0;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.strip.cols2 { grid-template-columns: repeat(2, 1fr); }
+.strip.cols3 { grid-template-columns: repeat(3, 1fr); }
+.strip.cols4 { grid-template-columns: repeat(4, 1fr); }
+.strip.cols5 { grid-template-columns: repeat(5, 1fr); }
+
+/* §7.3 · 4 reglas críticas */
+.kpi {
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-right: 1px solid var(--atlas-v5-line-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 92px;
+}
+
+.kpi:last-child {
+  border-right: none;
+}
+
+.kpi.starVariant {
+  background: var(--atlas-v5-card);
+  padding: var(--atlas-v5-sp-6) var(--atlas-v5-sp-7);
+  border-top: 3px solid;
+  min-height: 130px;
+}
+
+.kpi.starBrand     { border-top-color: var(--atlas-v5-brand); }
+.kpi.starGold      { border-top-color: var(--atlas-v5-gold); }
+.kpi.starPos       { border-top-color: var(--atlas-v5-pos); }
+.kpi.starNeg       { border-top-color: var(--atlas-v5-neg); }
+.kpi.starWarn      { border-top-color: var(--atlas-v5-warn); }
+.kpi.starNeutral   { border-top-color: var(--atlas-v5-ink-3); }
+
+.kpiLabel {
+  font-size: var(--atlas-v5-fs-label);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: var(--atlas-v5-ls-label);
+}
+
+.kpiValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-kpi);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 5px;
+  letter-spacing: var(--atlas-v5-ls-kpi);
+  line-height: var(--atlas-v5-lh-kpi);
+}
+
+.kpi.starVariant .kpiValue { font-size: var(--atlas-v5-fs-kpi-star); }
+
+.kpiValue.brand { color: var(--atlas-v5-brand); }
+.kpiValue.gold  { color: var(--atlas-v5-gold-ink); }
+.kpiValue.pos   { color: var(--atlas-v5-pos); }
+.kpiValue.neg   { color: var(--atlas-v5-neg); }
+.kpiValue.warn  { color: var(--atlas-v5-warn); }
+
+.kpiSub {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-4);
+  margin-top: auto;
+  padding-top: 6px;
+  line-height: var(--atlas-v5-lh-snug);
+}

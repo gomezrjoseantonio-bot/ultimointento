@@ -1,0 +1,68 @@
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--atlas-v5-radius-icon);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--atlas-v5-ink-3);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+  font-family: var(--atlas-v5-font-ui);
+  padding: 0;
+}
+
+.iconBtn:hover {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-2);
+}
+
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.iconBtn.ghost {
+  background: var(--atlas-v5-card);
+  border-color: var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-2);
+}
+
+.iconBtn.ghost:hover {
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.iconBtn.primary {
+  background: var(--atlas-v5-gold);
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+}
+
+.iconBtn.primary:hover {
+  background: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-ink);
+}
+
+.iconBtn.danger {
+  background: var(--atlas-v5-card);
+  border-color: var(--atlas-v5-line);
+  color: var(--atlas-v5-neg);
+}
+
+.iconBtn.danger:hover {
+  background: var(--atlas-v5-neg-wash);
+  border-color: var(--atlas-v5-neg);
+}
+
+.iconBtn.sm {
+  width: 28px;
+  height: 28px;
+}
+
+.iconBtn.lg {
+  width: 36px;
+  height: 36px;
+}
