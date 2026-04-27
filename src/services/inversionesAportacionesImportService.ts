@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx';
+import { initDB } from './db';
 import { inversionesService } from './inversionesService';
 import { planesInversionService } from './planesInversionService';
 import { Aportacion, PosicionInversion } from '../types/inversiones';
-import type { PlanPensionInversion } from '../types/personal';
+import type { PlanPensiones } from '../types/planesPensiones';
 
 export interface ImportAportacionesResult {
   imported: number;
@@ -13,7 +14,7 @@ export interface ImportAportacionesResult {
 export interface AportacionImportPreviewRow {
   fila: number;
   fecha: string;
-  posicionId?: number;
+  posicionId?: number | string;
   posicionNombre: string;
   entidad: string;
   importe: number;
@@ -26,7 +27,7 @@ export interface AportacionImportPreviewRow {
 
 export interface BusquedaPosicionResult {
   kind: 'posicion' | 'plan';
-  id: number;
+  id: number | string;
   nombre: string;
   entidad: string;
 }
@@ -36,7 +37,7 @@ export interface FilaCorregida {
   importe: number;
   notas: string;
   targetKind: 'posicion' | 'plan';
-  targetId: number;
+  targetId: number | string;
   importeEmpresa?: number;
   importeIndividuo?: number;
 }
@@ -65,7 +66,7 @@ type ParsedAportacionRow = {
 // Result of looking up a position or plan by name/id
 type FindResult =
   | { kind: 'posicion'; value: PosicionInversion }
-  | { kind: 'plan'; value: PlanPensionInversion }
+  | { kind: 'plan'; value: PlanPensiones }
   | null;
 
 const normalizeHeader = (value: string): string =>
@@ -189,7 +190,7 @@ async function parseRows(file: File): Promise<{ rows: RawRow[]; errors: string[]
 function mapRowsToAportaciones(
   rows: RawRow[],
   posicionesById: Map<number, PosicionInversion>,
-  planes: PlanPensionInversion[],
+  planes: PlanPensiones[],
   posicionPorDefecto?: PosicionInversion
 ): { aportaciones: ParsedAportacionRow[]; skipped: number; errors: string[] } {
   const aportaciones: ParsedAportacionRow[] = [];
@@ -222,7 +223,7 @@ function mapRowsToAportaciones(
       : 'Importación histórica';
 
     // Detect if this refers to a pension plan — check both inversiones store type
-    // AND planesPensionInversion by name (entidad/proveedor is optional; we also match
+    // AND planesPensiones by name (entidad/proveedor is optional; we also match
     // by empresaNombre for plans imported from the AEAT XML, which often leave
     // `entidad` empty but record the plan sponsor in `empresaNombre`).
     const tipoPosicion = posicionId ? posicionesById.get(posicionId)?.tipo : undefined;
@@ -231,11 +232,10 @@ function mapRowsToAportaciones(
     const esPlanPensiones =
       tipoPosicion === 'plan_pensiones' || tipoPosicion === 'plan_empleo' ||
       planes.some((p) => {
-        if (p.tipo !== 'plan-pensiones') return false;
         if (p.nombre.toLowerCase() !== nombreNormLower) return false;
         if (!entidadNormLower) return true;
-        const entidadPlan = (p.entidad ?? '').toLowerCase();
-        const empresaPlan = (p.empresaNombre ?? '').toLowerCase();
+        const entidadPlan = (p.gestoraActual ?? '').toLowerCase();
+        const empresaPlan = (p.empresaPagadora?.nombre ?? '').toLowerCase();
         return entidadPlan === entidadNormLower || empresaPlan === entidadNormLower;
       });
 
@@ -300,7 +300,7 @@ const findPosicionOrPlan = (
   row: ParsedAportacionRow,
   posicionesById: Map<number, PosicionInversion>,
   posiciones: PosicionInversion[],
-  planes: PlanPensionInversion[]
+  planes: PlanPensiones[]
 ): FindResult => {
   // 1. Try inversiones by ID
   if (row.posicionId) {
@@ -319,26 +319,26 @@ const findPosicionOrPlan = (
   });
   if (posMatches.length === 1) return { kind: 'posicion', value: posMatches[0] };
 
-  // 3. Try planesPensionInversion by name + entidad (or empresaNombre as fallback).
-  //    Plans created from AEAT XML often have `empresaNombre` set but not `entidad`,
-  //    so we also accept matches on empresaNombre when an entidad is provided.
+  // 3. Try planesPensiones by name + gestoraActual (or empresaPagadora.nombre as fallback).
+  //    Plans created from AEAT XML often have `empresaPagadora.nombre` set but not `gestoraActual`,
+  //    so we also accept matches on empresaPagadora.nombre when an entidad is provided.
   const planMatchesByName = planes.filter(
-    (p) => p.tipo === 'plan-pensiones' && p.nombre.toLowerCase() === nombreNorm
+    (p) => p.nombre.toLowerCase() === nombreNorm
   );
   if (planMatchesByName.length === 1) return { kind: 'plan', value: planMatchesByName[0] };
   if (planMatchesByName.length > 1) {
-    // Multiple plans share the name: try to disambiguate by entidad/empresaNombre.
+    // Multiple plans share the name: try to disambiguate by gestoraActual / empresaPagadora.
     if (entidadNorm) {
       const exact = planMatchesByName.filter((p) => {
-        const ent = (p.entidad ?? '').toLowerCase();
-        const emp = (p.empresaNombre ?? '').toLowerCase();
+        const ent = (p.gestoraActual ?? '').toLowerCase();
+        const emp = (p.empresaPagadora?.nombre ?? '').toLowerCase();
         return ent === entidadNorm || emp === entidadNorm;
       });
       if (exact.length === 1) return { kind: 'plan', value: exact[0] };
     } else {
-      // No entidad in the row — prefer a plan that also has no entidad (XML imports).
-      const sinEntidad = planMatchesByName.filter((p) => !p.entidad);
-      if (sinEntidad.length === 1) return { kind: 'plan', value: sinEntidad[0] };
+      // No entidad in the row — prefer a plan that also has no gestora (XML imports).
+      const sinGestora = planMatchesByName.filter((p) => !p.gestoraActual);
+      if (sinGestora.length === 1) return { kind: 'plan', value: sinGestora[0] };
     }
   }
 
@@ -394,7 +394,7 @@ export async function previsualizarImportacionAportaciones(
       fecha: row.aportacion.fecha,
       posicionId: matched.id,
       posicionNombre: row.posicionNombre || matched.nombre,
-      entidad: row.entidad || matched.entidad || '',
+      entidad: row.entidad || (matched as any).entidad || (matched as any).gestoraActual || '',
       importe: row.aportacion.importe,
       notas: row.aportacion.notas ?? '',
       importeEmpresa: row.importeEmpresa,
@@ -447,8 +447,8 @@ export async function importarAportacionesHistoricasMasivas(
   let skipped = mapped.skipped;
   const errors = [...mapped.errors];
 
-  // Accumulate pension plan contributions in memory, then flush once per plan
-  const planAccum = new Map<number, PlanPensionInversion>();
+  // Accumulate pension plan contributions in memory keyed by planId, then flush once per plan
+  const planAccum = new Map<string, { plan: PlanPensiones; entries: Array<{ mesKey: string; titular: number; empresa: number; total: number }> }>();
 
   for (const row of ordered) {
     const result = findPosicionOrPlan(row, posicionesById, posiciones, planes);
@@ -462,29 +462,28 @@ export async function importarAportacionesHistoricasMasivas(
     }
 
     if (result.kind === 'plan') {
-      const planId = result.value.id!;
-      // Use the in-memory accumulator so contributions from the same year add up
+      const planId = String(result.value.id!);
       if (!planAccum.has(planId)) {
-        planAccum.set(planId, {
-          ...result.value,
-          historialAportaciones: { ...(result.value.historialAportaciones ?? {}) },
-        });
+        planAccum.set(planId, { plan: result.value, entries: [] });
       }
-      const plan = planAccum.get(planId)!;
+      const accum = planAccum.get(planId)!;
       // Use YYYY-MM key for monthly granularity (falls back to YYYY if no month)
       const mesKey = row.aportacion.fecha.length >= 7
         ? row.aportacion.fecha.slice(0, 7)
         : String(new Date(row.aportacion.fecha).getFullYear());
-      const existing = plan.historialAportaciones?.[mesKey] ?? { titular: 0, empresa: 0, total: 0 };
-      plan.historialAportaciones = {
-        ...plan.historialAportaciones,
-        [mesKey]: {
-          titular: (existing.titular ?? 0) + (row.importeIndividuo ?? 0),
-          empresa: (existing.empresa ?? 0) + (row.importeEmpresa ?? 0),
-          total: (existing.total ?? 0) + row.aportacion.importe,
-          fuente: 'manual',
-        },
-      };
+      const existing = accum.entries.find((e) => e.mesKey === mesKey);
+      if (existing) {
+        existing.titular += row.importeIndividuo ?? 0;
+        existing.empresa += row.importeEmpresa ?? 0;
+        existing.total += row.aportacion.importe;
+      } else {
+        accum.entries.push({
+          mesKey,
+          titular: row.importeIndividuo ?? 0,
+          empresa: row.importeEmpresa ?? 0,
+          total: row.aportacion.importe,
+        });
+      }
       imported += 1;
       continue;
     }
@@ -494,12 +493,30 @@ export async function importarAportacionesHistoricasMasivas(
     imported += 1;
   }
 
-  // Flush pension plan updates — recalculate aportacionesRealizadas from historial
-  for (const [planId, plan] of planAccum) {
-    plan.aportacionesRealizadas = Object.values(plan.historialAportaciones ?? {}).reduce(
-      (sum, entry) => sum + (entry.total ?? 0), 0
-    );
-    await planesInversionService.updatePlan(planId, plan);
+  // Flush pension plan updates — write contributions to aportacionesPlan store
+  const db = await initDB();
+  const ahora = new Date().toISOString();
+  const genUUID = (): string =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  for (const [planId, { entries }] of planAccum) {
+    for (const entry of entries) {
+      await (db as any).add('aportacionesPlan', {
+        id: genUUID(),
+        planId,
+        fecha: `${entry.mesKey.length === 7 ? entry.mesKey : entry.mesKey + '-01'}-01`.slice(0, 10),
+        ejercicioFiscal: parseInt(entry.mesKey.slice(0, 4)),
+        importeTitular: entry.titular,
+        importeEmpresa: entry.empresa,
+        origen: 'manual' as const,
+        granularidad: entry.mesKey.length === 7 ? 'mensual' as const : 'anual' as const,
+        notas: 'Importado desde hoja de cálculo',
+        fechaCreacion: ahora,
+        fechaActualizacion: ahora,
+      });
+    }
   }
 
   return { imported, skipped, errors };
@@ -537,23 +554,23 @@ export async function buscarPosicionPorNombre(
   }
 
   const planMatchesByName = planes.filter(
-    (p) => p.tipo === 'plan-pensiones' && p.nombre.toLowerCase() === nombreNorm
+    (p) => p.nombre.toLowerCase() === nombreNorm
   );
-  const pickPlan = (p: PlanPensionInversion): BusquedaPosicionResult | null =>
-    p.id != null ? { kind: 'plan', id: p.id!, nombre: p.nombre, entidad: p.entidad || '' } : null;
+  const pickPlan = (p: PlanPensiones): BusquedaPosicionResult | null =>
+    p.id != null ? { kind: 'plan', id: String(p.id), nombre: p.nombre, entidad: p.gestoraActual || '' } : null;
 
   if (planMatchesByName.length === 1) return pickPlan(planMatchesByName[0]);
   if (planMatchesByName.length > 1) {
     if (entidadNorm) {
       const exact = planMatchesByName.filter((p) => {
-        const ent = (p.entidad ?? '').toLowerCase();
-        const emp = (p.empresaNombre ?? '').toLowerCase();
+        const ent = (p.gestoraActual ?? '').toLowerCase();
+        const emp = (p.empresaPagadora?.nombre ?? '').toLowerCase();
         return ent === entidadNorm || emp === entidadNorm;
       });
       if (exact.length === 1) return pickPlan(exact[0]);
     } else {
-      const sinEntidad = planMatchesByName.filter((p) => !p.entidad);
-      if (sinEntidad.length === 1) return pickPlan(sinEntidad[0]);
+      const sinGestora = planMatchesByName.filter((p) => !p.gestoraActual);
+      if (sinGestora.length === 1) return pickPlan(sinGestora[0]);
     }
   }
 
@@ -570,11 +587,11 @@ export async function importarFilasCorregidas(
 ): Promise<ImportAportacionesResult> {
   let imported = 0;
   const errors: string[] = [];
-  const planAccum = new Map<number, PlanPensionInversion>();
+  const planAccum = new Map<string, { plan: PlanPensiones; entries: Array<{ mesKey: string; titular: number; empresa: number; total: number }> }>();
 
   for (const row of rows) {
     if (row.targetKind === 'posicion') {
-      await inversionesService.addAportacion(row.targetId, {
+      await inversionesService.addAportacion(row.targetId as number, {
         fecha: row.fecha,
         importe: row.importe,
         tipo: 'aportacion',
@@ -584,41 +601,62 @@ export async function importarFilasCorregidas(
       imported += 1;
     } else {
       // Pension plan — aggregate by year
-      if (!planAccum.has(row.targetId)) {
+      const planId = String(row.targetId);
+      if (!planAccum.has(planId)) {
         const planes = await planesInversionService.getAllPlanes();
-        const plan = planes.find((p) => p.id === row.targetId);
+        const plan = planes.find((p) => String(p.id) === planId);
         if (!plan) {
           errors.push(`Plan con id ${row.targetId} no encontrado.`);
           continue;
         }
-        planAccum.set(row.targetId, {
-          ...plan,
-          historialAportaciones: { ...(plan.historialAportaciones ?? {}) },
-        });
+        planAccum.set(planId, { plan, entries: [] });
       }
-      const plan = planAccum.get(row.targetId)!;
+      const accum = planAccum.get(planId)!;
       const mesKey = row.fecha.length >= 7
         ? row.fecha.slice(0, 7)
         : String(new Date(row.fecha).getFullYear());
-      const existing = plan.historialAportaciones?.[mesKey] ?? { titular: 0, empresa: 0, total: 0 };
-      plan.historialAportaciones = {
-        ...plan.historialAportaciones,
-        [mesKey]: {
-          titular: (existing.titular ?? 0) + (row.importeIndividuo ?? 0),
-          empresa: (existing.empresa ?? 0) + (row.importeEmpresa ?? 0),
-          total: (existing.total ?? 0) + row.importe,
-          fuente: 'manual',
-        },
-      };
+      const existing = accum.entries.find((e) => e.mesKey === mesKey);
+      if (existing) {
+        existing.titular += row.importeIndividuo ?? 0;
+        existing.empresa += row.importeEmpresa ?? 0;
+        existing.total += row.importe;
+      } else {
+        accum.entries.push({
+          mesKey,
+          titular: row.importeIndividuo ?? 0,
+          empresa: row.importeEmpresa ?? 0,
+          total: row.importe,
+        });
+      }
       imported += 1;
     }
   }
 
-  for (const [planId, plan] of planAccum) {
-    plan.aportacionesRealizadas = Object.values(plan.historialAportaciones ?? {}).reduce(
-      (sum, entry) => sum + (entry.total ?? 0), 0
-    );
-    await planesInversionService.updatePlan(planId, plan);
+  // Flush pension plan contributions to aportacionesPlan store
+  const dbAport = await initDB();
+  const ahoraFlush = new Date().toISOString();
+  const genFlushUUID = (): string =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+  for (const [planId, { entries }] of planAccum) {
+    for (const entry of entries) {
+      const fecha = entry.mesKey.length === 7 ? `${entry.mesKey}-01` : `${entry.mesKey}-01-01`;
+      await (dbAport as any).add('aportacionesPlan', {
+        id: genFlushUUID(),
+        planId,
+        fecha,
+        ejercicioFiscal: parseInt(entry.mesKey.slice(0, 4)),
+        importeTitular: entry.titular,
+        importeEmpresa: entry.empresa,
+        origen: 'manual' as const,
+        granularidad: entry.mesKey.length === 7 ? 'mensual' as const : 'anual' as const,
+        notas: 'Importado desde hoja de cálculo',
+        fechaCreacion: ahoraFlush,
+        fechaActualizacion: ahoraFlush,
+      });
+    }
   }
 
   return { imported, skipped: 0, errors };

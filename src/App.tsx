@@ -6,7 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { bankProfilesService } from './services/bankProfilesService';
 import { performanceMonitor } from './services/performanceMonitoringService';
 import { initializeAccountMigration } from './services/accountMigrationService';
-import { initDB, migrarPlanesDuplicados } from './services/db';
+import { initDB } from './services/db';
 import { ejecutarMigracionFiscal } from './services/ejercicioFiscalMigration';
 import { limpiarEjerciciosCoordBasura } from './services/ejercicioResolverService';
 import { ejecutarMigracion as ejecutarMigracionGastos } from './services/migracionGastosService';
@@ -158,7 +158,6 @@ function App() {
       .then(() => limpiarGastosReparacion0106())
       .then(() => backfillImporteBruto0106())
       .then(() => cleanStaleCPAndInferITP())
-      .then(() => migrarPlanesDuplicados())
       .then(() => migrateOrphanedInmuebleIds())
       .then((migrationReport) => {
         if (migrationReport && !migrationReport.skipped && Object.keys(migrationReport.storeUpdates).length > 0) {

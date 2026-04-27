@@ -47,18 +47,18 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
         planesInversionService.getPlanes(1).catch(() => [] as typeof planesPension),
       ]);
       setClosedPositions(cerradas);
-      setPlanesPension(planes);
+      setPlanesPension(planes as unknown as PlanPensionInversion[]);
 
       // Convertir planes de pensión a PositionRow para incluirlos en todas las vistas
-      const planRows: PositionRow[] = planes.map((plan, index) => {
-        const valorActual = plan.unidades ? plan.unidades * plan.valorActual : plan.valorActual;
-        const aportado = plan.aportacionesRealizadas;
+      const planRows: PositionRow[] = planes.map((plan: any, index) => {
+        const valorActual = plan.unidades ? plan.unidades * (plan.valorActual ?? 0) : (plan.valorActual ?? 0);
+        const aportado = plan.aportacionesRealizadas ?? 0;
         const valor = valorActual > 0 ? valorActual : aportado;
         const rentPct = aportado > 0 ? ((valor - aportado) / aportado) * 100 : 0;
         return {
           id: `plan-${plan.id ?? index}`,
           alias: plan.nombre,
-          broker: plan.entidad ?? '—',
+          broker: plan.entidad ?? plan.gestoraActual ?? '—',
           tipo: 'plan_pensiones',
           aportado,
           valor,
@@ -67,7 +67,7 @@ const InversionesPage: React.FC<InversionesPageProps> = ({ initialTab = 'resumen
           peso: 0, // recalculado abajo
           color: POSITION_COLORS[(activas.length + index) % POSITION_COLORS.length],
           tag: null,
-          fechaCompra: plan.fechaApertura ?? null,
+          fechaCompra: plan.fechaApertura ?? plan.fechaContratacion ?? null,
           duracionMeses: null,
         };
       });

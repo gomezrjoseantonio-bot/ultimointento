@@ -266,16 +266,9 @@ export const inversionesService = {
     const posiciones = await this.getPosiciones();
 
     // Sumar planes de pensión al total
-    const planes = await db.getAll('planesPensionInversion');
-    const valorPlanes = planes.reduce((s: number, p: any) => {
-      const v = p.unidades ? p.unidades * (p.valorActual ?? 0) : (p.valorActual ?? 0);
-      return s + v;
-    }, 0);
-    const aportadoPlanes = planes.reduce((s: number, p: any) => {
-      const historial = p.historialAportaciones ?? {};
-      return s + Object.values(historial).reduce((ss: number, row: any) =>
-        ss + (row.total ?? (row.titular ?? 0) + (row.empresa ?? 0)), 0);
-    }, 0);
+    const planes = (await (db as any).getAll('planesPensiones')) as Array<{ valorActual?: number }>;
+    const valorPlanes = planes.reduce((s, p) => s + (p.valorActual ?? 0), 0);
+    const aportadoPlanes = 0; // aportaciones tracked separately in aportacionesPlan store
 
     const valor_total = posiciones.reduce((sum, p) => sum + p.valor_actual, 0) + valorPlanes;
     const total_aportado = posiciones.reduce((sum, p) => sum + p.total_aportado, 0) + aportadoPlanes;

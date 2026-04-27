@@ -1,515 +1,263 @@
 import React, { useState, useEffect } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
-import { planesInversionService } from '../../../services/planesInversionService';
+import { planesPensionesService } from '../../../services/planesPensionesService';
 import { personalDataService } from '../../../services/personalDataService';
-import { PlanPensionInversion, AportacionPeriodica } from '../../../types/personal';
+import type { PlanPensiones, TipoAdministrativo, EstadoPlan } from '../../../types/planesPensiones';
 import toast from 'react-hot-toast';
 
 interface PlanFormProps {
   isOpen: boolean;
   onClose: () => void;
-  plan?: PlanPensionInversion | null;
-  onSaved: (plan: PlanPensionInversion) => void;
+  plan?: PlanPensiones | null;
+  onSaved: (plan: PlanPensiones) => void;
 }
+
+const TIPOS_ADMIN: { value: TipoAdministrativo; label: string; desc: string }[] = [
+  { value: 'PPI', label: 'PPI — Individual', desc: 'Plan de Pensiones Individual · aportación libre del titular' },
+  { value: 'PPE', label: 'PPE — Empleo', desc: 'Plan de Pensiones de Empleo · empresa promotora' },
+  { value: 'PPES', label: 'PPES — Empleo Simplificado', desc: 'Plan de Pensiones de Empleo Simplificado · sectorial' },
+  { value: 'PPA', label: 'PPA — Asegurado', desc: 'Plan de Previsión Asegurado · garantizado por aseguradora' },
+];
+
+const emptyForm = () => ({
+  nombre: '',
+  tipoAdministrativo: 'PPI' as TipoAdministrativo,
+  gestoraActual: '',
+  isinActual: '',
+  fechaContratacion: new Date().toISOString().split('T')[0],
+  importeInicial: '',
+  valorActual: '',
+  titular: 'yo' as 'yo' | 'pareja',
+  estado: 'activo' as EstadoPlan,
+});
 
 const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) => {
   const [loading, setLoading] = useState(false);
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    tipo: 'plan-pensiones' as PlanPensionInversion['tipo'],
-    aportacionesRealizadas: '',
-    unidades: '',
-    valorCompra: '',
-    valorActual: '',
-    titularidad: 'yo' as PlanPensionInversion['titularidad'],
-    esHistorico: false,
-    aportacionPeriodica: {
-      importe: '',
-      frecuencia: 'mensual' as 'mensual' | 'trimestral' | 'semestral' | 'anual',
-      cuentaAbono: 0,
-      reglasDia: {
-        tipo: 'fijo' as 'fijo' | 'ultimo-habil' | 'n-esimo-habil',
-        dia: 1 as number | undefined
-      },
-      activa: true
-    }
-  });
+  const [formData, setFormData] = useState(emptyForm());
 
   useEffect(() => {
-    loadPersonalDataId();
+    (async () => {
+      try {
+        const pd = await personalDataService.getPersonalData();
+        if (pd?.id) setPersonalDataId(pd.id);
+      } catch {/* ignore */}
+    })();
+  }, []);
+
+  useEffect(() => {
     if (plan) {
       setFormData({
         nombre: plan.nombre,
-        tipo: plan.tipo,
-        aportacionesRealizadas: plan.aportacionesRealizadas.toString(),
-        unidades: plan.unidades?.toString() || '',
-        valorCompra: plan.valorCompra.toString(),
-        valorActual: plan.valorActual.toString(),
-        titularidad: plan.titularidad,
-        esHistorico: plan.esHistorico,
-        aportacionPeriodica: plan.aportacionPeriodica ? {
-          importe: plan.aportacionPeriodica.importe.toString(),
-          frecuencia: plan.aportacionPeriodica.frecuencia,
-          cuentaAbono: plan.aportacionPeriodica.cuentaAbono,
-          reglasDia: {
-            tipo: plan.aportacionPeriodica.reglasDia.tipo,
-            dia: plan.aportacionPeriodica.reglasDia.dia || undefined
-          },
-          activa: plan.aportacionPeriodica.activa
-        } : {
-          importe: '',
-          frecuencia: 'mensual' as 'mensual' | 'trimestral' | 'semestral' | 'anual',
-          cuentaAbono: 0,
-          reglasDia: {
-            tipo: 'fijo' as 'fijo' | 'ultimo-habil' | 'n-esimo-habil',
-            dia: 1 as number | undefined
-          },
-          activa: true
-        }
+        tipoAdministrativo: plan.tipoAdministrativo,
+        gestoraActual: plan.gestoraActual,
+        isinActual: plan.isinActual ?? '',
+        fechaContratacion: plan.fechaContratacion,
+        importeInicial: plan.importeInicial?.toString() ?? '',
+        valorActual: plan.valorActual?.toString() ?? '',
+        titular: plan.titular,
+        estado: plan.estado,
       });
+    } else {
+      setFormData(emptyForm());
     }
-  }, [plan]);
-
-  const loadPersonalDataId = async () => {
-    try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        setPersonalDataId(personalData.id);
-      }
-    } catch (error) {
-      console.error('Error loading personal data ID:', error);
-    }
-  };
+  }, [plan, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!personalDataId) {
-      toast.error('Error: No se encontraron datos personales');
-      return;
-    }
-
-    if (!formData.nombre || !formData.aportacionesRealizadas || !formData.valorActual) {
+    if (!personalDataId) { toast.error('Error: No se encontraron datos personales'); return; }
+    if (!formData.nombre.trim() || !formData.gestoraActual.trim() || !formData.fechaContratacion) {
       toast.error('Por favor, completa todos los campos obligatorios');
       return;
     }
 
-    const aportacionesRealizadas = parseFloat(formData.aportacionesRealizadas);
-    const valorCompra = parseFloat(formData.valorCompra) || aportacionesRealizadas;
-    const valorActual = parseFloat(formData.valorActual);
-    const unidades = formData.unidades ? parseFloat(formData.unidades) : undefined;
-
-    if (isNaN(aportacionesRealizadas) || aportacionesRealizadas < 0) {
-      toast.error('Las aportaciones realizadas deben ser un número válido');
-      return;
-    }
-
-    if (isNaN(valorActual) || valorActual < 0) {
-      toast.error('El valor actual debe ser un número válido');
-      return;
-    }
-
-    // Validate periodic contribution if not historical
-    let aportacionPeriodica: AportacionPeriodica | undefined;
-    if (!formData.esHistorico && formData.aportacionPeriodica.activa && formData.aportacionPeriodica.importe) {
-      const importe = parseFloat(formData.aportacionPeriodica.importe);
-      if (isNaN(importe) || importe <= 0) {
-        toast.error('El importe de la aportación periódica debe ser válido');
-        return;
-      }
-
-      aportacionPeriodica = {
-        importe,
-        frecuencia: formData.aportacionPeriodica.frecuencia,
-        cuentaAbono: formData.aportacionPeriodica.cuentaAbono,
-        reglasDia: formData.aportacionPeriodica.reglasDia,
-        activa: formData.aportacionPeriodica.activa
-      };
-    }
-
     setLoading(true);
     try {
-      const planData: Omit<PlanPensionInversion, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
+      const planData: Omit<PlanPensiones, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
         personalDataId,
-        nombre: formData.nombre,
-        tipo: formData.tipo,
-        aportacionesRealizadas,
-        unidades,
-        valorCompra,
-        valorActual,
-        titularidad: formData.titularidad,
-        aportacionPeriodica,
-        esHistorico: formData.esHistorico
+        nombre: formData.nombre.trim(),
+        tipoAdministrativo: formData.tipoAdministrativo,
+        gestoraActual: formData.gestoraActual.trim(),
+        isinActual: formData.isinActual.trim() || undefined,
+        fechaContratacion: formData.fechaContratacion,
+        importeInicial: formData.importeInicial ? parseFloat(formData.importeInicial) : undefined,
+        valorActual: formData.valorActual ? parseFloat(formData.valorActual) : undefined,
+        titular: formData.titular,
+        estado: formData.estado,
+        origen: 'manual',
       };
 
-      let savedPlan: PlanPensionInversion;
-      if (plan?.id) {
-        savedPlan = await planesInversionService.updatePlan(plan.id, planData);
-      } else {
-        savedPlan = await planesInversionService.savePlan(planData);
-      }
+      const savedPlan = plan?.id
+        ? await planesPensionesService.updatePlan(plan.id, planData)
+        : await planesPensionesService.createPlan(planData);
 
       toast.success(plan ? 'Plan actualizado correctamente' : 'Plan creado correctamente');
       onSaved(savedPlan);
       onClose();
     } catch (error) {
       console.error('Error saving plan:', error);
-      toast.error('Error al guardar el plan');
+      toast.error('Error al guardar el plan de pensiones');
     } finally {
       setLoading(false);
     }
   };
 
-  const tiposProducto = [
-    { value: 'plan-pensiones', label: 'Plan de Pensiones' },
-    { value: 'inversion', label: 'Inversión General' },
-    { value: 'fondo-indexado', label: 'Fondo Indexado' },
-    { value: 'acciones', label: 'Acciones' },
-    { value: 'otros', label: 'Otros' }
-  ];
-
-  const frecuencias = [
-    { value: 'mensual', label: 'Mensual' },
-    { value: 'trimestral', label: 'Trimestral' },
-    { value: 'semestral', label: 'Semestral' },
-    { value: 'anual', label: 'Anual' }
-  ];
-
-  const cuentas = [
-    { value: 0, label: 'Seleccionar cuenta' },
-    { value: 1, label: 'Cuenta Principal' },
-    { value: 2, label: 'Cuenta Ahorros' },
-    { value: 3, label: 'Cuenta Inversiones' }
-  ];
-
-  // Calculate current profit/loss
-  const aportaciones = parseFloat(formData.aportacionesRealizadas) || 0;
-  const valorActual = parseFloat(formData.valorActual) || 0;
-  const plusvalia = valorActual - aportaciones;
-  const rentabilidad = aportaciones > 0 ? (plusvalia / aportaciones) * 100 : 0;
-
   return (
     <AtlasModal
       isOpen={isOpen}
       onClose={onClose}
-      title={plan ? 'Editar Plan' : 'Nuevo Plan de Pensión o Inversión'}
+      title={plan ? 'Editar Plan de Pensiones' : 'Nuevo Plan de Pensiones'}
       size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
+
+        {/* Tipo administrativo */}
+        <div>
+          <label className="block text-sm font-semibold text-neutral-700 mb-2">
+            Tipo administrativo *
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            {TIPOS_ADMIN.map(({ value, label, desc }) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, tipoAdministrativo: value }))}
+                className={[
+                  'text-left p-3 border-2 rounded-lg transition-colors',
+                  formData.tipoAdministrativo === value
+                    ? 'border-blue-700 bg-blue-50'
+                    : 'border-neutral-200 hover:border-neutral-400',
+                ].join(' ')}
+              >
+                <div className="font-semibold text-sm text-neutral-800">{label}</div>
+                <div className="text-xs text-neutral-500 mt-0.5">{desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Nombre y gestora */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Nombre del Producto *
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Nombre del plan *</label>
             <input
               type="text"
               value={formData.nombre}
               onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="Ej: Plan de Pensiones BBVA"
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              placeholder="Ej: Plan Naranja IRPF"
               required
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Tipo de Producto *
-            </label>
-            <select
-              value={formData.tipo}
-              onChange={(e) => setFormData(prev => ({ ...prev, tipo: e.target.value as PlanPensionInversion['tipo'] }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              required
-            >
-              {tiposProducto.map(tipo => (
-                <option key={tipo.value} value={tipo.value}>
-                  {tipo.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Investment Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Aportaciones Realizadas (€) *
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Entidad gestora *</label>
             <input
-              type="number"
-              step="0.01"
-              value={formData.aportacionesRealizadas}
-              onChange={(e) => setFormData(prev => ({ ...prev, aportacionesRealizadas: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="10000.00"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Valor Compra (€)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.valorCompra}
-              onChange={(e) => setFormData(prev => ({ ...prev, valorCompra: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="Iguala aportaciones si vacío"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Valor Actual (€) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.valorActual}
-              onChange={(e) => setFormData(prev => ({ ...prev, valorActual: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="12000.00"
+              type="text"
+              value={formData.gestoraActual}
+              onChange={(e) => setFormData(prev => ({ ...prev, gestoraActual: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              placeholder="Ej: ING, Caixabank, Renta 4..."
               required
             />
           </div>
         </div>
 
-        {/* Units (optional) */}
+        {/* ISIN y fecha */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Unidades (opcional)
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">ISIN (opcional)</label>
             <input
-              type="number"
-              step="0.0001"
-              value={formData.unidades}
-              onChange={(e) => setFormData(prev => ({ ...prev, unidades: e.target.value }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-              placeholder="Para fondos con participaciones"
+              type="text"
+              value={formData.isinActual}
+              onChange={(e) => setFormData(prev => ({ ...prev, isinActual: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              placeholder="Ej: ES0123456789"
+              maxLength={12}
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">
-              Titularidad
-            </label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Fecha de apertura *</label>
+            <input
+              type="date"
+              value={formData.fechaContratacion}
+              onChange={(e) => setFormData(prev => ({ ...prev, fechaContratacion: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Valores */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Valor inicial (€)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.importeInicial}
+              onChange={(e) => setFormData(prev => ({ ...prev, importeInicial: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Valor actual (€)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.valorActual}
+              onChange={(e) => setFormData(prev => ({ ...prev, valorActual: e.target.value }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+              placeholder="0.00"
+            />
+          </div>
+        </div>
+
+        {/* Titular y estado */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Titular</label>
             <select
-              value={formData.titularidad}
-              onChange={(e) => setFormData(prev => ({ ...prev, titularidad: e.target.value as PlanPensionInversion['titularidad'] }))}
-              className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              value={formData.titular}
+              onChange={(e) => setFormData(prev => ({ ...prev, titular: e.target.value as 'yo' | 'pareja' }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
             >
-              <option value="yo">Mío</option>
+              <option value="yo">Yo</option>
               <option value="pareja">Pareja</option>
-              <option value="ambos">Ambos</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Estado del plan</label>
+            <select
+              value={formData.estado}
+              onChange={(e) => setFormData(prev => ({ ...prev, estado: e.target.value as EstadoPlan }))}
+              className="w-full px-3 py-2 border border-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-700"
+            >
+              <option value="activo">Activo</option>
+              <option value="rescatado_total">Rescatado (total)</option>
+              <option value="rescatado_parcial">Rescatado (parcial)</option>
+              <option value="traspasado_externo">Traspasado a externo</option>
             </select>
           </div>
         </div>
 
-        {/* Current Performance Summary */}
-        {formData.aportacionesRealizadas && formData.valorActual && (
-          <div className="bg-gray-50 p-4">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Resumen Actual</h4>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-gray-600">Plusvalía/Pérdida</p>
-                <p className={`font-medium ${plusvalia >= 0 ? 'text-success-600' : 'text-error-600'}`}>
-                  {(plusvalia >= 0 ? '+' : '')}{plusvalia.toFixed(2)}€
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600">Rentabilidad</p>
-                <p className={`font-medium ${rentabilidad >= 0 ? 'text-success-600' : 'text-error-600'}`}>
-                  {(rentabilidad >= 0 ? '+' : '')}{rentabilidad.toFixed(2)}%
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600">Valor Total</p>
-                <p className="font-medium">{valorActual.toFixed(2)}€</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Historical vs Active */}
-        <div className="border border-neutral-200 p-4">
-          <div className="flex items-center space-x-3 mb-3">
-            <input
-              type="checkbox"
-              id="esHistorico"
-              checked={formData.esHistorico}
-              onChange={(e) => setFormData(prev => ({ ...prev, esHistorico: e.target.checked }))}
-              className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-            />
-            <label htmlFor="esHistorico" className="text-sm font-medium text-neutral-700">
-              Solo seguimiento (histórico)
-            </label>
-          </div>
-          <p className="text-xs text-neutral-500">
-            Marca esta opción si solo quieres hacer seguimiento del valor sin aportaciones periódicas activas.
-          </p>
-        </div>
-
-        {/* Periodic Contribution (only if not historical) */}
-        {!formData.esHistorico && (
-          <div className="border border-neutral-200 p-4">
-            <div className="flex items-center space-x-3 mb-4">
-              <input
-                type="checkbox"
-                id="aportacionActiva"
-                checked={formData.aportacionPeriodica.activa}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  aportacionPeriodica: { ...prev.aportacionPeriodica, activa: e.target.checked }
-                }))}
-                className="h-4 w-4 text-brand-navy focus:ring-brand-navy border-neutral-300 rounded"
-              />
-              <label htmlFor="aportacionActiva" className="text-sm font-medium text-neutral-700">
-                Aportación Periódica Activa
-              </label>
-            </div>
-
-            {formData.aportacionPeriodica.activa && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Importe por Aportación (€)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aportacionPeriodica.importe}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        aportacionPeriodica: { ...prev.aportacionPeriodica, importe: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                      placeholder="100.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Frecuencia
-                    </label>
-                    <select
-                      value={formData.aportacionPeriodica.frecuencia}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        aportacionPeriodica: { ...prev.aportacionPeriodica, frecuencia: e.target.value as any }
-                      }))}
-                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    >
-                      {frecuencias.map(freq => (
-                        <option key={freq.value} value={freq.value}>
-                          {freq.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Cuenta de Débito
-                    </label>
-                    <select
-                      value={formData.aportacionPeriodica.cuentaAbono}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        aportacionPeriodica: { ...prev.aportacionPeriodica, cuentaAbono: parseInt(e.target.value) }
-                      }))}
-                      className="w-full px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy focus:border-transparent"
-                    >
-                      {cuentas.map(cuenta => (
-                        <option key={cuenta.value} value={cuenta.value}>
-                          {cuenta.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-1">
-                      Día de Aportación
-                    </label>
-                    <div className="flex space-x-2">
-                      <select
-                        value={formData.aportacionPeriodica.reglasDia.tipo}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          aportacionPeriodica: {
-                            ...prev.aportacionPeriodica,
-                            reglasDia: {
-                              tipo: e.target.value as any,
-                              dia: e.target.value === 'fijo' ? 1 : undefined
-                            }
-                          }
-                        }))}
-                        className="flex-1 px-3 py-2 border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-brand-navy"
-                      >
-                        <option value="fijo">Día fijo</option>
-                        <option value="ultimo-habil">Último hábil</option>
-                      </select>
-                      {formData.aportacionPeriodica.reglasDia.tipo === 'fijo' && (
-                        <input
-                          type="number"
-                          min="1"
-                          max="28"
-                          value={formData.aportacionPeriodica.reglasDia.dia || 1}
-                          onChange={(e) => setFormData(prev => ({
-                            ...prev,
-                            aportacionPeriodica: {
-                              ...prev.aportacionPeriodica,
-                              reglasDia: { ...prev.aportacionPeriodica.reglasDia, dia: parseInt(e.target.value) }
-                            }
-                          }))}
-                          className="w-16 px-2 py-2 border border-neutral-300 text-center"
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {formData.aportacionPeriodica.importe && (
-                  <div className="atlas-atlas-atlas-atlas-atlas-atlas-btn-primary p-3">
-                    <p className="text-sm text-primary-700">
-                      <strong>Aportación anual estimada:</strong> {
-                        (parseFloat(formData.aportacionPeriodica.importe) * 
-                        (formData.aportacionPeriodica.frecuencia === 'mensual' ? 12 :
-                         formData.aportacionPeriodica.frecuencia === 'trimestral' ? 4 :
-                         formData.aportacionPeriodica.frecuencia === 'semestral' ? 2 : 1)).toFixed(2)
-                      }€
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Submit buttons */}
-        <div className="flex justify-end space-x-3 pt-4 border-t border-neutral-200">
+        <div className="flex justify-end space-x-3 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-neutral-700 border border-neutral-300"
-            >
+            disabled={loading}
+            className="px-4 py-2 border border-neutral-300 text-neutral-700 rounded hover:bg-neutral-50 disabled:opacity-50"
+          >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-brand-navy disabled:opacity-50"
+            className="px-4 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 disabled:opacity-50"
           >
-            {loading ? 'Guardando...' : (plan ? 'Actualizar' : 'Crear')} Plan
+            {loading ? 'Guardando...' : plan ? 'Actualizar plan' : 'Crear plan'}
           </button>
         </div>
       </form>

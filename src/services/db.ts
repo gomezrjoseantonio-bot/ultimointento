@@ -5,7 +5,6 @@ import { PosicionInversion } from '../types/inversiones';
 import type {
   PersonalData,
   PersonalModuleConfig,
-  PlanPensionInversion,
   TraspasoPlan,
   Ingreso as IngresoPersonal
 } from '../types/personal';
@@ -2088,7 +2087,7 @@ interface AtlasHorizonDB {
    */
   ingresos: IngresoPersonal;
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
-  planesPensionInversion: PlanPensionInversion; // V1.2: Pension and investment plans
+  // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
@@ -3956,85 +3955,6 @@ export const initDB = async () => {
   return dbPromise;
 };
 
-/**
- * Migración de datos: fusiona registros duplicados en planesPensionInversion.
- * Cada plan de pensiones debe ser UN único registro con historialAportaciones por año.
- * Los registros antiguos con formato "NOMBRE (YYYY)" se fusionan en uno sin año en el nombre.
- */
-export const migrarPlanesDuplicados = async (): Promise<void> => {
-  try {
-    const db = await initDB();
-    const planes = await db.getAll('planesPensionInversion');
-
-    // Solo operar sobre planes de pensiones, no sobre inversiones del mismo store
-    const planesPension = planes.filter((p) => p.tipo === 'plan-pensiones');
-
-    // Agrupar por empresa: NIF si existe, o nombre base sin "(YYYY)"
-    const grupos: Record<string, typeof planesPension> = {};
-    for (const plan of planesPension) {
-      const key =
-        plan.empresaNif ??
-        (typeof plan.nombre === 'string' ? plan.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim() : 'unknown');
-      if (!grupos[key]) grupos[key] = [];
-      grupos[key].push(plan);
-    }
-
-    for (const grupo of Object.values(grupos)) {
-      if (grupo.length <= 1) continue;
-
-      // El principal es el de menor id (más antiguo)
-      grupo.sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
-      const principal = grupo[0];
-      if (!principal.historialAportaciones) principal.historialAportaciones = {};
-
-      for (const plan of grupo) {
-        // Fusionar historialAportaciones existente si el registro ya tenía uno
-        if (plan.historialAportaciones) {
-          for (const [yearKey, entry] of Object.entries(plan.historialAportaciones)) {
-            if (!principal.historialAportaciones[yearKey]) {
-              principal.historialAportaciones[yearKey] = entry as {
-                titular: number; empresa: number; total: number; fuente: 'xml_aeat' | 'manual' | 'atlas_nativo';
-              };
-            }
-          }
-        } else {
-          // Registro legacy sin historial: extraer año del nombre si lo tiene
-          const yearMatch = typeof plan.nombre === 'string' ? plan.nombre.match(/\((\d{4})\)/) : null;
-          const año = yearMatch ? parseInt(yearMatch[1]) : null;
-          if (año && !principal.historialAportaciones[año]) {
-            principal.historialAportaciones[año] = {
-              titular: 0,
-              empresa: 0,
-              total: plan.aportacionesRealizadas ?? 0,
-              fuente: 'xml_aeat',
-            };
-          }
-        }
-      }
-
-      // Recalcular acumulado desde el historial fusionado
-      const entradas = Object.values(principal.historialAportaciones) as Array<{ total: number }>;
-      principal.aportacionesRealizadas = entradas.length > 0
-        ? entradas.reduce((sum, a) => sum + a.total, 0)
-        : principal.aportacionesRealizadas;
-
-      // Limpiar año del nombre base si lo tenía
-      if (typeof principal.nombre === 'string') {
-        principal.nombre = principal.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim();
-      }
-      principal.fechaActualizacion = new Date().toISOString();
-
-      await db.put('planesPensionInversion', principal);
-
-      // Borrar duplicados (todos menos el principal)
-      for (const plan of grupo.slice(1)) {
-        if (plan.id != null) await db.delete('planesPensionInversion', plan.id);
-      }
-    }
-  } catch (err) {
-    console.warn('[ATLAS] migrarPlanesDuplicados: error en migración de planes duplicados:', err);
-  }
-};
 
 // Blob storage and download utilities (H0.4 requirement)
 export const getDocumentBlob = async (id: number): Promise<Blob | null> => {

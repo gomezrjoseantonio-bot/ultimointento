@@ -8,16 +8,16 @@
 //     (`valoraciones_historicas.activo_id`) — nunca se migra ni reescribe.
 //     Así un análisis a futuro puede preguntar "¿dónde estaba el dinero
 //     el mes X?" y "¿qué rentabilidad tuvo cada plan en ese periodo?".
-//   - Soporta planes en ambos stores: `planesPensionInversion` (store
-//     dedicado) e `inversiones` (store legacy con `tipo=plan_pensiones`).
+//   - Soporta planes en ambos stores: `planesPensiones` (V65)
+//     e `inversiones` (store legacy con `tipo=plan_pensiones`).
 import { initDB } from './db';
 import { inversionesService } from './inversionesService';
 import { planesInversionService } from './planesInversionService';
-import type { PlanPensionInversion, PlanStore, TraspasoPlan } from '../types/personal';
+import type { PlanStore, TraspasoPlan } from '../types/personal';
 import type { Aportacion, PosicionInversion } from '../types/inversiones';
 
 export interface PlanRef {
-  id: number;
+  id: number | string;
   store: PlanStore;
 }
 
@@ -46,34 +46,12 @@ export const PLAN_PENSIONES_TIPOS_INVERSION: ReadonlySet<string> = new Set([
   'plan_empleo',
 ]);
 
-const mesKey = (fecha: string): string =>
-  fecha.length >= 7 ? fecha.slice(0, 7) : String(new Date(fecha).getFullYear());
-
 const generateAportacionId = (): number => Date.now() + Math.floor(Math.random() * 1000);
-
-type HistorialEntry = NonNullable<PlanPensionInversion['historialAportaciones']>[string];
-
-const mergeHistorialEntry = (
-  plan: PlanPensionInversion,
-  mes: string,
-  delta: { titular?: number; empresa?: number; total: number; fuente: HistorialEntry['fuente'] }
-): PlanPensionInversion['historialAportaciones'] => {
-  const prev = plan.historialAportaciones?.[mes] ?? { titular: 0, empresa: 0, total: 0, fuente: delta.fuente };
-  return {
-    ...(plan.historialAportaciones ?? {}),
-    [mes]: {
-      titular: (prev.titular ?? 0) + (delta.titular ?? 0),
-      empresa: (prev.empresa ?? 0) + (delta.empresa ?? 0),
-      total: (prev.total ?? 0) + delta.total,
-      fuente: prev.fuente === 'manual' || prev.fuente === 'xml_aeat' ? prev.fuente : delta.fuente,
-    },
-  };
-};
 
 // ── Metadata extraction for a plan from either store ──────────────────────
 
 interface PlanMeta {
-  id: number;
+  id: number | string;
   store: PlanStore;
   nombre: string;
   entidad?: string;
@@ -83,19 +61,19 @@ interface PlanMeta {
 
 async function readPlanMeta(ref: PlanRef): Promise<PlanMeta | null> {
   const db = await initDB();
-  if (ref.store === 'planesPensionInversion') {
-    const plan = await db.get('planesPensionInversion', ref.id);
+  if (ref.store === 'planesPensiones') {
+    const plan = await (db as any).get('planesPensiones', String(ref.id));
     if (!plan) return null;
     return {
       id: ref.id,
       store: ref.store,
       nombre: plan.nombre,
-      entidad: plan.entidad,
+      entidad: plan.gestoraActual,
       saldo: plan.valorActual ?? 0,
-      esPlanPensiones: plan.tipo === 'plan-pensiones',
+      esPlanPensiones: true,
     };
   }
-  const inv = await db.get('inversiones', ref.id);
+  const inv = await db.get('inversiones', ref.id as number);
   if (!inv) return null;
   return {
     id: ref.id,
@@ -114,12 +92,12 @@ async function updateInversionConAportacion(
   fecha: string
 ): Promise<void> {
   const db = await initDB();
-  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  const inv = await db.get('inversiones', ref.id as number) as PosicionInversion | undefined;
   if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportaciones = [...(inv.aportaciones ?? []), nuevaAportacion];
   // Delegamos la recomposición de `total_aportado` y normalización en
   // inversionesService para mantener los invariantes del store.
-  await inversionesService.updatePosicion(ref.id, {
+  await inversionesService.updatePosicion(ref.id as number, {
     ...inversionesService.recalculatePosition(aportaciones),
     valor_actual: nuevoValor,
     fecha_valoracion: fecha,
@@ -128,23 +106,17 @@ async function updateInversionConAportacion(
 
 async function applyOutgoing(ref: PlanRef, importe: number, fecha: string): Promise<void> {
   const db = await initDB();
-  if (ref.store === 'planesPensionInversion') {
-    const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
-    const historial = mergeHistorialEntry(plan, mesKey(fecha), {
-      titular: -importe,
-      total: -importe,
-      fuente: 'traspaso_salida',
-    });
-    await planesInversionService.updatePlan(ref.id, {
+  if (ref.store === 'planesPensiones') {
+    const plan = await (db as any).get('planesPensiones', String(ref.id));
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensiones.`);
+    await planesInversionService.updatePlan(String(ref.id), {
       valorActual: Math.max(0, (plan.valorActual ?? 0) - importe),
-      historialAportaciones: historial,
     });
     return;
   }
 
   // Store `inversiones`: registramos un reembolso con fuente 'traspaso_salida'
-  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  const inv = await db.get('inversiones', ref.id as number) as PosicionInversion | undefined;
   if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportacionSalida: Aportacion = {
     id: generateAportacionId(),
@@ -160,23 +132,16 @@ async function applyOutgoing(ref: PlanRef, importe: number, fecha: string): Prom
 
 async function applyIncoming(ref: PlanRef, importe: number, fecha: string): Promise<void> {
   const db = await initDB();
-  if (ref.store === 'planesPensionInversion') {
-    const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
-    const historial = mergeHistorialEntry(plan, mesKey(fecha), {
-      titular: importe,
-      total: importe,
-      fuente: 'traspaso_entrada',
-    });
-    await planesInversionService.updatePlan(ref.id, {
+  if (ref.store === 'planesPensiones') {
+    const plan = await (db as any).get('planesPensiones', String(ref.id));
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensiones.`);
+    await planesInversionService.updatePlan(String(ref.id), {
       valorActual: (plan.valorActual ?? 0) + importe,
-      aportacionesRealizadas: (plan.aportacionesRealizadas ?? 0) + importe,
-      historialAportaciones: historial,
     });
     return;
   }
 
-  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  const inv = await db.get('inversiones', ref.id as number) as PosicionInversion | undefined;
   if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportacionEntrada: Aportacion = {
     id: generateAportacionId(),
@@ -190,72 +155,45 @@ async function applyIncoming(ref: PlanRef, importe: number, fecha: string): Prom
   await updateInversionConAportacion(ref, aportacionEntrada, nuevoValor, fecha);
 }
 
-async function revertOutgoing(ref: PlanRef, importe: number, fecha: string): Promise<void> {
+async function revertOutgoing(ref: PlanRef, importe: number, _fecha: string): Promise<void> {
   const db = await initDB();
-  if (ref.store === 'planesPensionInversion') {
-    const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
-    const historial = { ...(plan.historialAportaciones ?? {}) };
-    const mes = mesKey(fecha);
-    const prev = historial[mes];
-    if (prev) {
-      const titular = (prev.titular ?? 0) + importe;
-      const total = (prev.total ?? 0) + importe;
-      if (Math.abs(total) < 0.005 && Math.abs(titular) < 0.005 && Math.abs(prev.empresa ?? 0) < 0.005) {
-        delete historial[mes];
-      } else {
-        historial[mes] = { ...prev, titular, total };
-      }
-    }
-    await planesInversionService.updatePlan(ref.id, {
+  if (ref.store === 'planesPensiones') {
+    const plan = await (db as any).get('planesPensiones', String(ref.id));
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensiones.`);
+    await planesInversionService.updatePlan(String(ref.id), {
       valorActual: (plan.valorActual ?? 0) + importe,
-      historialAportaciones: historial,
     });
     return;
   }
-  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  const inv = await db.get('inversiones', ref.id as number) as PosicionInversion | undefined;
   if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportaciones = (inv.aportaciones ?? []).filter(
-    (a) => !(a.fuente === 'traspaso_salida' && a.fecha === fecha && Math.abs(a.importe - importe) < 0.005)
+    (a) => !(a.fuente === 'traspaso_salida' && a.fecha === _fecha && Math.abs(a.importe - importe) < 0.005)
   );
   const nuevoValor = (inv.valor_actual ?? 0) + importe;
-  await inversionesService.updatePosicion(ref.id, {
+  await inversionesService.updatePosicion(ref.id as number, {
     ...inversionesService.recalculatePosition(aportaciones),
     valor_actual: nuevoValor,
   });
 }
 
-async function revertIncoming(ref: PlanRef, importe: number, fecha: string): Promise<void> {
+async function revertIncoming(ref: PlanRef, importe: number, _fecha: string): Promise<void> {
   const db = await initDB();
-  if (ref.store === 'planesPensionInversion') {
-    const plan = await db.get('planesPensionInversion', ref.id);
-    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensionInversion.`);
-    const historial = { ...(plan.historialAportaciones ?? {}) };
-    const mes = mesKey(fecha);
-    const prev = historial[mes];
-    if (prev) {
-      const titular = (prev.titular ?? 0) - importe;
-      const total = (prev.total ?? 0) - importe;
-      if (Math.abs(total) < 0.005 && Math.abs(titular) < 0.005 && Math.abs(prev.empresa ?? 0) < 0.005) {
-        delete historial[mes];
-      } else {
-        historial[mes] = { ...prev, titular, total };
-      }
-    }
-    await planesInversionService.updatePlan(ref.id, {
+  if (ref.store === 'planesPensiones') {
+    const plan = await (db as any).get('planesPensiones', String(ref.id));
+    if (!plan) throw new Error(`Plan ${ref.id} no encontrado en planesPensiones.`);
+    await planesInversionService.updatePlan(String(ref.id), {
       valorActual: Math.max(0, (plan.valorActual ?? 0) - importe),
-      aportacionesRealizadas: Math.max(0, (plan.aportacionesRealizadas ?? 0) - importe),
-      historialAportaciones: historial,
     });
     return;
   }
-  const inv = await db.get('inversiones', ref.id) as PosicionInversion | undefined;
+  const inv = await db.get('inversiones', ref.id as number) as PosicionInversion | undefined;
   if (!inv) throw new Error(`Posición ${ref.id} no encontrada en el store inversiones.`);
   const aportaciones = (inv.aportaciones ?? []).filter(
-    (a) => !(a.fuente === 'traspaso_entrada' && a.fecha === fecha && Math.abs(a.importe - importe) < 0.005)
+    (a) => !(a.fuente === 'traspaso_entrada' && a.fecha === _fecha && Math.abs(a.importe - importe) < 0.005)
   );
   const nuevoValor = Math.max(0, (inv.valor_actual ?? 0) - importe);
-  await inversionesService.updatePosicion(ref.id, {
+  await inversionesService.updatePosicion(ref.id as number, {
     ...inversionesService.recalculatePosition(aportaciones),
     valor_actual: nuevoValor,
   });
@@ -388,8 +326,8 @@ export const traspasosPlanesService = {
       const all = await db.getAll('traspasosPlanes');
       return all
         .filter((t) => {
-          const origenMatch = t.planOrigenId === ref.id && (t.planOrigenStore ?? 'planesPensionInversion') === ref.store;
-          const destinoMatch = t.planDestinoId === ref.id && (t.planDestinoStore ?? 'planesPensionInversion') === ref.store;
+          const origenMatch = t.planOrigenId === ref.id && (t.planOrigenStore ?? 'planesPensiones') === ref.store;
+          const destinoMatch = t.planDestinoId === ref.id && (t.planDestinoStore ?? 'planesPensiones') === ref.store;
           return origenMatch || destinoMatch;
         })
         .sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -407,11 +345,11 @@ export const traspasosPlanesService = {
 
     const origenRef: PlanRef = {
       id: traspaso.planOrigenId,
-      store: traspaso.planOrigenStore ?? 'planesPensionInversion',
+      store: traspaso.planOrigenStore ?? 'planesPensiones',
     };
     const destinoRef: PlanRef = {
       id: traspaso.planDestinoId,
-      store: traspaso.planDestinoStore ?? 'planesPensionInversion',
+      store: traspaso.planDestinoStore ?? 'planesPensiones',
     };
 
     await revertOutgoing(origenRef, traspaso.importe, traspaso.fecha);

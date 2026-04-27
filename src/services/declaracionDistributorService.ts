@@ -302,7 +302,7 @@ export async function distribuirDeclaracion(decl: DeclaracionCompleta): Promise<
     console.warn('Error al aplicar datos personales desde declaración:', err);
   }
 
-  // Persistir plan de pensiones en planesPensionInversion
+  // Persistir plan de pensiones en planesPensiones
   try {
     await persistirPlanPensiones(db, decl, decl.meta.ejercicio);
   } catch (err) {
@@ -992,9 +992,9 @@ async function persistirVinculosAccesorio(
 }
 
 /**
- * Persiste el plan de pensiones de empleo declarado en el store planesPensionInversion.
+ * Persiste el plan de pensiones de empleo declarado en el store planesPensiones.
  * Lógica upsert: UN solo registro por plan (deduplicado por NIF empresa o nombre base).
- * Añade el año al historialAportaciones en lugar de crear un registro nuevo por ejercicio.
+ * Las aportaciones del año se registran en aportacionesPlan (una entrada anual por ejercicio).
  */
 async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: number): Promise<void> {
   const pp = decl.planPensiones;
@@ -1006,153 +1006,81 @@ async function persistirPlanPensiones(db: DB, decl: DeclaracionCompleta, año: n
   if (!perfil?.id) return;
 
   const ahora = new Date().toISOString();
-  // Usar el total directo del XML (RSUMAD) en vez de sumar las partes, para evitar errores de redondeo.
-  const totalAño = pp.totalConDerechoReduccion;
 
-  // Buscar plan existente: primero por NIF, luego por nombre empresa, luego por nombre base normalizado
-  const nombreBaseNuevo = (pp.nombreEmpleador ?? '').replace(/\s*\(\d{4}\)\s*/, '').trim();
-  const planes = await db.getAll('planesPensionInversion');
-  const planExistente = planes.find((p) => {
-    if (p.tipo !== 'plan-pensiones') return false;
-    if (pp.nifEmpleador && p.empresaNif === pp.nifEmpleador) return true;
-    if (pp.nombreEmpleador && p.empresaNombre === pp.nombreEmpleador) return true;
-    // Fallback: comparar nombre normalizado para capturar registros legacy sin empresaNif/empresaNombre
-    if (nombreBaseNuevo) {
-      const nombrePNorm = typeof p.nombre === 'string' ? p.nombre.replace(/\s*\(\d{4}\)\s*/, '').trim() : '';
-      if (nombrePNorm === nombreBaseNuevo) return true;
-    }
-    return false;
-  });
+  const genUUID = (): string =>
+    typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+  const tipoAdm = pp.nifEmpleador ? 'PPE' : 'PPI';
+
+  // Buscar plan existente en planesPensiones
+  const planes = (await (db as any).getAll('planesPensiones')) as Array<{
+    id: string;
+    empresaPagadora?: { cif: string; nombre: string };
+    nombre: string;
+    personalDataId: number;
+  }>;
+  const planExistente = planes.find((p) =>
+    p.personalDataId === perfil.id &&
+    (pp.nifEmpleador
+      ? p.empresaPagadora?.cif === pp.nifEmpleador
+      : p.nombre === (pp.nombreEmpleador ?? 'Plan de pensiones')),
+  );
+
+  let planId: string;
   if (planExistente) {
-    // Backfill de campos empresa si el registro legacy no los tenía
-    if (!planExistente.empresaNif && pp.nifEmpleador) planExistente.empresaNif = pp.nifEmpleador;
-    if (!planExistente.empresaNombre && pp.nombreEmpleador) planExistente.empresaNombre = pp.nombreEmpleador;
-
-    // Backfill esHistorico: versiones antiguas marcaban los planes XML como históricos ("solo seguimiento"),
-    // lo que los excluía del drawer de actualización de valores y de la pestaña "Con aportaciones".
-    // Sólo retiramos la marca si todo el historial procede de XML; si el usuario añadió entradas manuales
-    // y decidió marcarlo como histórico, respetamos su elección.
-    const entradasPrev = Object.values(planExistente.historialAportaciones ?? {}) as Array<{ fuente?: string }>;
-    const soloXml = entradasPrev.length > 0 && entradasPrev.every((e) => e.fuente === 'xml_aeat' || !e.fuente);
-    if (planExistente.esHistorico && soloXml) {
-      planExistente.esHistorico = false;
-    }
-
-    // ACTUALIZAR: añadir/sobrescribir año en el historial
-    if (!planExistente.historialAportaciones) {
-      planExistente.historialAportaciones = {};
-    }
-    const entradaExistente = planExistente.historialAportaciones[año];
-    // El XML solo sobreescribe si no había entrada o si la entrada existente también era de XML (no manual).
-    if (!entradaExistente || entradaExistente.fuente !== 'manual') {
-      planExistente.historialAportaciones[año] = {
-        titular: pp.aportacionesTrabajador ?? 0,
-        empresa: pp.contribucionesEmpresa ?? 0,
-        total: totalAño,
-        fuente: 'xml_aeat',
-      };
-    }
-    // Recalcular acumulado desde el historial completo
-    const entradas = Object.values(planExistente.historialAportaciones) as Array<{ total: number }>;
-    planExistente.aportacionesRealizadas = entradas.reduce((sum, a) => sum + a.total, 0);
-    planExistente.fechaActualizacion = ahora;
-    await db.put('planesPensionInversion', planExistente);
+    planId = planExistente.id;
+    await (db as any).put('planesPensiones', {
+      ...planExistente,
+      fechaActualizacion: ahora,
+    });
   } else {
-    // CREAR: nuevo plan con primer año de historial
-    const nombreBase = pp.nombreEmpleador ?? 'Plan de pensiones empleo';
-    await db.add('planesPensionInversion', {
+    planId = genUUID();
+    await (db as any).add('planesPensiones', {
+      id: planId,
+      nombre: pp.nombreEmpleador ?? 'Plan de pensiones',
+      titular: 'yo' as const,
       personalDataId: perfil.id,
-      nombre: nombreBase,
-      tipo: 'plan-pensiones',
-      empresaNif: pp.nifEmpleador,
-      empresaNombre: pp.nombreEmpleador,
-      aportacionesRealizadas: totalAño,
-      valorCompra: 0,
-      valorActual: 0,
-      titularidad: 'yo',
-      // Un plan con aportaciones declaradas en la AEAT es un plan vivo; se trata igual que uno creado manualmente.
-      // El usuario puede marcarlo como "solo seguimiento" después desde el formulario de edición.
-      esHistorico: false,
-      historialAportaciones: {
-        [año]: {
-          titular: pp.aportacionesTrabajador ?? 0,
-          empresa: pp.contribucionesEmpresa ?? 0,
-          total: totalAño,
-          fuente: 'xml_aeat',
-        },
-      },
+      tipoAdministrativo: tipoAdm,
+      ...(tipoAdm === 'PPE' && { subtipoPPE: 'empleador_unico' as const }),
+      ...(pp.nifEmpleador && { empresaPagadora: { cif: pp.nifEmpleador, nombre: pp.nombreEmpleador ?? '' } }),
+      gestoraActual: pp.nombreEmpleador ?? '',
+      estado: 'activo' as const,
+      origen: 'xml_aeat' as const,
+      fechaContratacion: `${año}-01-01`,
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     });
   }
 
-  // V65 (TAREA 13): también escribe en planesPensiones (doble-escritura para transición)
-  try {
-    const genUUID65 = (): string =>
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-    const tipoAdm = pp.nifEmpleador ? 'PPE' : 'PPI';
-    const planesNuevos = (await db.getAll('planesPensiones' as any)) as Array<{
+  // Crear/actualizar aportación del año en aportacionesPlan
+  const totalAño65 = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
+  if (totalAño65 > 0) {
+    // Verificar si ya existe aportación para este ejercicio
+    const aportaciones = (await (db as any).getAll('aportacionesPlan')) as Array<{
       id: string;
-      empresaPagadora?: { cif: string };
-      nombre: string;
-      personalDataId: number;
+      planId: string;
+      ejercicioFiscal: number;
     }>;
-    const planExistente65 = planesNuevos.find((p) =>
-      p.personalDataId === perfil.id &&
-      (pp.nifEmpleador
-        ? p.empresaPagadora?.cif === pp.nifEmpleador
-        : p.nombre === (pp.nombreEmpleador ?? 'Plan de pensiones')),
+    const aportExistente = aportaciones.find(
+      (a) => a.planId === planId && a.ejercicioFiscal === año,
     );
-
-    const ahoraV65 = new Date().toISOString();
-    let planId65: string;
-    if (planExistente65) {
-      planId65 = planExistente65.id;
-      await db.put('planesPensiones' as any, {
-        ...planExistente65,
-        fechaActualizacion: ahoraV65,
-      } as any);
-    } else {
-      planId65 = genUUID65();
-      await db.add('planesPensiones' as any, {
-        id: planId65,
-        nombre: pp.nombreEmpleador ?? 'Plan de pensiones',
-        titular: 'yo' as const,
-        personalDataId: perfil.id,
-        tipoAdministrativo: tipoAdm,
-        ...(tipoAdm === 'PPE' && { subtipoPPE: 'empleador_unico' as const }),
-        ...(pp.nifEmpleador && { empresaPagadora: { cif: pp.nifEmpleador, nombre: pp.nombreEmpleador ?? '' } }),
-        gestoraActual: pp.nombreEmpleador ?? '',
-        estado: 'activo' as const,
-        origen: 'xml_aeat' as const,
-        fechaContratacion: `${año}-01-01`,
-        fechaCreacion: ahoraV65,
-        fechaActualizacion: ahoraV65,
-      } as any);
-    }
-
-    // Crear aportación del año
-    const totalAño65 = (pp.aportacionesTrabajador ?? 0) + (pp.contribucionesEmpresa ?? 0);
-    if (totalAño65 > 0) {
-      await db.add('aportacionesPlan' as any, {
-        id: genUUID65(),
-        planId: planId65,
+    if (!aportExistente) {
+      await (db as any).add('aportacionesPlan', {
+        id: genUUID(),
+        planId,
         fecha: `${año}-12-31`,
         ejercicioFiscal: año,
         importeTitular: pp.aportacionesTrabajador ?? 0,
         importeEmpresa: pp.contribucionesEmpresa ?? 0,
         origen: 'xml_aeat' as const,
         granularidad: 'anual' as const,
-        fechaCreacion: ahoraV65,
-        fechaActualizacion: ahoraV65,
-      } as any);
+        casillaAEAT: 'RSUMAD',
+        fechaCreacion: ahora,
+        fechaActualizacion: ahora,
+      });
     }
-  } catch (err) {
-    console.warn('[persistirPlanPensiones V65] escritura planesPensiones falló (no crítico):', err);
   }
 }
 
