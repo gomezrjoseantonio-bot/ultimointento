@@ -2,7 +2,7 @@
  * TesoreriaSupervisionPage.tsx
  *
  * SUPERVISIÓN > Tesorería  (/tesoreria)
- * Header blanco, sin botones de acción.
+ * Header blanco con un solo botón de acción: "Subir extracto" → /tesoreria/importar.
  * Dos tabs:
  *   - Evolución          → TreasuryEvolucionContent
  *   - Balances bancarios → BalancesBancariosView (read-only)
@@ -10,8 +10,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Landmark } from 'lucide-react';
-import PageHeader from '../../../components/shared/PageHeader';
+import { Landmark, Upload } from 'lucide-react';
+import PageHeader, { HeaderSecondaryButton } from '../../../components/shared/PageHeader';
 import { TreasuryEvolucionContent } from '../../../components/treasury/TreasuryEvolucion';
 import BalancesBancariosView from '../../../components/treasury/BalancesBancariosView';
 
@@ -33,6 +33,13 @@ const TesoreriaSupervisionPage: React.FC = () => {
         ]}
         activeTab={tab}
         onTabChange={(id) => setTab(id as Tab)}
+        actions={
+          <HeaderSecondaryButton
+            icon={Upload}
+            label="Subir extracto"
+            onClick={() => navigate('/tesoreria/importar')}
+          />
+        }
       />
 
       {tab === 'evolucion' && (

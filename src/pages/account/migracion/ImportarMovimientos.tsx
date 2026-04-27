@@ -1,83 +1,117 @@
 // src/pages/account/migracion/ImportarMovimientos.tsx
-// ATLAS HORIZON: Stub for bank movements importer
+// TAREA 17 sub-task 17.4: this stub previously rendered a "Próximamente"
+// message. The real importer now lives at /tesoreria/importar
+// (BankStatementUploadPage). This component just redirects users to it from
+// the Migración de Datos sub-tab.
 
 import React from 'react';
-import { Banknote, ArrowLeft, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Banknote, ArrowLeft, ExternalLink } from 'lucide-react';
 
 interface ImportarMovimientosProps {
   onComplete: () => void;
   onBack: () => void;
 }
 
-const ImportarMovimientos: React.FC<ImportarMovimientosProps> = ({ onBack }) => (
-  <div style={{ fontFamily: 'var(--font-inter)' }}>
-    <button
-      onClick={onBack}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        color: 'var(--atlas-blue)',
-        fontSize: '0.875rem',
-        fontWeight: 500,
-        padding: '0',
-        marginBottom: '20px',
-        fontFamily: 'var(--font-inter)',
-      }}
-    >
-      <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
-      Volver a Migración de Datos
-    </button>
+const ImportarMovimientos: React.FC<ImportarMovimientosProps> = ({ onBack }) => {
+  const navigate = useNavigate();
 
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-      <div
+  return (
+    <div>
+      <button
+        onClick={onBack}
         style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '10px',
-          backgroundColor: 'var(--ok-light, #E8F8EF)',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: 6,
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--navy-900)',
+          fontSize: 'var(--t-sm, 0.8125rem)',
+          fontWeight: 500,
+          padding: 0,
+          marginBottom: 20,
+          fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
         }}
       >
-        <Banknote size={20} strokeWidth={1.5} style={{ color: 'var(--ok)' }} aria-hidden="true" />
-      </div>
-      <div>
-        <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--atlas-navy-1)' }}>
-          Importar movimientos bancarios
-        </h2>
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-gray)' }}>
-          Importa movimientos históricos desde CSV o Excel
-        </p>
-      </div>
-    </div>
+        <ArrowLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+        Volver a Migración de Datos
+      </button>
 
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px',
-        padding: '48px 24px',
-        border: '1px dashed var(--hz-neutral-300)',
-        borderRadius: '12px',
-        color: 'var(--text-gray)',
-        textAlign: 'center',
-      }}
-    >
-      <Clock size={40} strokeWidth={1.5} style={{ color: 'var(--hz-neutral-300)' }} aria-hidden="true" />
-      <p style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: 'var(--atlas-navy-1)' }}>
-        Próximamente
-      </p>
-      <p style={{ margin: 0, fontSize: '0.875rem' }}>
-        El importador de movimientos bancarios estará disponible en la próxima versión.
-      </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <Banknote size={20} strokeWidth={1.5} color="var(--navy-900)" aria-hidden="true" />
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 'var(--t-lg, 1rem)',
+              fontWeight: 700,
+              color: 'var(--grey-900)',
+              fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+            }}
+          >
+            Importar movimientos bancarios
+          </h2>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 'var(--t-sm, 0.8125rem)',
+              color: 'var(--grey-500)',
+              fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+            }}
+          >
+            La importación de extractos vive ahora en Tesorería
+          </p>
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: 'var(--white)',
+          border: '1px solid var(--grey-200)',
+          borderTop: '3px solid var(--navy-900)',
+          borderRadius: 'var(--r-lg)',
+          padding: '20px 24px',
+          fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: 'var(--grey-700)',
+            fontSize: 'var(--t-base, 0.875rem)',
+            lineHeight: 1.5,
+          }}
+        >
+          La importación de extractos bancarios (CSV / Excel / Norma 43) se ha
+          movido a su página dedicada en Tesorería, con detección automática
+          del banco, deduplicación y matching contra previsiones.
+        </p>
+        <button
+          onClick={() => navigate('/tesoreria/importar')}
+          style={{
+            marginTop: 16,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '10px 16px',
+            border: 'none',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--navy-900)',
+            color: 'var(--white)',
+            fontSize: 'var(--t-base, 0.875rem)',
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
+          }}
+        >
+          Ir a Tesorería · Subir extracto
+          <ExternalLink size={16} strokeWidth={1.5} aria-hidden="true" />
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default ImportarMovimientos;
