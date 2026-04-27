@@ -1,0 +1,40 @@
+.row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 14px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  align-items: center;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.row:last-child { border-bottom: none; }
+
+.icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+}
+
+.icon.contrato { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand); }
+.icon.email { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.icon.formula { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+
+.info { min-width: 0; }
+
+.name {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  line-height: var(--atlas-v5-lh-relaxed);
+}

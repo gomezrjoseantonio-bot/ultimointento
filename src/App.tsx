@@ -148,7 +148,15 @@ const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
 const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
 const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
 const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
-const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'));
+// T20 Fase 1 · Ajustes v5 module
+const AjustesPage = lazyWithPreload(() => import('./modules/ajustes/AjustesPage'));
+const AjustesPerfil = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilPage'));
+const AjustesPlan = lazyWithPreload(() => import('./modules/ajustes/pages/PlanPage'));
+const AjustesIntegraciones = lazyWithPreload(() => import('./modules/ajustes/pages/IntegracionesPage'));
+const AjustesNotificaciones = lazyWithPreload(() => import('./modules/ajustes/pages/NotificacionesPage'));
+const AjustesPlantillas = lazyWithPreload(() => import('./modules/ajustes/pages/PlantillasPage'));
+const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilFiscalPage'));
+const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
 
 // CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
 // dashboardService → proyeccionMensualService y toda la cadena de servicios
@@ -731,49 +739,74 @@ function App() {
                   <EmailEntrante />
                 </React.Suspense>
               } />
-              {/* H6: Redirect old plan-facturacion route to new cuenta location */}
-              <Route path="plan-facturacion" element={<Navigate to="/cuenta/plan" replace />} />
+              {/* T20 Fase 1 · plan-facturacion legacy redirect a /ajustes/plan */}
+              <Route path="plan-facturacion" element={<Navigate to="/ajustes/plan" replace />} />
             </Route>
 
-            {/* H6: Account (Cuenta) Routes */}
-            <Route path="cuenta">
-              <Route index element={<Navigate to="/cuenta/perfil" replace />} />
+            {/* T20 Fase 1 · Ajustes v5 (sustituye AccountPage v4)
+                Mockup atlas-ajustes-v2.html · 7 sub-páginas con sidebar interno. */}
+            <Route path="ajustes" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AjustesPage />
+              </React.Suspense>
+            }>
+              <Route index element={<Navigate to="/ajustes/perfil" replace />} />
               <Route path="perfil" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
-                </React.Suspense>
-              } />
-              <Route path="seguridad" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPerfil />
                 </React.Suspense>
               } />
               <Route path="plan" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPlan />
                 </React.Suspense>
               } />
-              <Route path="privacidad" element={
+              <Route path="integraciones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesIntegraciones />
                 </React.Suspense>
               } />
-              <Route path="configuracion" element={
+              <Route path="notificaciones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesNotificaciones />
                 </React.Suspense>
               } />
-              <Route path="datos" element={
+              <Route path="plantillas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPlantillas />
                 </React.Suspense>
               } />
-              <Route path="migracion" element={
+              <Route path="fiscal" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPerfilFiscal />
                 </React.Suspense>
               } />
-              {/* Bank accounts are managed exclusively in Tesorería */}
+              <Route path="seguridad" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesSeguridad />
+                </React.Suspense>
+              } />
+            </Route>
+
+            {/* T20 Fase 1 · redirects legacy /cuenta/* a /ajustes/* equivalentes
+                Mantenemos compatibilidad con bookmarks/links antiguos hasta que
+                Fase 4 (cleanup) decida si purgarlos. Tabs viejas:
+                  perfil  → perfil
+                  plan    → plan
+                  configuracion (PandaDoc) → plantillas (renovado)
+                  datos   → seguridad (sub-card "Tus datos · exportar")
+                  migracion → seguridad (sub-card "Exportar"); el importador de
+                             extractos bancarios T17 se mantiene en /tesoreria/importar
+                  privacidad / cuentas → /ajustes/seguridad */}
+            <Route path="cuenta">
+              <Route index element={<Navigate to="/ajustes/perfil" replace />} />
+              <Route path="perfil" element={<Navigate to="/ajustes/perfil" replace />} />
+              <Route path="plan" element={<Navigate to="/ajustes/plan" replace />} />
+              <Route path="configuracion" element={<Navigate to="/ajustes/plantillas" replace />} />
+              <Route path="seguridad" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="datos" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="migracion" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="privacidad" element={<Navigate to="/ajustes/seguridad" replace />} />
               <Route path="cuentas" element={<Navigate to="/tesoreria" replace />} />
             </Route>
             
