@@ -27,11 +27,11 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 4. Selector "Formato" · dejar en "Detectar automáticamente".
 5. Período · dejar vacío.
 6. Arrastrar un fichero Sabadell real (XLSX o CSV) con 14 movimientos · mix de rentas + suministros + 1 cargo Amazon.
-7. La pantalla pasa a estado **loading** (spinner · "Detectando perfil bancario…").
-8. Tras unos segundos aparece la card "Matching · 14 movimientos encontrados".
+7. La pantalla pasa a estado **loading** con spinner y un mensaje de progreso de detección/parsing/matching (por ejemplo, "Detectando perfil bancario, parseando movimientos y buscando coincidencias…"; no exigir coincidencia literal exacta).
+8. Tras unos segundos aparece la card de resultados de matching mostrando que se han encontrado 14 movimientos en el extracto (por ejemplo, "Matching · 14 movimientos encontrados en extracto"; no exigir coincidencia literal exacta).
 
 **Qué verificar en pantalla:**
-- Subtítulo: "11 emparejados con previsiones · 3 sin match · 0 duplicados omitidos".
+- Subtítulo con el resumen de resultados: 11 emparejados con previsiones · 3 sin match · 0 duplicados omitidos.
 - Sección "Matches automáticos (11)" · 11 filas · cada una con checkbox marcado por defecto · pill de score (≥ 70) a la derecha.
 - Sección "Sin match (3)" · cada fila lista una sugerencia con botón "Aplicar" · una de ellas ofrece "Ignorar".
 
@@ -40,25 +40,27 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 - Store **`importBatches`** · 1 nuevo row · `accountId` correcto · `origenBanco: "Sabadell"`.
 - Stores **`treasuryEvents`** y **`movementLearningRules`** · **sin cambios** (la mutación todavía no ha ocurrido).
 
-**Acción de aprobación:**
-9. Click "Aprobar 11 matches".
-10. Toast "11 matches aprobados".
+**Acción de aplicar sugerencias** (importante · hacer ANTES de aprobar matches, porque al aprobar la pantalla se limpia y la deduplicación de la siguiente subida omitiría los 14 movs):
+9. Antes de aprobar los matches, para cada uno de los 3 sin-match · click "Aplicar" en la sugerencia que se considere correcta.
+10. Verificar tras cada "Aplicar" que el movement desaparece de la lista de sin-match pendiente.
 
-**Verificación post-aprobación en DevTools:**
-- Store **`treasuryEvents`** · los 11 eventos correspondientes han pasado de `status: "predicted"` a `"executed"` y tienen `executedMovementId` apuntando al movement correcto y `executedAt: <ISO timestamp>`.
-- Store **`movements`** · los 11 movements correspondientes ahora tienen `unifiedStatus: "conciliado"` y `statusConciliacion: "match_manual"`.
-- Store **`movementLearningRules`** · entre 0 y 11 reglas nuevas (depende de si los `treasuryEvents` traían `categoryKey`/`categoryLabel` poblado).
-- La pantalla vuelve a estado idle.
-
-**Acción de aplicar sugerencias:**
-11. Volver a subir el mismo extracto (los 11 ya conciliados se reconocerán como duplicados — ver escenario 3 — pero los 3 sin-match se reinsertarán).
-12. Para cada uno de los 3 sin-match · click "Aplicar" en la sugerencia que se considere correcta.
-
-**Verificación final:**
+**Verificación intermedia en DevTools:**
 - Cada "Aplicar" crea un row nuevo en `treasuryEvents` con `status: "executed"` + `executedMovementId` correcto.
 - El movement correspondiente queda en `unifiedStatus: "conciliado"`.
+- La operación ocurre sobre el mismo bundle de importación; no hace falta volver a subir el fichero.
 
-**Resultado esperado:** los 14 movimientos quedan en `conciliado` tras dos pasadas (aprobación masiva + aplicación de 3 sugerencias).
+**Acción de aprobación:**
+11. Click "Aprobar 11 matches".
+12. Toast "11 matches aprobados".
+
+**Verificación final en DevTools:**
+- Store **`treasuryEvents`** · los 11 eventos previstos correspondientes han pasado de `status: "predicted"` a `"executed"` y tienen `executedMovementId` apuntando al movement correcto y `executedAt: <ISO timestamp>`.
+- Store **`treasuryEvents`** · además existen 3 rows nuevos creados desde las sugerencias, todos con `status: "executed"` y enlazados a sus movements.
+- Store **`movements`** · los 14 movements importados quedan en `unifiedStatus: "conciliado"` (los 11 con `statusConciliacion: "match_manual"`).
+- Store **`movementLearningRules`** · entre 0 y 11 reglas nuevas derivadas de la aprobación de matches automáticos (depende de si los `treasuryEvents` traían `categoryKey`/`categoryLabel` poblado).
+- La pantalla vuelve a estado idle. Si se vuelve a subir exactamente el mismo extracto, con la deduplicación actual se omitirán los 14 movimientos como duplicados (ver escenario 3).
+
+**Resultado esperado:** los 14 movimientos quedan en `conciliado` en una sola pasada (aplicación de 3 sugerencias + aprobación masiva de 11 matches).
 
 ---
 
@@ -80,7 +82,7 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 **Qué verificar:**
 - El parser maneja correctamente los decimales (recordatorio: bug histórico de Unicaja decimal a 1/10 — si reaparece, **PARAR · marcar TODO para TAREA 18 · NO arreglar aquí**).
 - Las cuotas matchean contra `treasuryEvents` con `sourceType: "prestamo"` y `prestamoId` correcto.
-- Score esperado: 95–100 (fecha + importe + cuenta · sin descripcion_proveedor porque préstamos no rellenan `providerName`).
+- Score esperado: ~75 (30 fecha exacta + 30 importe exacto + 15 cuenta · sin `descripcion_proveedor` porque préstamos no rellenan `providerName`).
 
 **Qué verificar en DevTools tras "Aprobar":**
 - `treasuryEvents` · cuotas con `status: "executed"` y `prestamoId` preservado.
@@ -129,26 +131,29 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 
 ## Escenario 5 · Learning rule · auto-aplicación
 
-**Objetivo:** validar que aplicar una sugerencia heurística una vez crea una `movementLearningRule`, y que la siguiente importación con un movement de la misma "firma" sugerirá automáticamente esa regla con confidence ≥ 70.
+**Objetivo:** validar que aplicar una sugerencia heurística con `categoryKey` crea una `movementLearningRule`, y que la siguiente importación con un movement de la misma "firma" sugerirá automáticamente esa regla con confidence ≥ 70.
+
+> **Nota importante sobre la elección del ejemplo:** la heurística `assign_to_contract` (BIZUM / TRANSFERENCIA RECIBIDA) **NO** alimenta learning porque `deriveCategoryFromAction` devuelve `null` para esa acción (la asignación a un contrato concreto es demasiado específica como para generalizar). Para validar el flujo de learning, usa una sugerencia con `categoryKey` poblado: `mark_personal_expense` (Amazon · AliExpress) o `create_treasury_event` con suministro / IBI / comunidad / hipoteca.
 
 **Pasos · primera ronda:**
 1. Asegurar que `movementLearningRules` está vacío para esta firma · DevTools → store · filtro por `learnKey`.
-2. Subir un extracto que contenga "BIZUM A FUENTES" para el mes M.
-3. En la card de resultados, ese movement aparece en "Sin match" con sugerencia heurística vía C: `assign_to_contract` (confidence 50).
-4. Click "Aplicar" · seleccionar el contrato de alquiler relevante en el desplegable de la UI (cuando 17.4 lo cablee — hoy se aplica como evento contract sin contractId, suficiente para alimentar learning).
+2. Subir un extracto que contenga un cargo Amazon (por ejemplo, "AMAZON COMPRA EU -32,99") para el mes M.
+3. En la card de resultados, ese movement aparece en "Sin match" con sugerencia heurística vía C: `mark_personal_expense` con `categoryKey: 'tecnologia'` (confidence 50).
+4. Click "Aplicar".
 5. Toast "Sugerencia aplicada".
 
 **Qué verificar en DevTools tras la primera aplicación:**
 - Store **`movementLearningRules`** · 1 row nuevo con:
-  - `learnKey` · hash derivado de "BIZUM A FUENTES"
-  - `categoria` · derivada de la action (en este caso, derivada del contrato seleccionado o `null` si la action es `assign_to_contract` puro · revisar `deriveCategoryFromAction`)
+  - `learnKey` · hash derivado del concepto "AMAZON COMPRA EU"
+  - `categoria: "tecnologia"` (no `null` · derivada de la action `mark_personal_expense` por `deriveCategoryFromAction`)
+  - `ambito: "PERSONAL"`
   - `appliedCount: 1`
   - `history[0].action: "CREATE_RULE"`
 
 **Pasos · segunda ronda (mes M+1):**
-6. Esperar al mes siguiente (o simular un extracto del mes M+1 con "BIZUM A FUENTES" en una fecha diferente).
+6. Esperar al mes siguiente (o simular un extracto del mes M+1 con otro cargo Amazon en una fecha diferente).
 7. Subir el extracto.
-8. En la card de resultados, ese movement debería aparecer ahora con sugerencia vía B (learning_rule) · confidence ≥ 70 (la fórmula es `70 + min(15, log10(appliedCount + 1) * 5)` → con `appliedCount=1` la confidence es **72**).
+8. En la card de resultados, ese movement debería aparecer ahora con sugerencia vía B (learning_rule) · confidence ≥ 70 (la fórmula es `70 + min(15, round(log10(appliedCount + 1) * 5))` → con `appliedCount=1` la confidence es **72**).
 9. Como el cortocircuito está en confidence ≥ 60, la sugerencia heurística vía C **no aparece** en el array (escenario 2 del spec §3.2 cubierto).
 10. Click "Aplicar" · toast.
 
@@ -169,7 +174,7 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 2. La pantalla pasa a **loading** brevemente y luego a **error**.
 
 **Qué verificar en pantalla:**
-- Banner de error rojo (token `var(--grey-700)`, sin rojo manual): "No se pudo detectar el banco automáticamente. Elige el banco manualmente y vuelve a intentarlo. Tip: usa el selector 'Formato' para forzar CSV / XLSX / Norma 43."
+- Banner de error neutro/gris (tokens `var(--grey-100)` de fondo · `var(--grey-300)` de borde · `var(--grey-700)` de texto · sin rojo manual): "No se pudo detectar el banco automáticamente. Elige el banco manualmente y vuelve a intentarlo. Tip: usa el selector 'Formato' para forzar CSV / XLSX / Norma 43."
 - La card de resultados **no aparece**.
 
 **Qué verificar en DevTools:**
@@ -180,9 +185,9 @@ Esta guía documenta cómo verificar manualmente el flujo end-to-end de importac
 **Acción de recuperación:**
 3. Cambiar el selector "Formato" a **"CSV genérico"** (o el formato real del fichero).
 4. Volver a subir el mismo fichero.
-5. Como `formatHint` ya no es `"auto"` y se interpreta como el hint de banco para el orquestador (`options.bankProfileHint` actúa de bypass), el parser corre sobre el formato forzado y la importación procede.
+5. Al dejar de usar `formatHint: "auto"`, el orquestador puede acotar mejor el tipo de parser a probar (por ejemplo separando CSV genérico vs Norma 43 / CSB43), lo que puede ayudar indirectamente al `bankProfileMatcher` si el contenido ya entra por la ruta correcta. Esto **no** es un bypass de `bankProfileMatcher`: si el banco sigue sin detectarse con score suficiente, `processFile` continuará lanzando `BankProfileNotDetectedError`.
 
-> **TODO TAREA 18:** la UI debería mostrar también un selector "Banco" para forzar `bankProfileHint` directamente (más explícito que el actual workaround vía `formatHint`). Documentado en docs/AUDIT-T16 y en el spec §11.
+> **TODO TAREA 18:** la UI debería mostrar también un selector "Banco" para forzar `bankProfileHint` directamente. Ese selector sí permitiría un override explícito del banco; el selector actual de "Formato" solo controla `formatHint` y no sustituye la detección de banco. Documentado en docs/AUDIT-T16 y en el spec §11.
 
 **Caso edge:** si el fichero realmente no es un extracto bancario (por ejemplo es un PDF o un XLSX con estructura no reconocible), el parser fallará en `parseFile` y el error que se muestra al usuario será el del parser, no el del orquestador. Esto sigue siendo el comportamiento correcto.
 
