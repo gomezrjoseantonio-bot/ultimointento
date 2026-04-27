@@ -74,4 +74,15 @@ describe('bankProfilesService.getBankKeyFromSpanishEntityCode', () => {
     expect(bankProfilesService.getBankKeyFromSpanishEntityCode(undefined)).toBeNull();
     expect(bankProfilesService.getBankKeyFromSpanishEntityCode(null)).toBeNull();
   });
+
+  it('trims whitespace before validating (preserves the previous .trim() semantics)', () => {
+    // Real-world IndexedDB values can carry leading/trailing whitespace from
+    // user input or import flows. The pre-refactor `banco.code` fallback did
+    // `.trim()` outside the helper; the helper now does it internally.
+    expect(bankProfilesService.getBankKeyFromSpanishEntityCode(' 0081')).toBe('Sabadell');
+    expect(bankProfilesService.getBankKeyFromSpanishEntityCode('0081 ')).toBe('Sabadell');
+    expect(bankProfilesService.getBankKeyFromSpanishEntityCode('  2080  ')).toBe('ABANCA');
+    // Whitespace-only stays null.
+    expect(bankProfilesService.getBankKeyFromSpanishEntityCode('   ')).toBeNull();
+  });
 });

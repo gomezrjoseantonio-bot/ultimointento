@@ -205,8 +205,9 @@ class BankProfilesService {
    * Returns null when the code is not in the canonical map.
    */
   getBankKeyFromSpanishEntityCode(code: string | undefined | null): string | null {
-    if (!code || !/^\d{4}$/.test(code)) return null;
-    return SPANISH_ENTITY_CODE_MAP[code] ?? null;
+    const normalized = code?.trim();
+    if (!normalized || !/^\d{4}$/.test(normalized)) return null;
+    return SPANISH_ENTITY_CODE_MAP[normalized] ?? null;
   }
 
   /**
