@@ -60,6 +60,21 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/inmuebles/pages/ContratosListPage');
     return;
   }
+  if (href.startsWith('/mi-plan')) {
+    const subPage = href.startsWith('/mi-plan/proyeccion')
+      ? import('../modules/mi-plan/pages/ProyeccionPage')
+      : href.startsWith('/mi-plan/libertad')
+        ? import('../modules/mi-plan/pages/LibertadPage')
+        : href.startsWith('/mi-plan/objetivos')
+          ? import('../modules/mi-plan/pages/ObjetivosPage')
+          : href.startsWith('/mi-plan/fondos')
+            ? import('../modules/mi-plan/pages/FondosPage')
+            : href.startsWith('/mi-plan/retos')
+              ? import('../modules/mi-plan/pages/RetosPage')
+              : import('../modules/mi-plan/pages/LandingPage');
+    await Promise.all([import('../modules/mi-plan/MiPlanPage'), subPage]);
+    return;
+  }
   if (href.startsWith('/personal/importar-nominas')) {
     await import('../modules/personal/import/ImportarNominas');
     return;
@@ -93,6 +108,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
   { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
+  { match: (href) => href.startsWith('/mi-plan'), stores: ['escenarios', 'objetivos', 'fondos_ahorro', 'retos', 'nominas', 'autonomos', 'compromisosRecurrentes', 'contracts'] },
 ];
 
 const getStoresForRoute = (href: string): string[] => {

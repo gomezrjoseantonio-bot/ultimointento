@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   CardV5,
@@ -14,6 +14,10 @@ import {
 import CashflowChart, { MonthFlow } from '../components/CashflowChart';
 import MonthGrid, { MonthCard } from '../components/MonthGrid';
 import type { TesoreriaContext } from '../TesoreriaPage';
+import {
+  computeBudgetProjection12mAsync,
+  type BudgetProjection,
+} from '../../mi-plan/services/budgetProjection';
 import styles from './VistaGeneralTab.module.css';
 
 const MONTH_LABELS = [
@@ -60,42 +64,95 @@ const VistaGeneralTab: React.FC = () => {
   const entradasMes = movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.entradas ?? 0;
   const salidasMes = movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.salidas ?? 0;
 
-  // Construye la serie 12 meses · saldo proyectado simple = saldoInicio + flujo acumulado.
+  // T20-01 · Proyección presupuesto desde Mi Plan (cierra TODO formal).
+  // Combina nominas + autonomos + compromisosRecurrentes + contracts para
+  // proyección estructural · sustituye proyección lineal simple.
+  const [budgetProjection, setBudgetProjection] = useState<BudgetProjection | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    computeBudgetProjection12mAsync(currentYear).then((p) => {
+      if (!cancelled) setBudgetProjection(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentYear]);
+
+  // Construye la serie 12 meses con saldo proyectado.
+  // Para meses cerrados/en curso · saldoReal = saldoActual + acumulado de
+  // movimientos reales hasta ese mes (lo que ya se ejecutó).
+  // Para meses futuros · saldoPrevisto = saldoReal del último mes cerrado +
+  // acumulado de proyección estructural (Mi Plan budget).
   const months: MonthFlow[] = useMemo(() => {
-    let acum = 0;
-    return Array.from({ length: 12 }, (_, i) => {
+    const realMonths: number[] = [];
+    let acumReal = 0;
+    for (let i = 0; i <= currentMonthIdx; i++) {
       const flow = movByYearMonth.get(`${currentYear}-${i}`);
       const flujoMes = (flow?.entradas ?? 0) + (flow?.salidas ?? 0);
-      acum += flujoMes;
-      const saldoProyectado = totalSaldo + acum;
+      acumReal += flujoMes;
+      realMonths[i] = totalSaldo + acumReal - (movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.entradas ?? 0) - (movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.salidas ?? 0);
+    }
+    // Saldo de cierre del mes actual = totalSaldo (cuentas reales hoy).
+    const saldoCierreActual = totalSaldo;
+
+    let acumProyeccion = 0;
+    return Array.from({ length: 12 }, (_, i) => {
       const isPast = i < currentMonthIdx;
       const isCurrent = i === currentMonthIdx;
+
+      let saldoReal: number | undefined;
+      let saldoPrevisto: number;
+
+      if (isPast || isCurrent) {
+        // Acumulado de movimientos reales · derivado.
+        const flow = movByYearMonth.get(`${currentYear}-${i}`);
+        const flujoMes = (flow?.entradas ?? 0) + (flow?.salidas ?? 0);
+        acumProyeccion += flujoMes;
+        saldoReal = totalSaldo - (acumReal - acumProyeccion);
+        saldoPrevisto = saldoReal;
+      } else {
+        // Mes futuro · usa proyección Mi Plan si está disponible.
+        const flujoProyectado = budgetProjection?.months[i]?.flujoNeto ?? 0;
+        acumProyeccion += flujoProyectado;
+        saldoPrevisto = saldoCierreActual + (acumProyeccion - (acumReal));
+      }
+
       return {
         month: i + 1,
         label: MONTH_LABELS[i],
-        saldoReal: isPast || isCurrent ? saldoProyectado : undefined,
-        saldoPrevisto: saldoProyectado,
+        saldoReal,
+        saldoPrevisto,
         isCurrent,
       };
     });
-  }, [movByYearMonth, currentYear, currentMonthIdx, totalSaldo]);
+  }, [movByYearMonth, currentYear, currentMonthIdx, totalSaldo, budgetProjection]);
 
   const monthCards: MonthCard[] = useMemo(() => {
     return Array.from({ length: 12 }, (_, i) => {
-      const flow = movByYearMonth.get(`${currentYear}-${i}`);
+      const realFlow = movByYearMonth.get(`${currentYear}-${i}`);
+      const projectionFlow = budgetProjection?.months[i];
       const status: MonthCard['status'] =
         i < currentMonthIdx ? 'past' : i === currentMonthIdx ? 'current' : 'future';
+      // Pasados/actuales · datos reales · futuros · proyección Mi Plan.
+      const entradas =
+        status === 'future'
+          ? projectionFlow?.entradas ?? 0
+          : realFlow?.entradas ?? 0;
+      const salidas =
+        status === 'future'
+          ? projectionFlow?.salidas ?? 0
+          : realFlow?.salidas ?? 0;
       return {
         key: `${currentYear}-${i}`,
         month: i + 1,
         name: MONTH_NAMES[i],
         status,
         saldo: months[i]?.saldoPrevisto ?? totalSaldo,
-        entradas: flow?.entradas ?? 0,
-        salidas: flow?.salidas ?? 0,
+        entradas,
+        salidas,
       };
     });
-  }, [movByYearMonth, currentYear, currentMonthIdx, months, totalSaldo]);
+  }, [movByYearMonth, currentYear, currentMonthIdx, months, totalSaldo, budgetProjection]);
 
   const entradasAnuales = monthCards.reduce((sum, m) => sum + m.entradas, 0);
   // `salidas` se acumula como suma de `m.amount` cuando el importe es negativo

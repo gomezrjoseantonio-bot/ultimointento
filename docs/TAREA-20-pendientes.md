@@ -39,13 +39,36 @@ componente ya soporta ambas series · sólo falta cablear datos reales.
 - Posiblemente nuevo servicio en `src/services/` que combine `accounts` +
   `movements` + presupuesto Mi Plan
 
-**Cierre** · pendiente de Fase 3c.
+**Cierre** · ✓ CERRADO en T20 Fase 3c · sub-tarea 20.3c · ver TODOs cerrados.
 
 ---
 
 ## TODOs cerrados
 
-(ninguno aún · primer TODO formal abierto en Fase 2)
+### TODO-T20-01 · Cashflow chart · conectar Mi Plan v2 budget API ✓
+
+**Cerrado en** · T20 Fase 3c · sub-tarea 20.3c · PR siguiente
+
+**Solución entregada** ·
+- Nuevo helper `src/modules/mi-plan/services/budgetProjection.ts` que combina
+  `nominas` + `autonomos` + `compromisosRecurrentes` + `contracts` para
+  producir una proyección estructural mes a mes (12 meses · `BudgetProjection`).
+- Cubre los 8 patrones de `compromisosRecurrentes` definidos en el modelo
+  de datos §2.1 · `mensualDiaFijo` · `mensualDiaRelativo` · `cadaNMeses` ·
+  `trimestralFiscal` · `anualMesesConcretos` · `pagasExtra` · `variablePorMes`
+  · `puntual`.
+- API · `computeBudgetProjection12mAsync(year)` carga DB y devuelve serie.
+- `VistaGeneralTab` de Tesorería ahora consume esta API · meses pasados/
+  actuales usan saldo real (movimientos), meses futuros usan proyección
+  estructural Mi Plan. La línea sólida (real) y la dashed (previsto) del
+  CashflowChart están correctamente alimentadas.
+- `MiPlanPage/Landing` y `MiPlanPage/ProyeccionPage` consumen la misma API
+  · single source of truth.
+
+**Archivos modificados** ·
+- `src/modules/mi-plan/services/budgetProjection.ts` (nuevo · ~200 líneas)
+- `src/modules/tesoreria/tabs/VistaGeneralTab.tsx` (proyección sustituida)
+- `src/modules/mi-plan/pages/{LandingPage,ProyeccionPage}.tsx` (consumen API)
 
 ---
 

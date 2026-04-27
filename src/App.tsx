@@ -172,8 +172,14 @@ const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'))
 // Glossary page - Sprint 3: Accessible technical terms reference
 const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
 const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
-const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
-const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
+// T20 Fase 3c · Mi Plan v5 module (sustituye horizon/mi-plan/{objetivos,libertad})
+const MiPlanPage = lazyWithPreload(() => import('./modules/mi-plan/MiPlanPage'));
+const MiPlanLanding = lazyWithPreload(() => import('./modules/mi-plan/pages/LandingPage'));
+const MiPlanProyeccion = lazyWithPreload(() => import('./modules/mi-plan/pages/ProyeccionPage'));
+const MiPlanLibertad = lazyWithPreload(() => import('./modules/mi-plan/pages/LibertadPage'));
+const MiPlanObjetivos = lazyWithPreload(() => import('./modules/mi-plan/pages/ObjetivosPage'));
+const MiPlanFondos = lazyWithPreload(() => import('./modules/mi-plan/pages/FondosPage'));
+const MiPlanRetos = lazyWithPreload(() => import('./modules/mi-plan/pages/RetosPage'));
 // T20 Fase 1 · Ajustes v5 module
 const AjustesPage = lazyWithPreload(() => import('./modules/ajustes/AjustesPage'));
 const AjustesPerfil = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilPage'));
@@ -599,10 +605,23 @@ function App() {
               </React.Suspense>
             } />
             
-            <Route path="mi-plan">
-              <Route path="objetivos" element={
+            {/* T20 Fase 3c · Mi Plan v5 (sustituye horizon/mi-plan legacy)
+                Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos,retos}-v3
+                + atlas-mi-plan-v2. 6 sub-páginas · cierra TODO-T20-01 conectando
+                cashflow Tesorería al helper computeBudgetProjection12mAsync. */}
+            <Route path="mi-plan" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <MiPlanPage />
+              </React.Suspense>
+            }>
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <MiPlanObjetivos />
+                  <MiPlanLanding />
+                </React.Suspense>
+              } />
+              <Route path="proyeccion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanProyeccion />
                 </React.Suspense>
               } />
               <Route path="libertad" element={
@@ -610,7 +629,21 @@ function App() {
                   <MiPlanLibertad />
                 </React.Suspense>
               } />
-              <Route index element={<Navigate to="/mi-plan/objetivos" replace />} />
+              <Route path="objetivos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanObjetivos />
+                </React.Suspense>
+              } />
+              <Route path="fondos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanFondos />
+                </React.Suspense>
+              } />
+              <Route path="retos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanRetos />
+                </React.Suspense>
+              } />
             </Route>
 
             <Route path="proyeccion">
