@@ -144,7 +144,16 @@ async function fetchInboxFile(item: InboxItem): Promise<File> {
 async function inferAccountFromFile(file: File): Promise<number | null> {
   const db = await initDB();
   const accounts = ((await db.getAll('accounts')) ?? []) as Account[];
-  const active = accounts.filter(a => a.status === 'ACTIVE' && a.id != null);
+  // Legacy-aware filter (mirrors BalancesBancariosView): accounts predating the
+  // AccountStatus migration have `status` undefined and rely on `activa`.
+  const active = accounts.filter(a => {
+    if (a.id == null) return false;
+    if (a.deleted_at) return false;
+    if (a.status === 'DELETED' || a.status === 'INACTIVE') return false;
+    if (a.activa === false) return false;
+    if (a.isActive === false) return false;
+    return true;
+  });
   if (active.length === 0) return null;
 
   const filename = file.name.toLowerCase();
