@@ -193,13 +193,18 @@ class BankProfilesService {
     bankKey?: string;
     logoUrl?: string;
   } | null {
-    if (!iban || iban.length < 4) return null;
+    if (!iban) return null;
+    const upper = iban.toUpperCase();
+
+    // Validate IBAN-like prefix `<country><checksum>` so non-IBAN inputs
+    // (a Spanish CCC like "1465 0100 …" or arbitrary text) don't accidentally
+    // get a country hint.
+    if (!/^[A-Z]{2}\d{2}/.test(upper)) return null;
 
     // Non-Spanish IBANs (Revolut typically): LT (Lithuania) or IE (Ireland).
     // We don't have access to a non-ES bank-code map, so just return the
     // country prefix as a soft hint — bankProfileMatcher will use the
     // filename/content signals to discriminate.
-    const upper = iban.toUpperCase();
     if (!upper.startsWith('ES')) {
       return { bankCode: upper.slice(0, 2) };
     }

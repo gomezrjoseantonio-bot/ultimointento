@@ -36,8 +36,12 @@ jest.mock('../movementLearningService', () => ({
 }));
 
 jest.mock('../bankProfilesService', () => ({
-  // Plain functions (not jest.fn) so the implementations survive
-  // beforeEach's `jest.clearAllMocks()` call further down.
+  // Plain functions (not jest.fn) — these are pure helpers; we don't need to
+  // assert on call history in any test, and keeping them as plain functions
+  // sidesteps any chance of an aggressive Jest reset API (resetAllMocks /
+  // restoreAllMocks) interacting with the factory implementation. Note that
+  // `jest.clearAllMocks()` (used in beforeEach below) only clears call state
+  // on jest.fn — it does NOT reset implementations.
   bankProfilesService: {
     loadProfiles: async () => undefined,
     getProfiles: () => [],
@@ -308,5 +312,37 @@ describe('bankStatementOrchestrator', () => {
 
     expect(result.bankProfileUsed).toBe('Sabadell');
     expect(result.movementsInserted).toBeGreaterThan(0);
+  });
+
+  it('6. processFile · falls back to banco.name when IBAN is foreign / unknown (Revolut path)', async () => {
+    // Revolut accounts use foreign IBANs (LT/IE), which getBankInfoFromIBAN
+    // cannot map to a Spanish profile. The deriveBankHintFromAccount second
+    // fallback (banco.name → profile key by case-insensitive substring)
+    // should catch this. Mock bankProfilesService.getProfiles to return a
+    // Revolut profile so the matching can succeed.
+    const realService = jest.requireMock('../bankProfilesService').bankProfilesService;
+    const originalGetProfiles = realService.getProfiles;
+    realService.getProfiles = () => [{ bankKey: 'Revolut' }, { bankKey: 'Sabadell' }];
+
+    try {
+      stores.accounts.push({
+        id: 99,
+        iban: 'LT12 3456 7890 1234 5678', // Lithuania — getBankInfoFromIBAN returns soft hint, no bankKey
+        banco: { name: 'Revolut', code: undefined },
+      });
+      (bankProfileMatcher.match as jest.Mock).mockResolvedValueOnce({
+        profile: null,
+        confidence: 0,
+        signals: { headerScore: 0, filenameScore: 0, contentScore: 0, ibanScore: 0 },
+      });
+
+      const file = new File(['mock'], 'revolut-export.csv');
+      const result = await processFile(file, { accountId: 99 });
+
+      expect(result.bankProfileUsed).toBe('Revolut');
+      expect(result.movementsInserted).toBeGreaterThan(0);
+    } finally {
+      realService.getProfiles = originalGetProfiles;
+    }
   });
 });
