@@ -2,9 +2,10 @@ import { BankProfile, BankProfilesData, BankDetectionResult } from '../types/ban
 
 // Spanish bank entity-code map (the 4-digit code used as positions 5–8 of a
 // Spanish IBAN, or stored separately as `account.banco.code`). Updated
-// 2026-04-27 after user reports of Abanca/Unicaja/Openbank IBANs not being
-// recognised. Source of truth for the 9 entities in
-// public/assets/bank-profiles.json that have a Spanish IBAN.
+// 2026-04-27 after user reports: first round added Abanca/Unicaja/Openbank,
+// second round added Revolut Bank UAB · Sucursal en España (code 1583).
+// Source of truth for the entities in public/assets/bank-profiles.json that
+// have a Spanish IBAN.
 const SPANISH_ENTITY_CODE_MAP: Record<string, string> = {
   '2080': 'ABANCA',
   '0182': 'BBVA',
@@ -15,6 +16,7 @@ const SPANISH_ENTITY_CODE_MAP: Record<string, string> = {
   '1465': 'ING',
   '0073': 'Openbank',
   '2100': 'CaixaBank',
+  '1583': 'Revolut', // Revolut Bank UAB · Sucursal en España
 };
 
 class BankProfilesService {

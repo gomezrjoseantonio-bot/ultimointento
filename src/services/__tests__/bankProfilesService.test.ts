@@ -21,6 +21,9 @@ describe('bankProfilesService.getBankInfoFromIBAN', () => {
     expect(bankProfilesService.getBankInfoFromIBAN('ES4714650000000000000000')?.bankKey).toBe('ING');
     expect(bankProfilesService.getBankInfoFromIBAN('ES4700730000000000000000')?.bankKey).toBe('Openbank');
     expect(bankProfilesService.getBankInfoFromIBAN('ES4721000000000000000000')?.bankKey).toBe('CaixaBank');
+    // Revolut Bank UAB · Sucursal en España (added 2026-04-27 after user
+    // reported Revolut imports failing detection in production).
+    expect(bankProfilesService.getBankInfoFromIBAN('ES8715830000000000004651')?.bankKey).toBe('Revolut');
   });
 
   it('returns soft country-hint (no bankKey) for foreign IBANs (Revolut LT/IE)', () => {
