@@ -1,0 +1,14 @@
+.date {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--atlas-v5-ls-mono);
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+}
+
+.date.muted { color: var(--atlas-v5-ink-3); }
+.date.subtle { color: var(--atlas-v5-ink-4); }
+
+.date.sm { font-size: var(--atlas-v5-fs-sub-sm); }
+.date.md { font-size: var(--atlas-v5-fs-base); }
+.date.bold { font-weight: var(--atlas-v5-fw-semibold); color: var(--atlas-v5-ink); }

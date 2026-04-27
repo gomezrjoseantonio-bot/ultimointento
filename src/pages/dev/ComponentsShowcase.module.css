@@ -1,0 +1,101 @@
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  min-height: 100vh;
+  padding: var(--atlas-v5-sp-9) var(--atlas-v5-sp-10) var(--atlas-v5-sp-12);
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: var(--atlas-v5-sp-10);
+  padding-bottom: var(--atlas-v5-sp-5);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.header h1 {
+  font-size: var(--atlas-v5-fs-h1);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: var(--atlas-v5-ls-h1);
+  margin: 0;
+}
+
+.header .lead {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 6px;
+  max-width: 720px;
+}
+
+.section {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  padding: var(--atlas-v5-sp-7);
+  margin-bottom: var(--atlas-v5-sp-9);
+}
+
+.section h2 {
+  font-size: var(--atlas-v5-fs-h2);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: var(--atlas-v5-ls-h2);
+  margin: 0 0 6px 0;
+}
+
+.section .desc {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: var(--atlas-v5-sp-6);
+}
+
+.variantLabel {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: var(--atlas-v5-fs-chip-sm);
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-tag);
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  margin: var(--atlas-v5-sp-5) 0 var(--atlas-v5-sp-2) 0;
+  display: block;
+}
+
+.variantLabel:first-child { margin-top: 0; }
+
+.row {
+  display: flex;
+  gap: var(--atlas-v5-sp-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-3);
+}
+
+.gridTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--atlas-v5-sp-5);
+}
+
+.gridThree {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--atlas-v5-sp-5);
+}
+
+.devNotice {
+  background: var(--atlas-v5-warn-wash);
+  border: 1px solid var(--atlas-v5-warn-border);
+  color: var(--atlas-v5-warn);
+  padding: 10px 14px;
+  border-radius: var(--atlas-v5-radius-md);
+  font-size: var(--atlas-v5-fs-sub-sm);
+  margin-bottom: var(--atlas-v5-sp-5);
+  font-family: var(--atlas-v5-font-ui);
+}
