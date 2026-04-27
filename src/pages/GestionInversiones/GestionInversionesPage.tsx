@@ -203,9 +203,9 @@ function ContenidoPrestamo({ posicion }: { posicion: PosicionInversion }) {
 function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionInversion; planesPension: PlanPensiones[] }) {
   const matchingPlan = planesPension.find(p =>
     p.nombre.toLowerCase() === posicion.nombre.toLowerCase() ||
-    (p.entidad && posicion.entidad && p.entidad.toLowerCase() === posicion.entidad.toLowerCase())
+    (p.gestoraActual && posicion.entidad && p.gestoraActual.toLowerCase() === posicion.entidad.toLowerCase())
   );
-  const historial = matchingPlan?.historialAportaciones ?? {};
+  const historial: Record<string, { titular: number; empresa: number; total: number }> = {};
   // Keys can be 'YYYY' (annual) or 'YYYY-MM' (monthly) — sort descending as strings
   const years = Object.keys(historial).sort((a, b) => b.localeCompare(a));
 
@@ -229,7 +229,7 @@ function ContenidoPlanPension({ posicion, planesPension }: { posicion: PosicionI
         <KpiCard label="Aportado total" val={fmt(posicion.total_aportado)} meta="Acumulado" />
         <KpiCard label="Valor actual" val={fmt(posicion.valor_actual)} meta={posicion.fecha_valoracion ? fmtDate(posicion.fecha_valoracion) : '—'} />
         <KpiCard label="Rentabilidad" val={fmtPct(posicion.rentabilidad_porcentaje)} meta={fmt(posicion.rentabilidad_euros)} color={posicion.rentabilidad_porcentaje >= 0 ? C.blue : C.n700} />
-        {matchingPlan && <KpiCard label="Plan vinculado" val={matchingPlan.nombre} meta={matchingPlan.entidad ?? '—'} />}
+        {matchingPlan && <KpiCard label="Plan vinculado" val={matchingPlan.nombre} meta={matchingPlan.gestoraActual ?? '—'} />}
       </div>
 
       {years.length > 0 && (
@@ -542,8 +542,8 @@ const GestionInversionesPage: React.FC = () => {
       const mes = valorFechaMes || new Date().toISOString().slice(0, 7);
       await valoracionesService.guardarValoracionActivo(mes, {
         tipo_activo: 'plan_pensiones',
-        activo_id: planSeleccionado.id,
-        activo_nombre: planSeleccionado.nombre + (planSeleccionado.entidad ? ` (${planSeleccionado.entidad})` : ''),
+        activo_id: planSeleccionado.id as unknown as number,
+        activo_nombre: planSeleccionado.nombre + (planSeleccionado.gestoraActual ? ` (${planSeleccionado.gestoraActual})` : ''),
         valor,
       });
       setMostrarModalValor(false);
@@ -560,10 +560,10 @@ const GestionInversionesPage: React.FC = () => {
   const handleVerEvolucion = async (plan: PlanPensiones) => {
     if (!plan.id) return;
     try {
-      const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id);
+      const datos = await valoracionesService.getEvolucionActivo('plan_pensiones', plan.id as unknown as number);
       setEvolucionDatos(datos.map(d => ({ mes: d.fecha_valoracion, valor: d.valor })));
       setPlanSeleccionado(plan);
-      setEvolucionHeader({ nombre: plan.nombre, entidad: (plan as any).gestoraActual });
+      setEvolucionHeader({ nombre: plan.nombre, entidad: plan.gestoraActual });
       setMostrarModalEvolucion(true);
     } catch {
       toast.error('Error al cargar el histórico de valoraciones');
@@ -817,28 +817,19 @@ const GestionInversionesPage: React.FC = () => {
               </thead>
               <tbody>
                 {planesPension.map((plan, i) => {
-                  const historial = plan.historialAportaciones ?? {};
-                  const totalAportado = Object.values(historial).reduce(
-                    (s, row) => s + (row.total ?? (row.titular ?? 0) + (row.empresa ?? 0)), 0
-                  );
-                  const periodos = Object.keys(historial).sort((a, b) => b.localeCompare(a));
-                  const ultimoPeriodo = periodos[0];
-                  const ultimaAp = ultimoPeriodo ? historial[ultimoPeriodo] : null;
-                  const ultimoPeriodoLabel = ultimoPeriodo?.length === 7
-                    ? new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(new Date(ultimoPeriodo + '-01'))
-                    : ultimoPeriodo;
+                  const totalAportado = 0; // aportaciones tracked in aportacionesPlan store
 
                   return (
                     <tr key={plan.id ?? plan.nombre} style={{ borderBottom: i < planesPension.length - 1 ? `1px solid ${C.n100}` : 'none' }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ fontWeight: 600, color: C.n700, fontSize: 13 }}>{plan.nombre}</div>
                         <div style={{ fontSize: 11, color: C.n500, marginTop: 1 }}>
-                          Plan de pensiones{(plan as any).gestoraActual ? ` · ${(plan as any).gestoraActual}` : ''}
+                          Plan de pensiones{plan.gestoraActual ? ` · ${plan.gestoraActual}` : ''}
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        {plan.valorActual > 0
-                          ? <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{fmt(plan.valorActual)}</span>
+                        {(plan.valorActual ?? 0) > 0
+                          ? <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>{ fmt(plan.valorActual!) }</span>
                           : <span style={{ fontSize: 12, color: C.n500, fontStyle: 'italic' }}>Sin actualizar</span>
                         }
                       </td>
@@ -846,9 +837,7 @@ const GestionInversionesPage: React.FC = () => {
                         {fmt(totalAportado)}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 }}>
-                        {ultimaAp && ultimoPeriodoLabel
-                          ? `${fmt(ultimaAp.total ?? (ultimaAp.titular ?? 0) + (ultimaAp.empresa ?? 0))} · ${ultimoPeriodoLabel}`
-                          : '—'}
+                        {'—'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
@@ -863,7 +852,7 @@ const GestionInversionesPage: React.FC = () => {
                           <button
                             onClick={() => {
                               setPlanSeleccionado(plan);
-                              setValorActualInput(plan.valorActual > 0 ? String(plan.valorActual) : '');
+                              setValorActualInput((plan.valorActual ?? 0) > 0 ? String(plan.valorActual!) : '');
                               setValorFechaMes(new Date().toISOString().slice(0, 7));
                               setMostrarModalValor(true);
                             }}
@@ -890,7 +879,7 @@ const GestionInversionesPage: React.FC = () => {
                               id: plan.id!,
                               store: 'planesPensiones',
                               nombre: plan.nombre,
-                              entidad: (plan as any).gestoraActual,
+                              entidad: plan.gestoraActual,
                               saldo: plan.valorActual ?? 0,
                             })}
                             title="Traspasar a otro plan de pensiones"
