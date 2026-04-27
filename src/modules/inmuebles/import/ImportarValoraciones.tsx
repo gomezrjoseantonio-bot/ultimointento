@@ -1,5 +1,6 @@
-// src/pages/account/migracion/ImportarValoraciones.tsx
-// ATLAS HORIZON: Excel importer for historical valuations
+// src/modules/inmuebles/import/ImportarValoraciones.tsx
+// ATLAS HORIZON: Excel importer for historical valuations.
+// T20 Fase 3a (sub-tarea 20.3a): re-ubicado per decisión D3 de Jose.
 
 import React, { useCallback, useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
@@ -33,7 +34,7 @@ const formatCurrency = (value: number): string =>
 const TIPO_COLORS: Record<string, string> = {
   inmueble: 'var(--atlas-blue)',
   inversion: 'var(--ok)',
-  plan_pensiones: 'var(--c3, #8b5cf6)',
+  plan_pensiones: 'var(--atlas-v5-c3)',
 };
 
 const toYearMonth = (year: number, month: number): string => `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}`;
@@ -533,7 +534,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
             width: '40px',
             height: '40px',
             borderRadius: '10px',
-            backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+            backgroundColor: 'var(--atlas-v5-brand-wash)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -619,7 +620,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
-              backgroundColor: dragging ? 'var(--atlas-blue-light, #EBF3FF)' : 'var(--bg)',
+              backgroundColor: dragging ? 'var(--atlas-v5-brand-wash)' : 'var(--bg)',
               transition: 'border-color 0.2s, background-color 0.2s',
             }}
           >
@@ -683,7 +684,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
               display: 'flex',
               gap: '8px',
               padding: '10px 12px',
-              backgroundColor: 'var(--atlas-blue-light, #EBF3FF)',
+              backgroundColor: 'var(--atlas-v5-brand-wash)',
               borderRadius: '8px',
               marginBottom: '12px',
             }}
@@ -723,7 +724,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                     key={i}
                     style={{
                       borderBottom: '1px solid var(--hz-neutral-300)',
-                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                      backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-v5-card-alt)',
                     }}
                   >
                     <td style={{ padding: '8px 12px', color: 'var(--atlas-navy-1)', fontVariantNumeric: 'tabular-nums' }}>
@@ -767,7 +768,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                 borderLeft: '3px solid var(--atlas-blue)',
                 borderRadius: '8px',
                 padding: '12px 16px',
-                backgroundColor: 'var(--s-positive-bg, var(--atlas-blue-light, #EBF3FF))',
+                backgroundColor: 'var(--s-positive-bg, var(--atlas-v5-brand-wash))',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -859,7 +860,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                             fontSize: '0.8125rem',
                             fontFamily: 'var(--font-inter)',
                             color: 'var(--atlas-navy-1)',
-                            backgroundColor: '#fff',
+                            backgroundColor: 'var(--atlas-v5-white)',
                             cursor: 'pointer',
                           }}
                         >
@@ -902,7 +903,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                                 v.status === 'verifying' || !v.correctedName.trim()
                                   ? 'var(--hz-neutral-300)'
                                   : 'var(--atlas-blue)',
-                              color: '#fff',
+                              color: 'var(--atlas-v5-white)',
                               fontSize: '0.8125rem',
                               fontWeight: 600,
                               cursor:
@@ -933,7 +934,7 @@ const ImportarValoraciones: React.FC<ImportarValoracionesProps> = ({ onComplete,
                 border: 'none',
                 borderRadius: '8px',
                 backgroundColor: importing || validatingNames || importableCount === 0 ? 'var(--hz-neutral-300)' : 'var(--atlas-blue)',
-                color: '#fff',
+                color: 'var(--atlas-v5-white)',
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: importing || validatingNames || importableCount === 0 ? 'not-allowed' : 'pointer',

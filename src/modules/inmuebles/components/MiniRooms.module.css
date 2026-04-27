@@ -1,0 +1,51 @@
+.grid {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.room {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-white);
+  font-size: 9.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+  letter-spacing: -0.02em;
+  position: relative;
+}
+
+.room.vacant {
+  opacity: 0.4;
+  border: 1.5px dashed var(--atlas-v5-ink-5);
+  background-color: var(--atlas-v5-line) !important;
+  color: var(--atlas-v5-ink-4);
+}
+
+.room.overdue::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-v5-neg);
+  border: 1.5px solid var(--atlas-v5-card);
+}
+
+.room.ending::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  border: 1.5px solid var(--atlas-v5-card);
+}

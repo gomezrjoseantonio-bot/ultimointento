@@ -66,12 +66,17 @@ const PanelPage = lazyWithPreload(() => import('./pages/PanelPage'));
 // Inbox page - lazy load to reduce main bundle
 const InboxPage = lazyWithPreload(() => import('./pages/InboxPage'));
 
-// Horizon (Investment) Module Components
-const Cartera = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
-const Contratos = lazyWithPreload(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Analisis = lazyWithPreload(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
-const Ingresos = lazyWithPreload(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
-const Gastos = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
+// T20 Fase 3a · Inmuebles v5 module (sustituye horizon/inmuebles/* + pulse/contratos/*)
+const InmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/InmueblesPage'));
+const InmueblesListado = lazyWithPreload(() => import('./modules/inmuebles/pages/ListadoPage'));
+const InmueblesDetalle = lazyWithPreload(() => import('./modules/inmuebles/pages/DetallePage'));
+const InmueblesContratosLista = lazyWithPreload(() => import('./modules/inmuebles/pages/ContratosListPage'));
+const InmueblesNuevoContrato = lazyWithPreload(() => import('./modules/inmuebles/wizards/NuevoContratoWizard'));
+// T20 Fase 3a · 3 importadores re-ubicados per decisión D3 de Jose.
+const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarInmuebles'));
+const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
+const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
+// Inmuebles supervision · ruta separada · usado por Panel y otros.
 const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/supervision/Supervision'));
 
 // Inversiones Module
@@ -110,7 +115,7 @@ const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyecc
 const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
-const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
+// T20 Fase 3a · PropertyDetail legacy eliminado · sustituido por src/modules/inmuebles/pages/DetallePage.
 
 // Personal section (within Horizon)
 const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
@@ -128,8 +133,8 @@ const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal
 const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
 
 // Pulse (Management) Module Components
-const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
-const ContratosNuevoPage = lazyWithPreload(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
+// T20 Fase 3a · ContratosLista + ContratosNuevoPage legacy eliminados ·
+// sustituidos por src/modules/inmuebles/pages/ContratosListPage + wizards/NuevoContratoWizard.
 const FirmasPendientes = lazyWithPreload(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
 const AutomatizacionesReglas = lazyWithPreload(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
 const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
@@ -413,67 +418,93 @@ function App() {
               </React.Suspense>
             } />
             
-            {/* Horizon (Investment) Routes */}
-            <Route path="inmuebles">
-              <Route index element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="cartera" element={
+            {/* T20 Fase 3a · Inmuebles v5 (sustituye horizon/inmuebles/cartera + contratos legacy)
+                Mockups · atlas-inmuebles-v3 (listado) · atlas-inmueble-fa32-v2 (ficha 6 tabs). */}
+            <Route path="inmuebles" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InmueblesPage />
+              </React.Suspense>
+            }>
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <Cartera />
+                  <InmueblesListado />
                 </React.Suspense>
               } />
-              <Route path="cartera/nuevo" element={
+              <Route path=":id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="create" />
-                </React.Suspense>
-              } />
-              <Route path="cartera/:id" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyDetail />
-                </React.Suspense>
-              } />
-              <Route path="cartera/:id/editar" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="edit" />
-                </React.Suspense>
-              } />
-              <Route path="contratos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Contratos />
-                </React.Suspense>
-              } />
-              <Route path="evolucion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Analisis />
-                </React.Suspense>
-              } />
-              <Route path="analisis" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <AnalisisCartera scope="inmuebles" />
-                </React.Suspense>
-              } />
-              <Route path="analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
-              <Route path="ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Ingresos />
-                </React.Suspense>
-              } />
-              <Route path="gastos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Gastos />
-                </React.Suspense>
-              } />
-              {/* mejora route removed — store deleted */}
-              <Route path="supervision" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Supervision />
+                  <InmueblesDetalle />
                 </React.Suspense>
               } />
             </Route>
-            
+
+            {/* Inmuebles · sub-rutas fuera del Outlet · forms y supervision legacy */}
+            <Route path="inmuebles/nuevo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PropertyForm mode="create" />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/:id/editar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PropertyForm mode="edit" />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/supervision" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <Supervision />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/analisis" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AnalisisCartera scope="inmuebles" />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarInmueblesPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar-valoraciones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarValoracionesPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar-contratos" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarContratosPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+
+            {/* Inmuebles · redirects compat para rutas legacy */}
+            <Route path="inmuebles-legacy">
+              <Route path="cartera" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="cartera/:id" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="contratos" element={<Navigate to="/contratos" replace />} />
+              <Route path="evolucion" element={<Navigate to="/inmuebles/analisis" replace />} />
+              <Route path="ingresos" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="gastos" element={<Navigate to="/inmuebles" replace />} />
+            </Route>
+
+            {/* Wildcard inmuebles · cualquier ruta legacy redirige a listado */}
+            <Route path="inmuebles/cartera" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/cartera/:id" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/contratos" element={<Navigate to="/contratos" replace />} />
+            <Route path="inmuebles/evolucion" element={<Navigate to="/inmuebles/analisis" replace />} />
+            <Route path="inmuebles/ingresos" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/gastos" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
+            <Route path="inmuebles/resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
+            <Route path="inmuebles/individual" element={<Navigate to="/inmuebles/supervision" replace />} />
+
+
             {/* Inversiones Module - unified with 4 tabs */}
             <Route path="inversiones">
               <Route index element={
@@ -677,24 +708,29 @@ function App() {
               } />
             </Route>
 
-            {/* Pulse (Management) Routes */}
-            <Route path="contratos">
-              <Route index element={<Navigate to="/contratos/lista" replace />} />
+            {/* T20 Fase 3a · Contratos v5 (sustituye pulse/contratos legacy)
+                Mockups · atlas-contratos-v4 (listado 4 tabs) · atlas-wizard-nuevo-contrato (wizard 5 pasos) */}
+            <Route path="contratos" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InmueblesPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesContratosLista />
+                </React.Suspense>
+              } />
               <Route path="lista" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosLista />
+                  <InmueblesContratosLista />
                 </React.Suspense>
               } />
               <Route path="nuevo" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosNuevoPage />
+                  <InmueblesNuevoContrato />
                 </React.Suspense>
               } />
-              <Route path="gestion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosLista />
-                </React.Suspense>
-              } />
+              <Route path="gestion" element={<Navigate to="/contratos" replace />} />
             </Route>
             
             <Route path="firmas">

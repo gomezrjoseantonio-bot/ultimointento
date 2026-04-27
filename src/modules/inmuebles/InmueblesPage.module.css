@@ -1,0 +1,9 @@
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+}

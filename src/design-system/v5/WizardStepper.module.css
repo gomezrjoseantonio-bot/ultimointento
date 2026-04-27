@@ -1,0 +1,107 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-3);
+  font-family: var(--atlas-v5-font-ui);
+  width: 100%;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  width: 100%;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.step:last-child .connector { display: none; }
+
+.dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--atlas-v5-card-alt);
+  border: 1.5px solid var(--atlas-v5-line);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.step.completed .dot {
+  background: var(--atlas-v5-pos);
+  border-color: var(--atlas-v5-pos);
+  color: var(--atlas-v5-white);
+}
+
+.step.active .dot {
+  background: var(--atlas-v5-gold);
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+}
+
+.step.error .dot {
+  background: var(--atlas-v5-neg-wash);
+  border-color: var(--atlas-v5-neg);
+  color: var(--atlas-v5-neg);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.step.active .title {
+  color: var(--atlas-v5-ink);
+}
+
+.step.completed .title {
+  color: var(--atlas-v5-ink-2);
+}
+
+.sub {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-tech);
+}
+
+.connector {
+  flex: 1;
+  height: 1.5px;
+  background: var(--atlas-v5-line);
+  margin: 0 var(--atlas-v5-sp-2);
+}
+
+.step.completed .connector { background: var(--atlas-v5-pos); }
+
+.clickable .dot,
+.clickable .label {
+  cursor: pointer;
+}
+
+.clickable:hover .dot {
+  border-color: var(--atlas-v5-ink-5);
+}

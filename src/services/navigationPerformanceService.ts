@@ -9,16 +9,12 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../pages/InboxPage');
     return;
   }
-  if (href.startsWith('/inmuebles/cartera')) {
-    await import('../modules/horizon/inmuebles/cartera/Cartera');
-    return;
-  }
   if (href.startsWith('/inmuebles/supervision')) {
     await import('../modules/horizon/inmuebles/supervision/Supervision');
     return;
   }
-  if (href.startsWith('/inmuebles/analisis') || href === '/inmuebles') {
-    await import('../pages/inmuebles/InmueblesAnalisis');
+  if (href.startsWith('/inmuebles')) {
+    await import('../modules/inmuebles/InmueblesPage');
     return;
   }
   if (href.startsWith('/inversiones')) {
@@ -30,7 +26,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/contratos')) {
-    await import('../modules/pulse/contratos/lista/ContratosLista');
+    await import('../modules/inmuebles/pages/ContratosListPage');
     return;
   }
   if (href.startsWith('/ajustes') || href.startsWith('/cuenta')) {
