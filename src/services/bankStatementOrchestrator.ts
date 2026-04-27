@@ -155,13 +155,10 @@ async function deriveBankHintFromAccount(accountId: number): Promise<string | nu
     }
 
     // Final fallback: a 4-digit Spanish entity code stored in `banco.code`.
-    // Uses the same map as `getBankInfoFromIBAN` by faking an "ES00<code>…"
-    // string so we don't duplicate the lookup table.
-    const bancoCode = account.banco?.code?.trim();
-    if (bancoCode && /^\d{4}$/.test(bancoCode)) {
-      const fromCode = bankProfilesService.getBankInfoFromIBAN(`ES00${bancoCode}`);
-      if (fromCode?.bankKey) return fromCode.bankKey;
-    }
+    // Uses the dedicated helper rather than synthesising a fake IBAN, so this
+    // path stays correct even if IBAN parsing semantics change later.
+    const fromCode = bankProfilesService.getBankKeyFromSpanishEntityCode(account.banco?.code);
+    if (fromCode) return fromCode;
 
     return null;
   } catch {

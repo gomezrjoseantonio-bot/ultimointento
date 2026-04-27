@@ -1,5 +1,22 @@
 import { BankProfile, BankProfilesData, BankDetectionResult } from '../types/bankProfiles';
 
+// Spanish bank entity-code map (the 4-digit code used as positions 5–8 of a
+// Spanish IBAN, or stored separately as `account.banco.code`). Updated
+// 2026-04-27 after user reports of Abanca/Unicaja/Openbank IBANs not being
+// recognised. Source of truth for the 9 entities in
+// public/assets/bank-profiles.json that have a Spanish IBAN.
+const SPANISH_ENTITY_CODE_MAP: Record<string, string> = {
+  '2080': 'ABANCA',
+  '0182': 'BBVA',
+  '0049': 'Santander',
+  '2103': 'Unicaja',
+  '0081': 'Sabadell',
+  '0128': 'Bankinter',
+  '1465': 'ING',
+  '0073': 'Openbank',
+  '2100': 'CaixaBank',
+};
+
 class BankProfilesService {
   private profiles: BankProfile[] = [];
   private loaded = false;
@@ -181,6 +198,19 @@ class BankProfilesService {
   }
 
   /**
+   * Resolve a Spanish entity code (4-digit bank code) to its bankKey directly.
+   * Used by callers that already know the entity code without needing to
+   * parse a full IBAN — e.g. `account.banco.code` stored independently.
+   *
+   * Returns null when the code is not in the canonical map.
+   */
+  getBankKeyFromSpanishEntityCode(code: string | undefined | null): string | null {
+    const normalized = code?.trim();
+    if (!normalized || !/^\d{4}$/.test(normalized)) return null;
+    return SPANISH_ENTITY_CODE_MAP[normalized] ?? null;
+  }
+
+  /**
    * Get comprehensive bank information from IBAN.
    *
    * Recognises Spanish IBANs (ES + 4-digit bank code) for the 9 entities listed
@@ -211,22 +241,7 @@ class BankProfilesService {
 
     if (iban.length < 8) return null;
     const bankCode = iban.substring(4, 8);
-
-    // Spanish bank codes → bankKey from bank-profiles.json. Updated 2026-04-27
-    // after user reports of Abanca/Unicaja/Openbank IBANs not being recognised.
-    const bankCodeMap: Record<string, string> = {
-      '2080': 'ABANCA',
-      '0182': 'BBVA',
-      '0049': 'Santander',
-      '2103': 'Unicaja',
-      '0081': 'Sabadell',
-      '0128': 'Bankinter',
-      '1465': 'ING',
-      '0073': 'Openbank',
-      '2100': 'CaixaBank',
-    };
-
-    const bankKey = bankCodeMap[bankCode];
+    const bankKey = this.getBankKeyFromSpanishEntityCode(bankCode) ?? undefined;
 
     return {
       bankCode,
