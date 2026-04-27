@@ -127,6 +127,12 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0].via).toBe('learning_rule');
     expect(suggestions[0].confidence).toBeGreaterThanOrEqual(70);
+    // sourceType must align with event type (positive amountSign ⇒ income ⇒ 'ingreso').
+    expect(suggestions[0].action.kind).toBe('create_treasury_event');
+    if (suggestions[0].action.kind === 'create_treasury_event') {
+      expect(suggestions[0].action.type).toBe('income');
+      expect(suggestions[0].action.sourceType).toBe('ingreso');
+    }
     // BIZUM heuristic would have fired had vía B not short-circuited; assert it
     // is NOT in the array.
     expect(suggestions.find(s => s.via === 'heuristica')).toBeUndefined();
@@ -185,6 +191,52 @@ describe('movementSuggestionService.suggestForUnmatched', () => {
     expect(heuristic).toBeDefined();
     expect(heuristic!.confidence).toBe(50);
     expect(heuristic!.action.kind).toBe('assign_to_contract');
+  });
+
+  it('Regression (Copilot review #1158): vía A skips positive movements — compromisos modelan gasto, no ingreso', async () => {
+    (buildLearnKey as jest.Mock).mockReturnValue('hash:no-rule');
+    const stores: FakeStores = {
+      movements: [
+        movement({
+          id: 1,
+          accountId: 42,
+          amount: 89.4, // positive: would magnitude-match a 89.40€ compromiso, but compromisos are gasto-only
+          description: 'INGRESO INESPERADO',
+        }),
+      ],
+      movementLearningRules: [],
+      compromisosRecurrentes: [
+        {
+          id: 1,
+          ambito: 'inmueble',
+          inmuebleId: 7,
+          alias: 'Suministro luz inmueble Calle Mayor',
+          tipo: 'suministro',
+          subtipo: 'luz',
+          proveedor: { nombre: 'Iberdrola' },
+          patron: { tipo: 'mensualDiaFijo', dia: 22 },
+          importe: { modo: 'fijo', importe: 89.4 },
+          cuentaCargo: 42,
+          conceptoBancario: 'IBERDROLA CLIENTES SA',
+          metodoPago: 'domiciliacion',
+          categoria: 'inmueble.suministros',
+          bolsaPresupuesto: 'inmueble',
+          responsable: 'titular',
+          fechaInicio: '2025-01-01',
+          estado: 'activo',
+          createdAt: '2025-01-01T00:00:00.000Z',
+          updatedAt: '2025-01-01T00:00:00.000Z',
+        },
+      ],
+    };
+    (initDB as jest.Mock).mockResolvedValue(buildDb(stores));
+
+    const result = await suggestForUnmatched([1]);
+    const suggestions = result.get(1)!;
+
+    // Vía A must NOT emit a suggestion for a positive movement, even when
+    // a same-account same-magnitude compromiso exists.
+    expect(suggestions.find(s => s.via === 'compromiso_recurrente')).toBeUndefined();
   });
 
   it('5. learning rule con appliedCount=0 ⇒ vía B 50 (sin cortocircuito) + vía C heurística ⇒ ambas en el array', async () => {

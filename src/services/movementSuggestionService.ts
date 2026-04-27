@@ -131,6 +131,11 @@ function suggestFromCompromiso(
   type Candidate = { compromiso: CompromisoRecurrente; confidence: number };
   let best: Candidate | null = null;
 
+  // CompromisoRecurrente models gasto-only commitments: every CategoriaGastoCompromiso
+  // is an outflow and `importe` is stored positive. Therefore vía A only proposes
+  // matches for outflow movements (amount < 0); positive movements are skipped here.
+  if (movement.amount >= 0) return null;
+
   for (const compromiso of compromisos) {
     if (compromiso.cuentaCargo !== movement.accountId) continue;
 
@@ -162,7 +167,7 @@ function suggestFromCompromiso(
     description: `Coincide con compromiso "${best.compromiso.alias}" (${best.compromiso.proveedor?.nombre ?? 'proveedor sin nombre'})`,
     action: {
       kind: 'create_treasury_event',
-      type: movement.amount >= 0 ? 'income' : 'expense',
+      type: 'expense',
       ambito,
       inmuebleId: best.compromiso.inmuebleId,
       categoryKey: best.compromiso.categoria,
@@ -257,7 +262,9 @@ function suggestFromLearningRule(
           ambito: 'INMUEBLE',
           inmuebleId: rule.inmuebleId ? Number(rule.inmuebleId) : undefined,
           categoryKey: rule.categoria,
-          sourceType: 'gasto',
+          // Keep sourceType aligned with the event type so downstream flows
+          // that branch on income vs gasto stay consistent.
+          sourceType: rule.amountSign === 'positive' ? 'ingreso' : 'gasto',
         };
 
   return {
