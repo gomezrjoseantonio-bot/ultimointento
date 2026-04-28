@@ -7,12 +7,18 @@
   color: var(--atlas-v5-ink-4);
 }
 
-.breadcrumb a {
+.breadcrumb a,
+.crumbBtn {
   cursor: pointer;
   color: var(--atlas-v5-ink-3);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
 }
 
-.breadcrumb a:hover { color: var(--atlas-v5-ink); }
+.breadcrumb a:hover,
+.crumbBtn:hover { color: var(--atlas-v5-ink); }
 
 .breadcrumb .current {
   color: var(--atlas-v5-ink);

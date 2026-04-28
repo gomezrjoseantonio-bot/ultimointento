@@ -63,7 +63,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/tesoreria/TesoreriaPage');
     return;
   }
-  if (href.startsWith('/fiscal')) {
+  if (href === '/fiscal' || href.startsWith('/fiscal/')) {
     const subPage = href.startsWith('/fiscal/ejercicio/')
       ? import('../modules/fiscal/pages/DetalleEjercicioPage')
       : href.startsWith('/fiscal/ejercicios')
@@ -151,7 +151,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
   { match: (href) => href.startsWith('/financiacion'), stores: ['prestamos', 'properties', 'accounts'] },
-  { match: (href) => href.startsWith('/fiscal'), stores: ['ejerciciosFiscales', 'documentosFiscales', 'arrastresFiscales'] },
+  { match: (href) => href === '/fiscal' || href.startsWith('/fiscal/'), stores: ['ejerciciosFiscalesCoord', 'documents', 'arrastresIRPF'] },
   { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
   { match: (href) => href.startsWith('/mi-plan'), stores: ['escenarios', 'objetivos', 'fondos_ahorro', 'retos', 'nominas', 'autonomos', 'compromisosRecurrentes', 'contracts'] },
 ];

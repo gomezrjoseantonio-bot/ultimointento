@@ -91,7 +91,19 @@ const EjerciciosPage: React.FC = () => {
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r.ejercicio} onClick={() => navigate(`/fiscal/ejercicio/${r.ejercicio}`)}>
+              <tr
+                key={r.ejercicio}
+                tabIndex={0}
+                role="link"
+                aria-label={`Abrir ejercicio ${r.ejercicio}`}
+                onClick={() => navigate(`/fiscal/ejercicio/${r.ejercicio}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/fiscal/ejercicio/${r.ejercicio}`);
+                  }
+                }}
+              >
                 <td>
                   <span className={styles.year}>{r.ejercicio}</span>
                 </td>

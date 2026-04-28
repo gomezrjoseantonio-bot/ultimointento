@@ -107,7 +107,11 @@ const DashboardPage: React.FC = () => {
             )}
           </div>
           <div className={styles.kpiHint}>
-            {proyeccionEnCurso != null && proyeccionEnCurso < 0 ? 'a pagar est.' : 'a devolver est.'}
+            {proyeccionEnCurso == null
+              ? 'sin datos'
+              : proyeccionEnCurso < 0
+                ? 'a pagar est.'
+                : 'a devolver est.'}
           </div>
           <div className={styles.kpiCta}>Ver detalle →</div>
         </div>
@@ -131,7 +135,11 @@ const DashboardPage: React.FC = () => {
             )}
           </div>
           <div className={styles.kpiHint}>
-            {borradorPrev != null && borradorPrev > 0 ? 'a devolver · presentar' : 'a pagar · presentar'}
+            {borradorPrev == null
+              ? 'sin datos'
+              : borradorPrev > 0
+                ? 'a devolver · presentar'
+                : 'a pagar · presentar'}
           </div>
           <div className={styles.kpiCta}>Ir al borrador →</div>
         </div>
@@ -223,8 +231,10 @@ const DashboardPage: React.FC = () => {
                 </span>
               </div>
 
+              {/* Mostramos todas las obligaciones (303/130/100/180/347) en
+                  los 4 años del timeline · las trimestrales muestran 4
+                  cumplidas para años pasados. */}
               {obligacionesAnioBase
-                .filter((o) => year !== currentYear ? o.frecuencia === 'anual' : true)
                 .map((o) => (
                   <div key={o.modelo} className={styles.tlRow}>
                     <div className={styles.tlRowLab}>

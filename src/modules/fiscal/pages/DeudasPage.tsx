@@ -57,7 +57,19 @@ const DeudasPage: React.FC = () => {
           </thead>
           <tbody>
             {deudas.map(({ e, cuota }) => (
-              <tr key={e.ejercicio} onClick={() => navigate(`/fiscal/ejercicio/${e.ejercicio}`)}>
+              <tr
+                key={e.ejercicio}
+                tabIndex={0}
+                role="link"
+                aria-label={`Abrir ejercicio ${e.ejercicio}`}
+                onClick={() => navigate(`/fiscal/ejercicio/${e.ejercicio}`)}
+                onKeyDown={(ev) => {
+                  if (ev.key === 'Enter' || ev.key === ' ') {
+                    ev.preventDefault();
+                    navigate(`/fiscal/ejercicio/${e.ejercicio}`);
+                  }
+                }}
+              >
                 <td>
                   <span className={styles.year}>{e.ejercicio}</span>
                 </td>

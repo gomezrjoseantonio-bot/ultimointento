@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { CardV5, Icons, MoneyValue, showToastV5 } from '../../../design-system/v5';
 import type { FiscalOutletContext } from '../FiscalContext';
@@ -7,6 +7,7 @@ import {
   ESTADOS_VIVOS,
   formatDateLong,
   labelEstado,
+  prescribeYearOf,
 } from '../helpers';
 import styles from './DetalleEjercicioPage.module.css';
 
@@ -26,6 +27,11 @@ const DetalleEjercicioPage: React.FC = () => {
   const { ejercicios } = useOutletContext<FiscalOutletContext>();
   const [tab, setTab] = useState<Tab>('modelo100');
 
+  // Resetea la tab al cambiar de ejercicio · evita "tab pegado" entre años.
+  useEffect(() => {
+    setTab('modelo100');
+  }, [anio]);
+
   const ej = useMemo(
     () => ejercicios.find((e) => String(e.ejercicio) === String(anio)),
     [ejercicios, anio],
@@ -37,17 +43,21 @@ const DetalleEjercicioPage: React.FC = () => {
         <CardV5.Body>
           <div className={styles.notFound}>
             Ejercicio {anio} no encontrado.{' '}
-            <span
-              role="button"
-              tabIndex={0}
-              style={{ color: 'var(--atlas-v5-gold-ink)', cursor: 'pointer', fontWeight: 600 }}
-              onClick={() => navigate('/fiscal/ejercicios')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate('/fiscal/ejercicios');
+            <button
+              type="button"
+              style={{
+                color: 'var(--atlas-v5-gold-ink)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                background: 'none',
+                border: 0,
+                padding: 0,
+                font: 'inherit',
               }}
+              onClick={() => navigate('/fiscal/ejercicios')}
             >
               Volver a ejercicios
-            </span>
+            </button>
           </div>
         </CardV5.Body>
       </CardV5>
@@ -73,41 +83,33 @@ const DetalleEjercicioPage: React.FC = () => {
   return (
     <>
       <div className={styles.breadcrumb}>
-        <span
+        <button
+          type="button"
           className={styles.backBtn}
-          role="button"
-          tabIndex={0}
           onClick={() => navigate('/fiscal/ejercicios')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') navigate('/fiscal/ejercicios');
-          }}
         >
           <Icons.ArrowLeft size={12} strokeWidth={2} />
           Volver
-        </span>
-        <span
-          role="link"
-          tabIndex={0}
+        </button>
+        <button
+          type="button"
+          className={styles.crumbBtn}
           onClick={() => navigate('/fiscal')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') navigate('/fiscal');
-          }}
         >
           Fiscal
-        </span>
+        </button>
         <Icons.ChevronRight size={10} strokeWidth={2} />
-        <span
-          role="link"
-          tabIndex={0}
+        <button
+          type="button"
+          className={styles.crumbBtn}
           onClick={() => navigate('/fiscal/ejercicios')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') navigate('/fiscal/ejercicios');
-          }}
         >
           Ejercicios
-        </span>
+        </button>
         <Icons.ChevronRight size={10} strokeWidth={2} />
-        <span className={styles.current}>Ejercicio {ej.ejercicio}</span>
+        <span className={styles.current} aria-current="page">
+          Ejercicio {ej.ejercicio}
+        </span>
       </div>
 
       <div className={styles.heroRow}>
@@ -173,13 +175,7 @@ const DetalleEjercicioPage: React.FC = () => {
         </div>
         <div className={styles.kpiCell}>
           <div className={styles.kpiLab}>Prescribe</div>
-          <div className={styles.kpiVal}>
-            {ej.declaradoAt
-              ? new Date(ej.declaradoAt).getFullYear() + 4
-              : ej.cerradoAt
-                ? new Date(ej.cerradoAt).getFullYear() + 4
-                : '—'}
-          </div>
+          <div className={styles.kpiVal}>{prescribeYearOf(ej) ?? '—'}</div>
           <div className={styles.kpiSub}>4 años desde declaración</div>
         </div>
       </div>
