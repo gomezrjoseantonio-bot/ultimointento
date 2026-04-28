@@ -63,6 +63,21 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/tesoreria/TesoreriaPage');
     return;
   }
+  if (href.startsWith('/fiscal')) {
+    const subPage = href.startsWith('/fiscal/ejercicio/')
+      ? import('../modules/fiscal/pages/DetalleEjercicioPage')
+      : href.startsWith('/fiscal/ejercicios')
+        ? import('../modules/fiscal/pages/EjerciciosPage')
+        : href.startsWith('/fiscal/deudas')
+          ? import('../modules/fiscal/pages/DeudasPage')
+          : href.startsWith('/fiscal/configuracion')
+            ? import('../modules/fiscal/pages/ConfiguracionPage')
+            : href.startsWith('/fiscal/calendario')
+              ? import('../modules/fiscal/pages/CalendarioFiscalPage')
+              : import('../modules/fiscal/pages/DashboardPage');
+    await Promise.all([import('../modules/fiscal/FiscalPage'), subPage]);
+    return;
+  }
   if (href.startsWith('/financiacion')) {
     const subPage = href.startsWith('/financiacion/listado')
       ? import('../modules/financiacion/pages/ListadoPage')
@@ -136,6 +151,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
   { match: (href) => href.startsWith('/financiacion'), stores: ['prestamos', 'properties', 'accounts'] },
+  { match: (href) => href.startsWith('/fiscal'), stores: ['ejerciciosFiscales', 'documentosFiscales', 'arrastresFiscales'] },
   { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
   { match: (href) => href.startsWith('/mi-plan'), stores: ['escenarios', 'objetivos', 'fondos_ahorro', 'retos', 'nominas', 'autonomos', 'compromisosRecurrentes', 'contracts'] },
 ];
