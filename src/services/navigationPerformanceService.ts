@@ -44,8 +44,19 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     ]);
     return;
   }
+  if (href.startsWith('/inversiones/analisis')) {
+    await import('../modules/horizon/analisis-cartera/AnalisisCartera');
+    return;
+  }
   if (href.startsWith('/inversiones')) {
-    await import('../modules/horizon/inversiones/InversionesPage');
+    const subPage = href.startsWith('/inversiones/cartera')
+      ? import('../modules/inversiones/pages/CarteraPage')
+      : href.startsWith('/inversiones/rendimientos')
+        ? import('../modules/inversiones/pages/RendimientosPage')
+        : href.startsWith('/inversiones/individual')
+          ? import('../modules/inversiones/pages/IndividualPage')
+          : import('../modules/inversiones/pages/ResumenPage');
+    await Promise.all([import('../modules/inversiones/InversionesPage'), subPage]);
     return;
   }
   if (href.startsWith('/tesoreria')) {
