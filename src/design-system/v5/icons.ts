@@ -34,6 +34,12 @@ import {
   Wrench,
   Gift,
   TrendingDown,
+  // Sub-módulos Inversiones
+  Briefcase,
+  BarChart3,
+  PieChart,
+  Activity,
+  ArrowUpRight,
   // UI utilitarios
   Upload,
   Download,
@@ -102,6 +108,13 @@ export const Icons = {
   Objetivos: Target,
   Fondos: Package,
   Retos: Star,
+
+  // ===== Sub-módulos Inversiones =====
+  Cartera: Briefcase,
+  Rendimientos: BarChart3,
+  Distribucion: PieChart,
+  Activity,
+  ArrowUpRight,
 
   // ===== Tipos de objetivo / fondo =====
   Acumular: Package,

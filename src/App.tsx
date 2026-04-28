@@ -79,8 +79,12 @@ const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/
 // Inmuebles supervision · ruta separada · usado por Panel y otros.
 const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/supervision/Supervision'));
 
-// Inversiones Module
-const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
+// Inversiones Module · T20 Fase 3d · v5 (Outlet + sub-pages)
+const InversionesPage = lazyWithPreload(() => import('./modules/inversiones/InversionesPage'));
+const InversionesResumen = lazyWithPreload(() => import('./modules/inversiones/pages/ResumenPage'));
+const InversionesCartera = lazyWithPreload(() => import('./modules/inversiones/pages/CarteraPage'));
+const InversionesRendimientos = lazyWithPreload(() => import('./modules/inversiones/pages/RendimientosPage'));
+const InversionesIndividual = lazyWithPreload(() => import('./modules/inversiones/pages/IndividualPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
 // Financing Module - New standalone financing module
@@ -518,19 +522,41 @@ function App() {
             <Route path="inmuebles/individual" element={<Navigate to="/inmuebles/supervision" replace />} />
 
 
-            {/* Inversiones Module - unified with 4 tabs */}
-            <Route path="inversiones">
+            {/* T20 Fase 3d · Inversiones v5 (Outlet + 4 sub-páginas)
+                · /inversiones (resumen) · /inversiones/cartera
+                · /inversiones/rendimientos · /inversiones/individual
+                · /inversiones/analisis (legacy AnalisisCartera intacto) */}
+            <Route path="inversiones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesPage />
+              </React.Suspense>
+            }>
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesPage />
+                  <InversionesResumen />
                 </React.Suspense>
               } />
-              <Route path="analisis" element={
+              <Route path="cartera" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AnalisisCartera scope="inversiones" />
+                  <InversionesCartera />
+                </React.Suspense>
+              } />
+              <Route path="rendimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesRendimientos />
+                </React.Suspense>
+              } />
+              <Route path="individual" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesIndividual />
                 </React.Suspense>
               } />
             </Route>
+            <Route path="inversiones/analisis" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AnalisisCartera scope="inversiones" />
+              </React.Suspense>
+            } />
             
             {/* T20 Fase 2 · Tesorería v5 (sustituye Tesoreria.tsx legacy)
                 Mockup atlas-tesoreria-v8.html · 2 tabs (Vista general + Conciliación bancaria)
