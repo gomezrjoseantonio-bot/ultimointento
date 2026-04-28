@@ -1,0 +1,296 @@
+.heroDeuda {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 24px;
+  align-items: end;
+}
+
+.heroDeuda .lab {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+
+.heroDeuda .total {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 36px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-neg);
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.heroDeuda .sub {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 8px;
+}
+
+.heroStat .val {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.heroStat .val.pos { color: var(--atlas-v5-pos); }
+.heroStat .val.gold { color: var(--atlas-v5-gold-ink); }
+
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+
+.kpiCell {
+  padding: 0 18px;
+  border-right: 1px solid var(--atlas-v5-line-2);
+}
+
+.kpiCell:last-child { border-right: none; }
+
+.kpiLab {
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 6px;
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+}
+
+.kpiVal.pos { color: var(--atlas-v5-pos); }
+.kpiVal.neg { color: var(--atlas-v5-neg); }
+
+.distCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+
+.distHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.distTitle {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.distSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.distTrack {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--atlas-v5-line-2);
+  margin-bottom: 12px;
+}
+
+.distSeg.hipotecas { background: var(--atlas-v5-brand); }
+.distSeg.personales { background: var(--atlas-v5-gold); }
+.distSeg.pignora { background: var(--atlas-v5-neg); }
+
+.distLeg {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.distLegItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink);
+}
+
+.distLegDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.distLegDot.hipotecas { background: var(--atlas-v5-brand); }
+.distLegDot.personales { background: var(--atlas-v5-gold); }
+.distLegDot.pignora { background: var(--atlas-v5-neg); }
+
+.distLegNom { color: var(--atlas-v5-ink-3); }
+.distLegVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+.distLegPct {
+  font-family: var(--atlas-v5-font-mono-num);
+  color: var(--atlas-v5-ink-4);
+}
+
+.cols2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cardHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.cardAction {
+  font-size: 12px;
+  color: var(--atlas-v5-gold-ink);
+  cursor: pointer;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.cardAction:hover { color: var(--atlas-v5-gold); }
+
+.cuotaRow {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+}
+
+.cuotaRow:first-of-type { border-top: none; }
+
+.cuotaLogo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.cuotaNom {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.cuotaMeta {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.cuotaFecha {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  font-family: var(--atlas-v5-font-mono-num);
+  white-space: nowrap;
+}
+
+.cuotaFecha.urgente {
+  color: var(--atlas-v5-neg);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.cuotaImp {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-neg);
+  white-space: nowrap;
+}
+
+.deduRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+}
+
+.deduRow:first-of-type { border-top: none; }
+
+.deduNom {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.deduMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding: 1px 6px;
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border-radius: 4px;
+}
+
+.deduVal {
+  text-align: right;
+}
+
+.deduValMain {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-pos);
+}
+
+.deduValSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  margin-top: 1px;
+}
+
+.empty {
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+}

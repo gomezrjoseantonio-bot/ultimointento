@@ -87,8 +87,17 @@ const InversionesRendimientos = lazyWithPreload(() => import('./modules/inversio
 const InversionesIndividual = lazyWithPreload(() => import('./modules/inversiones/pages/IndividualPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
-// Financing Module - New standalone financing module
-const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
+// T20 Fase 3e · Financiación v5 module · Outlet + 4 sub-pages.
+//   Mockup · docs/audit-inputs/atlas-financiacion-v2.html
+//   Dashboard · Listado · Snowball · Calendario · Detalle (sub-route).
+const FinanciacionPage = lazyWithPreload(() => import('./modules/financiacion/FinanciacionPage'));
+const FinanciacionDashboard = lazyWithPreload(() => import('./modules/financiacion/pages/DashboardPage'));
+const FinanciacionListado = lazyWithPreload(() => import('./modules/financiacion/pages/ListadoPage'));
+const FinanciacionSnowball = lazyWithPreload(() => import('./modules/financiacion/pages/SnowballPage'));
+const FinanciacionCalendario = lazyWithPreload(() => import('./modules/financiacion/pages/CalendarioPage'));
+const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion/pages/DetallePage'));
+const FinanciacionWizardCreate = lazyWithPreload(() => import('./modules/financiacion/pages/WizardCreatePage'));
+const FinanciacionWizardEdit = lazyWithPreload(() => import('./modules/financiacion/pages/WizardEditPage'));
 // T20 Fase 2 · Tesorería v5 module (sustituye Tesoreria.tsx + TesoreriaSupervisionPage.tsx)
 const TesoreriaPage = lazyWithPreload(() => import('./modules/tesoreria/TesoreriaPage'));
 const TesoreriaVistaGeneral = lazyWithPreload(() => import('./modules/tesoreria/tabs/VistaGeneralTab'));
@@ -624,12 +633,57 @@ function App() {
               } />
             </Route>
             
-            {/* Financing Module - Standalone loan management */}
+            {/* T20 Fase 3e · Financiación v5 (sustituye horizon/financiacion/Financiacion.tsx)
+                Mockup · atlas-financiacion-v2.html · 4 tabs (Dashboard · Listado · Snowball ·
+                Calendario) + Detalle (`/financiacion/:id`) + wizard alta (`/financiacion/nuevo`)
+                + alta vía FEIN (`/financiacion/nuevo-fein`) + edición (`/financiacion/:id/editar`).
+                El wizard reutiliza `PrestamosWizard` legacy hasta Phase 4 cleanup. */}
             <Route path="financiacion" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <Financiacion />
+                <FinanciacionPage />
               </React.Suspense>
-            } />
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionDashboard />
+                </React.Suspense>
+              } />
+              <Route path="listado" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionListado />
+                </React.Suspense>
+              } />
+              <Route path="snowball" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionSnowball />
+                </React.Suspense>
+              } />
+              <Route path="calendario" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionCalendario />
+                </React.Suspense>
+              } />
+              <Route path="nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardCreate />
+                </React.Suspense>
+              } />
+              <Route path="nuevo-fein" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardCreate withFEIN />
+                </React.Suspense>
+              } />
+              <Route path=":id/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardEdit />
+                </React.Suspense>
+              } />
+              <Route path=":id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionDetalle />
+                </React.Suspense>
+              } />
+            </Route>
             
             {/* T20 Fase 3c · Mi Plan v5 (sustituye horizon/mi-plan legacy)
                 Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos,retos}-v3
