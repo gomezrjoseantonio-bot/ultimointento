@@ -63,6 +63,23 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/tesoreria/TesoreriaPage');
     return;
   }
+  if (href.startsWith('/financiacion')) {
+    const subPage = href.startsWith('/financiacion/listado')
+      ? import('../modules/financiacion/pages/ListadoPage')
+      : href.startsWith('/financiacion/snowball')
+        ? import('../modules/financiacion/pages/SnowballPage')
+        : href.startsWith('/financiacion/calendario')
+          ? import('../modules/financiacion/pages/CalendarioPage')
+          : href.startsWith('/financiacion/nuevo')
+            ? import('../modules/financiacion/pages/WizardCreatePage')
+            : href.match(/^\/financiacion\/[^/]+\/editar/)
+              ? import('../modules/financiacion/pages/WizardEditPage')
+              : href.match(/^\/financiacion\/[^/]+$/)
+                ? import('../modules/financiacion/pages/DetallePage')
+                : import('../modules/financiacion/pages/DashboardPage');
+    await Promise.all([import('../modules/financiacion/FinanciacionPage'), subPage]);
+    return;
+  }
   if (href.startsWith('/contratos/nuevo')) {
     await import('../modules/inmuebles/wizards/NuevoContratoWizard');
     return;
@@ -118,6 +135,7 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href === '/inmuebles' || href.startsWith('/inmuebles/analisis'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'] },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
+  { match: (href) => href.startsWith('/financiacion'), stores: ['prestamos', 'properties', 'accounts'] },
   { match: (href) => href.startsWith('/personal'), stores: ['nominas', 'autonomos', 'otrosIngresos', 'compromisosRecurrentes', 'personalData'] },
   { match: (href) => href.startsWith('/mi-plan'), stores: ['escenarios', 'objetivos', 'fondos_ahorro', 'retos', 'nominas', 'autonomos', 'compromisosRecurrentes', 'contracts'] },
 ];
