@@ -6,26 +6,26 @@
 //
 // Combina los stores que ya están en DB para producir una proyección
 // estructural mes a mes:
-//   - Ingresos · `nominas` (con distribución 12/14 + variables/bonus)
+//   - Ingresos · `nominas` (vía `nominaService.calculateSalary` para
+//                obtener neto mensual con variables/bonus/retenciones)
 //                + `autonomos` (con calendario `fuentesIngreso`)
 //   - Gastos   · `compromisosRecurrentes` ámbito 'personal' · evento mes
 //                según patrón (mensualDiaFijo · cadaNMeses · anualMesesConcretos
 //                · pagasExtra · variablePorMes · trimestralFiscal · puntual)
 //   - Rentas   · `contracts` · sumar renta mensual de contratos vigentes
-//                a fecha del mes proyectado
+//                a fecha del mes proyectado (con fallback a campos legacy
+//                `startDate`/`endDate`/`monthlyRent`)
 //
 // Uso ·
 //   - Cashflow chart de Tesorería (`VistaGeneralTab`) · sustituye la
 //     proyección lineal simple por esta proyección estructural.
 //   - Mi Plan · Landing y Proyección leen directamente.
-//
-// La función es síncrona y O(N×12) · trabaja sobre los arrays cargados
-// en memoria · NO toca DB ni servicios.
 
 import type { Nomina, Autonomo } from '../../../types/personal';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import type { Contract } from '../../../services/db';
 import { initDB } from '../../../services/db';
+import { nominaService } from '../../../services/nominaService';
 import {
   computeAutonomoIngresoAnualEstimado,
   computeCompromisoImporteEnMes,
@@ -35,6 +35,22 @@ const MONTH_LABELS = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
   'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
 ];
+
+const ESTADOS_INACTIVOS = new Set([
+  'cancelado',
+  'cancelada',
+  'cancelled',
+  'canceled',
+  'finalizado',
+  'finalizada',
+  'finished',
+  'ended',
+  'terminated',
+  'terminated early',
+  'inactivo',
+  'inactive',
+  'rescindido',
+]);
 
 export interface MonthBudget {
   /** 1-12 */
@@ -59,32 +75,42 @@ export interface BudgetProjection {
   salidasAnuales: number;
 }
 
+export interface BudgetProjectionData {
+  nominas: Nomina[];
+  autonomos: Autonomo[];
+  compromisos: CompromisoRecurrente[];
+  contracts: Contract[];
+}
+
 /**
- * Calcula la entrada mensual que aporta una nómina en el mes `month` (0-11).
- * Distribuye el bruto anual entre los meses de cobro · pagas extra van en sus
- * meses configurados (default 6 y 12 si distribucion=14).
+ * Calcula la entrada NETA mensual que aporta una nómina en el mes `month` (0-11).
+ * Usa `nominaService.calculateSalary` que ya distribuye variables/bonus/pagas
+ * extra · resta retenciones (SS · IRPF · plan pensiones empleado · otras
+ * deducciones). El neto mensual es comparable con los movimientos bancarios
+ * reales (Tesorería).
  */
 const ingresoNominaEnMes = (nomina: Nomina, month: number): number => {
   if (!nomina.activa) return 0;
-  const bruto = nomina.salarioBrutoAnual ?? 0;
-  if (bruto <= 0) return 0;
-  const meses = nomina.distribucion?.meses ?? 12;
-  // Mensualidad ordinaria · bruto / 12 mes a mes (paga extra contemplada
-  // como parte del bruto anual ya distribuido).
-  // Aproximación · doce mensualidades iguales si distribucion=12 · catorce
-  // si distribucion=14 (mensualidad de 12 + dos extras en jun/dic).
-  if (meses === 14) {
-    const mensualidad = bruto / 14;
-    if (month === 5 || month === 11) return mensualidad * 2;
-    return mensualidad;
+  if (!nomina.salarioBrutoAnual || nomina.salarioBrutoAnual <= 0) return 0;
+  try {
+    const calc = nominaService.calculateSalary(nomina);
+    const mes = calc.distribucionMensual.find((d) => d.mes === month + 1);
+    return mes?.netoTotal ?? 0;
+  } catch {
+    // Fallback simple si calculateSalary falla por datos parciales.
+    const meses = nomina.distribucion?.meses ?? 12;
+    if (meses === 14) {
+      const mensualidad = nomina.salarioBrutoAnual / 14;
+      if (month === 5 || month === 11) return mensualidad * 2;
+      return mensualidad;
+    }
+    return nomina.salarioBrutoAnual / 12;
   }
-  return bruto / 12;
 };
 
 const ingresoAutonomoEnMes = (autonomo: Autonomo, month: number): number => {
   if (!autonomo.activo) return 0;
   if (autonomo.fuentesIngreso && autonomo.fuentesIngreso.length > 0) {
-    // Sumar las fuentes que activan ese mes · `meses` contiene 1-12.
     return autonomo.fuentesIngreso.reduce((sum, f) => {
       const meses = f.meses ?? [];
       if (meses.length === 0 || meses.includes(month + 1)) {
@@ -93,12 +119,12 @@ const ingresoAutonomoEnMes = (autonomo: Autonomo, month: number): number => {
       return sum;
     }, 0);
   }
-  // Fallback · proyección plana del bruto anual estimado / 12.
   return computeAutonomoIngresoAnualEstimado(autonomo) / 12;
 };
 
 const gastoCompromisoEnMes = (
   compromiso: CompromisoRecurrente,
+  year: number,
   month: number, // 0-11
 ): number => {
   if (compromiso.estado !== 'activo') return 0;
@@ -109,10 +135,8 @@ const gastoCompromisoEnMes = (
   switch (patron.tipo) {
     case 'mensualDiaFijo':
     case 'mensualDiaRelativo':
-      // Cargo cada mes.
       return computeCompromisoImporteEnMes(compromiso, month);
     case 'cadaNMeses': {
-      // Anclaje · `mesAncla` 1-12 · genera evento si (month+1 - mesAncla) % cadaNMeses === 0.
       const offset = (month + 1 - patron.mesAncla) % patron.cadaNMeses;
       if (offset !== 0) return 0;
       return computeCompromisoImporteEnMes(compromiso, month);
@@ -123,7 +147,6 @@ const gastoCompromisoEnMes = (
       return computeCompromisoImporteEnMes(compromiso, month);
     }
     case 'trimestralFiscal': {
-      // Trimestres fiscales · pago en abril (4) · julio (7) · octubre (10) · enero (1).
       if (![1, 4, 7, 10].includes(month + 1)) return 0;
       return computeCompromisoImporteEnMes(compromiso, month);
     }
@@ -135,16 +158,14 @@ const gastoCompromisoEnMes = (
     case 'variablePorMes': {
       const meses = patron.mesesPago ?? [];
       if (!meses.includes(month + 1)) return 0;
-      // Repartir el objetivo anual entre los meses indicados.
       const por = meses.length > 0 ? patron.importeObjetivoAnual / meses.length : 0;
       return por;
     }
     case 'puntual': {
-      // Solo si la fecha cae en este mes/año.
+      // Compara contra el `year` de la proyección · NO contra el actual.
       const d = new Date(patron.fecha);
       if (Number.isNaN(d.getTime())) return 0;
-      const yearProj = new Date().getFullYear();
-      if (d.getFullYear() !== yearProj) return 0;
+      if (d.getFullYear() !== year) return 0;
       if (d.getMonth() !== month) return 0;
       return patron.importe;
     }
@@ -153,35 +174,61 @@ const gastoCompromisoEnMes = (
   }
 };
 
+/**
+ * Renta mensual de un contrato en el mes `month` del año `year`.
+ * Soporta fallbacks legacy · `startDate`/`endDate`/`monthlyRent` y filtra
+ * por `estadoContrato`/`status` cuando indica contrato terminado/inactivo.
+ */
 const ingresoContratoEnMes = (
   contrato: Contract,
   year: number,
   month: number, // 0-11
 ): number => {
-  if (!contrato.fechaInicio || !contrato.fechaFin) return 0;
-  const ini = new Date(contrato.fechaInicio);
-  const fin = new Date(contrato.fechaFin);
-  if (Number.isNaN(ini.getTime()) || Number.isNaN(fin.getTime())) return 0;
-  // Mes objetivo · primer día.
+  const contratoLegacy = contrato as Contract & {
+    startDate?: string | Date;
+    endDate?: string | Date;
+    monthlyRent?: number;
+    estadoContrato?: string;
+    status?: string;
+  };
+
+  const fechaInicio = contrato.fechaInicio ?? contratoLegacy.startDate;
+  const fechaFin = contrato.fechaFin ?? contratoLegacy.endDate;
+  const rentaMensual = contrato.rentaMensual ?? contratoLegacy.monthlyRent ?? 0;
+  const estado = (contratoLegacy.estadoContrato ?? contratoLegacy.status ?? '')
+    .toString()
+    .trim()
+    .toLowerCase();
+
+  if (!fechaInicio) return 0;
+  if (rentaMensual <= 0) return 0;
+  if (estado && ESTADOS_INACTIVOS.has(estado)) return 0;
+
+  const ini = new Date(fechaInicio);
+  if (Number.isNaN(ini.getTime())) return 0;
+
+  const fin = fechaFin ? new Date(fechaFin) : null;
+  if (fin && Number.isNaN(fin.getTime())) return 0;
+
+  // Mes objetivo · primer día y fin de mes objetivo.
   const target = new Date(year, month, 1);
-  // Fin de mes objetivo.
   const targetEnd = new Date(year, month + 1, 0);
-  // Intersección con periodo del contrato.
-  if (ini > targetEnd || fin < target) return 0;
-  return contrato.rentaMensual ?? 0;
+
+  // Intersección con periodo del contrato. Si no hay fechaFin · contrato
+  // abierto mientras el estado no lo marque como inactivo.
+  if (ini > targetEnd) return 0;
+  if (fin && fin < target) return 0;
+
+  return rentaMensual;
 };
 
 /**
  * Calcula proyección 12 meses · síncrono · trabaja sobre arrays.
+ * Esta es la **única función de cálculo** · el resto son thin wrappers.
  */
 export const computeBudgetProjectionFromData = (
   year: number,
-  data: {
-    nominas: Nomina[];
-    autonomos: Autonomo[];
-    compromisos: CompromisoRecurrente[];
-    contracts: Contract[];
-  },
+  data: BudgetProjectionData,
 ): BudgetProjection => {
   const today = new Date();
   const months: MonthBudget[] = Array.from({ length: 12 }, (_, i) => {
@@ -197,9 +244,8 @@ export const computeBudgetProjectionFromData = (
       entradas += ingresoContratoEnMes(c, year, i);
     });
     data.compromisos.forEach((c) => {
-      const importe = gastoCompromisoEnMes(c, i);
-      // El importe ya viene con el signo correcto del compromiso · pero
-      // garantizamos negativo para los que son gasto.
+      const importe = gastoCompromisoEnMes(c, year, i);
+      // Garantizamos signo negativo para gastos.
       salidas += -Math.abs(importe);
     });
     return {
@@ -220,8 +266,7 @@ export const computeBudgetProjectionFromData = (
 
 /**
  * Variante async · carga los stores de DB y devuelve la proyección.
- *
- * Devuelve un objeto vacío con totales 0 si la DB falla · NO lanza.
+ * Devuelve estructura con totales 0 si la DB falla · NO lanza.
  */
 export const computeBudgetProjection12mAsync = async (
   year: number,
@@ -254,20 +299,14 @@ export const computeBudgetProjection12mAsync = async (
 
 /**
  * Versión sincrónica · útil cuando el caller ya tiene los datos cargados
- * (ej. Mi Plan Landing usa Outlet context). NO va a DB. Se reserva un cache
- * vacío si se llama sin datos.
+ * (ej. desde Outlet context). REQUIERE pasar `data` explícitamente · ya no
+ * devuelve resultado vacío silenciosamente.
  *
  * Para consumo desde Tesorería · usar `computeBudgetProjection12mAsync`.
  */
 export const computeBudgetProjection12m = (
   year: number,
+  data: BudgetProjectionData,
 ): BudgetProjection => {
-  // Sin datos en memoria · devuelve estructura vacía. El caller debe usar
-  // la versión async si quiere los datos reales.
-  return computeBudgetProjectionFromData(year, {
-    nominas: [],
-    autonomos: [],
-    compromisos: [],
-    contracts: [],
-  });
+  return computeBudgetProjectionFromData(year, data);
 };
