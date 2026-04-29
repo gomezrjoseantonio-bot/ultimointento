@@ -84,7 +84,6 @@ const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/
 const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
 const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
 // Inmuebles supervision · ruta separada · usado por Panel y otros.
-const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/supervision/Supervision'));
 
 // Inversiones Module · T20 Fase 3d · v5 (Outlet + sub-pages)
 const InversionesPage = lazyWithPreload(() => import('./modules/inversiones/InversionesPage'));
@@ -514,11 +513,8 @@ function App() {
                 <PropertyForm mode="edit" />
               </React.Suspense>
             } />
-            <Route path="inmuebles/supervision" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <Supervision />
-              </React.Suspense>
-            } />
+            {/* T20 Phase 4 · /inmuebles/supervision purgado · redirige a /inmuebles. */}
+            <Route path="inmuebles/supervision" element={<Navigate to="/inmuebles" replace />} />
             <Route path="inmuebles/analisis" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <AnalisisCartera scope="inmuebles" />
@@ -567,8 +563,8 @@ function App() {
             <Route path="inmuebles/ingresos" element={<Navigate to="/inmuebles" replace />} />
             <Route path="inmuebles/gastos" element={<Navigate to="/inmuebles" replace />} />
             <Route path="inmuebles/analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
-            <Route path="inmuebles/resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
-            <Route path="inmuebles/individual" element={<Navigate to="/inmuebles/supervision" replace />} />
+            <Route path="inmuebles/resumen" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/individual" element={<Navigate to="/inmuebles" replace />} />
 
 
             {/* T20 Fase 3d · Inversiones v5 (Outlet + 4 sub-páginas)

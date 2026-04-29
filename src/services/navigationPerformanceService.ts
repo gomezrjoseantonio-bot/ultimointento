@@ -17,10 +17,6 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../modules/onboarding/OnboardingPage');
     return;
   }
-  if (href.startsWith('/inmuebles/supervision')) {
-    await import('../modules/horizon/inmuebles/supervision/Supervision');
-    return;
-  }
   if (href.startsWith('/inmuebles/analisis')) {
     await import('../modules/horizon/analisis-cartera/AnalisisCartera');
     return;
@@ -159,7 +155,6 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href === '/archivo' || href.startsWith('/archivo/'), stores: ['documents', 'properties'] },
   { match: (href) => href.startsWith('/tesoreria'), stores: ['accounts', 'treasuryEvents', 'movements', 'contracts', 'properties'] },
   { match: (href) => href.startsWith('/inmuebles/cartera'), stores: ['properties', 'contracts', 'valoraciones_historicas'] },
-  { match: (href) => href.startsWith('/inmuebles/supervision'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'mejorasInmueble', 'mueblesInmueble', 'gastosInmueble'] },
   { match: (href) => href === '/inmuebles' || href.startsWith('/inmuebles/analisis'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'] },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
