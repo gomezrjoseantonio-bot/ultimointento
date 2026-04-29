@@ -63,18 +63,21 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const managementItems = navigation.filter(item => item.section === 'pulse');
   const docsItems = navigation.filter(item => item.section === 'documentation');
 
-  const SectionLabel = ({ label }: { label: string }) => collapsed ? null : (
-    <p style={{
-      padding: '20px 16px 8px',
-      fontSize: 'var(--t-xs)',
-      fontWeight: 600,
-      letterSpacing: '0.1em',
-      textTransform: 'uppercase',
-      color: 'rgba(255,255,255,0.35)',
-    }}>
-      {label}
-    </p>
-  );
+  // Sólo renderiza el label si la sección tiene al menos un item · evita
+  // huecos visuales cuando una sección está vacía (ej. Pulse/Gestión post-T20).
+  const SectionLabel = ({ label, count }: { label: string; count: number }) =>
+    collapsed || count === 0 ? null : (
+      <p style={{
+        padding: '20px 16px 8px',
+        fontSize: 'var(--t-xs)',
+        fontWeight: 600,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+        color: 'rgba(255,255,255,0.35)',
+      }}>
+        {label}
+      </p>
+    );
 
   const initials = user?.name
     ? user.name
@@ -149,13 +152,13 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
         </div>
 
         <nav className="px-0 mt-3 flex-1 overflow-y-auto">
-          <SectionLabel label="Supervisión" />
+          <SectionLabel label="Supervisión" count={mainItems.length} />
           {mainItems.map(renderNavItem)}
 
-          <SectionLabel label="Gestión" />
+          <SectionLabel label="Gestión" count={managementItems.length} />
           {managementItems.map(renderNavItem)}
 
-          <SectionLabel label="Docs" />
+          <SectionLabel label="Docs" count={docsItems.length} />
           {docsItems.map(renderNavItem)}
         </nav>
 
