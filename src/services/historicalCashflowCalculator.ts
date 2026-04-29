@@ -129,7 +129,8 @@ export async function getCashflowAño(año: number): Promise<CashflowAño> {
 
   // Cuotas de préstamos:
   // - Formato antiguo (loanService): prestamo.cuadro_amortizacion[] con campos {fecha, cuota}
-  // - Formato nuevo (PrestamosWizard): keyval/planpagos_${id} → PlanPagos.periodos[] con {fechaCargo, cuota}
+  // - Formato nuevo (PrestamosWizard, T15.3): prestamo.planPagos → PlanPagos.periodos[] con {fechaCargo, cuota}
+  //   (antes vivía en keyval[planpagos_*]).
   const prestamos = await db.getAll('prestamos');
   let cuotasPrestamos = 0;
   let prestamosConDatos = 0;
