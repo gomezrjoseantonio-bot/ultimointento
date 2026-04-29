@@ -46,7 +46,12 @@ const Row: React.FC<RowProps> = ({ entry }) => {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [value, setValue] = useState<unknown>(undefined);
+  const [valueLoaded, setValueLoaded] = useState(false);
+  const [valueJson, setValueJson] = useState<string>('');
+
+  // Stable id for aria-controls. Hash-friendly · sustituye caracteres no
+  // válidos en id HTML por '_'.
+  const panelId = `keyval-audit-panel-${entry.key.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
   const handleToggle = async () => {
     if (expanded) {
@@ -54,12 +59,15 @@ const Row: React.FC<RowProps> = ({ entry }) => {
       return;
     }
     setExpanded(true);
-    if (value !== undefined) return;
+    if (valueLoaded) return;
     setLoading(true);
     setError(null);
     try {
       const res = await readKeyvalValue(entry.key);
-      setValue(res.value);
+      // Pre-stringify una sola vez al cargar · evita recálculo costoso en
+      // cada re-render (planpagos_* puede tener cientos de períodos).
+      setValueJson(safeStringify(res.value));
+      setValueLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -101,7 +109,14 @@ const Row: React.FC<RowProps> = ({ entry }) => {
         </td>
         <td className={styles.muted}>{entry.reason}</td>
         <td>
-          <button type="button" className={styles.actionBtn} onClick={handleToggle}>
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={handleToggle}
+            aria-expanded={expanded}
+            aria-controls={panelId}
+            aria-busy={loading || undefined}
+          >
             {expanded ? 'Ocultar' : 'Mostrar valor'}
           </button>
         </td>
@@ -109,11 +124,17 @@ const Row: React.FC<RowProps> = ({ entry }) => {
       {expanded && (
         <tr>
           <td colSpan={7}>
-            <div className={styles.valuePanel}>
+            <div
+              id={panelId}
+              className={styles.valuePanel}
+              role="region"
+              aria-label={`Valor de ${entry.key}`}
+              aria-busy={loading || undefined}
+            >
               {loading && <span className={styles.muted}>Cargando…</span>}
               {error && <span className={styles.error}>Error · {error}</span>}
-              {!loading && !error && (
-                <pre>{safeStringify(value)}</pre>
+              {!loading && !error && valueLoaded && (
+                <pre>{valueJson}</pre>
               )}
             </div>
           </td>

@@ -166,15 +166,27 @@ function emptyByCategory(): Record<KeyvalCategory, number> {
 export async function auditKeyval(): Promise<KeyvalAuditReport> {
   const db = await initDB();
 
-  const rawKeys = (await db.getAllKeys('keyval')) as IDBValidKey[];
+  // Single readonly transaction · evita el patrón N+1 (`getAllKeys` + N
+  // `db.get` en transacciones distintas) y permite leer claves+valores
+  // en paralelo dentro del mismo cursor.
+  const tx = db.transaction('keyval', 'readonly');
+  const store = tx.objectStore('keyval');
+
+  const [rawKeys, values] = await Promise.all([
+    store.getAllKeys() as unknown as Promise<IDBValidKey[]>,
+    store.getAll() as unknown as Promise<unknown[]>,
+  ]);
+  await tx.done;
+
   const keys = rawKeys.map((k) => String(k));
 
   const entries: KeyvalAuditEntry[] = [];
   const byCategory = emptyByCategory();
   const unknownKeys: string[] = [];
 
-  for (const key of keys) {
-    const value = await db.get('keyval', key);
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const value = values[i];
     const { category, recommendation, reason } = classify(key);
 
     const entry: KeyvalAuditEntry = {
