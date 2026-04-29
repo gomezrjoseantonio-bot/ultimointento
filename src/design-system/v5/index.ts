@@ -79,3 +79,6 @@ export type { WizardStepperProps, WizardStep } from './WizardStepper';
 
 export { Icons } from './icons';
 export type { IconName, IconComponent } from './icons';
+
+export { useChartColors } from './useChartColors';
+export type { ChartColors } from './useChartColors';

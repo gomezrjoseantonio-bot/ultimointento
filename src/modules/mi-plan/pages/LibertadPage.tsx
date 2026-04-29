@@ -118,6 +118,225 @@ const LibertadPage: React.FC = () => {
       </KPIStrip>
 
       <CardV5 style={{ marginTop: 14 }}>
+        <CardV5.Title>Trayectoria · 18 años</CardV5.Title>
+        <CardV5.Subtitle>
+          renta pasiva proyectada vs gastos vida · libertad alcanzada cuando se
+          cruzan las líneas
+        </CardV5.Subtitle>
+        <CardV5.Body>
+          {(() => {
+            const yearStart = new Date().getFullYear();
+            const horizonYears = 18;
+            // Punto de partida 0 € · los hitos van sumando renta pasiva
+            // mensual proyectada hasta cada año.
+            const rentaActual = 0;
+            // Construye serie proyectada · valor inicial + impacto acumulado
+            // de hitos a fecha de cada año.
+            const serie: { year: number; renta: number }[] = [];
+            for (let i = 0; i <= horizonYears; i++) {
+              const year = yearStart + i;
+              let renta = rentaActual;
+              for (const h of hitos) {
+                if (h.fecha) {
+                  const yh = new Date(h.fecha).getFullYear();
+                  if (!Number.isNaN(yh) && yh <= year) {
+                    renta += h.impactoMensual ?? 0;
+                  }
+                }
+              }
+              serie.push({ year, renta: Math.max(0, renta) });
+            }
+            // Si hay objetivo, asegúrate de mostrar al menos hasta él.
+            const maxY = Math.max(rentaPasivaObjetivo * 1.2, ...serie.map((s) => s.renta));
+            const minY = 0;
+            const W = 840;
+            const H = 240;
+            const PAD_L = 56;
+            const PAD_R = 14;
+            const PAD_T = 16;
+            const PAD_B = 32;
+            const innerW = W - PAD_L - PAD_R;
+            const innerH = H - PAD_T - PAD_B;
+            const x = (i: number) => PAD_L + (i / horizonYears) * innerW;
+            const y = (v: number) =>
+              PAD_T + innerH - ((v - minY) / (maxY - minY || 1)) * innerH;
+            const objetivoY = y(rentaPasivaObjetivo);
+            const gastosY = y(gastosVida);
+            const path = serie
+              .map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(s.renta).toFixed(1)}`)
+              .join(' ');
+            // Año de "libertad" · primer punto donde renta >= gastosVida.
+            const libertadIdx = serie.findIndex((s) => s.renta >= gastosVida);
+            const libertadX = libertadIdx >= 0 ? x(libertadIdx) : null;
+            const libertadY = libertadIdx >= 0 ? y(serie[libertadIdx].renta) : null;
+
+            return (
+              <svg
+                viewBox={`0 0 ${W} ${H}`}
+                preserveAspectRatio="none"
+                style={{ width: '100%', height: 240, display: 'block' }}
+                role="img"
+                aria-label="Trayectoria libertad financiera"
+              >
+                {/* Grid horizontal · 4 lineas */}
+                {[0.25, 0.5, 0.75, 1].map((p, i) => (
+                  <line
+                    key={i}
+                    x1={PAD_L}
+                    x2={W - PAD_R}
+                    y1={PAD_T + innerH * (1 - p)}
+                    y2={PAD_T + innerH * (1 - p)}
+                    stroke="var(--atlas-v5-line-2)"
+                    strokeWidth={1}
+                  />
+                ))}
+                {/* Eje Y · valores */}
+                {[0, 0.5, 1].map((p, i) => {
+                  const v = minY + (maxY - minY) * p;
+                  return (
+                    <text
+                      key={i}
+                      x={PAD_L - 8}
+                      y={PAD_T + innerH * (1 - p) + 3}
+                      textAnchor="end"
+                      style={{
+                        fontSize: 10,
+                        fill: 'var(--atlas-v5-ink-4)',
+                        fontFamily: 'var(--atlas-v5-font-mono-num)',
+                      }}
+                    >
+                      {Math.round(v / 100) * 100} €
+                    </text>
+                  );
+                })}
+                {/* Eje X · años cada 3 */}
+                {serie
+                  .filter((_, i) => i % 3 === 0 || i === serie.length - 1)
+                  .map((s) => {
+                    const idx = serie.indexOf(s);
+                    return (
+                      <text
+                        key={s.year}
+                        x={x(idx)}
+                        y={H - PAD_B + 16}
+                        textAnchor="middle"
+                        style={{
+                          fontSize: 10,
+                          fill: 'var(--atlas-v5-ink-4)',
+                          fontFamily: 'var(--atlas-v5-font-mono-num)',
+                        }}
+                      >
+                        {s.year}
+                      </text>
+                    );
+                  })}
+                {/* Línea gastos vida · neutra */}
+                <line
+                  x1={PAD_L}
+                  x2={W - PAD_R}
+                  y1={gastosY}
+                  y2={gastosY}
+                  stroke="var(--atlas-v5-ink-4)"
+                  strokeWidth={1.5}
+                  strokeDasharray="6 4"
+                />
+                <text
+                  x={W - PAD_R - 4}
+                  y={gastosY - 6}
+                  textAnchor="end"
+                  style={{
+                    fontSize: 10.5,
+                    fill: 'var(--atlas-v5-ink-3)',
+                    fontFamily: 'var(--atlas-v5-font-ui)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Gastos vida
+                </text>
+                {/* Línea objetivo · oro */}
+                <line
+                  x1={PAD_L}
+                  x2={W - PAD_R}
+                  y1={objetivoY}
+                  y2={objetivoY}
+                  stroke="var(--atlas-v5-gold)"
+                  strokeWidth={1.5}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={W - PAD_R - 4}
+                  y={objetivoY - 6}
+                  textAnchor="end"
+                  style={{
+                    fontSize: 10.5,
+                    fill: 'var(--atlas-v5-gold-ink)',
+                    fontFamily: 'var(--atlas-v5-font-ui)',
+                    fontWeight: 600,
+                  }}
+                >
+                  Objetivo
+                </text>
+                {/* Trayectoria renta pasiva */}
+                <path
+                  d={path}
+                  stroke="var(--atlas-v5-pos)"
+                  strokeWidth={2.5}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {/* Punto libertad · si lo alcanza */}
+                {libertadX !== null && libertadY !== null && (
+                  <>
+                    <circle
+                      cx={libertadX}
+                      cy={libertadY}
+                      r={6}
+                      fill="var(--atlas-v5-card)"
+                      stroke="var(--atlas-v5-pos)"
+                      strokeWidth={2.5}
+                    />
+                    <text
+                      x={libertadX}
+                      y={libertadY - 12}
+                      textAnchor="middle"
+                      style={{
+                        fontSize: 10.5,
+                        fill: 'var(--atlas-v5-pos)',
+                        fontFamily: 'var(--atlas-v5-font-mono-num)',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Libertad · {serie[libertadIdx].year}
+                    </text>
+                  </>
+                )}
+                {/* Puntos hitos · marca cada hito en el eje X */}
+                {hitos.map((h) => {
+                  if (!h.fecha) return null;
+                  const yh = new Date(h.fecha).getFullYear();
+                  const idx = serie.findIndex((s) => s.year === yh);
+                  if (idx < 0) return null;
+                  return (
+                    <g key={h.id}>
+                      <line
+                        x1={x(idx)}
+                        x2={x(idx)}
+                        y1={H - PAD_B}
+                        y2={H - PAD_B + 4}
+                        stroke="var(--atlas-v5-gold)"
+                        strokeWidth={2}
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            );
+          })()}
+        </CardV5.Body>
+      </CardV5>
+
+      <CardV5 style={{ marginTop: 14 }}>
         <CardV5.Title>Hitos del escenario</CardV5.Title>
         <CardV5.Subtitle>
           eventos planificados · cada uno cambia la trayectoria de renta pasiva

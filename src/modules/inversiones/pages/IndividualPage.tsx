@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { CardV5, MoneyValue } from '../../../design-system/v5';
+import { CardV5, MoneyValue, useChartColors } from '../../../design-system/v5';
 import type { InversionesOutletContext } from '../InversionesContext';
 import {
   buildIndividualEvolucion,
@@ -20,16 +20,10 @@ import {
 } from '../helpers';
 import styles from './IndividualPage.module.css';
 
-const CHART = {
-  ink: '#0E2A47',
-  accent: '#1DA0BA',
-  grid: 'rgba(200,208,220,.4)',
-  axis: '#6C757D',
-};
-
 const IndividualPage: React.FC = () => {
   const { positions, selectedPositionId, setSelectedPositionId } =
     useOutletContext<InversionesOutletContext>();
+  const CHART = useChartColors();
 
   const pos = useMemo(
     () =>
