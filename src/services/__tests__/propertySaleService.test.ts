@@ -238,6 +238,7 @@ describe('propertySaleService', () => {
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Completo' })));
     const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES1000491500051234567892' })));
 
+    // T15.3 · planPagos vive como campo del préstamo (antes en keyval).
     await db.add('prestamos', {
       id: 'loan-revert-1',
       inmuebleId: String(propertyId),
@@ -245,37 +246,36 @@ describe('propertySaleService', () => {
       principalVivo: 72500,
       estado: 'vivo',
       ambito: 'INMUEBLE',
+      planPagos: {
+        prestamoId: 'loan-revert-1',
+        fechaGeneracion: new Date().toISOString(),
+        periodos: [
+          {
+            periodo: 1,
+            fechaCargo: '2026-03-20',
+            cuota: 999,
+            interes: 200,
+            amortizacion: 799,
+            principalFinal: 71701,
+            devengoDesde: '2026-02-21',
+            devengoHasta: '2026-03-20',
+            pagado: false,
+          },
+          {
+            periodo: 2,
+            fechaCargo: '2026-04-20',
+            cuota: 999,
+            interes: 198,
+            amortizacion: 801,
+            principalFinal: 70900,
+            devengoDesde: '2026-03-21',
+            devengoHasta: '2026-04-20',
+            pagado: false,
+          },
+        ],
+        resumen: { totalIntereses: 398, totalCuotas: 2, fechaFinalizacion: '2026-04-20' },
+      },
     } as any);
-
-    await db.put('keyval', {
-      prestamoId: 'loan-revert-1',
-      fechaGeneracion: new Date().toISOString(),
-      periodos: [
-        {
-          periodo: 1,
-          fechaCargo: '2026-03-20',
-          cuota: 999,
-          interes: 200,
-          amortizacion: 799,
-          principalFinal: 71701,
-          devengoDesde: '2026-02-21',
-          devengoHasta: '2026-03-20',
-          pagado: false,
-        },
-        {
-          periodo: 2,
-          fechaCargo: '2026-04-20',
-          cuota: 999,
-          interes: 198,
-          amortizacion: 801,
-          principalFinal: 70900,
-          devengoDesde: '2026-03-21',
-          devengoHasta: '2026-04-20',
-          pagado: false,
-        },
-      ],
-      resumen: { totalIntereses: 398, totalCuotas: 2, fechaFinalizacion: '2026-04-20' },
-    }, 'planpagos_loan-revert-1');
 
     const loanForecastEventId = Number(await db.add('treasuryEvents', {
       type: 'financing',
@@ -320,7 +320,7 @@ describe('propertySaleService', () => {
     expect(loanAfterSale?.estado).toBe('cancelado');
     expect(loanAfterSale?.principalVivo).toBe(0);
 
-    const updatedPlanAfterSale = await db.get('keyval', 'planpagos_loan-revert-1') as any;
+    const updatedPlanAfterSale = (await db.get('prestamos', 'loan-revert-1') as any)?.planPagos;
     expect(updatedPlanAfterSale.periodos.some((p: any) => !p.pagado)).toBe(false);
     expect(updatedPlanAfterSale.resumen.fechaFinalizacion).toBe('2026-03-10');
     expect(updatedPlanAfterSale.periodos[updatedPlanAfterSale.periodos.length - 1].fechaCargo).toBe('2026-03-10');
@@ -335,7 +335,7 @@ describe('propertySaleService', () => {
     expect(loanAfterCancel?.activo).toBe(true);
     expect(loanAfterCancel?.principalVivo).toBe(72500);
 
-    const restoredPlanAfterCancel = await db.get('keyval', 'planpagos_loan-revert-1') as any;
+    const restoredPlanAfterCancel = (await db.get('prestamos', 'loan-revert-1') as any)?.planPagos;
     expect(restoredPlanAfterCancel.periodos.some((p: any) => !p.pagado)).toBe(true);
 
     const restoredLoanForecast = await db.get('treasuryEvents', loanForecastEventId);
@@ -447,6 +447,7 @@ describe('propertySaleService', () => {
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Punteo Cancelación' })));
     const accountId = Number(await db.add('accounts', createAccount({ iban: 'ES1100491500051234567892' })));
 
+    // T15.3 · planPagos vive como campo del préstamo (antes en keyval).
     await db.add('prestamos', {
       id: 'loan-punteo-1',
       inmuebleId: String(propertyId),
@@ -458,37 +459,36 @@ describe('propertySaleService', () => {
       tipoNominalAnualFijo: 6,
       fechaFirma: '2026-01-01',
       fechaUltimaCuotaPagada: '2026-02-01',
+      planPagos: {
+        prestamoId: 'loan-punteo-1',
+        fechaGeneracion: new Date().toISOString(),
+        periodos: [
+          {
+            periodo: 1,
+            fechaCargo: '2026-02-01',
+            cuota: 500,
+            interes: 300,
+            amortizacion: 200,
+            principalFinal: 60000,
+            devengoDesde: '2026-01-01',
+            devengoHasta: '2026-02-01',
+            pagado: true,
+          },
+          {
+            periodo: 2,
+            fechaCargo: '2026-03-01',
+            cuota: 500,
+            interes: 295,
+            amortizacion: 205,
+            principalFinal: 59795,
+            devengoDesde: '2026-02-02',
+            devengoHasta: '2026-03-01',
+            pagado: false,
+          },
+        ],
+        resumen: { totalIntereses: 595, totalCuotas: 2, fechaFinalizacion: '2026-03-01' },
+      },
     } as any);
-
-    await db.put('keyval', {
-      prestamoId: 'loan-punteo-1',
-      fechaGeneracion: new Date().toISOString(),
-      periodos: [
-        {
-          periodo: 1,
-          fechaCargo: '2026-02-01',
-          cuota: 500,
-          interes: 300,
-          amortizacion: 200,
-          principalFinal: 60000,
-          devengoDesde: '2026-01-01',
-          devengoHasta: '2026-02-01',
-          pagado: true,
-        },
-        {
-          periodo: 2,
-          fechaCargo: '2026-03-01',
-          cuota: 500,
-          interes: 295,
-          amortizacion: 205,
-          principalFinal: 59795,
-          devengoDesde: '2026-02-02',
-          devengoHasta: '2026-03-01',
-          pagado: false,
-        },
-      ],
-      resumen: { totalIntereses: 595, totalCuotas: 2, fechaFinalizacion: '2026-03-01' },
-    }, 'planpagos_loan-punteo-1');
 
     const loanForecastEventId = Number(await db.add('treasuryEvents', {
       type: 'financing',
@@ -528,7 +528,7 @@ describe('propertySaleService', () => {
     expect(loanAfterPunteo?.estado).toBe('cancelado');
     expect(loanAfterPunteo?.principalVivo).toBe(0);
 
-    const updatedPlan = await db.get('keyval', 'planpagos_loan-punteo-1') as any;
+    const updatedPlan = (await db.get('prestamos', 'loan-punteo-1') as any)?.planPagos;
     expect(updatedPlan.periodos.every((p: any) => p.pagado)).toBe(true);
     expect(updatedPlan.periodos).toHaveLength(2);
     expect(updatedPlan.resumen.fechaFinalizacion).toBe('2026-02-10');
@@ -665,6 +665,7 @@ describe('propertySaleService', () => {
     const db = await initDB();
     const propertyId = Number(await db.add('properties', createProperty({ alias: 'Piso Proyección' })));
 
+    // T15.3 · planPagos vive como campo del préstamo (antes en keyval[planpagos_*]).
     await db.add('prestamos', {
       id: 'loan-projected-1',
       inmuebleId: String(propertyId),
@@ -673,37 +674,36 @@ describe('propertySaleService', () => {
       capitalVivoAlImportar: 100000,
       estado: 'vivo',
       ambito: 'INMUEBLE',
+      planPagos: {
+        prestamoId: 'loan-projected-1',
+        fechaGeneracion: new Date().toISOString(),
+        periodos: [
+          {
+            periodo: 1,
+            fechaCargo: '2026-01-15',
+            cuota: 1000,
+            interes: 200,
+            amortizacion: 800,
+            principalFinal: 92000,
+            devengoDesde: '2025-12-16',
+            devengoHasta: '2026-01-15',
+            pagado: false,
+          },
+          {
+            periodo: 2,
+            fechaCargo: '2026-02-15',
+            cuota: 1000,
+            interes: 180,
+            amortizacion: 820,
+            principalFinal: 84000,
+            devengoDesde: '2026-01-16',
+            devengoHasta: '2026-02-15',
+            pagado: false,
+          },
+        ],
+        resumen: { totalIntereses: 380, totalCuotas: 2, fechaFinalizacion: '2026-02-15' },
+      },
     } as any);
-
-    await db.put('keyval', {
-      prestamoId: 'loan-projected-1',
-      fechaGeneracion: new Date().toISOString(),
-      periodos: [
-        {
-          periodo: 1,
-          fechaCargo: '2026-01-15',
-          cuota: 1000,
-          interes: 200,
-          amortizacion: 800,
-          principalFinal: 92000,
-          devengoDesde: '2025-12-16',
-          devengoHasta: '2026-01-15',
-          pagado: false,
-        },
-        {
-          periodo: 2,
-          fechaCargo: '2026-02-15',
-          cuota: 1000,
-          interes: 180,
-          amortizacion: 820,
-          principalFinal: 84000,
-          devengoDesde: '2026-01-16',
-          devengoHasta: '2026-02-15',
-          pagado: false,
-        },
-      ],
-      resumen: { totalIntereses: 380, totalCuotas: 2, fechaFinalizacion: '2026-02-15' },
-    }, 'planpagos_loan-projected-1');
 
     const salePreview = await preparePropertySale(propertyId, '2026-02-20');
     expect(salePreview.automationPreview.suggestedOutstandingDebt).toBe(84000);

@@ -50,9 +50,10 @@ export interface CuadreCaja {
 // Normaliza el cuadro de amortización de un préstamo a [{fecha, cuota}].
 // Soporta dos formatos:
 //   - Antiguo (loanService): prestamo.cuadro_amortizacion[] con {fecha?, cuota?, cuotaTotal?}
-//   - Nuevo (PrestamosWizard): keyval/"planpagos_${id}" → PlanPagos.periodos[] con {fechaCargo, cuota}
+//   - Nuevo (PrestamosWizard, T15.3): prestamo.planPagos → PlanPagos.periodos[]
+//     con {fechaCargo, cuota} (antes vivía en keyval[planpagos_*]).
 async function resolveSchedule(
-  db: Awaited<ReturnType<typeof initDB>>,
+  _db: Awaited<ReturnType<typeof initDB>>,
   prestamo: any
 ): Promise<{ fecha: string; cuota: number }[]> {
   const old = prestamo.cuadro_amortizacion ?? prestamo.cuadroAmortizacion;
@@ -62,8 +63,7 @@ async function resolveSchedule(
       cuota: Number(c.cuota ?? c.cuotaTotal ?? 0),
     }));
   }
-  // Nuevo formato: plan guardado en keyval
-  const plan = await (db as any).get('keyval', `planpagos_${prestamo.id}`);
+  const plan = prestamo.planPagos;
   if (plan?.periodos?.length > 0) {
     return (plan.periodos as any[]).map(p => ({
       fecha: String(p.fechaCargo ?? ''),

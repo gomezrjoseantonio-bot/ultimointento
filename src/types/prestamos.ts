@@ -168,6 +168,19 @@ export interface Prestamo {
    */
   liquidacion?: unknown | null;
 
+  /**
+   * TAREA 15 sub-tarea 15.3 · plan de pagos del préstamo.
+   *
+   * Antes de T15 vivía en `keyval[planpagos_${prestamoId}]` · datos del
+   * usuario disfrazados de configuración (categoría C del audit T15.1).
+   * `migrateKeyvalPlanpagosToPrestamos` mueve cada entrada del store
+   * `keyval` a este campo y borra la entrada origen.
+   *
+   * `undefined` mientras no se haya generado o migrado el plan · objeto
+   * `PlanPagos` cuando esté disponible.
+   */
+  planPagos?: PlanPagos;
+
   activo: boolean;
 
   // Audit

@@ -387,7 +387,8 @@ export const getLinkedLoansForPropertySale = async (
     const allocationFactor = resolveLoanAllocationFactorForProperty(loan, property);
     if (allocationFactor <= 0) continue;
 
-    const paymentPlan = (await db.get('keyval', `planpagos_${loan.id}`)) as PlanPagos | undefined;
+    // T15.3 · planPagos vive como campo del préstamo.
+    const paymentPlan = (loan as unknown as { planPagos?: PlanPagos }).planPagos;
     const payoff = resolveProjectedLoanPayoffAmount(loan, paymentPlan, saleDate) * allocationFactor;
 
     const anyLoan = loan as any;
@@ -623,7 +624,8 @@ export const preparePropertySale = async (propertyId: number, saleDate?: string)
         if (!loan?.id) {
           return resolveFallbackOutstandingPrincipal(loan) * allocationFactor;
         }
-        const paymentPlan = await db.get('keyval', `planpagos_${loan.id}`) as PlanPagos | undefined;
+        // T15.3 · planPagos vive como campo del préstamo.
+        const paymentPlan = (loan as unknown as { planPagos?: PlanPagos }).planPagos;
         return resolveProjectedLoanPayoffAmount(loan, paymentPlan, referenceDate) * allocationFactor;
       })
   );
@@ -681,9 +683,10 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
   // Defensive pre-check: if a required store is missing the IDB transaction
   // fails with the opaque "One of the specified object stores was not found".
   // We surface a friendlier error and bail out before opening the tx.
+  // T15.3 · `keyval` ya no se requiere · planPagos vive en prestamos.planPagos.
   const REQUIRED_STORES = [
     'properties', 'contracts', 'property_sales', 'accounts', 'movements',
-    'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'treasuryEvents', 'keyval',
+    'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'treasuryEvents',
   ] as const;
   const existingStores = new Set(Array.from(db.objectStoreNames));
   const missingStores = REQUIRED_STORES.filter((name) => !existingStores.has(name));
@@ -877,8 +880,12 @@ export const confirmPropertySale = async (input: ConfirmPropertySaleInput): Prom
       continue;
     }
 
+    // T15.3 · planPagos vive como campo del préstamo · journal mantiene la
+    // clave histórica `planpagos_${id}` para compatibilidad con journals
+    // antiguos · el restore (cancelPropertySale) detecta el prefijo y
+    // recoloca el plan en prestamos.planPagos.
     const paymentPlanKey = `planpagos_${loan.id}`;
-    const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
+    const paymentPlan = (loan as unknown as { planPagos?: PlanPagos }).planPagos;
     if (paymentPlan?.periodos?.length) {
       executionJournal.updatedPaymentPlans.push({ key: paymentPlanKey, previous: paymentPlan });
     }
@@ -1073,7 +1080,8 @@ export const getLatestConfirmedSaleForProperty = async (propertyId: number): Pro
 
 export const cancelPropertySale = async (saleId: number): Promise<PropertySale> => {
   const db = await initDB();
-  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble', 'treasuryEvents', 'keyval'], 'readwrite');
+  // T15.3 · `keyval` ya no se requiere · planPagos vive en prestamos.planPagos.
+  const tx = db.transaction(['properties', 'property_sales', 'contracts', 'movements', 'prestamos', 'compromisosRecurrentes', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble', 'treasuryEvents'], 'readwrite');
 
   const saleStore = tx.objectStore('property_sales');
   const propertyStore = tx.objectStore('properties');
@@ -1194,8 +1202,19 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
   }
 
   if (journal?.updatedPaymentPlans?.length) {
+    // T15.3 · journal mantiene clave histórica `planpagos_${id}` ·
+    // restauramos el plan en `prestamos[id].planPagos` parseando el
+    // prefijo de la clave. Compatible con journals pre-migración.
+    const restoreLoanStore = tx.objectStore('prestamos');
     for (const snapshot of journal.updatedPaymentPlans) {
-      await tx.objectStore('keyval').put(snapshot.previous, snapshot.key);
+      const loanId = String(snapshot.key).replace(/^planpagos_/, '').trim();
+      if (!loanId) continue;
+      const loanRecord = (await restoreLoanStore.get(loanId)) as Prestamo | undefined;
+      if (!loanRecord) continue;
+      await restoreLoanStore.put({
+        ...loanRecord,
+        planPagos: snapshot.previous as PlanPagos,
+      });
     }
   }
 
@@ -1273,7 +1292,8 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
   const property = await db.get('properties', sale.propertyId);
   if (!property) return false;
 
-  const tx = db.transaction(['prestamos', 'keyval', 'treasuryEvents', 'property_sales'], 'readwrite');
+  // T15.3 · `keyval` ya no es necesario · planPagos vive en prestamos.planPagos.
+  const tx = db.transaction(['prestamos', 'treasuryEvents', 'property_sales'], 'readwrite');
   const loanStore = tx.objectStore('prestamos');
   const allLoans = await loanStore.getAll();
   const linkedLoans = allLoans.filter((loan: any) => isLoanLinkedToProperty(loan, property));
@@ -1282,15 +1302,11 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
     if (!loan?.id) continue;
     if (loan.estado === 'cancelado' && loan.activo === false) continue;
 
-    const paymentPlanKey = `planpagos_${loan.id}`;
-    const paymentPlan = await tx.objectStore('keyval').get(paymentPlanKey) as PlanPagos | undefined;
+    const paymentPlan = (loan as unknown as { planPagos?: PlanPagos }).planPagos;
     const outstandingPrincipal = resolveProjectedOutstandingPrincipal(loan, paymentPlan, sale.saleDate);
     const truncatedPlan = paymentPlan?.periodos?.length
       ? truncatePaymentPlanAtCancellation(paymentPlan, sale.saleDate, outstandingPrincipal)
       : null;
-    if (paymentPlan?.periodos?.length) {
-      await tx.objectStore('keyval').put(truncatedPlan, paymentPlanKey);
-    }
 
     const loanForecastEvents = (await tx.objectStore('treasuryEvents').getAll() as TreasuryEvent[])
       .filter((event) =>
@@ -1313,6 +1329,9 @@ const finalizePropertySaleLoanCancellationBySaleId = async (saleId: number): Pro
       cuotasPagadas: truncatedPlan?.periodos.length ?? loan.cuotasPagadas,
       fechaUltimaCuotaPagada: sale.saleDate,
       cancelacionPendienteVenta: false,
+      // T15.3 · planPagos vive como campo del préstamo · si truncamos,
+      // sobrescribimos; si no había plan, conservamos el actual.
+      planPagos: truncatedPlan ?? (loan as any).planPagos,
       updatedAt: new Date().toISOString(),
     });
   }
