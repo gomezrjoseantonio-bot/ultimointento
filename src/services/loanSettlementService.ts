@@ -541,7 +541,8 @@ export const confirmLoanSettlement = async (
   const effectiveDate = normalizeDate(input.operationDate);
 
   const db = await initDB();
-  const tx = db.transaction(['prestamos', 'keyval', 'movements', 'treasuryEvents'], 'readwrite');
+  // T15.3 · `keyval` ya no es necesario · planPagos vive en prestamos.planPagos.
+  const tx = db.transaction(['prestamos', 'movements', 'treasuryEvents'], 'readwrite');
 
   const movementId = Number(await tx.objectStore('movements').add(createMovement({
     settlementAccountId: input.settlementAccountId,
@@ -619,9 +620,6 @@ export const confirmLoanSettlement = async (
 
   if (simulation.operationType === 'TOTAL') {
     const totalPlan = buildTotalCancellationPlan(currentPlan, effectiveDate, simulation.principalBefore);
-    if (totalPlan) {
-      await tx.objectStore('keyval').put(totalPlan, `planpagos_${input.loanId}`);
-    }
 
     await tx.objectStore('prestamos').put({
       ...prestamoBaseForUpdate,
@@ -632,6 +630,9 @@ export const confirmLoanSettlement = async (
       cuotasPagadas: totalPlan?.periodos.length ?? prestamo.cuotasPagadas,
       fechaUltimaCuotaPagada: effectiveDate,
       liquidacion: [...liquidacionPrev, settlementToPersist],
+      // T15.3 · planPagos vive como campo del préstamo · si la simulación
+      // generó plan nuevo, sobrescribe; si no, mantiene el actual.
+      planPagos: totalPlan ?? prestamoBaseForUpdate.planPagos,
       updatedAt: now,
     });
   } else {
@@ -646,7 +647,6 @@ export const confirmLoanSettlement = async (
       monthlyPaymentAfter: simulation.monthlyPaymentAfter || 0,
       termMonthsAfter: simulation.termMonthsAfter || 1,
     });
-    await tx.objectStore('keyval').put(partialPlan, `planpagos_${input.loanId}`);
 
     const paidPeriods = partialPlan.periodos.filter((periodo) => periodo.pagado);
     const lastPaid = paidPeriods.at(-1);
@@ -657,6 +657,8 @@ export const confirmLoanSettlement = async (
       cuotasPagadas: paidPeriods.length,
       fechaUltimaCuotaPagada: lastPaid?.fechaCargo ?? prestamo.fechaUltimaCuotaPagada,
       liquidacion: [...liquidacionPrev, settlementToPersist],
+      // T15.3 · planPagos vive como campo del préstamo.
+      planPagos: partialPlan,
       updatedAt: now,
     });
   }

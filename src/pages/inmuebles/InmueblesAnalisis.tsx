@@ -1192,7 +1192,7 @@ export default function InmueblesAnalisis() {
     const loadProperties = async () => {
       try {
         const db = await initDB();
-        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbCompromisos, dbValoraciones, keyvalKeys, allGastos, dbEjercicios] = await Promise.all([
+        const [dbProperties, dbLoans, dbContracts, dbExpenses, dbCompromisos, dbValoraciones, allGastos, dbEjercicios] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),
           getCachedStoreRecords<Contract>('contracts'),
@@ -1201,7 +1201,6 @@ export default function InmueblesAnalisis() {
           getCachedStoreRecords<CompromisoRecurrente>('compromisosRecurrentes')
             .then((all) => all.filter((c) => c.ambito === 'inmueble')),
           getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
-          db.getAllKeys('keyval') as Promise<IDBValidKey[]>,
           gastosInmuebleService.getAll(),
           getCachedStoreRecords<EjercicioFiscalCoord>('ejerciciosFiscalesCoord', { forceRefresh: true }),
         ]);
@@ -1225,21 +1224,15 @@ export default function InmueblesAnalisis() {
         const dbFiscalSummaries = Array.from(summaryMap.values());
 
         if (!mounted) return;
-        const paymentPlanKeys = keyvalKeys
-          .map((key) => String(key))
-          .filter((key) => key.startsWith('planpagos_'));
-
-        const paymentPlans = await Promise.all(
-          paymentPlanKeys.map((key) => db.get('keyval', key) as Promise<PlanPagos | undefined>)
-        );
-
+        // T15.3 · planPagos vive como campo del préstamo (antes era
+        // keyval[planpagos_*]) · iteramos directamente sobre dbLoans.
         const paymentPlansByLoanId = new Map<string, PlanPagos>();
-        paymentPlans.forEach((plan, index) => {
-          if (!plan?.periodos?.length) return;
-          const key = paymentPlanKeys[index];
-          const loanId = key.replace('planpagos_', '').trim();
+        for (const loan of dbLoans) {
+          const plan = (loan as { planPagos?: PlanPagos }).planPagos;
+          if (!plan?.periodos?.length) continue;
+          const loanId = loan.id != null ? String(loan.id).trim() : '';
           if (loanId) paymentPlansByLoanId.set(loanId, plan);
-        });
+        }
 
         const active = dbProperties.filter((property) => property.state === 'activo' && property.id != null);
         const latestInmuebleValorMap = getLatestValuationMap(dbValoraciones, 'inmueble');

@@ -501,10 +501,10 @@ export class PrestamosService {
       this.planesGenerados.delete(prestamoId);
     }
 
-    // Try to load persisted plan from IndexedDB
+    // Try to load persisted plan from prestamo.planPagos (T15.3 · antes
+    // vivía en keyval[`planpagos_${id}`] · ya migrado).
     try {
-      const db = await initDB();
-      const persistedPlan = await db.get('keyval', `planpagos_${prestamoId}`) as PlanPagos | undefined;
+      const persistedPlan = prestamo.planPagos;
       if (persistedPlan) {
         if (!this.needsPlanRegeneration(prestamo, persistedPlan)) {
           console.log(`[PRESTAMOS] Loaded persisted amortization schedule for ${prestamoId} from IndexedDB`);
@@ -623,12 +623,20 @@ export class PrestamosService {
   }
 
   /**
-   * Save payment plan to IndexedDB and in-memory cache
+   * Save payment plan to prestamo.planPagos and in-memory cache.
+   *
+   * T15.3 · antes persistía en `keyval[\`planpagos_${prestamoId}\`]` · ahora
+   * vive como campo del propio préstamo en el store `prestamos`.
    */
   async savePaymentPlan(prestamoId: string, plan: PlanPagos): Promise<void> {
     try {
       const db = await initDB();
-      await db.put('keyval', plan, `planpagos_${prestamoId}`);
+      const prestamo = (await db.get('prestamos', prestamoId)) as Prestamo | undefined;
+      if (!prestamo) {
+        console.warn(`[PRESTAMOS] savePaymentPlan · préstamo ${prestamoId} no encontrado · plan en memoria sólo`);
+      } else {
+        await db.put('prestamos', { ...prestamo, planPagos: plan });
+      }
     } catch (error) {
       console.error('[PRESTAMOS] Failed to save payment plan to IndexedDB:', error);
     }

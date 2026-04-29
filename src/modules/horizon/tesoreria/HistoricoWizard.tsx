@@ -183,14 +183,15 @@ const HistoricoWizard: React.FC<HistoricoWizardProps> = ({ open, onClose, onComp
 
         const prestamos = await db.getAll('prestamos');
 
-        // Bug 2 fix: resolver el plan de amortización soportando formato antiguo
-        // (prestamo.cuadro_amortizacion) y nuevo (keyval/planpagos_${id})
+        // T15.3 · plan vive como campo del préstamo (antes era
+        // keyval[planpagos_*]) · seguimos soportando formato antiguo
+        // `cuadro_amortizacion` para préstamos legacy.
         const resolvePlanPeriodos = async (p: any): Promise<{ fecha: string }[]> => {
           const old = p.cuadro_amortizacion ?? p.cuadroAmortizacion;
           if (Array.isArray(old) && old.length > 0) {
             return old.map((c: any) => ({ fecha: String(c.fecha ?? c.fechaCargo ?? '') }));
           }
-          const plan = await (db as any).get('keyval', `planpagos_${p.id}`);
+          const plan = p.planPagos;
           if (plan?.periodos?.length > 0) {
             return (plan.periodos as any[]).map((per: any) => ({ fecha: String(per.fechaCargo ?? '') }));
           }
