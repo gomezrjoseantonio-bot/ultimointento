@@ -279,6 +279,18 @@ const InversionesPage: React.FC = () => {
         sub="Análisis del rendimiento y evolución de tus posiciones."
         actions={[
           {
+            label: 'Importar IndexaCapital',
+            variant: 'ghost',
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/inversiones/importar-indexa'),
+          },
+          {
+            label: 'Importar aportaciones',
+            variant: 'ghost',
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/inversiones/importar-aportaciones'),
+          },
+          {
             label: 'Nueva posición',
             variant: 'gold',
             icon: <Icons.Plus size={14} strokeWidth={1.8} />,

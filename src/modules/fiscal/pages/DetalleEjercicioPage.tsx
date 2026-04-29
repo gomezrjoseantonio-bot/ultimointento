@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
-import { CardV5, Icons, MoneyValue, showToastV5 } from '../../../design-system/v5';
+import { CardV5, Icons, MoneyValue } from '../../../design-system/v5';
 import type { FiscalOutletContext } from '../FiscalContext';
 import {
   cuotaResultado,
@@ -133,7 +133,15 @@ const DetalleEjercicioPage: React.FC = () => {
           <button
             type="button"
             className={styles.tbBtn}
-            onClick={() => showToastV5('Aplicar paralela AEAT · sub-tarea 3f-B (próximo PR)')}
+            onClick={() => navigate(`/fiscal/importar/${ej.ejercicio}`)}
+          >
+            <Icons.Upload size={14} strokeWidth={1.8} />
+            Importar declaración
+          </button>
+          <button
+            type="button"
+            className={styles.tbBtn}
+            onClick={() => navigate(`/fiscal/correccion/${ej.ejercicio}`)}
           >
             <Icons.Refresh size={14} strokeWidth={1.8} />
             Aplicar paralela
@@ -141,10 +149,10 @@ const DetalleEjercicioPage: React.FC = () => {
           <button
             type="button"
             className={`${styles.tbBtn} ${styles.gold}`}
-            onClick={() => showToastV5('Cerrar/declarar ejercicio · sub-tarea follow-up')}
+            onClick={() => navigate(`/fiscal/borrador/${ej.ejercicio}`)}
           >
-            <Icons.Check size={14} strokeWidth={1.8} />
-            Cerrar ejercicio
+            <Icons.ArrowRight size={14} strokeWidth={1.8} />
+            Ver borrador
           </button>
         </div>
       </div>

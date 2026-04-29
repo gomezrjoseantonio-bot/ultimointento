@@ -132,6 +132,11 @@ const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/Deudas
 const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
 const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
 const FiscalBorradorIRPF = lazyWithPreload(() => import('./modules/fiscal/pages/BorradorIRPFPage'));
+const FiscalImportar = lazyWithPreload(() => import('./modules/fiscal/import/ImportarFiscalPage'));
+// T20 Fase 3g.5 · Importadores legacy reubicados (wrappers v5).
+const InversionesImportarAportaciones = lazyWithPreload(() => import('./modules/inversiones/import/ImportarAportacionesPage'));
+const InversionesImportarIndexa = lazyWithPreload(() => import('./modules/inversiones/import/ImportarIndexaCapitalPage'));
+const FinanciacionImportarPrestamos = lazyWithPreload(() => import('./modules/financiacion/import/ImportarPrestamosPage'));
 const FiscalCorreccionWizard = lazyWithPreload(() => import('./modules/fiscal/pages/CorreccionWizard'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
@@ -578,6 +583,16 @@ function App() {
                   <InversionesIndividual />
                 </React.Suspense>
               } />
+              <Route path="importar-aportaciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesImportarAportaciones />
+                </React.Suspense>
+              } />
+              <Route path="importar-indexa" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesImportarIndexa />
+                </React.Suspense>
+              } />
             </Route>
             <Route path="inversiones/analisis" element={
               <React.Suspense fallback={<LoadingSpinner />}>
@@ -681,6 +696,11 @@ function App() {
                   <FiscalCorreccionWizard />
                 </React.Suspense>
               } />
+              <Route path="importar/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalImportar />
+                </React.Suspense>
+              } />
             </Route>
             {/* Redirect ruta legacy `/fiscalidad` · sustituida por `/fiscal` en 3f-A. */}
             <Route path="fiscalidad" element={<Navigate to="/fiscal" replace />} />
@@ -750,13 +770,18 @@ function App() {
                   <FinanciacionWizardEdit />
                 </React.Suspense>
               } />
+              <Route path="importar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionImportarPrestamos />
+                </React.Suspense>
+              } />
               <Route path=":id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FinanciacionDetalle />
                 </React.Suspense>
               } />
             </Route>
-            
+
             {/* T20 Fase 3c · Mi Plan v5 (sustituye horizon/mi-plan legacy)
                 Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos,retos}-v3
                 + atlas-mi-plan-v2. 6 sub-páginas · cierra TODO-T20-01 conectando

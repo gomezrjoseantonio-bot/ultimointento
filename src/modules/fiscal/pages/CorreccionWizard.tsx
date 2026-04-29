@@ -101,6 +101,8 @@ const CorreccionWizard: React.FC = () => {
   const [fechaNotificacion, setFechaNotificacion] = useState(today());
   const [fechaConformidad, setFechaConformidad] = useState(today());
   const [resumen, setResumen] = useState('');
+  const [paralelaFile, setParalelaFile] = useState<{ name: string; size: number } | null>(null);
+  const paralelaInput = React.useRef<HTMLInputElement | null>(null);
 
   // Step 2 · Qué cambia.
   const [categoriasSel, setCategoriasSel] = useState<Set<Categoria>>(new Set());
@@ -180,6 +182,7 @@ const CorreccionWizard: React.FC = () => {
         ...ejercicio,
         declaracionAeatOrigen: 'manual' as OrigenDeclaracion,
         declaracionAeatFecha: fechaConformidad,
+        declaracionAeatPdfRef: paralelaFile?.name ?? ejercicio.declaracionAeatPdfRef,
         casillasRaw: {
           ...(ejercicio.casillasRaw ?? {}),
           ...Object.fromEntries(
@@ -320,6 +323,86 @@ const CorreccionWizard: React.FC = () => {
                     onChange={(e) => setFechaConformidad(e.target.value)}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className={styles.formCard}>
+              <div className={styles.formCardTitle}>Documento de la paralela</div>
+              <div className={styles.formCardSub}>
+                Sube el PDF · imagen de la notificación firmada · queda archivada con el ejercicio
+              </div>
+              <div
+                style={{
+                  border: '2px dashed var(--atlas-v5-line)',
+                  borderRadius: 10,
+                  padding: paralelaFile ? 16 : 28,
+                  textAlign: 'center',
+                  cursor: paralelaFile ? 'default' : 'pointer',
+                  background: paralelaFile ? 'var(--atlas-v5-pos-wash)' : 'var(--atlas-v5-card-alt)',
+                  borderColor: paralelaFile ? 'var(--atlas-v5-pos)' : undefined,
+                  transition: 'border-color 120ms',
+                }}
+                role="button"
+                tabIndex={0}
+                onClick={() => !paralelaFile && paralelaInput.current?.click()}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Enter' || e.key === ' ') && !paralelaFile) {
+                    paralelaInput.current?.click();
+                  }
+                }}
+              >
+                {paralelaFile ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      fontSize: 13,
+                      fontFamily: 'var(--atlas-v5-font-mono-num)',
+                      color: 'var(--atlas-v5-ink)',
+                    }}
+                  >
+                    <Icons.Success size={16} strokeWidth={1.8} />
+                    <strong>{paralelaFile.name}</strong> · {(paralelaFile.size / 1024).toFixed(0)} KB
+                    <button
+                      type="button"
+                      style={{
+                        marginLeft: 6,
+                        color: 'var(--atlas-v5-neg)',
+                        background: 'none',
+                        border: 0,
+                        cursor: 'pointer',
+                      }}
+                      aria-label="Eliminar archivo"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setParalelaFile(null);
+                      }}
+                    >
+                      <Icons.Close size={14} strokeWidth={1.8} />
+                    </button>
+                  </span>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--atlas-v5-ink)' }}>
+                      <Icons.Upload size={14} strokeWidth={1.8} style={{ verticalAlign: -2, marginRight: 6 }} />
+                      Arrastra el PDF de la paralela aquí
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--atlas-v5-ink-4)', marginTop: 4 }}>
+                      o haz clic para seleccionar · PDF · PNG · JPG
+                    </div>
+                  </>
+                )}
+                <input
+                  ref={paralelaInput}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setParalelaFile({ name: f.name, size: f.size });
+                  }}
+                />
               </div>
             </div>
 

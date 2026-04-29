@@ -96,6 +96,12 @@ const PersonalPage: React.FC = () => {
         sub="ingresos · gastos · mi vivienda · presupuesto del hogar"
         actions={[
           {
+            label: 'Importar nóminas',
+            variant: 'ghost',
+            icon: <Icons.Upload size={13} strokeWidth={1.8} />,
+            onClick: () => navigate('/personal/importar-nominas'),
+          },
+          {
             label: 'Hogar · soltero · asalariado',
             variant: 'ghost',
             icon: <Icons.Ajustes size={13} strokeWidth={1.8} />,

@@ -249,7 +249,7 @@ const BorradorIRPFPage: React.FC = () => {
           <button
             type="button"
             className={styles.tbBtn}
-            onClick={() => showToastV5('Importar declaración (PDF/XML) · sub-tarea follow-up')}
+            onClick={() => navigate(`/fiscal/importar/${ejercicio.ejercicio}`)}
           >
             <Icons.Upload size={14} strokeWidth={1.8} />
             Importar
