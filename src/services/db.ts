@@ -2110,18 +2110,92 @@ interface AtlasHorizonDB {
   /**
    * General key-value store for application configuration.
    *
-   * V60 (TAREA 7 sub-tarea 1): claves estándar reservadas para destinos
-   * de stores eliminados:
-   *   - `'configFiscal'`           ← destino de `configuracion_fiscal`
-   *                                  (eliminado en sub-tarea 3).
-   *   - `'matchingConfig'`         ← destino de `matchingConfiguration`
-   *                                  (eliminado en sub-tarea 4 · V63).
-   *   - `'kpiConfig_horizon'`,
-   *     `'kpiConfig_pulse'`        ← destino de `kpiConfigurations`
-   *                                  (eliminado en sub-tarea 3, una clave
-   *                                  por id de configuración previa).
+   * ── Catálogo canónico post-T15 (sub-tarea 15.4) ──────────────────────────
    *
-   * Resto de claves: `'feature_*'`, `'preferences_*'`, etc. (libres).
+   * Tras la auditoría T15 (`docs/AUDIT-T15-keyval.md`) este store queda
+   * reservado a configuración real (cat. A) y flags de migración recurrentes
+   * (cat. D1). Cache (cat. B), datos del usuario (cat. C) y flags consumidas
+   * (cat. D2) NO deben vivir aquí.
+   *
+   * ── Claves vivas autorizadas ─────────────────────────────────────────────
+   *
+   *   `'matchingConfig'` (A · KEEP)
+   *     → Configuración de matching de presupuesto · destino canónico V63
+   *     → Dueño: `budgetMatchingService`
+   *     → Lectores: `budgetMatchingService`, `transferDetectionService`
+   *     → Formato: objeto `MatchingConfiguration` (ver
+   *       `services/budgetMatchingService.ts`)
+   *     → Origen: store eliminado `matchingConfiguration` (V63)
+   *
+   *   `'dashboardConfiguration'` (A · KEEP)
+   *     → Configuración del dashboard del usuario
+   *     → Dueño: `DashboardService` (`services/dashboardService.ts`)
+   *     → Formato: objeto serializado del dashboard
+   *
+   *   `'base-assumptions'` (A · KEEP · TODO_PROYECCION)
+   *     → Configuración de proyección · módulo legacy `horizon/proyeccion/`
+   *     → Dueño: `proyeccionService`
+   *     → Revisitar cuando proyección migre a v5 (T21)
+   *
+   *   `'migration_orphaned_inmueble_ids_v1'` (D1 · KEEP)
+   *     → Flag idempotencia · puede re-correr si quedan huérfanos en otros
+   *       stores. Borrarla forzaría reescaneo completo.
+   *     → Dueño: `services/migrations/migrateOrphanedInmuebleIds.ts`
+   *
+   *   `'cleanup_T15_v1'` (D1 · KEEP)
+   *     → Flag idempotencia de la limpieza T15.2.
+   *     → Dueño: `services/keyvalCleanupService.ts`
+   *
+   *   `'migration_keyval_planpagos_to_prestamos_v1'` (D1 · KEEP)
+   *     → Flag idempotencia de la migración T15.3.
+   *     → Dueño: `services/migrations/migrateKeyvalPlanpagosToPrestamos.ts`
+   *
+   * ── Claves PROHIBIDAS (NO añadir bajo ningún concepto) ──────────────────
+   *
+   *   `'planpagos_${prestamoId}'` · datos del usuario · vive en
+   *     `prestamos[id].planPagos` · migrado en T15.3.
+   *
+   *   `'base-projection'` · cache recalculable · borrada en T15.2 · si la
+   *     proyección la necesita, regenerar al vuelo desde `base-assumptions`.
+   *
+   *   `'kpiConfig_horizon'`, `'kpiConfig_pulse'` · residuales V62 · borradas
+   *     en T15.2 · `kpiService` es stub no-op · si vuelve la funcionalidad,
+   *     diseñar destino dedicado, NO reutilizar keyval.
+   *
+   *   `'configFiscal'` · documentada históricamente aquí pero sin uso real ·
+   *     NO escribir hasta que T14 (configuración fiscal sitio único) decida
+   *     destino canónico.
+   *
+   *   `'proveedor-contraparte-migration'` · flag migración consumida (D2) ·
+   *     borrada en T15.2 · NO re-escribir.
+   *
+   * ── Cómo añadir una clave nueva ──────────────────────────────────────────
+   *
+   *   1. ¿Es configuración real (no datos del usuario, no cache, no flag
+   *      consumida)? Si NO → otro store / store nuevo / campo en registro.
+   *   2. ¿Hay alternativa más natural (campo en un registro existente,
+   *      store dedicado)? Si SÍ → preferirla.
+   *   3. Si la respuesta es keyval, documentar AQUÍ:
+   *        - clave literal
+   *        - dueño (servicio responsable)
+   *        - lectores
+   *        - formato del valor
+   *        - invariantes
+   *   4. Si es flag de migración: definir si es D1 (recurrente, KEEP) o D2
+   *      (one-shot, BORRAR cuando se ejecute la limpieza T15-bis futura).
+   *
+   * ── localStorage (NO en este store) ──────────────────────────────────────
+   *
+   *   Las siguientes claves se mencionaron en spec T15 §1.2 pero viven en
+   *   `localStorage`, NO en este store IndexedDB. Permanecen fuera del
+   *   alcance de T15:
+   *     - `atlas_account_migration_version`
+   *     - `atlas_iban_backfill_version`
+   *     - `atlas_migration_gastos_v1`
+   *     - `migration_backfill_importeBruto_0106_v1`
+   *     - `migration_clean_stale_cp_and_infer_itp_v1`
+   *     - `migration_fix_reparaciones_duplicadas_v1`
+   *     - `migration_limpiar_gastos_reparacion_0106_v1`
    */
   keyval: any;
   // ⚠ DEPRECATED (V5.4): objetivos_financieros fue migrado a 'escenarios' · el store fue eliminado en la migración V5.4
