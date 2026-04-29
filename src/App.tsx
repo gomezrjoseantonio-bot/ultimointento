@@ -15,6 +15,7 @@ import { runMigrationIfNeeded as limpiarGastosReparacion0106 } from './services/
 import { runMigrationIfNeeded as backfillImporteBruto0106 } from './services/migrations/backfillImporteBruto0106';
 import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migrations/cleanStaleCPAndInferITP';
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
+import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -269,6 +270,17 @@ function App() {
         }
       })
       .then(() => migrateFinanciacionV2())
+      // T15 sub-tarea 15.2 · limpieza one-shot de claves muertas en keyval
+      // (cache + flags consumidas + residuales kpiConfig_*).
+      .then(() => runKeyvalCleanup())
+      .then((cleanupReport) => {
+        if (!cleanupReport.skipped && cleanupReport.deletedCount > 0) {
+          console.log('[ATLAS] Limpieza T15 keyval:', cleanupReport);
+        }
+        if (cleanupReport.errors.length > 0) {
+          console.warn('[ATLAS] Limpieza T15 keyval · errores parciales:', cleanupReport.errors);
+        }
+      })
       // Limpieza de ejercicios fiscales basura — eager para evitar que la UI
       // muestre años futuros residuales durante los primeros 2.5s.
       .then(() => limpiarEjerciciosCoordBasura())
