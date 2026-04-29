@@ -35,7 +35,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Contract, Expense, FiscalSummary, initDB, Property, EjercicioFiscalCoord } from '../../services/db';
+import { Contract, Expense, FiscalSummary, Property, EjercicioFiscalCoord } from '../../services/db';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { gastosInmuebleService } from '../../services/gastosInmuebleService';
 import type { PlanPagos, Prestamo } from '../../types/prestamos';
@@ -1191,7 +1191,6 @@ export default function InmueblesAnalisis() {
 
     const loadProperties = async () => {
       try {
-        const db = await initDB();
         const [dbProperties, dbLoans, dbContracts, dbExpenses, dbCompromisos, dbValoraciones, allGastos, dbEjercicios] = await Promise.all([
           getCachedStoreRecords<Property>('properties'),
           getCachedStoreRecords<Prestamo>('prestamos'),

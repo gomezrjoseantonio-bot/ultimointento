@@ -1209,7 +1209,20 @@ export const cancelPropertySale = async (saleId: number): Promise<PropertySale> 
     for (const snapshot of journal.updatedPaymentPlans) {
       const loanId = String(snapshot.key).replace(/^planpagos_/, '').trim();
       if (!loanId) continue;
-      const loanRecord = (await restoreLoanStore.get(loanId)) as Prestamo | undefined;
+      // Defensivo · si el loanId parsea a entero canónico, probamos también
+      // la key numérica para soportar préstamos legacy con id numérico residual.
+      let loanRecord = (await restoreLoanStore.get(loanId)) as Prestamo | undefined;
+      if (!loanRecord) {
+        const numericKey =
+          loanId !== '' &&
+          Number.isFinite(Number(loanId)) &&
+          String(Number(loanId)) === loanId
+            ? (Number(loanId) as IDBValidKey)
+            : undefined;
+        if (numericKey !== undefined) {
+          loanRecord = (await restoreLoanStore.get(numericKey)) as Prestamo | undefined;
+        }
+      }
       if (!loanRecord) continue;
       await restoreLoanStore.put({
         ...loanRecord,

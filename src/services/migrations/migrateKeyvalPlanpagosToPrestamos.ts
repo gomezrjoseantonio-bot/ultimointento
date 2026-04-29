@@ -58,6 +58,34 @@ function plansAreDeepEqual(a: PlanPagos, b: PlanPagos): boolean {
   }
 }
 
+/**
+ * Resuelve el préstamo asociado a un loanId extraído de `planpagos_${id}`.
+ *
+ * La interfaz `Prestamo` declara `id: string` y el store usa `keyPath: 'id'`
+ * sin `autoIncrement`, así que en condiciones normales todos los IDs son
+ * strings. Defensivamente intentamos también la variante numérica para no
+ * borrar como huérfana una entrada keyval que apunta a un préstamo legacy
+ * con `id` numérico residual (regla "datos del usuario intactos" · spec §4).
+ */
+async function resolvePrestamo(
+  db: Awaited<ReturnType<typeof initDB>>,
+  loanId: string,
+): Promise<Prestamo | undefined> {
+  const direct = (await db.get('prestamos', loanId)) as Prestamo | undefined;
+  if (direct) return direct;
+
+  const numericKey =
+    loanId !== '' &&
+    Number.isFinite(Number(loanId)) &&
+    String(Number(loanId)) === loanId
+      ? (Number(loanId) as IDBValidKey)
+      : undefined;
+  if (numericKey !== undefined) {
+    return (await db.get('prestamos', numericKey)) as Prestamo | undefined;
+  }
+  return undefined;
+}
+
 export async function migrateKeyvalPlanpagosToPrestamos(): Promise<PlanpagosMigrationReport> {
   const report: PlanpagosMigrationReport = {
     skipped: false,
@@ -104,7 +132,7 @@ export async function migrateKeyvalPlanpagosToPrestamos(): Promise<PlanpagosMigr
       }
 
       const plan = (await db.get('keyval', key)) as PlanPagos | undefined;
-      const prestamo = (await db.get('prestamos', loanId)) as Prestamo | undefined;
+      const prestamo = await resolvePrestamo(db, loanId);
 
       if (!prestamo) {
         // Huérfana · borrar y seguir

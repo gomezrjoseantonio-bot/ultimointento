@@ -235,6 +235,47 @@ describe('migrateKeyvalPlanpagosToPrestamos', () => {
     expect(await readKeyval('migration_orphaned_inmueble_ids_v1')).toBe('completed');
   });
 
+  test('hardening · loanId numérico legacy · resuelve préstamo y migra (no lo trata como huérfana)', async () => {
+    // La interfaz Prestamo declara id: string pero el store usa keyPath: 'id'
+    // sin autoIncrement · TypeScript no impide que un préstamo legacy tenga
+    // id numérico. La migración debe resolverlo con fallback a key numérica.
+    const numericPrestamo = {
+      ...minimalPrestamo('placeholder'),
+      id: 42 as unknown as string,
+    };
+    const plan = minimalPlan('42');
+
+    await seed([numericPrestamo as Prestamo], [['planpagos_42', plan]]);
+
+    const { migrateKeyvalPlanpagosToPrestamos } = await import('../migrateKeyvalPlanpagosToPrestamos');
+    const report = await migrateKeyvalPlanpagosToPrestamos();
+
+    // No es huérfana · el préstamo numérico se encontró por fallback
+    expect(report.orphanCount).toBe(0);
+    expect(report.movedCount).toBe(1);
+
+    // El plan se escribió en el préstamo numérico
+    const { initDB } = await import('../../db');
+    const db = await initDB();
+    const post = (await db.get('prestamos', 42)) as any;
+    expect(post.planPagos).toEqual(plan);
+
+    // keyval limpia
+    expect(await allPlanpagosKeys()).toEqual([]);
+  });
+
+  test('hardening · loanId no numérico ni string-equiv · sigue tratándose como huérfana', async () => {
+    // Caso de control · si el loanId no es ni el id de un préstamo string ni
+    // un número canónico, se borra como huérfana (comportamiento previo).
+    await seed([minimalPrestamo('LX')], [['planpagos_realmente-no-existe', minimalPlan('realmente-no-existe')]]);
+
+    const { migrateKeyvalPlanpagosToPrestamos } = await import('../migrateKeyvalPlanpagosToPrestamos');
+    const report = await migrateKeyvalPlanpagosToPrestamos();
+
+    expect(report.orphanCount).toBe(1);
+    expect(report.movedCount).toBe(0);
+  });
+
   test('store keyval sin planpagos_* · marca flag y termina sin trabajo', async () => {
     await seed([minimalPrestamo('L1')], []);
 
