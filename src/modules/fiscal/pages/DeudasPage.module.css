@@ -1,0 +1,106 @@
+.tableWrap {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13px;
+}
+
+.table thead th {
+  padding: 11px 16px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  text-align: left;
+}
+
+.table thead th.right { text-align: right; }
+.table thead th.center { text-align: center; }
+
+.table tbody tr {
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+}
+
+.table tbody tr:last-child { border-bottom: none; }
+.table tbody tr:hover { background: var(--atlas-v5-card-alt); }
+
+.table td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  color: var(--atlas-v5-ink);
+}
+
+.table td.right {
+  text-align: right;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.table td.center { text-align: center; }
+
+.year {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 14px;
+  color: var(--atlas-v5-ink);
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.sub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.kpi {
+  background: var(--atlas-v5-neg-wash);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+}
+
+.kpiLab {
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--atlas-v5-neg);
+  margin-bottom: 6px;
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 28px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-neg);
+  letter-spacing: -0.025em;
+}
+
+.empty {
+  padding: 32px 8px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+}

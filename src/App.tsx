@@ -114,7 +114,23 @@ const RedirectCuentaToMovimientos: React.FC = () => {
   const { id } = useParams();
   return <Navigate to={`/tesoreria/movimientos?cuenta=${id ?? ''}`} replace />;
 };
+const RedirectFiscalDeclaracion: React.FC = () => {
+  const { anio } = useParams();
+  return <Navigate to={`/fiscal/ejercicio/${anio ?? ''}`} replace />;
+};
 const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
+// T20 Fase 3f-A · Fiscal v5 module · Outlet + sub-páginas.
+//   Mockup · docs/audit-inputs/atlas-fiscal.html
+//   Tabs: Calendario (Dashboard) · Ejercicios · Deudas · Configuración.
+//   Sub-rutas · /fiscal/ejercicio/:anio (DetalleEjercicioPage).
+//   Wizard de Corrección/paralela AEAT llega en 3f-B (próximo PR).
+const FiscalPage = lazyWithPreload(() => import('./modules/fiscal/FiscalPage'));
+const FiscalDashboard = lazyWithPreload(() => import('./modules/fiscal/pages/DashboardPage'));
+const FiscalEjercicios = lazyWithPreload(() => import('./modules/fiscal/pages/EjerciciosPage'));
+const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/pages/DetalleEjercicioPage'));
+const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));
+const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
+const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
 const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
@@ -614,7 +630,51 @@ function App() {
               } />
             </Route>
             
-            <Route path="fiscalidad" element={
+            {/* T20 Fase 3f-A · Fiscal v5 (sustituye horizon/fiscalidad/FiscalLayout)
+                Mockup · atlas-fiscal.html · 4 tabs (Calendario · Ejercicios · Deudas ·
+                Configuración) + Detalle ejercicio (`/fiscal/ejercicio/:anio`).
+                Wizard de Corrección/paralelas llega en 3f-B. */}
+            <Route path="fiscal" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <FiscalPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDashboard />
+                </React.Suspense>
+              } />
+              <Route path="ejercicios" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalEjercicios />
+                </React.Suspense>
+              } />
+              <Route path="ejercicio/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDetalleEjercicio />
+                </React.Suspense>
+              } />
+              <Route path="deudas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDeudas />
+                </React.Suspense>
+              } />
+              <Route path="configuracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalConfiguracion />
+                </React.Suspense>
+              } />
+              <Route path="calendario" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalCalendarioCompleto />
+                </React.Suspense>
+              } />
+            </Route>
+            {/* Redirect ruta legacy `/fiscalidad` · sustituida por `/fiscal` en 3f-A. */}
+            <Route path="fiscalidad" element={<Navigate to="/fiscal" replace />} />
+            <Route path="fiscalidad/declaracion/:anio" element={<RedirectFiscalDeclaracion />} />
+
+            <Route path="fiscalidad-legacy" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <FiscalLayout />
               </React.Suspense>
