@@ -1,16 +1,22 @@
 // Importador de declaración AEAT · ruta `/fiscal/importar/:anio`.
-// Permite subir el PDF/XML de la declaración oficial y rellenar
-// las casillas principales del Modelo 100. Marca el ejercicio como
-// declarado al guardar.
+// Permite subir el PDF/XML de la declaración oficial · usa los parsers
+// existentes (`aeatParserService` PDF · `aeatXmlParserService` XML) para
+// extraer las casillas automáticamente y rellenar el formulario.
 //
-// El parsing automático de PDF/XML es follow-up · de momento se
-// captura el documento como referencia + entrada manual de casillas
-// para mantener trazabilidad.
+// Los parsers son deterministas (extracción textual · OCR fallback solo
+// para PDF). Si el documento no se puede parsear automáticamente, el
+// usuario puede introducir manualmente las casillas principales.
 
 import React, { useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons, MoneyValue, showToastV5 } from '../../../design-system/v5';
 import { saveEjercicio } from '../../../services/ejercicioFiscalService';
+import { parsearDeclaracionAEAT } from '../../../services/aeatParserService';
+import {
+  parseDeclaracionXml,
+  isAeatXml,
+  xmlResultToCasillasMap,
+} from '../../../services/aeatXmlParserService';
 import type { OrigenDeclaracion } from '../../../types/fiscal';
 import type { FiscalOutletContext } from '../FiscalContext';
 import styles from './ImportarFiscalPage.module.css';
@@ -32,6 +38,13 @@ const ImportarFiscalPage: React.FC = () => {
   const [fechaPresentacion, setFechaPresentacion] = useState(
     new Date().toISOString().split('T')[0],
   );
+  const [parsing, setParsing] = useState(false);
+  const [parseProgress, setParseProgress] = useState<string>('');
+  const [parseSummary, setParseSummary] = useState<{
+    detectadas: number;
+    ejercicio?: number;
+    warnings?: string[];
+  } | null>(null);
 
   // Casillas principales del Modelo 100 · captura manual mínima.
   const [c0019, setC0019] = useState(0); // Rendimiento neto trabajo
@@ -70,12 +83,92 @@ const ImportarFiscalPage: React.FC = () => {
     );
   }
 
-  const handleFile = (file: File | undefined) => {
+  // Aplica las casillas extraídas a los campos del formulario.
+  const aplicarCasillasExtraidas = (casillas: Record<string, number | string>) => {
+    const num = (k: string): number | undefined => {
+      const v = casillas[k];
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string' && v.trim() !== '') {
+        const n = Number(v.replace(',', '.'));
+        if (Number.isFinite(n)) return n;
+      }
+      return undefined;
+    };
+    if (num('0019') !== undefined) setC0019(num('0019')!);
+    if (num('0085') !== undefined) setC0085(num('0085')!);
+    if (num('0140') !== undefined) setC0140(num('0140')!);
+    if (num('0044') !== undefined) setC0044(num('0044')!);
+    if (num('0435') !== undefined) setC0435(num('0435')!);
+    if (num('0460') !== undefined) setC0460(num('0460')!);
+    if (num('0500') !== undefined) setC0500(num('0500')!);
+    if (num('0510') !== undefined) setC0510(num('0510')!);
+    if (num('0595') !== undefined) setC0595(num('0595')!);
+    if (num('0620') !== undefined) setC0620(num('0620')!);
+    if (num('0630') !== undefined) setC0630(num('0630')!);
+    if (num('0670') !== undefined) setC0670(num('0670')!);
+  };
+
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
     setFileName(file.name);
     setFileSize(file.size);
-    if (file.name.toLowerCase().endsWith('.xml')) setOrigen('xml_importado');
-    else setOrigen('pdf_importado');
+    setParseSummary(null);
+
+    const isXml = file.name.toLowerCase().endsWith('.xml');
+    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    setOrigen(isXml ? 'xml_importado' : 'pdf_importado');
+
+    setParsing(true);
+    try {
+      if (isXml) {
+        setParseProgress('Leyendo XML…');
+        const text = await file.text();
+        if (!isAeatXml(text)) {
+          showToastV5('El XML no parece un fichero DeclaVisor AEAT · introduce las casillas manualmente.');
+          return;
+        }
+        setParseProgress('Parseando declaración XML…');
+        const result = await parseDeclaracionXml(text);
+        const casillas = xmlResultToCasillasMap(result);
+        aplicarCasillasExtraidas(casillas);
+        setParseSummary({
+          detectadas: Object.keys(casillas).length,
+          ejercicio: result.ejercicio,
+          warnings: [],
+        });
+        showToastV5(`XML parseado · ${Object.keys(casillas).length} casillas extraídas.`);
+      } else if (isPdf) {
+        setParseProgress('Preparando PDF…');
+        const result = await parsearDeclaracionAEAT(file, (p) => {
+          if (p.mensaje) setParseProgress(p.mensaje);
+        });
+        if (!result.exito) {
+          showToastV5(
+            result.errores[0] ??
+              'No se pudo extraer automáticamente · introduce las casillas manualmente.',
+          );
+          setParseSummary({ detectadas: 0, warnings: result.errores });
+          return;
+        }
+        aplicarCasillasExtraidas(result.casillasRaw);
+        setParseSummary({
+          detectadas: result.totalCasillas,
+          ejercicio: result.meta.ejercicio,
+          warnings: result.warnings,
+        });
+        showToastV5(`PDF parseado · ${result.totalCasillas} casillas extraídas.`);
+      } else {
+        // .txt u otros · sin parser dedicado · sólo guardamos referencia.
+        showToastV5('Formato sin parser automático · introduce las casillas manualmente.');
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[fiscal-import] parse', err);
+      showToastV5('Error al parsear el documento · introduce los datos manualmente.');
+    } finally {
+      setParsing(false);
+      setParseProgress('');
+    }
   };
 
   const handleGuardar = async () => {
@@ -154,10 +247,10 @@ const ImportarFiscalPage: React.FC = () => {
       <div className={`${styles.banner} ${styles.info}`}>
         <Icons.Info size={18} strokeWidth={1.8} />
         <div>
-          El parsing automático de PDF/XML está en desarrollo. De momento, sube el
-          documento (queda archivado · trazabilidad) y rellena manualmente las
-          casillas principales del Modelo 100. El resto se captura paulatinamente
-          desde otros módulos (inmuebles · contratos · etc.).
+          Sube el PDF o XML del Modelo 100 · Atlas extrae las casillas
+          automáticamente (XML DeclaVisor · extracción determinista · PDF con
+          fallback OCR). Si la extracción falla, puedes rellenar manualmente
+          las casillas principales antes de guardar.
         </div>
       </div>
 
@@ -170,29 +263,66 @@ const ImportarFiscalPage: React.FC = () => {
           if ((e.key === 'Enter' || e.key === ' ') && !fileName) fileInput.current?.click();
         }}
       >
-        {fileName ? (
-          <span className={styles.fileBadge}>
-            <Icons.Success size={14} strokeWidth={1.8} />
-            {fileName} · {(fileSize / 1024).toFixed(0)} KB
-            <button
-              type="button"
-              style={{
-                marginLeft: 8,
-                color: 'var(--atlas-v5-neg)',
-                background: 'none',
-                border: 0,
-                cursor: 'pointer',
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setFileName(null);
-                setFileSize(0);
-              }}
-              aria-label="Eliminar archivo"
-            >
-              <Icons.Close size={14} strokeWidth={1.8} />
-            </button>
-          </span>
+        {parsing ? (
+          <div>
+            <div className={styles.dropzoneTitle}>
+              <Icons.Refresh size={16} strokeWidth={1.8} style={{ verticalAlign: -3, marginRight: 6 }} />
+              {parseProgress || 'Procesando…'}
+            </div>
+            <div className={styles.dropzoneSub}>
+              {fileName} · {(fileSize / 1024).toFixed(0)} KB
+            </div>
+          </div>
+        ) : fileName ? (
+          <div>
+            <span className={styles.fileBadge}>
+              <Icons.Success size={14} strokeWidth={1.8} />
+              {fileName} · {(fileSize / 1024).toFixed(0)} KB
+              <button
+                type="button"
+                style={{
+                  marginLeft: 8,
+                  color: 'var(--atlas-v5-neg)',
+                  background: 'none',
+                  border: 0,
+                  cursor: 'pointer',
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFileName(null);
+                  setFileSize(0);
+                  setParseSummary(null);
+                }}
+                aria-label="Eliminar archivo"
+              >
+                <Icons.Close size={14} strokeWidth={1.8} />
+              </button>
+            </span>
+            {parseSummary && parseSummary.detectadas > 0 && (
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 12,
+                  color: 'var(--atlas-v5-pos)',
+                  fontWeight: 600,
+                }}
+              >
+                ✓ {parseSummary.detectadas} casillas extraídas
+                {parseSummary.ejercicio ? ` · ejercicio ${parseSummary.ejercicio}` : ''}
+              </div>
+            )}
+            {parseSummary && parseSummary.warnings && parseSummary.warnings.length > 0 && (
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 11.5,
+                  color: 'var(--atlas-v5-gold-ink)',
+                }}
+              >
+                {parseSummary.warnings[0]}
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <div className={styles.dropzoneTitle}>
@@ -200,7 +330,7 @@ const ImportarFiscalPage: React.FC = () => {
               Sube el PDF o XML del Modelo 100
             </div>
             <div className={styles.dropzoneSub}>
-              o haz clic para seleccionar · PDF · XML (Renta Web)
+              o haz clic para seleccionar · PDF · XML (Renta Web · DeclaVisor)
             </div>
           </>
         )}

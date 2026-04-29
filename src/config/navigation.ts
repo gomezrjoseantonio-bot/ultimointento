@@ -1,21 +1,9 @@
-import {
-  LayoutDashboard,
-  User,
-  Building2,
-  TrendingUp,
-  Landmark,
-  Compass,
-  Monitor,
-  CreditCard,
-  Folder,
-  Settings,
-  Key,
-} from 'lucide-react';
+import { Icons, type IconComponent } from '../design-system/v5';
 
 export interface NavigationItem {
   name: string;
   href: string;
-  icon: any;
+  icon: IconComponent;
   module: 'shared';
   subTabs?: { name: string; href: string }[];
   section?: 'horizon' | 'pulse' | 'documentation';
@@ -24,30 +12,38 @@ export interface NavigationItem {
 /**
  * Navegación canónica · alineada a las 11 rutas v5 (T20 Phase 0-3g).
  *
- * Las rutas legacy `/personal/supervision`, `/inmuebles/supervision` y
- * `/fiscalidad` permanecen accesibles como redirects (App.tsx) pero el
- * menú principal apunta directamente a la v5. Las páginas `/proyeccion`
- * legacy se sustituyen por Mi Plan · Proyección.
+ * Iconos consumidos desde `Icons.<Concepto>` v5 · NO importar directamente
+ * Lucide aquí (regla §13.1 de la guía de diseño v5 · 1 icono por concepto).
+ *
+ * Estado de las rutas legacy ·
+ *  - `/personal/supervision` y `/fiscalidad` son redirects (App.tsx) → v5.
+ *  - `/inmuebles/supervision` sigue activa como ruta legacy (no redirect)
+ *    hasta Phase 4 cleanup · el menú principal apunta a `/inmuebles` v5.
+ *  - `/proyeccion/*` legacy se sustituye por Mi Plan · Proyección.
+ *
+ * Secciones · 'horizon' (módulos principales) · 'documentation' (archivo +
+ * ajustes). 'pulse' queda vacía hasta que se incorpore alguna gestión
+ * legacy mientras llega Phase 4.
  */
 export const navigationConfig: NavigationItem[] = [
   {
     name: 'Panel',
     href: '/panel',
-    icon: LayoutDashboard,
+    icon: Icons.Panel,
     module: 'shared',
     section: 'horizon',
   },
   {
     name: 'Inmuebles',
     href: '/inmuebles',
-    icon: Building2,
+    icon: Icons.Inmuebles,
     module: 'shared',
     section: 'horizon',
   },
   {
     name: 'Inversiones',
     href: '/inversiones',
-    icon: TrendingUp,
+    icon: Icons.Inversiones,
     module: 'shared',
     section: 'horizon',
     subTabs: [
@@ -60,14 +56,14 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Tesorería',
     href: '/tesoreria',
-    icon: Landmark,
+    icon: Icons.Tesoreria,
     module: 'shared',
     section: 'horizon',
   },
   {
     name: 'Financiación',
     href: '/financiacion',
-    icon: CreditCard,
+    icon: Icons.Financiacion,
     module: 'shared',
     section: 'horizon',
     subTabs: [
@@ -80,21 +76,21 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Personal',
     href: '/personal',
-    icon: User,
+    icon: Icons.Personal,
     module: 'shared',
     section: 'horizon',
   },
   {
     name: 'Contratos',
-    href: '/inmuebles/contratos',
-    icon: Key,
+    href: '/contratos',
+    icon: Icons.Contratos,
     module: 'shared',
     section: 'horizon',
   },
   {
     name: 'Mi Plan',
     href: '/mi-plan',
-    icon: Compass,
+    icon: Icons.MiPlan,
     module: 'shared',
     section: 'horizon',
     subTabs: [
@@ -109,7 +105,7 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Fiscal',
     href: '/fiscal',
-    icon: Monitor,
+    icon: Icons.Fiscal,
     module: 'shared',
     section: 'horizon',
     subTabs: [
@@ -122,16 +118,16 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Archivo',
     href: '/archivo',
-    icon: Folder,
+    icon: Icons.Archivo,
     module: 'shared',
-    section: 'horizon',
+    section: 'documentation',
   },
   {
     name: 'Ajustes',
     href: '/ajustes',
-    icon: Settings,
+    icon: Icons.Ajustes,
     module: 'shared',
-    section: 'horizon',
+    section: 'documentation',
   },
 ];
 
