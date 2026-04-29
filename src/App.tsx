@@ -65,6 +65,13 @@ const PanelPage = lazyWithPreload(() => import('./pages/PanelPage'));
 
 // Inbox page - lazy load to reduce main bundle
 const InboxPage = lazyWithPreload(() => import('./pages/InboxPage'));
+// T20 Fase 3g · Archivo v5 (mockup atlas-archivo.html) · vista de
+// documentos por inmueble · ejercicio · tipo. Coexiste con `/inbox`
+// legacy hasta Phase 4 cleanup.
+const ArchivoPage = lazyWithPreload(() => import('./modules/archivo/ArchivoPage'));
+// T20 Fase 3g · Onboarding wizard (mockup atlas-onboarding.html) ·
+// welcome + hub.
+const OnboardingPage = lazyWithPreload(() => import('./modules/onboarding/OnboardingPage'));
 
 // T20 Fase 3a · Inmuebles v5 module (sustituye horizon/inmuebles/* + pulse/contratos/*)
 const InmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/InmueblesPage'));
@@ -414,6 +421,16 @@ function App() {
             <Route path="panel" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <PanelPage />
+              </React.Suspense>
+            } />
+            <Route path="archivo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ArchivoPage />
+              </React.Suspense>
+            } />
+            <Route path="onboarding" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <OnboardingPage />
               </React.Suspense>
             } />
             <Route path="inbox" element={
