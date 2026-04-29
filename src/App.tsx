@@ -131,6 +131,8 @@ const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/pa
 const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));
 const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
 const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
+const FiscalBorradorIRPF = lazyWithPreload(() => import('./modules/fiscal/pages/BorradorIRPFPage'));
+const FiscalCorreccionWizard = lazyWithPreload(() => import('./modules/fiscal/pages/CorreccionWizard'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
 const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
@@ -667,6 +669,16 @@ function App() {
               <Route path="calendario" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FiscalCalendarioCompleto />
+                </React.Suspense>
+              } />
+              <Route path="borrador/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalBorradorIRPF />
+                </React.Suspense>
+              } />
+              <Route path="correccion/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalCorreccionWizard />
                 </React.Suspense>
               } />
             </Route>
