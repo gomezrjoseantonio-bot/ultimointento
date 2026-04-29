@@ -34,14 +34,34 @@ const formatHaceTiempo = (ms: number): string => {
   return `hace ${d} d`;
 };
 
+// Normaliza el campo legacy `metadata.tipo` (variantes 'Factura' ·
+// 'Contrato' · 'fiscal' · etc.) al set v5 coarse.
+const normalizarTipoMetadata = (tipo?: string): TipoFiltro | null => {
+  const n = tipo?.trim().toLowerCase() ?? '';
+  if (!n) return null;
+  if (n.includes('fiscal') || n.includes('factura') || n.includes('irpf') || n.includes('aeat')) {
+    return 'fiscal';
+  }
+  if (n.includes('contrat')) return 'contrato';
+  if (n.includes('banco') || n.includes('bancario') || n.includes('extracto')) return 'bancario';
+  if (n === 'otro') return 'otro';
+  return null;
+};
+
 const inferTipo = (d: Document): TipoFiltro => {
-  const meta = d.metadata as { documentClassification?: string };
-  const cls = meta.documentClassification?.toLowerCase() ?? '';
-  if (cls.includes('fiscal') || cls.includes('irpf') || cls.includes('aeat')) return 'fiscal';
-  if (cls.includes('contrat')) return 'contrato';
-  if (cls.includes('banco') || cls.includes('bancario') || cls.includes('extracto')) return 'bancario';
+  const meta = d.metadata as { tipo?: string };
+  const fromMeta = normalizarTipoMetadata(meta.tipo);
+  if (fromMeta) return fromMeta;
   if (d.metadata.entityType === 'contract') return 'contrato';
   return 'otro';
+};
+
+const isSinClasificar = (d: Document): boolean => {
+  const meta = d.metadata as { tipo?: string; status?: string };
+  const status = meta.status ?? '';
+  if (status === 'pendiente_vinculacion' || status === 'pendiente_asignacion') return true;
+  // Sin tipo coarse válido y sin entidad vinculada · pendiente de clasificar.
+  return !normalizarTipoMetadata(meta.tipo) && !d.metadata.entityType && !d.metadata.entityId;
 };
 
 const labelTipo: Record<TipoFiltro, string> = {
@@ -81,9 +101,7 @@ const ArchivoPage: React.FC = () => {
   }, []);
 
   const totalSize = docs.reduce((s, d) => s + (d.size ?? 0), 0);
-  const sinClasificar = docs.filter(
-    (d) => !d.metadata.entityType && !(d.metadata as { documentClassification?: string }).documentClassification,
-  );
+  const sinClasificar = docs.filter(isSinClasificar);
   const ultUpload = docs.length > 0 ? Math.max(...docs.map((d) => d.lastModified ?? 0)) : 0;
 
   const tipoCounts = useMemo(() => {

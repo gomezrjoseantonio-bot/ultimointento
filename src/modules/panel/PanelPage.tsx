@@ -65,8 +65,11 @@ const PanelPage: React.FC = () => {
 
   const valorInmuebles = useMemo(() => {
     return properties.reduce((s, p) => {
-      const vAny = p as Property & { precioCompra?: number };
-      return s + (vAny.precioCompra ?? 0);
+      const propertyValue = p as Property & {
+        currentValue?: number;
+        acquisitionCosts?: { price?: number };
+      };
+      return s + (propertyValue.currentValue ?? propertyValue.acquisitionCosts?.price ?? 0);
     }, 0);
   }, [properties]);
 
@@ -105,7 +108,8 @@ const PanelPage: React.FC = () => {
 
   const cosasAtencion = useMemo(() => {
     let n = 0;
-    // Documentos sin clasificar (estimación · si hay store documents).
+    // Préstamos que parecen requerir atención inicial · sin cuotas pagadas
+    // y no marcados como "pendiente completar" (datos faltantes esperados).
     if (prestamos.some((p) => p.cuotasPagadas === 0 && p.estado !== 'pendiente_completar')) n += 1;
     return n;
   }, [prestamos]);
