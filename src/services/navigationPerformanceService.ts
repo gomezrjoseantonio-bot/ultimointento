@@ -9,6 +9,14 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await import('../pages/InboxPage');
     return;
   }
+  if (href === '/archivo' || href.startsWith('/archivo/')) {
+    await import('../modules/archivo/ArchivoPage');
+    return;
+  }
+  if (href === '/onboarding' || href.startsWith('/onboarding/')) {
+    await import('../modules/onboarding/OnboardingPage');
+    return;
+  }
   if (href.startsWith('/inmuebles/supervision')) {
     await import('../modules/horizon/inmuebles/supervision/Supervision');
     return;
@@ -148,6 +156,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
 const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] }> = [
   { match: (href) => href === '/panel', stores: ['accounts', 'treasuryEvents', 'movements', 'properties', 'contracts', 'valoraciones_historicas'] },
   { match: (href) => href.startsWith('/inbox'), stores: ['documents'] },
+  { match: (href) => href === '/archivo' || href.startsWith('/archivo/'), stores: ['documents', 'properties'] },
   { match: (href) => href.startsWith('/tesoreria'), stores: ['accounts', 'treasuryEvents', 'movements', 'contracts', 'properties'] },
   { match: (href) => href.startsWith('/inmuebles/cartera'), stores: ['properties', 'contracts', 'valoraciones_historicas'] },
   { match: (href) => href.startsWith('/inmuebles/supervision'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'mejorasInmueble', 'mueblesInmueble', 'gastosInmueble'] },

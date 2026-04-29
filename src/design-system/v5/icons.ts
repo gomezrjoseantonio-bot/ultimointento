@@ -78,6 +78,7 @@ import {
   Tag,
   Paperclip,
   RefreshCw,
+  Inbox,
 } from 'lucide-react';
 
 /**
@@ -165,6 +166,7 @@ export const Icons = {
   Tag,
   Attach: Paperclip,
   Refresh: RefreshCw,
+  Inbox,
 } as const;
 
 export type IconName = keyof typeof Icons;
