@@ -139,6 +139,12 @@ const ViviendaPage: React.FC = () => {
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--atlas-v5-line)';
                   }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--atlas-v5-ink-5)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--atlas-v5-line)';
+                  }}
                 >
                   <span
                     style={{

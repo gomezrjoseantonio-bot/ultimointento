@@ -26,8 +26,10 @@ const FALLBACK: ChartColors = {
 
 /**
  * Devuelve la paleta neutra de chart leyendo los CSS variables
- * `--atlas-v5-chart-*`. Memoizado a nivel de módulo (no cambia tras
- * el primer mount) para evitar recálculos en cada render.
+ * `--atlas-v5-chart-*`. Memoizado por instancia del hook mientras el
+ * consumidor siga montado · evita recálculos en cada render. (No es
+ * cache global · si cambian los tokens en runtime y se remonta el
+ * componente, se vuelven a leer.)
  */
 export const useChartColors = (): ChartColors => {
   return useMemo(() => {

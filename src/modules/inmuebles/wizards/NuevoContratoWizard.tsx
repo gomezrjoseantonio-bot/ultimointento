@@ -360,8 +360,10 @@ const NuevoContratoWizard: React.FC = () => {
               <div className={styles.stepHeader}>
                 <div className={styles.stepTitle}>4 · Documentos</div>
                 <div className={styles.stepSub}>
-                  DNI · contrato firmado · justificantes de ingresos. Opcionales
-                  ahora · puedes adjuntar después desde la ficha del contrato.
+                  Listado de tipos de documentos esperados · la subida real
+                  llega en sub-tarea follow-up (integración con bandeja Inbox
+                  + tipado de documento). Puedes crear el contrato sin docs y
+                  adjuntarlos después desde la ficha.
                 </div>
               </div>
               <div
@@ -403,14 +405,16 @@ const NuevoContratoWizard: React.FC = () => {
                         marginBottom: 4,
                       }}
                     >
-                      <Icons.Upload
+                      <Icons.Attach
                         size={14}
                         strokeWidth={1.8}
                         style={{ verticalAlign: -2, marginRight: 6 }}
                       />
                       {d.label}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>{d.hint}</div>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>
+                      {d.hint} · pendiente
+                    </div>
                   </button>
                 ))}
               </div>
@@ -427,7 +431,8 @@ const NuevoContratoWizard: React.FC = () => {
                 }}
               >
                 Atlas guardará el contrato como borrador aunque no subas
-                documentos ahora · puedes adjuntarlos después desde la ficha.
+                documentos ahora · puedes adjuntarlos después desde la ficha
+                (cuando esté disponible la subida real).
               </div>
             </>
           )}

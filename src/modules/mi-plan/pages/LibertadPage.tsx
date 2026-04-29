@@ -146,8 +146,14 @@ const LibertadPage: React.FC = () => {
               }
               serie.push({ year, renta: Math.max(0, renta) });
             }
-            // Si hay objetivo, asegúrate de mostrar al menos hasta él.
-            const maxY = Math.max(rentaPasivaObjetivo * 1.2, ...serie.map((s) => s.renta));
+            // maxY · incluye objetivo + gastosVida + serie con un 20% de
+            // margen · garantiza que ambas líneas (objetivo · gastos vida)
+            // y el cruce "libertad" siempre quedan dentro del viewBox.
+            const maxY = Math.max(
+              rentaPasivaObjetivo * 1.2,
+              gastosVida * 1.2,
+              ...serie.map((s) => s.renta),
+            );
             const minY = 0;
             const W = 840;
             const H = 240;
