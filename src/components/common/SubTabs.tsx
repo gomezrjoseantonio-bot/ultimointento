@@ -17,12 +17,15 @@ const SUBTABS: SubTabsConfig = {
     { label: 'Ingresos', path: '/personal/ingresos' },
   ],
   inmuebles: [
-    { label: 'Supervisión', path: '/inmuebles/supervision' },
-    { label: 'Cartera', path: '/inmuebles/cartera' },
-    { label: 'Contratos', path: '/inmuebles/contratos' },
+    // /inmuebles/supervision purgado en T20 Phase 4 · /inmuebles/cartera y
+    // /inmuebles/contratos siguen como redirects en App.tsx · apuntamos
+    // directamente a las rutas v5 para evitar el bounce del redirect.
+    { label: 'Cartera', path: '/inmuebles' },
+    { label: 'Contratos', path: '/contratos' },
   ],
   inversiones: [
-    { label: 'Resumen', path: '/inversiones/resumen' },
+    // /inversiones/resumen no existe · el index `/inversiones` ES el resumen.
+    { label: 'Resumen', path: '/inversiones' },
     { label: 'Cartera', path: '/inversiones/cartera' },
     { label: 'Rendimientos', path: '/inversiones/rendimientos' },
     { label: 'Individual', path: '/inversiones/individual' },

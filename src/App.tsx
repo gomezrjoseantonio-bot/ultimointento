@@ -83,7 +83,6 @@ const InmueblesNuevoContrato = lazyWithPreload(() => import('./modules/inmuebles
 const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarInmuebles'));
 const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
 const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
-// Inmuebles supervision · ruta separada · usado por Panel y otros.
 
 // Inversiones Module · T20 Fase 3d · v5 (Outlet + sub-pages)
 const InversionesPage = lazyWithPreload(() => import('./modules/inversiones/InversionesPage'));

@@ -38,11 +38,20 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/inmuebles')) {
+    // Rutas legacy `/inmuebles/{supervision,resumen,individual}` redirigen a
+    // `/inmuebles` (Phase 4 cleanup) · precargamos ListadoPage para que
+    // tras el redirect el chunk ya esté en cache · NO DetallePage.
+    const isLegacyListado =
+      href.startsWith('/inmuebles/supervision') ||
+      href.startsWith('/inmuebles/resumen') ||
+      href.startsWith('/inmuebles/individual');
+    const isListado =
+      href === '/inmuebles' || href === '/inmuebles/' || isLegacyListado;
     // /inmuebles (listado) y /inmuebles/:id (detalle) · ambos pasan por
     // InmueblesPage Outlet · precargamos también listado/detalle según ruta.
     await Promise.all([
       import('../modules/inmuebles/InmueblesPage'),
-      href === '/inmuebles' || href === '/inmuebles/'
+      isListado
         ? import('../modules/inmuebles/pages/ListadoPage')
         : import('../modules/inmuebles/pages/DetallePage'),
     ]);
@@ -155,7 +164,17 @@ const routeStoreMap: Array<{ match: (href: string) => boolean; stores: string[] 
   { match: (href) => href === '/archivo' || href.startsWith('/archivo/'), stores: ['documents', 'properties'] },
   { match: (href) => href.startsWith('/tesoreria'), stores: ['accounts', 'treasuryEvents', 'movements', 'contracts', 'properties'] },
   { match: (href) => href.startsWith('/inmuebles/cartera'), stores: ['properties', 'contracts', 'valoraciones_historicas'] },
-  { match: (href) => href === '/inmuebles' || href.startsWith('/inmuebles/analisis'), stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'] },
+  // `/inmuebles/{supervision,resumen,individual}` redirigen a `/inmuebles` ·
+  // precalentamos los mismos stores para que el redirect no cueste warm-up.
+  {
+    match: (href) =>
+      href === '/inmuebles' ||
+      href.startsWith('/inmuebles/analisis') ||
+      href.startsWith('/inmuebles/supervision') ||
+      href.startsWith('/inmuebles/resumen') ||
+      href.startsWith('/inmuebles/individual'),
+    stores: ['properties', 'contracts', 'valoraciones_historicas', 'prestamos', 'expenses', 'compromisosRecurrentes'],
+  },
   { match: (href) => href.startsWith('/contratos'), stores: ['contracts', 'properties'] },
   { match: (href) => href.startsWith('/inversiones'), stores: ['inversiones', 'accounts', 'movements'] },
   { match: (href) => href.startsWith('/financiacion'), stores: ['prestamos', 'properties', 'accounts'] },
