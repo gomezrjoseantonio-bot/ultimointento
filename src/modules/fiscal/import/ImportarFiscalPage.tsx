@@ -11,8 +11,9 @@
 // wizard legacy hasta que se migre profundamente.
 
 import React from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
-import { Icons, showToastV5 } from '../../../design-system/v5';
+import { Icons } from '../../../design-system/v5';
 import ImportarDeclaracionWizard from '../../horizon/fiscalidad/historico/ImportarDeclaracionWizard';
 import type { FiscalOutletContext } from '../FiscalContext';
 import styles from './ImportarFiscalPage.module.css';
@@ -22,14 +23,15 @@ const ImportarFiscalPage: React.FC = () => {
   const { anio } = useParams<{ anio: string }>();
   const { reload } = useOutletContext<FiscalOutletContext>();
 
-  const handleClose = () => {
-    if (anio) navigate(`/fiscal/ejercicio/${anio}`);
-    else navigate('/fiscal/ejercicios');
+  // El wizard llama `onImported` tras distribuir y luego `onClose`. Para
+  // evitar doble navegación · `onImported` sólo recarga el contexto y
+  // muestra el toast · `onClose` se encarga del navigate.
+  const handleImported = async () => {
+    toast.success('Declaración importada · datos distribuidos en los módulos.');
+    await reload();
   };
 
-  const handleImported = async () => {
-    showToastV5('Declaración importada · datos distribuidos en los módulos.');
-    await reload();
+  const handleClose = () => {
     if (anio) navigate(`/fiscal/ejercicio/${anio}`);
     else navigate('/fiscal/ejercicios');
   };
@@ -64,6 +66,19 @@ const ImportarFiscalPage: React.FC = () => {
         <span className={styles.current} aria-current="page">
           Importar declaración
         </span>
+      </div>
+
+      <div className={`${styles.banner} ${styles.info}`}>
+        <Icons.Info size={18} strokeWidth={1.8} />
+        <div>
+          Sube el <strong>XML del Modelo 100</strong> (Sede Electrónica AEAT ·
+          DeclaVisor / Renta Web). Atlas extrae automáticamente inmuebles ·
+          contratos · gastos · arrendamientos · plan pensiones · arrastres y
+          casillas · y los distribuye en los módulos correspondientes. La
+          importación por PDF llegará en una iteración posterior · si tu
+          ejercicio sólo lo tienes en PDF · usa el wizard de Corrección desde
+          el detalle del ejercicio para introducir los valores manualmente.
+        </div>
       </div>
 
       <ImportarDeclaracionWizard
