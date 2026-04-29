@@ -16,21 +16,14 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { CardV5 } from '../../../design-system/v5';
+import { CardV5, useChartColors } from '../../../design-system/v5';
 import type { InversionesOutletContext } from '../InversionesContext';
 import { buildEvolucionInversiones } from '../helpers';
 import styles from './RendimientosPage.module.css';
 
-const CHART = {
-  ink: '#0E2A47',
-  accent: '#1DA0BA',
-  grid: 'rgba(200,208,220,.4)',
-  axis: '#6C757D',
-  border: '#C8D0DC',
-};
-
 const RendimientosPage: React.FC = () => {
   const { positions } = useOutletContext<InversionesOutletContext>();
+  const CHART = useChartColors();
 
   const evolucionInv = useMemo(() => buildEvolucionInversiones(positions), [positions]);
   const donutData = positions.map((p) => ({ name: p.alias, value: p.valor }));

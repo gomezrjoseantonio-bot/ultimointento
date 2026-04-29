@@ -64,10 +64,14 @@ interface DeltaRow {
   concepto: string;
   v1: number;
   v2: number;
+  /** Si true · es un campo derivado automáticamente de otra casilla. */
+  auto?: boolean;
+  /** Campo padre que dispara la derivación (referencia · sólo display). */
+  derivedFrom?: string;
 }
 
 const DEFAULT_DELTA_ROWS: DeltaRow[] = [
-  { casilla: '0115', concepto: 'Amortización inmueble', v1: 0, v2: 0 },
+  { casilla: '0115', concepto: 'Amortización inmueble', v1: 0, v2: 0, auto: true, derivedFrom: 'Coste adquisición' },
   { casilla: '0085', concepto: 'Rendimiento neto capital inmobiliario', v1: 0, v2: 0 },
   { casilla: '0500', concepto: 'Cuota líquida', v1: 0, v2: 0 },
 ];
@@ -110,6 +114,7 @@ const CorreccionWizard: React.FC = () => {
   // Step 3 · Delta · valores antes/después.
   const [deltaRows, setDeltaRows] = useState<DeltaRow[]>(DEFAULT_DELTA_ROWS);
   const [motivoCorreccion, setMotivoCorreccion] = useState('');
+  const [verComparativaCompleta, setVerComparativaCompleta] = useState(false);
 
   // Step 4 · Impacto año.
   const [resultadoV1, setResultadoV1] = useState(0);
@@ -493,7 +498,31 @@ const CorreccionWizard: React.FC = () => {
                         <td style={{ fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 700 }}>
                           {r.casilla}
                         </td>
-                        <td>{r.concepto}</td>
+                        <td>
+                          {r.concepto}
+                          {r.auto && (
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.06em',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                background: 'var(--atlas-v5-gold-wash)',
+                                color: 'var(--atlas-v5-gold-ink)',
+                              }}
+                              title={
+                                r.derivedFrom
+                                  ? `Derivado de ${r.derivedFrom}`
+                                  : 'Campo derivado automáticamente'
+                              }
+                            >
+                              auto
+                            </span>
+                          )}
+                        </td>
                         <td className={styles.right}>
                           <input
                             type="number"
@@ -528,20 +557,73 @@ const CorreccionWizard: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              <button
-                type="button"
-                className={styles.btn + ' ' + styles.ghost}
-                style={{ marginTop: 12 }}
-                onClick={() =>
-                  setDeltaRows([
-                    ...deltaRows,
-                    { casilla: '', concepto: '', v1: 0, v2: 0 },
-                  ])
-                }
-              >
-                <Icons.Plus size={13} strokeWidth={2} />
-                Añadir casilla
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                <button
+                  type="button"
+                  className={styles.btn + ' ' + styles.ghost}
+                  onClick={() =>
+                    setDeltaRows([
+                      ...deltaRows,
+                      { casilla: '', concepto: '', v1: 0, v2: 0 },
+                    ])
+                  }
+                >
+                  <Icons.Plus size={13} strokeWidth={2} />
+                  Añadir casilla
+                </button>
+                <button
+                  type="button"
+                  className={styles.btn + ' ' + styles.ghost}
+                  onClick={() => setVerComparativaCompleta((v) => !v)}
+                  aria-expanded={verComparativaCompleta}
+                >
+                  {verComparativaCompleta ? (
+                    <>
+                      <Icons.ChevronUp size={13} strokeWidth={2} />
+                      Ocultar comparativa completa
+                    </>
+                  ) : (
+                    <>
+                      <Icons.ChevronDown size={13} strokeWidth={2} />
+                      Ver comparativa completa
+                    </>
+                  )}
+                </button>
+              </div>
+              {verComparativaCompleta && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 14,
+                    background: 'var(--atlas-v5-card-alt)',
+                    border: '1px solid var(--atlas-v5-line)',
+                    borderRadius: 10,
+                    fontSize: 12.5,
+                    color: 'var(--atlas-v5-ink-3)',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <strong style={{ color: 'var(--atlas-v5-ink)' }}>Resumen del Δ ·</strong>{' '}
+                  {(() => {
+                    const cambios = deltaRows.filter((r) => r.v1 !== r.v2);
+                    if (cambios.length === 0) return 'sin cambios introducidos aún.';
+                    const totalDelta = cambios.reduce((s, r) => s + (r.v2 - r.v1), 0);
+                    return (
+                      <>
+                        {cambios.length} casilla{cambios.length === 1 ? '' : 's'} con cambio · Δ
+                        total {totalDelta >= 0 ? '+' : ''}
+                        {totalDelta.toFixed(2)} €.
+                        {' '}
+                        <strong>
+                          {cambios.filter((r) => r.auto).length} campos derivados automáticamente
+                        </strong>{' '}
+                        · marcados con chip auto. Los demás se introducen
+                        manualmente desde el documento de la paralela.
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
 
             <div className={styles.formCard}>

@@ -360,15 +360,79 @@ const NuevoContratoWizard: React.FC = () => {
               <div className={styles.stepHeader}>
                 <div className={styles.stepTitle}>4 · Documentos</div>
                 <div className={styles.stepSub}>
-                  DNI inquilino · justificantes · plantilla de contrato.
+                  Listado de tipos de documentos esperados · la subida real
+                  llega en sub-tarea follow-up (integración con bandeja Inbox
+                  + tipado de documento). Puedes crear el contrato sin docs y
+                  adjuntarlos después desde la ficha.
                 </div>
               </div>
-              <div className={styles.placeholder}>
-                <strong>Subida de documentos · pendiente</strong>
-                <br />
-                Adjuntar DNI/NIE · contrato firmado · justificantes en sub-tarea
-                follow-up. El contrato se puede crear sin docs y completarlos
-                después desde la ficha.
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: 12,
+                }}
+              >
+                {[
+                  { key: 'dni', label: 'DNI · NIE inquilino', hint: 'PDF · imagen' },
+                  { key: 'contrato', label: 'Contrato firmado', hint: 'PDF · plantilla LAU' },
+                  { key: 'ingresos', label: 'Justificantes de ingresos', hint: 'nóminas · bancarios' },
+                  { key: 'aval', label: 'Aval · si lo hay', hint: 'PDF avalista + DNI' },
+                ].map((d) => (
+                  <button
+                    key={d.key}
+                    type="button"
+                    onClick={() =>
+                      showToastV5(
+                        `Subir ${d.label.toLowerCase()} · sub-tarea follow-up · enlace con bandeja Inbox + tipado documento.`,
+                      )
+                    }
+                    style={{
+                      padding: '20px 16px',
+                      background: 'var(--atlas-v5-card-alt)',
+                      border: '2px dashed var(--atlas-v5-line)',
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: 'var(--atlas-v5-ink)',
+                        marginBottom: 4,
+                      }}
+                    >
+                      <Icons.Attach
+                        size={14}
+                        strokeWidth={1.8}
+                        style={{ verticalAlign: -2, marginRight: 6 }}
+                      />
+                      {d.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>
+                      {d.hint} · pendiente
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: '12px 14px',
+                  background: 'var(--atlas-v5-brand-wash)',
+                  borderLeft: '3px solid var(--atlas-v5-brand)',
+                  borderRadius: 4,
+                  fontSize: 11.5,
+                  color: 'var(--atlas-v5-brand)',
+                  lineHeight: 1.55,
+                }}
+              >
+                Atlas guardará el contrato como borrador aunque no subas
+                documentos ahora · puedes adjuntarlos después desde la ficha
+                (cuando esté disponible la subida real).
               </div>
             </>
           )}
@@ -378,15 +442,94 @@ const NuevoContratoWizard: React.FC = () => {
               <div className={styles.stepHeader}>
                 <div className={styles.stepTitle}>5 · Plantilla y firma</div>
                 <div className={styles.stepSub}>
-                  Selecciona plantilla · genera PDF · envía a firma.
+                  Elige plantilla y revisa antes de crear el contrato.
                 </div>
               </div>
-              <div className={styles.placeholder}>
-                <strong>Selector de plantillas · pendiente</strong>
-                <br />
-                Plantillas configurables en Ajustes → Plantillas. Generación PDF
-                + firma electrónica en sub-tarea follow-up. Por ahora · el botón
-                "Crear contrato" guarda el contrato en estado borrador.
+
+              <div className={styles.fields}>
+                <div className={`${styles.field} ${styles.full}`}>
+                  <label className={styles.label}>Plantilla del contrato</label>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: 10,
+                      marginTop: 4,
+                    }}
+                  >
+                    {[
+                      {
+                        key: 'lau-vivienda',
+                        title: 'LAU · Vivienda habitual',
+                        desc: 'Plantilla estándar 5 años · obligaciones LAU.',
+                      },
+                      {
+                        key: 'lau-temporada',
+                        title: 'LAU · Temporada',
+                        desc: 'Alquiler temporal · 11 meses · turístico.',
+                      },
+                      {
+                        key: 'local',
+                        title: 'Local comercial',
+                        desc: 'Uso distinto vivienda · Ley arrendamientos urbanos.',
+                      },
+                    ].map((p) => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() =>
+                          showToastV5(`Plantilla ${p.title} · selección registrada (follow-up persistencia).`)
+                        }
+                        style={{
+                          padding: '12px 14px',
+                          background: 'var(--atlas-v5-card)',
+                          border: '1px solid var(--atlas-v5-line)',
+                          borderRadius: 10,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: 'var(--atlas-v5-ink)',
+                          }}
+                        >
+                          {p.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11.5,
+                            color: 'var(--atlas-v5-ink-3)',
+                            marginTop: 4,
+                          }}
+                        >
+                          {p.desc}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  padding: '12px 14px',
+                  background: 'var(--atlas-v5-gold-wash)',
+                  borderLeft: '3px solid var(--atlas-v5-gold)',
+                  borderRadius: 4,
+                  fontSize: 11.5,
+                  color: 'var(--atlas-v5-gold-ink)',
+                  lineHeight: 1.55,
+                }}
+              >
+                Al pulsar <strong>Crear contrato</strong> Atlas lo guarda en estado
+                borrador con los datos introducidos. La generación de PDF y la
+                firma electrónica con FactorID/Docusign llegan en sub-tarea
+                follow-up.
               </div>
             </>
           )}
