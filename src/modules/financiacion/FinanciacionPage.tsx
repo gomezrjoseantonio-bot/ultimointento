@@ -142,6 +142,12 @@ const FinanciacionPage: React.FC = () => {
           sub="tus hipotecas y préstamos · destino determina deducibilidad fiscal"
           actions={[
             {
+              label: 'Importar CSV',
+              variant: 'ghost',
+              icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+              onClick: () => navigate('/financiacion/importar'),
+            },
+            {
               label: 'Crear desde FEIN',
               variant: 'ghost',
               icon: <Icons.Upload size={14} strokeWidth={1.8} />,

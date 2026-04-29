@@ -91,10 +91,10 @@ const ContratosListPage: React.FC = () => {
         }
         actions={[
           {
-            label: 'Exportar',
+            label: 'Importar contratos',
             variant: 'ghost',
-            icon: <Icons.Download size={14} strokeWidth={1.8} />,
-            onClick: () => showToastV5('Exportar contratos · CSV / XLSX'),
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/inmuebles/importar-contratos'),
           },
           {
             label: 'Nuevo contrato',

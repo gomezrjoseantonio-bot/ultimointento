@@ -5,7 +5,6 @@ import {
   MoneyValue,
   EmptyState,
   Icons,
-  showToastV5,
 } from '../../../design-system/v5';
 import type { Contract, Property } from '../../../services/db';
 import InmuebleCard, {
@@ -158,10 +157,16 @@ const ListadoPage: React.FC = () => {
         }
         actions={[
           {
-            label: 'Exportar',
+            label: 'Importar inmuebles',
             variant: 'ghost',
-            icon: <Icons.Download size={14} strokeWidth={1.8} />,
-            onClick: () => showToastV5('Exportar inmuebles · CSV / XLSX'),
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/inmuebles/importar'),
+          },
+          {
+            label: 'Importar valoraciones',
+            variant: 'ghost',
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/inmuebles/importar-valoraciones'),
           },
           {
             label: 'Nuevo inmueble',

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
-import { PageHead, MoneyValue, Icons, showToastV5 } from '../../design-system/v5';
+import { PageHead, MoneyValue, Icons } from '../../design-system/v5';
 import { initDB, Account, Movement } from '../../services/db';
 import { cuentasService } from '../../services/cuentasService';
 import styles from './TesoreriaPage.module.css';
@@ -90,10 +90,10 @@ const TesoreriaPage: React.FC = () => {
         }
         actions={[
           {
-            label: 'Exportar',
+            label: 'Importar cuentas',
             variant: 'ghost',
-            icon: <Icons.Download size={14} strokeWidth={1.8} />,
-            onClick: () => showToastV5('Exportar movimientos · CSV / XLSX'),
+            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
+            onClick: () => navigate('/tesoreria/importar-cuentas'),
           },
           {
             label: 'Subir extracto',
