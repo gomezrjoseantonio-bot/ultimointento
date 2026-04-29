@@ -206,6 +206,21 @@ const ComponentsShowcase = lazyWithPreload(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// Dev-only · keyval audit page. T15 · sub-tarea 15.1.
+// CRA no expone `import.meta.env.DEV`. Para que la página funcione en
+// `npm start` (NODE_ENV=development) y opcionalmente en deploy preview de
+// Netlify (NODE_ENV=production · activable con REACT_APP_ENABLE_DEV_PAGES=1)
+// usamos los flags que sí soporta react-scripts.
+const isDevPagesEnabled =
+  process.env.NODE_ENV === 'development' ||
+  process.env.REACT_APP_ENABLE_DEV_PAGES === '1';
+
+const KeyvalAudit = lazyWithPreload(() =>
+  isDevPagesEnabled
+    ? import('./pages/dev/KeyvalAudit')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -404,6 +419,18 @@ function App() {
                 element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <ComponentsShowcase />
+                  </React.Suspense>
+                }
+              />
+            )}
+
+            {/* T15 · sub-tarea 15.1 · keyval audit · DEV only · sin layout ni auth */}
+            {isDevPagesEnabled && (
+              <Route
+                path="/dev/keyval-audit"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <KeyvalAudit />
                   </React.Suspense>
                 }
               />
