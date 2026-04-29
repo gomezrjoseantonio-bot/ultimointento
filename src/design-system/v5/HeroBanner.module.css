@@ -1,0 +1,230 @@
+.hero {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-lg);
+  padding: var(--atlas-v5-sp-8);
+  font-family: var(--atlas-v5-font-ui);
+  border-top: 3px solid var(--atlas-v5-gold);
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-5);
+}
+
+/* Variante compact · landing · 1 línea narrativa + 4 stats + CTA · §8.1 */
+.hero.compact {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: var(--atlas-v5-sp-9);
+  align-items: stretch;
+}
+
+.heroBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-3);
+  min-width: 0;
+}
+
+.heroTag {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: var(--atlas-v5-fs-chip-sm);
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-tag);
+  text-transform: uppercase;
+  color: var(--atlas-v5-gold-ink);
+}
+
+.heroTitle {
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  line-height: 1.25;
+  letter-spacing: var(--atlas-v5-ls-h2);
+  margin: 0;
+}
+
+.heroTitle strong { color: var(--atlas-v5-gold-ink); font-weight: var(--atlas-v5-fw-bold); }
+
+.heroSub {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  line-height: var(--atlas-v5-lh-base);
+}
+
+.heroCta {
+  align-self: flex-start;
+  margin-top: var(--atlas-v5-sp-3);
+  padding: 9px 16px;
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border: 1px solid var(--atlas-v5-gold);
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.heroCta:hover {
+  background: var(--atlas-v5-gold-ink);
+  border-color: var(--atlas-v5-gold-ink);
+}
+
+.heroStats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--atlas-v5-sp-3);
+}
+
+.heroStat {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 10px 12px;
+}
+
+.heroStatLabel {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.04em;
+}
+
+.heroStatValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 17px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 2px;
+  letter-spacing: var(--atlas-v5-ls-mono);
+}
+
+/* Variante toggle · escenario · §8.2 */
+.toggleBar {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-3);
+  flex-wrap: wrap;
+}
+
+.toggleLabel {
+  font-size: var(--atlas-v5-fs-label);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: var(--atlas-v5-radius-icon);
+}
+
+.toggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.toggleBtn.toggleActive {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+  box-shadow: 0 1px 3px rgba(12, 18, 48, 0.12);
+}
+
+.toggleInfo {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+}
+
+.toggleInfo strong { color: var(--atlas-v5-ink); font-weight: var(--atlas-v5-fw-semibold); }
+
+/* Variante progress · reto activo · §8.3 */
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--atlas-v5-sp-2);
+}
+
+.progressBar {
+  width: 100%;
+  height: 10px;
+  background: var(--atlas-v5-card-alt);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--atlas-v5-gold);
+  transition: width 0.3s ease-out;
+}
+
+.progressMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+}
+
+.progressValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--atlas-v5-fs-kpi);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: var(--atlas-v5-ls-kpi);
+}
+
+/* Variante chart · §8.4 */
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--atlas-v5-sp-3);
+  flex-wrap: wrap;
+}
+
+.chartLegend {
+  display: flex;
+  gap: var(--atlas-v5-sp-3);
+  flex-wrap: wrap;
+}
+
+.chartLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+}
+
+.chartLegendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chartWrap {
+  overflow-x: auto;
+  margin-top: var(--atlas-v5-sp-3);
+}

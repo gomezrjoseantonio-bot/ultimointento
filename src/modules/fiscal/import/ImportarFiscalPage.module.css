@@ -1,0 +1,221 @@
+.page {
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.backBtn {
+  cursor: pointer;
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 0;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.backBtn:hover { color: var(--atlas-v5-ink); }
+
+.crumbBtn {
+  cursor: pointer;
+  background: transparent;
+  color: var(--atlas-v5-ink-3);
+  border: 0;
+  padding: 4px;
+  font: inherit;
+}
+
+.current {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.title {
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+  margin-bottom: 6px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-4);
+  margin-bottom: 18px;
+}
+
+.dropzone {
+  border: 2px dashed var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 36px 22px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--atlas-v5-card-alt);
+  transition: border-color 120ms;
+  margin-bottom: 18px;
+}
+
+.dropzone:hover { border-color: var(--atlas-v5-gold); }
+
+.dropzone.uploaded {
+  background: var(--atlas-v5-pos-wash);
+  border-color: var(--atlas-v5-pos);
+  cursor: default;
+}
+
+.dropzoneTitle {
+  font-size: 14.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 4px;
+}
+
+.dropzoneSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.fileBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-pos);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--atlas-v5-ink);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.banner {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  border-left: 3px solid;
+}
+
+.banner.info { background: var(--atlas-v5-brand-wash); border-left-color: var(--atlas-v5-brand); color: var(--atlas-v5-brand); }
+.banner.warn { background: var(--atlas-v5-gold-wash); border-left-color: var(--atlas-v5-gold); color: var(--atlas-v5-gold-ink); }
+
+.formCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+}
+
+.formCardTitle {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.formCardSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.row label {
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 6px;
+}
+
+.row .casilla {
+  font-family: var(--atlas-v5-font-mono-num);
+  color: var(--atlas-v5-ink-4);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.row input,
+.row select {
+  padding: 8px 12px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  outline: none;
+}
+
+.row input:focus,
+.row select:focus { border-color: var(--atlas-v5-gold); }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.btn.ghost {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+  border-color: var(--atlas-v5-line);
+}
+
+.btn.ghost:hover { border-color: var(--atlas-v5-ink-5); }
+
+.btn.gold {
+  background: var(--atlas-v5-gold);
+  color: #fff;
+}
+
+.btn.gold:hover { background: var(--atlas-v5-gold-2); }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.notFound {
+  padding: 48px 20px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+}

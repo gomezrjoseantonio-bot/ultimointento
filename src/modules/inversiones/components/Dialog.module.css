@@ -1,0 +1,251 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(14, 42, 71, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.dialog {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  box-shadow: var(--atlas-v5-shadow-modal);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.dialog.sizeSm { max-width: 480px; }
+.dialog.sizeMd { max-width: 580px; }
+.dialog.sizeLg { max-width: 720px; }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.header .sub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  color: var(--atlas-v5-ink-4);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+
+.closeBtn:hover {
+  background: var(--atlas-v5-line-2);
+  color: var(--atlas-v5-ink);
+}
+
+.body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+}
+
+.btnPrimary {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--atlas-v5-ink);
+  color: var(--atlas-v5-card);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btnPrimary:hover { opacity: 0.9; }
+
+.btnSecondary {
+  padding: 8px 18px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btnSecondary:hover { background: var(--atlas-v5-card-alt); }
+
+.btnGhost {
+  padding: 8px 14px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--atlas-v5-ink-3);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btnDanger {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--atlas-v5-neg-wash);
+  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-neg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 14px;
+}
+
+.field label {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 8px 12px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 13px;
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  width: 100%;
+  outline: none;
+}
+
+.field input.mono,
+.field input[type='number'] {
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--atlas-v5-gold);
+}
+
+.field.error input,
+.field.error select,
+.field.error textarea {
+  border-color: var(--atlas-v5-neg);
+}
+
+.field .err {
+  font-size: 11px;
+  color: var(--atlas-v5-neg);
+  margin-top: 4px;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.row2 .field { margin-bottom: 0; }
+
+.tabRow {
+  display: flex;
+  gap: 4px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tabRow button {
+  padding: 5px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--atlas-v5-ink-4);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabRow button.active {
+  background: var(--atlas-v5-ink);
+  color: var(--atlas-v5-card);
+  border-color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.previewBox {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previewBox .head {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 2px;
+}
+
+.previewRow {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+}
+
+.previewRow .lab { color: var(--atlas-v5-ink-4); }
+.previewRow .val { color: var(--atlas-v5-ink); }
+.previewRow .neg { color: var(--atlas-v5-neg); }
+.previewRow .strong { font-weight: var(--atlas-v5-fw-semibold); }

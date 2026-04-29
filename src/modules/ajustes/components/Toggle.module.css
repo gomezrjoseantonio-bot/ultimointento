@@ -1,0 +1,39 @@
+.toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: var(--atlas-v5-line);
+  border-radius: 11px;
+  cursor: pointer;
+  transition: background-color 0.14s;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background: var(--atlas-v5-white);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(14, 20, 35, 0.15);
+  transition: left 0.14s;
+}
+
+.toggle.on { background: var(--atlas-v5-gold); }
+.toggle.on::after { left: 20px; }
+
+.toggle:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

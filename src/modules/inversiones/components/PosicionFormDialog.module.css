@@ -1,0 +1,65 @@
+.formBody {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.tabs button {
+  padding: 5px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--atlas-v5-ink-4);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabs button.active {
+  background: var(--atlas-v5-ink);
+  color: var(--atlas-v5-card);
+  border-color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.preview {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preview .head {
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  margin-bottom: 2px;
+}
+
+.preview .row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+}
+
+.preview .lab { color: var(--atlas-v5-ink-4); }
+.preview .val { color: var(--atlas-v5-ink); }
+.preview .neg { color: var(--atlas-v5-neg); }
+.preview .strong { font-weight: var(--atlas-v5-fw-semibold); }

@@ -1,141 +1,129 @@
 /**
- * ATLAS Navigation Audit Test
- * 
- * This test validates the ATLAS navigation requirements:
- * 1. Exactly 14 navigation entries after adding Mi Plan and keeping Informes in Horizon
- * 2. Correct separators: "Horizon — Supervisión", "Pulse — Gestión", "Documentación"
- * 3. Configuración and Tareas are NOT in the sidebar
- * 4. Correct order of items
+ * Atlas Navigation Audit · alineado a la navegación v5 canónica
+ * (T20 Phase 0-3g). Ver `src/config/navigation.ts`.
+ *
+ * Las 11 rutas canónicas v5 · Panel · Inmuebles · Inversiones · Tesorería
+ * · Financiación · Personal · Contratos · Mi Plan · Fiscal · Archivo ·
+ * Ajustes. Items legacy ('Dashboard' · 'Previsiones' · 'Impuestos' ·
+ * 'Documentación' · 'Herramientas' · 'Glosario' · 'Alquileres') han sido
+ * eliminados o renombrados.
  */
 
+import { Icons } from '../design-system/v5';
 import { navigationConfig, getNavigationForModule } from '../config/navigation';
 
-describe('ATLAS Navigation Audit', () => {
+describe('Atlas Navigation Audit · v5', () => {
   const navigation = getNavigationForModule();
 
-  test('should have exactly 14 navigation entries', () => {
-    expect(navigation).toHaveLength(14);
+  test('expone exactamente las 11 rutas v5 canónicas', () => {
+    expect(navigation).toHaveLength(11);
   });
 
-  test('should have correct navigation items in exact order', () => {
-    const expectedItems = [
-      'Dashboard',
-      'Personal',
-      'Inmuebles', 
-      'Inversiones',
-      'Tesorería',
-      'Previsiones',
-      'Mi Plan',
-      'Impuestos',
-      'Financiación',
-      'Alquileres',
-      'Informes',
-      'Documentación',
-      'Herramientas',
-      'Glosario'
-    ];
-
-    const actualItems = navigation.map(item => item.name);
-    expect(actualItems).toEqual(expectedItems);
-  });
-
-  test('should have correct section groupings', () => {
-    const horizonItems = navigation.filter(item => item.section === 'horizon');
-    const pulseItems = navigation.filter(item => item.section === 'pulse');
-    const documentationItems = navigation.filter(item => item.section === 'documentation');
-
-    // HORIZON — Supervisión should have 10 items
-    expect(horizonItems).toHaveLength(10);
-    
-    // PULSE — Gestión should have 1 item
-    expect(pulseItems).toHaveLength(1);
-    
-    // DOCUMENTACIÓN should have 3 items
-    expect(documentationItems).toHaveLength(3);
-  });
-
-  test('should not include Configuración in sidebar navigation', () => {
-    const hasConfiguracion = navigation.some(item => item.name === 'Configuración');
-    expect(hasConfiguracion).toBe(false);
-  });
-
-  test('should not include standalone Tareas in sidebar navigation', () => {
-    const hasStandaloneTareas = navigation.some(item => item.name === 'Tareas');
-    expect(hasStandaloneTareas).toBe(false);
-  });
-
-  test('should include Evolución as subtab in Inmuebles', () => {
-    const inmuebles = navigation.find(item => item.name === 'Inmuebles');
-    expect(inmuebles).toBeDefined();
-    expect(inmuebles?.subTabs).toBeDefined();
-    
-    const evolucionSubtab = inmuebles?.subTabs?.find(subtab => subtab.name === 'Evolución');
-    expect(evolucionSubtab).toBeDefined();
-  });
-
-  test('should have correct Horizon section items', () => {
-    const horizonItems = navigation.filter(item => item.section === 'horizon');
-    const expectedHorizonItems = [
-      'Dashboard',
-      'Personal', 
+  test('respeta el orden canónico de la guía v5', () => {
+    const expected = [
+      'Panel',
       'Inmuebles',
       'Inversiones',
       'Tesorería',
-      'Previsiones',
-      'Mi Plan',
-      'Impuestos',
       'Financiación',
-      'Informes'
+      'Personal',
+      'Contratos',
+      'Mi Plan',
+      'Fiscal',
+      'Archivo',
+      'Ajustes',
     ];
-    
-    const actualHorizonItems = horizonItems.map(item => item.name);
-    expect(actualHorizonItems).toEqual(expectedHorizonItems);
+    expect(navigation.map((item) => item.name)).toEqual(expected);
   });
 
-  test('should have correct Pulse section items', () => {
-    const pulseItems = navigation.filter(item => item.section === 'pulse');
-    expect(pulseItems).toHaveLength(1);
-    expect(pulseItems[0].name).toBe('Alquileres');
+  test('todos los items apuntan a rutas v5 (no legacy)', () => {
+    const hrefs = navigation.map((item) => item.href);
+    // Ninguna ruta legacy debe aparecer en el menú principal.
+    expect(hrefs).not.toContain('/inmuebles/supervision');
+    expect(hrefs).not.toContain('/personal/supervision');
+    expect(hrefs).not.toContain('/fiscalidad');
+    expect(hrefs).not.toContain('/inbox');
+    expect(hrefs).not.toContain('/inversiones/resumen');
+    expect(hrefs).not.toContain('/proyeccion');
   });
 
-  test('should have correct Documentation section items', () => {
-    const documentationItems = navigation.filter(item => item.section === 'documentation');
-    expect(documentationItems).toHaveLength(3);
-    expect(documentationItems.some(item => item.name === 'Documentación')).toBe(true);
-    expect(documentationItems.some(item => item.name === 'Herramientas')).toBe(true);
-    expect(documentationItems.some(item => item.name === 'Glosario')).toBe(true);
+  test('Contratos apunta a /contratos directamente · no via redirect', () => {
+    const contratos = navigation.find((item) => item.name === 'Contratos');
+    expect(contratos).toBeDefined();
+    expect(contratos?.href).toBe('/contratos');
   });
 
-  test('should have Tesorería with Movimientos and Importar subtabs', () => {
-    const tesoreria = navigation.find(item => item.name === 'Tesorería');
-    expect(tesoreria).toBeDefined();
-    expect(tesoreria?.subTabs).toBeDefined();
-    
-    const subtabNames = tesoreria?.subTabs?.map(subtab => subtab.name) || [];
-    expect(subtabNames).toContain('Movimientos');
-    expect(subtabNames).toContain('Importar');
+  test('items usan el diccionario Icons v5 · no Lucide directo', () => {
+    expect(navigationConfig[0].icon).toBe(Icons.Panel);
+    expect(navigationConfig.find((i) => i.name === 'Inmuebles')?.icon).toBe(Icons.Inmuebles);
+    expect(navigationConfig.find((i) => i.name === 'Inversiones')?.icon).toBe(Icons.Inversiones);
+    expect(navigationConfig.find((i) => i.name === 'Tesorería')?.icon).toBe(Icons.Tesoreria);
+    expect(navigationConfig.find((i) => i.name === 'Financiación')?.icon).toBe(Icons.Financiacion);
+    expect(navigationConfig.find((i) => i.name === 'Personal')?.icon).toBe(Icons.Personal);
+    expect(navigationConfig.find((i) => i.name === 'Contratos')?.icon).toBe(Icons.Contratos);
+    expect(navigationConfig.find((i) => i.name === 'Mi Plan')?.icon).toBe(Icons.MiPlan);
+    expect(navigationConfig.find((i) => i.name === 'Fiscal')?.icon).toBe(Icons.Fiscal);
+    expect(navigationConfig.find((i) => i.name === 'Archivo')?.icon).toBe(Icons.Archivo);
+    expect(navigationConfig.find((i) => i.name === 'Ajustes')?.icon).toBe(Icons.Ajustes);
   });
 
-  test('should have Alquileres with required management subtabs', () => {
-    const alquileres = navigation.find(item => item.name === 'Alquileres');
-    expect(alquileres).toBeDefined();
-    expect(alquileres?.subTabs).toBeDefined();
-    
-    const subtabNames = alquileres?.subTabs?.map(subtab => subtab.name) || [];
-    expect(subtabNames).toContain('Renovación');
-    expect(subtabNames).toContain('Subidas');
-    expect(subtabNames).toContain('Envío a firmar');
+  test('Inversiones expone sus 4 sub-páginas v5', () => {
+    const inversiones = navigation.find((item) => item.name === 'Inversiones');
+    const subs = inversiones?.subTabs?.map((t) => t.name) ?? [];
+    expect(subs).toEqual(['Resumen', 'Cartera', 'Rendimientos', 'Individual']);
   });
 
-  test('should have Documentación with repository and filter subtabs', () => {
-    const documentacion = navigation.find(item => item.name === 'Documentación');
-    expect(documentacion).toBeDefined();
-    expect(documentacion?.subTabs).toBeDefined();
-    
-    const subtabNames = documentacion?.subTabs?.map(subtab => subtab.name) || [];
-    expect(subtabNames).toContain('Repositorio');
-    expect(subtabNames).toContain('Filtros');
-    expect(subtabNames).toContain('Extracción fiscal');
-    expect(subtabNames).toContain('Inspecciones');
+  test('Financiación expone sus 4 sub-páginas v5', () => {
+    const financiacion = navigation.find((item) => item.name === 'Financiación');
+    const subs = financiacion?.subTabs?.map((t) => t.name) ?? [];
+    expect(subs).toEqual(['Dashboard', 'Listado', 'Snowball', 'Calendario']);
+  });
+
+  test('Mi Plan expone sus 6 sub-páginas v5', () => {
+    const miPlan = navigation.find((item) => item.name === 'Mi Plan');
+    const subs = miPlan?.subTabs?.map((t) => t.name) ?? [];
+    expect(subs).toEqual([
+      'Mi Plan',
+      'Proyección',
+      'Libertad financiera',
+      'Objetivos',
+      'Fondos de ahorro',
+      'Retos',
+    ]);
+  });
+
+  test('Fiscal expone sus 4 sub-páginas v5', () => {
+    const fiscal = navigation.find((item) => item.name === 'Fiscal');
+    const subs = fiscal?.subTabs?.map((t) => t.name) ?? [];
+    expect(subs).toEqual(['Calendario', 'Ejercicios', 'Deudas', 'Configuración']);
+  });
+
+  test('Archivo y Ajustes en sección documentation', () => {
+    const docItems = navigation.filter((item) => item.section === 'documentation');
+    expect(docItems.map((i) => i.name)).toEqual(['Archivo', 'Ajustes']);
+  });
+
+  test('Sección horizon contiene los 9 módulos principales v5', () => {
+    const horizon = navigation.filter((item) => item.section === 'horizon');
+    expect(horizon).toHaveLength(9);
+  });
+
+  test('Sección pulse vacía hasta Phase 4 cleanup', () => {
+    const pulse = navigation.filter((item) => item.section === 'pulse');
+    expect(pulse).toHaveLength(0);
+  });
+
+  test('No incluye items legacy de pre-T20', () => {
+    const names = navigation.map((item) => item.name);
+    expect(names).not.toContain('Dashboard');
+    expect(names).not.toContain('Previsiones');
+    expect(names).not.toContain('Impuestos');
+    expect(names).not.toContain('Documentación');
+    expect(names).not.toContain('Herramientas');
+    expect(names).not.toContain('Glosario');
+    expect(names).not.toContain('Alquileres');
+    expect(names).not.toContain('Informes');
+    expect(names).not.toContain('Configuración');
+    expect(names).not.toContain('Tareas');
   });
 });

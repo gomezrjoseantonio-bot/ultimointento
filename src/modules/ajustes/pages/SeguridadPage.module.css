@@ -1,0 +1,52 @@
+.sesRow {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 14px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  align-items: center;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.sesRow:last-child { border-bottom: none; }
+
+.sesRow.current { background: var(--atlas-v5-gold-wash); }
+
+.icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+}
+
+.sesRow.current .icon { background: var(--atlas-v5-gold); color: var(--atlas-v5-white); }
+
+.info { min-width: 0; }
+
+.name {
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.meta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  font-family: var(--atlas-v5-font-mono-tech);
+}
+
+.badgeCur {
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  font-family: var(--atlas-v5-font-ui);
+}

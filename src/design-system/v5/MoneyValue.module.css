@@ -1,0 +1,19 @@
+.money {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-mono);
+  white-space: nowrap;
+  color: var(--atlas-v5-ink);
+}
+
+.money.pos { color: var(--atlas-v5-pos); }
+.money.neg { color: var(--atlas-v5-neg); }
+.money.brand { color: var(--atlas-v5-brand); }
+.money.gold { color: var(--atlas-v5-gold-ink); }
+.money.warn { color: var(--atlas-v5-warn); }
+.money.muted { color: var(--atlas-v5-ink-3); font-weight: var(--atlas-v5-fw-semibold); }
+
+.money.kpi { font-size: var(--atlas-v5-fs-kpi); line-height: var(--atlas-v5-lh-kpi); }
+.money.kpiStar { font-size: var(--atlas-v5-fs-kpi-star); line-height: var(--atlas-v5-lh-kpi); letter-spacing: -0.03em; }
+.money.inline { font-size: var(--atlas-v5-fs-kpi-inline); font-weight: var(--atlas-v5-fw-semibold); }

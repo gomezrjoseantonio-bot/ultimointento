@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -65,24 +65,84 @@ const PanelPage = lazyWithPreload(() => import('./pages/PanelPage'));
 
 // Inbox page - lazy load to reduce main bundle
 const InboxPage = lazyWithPreload(() => import('./pages/InboxPage'));
+// T20 Fase 3g · Archivo v5 (mockup atlas-archivo.html) · vista de
+// documentos por inmueble · ejercicio · tipo. Coexiste con `/inbox`
+// legacy hasta Phase 4 cleanup.
+const ArchivoPage = lazyWithPreload(() => import('./modules/archivo/ArchivoPage'));
+// T20 Fase 3g · Onboarding wizard (mockup atlas-onboarding.html) ·
+// welcome + hub.
+const OnboardingPage = lazyWithPreload(() => import('./modules/onboarding/OnboardingPage'));
 
-// Horizon (Investment) Module Components
-const Cartera = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/Cartera'));
-const Contratos = lazyWithPreload(() => import('./modules/horizon/inmuebles/contratos/Contratos'));
-const Analisis = lazyWithPreload(() => import('./modules/horizon/inmuebles/analisis/Analisis'));
-const Ingresos = lazyWithPreload(() => import('./modules/horizon/inmuebles/ingresos/Ingresos'));
-const Gastos = lazyWithPreload(() => import('./modules/horizon/inmuebles/gastos/Gastos'));
-const Supervision = lazyWithPreload(() => import('./modules/horizon/inmuebles/supervision/Supervision'));
+// T20 Fase 3a · Inmuebles v5 module (sustituye horizon/inmuebles/* + pulse/contratos/*)
+const InmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/InmueblesPage'));
+const InmueblesListado = lazyWithPreload(() => import('./modules/inmuebles/pages/ListadoPage'));
+const InmueblesDetalle = lazyWithPreload(() => import('./modules/inmuebles/pages/DetallePage'));
+const InmueblesContratosLista = lazyWithPreload(() => import('./modules/inmuebles/pages/ContratosListPage'));
+const InmueblesNuevoContrato = lazyWithPreload(() => import('./modules/inmuebles/wizards/NuevoContratoWizard'));
+// T20 Fase 3a · 3 importadores re-ubicados per decisión D3 de Jose.
+const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarInmuebles'));
+const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
+const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
 
-// Inversiones Module
-const InversionesPage = lazyWithPreload(() => import('./modules/horizon/inversiones/InversionesPage'));
+// Inversiones Module · T20 Fase 3d · v5 (Outlet + sub-pages)
+const InversionesPage = lazyWithPreload(() => import('./modules/inversiones/InversionesPage'));
+const InversionesResumen = lazyWithPreload(() => import('./modules/inversiones/pages/ResumenPage'));
+const InversionesCartera = lazyWithPreload(() => import('./modules/inversiones/pages/CarteraPage'));
+const InversionesRendimientos = lazyWithPreload(() => import('./modules/inversiones/pages/RendimientosPage'));
+const InversionesIndividual = lazyWithPreload(() => import('./modules/inversiones/pages/IndividualPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
-// Financing Module - New standalone financing module
-const Financiacion = lazyWithPreload(() => import('./modules/horizon/financiacion/Financiacion'));
-const Tesoreria = lazyWithPreload(() => import('./modules/horizon/tesoreria/Tesoreria'));
+// T20 Fase 3e · Financiación v5 module · Outlet + 4 sub-pages.
+//   Mockup · docs/audit-inputs/atlas-financiacion-v2.html
+//   Dashboard · Listado · Snowball · Calendario · Detalle (sub-route).
+const FinanciacionPage = lazyWithPreload(() => import('./modules/financiacion/FinanciacionPage'));
+const FinanciacionDashboard = lazyWithPreload(() => import('./modules/financiacion/pages/DashboardPage'));
+const FinanciacionListado = lazyWithPreload(() => import('./modules/financiacion/pages/ListadoPage'));
+const FinanciacionSnowball = lazyWithPreload(() => import('./modules/financiacion/pages/SnowballPage'));
+const FinanciacionCalendario = lazyWithPreload(() => import('./modules/financiacion/pages/CalendarioPage'));
+const FinanciacionDetalle = lazyWithPreload(() => import('./modules/financiacion/pages/DetallePage'));
+const FinanciacionWizardCreate = lazyWithPreload(() => import('./modules/financiacion/pages/WizardCreatePage'));
+const FinanciacionWizardEdit = lazyWithPreload(() => import('./modules/financiacion/pages/WizardEditPage'));
+// T20 Fase 2 · Tesorería v5 module (sustituye Tesoreria.tsx + TesoreriaSupervisionPage.tsx)
+const TesoreriaPage = lazyWithPreload(() => import('./modules/tesoreria/TesoreriaPage'));
+const TesoreriaVistaGeneral = lazyWithPreload(() => import('./modules/tesoreria/tabs/VistaGeneralTab'));
+const TesoreriaMovimientos = lazyWithPreload(() => import('./modules/tesoreria/tabs/MovimientosTab'));
+// T17 BankStatementUploadPage · /tesoreria/importar · INTACTO.
 const BankStatementUploadPage = lazyWithPreload(() => import('./modules/horizon/tesoreria/import/BankStatementUploadPage'));
+// T20 Fase 2 · ImportarCuentas re-ubicado per decisión D3 de Jose.
+const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/import/ImportarCuentas'));
+
+// T20 Fase 2 · redirect compat para `/tesoreria/cuenta/:id` legacy hacia
+// `/tesoreria/movimientos?cuenta=:id` (la ruta nueva sigue el patrón de
+// query params para que el filtro re-sincronice al cambiar URL).
+const RedirectCuentaToMovimientos: React.FC = () => {
+  const { id } = useParams();
+  return <Navigate to={`/tesoreria/movimientos?cuenta=${id ?? ''}`} replace />;
+};
+const RedirectFiscalDeclaracion: React.FC = () => {
+  const { anio } = useParams();
+  return <Navigate to={`/fiscal/ejercicio/${anio ?? ''}`} replace />;
+};
 const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/conciliacion/ConciliacionPage'));
+// T20 Fase 3f-A · Fiscal v5 module · Outlet + sub-páginas.
+//   Mockup · docs/audit-inputs/atlas-fiscal.html
+//   Tabs: Calendario (Dashboard) · Ejercicios · Deudas · Configuración.
+//   Sub-rutas · /fiscal/ejercicio/:anio (DetalleEjercicioPage).
+//   Wizard de Corrección/paralela AEAT llega en 3f-B (próximo PR).
+const FiscalPage = lazyWithPreload(() => import('./modules/fiscal/FiscalPage'));
+const FiscalDashboard = lazyWithPreload(() => import('./modules/fiscal/pages/DashboardPage'));
+const FiscalEjercicios = lazyWithPreload(() => import('./modules/fiscal/pages/EjerciciosPage'));
+const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/pages/DetalleEjercicioPage'));
+const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));
+const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
+const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
+const FiscalBorradorIRPF = lazyWithPreload(() => import('./modules/fiscal/pages/BorradorIRPFPage'));
+const FiscalImportar = lazyWithPreload(() => import('./modules/fiscal/import/ImportarFiscalPage'));
+// T20 Fase 3g.5 · Importadores legacy reubicados (wrappers v5).
+const InversionesImportarAportaciones = lazyWithPreload(() => import('./modules/inversiones/import/ImportarAportacionesPage'));
+const InversionesImportarIndexa = lazyWithPreload(() => import('./modules/inversiones/import/ImportarIndexaCapitalPage'));
+const FinanciacionImportarPrestamos = lazyWithPreload(() => import('./modules/financiacion/import/ImportarPrestamosPage'));
+const FiscalCorreccionWizard = lazyWithPreload(() => import('./modules/fiscal/pages/CorreccionWizard'));
 const FiscalLayout = lazyWithPreload(() => import('./modules/horizon/fiscalidad/FiscalLayout'));
 const ImpuestosSupervisionPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/supervision/ImpuestosSupervisionPage'));
 const DeclaracionCompletaPage = lazyWithPreload(() => import('./modules/horizon/fiscalidad/declaracion/DeclaracionCompletaPage'));
@@ -96,10 +156,17 @@ const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyecc
 const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
 const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
-const PropertyDetail = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyDetail'));
+// T20 Fase 3a · PropertyDetail legacy eliminado · sustituido por src/modules/inmuebles/pages/DetallePage.
 
-// Personal section (within Horizon)
-const PersonalSupervision = lazyWithPreload(() => import('./modules/horizon/personal/supervision/PersonalSupervisionPage'));
+// T20 Fase 3b · Personal v5 module (sustituye horizon/personal/* + supervision)
+const PersonalPage = lazyWithPreload(() => import('./modules/personal/PersonalPage'));
+const PersonalPanel = lazyWithPreload(() => import('./modules/personal/pages/PanelPage'));
+const PersonalIngresos = lazyWithPreload(() => import('./modules/personal/pages/IngresosPage'));
+const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/GastosPage'));
+const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
+const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
+// T20 Fase 3b · ImportarNominas re-ubicado per decisión D3 de Jose.
+const ImportarNominasPage = lazyWithPreload(() => import('./modules/personal/import/ImportarNominas'));
 
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
@@ -114,8 +181,8 @@ const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal
 const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
 
 // Pulse (Management) Module Components
-const ContratosLista = lazyWithPreload(() => import('./modules/pulse/contratos/lista/ContratosLista'));
-const ContratosNuevoPage = lazyWithPreload(() => import('./modules/pulse/contratos/nuevo/ContratosNuevo'));
+// T20 Fase 3a · ContratosLista + ContratosNuevoPage legacy eliminados ·
+// sustituidos por src/modules/inmuebles/pages/ContratosListPage + wizards/NuevoContratoWizard.
 const FirmasPendientes = lazyWithPreload(() => import('./modules/pulse/firmas/pendientes/FirmasPendientes'));
 const AutomatizacionesReglas = lazyWithPreload(() => import('./modules/pulse/automatizaciones/reglas/AutomatizacionesReglas'));
 const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pendientes/TareasPendientes'));
@@ -132,6 +199,13 @@ const ProfileSeederPage = lazyWithPreload(() =>
 // Image Description page - New feature
 const ImageDescriptionPage = lazyWithPreload(() => import('./pages/ImageDescriptionPage'));
 
+// Dev-only · Design System v5 showcase. T20 · Fase 0.
+const ComponentsShowcase = lazyWithPreload(() =>
+  (import.meta as any).env?.DEV
+    ? import('./pages/dev/ComponentsShowcase')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -139,9 +213,23 @@ const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'))
 // Glossary page - Sprint 3: Accessible technical terms reference
 const GlossaryPage = lazyWithPreload(() => import('./pages/GlossaryPage'));
 const HerramientasPage = lazyWithPreload(() => import('./pages/HerramientasPage'));
-const MiPlanObjetivos = lazyWithPreload(() => import('./modules/horizon/mi-plan/objetivos/ObjetivosPage'));
-const MiPlanLibertad = lazyWithPreload(() => import('./modules/horizon/mi-plan/libertad/LibertadFinancieraPage'));
-const AccountPage = lazyWithPreload(() => import('./pages/account/AccountPage'));
+// T20 Fase 3c · Mi Plan v5 module (sustituye horizon/mi-plan/{objetivos,libertad})
+const MiPlanPage = lazyWithPreload(() => import('./modules/mi-plan/MiPlanPage'));
+const MiPlanLanding = lazyWithPreload(() => import('./modules/mi-plan/pages/LandingPage'));
+const MiPlanProyeccion = lazyWithPreload(() => import('./modules/mi-plan/pages/ProyeccionPage'));
+const MiPlanLibertad = lazyWithPreload(() => import('./modules/mi-plan/pages/LibertadPage'));
+const MiPlanObjetivos = lazyWithPreload(() => import('./modules/mi-plan/pages/ObjetivosPage'));
+const MiPlanFondos = lazyWithPreload(() => import('./modules/mi-plan/pages/FondosPage'));
+const MiPlanRetos = lazyWithPreload(() => import('./modules/mi-plan/pages/RetosPage'));
+// T20 Fase 1 · Ajustes v5 module
+const AjustesPage = lazyWithPreload(() => import('./modules/ajustes/AjustesPage'));
+const AjustesPerfil = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilPage'));
+const AjustesPlan = lazyWithPreload(() => import('./modules/ajustes/pages/PlanPage'));
+const AjustesIntegraciones = lazyWithPreload(() => import('./modules/ajustes/pages/IntegracionesPage'));
+const AjustesNotificaciones = lazyWithPreload(() => import('./modules/ajustes/pages/NotificacionesPage'));
+const AjustesPlantillas = lazyWithPreload(() => import('./modules/ajustes/pages/PlantillasPage'));
+const AjustesPerfilFiscal = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilFiscalPage'));
+const AjustesSeguridad = lazyWithPreload(() => import('./modules/ajustes/pages/SeguridadPage'));
 
 // CopilotWidget es un botón flotante rara vez usado. Cargarlo eager arrastra
 // dashboardService → proyeccionMensualService y toda la cadena de servicios
@@ -309,6 +397,18 @@ function App() {
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/register" element={<Navigate to="/" replace />} />
 
+            {/* T20 Fase 0 · Design System v5 showcase · DEV only · sin layout ni auth */}
+            {(import.meta as any).env?.DEV && (
+              <Route
+                path="/dev/components"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <ComponentsShowcase />
+                  </React.Suspense>
+                }
+              />
+            )}
+
             {/* Protected App Routes */}
             <Route path="/" element={
               <ProtectedRoute>
@@ -319,6 +419,16 @@ function App() {
             <Route path="panel" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <PanelPage />
+              </React.Suspense>
+            } />
+            <Route path="archivo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ArchivoPage />
+              </React.Suspense>
+            } />
+            <Route path="onboarding" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <OnboardingPage />
               </React.Suspense>
             } />
             <Route path="inbox" element={
@@ -372,99 +482,175 @@ function App() {
               </React.Suspense>
             } />
             
-            {/* Horizon (Investment) Routes */}
-            <Route path="inmuebles">
-              <Route index element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="resumen" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="individual" element={<Navigate to="/inmuebles/supervision" replace />} />
-              <Route path="cartera" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Cartera />
-                </React.Suspense>
-              } />
-              <Route path="cartera/nuevo" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="create" />
-                </React.Suspense>
-              } />
-              <Route path="cartera/:id" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyDetail />
-                </React.Suspense>
-              } />
-              <Route path="cartera/:id/editar" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="edit" />
-                </React.Suspense>
-              } />
-              <Route path="contratos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Contratos />
-                </React.Suspense>
-              } />
-              <Route path="evolucion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Analisis />
-                </React.Suspense>
-              } />
-              <Route path="analisis" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <AnalisisCartera scope="inmuebles" />
-                </React.Suspense>
-              } />
-              <Route path="analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
-              <Route path="ingresos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Ingresos />
-                </React.Suspense>
-              } />
-              <Route path="gastos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Gastos />
-                </React.Suspense>
-              } />
-              {/* mejora route removed — store deleted */}
-              <Route path="supervision" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Supervision />
-                </React.Suspense>
-              } />
-            </Route>
-            
-            {/* Inversiones Module - unified with 4 tabs */}
-            <Route path="inversiones">
+            {/* T20 Fase 3a · Inmuebles v5 (sustituye horizon/inmuebles/cartera + contratos legacy)
+                Mockups · atlas-inmuebles-v3 (listado) · atlas-inmueble-fa32-v2 (ficha 6 tabs). */}
+            <Route path="inmuebles" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InmueblesPage />
+              </React.Suspense>
+            }>
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesPage />
+                  <InmueblesListado />
                 </React.Suspense>
               } />
-              <Route path="analisis" element={
+              <Route path=":id" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AnalisisCartera scope="inversiones" />
-                </React.Suspense>
-              } />
-            </Route>
-            
-            <Route path="tesoreria">
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Tesoreria />
-                </React.Suspense>
-              } />
-              <Route path="importar" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <BankStatementUploadPage />
-                </React.Suspense>
-              } />
-              <Route path="cuenta/:id" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <Tesoreria />
+                  <InmueblesDetalle />
                 </React.Suspense>
               } />
             </Route>
 
+            {/* Inmuebles · sub-rutas fuera del Outlet · forms y supervision legacy */}
+            <Route path="inmuebles/nuevo" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PropertyForm mode="create" />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/:id/editar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PropertyForm mode="edit" />
+              </React.Suspense>
+            } />
+            {/* T20 Phase 4 · /inmuebles/supervision purgado · redirige a /inmuebles. */}
+            <Route path="inmuebles/supervision" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/analisis" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AnalisisCartera scope="inmuebles" />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarInmueblesPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar-valoraciones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarValoracionesPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+            <Route path="inmuebles/importar-contratos" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarContratosPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+
+            {/* Inmuebles · redirects compat para rutas legacy */}
+            <Route path="inmuebles-legacy">
+              <Route path="cartera" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="cartera/:id" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="contratos" element={<Navigate to="/contratos" replace />} />
+              <Route path="evolucion" element={<Navigate to="/inmuebles/analisis" replace />} />
+              <Route path="ingresos" element={<Navigate to="/inmuebles" replace />} />
+              <Route path="gastos" element={<Navigate to="/inmuebles" replace />} />
+            </Route>
+
+            {/* Wildcard inmuebles · cualquier ruta legacy redirige a listado */}
+            <Route path="inmuebles/cartera" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/cartera/:id" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/contratos" element={<Navigate to="/contratos" replace />} />
+            <Route path="inmuebles/evolucion" element={<Navigate to="/inmuebles/analisis" replace />} />
+            <Route path="inmuebles/ingresos" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/gastos" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/analisis-cartera" element={<Navigate to="/inmuebles/analisis" replace />} />
+            <Route path="inmuebles/resumen" element={<Navigate to="/inmuebles" replace />} />
+            <Route path="inmuebles/individual" element={<Navigate to="/inmuebles" replace />} />
+
+
+            {/* T20 Fase 3d · Inversiones v5 (Outlet + 4 sub-páginas)
+                · /inversiones (resumen) · /inversiones/cartera
+                · /inversiones/rendimientos · /inversiones/individual
+                · /inversiones/analisis (legacy AnalisisCartera intacto) */}
+            <Route path="inversiones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesResumen />
+                </React.Suspense>
+              } />
+              <Route path="cartera" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesCartera />
+                </React.Suspense>
+              } />
+              <Route path="rendimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesRendimientos />
+                </React.Suspense>
+              } />
+              <Route path="individual" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesIndividual />
+                </React.Suspense>
+              } />
+              <Route path="importar-aportaciones" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesImportarAportaciones />
+                </React.Suspense>
+              } />
+              <Route path="importar-indexa" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InversionesImportarIndexa />
+                </React.Suspense>
+              } />
+            </Route>
+            <Route path="inversiones/analisis" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AnalisisCartera scope="inversiones" />
+              </React.Suspense>
+            } />
+            
+            {/* T20 Fase 2 · Tesorería v5 (sustituye Tesoreria.tsx legacy)
+                Mockup atlas-tesoreria-v8.html · 2 tabs (Vista general + Conciliación bancaria)
+                + ruta /tesoreria/importar (T17 BankStatementUploadPage intacta)
+                + ruta /tesoreria/importar-cuentas (re-ubicado de account/migracion). */}
+            <Route path="tesoreria" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <TesoreriaPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesoreriaVistaGeneral />
+                </React.Suspense>
+              } />
+              <Route path="movimientos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <TesoreriaMovimientos />
+                </React.Suspense>
+              } />
+              <Route path="cuenta/:id" element={<RedirectCuentaToMovimientos />} />
+            </Route>
+            <Route path="tesoreria/importar" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <BankStatementUploadPage />
+              </React.Suspense>
+            } />
+            <Route path="tesoreria/importar-cuentas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarCuentasPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
+
+            {/* §3.5 spec · opción (b) · ConciliacionPageV2 mantenida intacta.
+                Tesorería v5 tab "Movimientos" hace punteo simple por checkbox;
+                ConciliacionPageV2 tiene timeline + drag&drop documentos
+                · son flujos distintos · sub-tarea futura decide consolidar. */}
             <Route path="conciliacion">
               <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
@@ -473,7 +659,66 @@ function App() {
               } />
             </Route>
             
-            <Route path="fiscalidad" element={
+            {/* T20 Fase 3f-A · Fiscal v5 (sustituye horizon/fiscalidad/FiscalLayout)
+                Mockup · atlas-fiscal.html · 4 tabs (Calendario · Ejercicios · Deudas ·
+                Configuración) + Detalle ejercicio (`/fiscal/ejercicio/:anio`).
+                Wizard de Corrección/paralelas llega en 3f-B. */}
+            <Route path="fiscal" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <FiscalPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDashboard />
+                </React.Suspense>
+              } />
+              <Route path="ejercicios" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalEjercicios />
+                </React.Suspense>
+              } />
+              <Route path="ejercicio/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDetalleEjercicio />
+                </React.Suspense>
+              } />
+              <Route path="deudas" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalDeudas />
+                </React.Suspense>
+              } />
+              <Route path="configuracion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalConfiguracion />
+                </React.Suspense>
+              } />
+              <Route path="calendario" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalCalendarioCompleto />
+                </React.Suspense>
+              } />
+              <Route path="borrador/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalBorradorIRPF />
+                </React.Suspense>
+              } />
+              <Route path="correccion/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalCorreccionWizard />
+                </React.Suspense>
+              } />
+              <Route path="importar/:anio" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalImportar />
+                </React.Suspense>
+              } />
+            </Route>
+            {/* Redirect ruta legacy `/fiscalidad` · sustituida por `/fiscal` en 3f-A. */}
+            <Route path="fiscalidad" element={<Navigate to="/fiscal" replace />} />
+            <Route path="fiscalidad/declaracion/:anio" element={<RedirectFiscalDeclaracion />} />
+
+            <Route path="fiscalidad-legacy" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <FiscalLayout />
               </React.Suspense>
@@ -492,17 +737,80 @@ function App() {
               } />
             </Route>
             
-            {/* Financing Module - Standalone loan management */}
+            {/* T20 Fase 3e · Financiación v5 (sustituye horizon/financiacion/Financiacion.tsx)
+                Mockup · atlas-financiacion-v2.html · 4 tabs (Dashboard · Listado · Snowball ·
+                Calendario) + Detalle (`/financiacion/:id`) + wizard alta (`/financiacion/nuevo`)
+                + alta vía FEIN (`/financiacion/nuevo-fein`) + edición (`/financiacion/:id/editar`).
+                El wizard reutiliza `PrestamosWizard` legacy hasta Phase 4 cleanup. */}
             <Route path="financiacion" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <Financiacion />
+                <FinanciacionPage />
               </React.Suspense>
-            } />
-            
-            <Route path="mi-plan">
-              <Route path="objetivos" element={
+            }>
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <MiPlanObjetivos />
+                  <FinanciacionDashboard />
+                </React.Suspense>
+              } />
+              <Route path="listado" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionListado />
+                </React.Suspense>
+              } />
+              <Route path="snowball" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionSnowball />
+                </React.Suspense>
+              } />
+              <Route path="calendario" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionCalendario />
+                </React.Suspense>
+              } />
+              <Route path="nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardCreate />
+                </React.Suspense>
+              } />
+              <Route path="nuevo-fein" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardCreate withFEIN />
+                </React.Suspense>
+              } />
+              <Route path=":id/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionWizardEdit />
+                </React.Suspense>
+              } />
+              <Route path="importar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionImportarPrestamos />
+                </React.Suspense>
+              } />
+              <Route path=":id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FinanciacionDetalle />
+                </React.Suspense>
+              } />
+            </Route>
+
+            {/* T20 Fase 3c · Mi Plan v5 (sustituye horizon/mi-plan legacy)
+                Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos,retos}-v3
+                + atlas-mi-plan-v2. 6 sub-páginas · cierra TODO-T20-01 conectando
+                cashflow Tesorería al helper computeBudgetProjection12mAsync. */}
+            <Route path="mi-plan" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <MiPlanPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanLanding />
+                </React.Suspense>
+              } />
+              <Route path="proyeccion" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanProyeccion />
                 </React.Suspense>
               } />
               <Route path="libertad" element={
@@ -510,7 +818,21 @@ function App() {
                   <MiPlanLibertad />
                 </React.Suspense>
               } />
-              <Route index element={<Navigate to="/mi-plan/objetivos" replace />} />
+              <Route path="objetivos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanObjetivos />
+                </React.Suspense>
+              } />
+              <Route path="fondos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanFondos />
+                </React.Suspense>
+              } />
+              <Route path="retos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <MiPlanRetos />
+                </React.Suspense>
+              } />
             </Route>
 
             <Route path="proyeccion">
@@ -552,14 +874,51 @@ function App() {
             </Route>
             
             {/* Personal section (within Horizon) */}
-            <Route path="personal">
-              <Route index element={<Navigate to="/personal/supervision" replace />} />
-              <Route path="supervision" element={
+            {/* T20 Fase 3b · Personal v5 (sustituye horizon/personal legacy)
+                Mockup atlas-personal-v3.html · 5 tabs (Panel · Ingresos · Gastos ·
+                Mi vivienda · Presupuesto). El hub Gestión Personal sigue intacto
+                en /gestion/personal. */}
+            <Route path="personal" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <PersonalPage />
+              </React.Suspense>
+            }>
+              <Route index element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PersonalSupervision />
+                  <PersonalPanel />
                 </React.Suspense>
               } />
+              <Route path="ingresos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalIngresos />
+                </React.Suspense>
+              } />
+              <Route path="gastos" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalGastos />
+                </React.Suspense>
+              } />
+              <Route path="vivienda" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalVivienda />
+                </React.Suspense>
+              } />
+              <Route path="presupuesto" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalPresupuesto />
+                </React.Suspense>
+              } />
+              {/* Compat · /personal/supervision legacy redirige a panel */}
+              <Route path="supervision" element={<Navigate to="/personal" replace />} />
             </Route>
+            <Route path="personal/importar-nominas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <ImportarNominasPage
+                  onComplete={() => undefined}
+                  onBack={() => window.history.back()}
+                />
+              </React.Suspense>
+            } />
             
             {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
             <Route path="gestion">
@@ -615,24 +974,29 @@ function App() {
               } />
             </Route>
 
-            {/* Pulse (Management) Routes */}
-            <Route path="contratos">
-              <Route index element={<Navigate to="/contratos/lista" replace />} />
+            {/* T20 Fase 3a · Contratos v5 (sustituye pulse/contratos legacy)
+                Mockups · atlas-contratos-v4 (listado 4 tabs) · atlas-wizard-nuevo-contrato (wizard 5 pasos) */}
+            <Route path="contratos" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InmueblesPage />
+              </React.Suspense>
+            }>
+              <Route index element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesContratosLista />
+                </React.Suspense>
+              } />
               <Route path="lista" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosLista />
+                  <InmueblesContratosLista />
                 </React.Suspense>
               } />
               <Route path="nuevo" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosNuevoPage />
+                  <InmueblesNuevoContrato />
                 </React.Suspense>
               } />
-              <Route path="gestion" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <ContratosLista />
-                </React.Suspense>
-              } />
+              <Route path="gestion" element={<Navigate to="/contratos" replace />} />
             </Route>
             
             <Route path="firmas">
@@ -712,49 +1076,74 @@ function App() {
                   <EmailEntrante />
                 </React.Suspense>
               } />
-              {/* H6: Redirect old plan-facturacion route to new cuenta location */}
-              <Route path="plan-facturacion" element={<Navigate to="/cuenta/plan" replace />} />
+              {/* T20 Fase 1 · plan-facturacion legacy redirect a /ajustes/plan */}
+              <Route path="plan-facturacion" element={<Navigate to="/ajustes/plan" replace />} />
             </Route>
 
-            {/* H6: Account (Cuenta) Routes */}
-            <Route path="cuenta">
-              <Route index element={<Navigate to="/cuenta/perfil" replace />} />
+            {/* T20 Fase 1 · Ajustes v5 (sustituye AccountPage v4)
+                Mockup atlas-ajustes-v2.html · 7 sub-páginas con sidebar interno. */}
+            <Route path="ajustes" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <AjustesPage />
+              </React.Suspense>
+            }>
+              <Route index element={<Navigate to="/ajustes/perfil" replace />} />
               <Route path="perfil" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
-                </React.Suspense>
-              } />
-              <Route path="seguridad" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPerfil />
                 </React.Suspense>
               } />
               <Route path="plan" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPlan />
                 </React.Suspense>
               } />
-              <Route path="privacidad" element={
+              <Route path="integraciones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesIntegraciones />
                 </React.Suspense>
               } />
-              <Route path="configuracion" element={
+              <Route path="notificaciones" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesNotificaciones />
                 </React.Suspense>
               } />
-              <Route path="datos" element={
+              <Route path="plantillas" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPlantillas />
                 </React.Suspense>
               } />
-              <Route path="migracion" element={
+              <Route path="fiscal" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <AccountPage />
+                  <AjustesPerfilFiscal />
                 </React.Suspense>
               } />
-              {/* Bank accounts are managed exclusively in Tesorería */}
+              <Route path="seguridad" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <AjustesSeguridad />
+                </React.Suspense>
+              } />
+            </Route>
+
+            {/* T20 Fase 1 · redirects legacy /cuenta/* a /ajustes/* equivalentes
+                Mantenemos compatibilidad con bookmarks/links antiguos hasta que
+                Fase 4 (cleanup) decida si purgarlos. Tabs viejas:
+                  perfil  → perfil
+                  plan    → plan
+                  configuracion (PandaDoc) → plantillas (renovado)
+                  datos   → seguridad (sub-card "Tus datos · exportar")
+                  migracion → seguridad (sub-card "Exportar"); el importador de
+                             extractos bancarios T17 se mantiene en /tesoreria/importar
+                  privacidad / cuentas → /ajustes/seguridad */}
+            <Route path="cuenta">
+              <Route index element={<Navigate to="/ajustes/perfil" replace />} />
+              <Route path="perfil" element={<Navigate to="/ajustes/perfil" replace />} />
+              <Route path="plan" element={<Navigate to="/ajustes/plan" replace />} />
+              <Route path="configuracion" element={<Navigate to="/ajustes/plantillas" replace />} />
+              <Route path="seguridad" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="datos" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="migracion" element={<Navigate to="/ajustes/seguridad" replace />} />
+              <Route path="privacidad" element={<Navigate to="/ajustes/seguridad" replace />} />
               <Route path="cuentas" element={<Navigate to="/tesoreria" replace />} />
             </Route>
             

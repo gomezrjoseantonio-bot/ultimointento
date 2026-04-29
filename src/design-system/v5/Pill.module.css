@@ -1,0 +1,53 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: var(--atlas-v5-fs-chip);
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: var(--atlas-v5-radius-pill);
+  flex-shrink: 0;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.pill.brand {
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+}
+
+.pill.gold {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.pill.pos {
+  background: var(--atlas-v5-pos-wash);
+  color: var(--atlas-v5-pos);
+}
+
+.pill.warn {
+  background: var(--atlas-v5-warn-wash);
+  color: var(--atlas-v5-warn);
+}
+
+.pill.neg {
+  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-neg);
+}
+
+.pill.gris {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  border-color: var(--atlas-v5-line-2);
+}
+
+.pill.tag {
+  font-family: var(--atlas-v5-font-mono-tech);
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-tag);
+  text-transform: uppercase;
+}
