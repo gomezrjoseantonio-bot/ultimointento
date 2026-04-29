@@ -206,6 +206,13 @@ const ComponentsShowcase = lazyWithPreload(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// Dev-only · keyval audit page. T15 · sub-tarea 15.1.
+const KeyvalAudit = lazyWithPreload(() =>
+  (import.meta as any).env?.DEV
+    ? import('./pages/dev/KeyvalAudit')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -404,6 +411,18 @@ function App() {
                 element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <ComponentsShowcase />
+                  </React.Suspense>
+                }
+              />
+            )}
+
+            {/* T15 · sub-tarea 15.1 · keyval audit · DEV only · sin layout ni auth */}
+            {(import.meta as any).env?.DEV && (
+              <Route
+                path="/dev/keyval-audit"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <KeyvalAudit />
                   </React.Suspense>
                 }
               />
