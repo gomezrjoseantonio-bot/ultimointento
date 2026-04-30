@@ -194,7 +194,9 @@ async function auditPersonalModuleConfig(db: Awaited<ReturnType<typeof initDB>>)
       'UI/INTEGRACIÓN · siempre true · sin lector externo conocido'),
   ];
 
-  return { status: 'populated', record, fields };
+  const status: FiscalSiteStatus = fields.some((field) => field.present) ? 'populated' : 'empty';
+
+  return { status, record, fields };
 }
 
 // ─── Auditoría viviendaHabitual ──────────────────────────────────────────────
