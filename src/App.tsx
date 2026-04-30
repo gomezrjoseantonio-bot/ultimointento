@@ -223,6 +223,13 @@ const KeyvalAudit = lazyWithPreload(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// T14 · sub-tarea 14.1 · fiscal context audit · DEV only
+const FiscalContextAudit = lazyWithPreload(() =>
+  isDevPagesEnabled
+    ? import('./pages/dev/FiscalContextAudit')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -457,6 +464,18 @@ function App() {
                 element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <KeyvalAudit />
+                  </React.Suspense>
+                }
+              />
+            )}
+
+            {/* T14 · sub-tarea 14.1 · fiscal context audit · DEV only · sin layout ni auth */}
+            {isDevPagesEnabled && (
+              <Route
+                path="/dev/fiscal-context-audit"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <FiscalContextAudit />
                   </React.Suspense>
                 }
               />
