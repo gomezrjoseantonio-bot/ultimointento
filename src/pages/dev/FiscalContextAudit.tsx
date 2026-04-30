@@ -93,9 +93,14 @@ const FieldRow: React.FC<FieldRowProps> = ({ entry, rawValue }) => {
 
 // ─── Tabla de campos de un sitio ──────────────────────────────────────────────
 
+function getFieldFromUnknown(record: unknown, field: string): unknown {
+  if (record === null || typeof record !== 'object') return undefined;
+  return (record as Record<string, unknown>)[field];
+}
+
 interface SiteTableProps {
   fields: FiscalFieldAudit[];
-  rawRecord: Record<string, unknown> | null;
+  rawRecord: unknown;
 }
 
 const SiteTable: React.FC<SiteTableProps> = ({ fields, rawRecord }) => {
@@ -120,7 +125,7 @@ const SiteTable: React.FC<SiteTableProps> = ({ fields, rawRecord }) => {
             <FieldRow
               key={f.field}
               entry={f}
-              rawValue={rawRecord?.[f.field]}
+              rawValue={getFieldFromUnknown(rawRecord, f.field)}
             />
           ))}
         </tbody>
@@ -153,9 +158,9 @@ const FiscalContextAudit: React.FC = () => {
     void runAudit();
   }, []);
 
-  const pdRecord = (report?.personalData.record ?? null) as Record<string, unknown> | null;
-  const pmcRecord = (report?.personalModuleConfig.record ?? null) as Record<string, unknown> | null;
-  const vhRecord = (report?.viviendaHabitual.viviendaActiva ?? null) as Record<string, unknown> | null;
+  const pdRecord = report?.personalData.record ?? null;
+  const pmcRecord = report?.personalModuleConfig.record ?? null;
+  const vhRecord = report?.viviendaHabitual.viviendaActiva ?? null;
 
   return (
     <div className={styles.page}>
