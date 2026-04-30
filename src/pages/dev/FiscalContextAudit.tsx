@@ -153,9 +153,9 @@ const FiscalContextAudit: React.FC = () => {
     void runAudit();
   }, []);
 
-  const pdRecord = report?.personalData.record as Record<string, unknown> | null ?? null;
-  const pmcRecord = report?.personalModuleConfig.record as Record<string, unknown> | null ?? null;
-  const vhRecord = report?.viviendaHabitual.viviendaActiva as Record<string, unknown> | null ?? null;
+  const pdRecord = (report?.personalData.record ?? null) as Record<string, unknown> | null;
+  const pmcRecord = (report?.personalModuleConfig.record ?? null) as Record<string, unknown> | null;
+  const vhRecord = (report?.viviendaHabitual.viviendaActiva ?? null) as Record<string, unknown> | null;
 
   return (
     <div className={styles.page}>

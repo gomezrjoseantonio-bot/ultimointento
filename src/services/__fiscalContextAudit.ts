@@ -17,7 +17,12 @@
 
 import { initDB } from './db';
 import type { PersonalData, PersonalModuleConfig } from '../types/personal';
-import type { ViviendaHabitual } from '../types/viviendaHabitual';
+import type {
+  ViviendaHabitual,
+  ViviendaHabitualPropietario,
+  ViviendaHabitualHipoteca,
+  ViviendaHabitualInquilino,
+} from '../types/viviendaHabitual';
 
 // ─── Tipos del report ────────────────────────────────────────────────────────
 
@@ -114,7 +119,7 @@ async function auditPersonalData(db: Awaited<ReturnType<typeof initDB>>): Promis
   let record: PersonalData | null = null;
   try {
     const tx = db.transaction('personalData', 'readonly');
-    record = (await tx.objectStore('personalData').get(1)) as PersonalData | null ?? null;
+    record = (await tx.objectStore('personalData').get(1)) as PersonalData | null;
     await tx.done;
   } catch {
     record = null;
@@ -158,7 +163,7 @@ async function auditPersonalModuleConfig(db: Awaited<ReturnType<typeof initDB>>)
   let record: PersonalModuleConfig | null = null;
   try {
     const tx = db.transaction('personalModuleConfig', 'readonly');
-    record = (await tx.objectStore('personalModuleConfig').get(1)) as PersonalModuleConfig | null ?? null;
+    record = (await tx.objectStore('personalModuleConfig').get(1)) as PersonalModuleConfig | null;
     await tx.done;
   } catch {
     record = null;
@@ -216,29 +221,39 @@ async function auditViviendaHabitual(db: Awaited<ReturnType<typeof initDB>>): Pr
   }
 
   const data = viviendaActiva?.data ?? null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const d = data as any;
+  const isPropietario = (
+    data?.tipo === 'propietarioSinHipoteca' || data?.tipo === 'propietarioConHipoteca'
+  );
+  const propData = isPropietario
+    ? (data as ViviendaHabitualPropietario | ViviendaHabitualHipoteca)
+    : null;
+  const hipotecaData = data?.tipo === 'propietarioConHipoteca'
+    ? (data as ViviendaHabitualHipoteca)
+    : null;
+  const inquilinoData = data?.tipo === 'inquilino'
+    ? (data as ViviendaHabitualInquilino)
+    : null;
 
   const fiscalFields: FiscalFieldAudit[] = [
-    fieldAudit('data.tipo', d?.tipo,
+    fieldAudit('data.tipo', data?.tipo,
       'VIVIENDA FISCAL · inquilino/propietarioSinHipoteca/propietarioConHipoteca'),
-    fieldAudit('data.catastro.referenciaCatastral', d?.catastro?.referenciaCatastral,
+    fieldAudit('data.catastro.referenciaCatastral', propData?.catastro?.referenciaCatastral,
       'VIVIENDA FISCAL · imputación rentas inmobiliarias (solo si prop.)'),
-    fieldAudit('data.catastro.valorCatastral', d?.catastro?.valorCatastral,
+    fieldAudit('data.catastro.valorCatastral', propData?.catastro?.valorCatastral,
       'VIVIENDA FISCAL · base imputación 1,1% o 2%'),
-    fieldAudit('data.catastro.porcentajeTitularidad', d?.catastro?.porcentajeTitularidad,
+    fieldAudit('data.catastro.porcentajeTitularidad', propData?.catastro?.porcentajeTitularidad,
       'VIVIENDA FISCAL · prorrateo si gananciales'),
-    fieldAudit('data.catastro.catastralRevisado', d?.catastro?.catastralRevisado,
+    fieldAudit('data.catastro.catastralRevisado', propData?.catastro?.catastralRevisado,
       'VIVIENDA FISCAL · decide % imputación (1,1 post-1994 · 2 pre-1994)'),
-    fieldAudit('data.adquisicion.fecha', d?.adquisicion?.fecha,
+    fieldAudit('data.adquisicion.fecha', propData?.adquisicion?.fecha,
       'VIVIENDA FISCAL · clave para deducción hipoteca pre-2013'),
-    fieldAudit('data.adquisicion.gastosAdquisicion', d?.adquisicion?.gastosAdquisicion,
+    fieldAudit('data.adquisicion.gastosAdquisicion', propData?.adquisicion?.gastosAdquisicion,
       'VIVIENDA FISCAL · valor adquisición para IRPF'),
-    fieldAudit('data.ibi', d?.ibi,
+    fieldAudit('data.ibi', propData?.ibi,
       'VIVIENDA FISCAL · gasto deducible en inmueble no habitual'),
-    fieldAudit('data.beneficioFiscal', d?.beneficioFiscal,
+    fieldAudit('data.beneficioFiscal', hipotecaData?.beneficioFiscal,
       'VIVIENDA FISCAL · deducción hipoteca anterior a 31/12/2012'),
-    fieldAudit('data.contrato.rentaMensual', d?.contrato?.rentaMensual,
+    fieldAudit('data.contrato.rentaMensual', inquilinoData?.contrato?.rentaMensual,
       'VIVIENDA FISCAL · base deducción alquiler (CCAA)'),
     fieldAudit('vigenciaDesde', viviendaActiva?.vigenciaDesde,
       'VIVIENDA FISCAL · inicio periodo para cálculo días'),
@@ -292,9 +307,9 @@ function detectarInconsistencias(
     pd.record &&
     vivienda.viviendaActiva
   ) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const d = vivienda.viviendaActiva.data as any;
-    const ccaaVivienda: string | undefined = d?.direccion?.ccaa;
+    const vData = vivienda.viviendaActiva.data;
+    const ccaaVivienda: string | undefined =
+      vData && 'direccion' in vData ? vData.direccion.ccaa : undefined;
     const ccaaPersonal = pd.record.comunidadAutonoma;
     if (ccaaVivienda && ccaaPersonal && ccaaVivienda !== ccaaPersonal) {
       inconsistencias.push(
