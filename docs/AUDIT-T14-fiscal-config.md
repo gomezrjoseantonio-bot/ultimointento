@@ -46,7 +46,7 @@ La información fiscal del usuario en ATLAS está dispersa entre **3 sitios real
 | Campo | Tipo TypeScript | Opcional | Escritor | Notas |
 |---|---|---|---|---|
 | `comunidadAutonoma` | `string` | sí (`?`) | Formulario perfil / import XML | Presente en `GestionPersonalHeader` (UI) |
-| `tributacion` | `'individual' \| 'conjunta'` | sí (`?`) | Formulario perfil / import XML | Usada en `calcularDeclaracionIRPF` |
+| `tributacion` | `'individual' \| 'conjunta'` | sí (`?`) | Formulario perfil / import XML | Campo modelado y persistido; **sin referencia identificada en `calcularDeclaracionIRPF`** en el código auditado |
 | `descendientes[]` | `Descendiente[]` | sí (`?`) | Formulario perfil | Cada item tiene `fechaNacimiento` + `discapacidad` |
 | `ascendientes[]` | `Ascendiente[]` | sí (`?`) | Formulario perfil | Cada item tiene `edad`, `convive`, `discapacidad` |
 | `discapacidad` | `NivelDiscapacidad` | sí (`?`) | Formulario perfil | Enum: `ninguna\|hasta33\|entre33y65\|mas65` |
