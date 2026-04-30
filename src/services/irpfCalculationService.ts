@@ -14,7 +14,6 @@
 import { initDB } from './db';
 import {
   getFiscalContextSafe,
-  invalidateFiscalContext,
   type FiscalContext,
 } from './fiscalContextService';
 import { calculateCarryForwards, calculateFiscalSummary } from './fiscalSummaryService';
@@ -362,6 +361,24 @@ export function calcularBonoEdadContribuyente(edad: number | null): number {
 }
 
 /**
+ * Traduce los warnings del `fiscalContextService` (que pueden venir en
+ * inglés · ej. 'comunidadAutonoma not informed') a español · para que la
+ * salida user-facing de `DeclaracionIRPF.warnings` no mezcle idiomas.
+ * Si el warning no está en el mapa · se preserva con prefijo de origen.
+ */
+const TRADUCCIONES_WARNINGS_FISCALES: Record<string, string> = {
+  'comunidadAutonoma not informed': 'comunidadAutonoma no informada',
+  'fechaNacimiento not informed': 'fechaNacimiento no informada',
+  'fechaNacimiento not parseable': 'fechaNacimiento no parseable',
+  'viviendaHabitual not registered': 'viviendaHabitual no registrada',
+};
+
+function traducirWarningContextoFiscal(warning: string): string {
+  const trimmed = warning.trim();
+  return TRADUCCIONES_WARNINGS_FISCALES[trimmed] ?? trimmed;
+}
+
+/**
  * GAP 5.4 · Bonus por discapacidad (mínimo personal y familiar).
  * Art. 60 LIRPF · importes 2024:
  *   · 'hasta33'    → 0     (sin grado reconocido)
@@ -646,17 +663,16 @@ async function recopilarDatosInmuebles(
   // GAP 5.3 · La vivienda habitual NO genera imputación de renta inmobiliaria
   // (LIRPF art. 85). Si el usuario hubiera registrado por error su vivienda
   // habitual también en el store `properties` (inversión), la excluimos
-  // matchando por `cadastralReference`.
-  let viviendaHabitualExcluida = false;
-  const refCatastralVH = ctx?.viviendaHabitual?.referenciaCatastral?.trim();
-  if (refCatastralVH) {
-    const before = activeProperties.length;
-    activeProperties = activeProperties.filter((p: any) => {
-      const refProp = (p.cadastralReference ?? '').trim();
-      return refProp !== refCatastralVH;
-    });
-    viviendaHabitualExcluida = activeProperties.length < before;
-  }
+  // matchando por `cadastralReference`. Reutilizamos el helper puro para
+  // evitar divergencias futuras en normalización de espacios/casing.
+  const {
+    propiedades: activePropertiesSinViviendaHabitual,
+    excluida: viviendaHabitualExcluida,
+  } = filtrarViviendaHabitualDePropiedades(
+    activeProperties,
+    ctx?.viviendaHabitual?.referenciaCatastral,
+  );
+  activeProperties = activePropertiesSinViviendaHabitual;
 
   // Separate main properties from accessories using the exported helper
   const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
@@ -1110,8 +1126,13 @@ export function calcularMinimosPersonalesFromContext(
   ctx: FiscalContext | null,
   ejercicio: number,
 ): MinimosPersonales {
-  // GAP 5.2 · mínimo contribuyente + bono edad
-  const bonoEdadTitular = ctx ? calcularBonoEdadContribuyente(ctx.edadActual) : 0;
+  // GAP 5.2 · mínimo contribuyente + bono edad. La edad debe evaluarse
+  // respecto al ejercicio liquidado (no respecto a la fecha actual del
+  // sistema · `ctx.edadActual` es "hoy") · clave para liquidaciones de
+  // ejercicios pasados.
+  const edadTitularEjercicio =
+    ctx?.fechaNacimiento ? edadDesde(ctx.fechaNacimiento, ejercicio) : null;
+  const bonoEdadTitular = calcularBonoEdadContribuyente(edadTitularEjercicio);
   const contribuyente = round2(CONSTANTES_IRPF.minimoContribuyente + bonoEdadTitular);
 
   // Descendientes · escalado por orden + extra menores de 3 + GAP 5.4 discapacidad
@@ -1237,8 +1258,9 @@ export async function calcularDeclaracionIRPF(
   }
 
   // PASO 0 · contexto fiscal unificado (T14.3)
-  // Invalida cache para garantizar lectura fresca en cada cálculo.
-  invalidateFiscalContext();
+  // Confiamos en el TTL (30s) del gateway · invalidación explícita queda
+  // a cargo del side de escrituras (T14.4 · cuando se cableen los
+  // consumidores que escriben personalData / viviendaHabitual).
   const ctx = await getFiscalContextSafe();
 
   // PASO 1: Recopilar datos
@@ -1479,11 +1501,13 @@ export async function calcularDeclaracionIRPF(
   const totalBase = round2(baseImponibleGeneral + baseImponibleAhorro);
   const tipoEfectivo = totalBase > 0 ? round2((cuotaLiquida / totalBase) * 100) : 0;
 
-  // T14.3 · construir warnings de la declaración
+  // T14.3 · construir warnings de la declaración. Los warnings que vienen
+  // del gateway pueden estar en inglés ('comunidadAutonoma not informed')
+  // · normalizamos a español para no mezclar idiomas en la salida
+  // user-facing.
   const declaracionWarnings: string[] = [];
   if (ctx) {
-    // Forward warnings del contexto fiscal · CCAA · fechaNacimiento · etc.
-    declaracionWarnings.push(...ctx.warnings);
+    declaracionWarnings.push(...ctx.warnings.map(traducirWarningContextoFiscal));
   } else {
     declaracionWarnings.push(
       'fiscalContext no disponible · cálculo con valores por defecto · sin bonos edad ni discapacidad familiares ni reducciones autonómicas',

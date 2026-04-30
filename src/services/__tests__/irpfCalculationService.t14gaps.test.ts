@@ -107,16 +107,25 @@ describe('calcularMinimosPersonalesFromContext', () => {
     expect(min.total).toBe(CONSTANTES_IRPF.minimoContribuyente);
   });
 
-  test('GAP 5.2 · titular 70 años · contribuyente = 5550 + 1150', () => {
-    const ctx = buildCtx({ edadActual: 70 });
+  test('GAP 5.2 · titular 70 años en ejercicio 2024 · contribuyente = 5550 + 1150', () => {
+    // edadDesde compara año del ejercicio con año de nacimiento · 1954 → 70 en 2024
+    const ctx = buildCtx({ fechaNacimiento: '1954-06-15', edadActual: 70 });
     const min = calcularMinimosPersonalesFromContext(ctx, 2024);
     expect(min.contribuyente).toBe(5550 + 1150);
   });
 
-  test('GAP 5.2 · titular 80 años · contribuyente = 5550 + 1150 + 1400', () => {
-    const ctx = buildCtx({ edadActual: 80 });
+  test('GAP 5.2 · titular 80 años en ejercicio 2024 · contribuyente = 5550 + 1150 + 1400', () => {
+    const ctx = buildCtx({ fechaNacimiento: '1944-06-15', edadActual: 80 });
     const min = calcularMinimosPersonalesFromContext(ctx, 2024);
     expect(min.contribuyente).toBe(5550 + 1150 + 1400);
+  });
+
+  test('GAP 5.2 · edad evaluada al ejercicio · liquidación 2020 con titular nacido 1958 · 62 años (sin bono) aunque hoy tenga 68', () => {
+    // Caso clave del review · si usásemos edadActual=68 (hoy 2026) aplicaríamos
+    // bono incorrectamente. La edad debe medirse al ejercicio liquidado.
+    const ctx = buildCtx({ fechaNacimiento: '1958-03-10', edadActual: 68 });
+    const min = calcularMinimosPersonalesFromContext(ctx, 2020);
+    expect(min.contribuyente).toBe(5550); // sin bono · 62 años en 2020
   });
 
   test('GAP 5.4 · descendiente con discapacidad entre33y65 · bonus 3000€ aplicado al mínimo', () => {

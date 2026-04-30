@@ -138,7 +138,7 @@ export function normalizeCCAA(ccaa: string | null | undefined): string | null {
   if (!ccaa) return null;
   const cleaned = ccaa
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .trim()
     .toLowerCase();
   if (!cleaned) return null;
