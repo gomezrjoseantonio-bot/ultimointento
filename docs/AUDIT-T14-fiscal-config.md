@@ -67,7 +67,7 @@ La información fiscal del usuario en ATLAS está dispersa entre **3 sitios real
 | `seccionesActivas.nomina` | `boolean` | `savePersonalData()` automático | Solo `getActiveSections()` | **UI/INTEGRACIÓN** |
 | `seccionesActivas.autonomo` | `boolean` | `savePersonalData()` automático | Solo `getActiveSections()` | **UI/INTEGRACIÓN** |
 | `seccionesActivas.pensionesInversiones` | `boolean` | `savePersonalData()` (siempre `true`) | Solo `getActiveSections()` | **UI/INTEGRACIÓN** |
-| `seccionesActivas.otrosIngresos` | `boolean` | `savePersonalData()` (siempre `true`) | Solo `getActiveSaciones()` | **UI/INTEGRACIÓN** |
+| `seccionesActivas.otrosIngresos` | `boolean` | `savePersonalData()` (siempre `true`) | Solo `getActiveSections()` | **UI/INTEGRACIÓN** |
 | `integracionTesoreria` | `boolean` | `savePersonalData()` (siempre `true`) | No encontrado externamente | **UI/INTEGRACIÓN** |
 | `integracionProyecciones` | `boolean` | `savePersonalData()` (siempre `true`) | No encontrado externamente | **UI/INTEGRACIÓN** |
 | `integracionFiscalidad` | `boolean` | `savePersonalData()` (siempre `true`) | No encontrado externamente | **UI/INTEGRACIÓN** |
