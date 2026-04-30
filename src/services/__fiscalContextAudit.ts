@@ -365,6 +365,17 @@ export async function auditFiscalContext(): Promise<FiscalContextAuditReport> {
   };
 }
 
+function getNestedField(obj: unknown, field: string): unknown {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return undefined;
+  const parts = field.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined || typeof current !== 'object') return undefined;
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+}
+
 /**
  * Helper · lee el valor crudo de un campo desde el report para
  * inspección en la página DEV.
@@ -376,17 +387,11 @@ export function getFieldValue(
 ): unknown {
   switch (site) {
     case 'personalData':
-      return report.personalData.record
-        ? (report.personalData.record as Record<string, unknown>)[field]
-        : undefined;
+      return getNestedField(report.personalData.record, field);
     case 'personalModuleConfig':
-      return report.personalModuleConfig.record
-        ? (report.personalModuleConfig.record as Record<string, unknown>)[field]
-        : undefined;
+      return getNestedField(report.personalModuleConfig.record, field);
     case 'viviendaHabitual':
-      return report.viviendaHabitual.viviendaActiva
-        ? (report.viviendaHabitual.viviendaActiva as Record<string, unknown>)[field]
-        : undefined;
+      return getNestedField(report.viviendaHabitual.viviendaActiva, field);
     case 'configFiscalKeyval':
       return report.configFiscalKeyval.value;
     default:
