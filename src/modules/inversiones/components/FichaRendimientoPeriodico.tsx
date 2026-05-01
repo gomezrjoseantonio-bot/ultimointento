@@ -22,6 +22,7 @@ interface Props {
 }
 
 const MESES_ABBR = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const MES_NOMBRE = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
 const formatDate = (iso?: string): string => {
   if (!iso) return '—';
@@ -211,36 +212,63 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     >
 
       <div className={styles.detailCard}>
-        <div className={styles.detailCardTit}>Cobros mensuales · últimos 3 años</div>
-        <div className={styles.matrizMesesHeader}>
-          <div />
-          {MESES_ABBR.map((m, i) => (
-            <div key={i} className={styles.matrizMesLab}>{m}</div>
-          ))}
+        <div className={styles.detailCardTit}>Calendario de cobros · año {currentYear}</div>
+        <div className={styles.calGrid}>
+          {MES_NOMBRE.map((mesLabel, i) => {
+            const cobrado = map[currentYear]?.[i];
+            let cls = styles.calMes;
+            let imp: string;
+            if (cobrado) {
+              cls += ' ' + styles.cobrado;
+              const cobrosMes = cobros.filter(
+                (c) => new Date(c.fecha).getFullYear() === currentYear && new Date(c.fecha).getMonth() === i,
+              );
+              const totalMes = cobrosMes.reduce((s, c) => s + Number(c.importe ?? 0), 0);
+              imp = '+' + formatCurrency(totalMes);
+            } else if (i < currentMonth) {
+              cls += ' ' + styles.pendiente;
+              imp = '—';
+            } else if (i === currentMonth) {
+              cls += ' ' + styles.pendiente;
+              imp = '—';
+            } else {
+              cls += ' ' + styles.futuro;
+              imp = '—';
+            }
+            return (
+              <div key={i} className={cls}>
+                <div className={styles.calMesNom}>{mesLabel}</div>
+                <div className={styles.calMesImp}>{imp}</div>
+              </div>
+            );
+          })}
         </div>
-        {years.map((y) => (
-          <div key={y} className={styles.matrizGrande}>
-            <div className={styles.matrizYearLab}>{y}</div>
-            {MESES_ABBR.map((_, i) => {
-              let cls = styles.matrizCell;
-              if (map[y][i]) cls += ' ' + styles.cobrado;
-              else if (y < currentYear || (y === currentYear && i < currentMonth)) cls += ' ' + styles.pendiente;
-              else cls += ' ' + styles.futuro;
-              return <div key={i} className={cls} title={`${MESES_ABBR[i]} ${y}`} />;
-            })}
+        {years.length > 1 && (
+          <div className={styles.detailCardTit} style={{ marginTop: 22, marginBottom: 8 }}>
+            Histórico · {years[0]}–{years[years.length - 2]}
           </div>
-        ))}
-        <div className={styles.matrizLeyenda}>
-          <span className={styles.matrizLeyendaItem}>
-            <span className={`${styles.leyendaDot} ${styles.cobrado}`} /> Cobrado
-          </span>
-          <span className={styles.matrizLeyendaItem}>
-            <span className={`${styles.leyendaDot} ${styles.pendiente}`} /> Pendiente
-          </span>
-          <span className={styles.matrizLeyendaItem}>
-            <span className={`${styles.leyendaDot} ${styles.futuro}`} /> Futuro
-          </span>
-        </div>
+        )}
+        {years.length > 1 && (
+          <div>
+            <div className={styles.matrizMesesHeader}>
+              <div />
+              {MESES_ABBR.map((m, i) => (
+                <div key={i} className={styles.matrizMesLab}>{m}</div>
+              ))}
+            </div>
+            {years.slice(0, -1).map((y) => (
+              <div key={y} className={styles.matrizGrande}>
+                <div className={styles.matrizYearLab}>{y}</div>
+                {MESES_ABBR.map((_, i) => {
+                  let cls = styles.matrizCell;
+                  if (map[y][i]) cls += ' ' + styles.cobrado;
+                  else cls += ' ' + styles.pendiente;
+                  return <div key={i} className={cls} title={`${MESES_ABBR[i]} ${y}`} />;
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={styles.detailCard} style={{ marginTop: 16 }}>
