@@ -29,10 +29,10 @@
 
 /* ── Header (§ Z.7) ──────────────────────────────────────────── */
 .detailHead {
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -40,6 +40,356 @@
 .detailHeadLeft {
   min-width: 0;
   flex: 1;
+}
+
+/* ── Hero detalle · mockup atlas-inversiones-v2.html:194-211 ──── */
+.detailHero {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.detailHeroTop {
+  padding: 10px 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.detailHeroTop.plan { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand); }
+.detailHeroTop.prestamo { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.detailHeroTop.accion { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); border-bottom: 1px solid var(--atlas-v5-line); }
+
+.detailHeroBody {
+  padding: 24px 28px 28px;
+  display: grid;
+  grid-template-columns: 48px 1fr repeat(var(--detail-stats, 4), auto);
+  gap: 24px;
+  align-items: center;
+}
+
+.detailHeroLogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-white);
+  flex-shrink: 0;
+}
+
+.detailHeroNom {
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.022em;
+  line-height: 1.15;
+}
+
+.detailHeroMeta {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 5px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.detailHeroMeta strong {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.detailHeroSep {
+  color: var(--atlas-v5-ink-5);
+  margin: 0 6px;
+}
+
+.detailHeroStat {
+  padding-left: 22px;
+  border-left: 1px solid var(--atlas-v5-line-2);
+  text-align: right;
+  min-width: 0;
+}
+
+.detailHeroStatLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: 4px;
+}
+
+.detailHeroStatVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.detailHeroStatVal.pos { color: var(--atlas-v5-pos); }
+.detailHeroStatVal.neg { color: var(--atlas-v5-neg); }
+.detailHeroStatVal.gold { color: var(--atlas-v5-gold-ink); }
+
+@media (max-width: 1100px) {
+  .detailHeroBody {
+    grid-template-columns: 48px 1fr;
+    grid-auto-rows: auto;
+  }
+  .detailHeroStat {
+    grid-column: span 2;
+    border-left: none;
+    border-top: 1px solid var(--atlas-v5-line-2);
+    padding-left: 0;
+    padding-top: 12px;
+    text-align: left;
+  }
+}
+
+/* ── Stat row · mockup .stat-row ────────────────────────────── */
+.statRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--atlas-v5-card-alt);
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
+.statRow.highlight {
+  background: var(--atlas-v5-pos-wash);
+  border-color: var(--atlas-v5-pos);
+  border-left-width: 3px;
+}
+
+.statRowLab {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.statRow.highlight .statRowLab {
+  color: var(--atlas-v5-pos);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.statRowVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.statRowVal.pos { color: var(--atlas-v5-pos); }
+.statRowVal.neg { color: var(--atlas-v5-neg); }
+.statRowVal.gold { color: var(--atlas-v5-gold-ink); }
+
+.statRowList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Fiscal nota · mockup .fiscal-nota ──────────────────────── */
+.fiscalNota {
+  background: var(--atlas-v5-gold-wash);
+  border-left: 3px solid var(--atlas-v5-gold-ink);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  font-size: 11.5px;
+  color: #4A3A00;
+  line-height: 1.55;
+}
+
+.fiscalNota strong { font-weight: var(--atlas-v5-fw-bold); }
+
+/* ── Calendario 12 meses · mockup .cal-grid ──────────────────── */
+.calGrid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.calMes {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+}
+
+.calMes.cobrado {
+  background: var(--atlas-v5-pos-wash);
+  border-color: var(--atlas-v5-pos);
+}
+
+.calMes.pendiente {
+  background: var(--atlas-v5-gold-wash);
+  border-color: var(--atlas-v5-gold);
+}
+
+.calMes.futuro {
+  background: var(--atlas-v5-card-alt);
+  border-style: dashed;
+}
+
+.calMesNom {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.calMes.cobrado .calMesNom { color: var(--atlas-v5-pos); }
+.calMes.pendiente .calMesNom { color: var(--atlas-v5-gold-ink); }
+
+.calMesImp {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+
+.calMes.cobrado .calMesImp { color: var(--atlas-v5-pos); }
+.calMes.pendiente .calMesImp { color: var(--atlas-v5-gold-ink); }
+.calMes.futuro .calMesImp { color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-medium); }
+
+/* ── Price block (acciones) · mockup .price-block ─────────────── */
+.priceBlock {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 26px 30px;
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.priceLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.priceDotLive {
+  width: 7px;
+  height: 7px;
+  background: var(--atlas-v5-pos);
+  border-radius: 50%;
+  animation: priceDotPulse 2s infinite;
+}
+
+@keyframes priceDotPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.priceVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 40px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.priceDelta {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  margin-top: 10px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+}
+
+.priceDeltaPill {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 11.5px;
+  letter-spacing: -0.01em;
+}
+
+.priceDeltaPill.pos { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.priceDeltaPill.neg { background: var(--atlas-v5-neg-wash); color: var(--atlas-v5-neg); }
+
+.priceDeltaLabel {
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.priceRange {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  padding-left: 28px;
+  border-left: 1px solid var(--atlas-v5-line-2);
+}
+
+.priceRangeCell {
+  padding: 0 20px;
+  border-left: 1px solid var(--atlas-v5-line-2);
+}
+
+.priceRangeCell:first-child {
+  border-left: none;
+  padding-left: 0;
+}
+
+.priceRangeLab {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.priceRangeVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+  margin-top: 4px;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 1100px) {
+  .priceBlock {
+    grid-template-columns: 1fr;
+  }
+  .priceRange {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--atlas-v5-line-2);
+    padding-top: 16px;
+  }
 }
 
 .backBtn {

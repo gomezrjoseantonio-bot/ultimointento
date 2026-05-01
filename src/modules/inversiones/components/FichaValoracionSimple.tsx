@@ -15,9 +15,9 @@ import {
   formatPercent,
   getColorByTipo,
   getTipoLabel,
-  getTipoTagLabel,
   signClass,
 } from '../helpers';
+import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
 import SparklineGigante from './SparklineGigante';
 import styles from '../pages/FichaPosicion.module.css';
@@ -55,6 +55,7 @@ const FichaValoracionSimple: React.FC<Props> = ({
   const rentEur = Number(posicion.rentabilidad_euros ?? valorActual - aportado);
   const rentPct = aportado > 0 ? (rentEur / aportado) * 100 : 0;
   const cagr = useMemo(() => calculateEstimatedCagr(posicion), [posicion]);
+  const esPlan = posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo';
 
   const serie = useMemo(() => construirSerieValor(posicion), [posicion]);
 
@@ -66,11 +67,49 @@ const FichaValoracionSimple: React.FC<Props> = ({
     [posicion.aportaciones],
   );
 
+  const logoCfg = getEntidadLogoConfig(posicion.entidad);
+  const cagrVariant: 'pos' | 'neg' | undefined = Number.isFinite(cagr)
+    ? (cagr >= 0 ? 'pos' : 'neg')
+    : undefined;
+  const rentVariant: 'pos' | 'neg' | undefined =
+    rentEur > 0 ? 'pos' : rentEur < 0 ? 'neg' : undefined;
+
+  const heroBadge = `${getTipoLabel(posicion.tipo)} · revalorización${
+    posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo'
+      ? ' · liquidez en jubilación'
+      : ''
+  }`;
+
   return (
     <FichaShell
-      title={posicion.nombre || posicion.entidad || 'Posición'}
-      tipoChip={getTipoTagLabel(posicion.tipo)}
-      subtitle={`${getTipoLabel(posicion.tipo)}${posicion.entidad ? ` · ${posicion.entidad}` : ''}${posicion.isin ? ` · ISIN ${posicion.isin}` : ''}`}
+      hero={{
+        variant: 'plan',
+        badge: heroBadge,
+        logo: {
+          text: logoCfg.text,
+          bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
+          color: logoCfg.color,
+        },
+        title: `${posicion.nombre || 'Posición'}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`,
+        meta: posicion.fecha_compra ? (
+          <>
+            abierto <strong>{formatDate(posicion.fecha_compra)}</strong>
+            {posicion.isin && (
+              <>
+                <span className={styles.detailHeroSep}>·</span>ISIN <strong>{posicion.isin}</strong>
+              </>
+            )}
+          </>
+        ) : posicion.isin ? (
+          <>ISIN <strong>{posicion.isin}</strong></>
+        ) : null,
+        stats: [
+          { lab: 'Valor actual', val: formatCurrency(valorActual), valVariant: rentVariant === 'pos' ? 'pos' : undefined },
+          { lab: 'Aportado', val: formatCurrency(aportado) },
+          { lab: 'Ganancia', val: formatDelta(rentEur), valVariant: rentVariant },
+          { lab: 'CAGR', val: Number.isFinite(cagr) ? formatPercent(cagr) : '—', valVariant: cagrVariant },
+        ],
+      }}
       onBack={onBack}
       actions={[
         {
@@ -93,41 +132,6 @@ const FichaValoracionSimple: React.FC<Props> = ({
         },
       ]}
     >
-      <div className={styles.detailKpis}>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Aportado</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(aportado)}</div>
-          <div className={styles.detailKpiSub}>
-            {aportacionesOrdenadas.length} {aportacionesOrdenadas.length === 1 ? 'aportación' : 'aportaciones'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Valor actual</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(valorActual)}</div>
-          <div className={styles.detailKpiSub}>al {formatDate(posicion.fecha_valoracion)}</div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Rentabilidad</div>
-          <div className={`${styles.detailKpiVal} ${styles[signClass(rentEur)]}`}>
-            {formatDelta(rentEur)}
-          </div>
-          <div className={styles.detailKpiSub}>
-            {aportado > 0 ? formatPercent(rentPct) : '—'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>CAGR</div>
-          <div
-            className={`${styles.detailKpiVal} ${
-              Number.isFinite(cagr) ? styles[signClass(cagr)] : styles.muted
-            }`}
-          >
-            {Number.isFinite(cagr) ? formatPercent(cagr) : '—'}
-          </div>
-          <div className={styles.detailKpiSub}>tasa anualizada</div>
-        </div>
-      </div>
-
       <div className={styles.detailCols}>
         <div className={styles.detailCard}>
           <div className={styles.detailCardTit}>Evolución del valor</div>
@@ -145,17 +149,67 @@ const FichaValoracionSimple: React.FC<Props> = ({
         </div>
 
         <div className={styles.detailCard}>
-          <div className={styles.detailCardTit}>Composición</div>
-          {/* TODO · 23.3+ · cuando el plan/fondo tenga datos de composición
-              (renta variable / renta fija / liquidez · % por categoría) los
-              renderizamos aquí. Hasta que el usuario enriquezca su posición
-              con esos datos, mostramos un placeholder coherente. */}
-          <div className={styles.tablaEmpty}>
-            Aún no hay datos de composición para esta posición.
-            {posicion.tipo === 'plan_pensiones' || posicion.tipo === 'plan_empleo'
-              ? ' Edita la posición para añadir el desglose por categoría.'
-              : ''}
+          <div className={styles.detailCardTit}>Rendimiento y fiscalidad</div>
+          <div className={styles.statRowList}>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>Total aportado</span>
+              <span className={styles.statRowVal}>{formatCurrency(aportado)}</span>
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>
+                {rentEur >= 0 ? 'Ganancia latente' : 'Pérdida latente'}
+              </span>
+              <span
+                className={`${styles.statRowVal} ${
+                  rentEur > 0 ? styles.pos : rentEur < 0 ? styles.neg : ''
+                }`}
+              >
+                {formatDelta(rentEur)}
+              </span>
+            </div>
+            <div className={`${styles.statRow} ${styles.highlight}`}>
+              <span className={styles.statRowLab}>Valor hoy</span>
+              <span
+                className={`${styles.statRowVal} ${styles.pos}`}
+                style={{ fontSize: 16 }}
+              >
+                {formatCurrency(valorActual)}
+              </span>
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>Rentabilidad total</span>
+              <span
+                className={`${styles.statRowVal} ${
+                  rentPct > 0 ? styles.pos : rentPct < 0 ? styles.neg : ''
+                }`}
+              >
+                {aportado > 0 ? formatPercent(rentPct) : '—'}
+              </span>
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>CAGR anualizado</span>
+              <span
+                className={`${styles.statRowVal} ${
+                  Number.isFinite(cagr) ? (cagr >= 0 ? styles.pos : styles.neg) : ''
+                }`}
+              >
+                {Number.isFinite(cagr) ? formatPercent(cagr) : '—'}
+              </span>
+            </div>
           </div>
+
+          {esPlan && (
+            <div className={styles.fiscalNota}>
+              <strong>Fiscalidad · IRPF base general</strong> · las aportaciones{' '}
+              <strong>reducen tu base imponible</strong> hasta 1.500 €/año
+              (casilla 0465). El rescate tributa como{' '}
+              <strong>rendimiento del trabajo</strong> · no como base del ahorro
+              · planifica la liquidación en años de menor renta.{' '}
+              <strong>Liquidez solo en jubilación</strong> o supuestos
+              especiales (enfermedad grave · paro larga duración · 10 años de
+              antigüedad desde 2025).
+            </div>
+          )}
         </div>
       </div>
 

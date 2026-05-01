@@ -9,8 +9,8 @@ import {
   formatCurrency,
   formatPercent,
   getTipoLabel,
-  getTipoTagLabel,
 } from '../helpers';
+import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
 import styles from '../pages/FichaPosicion.module.css';
 
@@ -140,11 +140,59 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     URL.revokeObjectURL(url);
   };
 
+  const logoCfg = getEntidadLogoConfig(posicion.entidad);
+  const heroBadge = `${getTipoLabel(posicion.tipo)} · ${
+    posicion.frecuencia_cobro ?? 'cobro periódico'
+  }${posicion.duracion_meses ? ' · ' + posicion.duracion_meses + ' meses' : ''}`;
+
   return (
     <FichaShell
-      title={posicion.nombre || posicion.entidad || 'Posición'}
-      tipoChip={getTipoTagLabel(posicion.tipo)}
-      subtitle={`${getTipoLabel(posicion.tipo)}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`}
+      hero={{
+        variant: 'prestamo',
+        badge: heroBadge,
+        logo: {
+          text: logoCfg.text,
+          bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
+          color: logoCfg.color,
+        },
+        title: `${posicion.nombre || 'Posición'}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`,
+        meta: (
+          <>
+            {posicion.fecha_compra && (
+              <>firmado <strong>{formatDate(posicion.fecha_compra)}</strong></>
+            )}
+            {Number.isFinite(tin) && (
+              <>
+                {posicion.fecha_compra && <span className={styles.detailHeroSep}>·</span>}
+                TIN <strong>{formatPercent(tin)}</strong>
+              </>
+            )}
+            {posicion.frecuencia_cobro && (
+              <>
+                <span className={styles.detailHeroSep}>·</span>
+                cobro <strong>{posicion.frecuencia_cobro}</strong>
+              </>
+            )}
+          </>
+        ),
+        stats: [
+          { lab: 'Capital', val: formatCurrency(aportado) },
+          { lab: 'Interés generado', val: formatCurrency(interesGenerado), valVariant: 'gold' },
+          {
+            lab: `Cobrado ${currentYear}`,
+            val: formatCurrency(
+              cobros.filter((c) => new Date(c.fecha).getFullYear() === currentYear)
+                .reduce((s, c) => s + Number(c.importe ?? 0), 0),
+            ),
+            valVariant: 'pos',
+          },
+          {
+            lab: 'Próximo cobro',
+            val: proximoCobro ? formatDate(proximoCobro) : '—',
+            small: true,
+          },
+        ],
+      }}
       onBack={onBack}
       actions={[
         {
@@ -161,40 +209,6 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
         },
       ]}
     >
-      <div className={styles.detailKpis}>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Capital invertido</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(aportado)}</div>
-          <div className={styles.detailKpiSub}>
-            {posicion.duracion_meses ? `${posicion.duracion_meses} meses` : 'duración indefinida'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Interés generado</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(interesGenerado)}</div>
-          <div className={styles.detailKpiSub}>
-            {cobros.length} {cobros.length === 1 ? 'cobro' : 'cobros'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>TIN</div>
-          <div className={styles.detailKpiVal}>
-            {Number.isFinite(tin) ? formatPercent(tin) : '—'}
-          </div>
-          <div className={styles.detailKpiSub}>tasa nominal anual</div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Próximo cobro</div>
-          <div className={`${styles.detailKpiVal} ${proximoCobro ? '' : styles.muted}`}>
-            {proximoCobro ? formatDate(proximoCobro) : '—'}
-          </div>
-          <div className={styles.detailKpiSub}>
-            {proximoCobro
-              ? `estimado · ${posicion.frecuencia_cobro}`
-              : 'sin frecuencia configurada'}
-          </div>
-        </div>
-      </div>
 
       <div className={styles.detailCard}>
         <div className={styles.detailCardTit}>Cobros mensuales · últimos 3 años</div>
