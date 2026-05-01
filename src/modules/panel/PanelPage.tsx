@@ -16,11 +16,13 @@ import { initDB } from '../../services/db';
 import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
 import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
+import type { Escenario } from '../../types/miPlan';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import PulseAssetCard from './components/PulseAssetCard';
 import PulsoDelMes from './components/PulsoDelMes';
 import AttentionList from './components/AttentionList';
+import MiPlanCompass from './components/MiPlanCompass';
 import type { AlertaItem } from './components/AttentionList';
 import styles from './PanelPage.module.css';
 
@@ -70,6 +72,7 @@ const PanelPage: React.FC = () => {
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [escenario, setEscenario] = useState<Escenario | null>(null);
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
 
@@ -97,6 +100,9 @@ const PanelPage: React.FC = () => {
         setTreasuryEvents(tevents);
         setContracts(conts);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
+        // T22.6 · Cargar escenario Mi Plan para datos brújula
+        const escenarios = await db.getAll('escenarios') as Escenario[];
+        if (!cancelled) setEscenario(escenarios[0] ?? null);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[panel] error cargando datos', err);
@@ -258,6 +264,52 @@ const PanelPage: React.FC = () => {
     // Limite MAX 5 · ordenado ya por prioridad de inserción
     return lista.slice(0, 5);
   }, [contracts, treasuryEvents, today]);
+
+  /**
+   * Mi Plan · brújula · § Z.11 · T22.6
+   *
+   * rentaPasiva  = sum rentaMensual de contratos arrendamiento activos
+   * gastoVida    = escenario.gastosVidaLibertadMensual si > 0
+   *               · si no · derivado de gastos del mes en curso (pulsoMes.gastos)
+   *               · TODO conectar con proyección de gastos reales cuando esté disponible
+   * mesesColchon = floor(saldo / gastoVida) · null si gastoVida = 0
+   * pctCobertura = (rentaPasiva / gastoVida) * 100 · 0 si gastoVida = 0
+   * añoLibertad  = TODO conectar simulador Mi Plan · "—" mientras no disponible
+   * metaInmuebles = TODO conectar simulador Mi Plan · null mientras no disponible
+   */
+  const planMetrics = useMemo(() => {
+    // Renta pasiva = sum rentaMensual de contratos activos (arrendamiento)
+    const rentaPasiva = contracts
+      .filter((c) => c.estadoContrato === 'activo')
+      .reduce((s, c) => s + (c.rentaMensual ?? 0), 0);
+
+    // Gasto vida = escenario o gastos del mes actual como fallback
+    const gastoVida =
+      (escenario?.gastosVidaLibertadMensual ?? 0) > 0
+        ? (escenario?.gastosVidaLibertadMensual as number)
+        : pulsoMes.gastos;
+
+    const pctCobertura = gastoVida > 0 ? (rentaPasiva / gastoVida) * 100 : 0;
+
+    const mesesColchon =
+      gastoVida > 0 ? Math.floor(saldoTesoreria / gastoVida) : null;
+
+    // TODO: calcular añoLibertad desde simulador Mi Plan cuando esté disponible
+    const añoLibertad = '—';
+
+    // TODO: obtener metaInmuebles desde escenario/simulador Mi Plan
+    const metaInmuebles: number | null = null;
+
+    return {
+      rentaPasiva,
+      gastoVida,
+      pctCobertura,
+      mesesColchon,
+      añoLibertad,
+      metaInmuebles,
+      inmueblesActivos: properties.length,
+    };
+  }, [contracts, escenario, pulsoMes.gastos, saldoTesoreria, properties]);
 
   if (loading) {
     return (
@@ -474,12 +526,26 @@ const PanelPage: React.FC = () => {
             año={añoActual}
           />
 
-          {/* Piden tu atención · § Z.11 · § AA.6 · T22.5 */}
-          <AttentionList
-            alertas={alertas}
-            onVerTodas={() => navigate('/tesoreria')}
-            onAlertaClick={(a) => navigate(a.href)}
-          />
+          {/* Two-cols · Piden tu atención + Mi Plan brújula · § Z.11 · T22.5/T22.6 */}
+          <div className={styles.twoColsGrid}>
+            {/* Piden tu atención · § Z.11 · § AA.6 · T22.5 */}
+            <AttentionList
+              alertas={alertas}
+              onVerTodas={() => navigate('/tesoreria')}
+              onAlertaClick={(a) => navigate(a.href)}
+            />
+
+            {/* Mi Plan brújula · § Z.11 · T22.6 */}
+            <MiPlanCompass
+              pctCobertura={planMetrics.pctCobertura}
+              añoLibertad={planMetrics.añoLibertad}
+              mesesColchon={planMetrics.mesesColchon}
+              rentaPasiva={planMetrics.rentaPasiva}
+              gastoVida={planMetrics.gastoVida}
+              inmueblesActivos={planMetrics.inmueblesActivos}
+              metaInmuebles={planMetrics.metaInmuebles}
+            />
+          </div>
         </>
       )}
     </div>

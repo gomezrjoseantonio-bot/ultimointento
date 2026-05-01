@@ -1,0 +1,163 @@
+/**
+ * ATLAS · Panel · MiPlanCompass
+ *
+ * Estilos "Mi Plan · brújula" · § Z.11 · TAREA 22.6
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md §7 · mockup §142-190
+ *
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ */
+
+/* ── Contenedor card ── */
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 22px;
+}
+
+/* ── Cabecera card ── */
+.cardHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+}
+
+.cardSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+
+.cardAction {
+  font-size: 12px;
+  color: var(--atlas-v5-gold);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.cardAction:hover {
+  background: var(--atlas-v5-gold-wash);
+}
+
+/* ── Métrica grande · % cobertura ── */
+.planMetaGrande {
+  text-align: center;
+  padding: 10px 0 18px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.planMetaLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: 8px;
+}
+
+.planMetaVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 36px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.planMetaSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 8px;
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.planMetaSub strong {
+  color: var(--atlas-v5-gold-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+/* ── Barra de progreso ── */
+.planProgreso {
+  padding: 16px 0 12px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.planProgresoHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.planProgresoLab {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.planProgresoPct {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.planTrack {
+  height: 8px;
+  background: var(--atlas-v5-bg);
+  border-radius: 4px;
+  border: 1px solid var(--atlas-v5-line-2);
+  overflow: hidden;
+}
+
+.planFill {
+  height: 100%;
+  background: var(--atlas-v5-gold);
+  border-radius: 4px;
+}
+
+/* ── Items del plan ── */
+.planItems {
+  padding-top: 4px;
+}
+
+.planItem {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planItem:last-child {
+  border-bottom: none;
+}
+
+.planItemLab {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.planItemVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
