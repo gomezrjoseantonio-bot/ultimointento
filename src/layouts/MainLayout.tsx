@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
 import TopbarV5 from '../design-system/v5/TopbarV5';
+import CintaResumenInversiones from '../modules/inversiones/components/CintaResumenInversiones';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { preloadRouteResources } from '../services/navigationPerformanceService';
@@ -50,6 +51,7 @@ const MainLayout: React.FC = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const location = useLocation();
   const isPanelRoute = location.pathname === '/panel';
+  const isInversionesRoute = location.pathname === '/inversiones' || location.pathname.startsWith('/inversiones/');
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
@@ -110,15 +112,23 @@ const MainLayout: React.FC = () => {
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-        {/* TopbarV5 · persistente en TODAS las pantallas · §2.2 */}
-        <TopbarV5 />
-        
-        <main 
+        {/* TopbarV5 · persistente · oculto en /inversiones/* (la cinta de
+            inversiones la reemplaza como topbar · mockup atlas-inversiones-v2). */}
+        {!isInversionesRoute && <TopbarV5 />}
+        {isInversionesRoute && <CintaResumenInversiones />}
+
+        <main
           id="main-content"
-          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${isPanelRoute ? 'px-8 pb-12' : 'p-3 sm:p-4 lg:p-6'}`}
+          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${
+            isPanelRoute
+              ? 'px-8 pb-12'
+              : isInversionesRoute
+                ? ''
+                : 'p-3 sm:p-4 lg:p-6'
+          }`}
           tabIndex={-1}
         >
-          {isPanelRoute ? (
+          {isPanelRoute || isInversionesRoute ? (
             <Outlet />
           ) : (
             <div className="container mx-auto h-full max-w-7xl">
