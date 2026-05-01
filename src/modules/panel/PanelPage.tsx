@@ -101,6 +101,7 @@ const PanelPage: React.FC = () => {
         setContracts(conts);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
         // T22.6 · Cargar escenario Mi Plan para datos brújula
+        // El store 'escenarios' es un singleton (id=1) · solo existe una entrada
         const escenarios = await db.getAll('escenarios') as Escenario[];
         if (!cancelled) setEscenario(escenarios[0] ?? null);
       } catch (err) {
