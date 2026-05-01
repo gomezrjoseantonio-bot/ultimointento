@@ -3,20 +3,22 @@
 //   - Saludo personalizado + fecha + campaña IRPF + número de cosas pidiendo atención (22.2)
 //   - Hero patrimonial · valor neto + activos + deuda + composición γ (22.2)
 //   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación (22.3)
+//   - Pulso del mes · ingresos · gastos · cashflow · saldo fin (22.4)
 //
-// Lee de · properties · inversiones · accounts · prestamos. NO toca
+// Lee de · properties · inversiones · accounts · prestamos · treasuryEvents. NO toca
 // services internos.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
 import { initDB } from '../../services/db';
-import type { Property, Account } from '../../services/db';
+import type { Property, Account, TreasuryEvent } from '../../services/db';
 import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import PulseAssetCard from './components/PulseAssetCard';
+import PulsoDelMes from './components/PulsoDelMes';
 import styles from './PanelPage.module.css';
 
 /**
@@ -63,6 +65,7 @@ const PanelPage: React.FC = () => {
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
+  const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
 
@@ -74,17 +77,19 @@ const PanelPage: React.FC = () => {
           initDB(),
           getFiscalContextSafe(),
         ]);
-        const [props, inv, accs, prest] = await Promise.all([
+        const [props, inv, accs, prest, tevents] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('inversiones') as Promise<PosicionInversion[]>,
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
+          db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
         ]);
         if (cancelled) return;
         setProperties(props);
         setPosiciones(inv);
         setAccounts(accs);
         setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
+        setTreasuryEvents(tevents);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -146,6 +151,35 @@ const PanelPage: React.FC = () => {
     return n;
   }, [prestamos]);
 
+  /**
+   * Pulso del mes · § Z.10 · T22.4
+   * ingresos  = sum treasuryEvents con amount > 0 del mes en curso
+   * gastos    = sum |treasuryEvents con amount < 0| del mes en curso
+   * cashflow  = ingresos - gastos
+   * saldo fin = saldoTesoreria + cashflow (proyección sobre saldo actual)
+   *             TODO: conectar con servicio de proyección cuando esté disponible
+   */
+  const pulsoMes = useMemo(() => {
+    const mesActual = today.getMonth() + 1; // 1-based
+    const añoActual = today.getFullYear();
+    const eventosMes = treasuryEvents.filter((ev) => {
+      const dateStr = ev.actualDate ?? ev.predictedDate;
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return d.getFullYear() === añoActual && d.getMonth() + 1 === mesActual;
+    });
+    const ingresos = eventosMes
+      .filter((ev) => ev.amount > 0)
+      .reduce((s, ev) => s + ev.amount, 0);
+    const gastos = eventosMes
+      .filter((ev) => ev.amount < 0)
+      .reduce((s, ev) => s + Math.abs(ev.amount), 0);
+    const cashflow = ingresos - gastos;
+    // TODO: conectar con servicio de proyección para obtener saldo fin de mes real
+    const saldoFin = saldoTesoreria + cashflow;
+    return { ingresos, gastos, cashflow, saldoFin };
+  }, [treasuryEvents, today, saldoTesoreria]);
+
   if (loading) {
     return (
       <div className={styles.page}>
@@ -160,6 +194,9 @@ const PanelPage: React.FC = () => {
     month: 'long',
     year: 'numeric',
   });
+
+  const mesNombre = today.toLocaleDateString('es-ES', { month: 'long' });
+  const añoActual = today.getFullYear();
 
   const campañaLabel = campañaIRPF(today);
   const empty = activosTotales === 0 && deudaViva === 0;
@@ -347,6 +384,16 @@ const PanelPage: React.FC = () => {
               onClick={() => navigate('/financiacion')}
             />
           </div>
+
+          {/* Pulso del mes · § Z.10 · T22.4 */}
+          <PulsoDelMes
+            ingresos={pulsoMes.ingresos}
+            gastos={pulsoMes.gastos}
+            cashflow={pulsoMes.cashflow}
+            saldoFin={pulsoMes.saldoFin}
+            mesNombre={mesNombre}
+            año={añoActual}
+          />
         </>
       )}
     </div>
