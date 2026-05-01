@@ -89,8 +89,8 @@ function usePrevistoAñoActual(): PrevistoAñoResult {
 
 // ── CintaResumenInversiones ─────────────────────────────────────────────────
 
-const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun',
-                  'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 const CintaResumenInversiones: React.FC = () => {
   const [items, setItems] = useState<CartaItem[]>([]);
@@ -116,15 +116,6 @@ const CintaResumenInversiones: React.FC = () => {
 
   return (
     <div className={styles.invCinta} role="banner" aria-label="Resumen cartera de inversiones">
-      {/* Brand mark */}
-      <div className={styles.invCintaBrand}>
-        <div className={styles.invCintaMark} aria-hidden="true">A</div>
-        <div>
-          <div className={styles.invCintaName}>Atlas</div>
-          <div className={styles.invCintaSub}>Patrimonio &amp; Renta</div>
-        </div>
-      </div>
-
       {/* Header: MI CARTERA */}
       <div className={styles.invCintaHd}>
         <div className={styles.invCintaHdDot} aria-hidden="true" />
