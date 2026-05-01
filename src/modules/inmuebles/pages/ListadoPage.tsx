@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   PageHead,
@@ -14,6 +14,7 @@ import InmuebleCard, {
 import PortfolioMap from '../components/PortfolioMap';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ListadoPage.module.css';
+import { valoracionesService } from '../../../services/valoracionesService';
 
 type EstadoFilter = 'todos' | 'habitaciones' | 'completos' | 'reforma' | 'alertas';
 
@@ -29,6 +30,29 @@ interface DerivedInmueble {
   ocupadas: number;
   hasAlert: boolean;
 }
+
+/** Formatea "YYYY-MM" → "abr 2026" en locale es-ES */
+const formatFechaMes = (fechaMes: string): string => {
+  const parts = fechaMes.split('-');
+  if (parts.length < 2) return fechaMes;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return fechaMes;
+  const d = new Date(year, month - 1, 1);
+  return new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(d);
+};
+
+/** Formatea "YYYY-MM-DD" o "YYYY-MM" → "abr 2026" en locale es-ES */
+const formatFechaCompra = (fecha: string | undefined): string | undefined => {
+  if (!fecha) return undefined;
+  const parts = fecha.slice(0, 7).split('-');
+  if (parts.length < 2) return undefined;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return undefined;
+  const d = new Date(year, month - 1, 1);
+  return new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(d);
+};
 
 const isContractActiveAtDate = (c: Contract, today: Date): boolean => {
   if (!c.fechaInicio || !c.fechaFin) return false;
@@ -89,7 +113,19 @@ const ListadoPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<EstadoFilter>('todos');
 
+  /** Map activo_id (String) → { valor, fecha_valoracion } — cargado una sola vez */
+  const [valoracionesMap, setValoracionesMap] = useState<Map<string, { valor: number; fecha_valoracion: string }>>(new Map());
+
   const today = useMemo(() => new Date(), []);
+
+  // Carga de valoraciones: una sola query al store, resultado en Map
+  useEffect(() => {
+    let mounted = true;
+    valoracionesService.getMapValoracionesMasRecientes('inmueble')
+      .then((m) => { if (mounted) setValoracionesMap(m); })
+      .catch(() => { /* sin valoraciones disponibles */ });
+    return () => { mounted = false; };
+  }, []);
 
   const derived = useMemo(
     () => properties.map((p, i) => deriveInmueble(p, contracts, today, i)),
@@ -120,14 +156,20 @@ const ListadoPage: React.FC = () => {
   }, [derived, filter, search]);
 
   // KPIs agregados
-  const totalValor = useMemo(
-    () =>
-      properties.reduce(
-        (sum, p) => sum + (p.acquisitionCosts?.price ?? 0),
-        0,
-      ),
-    [properties],
-  );
+  // totalValor usa suma de valoraciones reales (0 para los sin valorar) · T24.2
+  const { totalValor, countSinValorar } = useMemo(() => {
+    let sum = 0;
+    let sinValorar = 0;
+    for (const p of properties) {
+      const val = valoracionesMap.get(String(p.id));
+      if (val) {
+        sum += val.valor;
+      } else {
+        sinValorar++;
+      }
+    }
+    return { totalValor: sum, countSinValorar: sinValorar };
+  }, [properties, valoracionesMap]);
   const rentaMensualTotal = derived.reduce((sum, d) => sum + d.rentaMensual, 0);
   const totalUnidades = derived.reduce((sum, d) => sum + d.habitaciones, 0);
   const totalOcupadas = derived.reduce((sum, d) => sum + d.ocupadas, 0);
@@ -153,6 +195,9 @@ const ListadoPage: React.FC = () => {
             <strong>
               <MoneyValue value={totalValor} decimals={0} tone="ink" />
             </strong>
+            {countSinValorar > 0 && (
+              <span> · <strong>{countSinValorar}</strong> sin valorar</span>
+            )}
           </>
         }
         actions={[
@@ -184,7 +229,7 @@ const ListadoPage: React.FC = () => {
             <MoneyValue value={totalValor} decimals={0} tone="ink" />
           </div>
           <div className={styles.kpiHint}>
-            {properties.length} inmuebles
+            {properties.length} inmuebles{countSinValorar > 0 ? ` · ${countSinValorar} sin valorar` : ''}
           </div>
         </div>
         <div className={styles.kpi}>
@@ -286,68 +331,86 @@ const ListadoPage: React.FC = () => {
               onCtaClick={() => navigate('/inmuebles/nuevo')}
             />
           ) : (
-            filtered.map((d) => (
-              <InmuebleCard
-                key={d.property.id}
-                astId={d.astId}
-                state={d.state}
-                stateLabel={d.stateLabel}
-                name={d.property.alias}
-                location={`${d.property.municipality}${
-                  d.property.province ? ' · ' + d.property.province : ''
-                }`}
-                chips={[
-                  {
-                    label: d.type === 'habitaciones' ? 'Habitaciones' : 'Piso completo',
-                    isType: true,
-                  },
-                  { label: `${d.habitaciones} hab` },
-                  ...(d.property.squareMeters
-                    ? [{ label: `${d.property.squareMeters} m²` }]
-                    : []),
-                ]}
-                metrics={[
-                  {
-                    label: 'Valor',
-                    value: (
-                      <MoneyValue
-                        value={d.property.acquisitionCosts?.price ?? 0}
-                        decimals={0}
-                      />
-                    ),
-                  },
-                  {
-                    label: 'Renta mes',
-                    value: <MoneyValue value={d.rentaMensual} decimals={0} />,
-                  },
-                ]}
-                type={d.type}
-                rooms={
-                  d.type === 'habitaciones'
-                    ? {
-                        occupied: d.ocupadas,
-                        total: d.habitaciones,
-                        contextLabel:
-                          d.ocupadas < d.habitaciones
-                            ? `${d.habitaciones - d.ocupadas} hab libre(s)`
-                            : 'Todo al día',
-                        contextTone:
-                          d.ocupadas < d.habitaciones ? 'gold' : 'pos',
-                        items: Array.from({ length: d.habitaciones }, (_, i) => ({
-                          label: i + 1,
-                          color: (i < d.ocupadas
-                            ? (['green', 'red', 'yellow', 'blue', 'bw'] as const)[i % 5]
-                            : 'vacant') as
-                            | 'green'
-                            | 'red'
-                            | 'yellow'
-                            | 'blue'
-                            | 'bw'
-                            | 'vacant',
-                        })),
-                      }
-                    : undefined
-                }
+            filtered.map((d) => {
+                const compradoPor = d.property.acquisitionCosts?.price ?? 0;
+                const valHoy = valoracionesMap.get(String(d.property.id));
+                const hayValoracion = valHoy !== undefined;
+                const valorTone = hayValoracion
+                  ? valHoy.valor > compradoPor
+                    ? 'pos' as const
+                    : valHoy.valor < compradoPor
+                      ? 'neg' as const
+                      : undefined
+                  : undefined;
+                const fechaCompraFmt = formatFechaCompra(d.property.purchaseDate);
+                const fechaValFmt = hayValoracion ? formatFechaMes(valHoy.fecha_valoracion) : undefined;
+
+                return (
+                  <InmuebleCard
+                    key={d.property.id}
+                    astId={d.astId}
+                    state={d.state}
+                    stateLabel={d.stateLabel}
+                    name={d.property.alias}
+                    location={`${d.property.municipality}${
+                      d.property.province ? ' · ' + d.property.province : ''
+                    }`}
+                    chips={[
+                      {
+                        label: d.type === 'habitaciones' ? 'Habitaciones' : 'Piso completo',
+                        isType: true,
+                      },
+                      { label: `${d.habitaciones} hab` },
+                      ...(d.property.squareMeters
+                        ? [{ label: `${d.property.squareMeters} m²` }]
+                        : []),
+                    ]}
+                    metrics={[
+                      {
+                        label: 'Comprado por',
+                        value: <MoneyValue value={compradoPor} decimals={0} />,
+                        sub: fechaCompraFmt,
+                      },
+                      {
+                        label: 'Vale hoy',
+                        value: hayValoracion
+                          ? <MoneyValue value={valHoy.valor} decimals={0} />
+                          : <span>—</span>,
+                        sub: hayValoracion ? fechaValFmt : 'sin valoración',
+                        tone: valorTone,
+                      },
+                      {
+                        label: 'Renta mes',
+                        value: <MoneyValue value={d.rentaMensual} decimals={0} />,
+                      },
+                    ]}
+                    type={d.type}
+                    rooms={
+                      d.type === 'habitaciones'
+                        ? {
+                            occupied: d.ocupadas,
+                            total: d.habitaciones,
+                            contextLabel:
+                              d.ocupadas < d.habitaciones
+                                ? `${d.habitaciones - d.ocupadas} hab libre(s)`
+                                : 'Todo al día',
+                            contextTone:
+                              d.ocupadas < d.habitaciones ? 'gold' : 'pos',
+                            items: Array.from({ length: d.habitaciones }, (_, i) => ({
+                              label: i + 1,
+                              color: (i < d.ocupadas
+                                ? (['green', 'red', 'yellow', 'blue', 'bw'] as const)[i % 5]
+                                : 'vacant') as
+                                | 'green'
+                                | 'red'
+                                | 'yellow'
+                                | 'blue'
+                                | 'bw'
+                                | 'vacant',
+                            })),
+                          }
+                        : undefined
+                    }
                 tenant={
                   d.type === 'completo' && d.contratosActivos.length > 0
                     ? {
@@ -366,7 +429,8 @@ const ListadoPage: React.FC = () => {
                 }
                 onClick={() => navigate(`/inmuebles/${d.property.id}`)}
               />
-            ))
+                );
+              })
           )}
         </div>
 

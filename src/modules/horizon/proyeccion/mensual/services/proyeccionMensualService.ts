@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { initDB, OpexRule, Contract } from '../../../../../services/db';
+import { OpexRule, Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { pensionService } from '../../../../../services/pensionService';
@@ -21,6 +21,7 @@ import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversi
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
+import { valoracionesService } from '../../../../../services/valoracionesService';
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
@@ -665,7 +666,6 @@ function buildMonthRow(
  * Load and aggregate all base financial data from the database
  */
 async function loadBaseData(): Promise<BaseData> {
-  const db = await initDB();
   const year = START_YEAR;
 
   // Personal data · T14.4 · migrado a fiscalContextService gateway
@@ -858,7 +858,8 @@ async function loadBaseData(): Promise<BaseData> {
   // Historical valuations — build index for fast per-asset per-month lookups
   let valoracionIndex: ValoracionIndex = new Map();
   try {
-    const valoracionesHistoricas: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    // T24.1: acceso centralizado via valoracionesService
+    const valoracionesHistoricas: ValoracionHistorica[] = await valoracionesService.getAllValoraciones();
     valoracionIndex = buildValoracionIndex(valoracionesHistoricas);
   } catch {
     // No valuation history available

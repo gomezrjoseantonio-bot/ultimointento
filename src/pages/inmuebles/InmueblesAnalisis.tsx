@@ -43,6 +43,7 @@ import type { ValoracionHistorica } from '../../types/valoraciones';
 import { getCachedStoreRecords } from '../../services/indexedDbCacheService';
 import { getAllocationFactor } from '../../services/prestamosService';
 import { getTotalCapexHastaEjercicio } from '../../services/mejoraActivoService';
+import { valoracionesService } from '../../services/valoracionesService';
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
 const C = {
@@ -1199,7 +1200,8 @@ export default function InmueblesAnalisis() {
           // V5.4+: use compromisosRecurrentes (ambito='inmueble') instead of opexRules (DEPRECATED)
           getCachedStoreRecords<CompromisoRecurrente>('compromisosRecurrentes')
             .then((all) => all.filter((c) => c.ambito === 'inmueble')),
-          getCachedStoreRecords<ValoracionHistorica>('valoraciones_historicas'),
+          // T24.1: acceso centralizado via valoracionesService
+          valoracionesService.getAllValoraciones(),
           gastosInmuebleService.getAll(),
           getCachedStoreRecords<EjercicioFiscalCoord>('ejerciciosFiscalesCoord', { forceRefresh: true }),
         ]);

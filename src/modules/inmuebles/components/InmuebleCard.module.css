@@ -185,7 +185,16 @@
 }
 
 .metricVal.pos { color: var(--atlas-v5-pos); }
+.metricVal.neg { color: var(--atlas-v5-neg); }
 .metricVal.muted { color: var(--atlas-v5-ink-4); }
+
+.metricSub {
+  font-size: 9.5px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  margin-top: 2px;
+  letter-spacing: -0.01em;
+}
 
 .tenantRow {
   display: flex;
