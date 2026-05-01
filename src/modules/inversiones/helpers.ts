@@ -5,7 +5,7 @@
 // no contengan cálculos. La lógica de negocio (CRUD posiciones · aportaciones)
 // se mantiene en los services del repositorio (NO se duplica aquí).
 
-import type { PosicionInversion } from '../../types/inversiones';
+import type { PosicionInversion, TipoPosicion } from '../../types/inversiones';
 import type { PositionRow } from './types';
 
 // Paleta de gráficos · ciclamos colores entre posiciones para diferenciar
@@ -270,3 +270,292 @@ export const TIPO_LABEL: Record<string, string> = {
 };
 
 export const labelTipo = (t: string): string => TIPO_LABEL[t] ?? t.replace(/_/g, ' ');
+
+// ── Helpers · galería v2 (T23.1 · § 2.6 spec) ───────────────────────────────
+
+export type GrupoPosicion = 'rendimiento_periodico' | 'dividendos' | 'valoracion_simple' | 'otro';
+export type CardClass = 'plan' | 'prestamo' | 'accion' | 'cripto' | 'fondo' | 'deposito';
+
+const GRUPO_RENDIMIENTO_PERIODICO: TipoPosicion[] = [
+  'cuenta_remunerada',
+  'prestamo_p2p',
+  'deposito_plazo',
+];
+const GRUPO_DIVIDENDOS: TipoPosicion[] = ['accion', 'etf', 'reit'];
+const GRUPO_VALORACION_SIMPLE: TipoPosicion[] = [
+  'fondo_inversion',
+  'plan_pensiones',
+  'plan_empleo',
+  'crypto',
+];
+
+/**
+ * Clasifica un `TipoPosicion` en uno de los 3 grupos de visualización
+ * que usa la galería v2 + las fichas detalle de 23.3. `otro` y `deposito`
+ * (legacy) caen en `'otro'` y reciben placeholder mínimo.
+ */
+export function clasificarTipo(t: TipoPosicion): GrupoPosicion {
+  if (GRUPO_RENDIMIENTO_PERIODICO.includes(t)) return 'rendimiento_periodico';
+  if (GRUPO_DIVIDENDOS.includes(t)) return 'dividendos';
+  if (GRUPO_VALORACION_SIMPLE.includes(t)) return 'valoracion_simple';
+  return 'otro';
+}
+
+/**
+ * Devuelve la clase CSS de la carta (controla el color del border-top en § Z.3).
+ */
+export function mapTipoToCardClass(t: TipoPosicion): CardClass {
+  switch (t) {
+    case 'plan_pensiones':
+    case 'plan_empleo':
+      return 'plan';
+    case 'prestamo_p2p':
+      return 'prestamo';
+    case 'accion':
+    case 'etf':
+    case 'reit':
+      return 'accion';
+    case 'crypto':
+      return 'cripto';
+    case 'fondo_inversion':
+      return 'fondo';
+    case 'cuenta_remunerada':
+    case 'deposito_plazo':
+    case 'deposito':
+      return 'deposito';
+    default:
+      return 'fondo';
+  }
+}
+
+/**
+ * Etiqueta larga del tipo (debajo del logo, en la cabecera de la carta).
+ */
+export function getTipoLabel(t: TipoPosicion): string {
+  return TIPO_LABEL[t] ?? t.replace(/_/g, ' ');
+}
+
+/**
+ * Etiqueta compacta del tipo (chip top-right de la carta).
+ */
+export function getTipoTagLabel(t: TipoPosicion): string {
+  switch (t) {
+    case 'plan_pensiones':
+      return 'Plan PP';
+    case 'plan_empleo':
+      return 'Plan empleo';
+    case 'prestamo_p2p':
+      return 'P2P';
+    case 'cuenta_remunerada':
+      return 'Cuenta';
+    case 'deposito_plazo':
+      return 'Depósito';
+    case 'deposito':
+      return 'Depósito';
+    case 'accion':
+      return 'Acción';
+    case 'etf':
+      return 'ETF';
+    case 'reit':
+      return 'REIT';
+    case 'fondo_inversion':
+      return 'Fondo';
+    case 'crypto':
+      return 'Crypto';
+    case 'otro':
+      return 'Otro';
+    default:
+      return getTipoLabel(t);
+  }
+}
+
+const LOGO_CLASS_MAP: Array<{ pattern: RegExp; cls: string }> = [
+  { pattern: /myinvestor/i, cls: 'myi' },
+  { pattern: /smartflip/i, cls: 'smartflip' },
+  { pattern: /bbva/i, cls: 'bbva' },
+  { pattern: /unihouser|uni\b/i, cls: 'uni' },
+  { pattern: /orange|espagne/i, cls: 'orange' },
+];
+
+/**
+ * Devuelve la clase CSS del logo según la entidad. Vacío si no se reconoce
+ * (la carta usa el estilo neutro en ese caso).
+ */
+export function getLogoClass(entidad?: string | null): string {
+  if (!entidad) return '';
+  for (const { pattern, cls } of LOGO_CLASS_MAP) {
+    if (pattern.test(entidad)) return cls;
+  }
+  return '';
+}
+
+/**
+ * Texto a renderizar dentro del logo cuadrado (38x38). Iniciales o trocito
+ * de la entidad. Si no hay entidad, devuelve `'?'` para no romper la carta.
+ */
+export function getLogoText(entidad?: string | null): string {
+  if (!entidad) return '?';
+  const trimmed = entidad.trim();
+  if (!trimmed) return '?';
+  const parts = trimmed.split(/[\s/·.-]+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0].slice(0, 3).toUpperCase();
+}
+
+/**
+ * Meta del footer · cadena corta con el dato más relevante según el tipo:
+ * - rendimiento periódico · "TIN X% · {N} cobros"
+ * - dividendos · "div anual {X €}" o "—" si no disponible
+ * - valoración simple · "CAGR {X%}" o "—"
+ */
+export function getFooterMeta(p: PosicionInversion): string {
+  const grupo = clasificarTipo(p.tipo);
+  if (grupo === 'rendimiento_periodico') {
+    const tin = p.rendimiento?.tasa_interes_anual;
+    const cobros = (p.aportaciones || []).filter((a) => a.tipo === 'dividendo').length;
+    if (typeof tin === 'number' && Number.isFinite(tin)) {
+      return cobros > 0 ? `TIN ${tin.toFixed(2)}% · ${cobros} cobros` : `TIN ${tin.toFixed(2)}%`;
+    }
+    return cobros > 0 ? `${cobros} cobros` : '—';
+  }
+  if (grupo === 'dividendos') {
+    const div = p.dividendo_anual_estimado;
+    if (typeof div === 'number' && div > 0) return `div anual ${formatCurrency(div)}`;
+    const cobros = (p.aportaciones || []).filter((a) => a.tipo === 'dividendo').length;
+    if (cobros > 0) return `${cobros} dividendos`;
+    return '—';
+  }
+  if (grupo === 'valoracion_simple') {
+    const cagr = calculateEstimatedCagr(p);
+    if (Number.isFinite(cagr) && Math.abs(cagr) > 0.0001) {
+      return `CAGR ${formatPercent(cagr)}`;
+    }
+    const aps = (p.aportaciones || []).length;
+    return aps > 0 ? `${aps} aportaciones` : '—';
+  }
+  return '—';
+}
+
+export interface SerieValorPunto {
+  x: number;
+  y: number;
+  fecha: string;
+}
+
+/**
+ * Construye la serie de valor histórica para sparklines (`valoracion_simple`
+ * y `dividendos`). Cada aportación añade su importe acumulado al total
+ * aportado · el último punto pinta el `valor_actual` real.
+ */
+export function construirSerieValor(p: PosicionInversion): SerieValorPunto[] {
+  const aps = (p.aportaciones || [])
+    .filter((a) => a && a.fecha)
+    .slice()
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+  if (aps.length === 0) return [];
+
+  const puntos: SerieValorPunto[] = [];
+  let acumulado = 0;
+  for (const ap of aps) {
+    const importe = Number(ap.importe ?? 0);
+    if (ap.tipo === 'reembolso') acumulado -= importe;
+    else if (ap.tipo === 'aportacion') acumulado += importe;
+    // 'dividendo' no afecta al capital aportado
+    const ts = new Date(ap.fecha).getTime();
+    puntos.push({
+      x: ts,
+      y: Math.max(acumulado, 0),
+      fecha: ap.fecha,
+    });
+  }
+
+  const valorActual = Number(p.valor_actual ?? 0);
+  const fechaValoracion = p.fecha_valoracion || new Date().toISOString();
+  const lastTs = new Date(fechaValoracion).getTime();
+  const lastPunto = puntos[puntos.length - 1];
+  if (!lastPunto || lastPunto.x < lastTs) {
+    puntos.push({ x: lastTs, y: valorActual, fecha: fechaValoracion });
+  } else {
+    // si la última aportación es más reciente que la valoración · ajustamos
+    // el último punto al valor actual conocido
+    puntos[puntos.length - 1] = { ...lastPunto, y: valorActual };
+  }
+
+  return puntos;
+}
+
+/**
+ * Posición se considera cerrada si:
+ * - `activo === false` (campo del store · marca explícita), o
+ * - `plan_liquidacion.activo` con fecha estimada anterior a hoy y liquidación total, o
+ * - `total_aportado <= 0` y suma de reembolsos > 0 (todo reembolsado).
+ *
+ * En T23.1 esta función se usa solo como filtro defensivo · el grueso de
+ * posiciones cerradas vendrá del adaptador en 23.4 · NO del store directo.
+ */
+export function esCerrada(p: PosicionInversion): boolean {
+  if (p.activo === false) return true;
+  const liq = p.plan_liquidacion;
+  if (liq?.activo && liq.liquidacion_total && liq.fecha_estimada) {
+    const t = new Date(liq.fecha_estimada).getTime();
+    if (Number.isFinite(t) && t <= Date.now()) return true;
+  }
+  const aps = p.aportaciones || [];
+  const reembolsos = aps
+    .filter((a) => a.tipo === 'reembolso')
+    .reduce((s, a) => s + Number(a.importe || 0), 0);
+  if (reembolsos > 0 && (p.total_aportado ?? 0) <= 0) return true;
+  return false;
+}
+
+/**
+ * Color asociado al grupo · usado para el trazo del sparkline (debe coincidir
+ * conceptualmente con el border-top de la carta · § Z.3).
+ */
+export function getColorByTipo(t: TipoPosicion): string {
+  switch (clasificarTipo(t)) {
+    case 'rendimiento_periodico':
+      return 'var(--atlas-v5-gold)';
+    case 'dividendos':
+      return 'var(--atlas-v5-pos)';
+    case 'valoracion_simple':
+      return t === 'crypto' ? '#6E5BC7' : 'var(--atlas-v5-brand)';
+    default:
+      return 'var(--atlas-v5-ink-3)';
+  }
+}
+
+/**
+ * Formato delta con signo explícito (`+1.234 €` / `-1.234 €`).
+ */
+export function formatDelta(n: number): string {
+  if (!Number.isFinite(n)) return '—';
+  const sign = n > 0 ? '+' : n < 0 ? '−' : '';
+  const abs = Math.abs(Math.round(n));
+  return `${sign}${new Intl.NumberFormat('es-ES').format(abs)} €`;
+}
+
+/**
+ * Clase semántica para el texto del delta · `pos` · `neg` · `muted`.
+ */
+export function signClass(n: number): 'pos' | 'neg' | 'muted' {
+  if (!Number.isFinite(n) || Math.abs(n) < 0.005) return 'muted';
+  return n > 0 ? 'pos' : 'neg';
+}
+
+/**
+ * Devuelve el rango de años (formato `'2020-2024'` o `'2024'`) cubierto por
+ * un conjunto de posiciones (típicamente las cerradas, para la cabecera de
+ * la sección colapsable de la galería).
+ */
+export function rangoAnios(fechas: Array<string | null | undefined>): string {
+  const years = fechas
+    .map((f) => (f ? new Date(f).getFullYear() : NaN))
+    .filter((y) => Number.isFinite(y) && y > 1900) as number[];
+  if (years.length === 0) return '';
+  const min = Math.min(...years);
+  const max = Math.max(...years);
+  return min === max ? String(min) : `${min}-${max}`;
+}

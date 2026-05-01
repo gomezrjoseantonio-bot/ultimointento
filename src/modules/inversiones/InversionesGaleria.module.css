@@ -1,0 +1,492 @@
+/* ============================================================
+   T23.1 · Inversiones · galería v2
+   Estilos canónicos § Z spec · valores literales del mockup
+   `docs/audit-inputs/atlas-inversiones-v2.html`. Cero hex hardcoded
+   fuera de los listados explícitamente en § Z.3 (logos de marca:
+   MyInvestor / SmartFlip / BBVA / Unihouser / Orange · cripto purple).
+   ============================================================ */
+
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13.5px;
+}
+
+/* ── Cabecera de sección sobre la grid (§ 2.3 spec) ────────────────────── */
+.galleryHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 18px 0 10px;
+}
+
+.galleryTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-3);
+}
+
+.galleryCount {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+/* ── Grid 3 columnas (§ Z.2) ───────────────────────────────────────────── */
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+@media (max-width: 1100px) {
+  .galleryGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .galleryGrid {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 18px 16px 40px;
+  }
+}
+
+/* ── Carta base (§ Z.3) ────────────────────────────────────────────────── */
+.carta {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 14px;
+  padding: 22px;
+  cursor: pointer;
+  transition: all 140ms ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 280px;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.carta:hover {
+  border-color: var(--atlas-v5-gold);
+  transform: translateY(-2px);
+  box-shadow: var(--atlas-v5-shadow-card);
+}
+
+.carta:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+/* Borde top color por tipo */
+.carta.plan { border-top: 3px solid var(--atlas-v5-brand); }
+.carta.prestamo { border-top: 3px solid var(--atlas-v5-gold); }
+.carta.accion { border-top: 3px solid var(--atlas-v5-pos); }
+.carta.cripto { border-top: 3px solid #6E5BC7; } /* § Z.3 · purpura especial cripto */
+.carta.deposito { border-top: 3px solid var(--atlas-v5-ink-3); }
+.carta.fondo { border-top: 3px solid var(--atlas-v5-brand-2); }
+
+/* Top de carta · marca + chip tipo */
+.cartaTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cartaMarca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cartaLogo {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 13px;
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  border: 1px solid var(--atlas-v5-line);
+  flex-shrink: 0;
+}
+
+/* Logos de marca (§ Z.3 · listados literales del mockup) */
+.cartaLogo.myi {
+  background: linear-gradient(135deg, #FF8200, #C8530A);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.smartflip {
+  background: var(--atlas-v5-brand);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.bbva {
+  background: var(--atlas-v5-brand-bbva);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.uni {
+  background: linear-gradient(135deg, #C59A47, #B88A3E);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.orange {
+  background: var(--atlas-v5-brand-ing);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+
+.cartaEntidadInfo {
+  min-width: 0;
+}
+
+.cartaEntidadLab {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.cartaEntidadNom {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cartaTipo {
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-bold);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.cartaTipo.plan { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand); }
+.cartaTipo.prestamo { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.cartaTipo.accion { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.cartaTipo.cripto { background: #EFE9FE; color: #6E5BC7; } /* § Z.3 · cripto */
+.cartaTipo.deposito { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); }
+.cartaTipo.fondo { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand-2); }
+
+.cartaNom {
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+}
+
+.cartaValor {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 26px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cartaValorSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+  font-family: var(--atlas-v5-font-mono-num);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.delta {
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.delta.pos { color: var(--atlas-v5-pos); }
+.delta.neg { color: var(--atlas-v5-neg); }
+.delta.gold { color: var(--atlas-v5-gold); }
+.delta.muted { color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-medium); }
+
+.cartaViz {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  min-height: 60px;
+  width: 100%;
+}
+
+.cartaVizSparkline {
+  width: 100%;
+  height: 56px;
+  display: block;
+}
+
+.cartaVizPlaceholder {
+  width: 100%;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  border-top: 1px dashed var(--atlas-v5-line);
+}
+
+/* Matriz cobros (§ Z.4 · 12 cuadritos rendimiento periódico) */
+.cartaMatriz {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+  width: 100%;
+  align-items: center;
+}
+
+.cartaMatrizCell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--atlas-v5-line-2);
+  position: relative;
+}
+.cartaMatrizCell.cobrado {
+  background: var(--atlas-v5-pos);
+}
+.cartaMatrizCell.pendiente {
+  background: var(--atlas-v5-warn);
+}
+.cartaMatrizCell.futuro {
+  background: var(--atlas-v5-line);
+}
+
+.cartaMatrizLeyenda {
+  margin-top: 6px;
+  font-size: 9.5px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+/* Footer de carta */
+.cartaFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.cartaFooterMeta {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.cartaFooterCta {
+  font-size: 11px;
+  color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-bold);
+  opacity: 0;
+  transition: opacity 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.carta:hover .cartaFooterCta,
+.carta:focus-visible .cartaFooterCta {
+  opacity: 1;
+}
+
+/* ── Carta "Añadir posición" (§ Z.5) ───────────────────────────────────── */
+.cartaAdd {
+  border: 2px dashed var(--atlas-v5-line);
+  background: var(--atlas-v5-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  min-height: 280px;
+  color: var(--atlas-v5-ink-4);
+  transition: all 140ms ease;
+  border-radius: 14px;
+  padding: 22px;
+  font-family: inherit;
+  width: 100%;
+  text-align: center;
+}
+
+.cartaAdd:hover {
+  border-color: var(--atlas-v5-gold);
+  color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.cartaAdd:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.cartaAddTitle {
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: inherit;
+}
+
+.cartaAddSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  text-align: center;
+  padding: 0 20px;
+  line-height: 1.5;
+}
+
+/* ── Sección "Posiciones cerradas" colapsable (§ Z.6) ──────────────────── */
+.cerradasSec {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 18px 22px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 140ms ease;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+  text-align: left;
+}
+
+.cerradasSec:hover {
+  border-color: var(--atlas-v5-ink-5);
+  background: var(--atlas-v5-card);
+}
+
+.cerradasSec:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.cerradasSecLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cerradasIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  flex-shrink: 0;
+}
+
+.cerradasTextos {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cerradasTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cerradasTitle {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+}
+
+.cerradasCount {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.cerradasSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.cerradasRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cerradasTotal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cerradasTotalVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+}
+.cerradasTotalVal.pos { color: var(--atlas-v5-pos); }
+.cerradasTotalVal.neg { color: var(--atlas-v5-neg); }
+.cerradasTotalVal.muted { color: var(--atlas-v5-ink-3); }
+
+.cerradasTotalLab {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cerradasArrow {
+  color: var(--atlas-v5-ink-4);
+}

@@ -84,6 +84,12 @@ import {
   Inbox,
   Banknote,
   Sparkles,
+  // Iconos T23 · galería Inversiones (§ AA spec)
+  PlusSquare,
+  PlusCircle,
+  PiggyBank,
+  HandCoins,
+  Bitcoin,
 } from 'lucide-react';
 
 /**
@@ -177,6 +183,12 @@ export const Icons = {
   Inbox,
   Banknote,             // §AA.7 · timeline devolución
   Sparkles,
+  // ===== T23 · Inversiones · galería v2 (§ AA spec) =====
+  PlusSquare,
+  PlusCircle,
+  PiggyBank,
+  HandCoins,
+  Bitcoin,
 } as const;
 
 export type IconName = keyof typeof Icons;

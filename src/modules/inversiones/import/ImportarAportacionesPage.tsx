@@ -11,7 +11,7 @@ const ImportarAportacionesPage: React.FC = () => {
   const navigate = useNavigate();
   return (
     <ImportarAportaciones
-      onComplete={() => navigate('/inversiones/cartera')}
+      onComplete={() => navigate('/inversiones')}
       onBack={() => navigate('/inversiones')}
     />
   );
