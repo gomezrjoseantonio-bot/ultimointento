@@ -7,6 +7,7 @@
 
 import type { PosicionInversion, TipoPosicion } from '../../types/inversiones';
 import type { PositionRow } from './types';
+import type { CartaItem } from './types/cartaItem';
 
 // Paleta de gráficos · ciclamos colores entre posiciones para diferenciar
 // líneas y donut sin acoplarnos a tokens semánticos. Ver §5.1 guía v5.
@@ -255,18 +256,18 @@ export const calcularHorizonteProyeccion = (
 };
 
 export const TIPO_LABEL: Record<string, string> = {
-  cuenta_remunerada: 'Cuenta remunerada',
-  prestamo_p2p: 'Préstamo P2P',
-  deposito_plazo: 'Depósito a plazo',
-  deposito: 'Depósito',
-  fondo_inversion: 'Fondo inversión',
+  cuenta_remunerada: 'CUENTA REMUNERADA',
+  prestamo_p2p: 'PRÉSTAMO P2P',
+  deposito_plazo: 'DEPÓSITO A PLAZO',
+  deposito: 'DEPÓSITO',
+  fondo_inversion: 'FONDO INVERSIÓN',
   etf: 'ETF',
   reit: 'REIT',
-  accion: 'Acción',
-  crypto: 'Crypto',
-  plan_pensiones: 'Plan pensiones',
-  plan_empleo: 'Plan empleo',
-  otro: 'Otro',
+  accion: 'ACCIONES',
+  crypto: 'CRYPTO',
+  plan_pensiones: 'PLAN PENSIONES',
+  plan_empleo: 'PLAN EMPLEO',
+  otro: 'OTRO',
 };
 
 export const labelTipo = (t: string): string => TIPO_LABEL[t] ?? t.replace(/_/g, ' ');
@@ -274,7 +275,7 @@ export const labelTipo = (t: string): string => TIPO_LABEL[t] ?? t.replace(/_/g,
 // ── Helpers · galería v2 (T23.1 · § 2.6 spec) ───────────────────────────────
 
 export type GrupoPosicion = 'rendimiento_periodico' | 'dividendos' | 'valoracion_simple' | 'otro';
-export type CardClass = 'plan' | 'prestamo' | 'accion' | 'cripto' | 'fondo' | 'deposito';
+export type CardClass = 'plan' | 'prestamo' | 'accion' | 'cripto' | 'fondo' | 'deposito' | 'otro';
 
 const GRUPO_RENDIMIENTO_PERIODICO: TipoPosicion[] = [
   'cuenta_remunerada',
@@ -302,7 +303,9 @@ export function clasificarTipo(t: TipoPosicion): GrupoPosicion {
 }
 
 /**
- * Devuelve la clase CSS de la carta (controla el color del border-top en § Z.3).
+ * Devuelve la clase CSS de la carta (controla el color del border-top en § Z.2.1).
+ * T23.6.2 · agrupaciones correctas:
+ *   plan (navy) · prestamo/deposito (gold) · accion/fondo (pos) · cripto (purple) · otro (ink-3)
  */
 export function mapTipoToCardClass(t: TipoPosicion): CardClass {
   switch (t) {
@@ -310,21 +313,20 @@ export function mapTipoToCardClass(t: TipoPosicion): CardClass {
     case 'plan_empleo':
       return 'plan';
     case 'prestamo_p2p':
+    case 'deposito_plazo':
+    case 'cuenta_remunerada':
       return 'prestamo';
     case 'accion':
     case 'etf':
     case 'reit':
+    case 'fondo_inversion':
       return 'accion';
     case 'crypto':
       return 'cripto';
-    case 'fondo_inversion':
-      return 'fondo';
-    case 'cuenta_remunerada':
-    case 'deposito_plazo':
     case 'deposito':
-      return 'deposito';
+    case 'otro':
     default:
-      return 'fondo';
+      return 'otro';
   }
 }
 
@@ -337,33 +339,33 @@ export function getTipoLabel(t: TipoPosicion): string {
 
 /**
  * Etiqueta compacta del tipo (chip top-right de la carta).
+ * T23.6.2 · tabla exhaustiva §Z.2.2 spec.
  */
 export function getTipoTagLabel(t: TipoPosicion): string {
   switch (t) {
     case 'plan_pensiones':
-      return 'Plan PP';
+      return 'PLAN PP';
     case 'plan_empleo':
-      return 'Plan empleo';
+      return 'PLAN PPE';
     case 'prestamo_p2p':
       return 'P2P';
     case 'cuenta_remunerada':
-      return 'Cuenta';
+      return 'CUENTA';
     case 'deposito_plazo':
-      return 'Depósito';
     case 'deposito':
-      return 'Depósito';
+      return 'DEPÓSITO';
     case 'accion':
-      return 'Acción';
+      return 'ACCIÓN';
     case 'etf':
       return 'ETF';
     case 'reit':
       return 'REIT';
     case 'fondo_inversion':
-      return 'Fondo';
+      return 'FONDO';
     case 'crypto':
-      return 'Crypto';
+      return 'CRYPTO';
     case 'otro':
-      return 'Otro';
+      return 'OTRO';
     default:
       return getTipoLabel(t);
   }
@@ -373,7 +375,16 @@ const LOGO_CLASS_MAP: Array<{ pattern: RegExp; cls: string }> = [
   { pattern: /myinvestor/i, cls: 'myi' },
   { pattern: /smartflip/i, cls: 'smartflip' },
   { pattern: /bbva/i, cls: 'bbva' },
-  { pattern: /unihouser|uni\b/i, cls: 'uni' },
+  { pattern: /unihouser/i, cls: 'unihouser' },
+  { pattern: /santander/i, cls: 'san' },
+  { pattern: /\bing\b/i, cls: 'ing' },
+  { pattern: /caixa(bank)?/i, cls: 'caixa' },
+  { pattern: /sabadell/i, cls: 'sab' },
+  { pattern: /unicaja/i, cls: 'uni' },
+  { pattern: /bnp\s*paribas|bnp/i, cls: 'bnp' },
+  { pattern: /indexa\s*capital|indexa/i, cls: 'indexa' },
+  { pattern: /coinbase/i, cls: 'coinbase' },
+  { pattern: /binance/i, cls: 'binance' },
   { pattern: /orange|espagne/i, cls: 'orange' },
 ];
 
@@ -512,7 +523,7 @@ export function esCerrada(p: PosicionInversion): boolean {
 
 /**
  * Color asociado al grupo · usado para el trazo del sparkline (debe coincidir
- * conceptualmente con el border-top de la carta · § Z.3).
+ * conceptualmente con el border-top de la carta · § Z.2.1).
  */
 export function getColorByTipo(t: TipoPosicion): string {
   switch (clasificarTipo(t)) {
@@ -521,7 +532,7 @@ export function getColorByTipo(t: TipoPosicion): string {
     case 'dividendos':
       return 'var(--atlas-v5-pos)';
     case 'valoracion_simple':
-      return t === 'crypto' ? '#6E5BC7' : 'var(--atlas-v5-brand)';
+      return t === 'crypto' ? 'var(--atlas-v5-cripto)' : 'var(--atlas-v5-brand)';
     default:
       return 'var(--atlas-v5-ink-3)';
   }
@@ -558,4 +569,135 @@ export function rangoAnios(fechas: Array<string | null | undefined>): string {
   const min = Math.min(...years);
   const max = Math.max(...years);
   return min === max ? String(min) : `${min}-${max}`;
+}
+
+/** Formatea una fecha ISO a "{mes abreviado} {año}" · ej. "mar 2025". */
+function formatMesAnio(isoDate?: string | null): string {
+  if (!isoDate) return '—';
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+}
+
+
+/**
+ * Meta del footer para `CartaItem` · cadena corta con el dato más relevante
+ * según el tipo (§Z.2.5 spec T23.6.2 · tabla de 11 casos).
+ * Si dato no disponible · devuelve `'—'` · NUNCA inventa valores.
+ */
+export function getFooterMetaFromItem(item: CartaItem): string {
+  const { tipo } = item;
+
+  switch (tipo) {
+    case 'plan_pensiones':
+    case 'plan_empleo': {
+      const cagr = item.cagr_pct;
+      const año = item.fecha_apertura ? new Date(item.fecha_apertura).getFullYear() : null;
+      if (typeof cagr === 'number' && Number.isFinite(cagr) && Math.abs(cagr) > 0.0001) {
+        return año ? `CAGR ${formatPercent(cagr)} · desde ${año}` : `CAGR ${formatPercent(cagr)}`;
+      }
+      return año ? `desde ${año}` : '—';
+    }
+
+    case 'fondo_inversion': {
+      const cagr = item.cagr_pct;
+      // TER no está en CartaItem todavía · mostrar solo CAGR
+      if (typeof cagr === 'number' && Number.isFinite(cagr) && Math.abs(cagr) > 0.0001) {
+        return `CAGR ${formatPercent(cagr)}`;
+      }
+      return '—';
+    }
+
+    case 'prestamo_p2p': {
+      // Detectar si es amortización (cuota_mensual presente) o solo intereses
+      if (typeof item.cuota_mensual === 'number' && item.cuota_mensual > 0) {
+        // Amortización (Unihouser-style)
+        const cuota = formatCurrency(item.cuota_mensual);
+        const vence = formatMesAnio(item.fecha_vencimiento);
+        return `${cuota}/mes · vence ${vence}`;
+      } else {
+        // Solo intereses / bullet
+        const vence = formatMesAnio(item.fecha_vencimiento);
+        // Contar cobros desde el _original si disponible
+        const posOrig = item._original as { rendimiento?: { pagos_generados?: Array<{ estado: string }> }; aportaciones?: Array<{ tipo: string }> };
+        const cobrosRendimiento = posOrig?.rendimiento?.pagos_generados?.filter((p) => p.estado === 'pagado')?.length ?? 0;
+        const cobrosAportacion = posOrig?.aportaciones?.filter((a) => a.tipo === 'dividendo')?.length ?? 0;
+        const totalCobros = cobrosRendimiento + cobrosAportacion;
+        // Total esperado: duracion_meses / frecuencia
+        const posInv = posOrig as { duracion_meses?: number; frecuencia_cobro?: string };
+        const duracion = posInv?.duracion_meses;
+        const FREQ_DIV: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12 };
+        const freqMeses = item.frecuencia_cobro ? (FREQ_DIV[item.frecuencia_cobro] ?? 1) : 1;
+        const totalEsperado = duracion ? Math.floor(duracion / freqMeses) : null;
+        if (vence !== '—') {
+          return totalEsperado != null
+            ? `vence ${vence} · ${totalCobros} de ${totalEsperado} cobrados`
+            : `vence ${vence}`;
+        }
+        return totalCobros > 0 ? `${totalCobros} cobros` : '—';
+      }
+    }
+
+    case 'deposito_plazo': {
+      const vence = formatMesAnio(item.fecha_vencimiento);
+      const tin = item.tin;
+      if (vence !== '—' && typeof tin === 'number' && Number.isFinite(tin)) {
+        return `vence ${vence} · TIN ${tin.toFixed(2)}%`;
+      }
+      if (vence !== '—') return `vence ${vence}`;
+      return '—';
+    }
+
+    case 'cuenta_remunerada': {
+      const tin = item.tin;
+      if (typeof tin === 'number' && Number.isFinite(tin)) {
+        return `TIN ${tin.toFixed(2)}% · liquidez total`;
+      }
+      return 'liquidez total';
+    }
+
+    case 'accion': {
+      // RSU: detectar por pct_consolidacion presente
+      if (typeof item.pct_consolidacion === 'number') {
+        if (item.pct_consolidacion >= 100) return 'disponible · liquidable';
+        return `consolidando · ${item.pct_consolidacion.toFixed(0)}%`;
+      }
+      // Acciones no-RSU: dividendos
+      const posOrig = item._original as { dividendo_anual_estimado?: number; aportaciones?: Array<{ tipo: string }> };
+      const cobros = posOrig?.aportaciones?.filter((a) => a.tipo === 'dividendo')?.length ?? 0;
+      if (cobros > 0 && item.total_aportado > 0) {
+        const divAnual = posOrig?.dividendo_anual_estimado;
+        const yieldPct = typeof divAnual === 'number' && divAnual > 0
+          ? ((divAnual / item.valor_actual) * 100).toFixed(2)
+          : null;
+        return yieldPct
+          ? `${cobros} dividendos · yield ${yieldPct}%`
+          : `${cobros} dividendos`;
+      }
+      return '—';
+    }
+
+    case 'etf':
+    case 'reit': {
+      const posOrig = item._original as { dividendo_anual_estimado?: number; aportaciones?: Array<{ tipo: string }> };
+      const cobros = posOrig?.aportaciones?.filter((a) => a.tipo === 'dividendo')?.length ?? 0;
+      if (cobros > 0) {
+        const divAnual = posOrig?.dividendo_anual_estimado;
+        const yieldPct = typeof divAnual === 'number' && divAnual > 0 && item.valor_actual > 0
+          ? ((divAnual / item.valor_actual) * 100).toFixed(2)
+          : null;
+        return yieldPct
+          ? `${cobros} dividendos · yield ${yieldPct}%`
+          : `${cobros} dividendos`;
+      }
+      return '—';
+    }
+
+    case 'crypto': {
+      return item.entidad ? `wallet ${item.entidad}` : '—';
+    }
+
+    default:
+      return '—';
+  }
 }

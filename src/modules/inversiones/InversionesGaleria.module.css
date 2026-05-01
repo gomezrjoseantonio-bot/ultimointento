@@ -105,9 +105,10 @@
 .carta.plan { border-top: 3px solid var(--atlas-v5-brand); }
 .carta.prestamo { border-top: 3px solid var(--atlas-v5-gold); }
 .carta.accion { border-top: 3px solid var(--atlas-v5-pos); }
-.carta.cripto { border-top: 3px solid #6E5BC7; } /* § Z.3 · purpura especial cripto */
-.carta.deposito { border-top: 3px solid var(--atlas-v5-ink-3); }
-.carta.fondo { border-top: 3px solid var(--atlas-v5-brand-2); }
+.carta.cripto { border-top: 3px solid var(--atlas-v5-cripto); }
+.carta.fondo { border-top: 3px solid var(--atlas-v5-pos); }    /* T23.6.2 · equity/fondos → pos */
+.carta.deposito { border-top: 3px solid var(--atlas-v5-gold); }/* T23.6.2 · depósitos/P2P → gold */
+.carta.otro { border-top: 3px solid var(--atlas-v5-ink-3); }  /* otro / deposito legacy */
 
 /* Top de carta · marca + chip tipo */
 .cartaTop {
@@ -203,9 +204,10 @@
 .cartaTipo.plan { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand); }
 .cartaTipo.prestamo { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
 .cartaTipo.accion { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
-.cartaTipo.cripto { background: #EFE9FE; color: #6E5BC7; } /* § Z.3 · cripto */
-.cartaTipo.deposito { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); }
-.cartaTipo.fondo { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand-2); }
+.cartaTipo.cripto { background: var(--atlas-v5-cripto-wash); color: var(--atlas-v5-cripto); }
+.cartaTipo.fondo { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }  /* T23.6.2 · equity/fondos → pos */
+.cartaTipo.deposito { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }/* T23.6.2 · depósito → gold */
+.cartaTipo.otro { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); }
 
 .cartaNom {
   font-size: 18px;
@@ -283,11 +285,14 @@
   background: var(--atlas-v5-line-2);
   position: relative;
 }
+/* T23.6.2 · Corrige divergencia B.3-B.4: cobrado=verde · pendiente=oro · futuro=neutro */
 .cartaMatrizCell.cobrado {
-  background: var(--atlas-v5-pos);
+  background: var(--atlas-v5-pos-wash);
+  outline: 1px solid var(--atlas-v5-pos-border);
 }
 .cartaMatrizCell.pendiente {
-  background: var(--atlas-v5-warn);
+  background: var(--atlas-v5-gold-wash);
+  outline: 1px solid var(--atlas-v5-warn-border);
 }
 .cartaMatrizCell.futuro {
   background: var(--atlas-v5-line);
@@ -334,6 +339,62 @@
 .carta:focus-visible .cartaFooterCta {
   opacity: 1;
 }
+
+/* ── Visualización RSU · 3 filas info (§Z.2.4 T23.6.2) ──────────────── */
+.cartaVizInfoRows {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cartaVizInfoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cartaVizInfoLab {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cartaVizInfoVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+
+/* ── Logos de marca adicionales (§Z.3 T23.6.2) ───────────────────────── */
+.cartaLogo.san {
+  background: var(--atlas-v5-brand-santander);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.ing {
+  background: var(--atlas-v5-brand-ing);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.caixa {
+  background: var(--atlas-v5-brand-caixabank);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.sab {
+  background: var(--atlas-v5-brand-sabadell);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+.cartaLogo.uni {
+  background: var(--atlas-v5-brand-unicaja);
+  color: var(--atlas-v5-white);
+  border: none;
+}
+/* BNP, IndexaCapital, Coinbase, Binance usan inline style (gradients/hex de marca) */
 
 /* ── Carta "Añadir posición" (§ Z.5) ───────────────────────────────────── */
 .cartaAdd {

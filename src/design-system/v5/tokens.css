@@ -59,6 +59,10 @@
   --atlas-v5-warn-wash: #F5ECD6; /* advertencia tinted */
   --atlas-v5-warn-border: #E8D49B;/* borde sobre fondo warn-wash · usado en alerta · §9.1 */
 
+  /* ===== Cripto · púrpura (§Z.2.1 T23.6 · color identificativo inversiones crypto) ===== */
+  --atlas-v5-cripto: #6E5BC7;    /* púrpura cripto · border-top carta + chip */
+  --atlas-v5-cripto-wash: #EFE9FE;/* púrpura tinted · chip background */
+
   /* ===== Colores de marca · bancos y servicios externos (§12.5 guía v5)
      Aceptados aunque colisionen con la semántica pos/neg/warn porque
      son identidad de marca · no estado. Solo deben usarse para logos /
