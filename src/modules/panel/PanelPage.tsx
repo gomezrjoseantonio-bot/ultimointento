@@ -23,6 +23,7 @@ import PulseAssetCard from './components/PulseAssetCard';
 import PulsoDelMes from './components/PulsoDelMes';
 import AttentionList from './components/AttentionList';
 import MiPlanCompass from './components/MiPlanCompass';
+import YearTimeline from './components/YearTimeline';
 import type { AlertaItem } from './components/AttentionList';
 import styles from './PanelPage.module.css';
 
@@ -547,6 +548,14 @@ const PanelPage: React.FC = () => {
               metaInmuebles={planMetrics.metaInmuebles}
             />
           </div>
+
+          {/* Timeline 12 meses · § Z.12 · § AA.7 · T22.7 */}
+          <YearTimeline
+            treasuryEvents={treasuryEvents}
+            contracts={contracts}
+            prestamos={prestamos}
+            today={today}
+          />
         </>
       )}
     </div>

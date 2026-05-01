@@ -1,0 +1,211 @@
+/**
+ * ATLAS · Panel · YearTimeline
+ *
+ * Mini-timeline 12 meses · § Z.12 · TAREA 22.7
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md §8 · mockup §192-235
+ *
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ */
+
+/* ── Contenedor principal ── */
+.miniTimeline {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 18px 22px;
+  margin-bottom: 14px;
+}
+
+/* ── Cabecera ── */
+.miniTlHead {
+  margin-bottom: 14px;
+}
+
+.miniTlTitle {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+}
+
+.miniTlSub {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+}
+
+/* ── Stack (meses + eventos) ── */
+.miniTlStack {
+  position: relative;
+}
+
+/* ── Fila meses ── */
+.miniTlMonthsRow {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  border: 1px solid var(--atlas-v5-line-2);
+  border-radius: 5px;
+  background: var(--atlas-v5-bg);
+  height: 26px;
+  position: relative;
+}
+
+.miniTlMonth {
+  text-align: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+  color: var(--atlas-v5-ink-3);
+  padding-top: 7px;
+  border-left: 1px solid var(--atlas-v5-line-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.miniTlMonth:first-child {
+  border-left: none;
+}
+
+/* ── Fila eventos ── */
+.miniTlEventsRow {
+  position: relative;
+  height: 34px;
+  margin-top: 6px;
+}
+
+.miniTlEventsRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--atlas-v5-line-2);
+}
+
+/* ── Línea HOY ── */
+.miniTlToday {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--atlas-v5-neg);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.miniTlTodayLab {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 8.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-white);
+  background: var(--atlas-v5-neg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── Eventos (chips) ── */
+.miniTlEvento {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-white);
+  transition: transform 0.1s, box-shadow 0.1s;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.miniTlEvento:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: var(--atlas-v5-shadow-modal);
+  z-index: 10;
+}
+
+.miniTlEvento.fiscal {
+  background: var(--atlas-v5-brand);
+}
+
+.miniTlEvento.contrato {
+  background: var(--atlas-v5-gold);
+}
+
+.miniTlEvento.deuda {
+  background: var(--atlas-v5-neg);
+}
+
+.miniTlEvento.devolucion {
+  background: var(--atlas-v5-pos);
+}
+
+/* Segundo carril si solapan · § Z.12 */
+.miniTlEvento.stackB {
+  top: calc(50% + 16px);
+}
+
+.miniTlEvento.stackB:hover {
+  transform: translateY(-50%) scale(1.05);
+}
+
+/* ── Leyenda ── */
+.miniTlLeg {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.miniTlLegItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.miniTlLegMini {
+  width: 12px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.miniTlLegMini.fiscal {
+  background: var(--atlas-v5-brand);
+}
+
+.miniTlLegMini.contrato {
+  background: var(--atlas-v5-gold);
+}
+
+.miniTlLegMini.deuda {
+  background: var(--atlas-v5-neg);
+}
+
+.miniTlLegMini.devolucion {
+  background: var(--atlas-v5-pos);
+}
+
+/* ── Empty state ── */
+.miniTlEmpty {
+  padding: 18px 0 4px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  text-align: center;
+}
