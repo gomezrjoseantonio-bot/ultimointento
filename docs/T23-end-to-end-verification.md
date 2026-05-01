@@ -57,7 +57,7 @@
 - [ ] URL es `/inversiones/{id}` con el ID real
 - [ ] Header · botón `Volver a Inversiones` · título · chip tipo (`Plan PP`)
 - [ ] 4 KPIs · Aportado · Valor actual · Rentabilidad · CAGR
-- [ ] CAGR=0 muestra `+0.00%` (no "—") · valor=aportado caso común
+- [ ] CAGR=0 muestra `0.00%` (no "—") · valor=aportado caso común
 - [ ] Sparkline gigante O placeholder coherente "Datos insuficientes"
 - [ ] Panel composición · placeholder TODO ("Aún no hay datos de composición")
 - [ ] Tabla aportaciones · vacía si `aportaciones.length === 0` con CTA
@@ -125,7 +125,7 @@
 - [ ] Cancelar el form · si veníamos del selector vuelve al paso 1 · si era
   modo directo cierra el diálogo (T23.2 fix #6 · `openedDirectRef` estable)
 - [ ] Foco trapped en el modal · Escape cierra (T23.2 fixes accesibilidad)
-- [ ] Tras guardar · toast "Aportación añadida" · galería refresca
+- [ ] Tras guardar · toast "Aportación añadida." · galería refresca
 
 ---
 
@@ -141,7 +141,7 @@
 
 - [ ] Click en "Alta manual" · render `<PosicionFormDialog>`
 - [ ] Cumplimentar form · guardar
-- [ ] Toast "Posición creada" · galería refresca con la nueva carta
+- [ ] Toast "Posición creada." · galería refresca con la nueva carta
 - [ ] Si el guardado falla · wizard mantiene el form abierto (T23.2 fix
   · `onSavePosicion` lanza · wizard solo cierra al éxito)
 
@@ -216,9 +216,9 @@ store) o 1 ejercicio fiscal con `gananciasPerdidas` importado.**
 grep -rnE "#[0-9A-Fa-f]{3,8}" src/modules/inversiones/ | grep -v "^Binary"
 ```
 
-**Resultado esperado** · 10 coincidencias EXACTAS · todas listadas
-literalmente en § Z.3 spec o legacy de T20 (POSITION_COLORS dead-code en
-`helpers.ts` que se conserva por § 2.9 spec):
+**Resultado esperado** · 13 coincidencias EXACTAS en 10 líneas · todas
+listadas literalmente en § Z.3 spec o legacy de T20 (POSITION_COLORS
+dead-code en `helpers.ts` que se conserva por § 2.9 spec):
 
 | Archivo | Línea | Hex | Justificación |
 |---|---|---|---|

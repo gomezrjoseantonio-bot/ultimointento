@@ -86,7 +86,7 @@ con cartas heterogéneas + fichas detalle dedicadas.
 > discreto al módulo Fiscal solo via referencia explícita.
 
 **Cerrado en** · TAREA 23 (T23.1 → T23.5) · PRs #1205 · #1207 · #1209 ·
-#1210 · #(este PR T23.5 cierre).
+#1210 · #1212 (este PR T23.5 cierre).
 
 **Resumen del cierre** ·
 - Galería v2 con cartas heterogéneas · visualización contextual por tipo
