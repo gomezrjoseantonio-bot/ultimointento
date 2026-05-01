@@ -36,7 +36,10 @@ const ActualizarValorPlanDialog: React.FC<Props> = ({ plan, onSaved, onClose }) 
       // Formato YYYY-MM para valoraciones_historicas
       const fechaYYYYMM = fecha.slice(0, 7);
 
-      // 1 · Escribir en valoraciones_historicas
+      // valoracionesService.guardarValoracionActivo espera activo_id: number,
+      // pero los planes del store planesPensiones usan UUIDs (strings).
+      // El servicio y la DB tratan el campo como opaco · la búsqueda usa
+      // String(v.activo_id) === planId (ver planesPensionesService.eliminarPlan).
       await valoracionesService.guardarValoracionActivo(fechaYYYYMM, {
         tipo_activo: 'plan_pensiones',
         activo_id: plan.id as unknown as number, // UUID almacenado como string

@@ -38,8 +38,9 @@ const getLimiteAnual = (tipo: TipoAdministrativo): number =>
 
 const getLimiteTitular = (_tipo: TipoAdministrativo): number => 1_500;
 
-// ── Tramos base general (estatal) para tipo marginal ─────────────────────────
-// Fuente: alertasFiscalesService.ts · getTipoMarginal.
+// ── Tramos base general (estatal + autonómica media) para tipo marginal estimado ─
+// Fuente: alertasFiscalesService.ts · getTipoMarginal. Tarifas 2024+.
+// Actualizar cuando cambien las tarifas en LIRPF o escalas autonómicas.
 const TRAMOS_MARGINAL = [
   { hasta: 12_450, tipo: 0.19 },
   { hasta: 20_200, tipo: 0.24 },
@@ -209,7 +210,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [valoraciones, setValoraciones] = useState<ValoracionHistorica[]>([]);
   const [marginalIrpf, setMarginalIrpf] = useState<number | null>(null);
   const [hasFiscalContext, setHasFiscalContext] = useState<boolean | null>(null);
-  const [addingYear] = useState(new Date().getFullYear());
+  const [ejercicioActual] = useState(new Date().getFullYear());
 
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
@@ -340,7 +341,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
     // Aportaciones del año en curso del titular
     const aportadoEsteAño = aportaciones
-      .filter((a) => a.ejercicioFiscal === addingYear)
+      .filter((a) => a.ejercicioFiscal === ejercicioActual)
       .reduce((s, a) => s + (a.importeTitular ?? 0), 0);
 
     const limiteTitular = getLimiteTitular(plan.tipoAdministrativo);
@@ -349,7 +350,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
       reduccionBase: reduccion,
       ahorradoCuota: Math.round(reduccion * marginalIrpf * 100) / 100,
     };
-  }, [hasFiscalContext, marginalIrpf, plan, aportaciones, addingYear]);
+  }, [hasFiscalContext, marginalIrpf, plan, aportaciones, ejercicioActual]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
@@ -549,7 +550,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             {/* ── 1.5 · Ventaja fiscal ──────────────────────────────────── */}
             <div className={styles.detailCard}>
               <div className={styles.detailCardTit}>
-                Ventaja fiscal · campaña {addingYear}
+                Ventaja fiscal · campaña {ejercicioActual}
               </div>
 
               {hasFiscalContext === false ? (
@@ -594,7 +595,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   </div>
                   <div className={styles.composicionRow}>
                     <span className={styles.composicionRowLab}>
-                      Reducción base IRPF {addingYear}
+                      Reducción base IRPF {ejercicioActual}
                     </span>
                     <span className={`${styles.composicionRowVal} ${styles.pos}`}>
                       {reduccionBase != null ? `−${fmt(reduccionBase)}` : '—'}
@@ -608,7 +609,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
                   </div>
                   {(reduccionBase != null && reduccionBase === 0) && (
                     <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 8 }}>
-                      Sin aportaciones registradas en {addingYear} · añade una aportación para ver el ahorro.
+                      Sin aportaciones registradas en {ejercicioActual} · añade una aportación para ver el ahorro.
                     </div>
                   )}
                 </div>
