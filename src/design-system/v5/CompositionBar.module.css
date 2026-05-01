@@ -1,0 +1,110 @@
+/**
+ * ATLAS · DESIGN SYSTEM v5 · CompositionBar
+ * Barra de composición patrimonial · γ · 3 segmentos activos.
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md § Z.8
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ */
+
+.compBarra {
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.compHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.compTitle {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+}
+
+.compSubtitle {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.compTrack {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  gap: 2px;
+  background: var(--atlas-v5-line-2);
+}
+
+.compSeg {
+  height: 100%;
+  cursor: pointer;
+  transition: opacity 0.14s;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+
+.compSeg:hover {
+  opacity: 0.85;
+}
+
+.compSeg:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+/* Colores por clase · DECISIÓN γ · NO financiacion */
+.brand  { background: var(--atlas-v5-brand); }
+.gold   { background: var(--atlas-v5-gold); }
+.pos    { background: var(--atlas-v5-pos); }
+.neg    { background: var(--atlas-v5-neg); }
+.inkThree { background: var(--atlas-v5-ink-3); }
+
+/* Leyenda */
+.compLeg {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.compLegItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+}
+
+.compLegDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.compLegNom {
+  color: var(--atlas-v5-ink-3);
+  font-family: var(--atlas-v5-font-ui);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+.compLegVal {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.compLegPct {
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-medium);
+  margin-left: 4px;
+}

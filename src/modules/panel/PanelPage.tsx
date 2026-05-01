@@ -1,7 +1,7 @@
 // Panel · home v5. Sustituye `HorizonPanel` legacy con vista alineada al
 // mockup `docs/audit-inputs/atlas-panel.html` ·
-//   - Saludo + fecha + número de cosas pidiendo atención.
-//   - Hero patrimonial · valor neto + activos + deuda + composición.
+//   - Saludo personalizado + fecha + campaña IRPF + número de cosas pidiendo atención (22.2)
+//   - Hero patrimonial · valor neto + activos + deuda + composición γ (22.2)
 //   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación.
 //
 // Lee de · properties · inversiones · accounts · prestamos. NO toca
@@ -9,20 +9,44 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHead, Icons, MoneyValue } from '../../design-system/v5';
+import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
 import { initDB } from '../../services/db';
 import type { Property, Account } from '../../services/db';
 import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
 import { effectiveTIN } from '../financiacion/helpers';
+import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import styles from './PanelPage.module.css';
 
+/**
+ * Saludo según hora del día · § Z.6 spec T22.2
+ * 00-12 → Buenos días · 12-20 → Buenas tardes · 20-24 → Buenas noches
+ */
 const saludo = (d: Date): string => {
   const h = d.getHours();
-  if (h < 6) return 'Buenas noches';
   if (h < 12) return 'Buenos días';
-  if (h < 21) return 'Buenas tardes';
+  if (h < 20) return 'Buenas tardes';
   return 'Buenas noches';
+};
+
+/**
+ * Campaña IRPF · activa entre 1 abril y 30 junio inclusive · § T22.2
+ * Devuelve "campaña IRPF {ejercicio} activa" o null si no es temporada.
+ */
+const campañaIRPF = (d: Date): string | null => {
+  const mes = d.getMonth() + 1; // 1-based
+  const dia = d.getDate();
+  const año = d.getFullYear();
+  // Abril (mes 4), Mayo (mes 5) y hasta el 30 de Junio (mes 6)
+  const enCampana =
+    mes === 4 ||
+    mes === 5 ||
+    (mes === 6 && dia <= 30);
+  if (enCampana) {
+    // El ejercicio IRPF es el año anterior
+    return `campaña IRPF ${año - 1} activa`;
+  }
+  return null;
 };
 
 const PanelPage: React.FC = () => {
@@ -32,12 +56,16 @@ const PanelPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const db = await initDB();
+        const [db, ctx] = await Promise.all([
+          initDB(),
+          getFiscalContextSafe(),
+        ]);
         const [props, inv, accs, prest] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('inversiones') as Promise<PosicionInversion[]>,
@@ -49,6 +77,7 @@ const PanelPage: React.FC = () => {
         setPosiciones(inv);
         setAccounts(accs);
         setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
+        if (ctx?.nombre) setNombreUsuario(ctx.nombre);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[panel] error cargando datos', err);
@@ -101,11 +130,6 @@ const PanelPage: React.FC = () => {
   const activosTotales = valorInmuebles + valorInversiones + saldoTesoreria;
   const patrimonioNeto = activosTotales - deudaViva;
 
-  const compTotal = activosTotales > 0 ? activosTotales : 1;
-  const pctInmuebles = (valorInmuebles / compTotal) * 100;
-  const pctInversiones = (valorInversiones / compTotal) * 100;
-  const pctTesoreria = (saldoTesoreria / compTotal) * 100;
-
   const cosasAtencion = useMemo(() => {
     let n = 0;
     // Préstamos que parecen requerir atención inicial · sin cuotas pagadas
@@ -129,20 +153,29 @@ const PanelPage: React.FC = () => {
     year: 'numeric',
   });
 
+  const campañaLabel = campañaIRPF(today);
   const empty = activosTotales === 0 && deudaViva === 0;
 
   return (
     <div className={styles.page}>
       <PageHead
-        title={`${saludo(today)}, Atlas`}
+        title={`${saludo(today)}, ${nombreUsuario}`}
         sub={
           <>
             hoy es <strong>{fechaLabel}</strong>
+            {campañaLabel && (
+              <>
+                <span style={{ color: 'var(--atlas-v5-ink-5)', margin: '0 8px' }}>·</span>
+                {campañaLabel}
+              </>
+            )}
             {cosasAtencion > 0 && (
               <>
                 <span style={{ color: 'var(--atlas-v5-ink-5)', margin: '0 8px' }}>·</span>
-                {cosasAtencion} cosa{cosasAtencion === 1 ? '' : 's'} pide{cosasAtencion === 1 ? '' : 'n'} tu
-                atención
+                <strong>
+                  {cosasAtencion} cosa{cosasAtencion === 1 ? '' : 's'} pide{cosasAtencion === 1 ? '' : 'n'} tu
+                  atención
+                </strong>
               </>
             )}
           </>
@@ -181,7 +214,7 @@ const PanelPage: React.FC = () => {
             style={{
               padding: '10px 20px',
               background: 'var(--atlas-v5-gold)',
-              color: '#fff',
+              color: 'var(--atlas-v5-white)',
               border: 0,
               borderRadius: 8,
               fontSize: 13,
@@ -203,8 +236,11 @@ const PanelPage: React.FC = () => {
                   <MoneyValue value={patrimonioNeto} decimals={0} tone="ink" />
                 </div>
                 <div className={`${styles.heroDelta} ${patrimonioNeto >= 0 ? styles.pos : styles.neg}`}>
-                  <Icons.Inversiones size={12} strokeWidth={2.5} />
-                  activos − deuda
+                  {patrimonioNeto >= 0
+                    ? <Icons.ArrowUpRight size={14} strokeWidth={2} />
+                    : <Icons.ArrowDownRight size={14} strokeWidth={2} />
+                  }
+                  activos brutos · sin deuda
                   <span className={styles.heroDeltaMeta}>· consolidado</span>
                 </div>
               </div>
@@ -222,65 +258,32 @@ const PanelPage: React.FC = () => {
               </div>
             </div>
 
-            <div className={styles.compHead}>
-              <div className={styles.compTitle}>Composición del patrimonio</div>
-            </div>
-            <div className={styles.compTrack} role="img" aria-label="Composición patrimonio">
-              {valorInmuebles > 0 && (
-                <div
-                  className={`${styles.compSeg} ${styles.inmuebles}`}
-                  style={{ width: `${pctInmuebles}%` }}
-                  title={`Inmuebles · ${pctInmuebles.toFixed(1)}%`}
-                />
-              )}
-              {valorInversiones > 0 && (
-                <div
-                  className={`${styles.compSeg} ${styles.inversiones}`}
-                  style={{ width: `${pctInversiones}%` }}
-                  title={`Inversiones · ${pctInversiones.toFixed(1)}%`}
-                />
-              )}
-              {saldoTesoreria > 0 && (
-                <div
-                  className={`${styles.compSeg} ${styles.tesoreria}`}
-                  style={{ width: `${pctTesoreria}%` }}
-                  title={`Tesorería · ${pctTesoreria.toFixed(1)}%`}
-                />
-              )}
-            </div>
-            <div className={styles.compLeg}>
-              <div className={styles.compLegItem}>
-                <div className={`${styles.compLegDot} ${styles.inmuebles}`} />
-                <span className={styles.compLegNom}>Inmuebles</span>
-                <span className={styles.compLegVal}>
-                  <MoneyValue value={valorInmuebles} decimals={0} tone="ink" />
-                  <span className={styles.compLegPct}>{pctInmuebles.toFixed(1)}%</span>
-                </span>
-              </div>
-              <div className={styles.compLegItem}>
-                <div className={`${styles.compLegDot} ${styles.inversiones}`} />
-                <span className={styles.compLegNom}>Inversiones</span>
-                <span className={styles.compLegVal}>
-                  <MoneyValue value={valorInversiones} decimals={0} tone="ink" />
-                  <span className={styles.compLegPct}>{pctInversiones.toFixed(1)}%</span>
-                </span>
-              </div>
-              <div className={styles.compLegItem}>
-                <div className={`${styles.compLegDot} ${styles.tesoreria}`} />
-                <span className={styles.compLegNom}>Tesorería</span>
-                <span className={styles.compLegVal}>
-                  <MoneyValue value={saldoTesoreria} decimals={0} tone="ink" />
-                  <span className={styles.compLegPct}>{pctTesoreria.toFixed(1)}%</span>
-                </span>
-              </div>
-              <div className={styles.compLegItem}>
-                <div className={`${styles.compLegDot} ${styles.financiacion}`} />
-                <span className={styles.compLegNom}>Financiación</span>
-                <span className={styles.compLegVal}>
-                  <MoneyValue value={-deudaViva} decimals={0} showSign tone="neg" />
-                </span>
-              </div>
-            </div>
+            {/* Composición γ · 3 segmentos activos · NO Financiación · § Z.8 T22.2 */}
+            <CompositionBar
+              segments={[
+                {
+                  key: 'inmuebles',
+                  label: 'Inmuebles',
+                  value: valorInmuebles,
+                  color: 'brand',
+                  onClick: () => navigate('/inmuebles'),
+                },
+                {
+                  key: 'inversiones',
+                  label: 'Inversiones',
+                  value: valorInversiones,
+                  color: 'gold',
+                  onClick: () => navigate('/inversiones'),
+                },
+                {
+                  key: 'tesoreria',
+                  label: 'Tesorería',
+                  value: saldoTesoreria,
+                  color: 'pos',
+                  onClick: () => navigate('/tesoreria'),
+                },
+              ]}
+            />
           </div>
 
           <div className={styles.secTitle}>Pulso de los 4 activos</div>
