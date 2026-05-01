@@ -1,0 +1,177 @@
+/**
+ * ATLAS · Panel · PulseAssetCard
+ *
+ * Cards "Pulso 4 activos" · § Z.9 TAREA 22.3
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md § Z.9 (mockup §111-130)
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ * Responsive · 4 cols >1100px · 2 cols 700-1100px · 1 col <700px.
+ */
+
+/* ── Grid contenedor ── */
+.activosGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 1100px) {
+  .activosGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .activosGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card base ── */
+.activoCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: border-color 140ms, transform 140ms, box-shadow 140ms;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+  /* reset button */
+  font-family: var(--atlas-v5-font-ui);
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.activoCard:hover {
+  border-color: var(--atlas-v5-gold);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(14, 20, 35, 0.04);
+}
+
+/* ── Variante por activo · borde izquierdo color ── */
+.activoCard.inmuebles {
+  border-left: 3px solid var(--atlas-v5-brand);
+  padding-left: 19px;
+}
+
+.activoCard.inversiones {
+  border-left: 3px solid var(--atlas-v5-gold);
+  padding-left: 19px;
+}
+
+.activoCard.tesoreria {
+  border-left: 3px solid var(--atlas-v5-pos);
+  padding-left: 19px;
+}
+
+.activoCard.financiacion {
+  border-left: 3px solid var(--atlas-v5-neg);
+  padding-left: 19px;
+}
+
+/* ── Head: nombre + icono ── */
+.activoHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.activoNom {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.activoIcon {
+  color: var(--atlas-v5-ink-4);
+}
+
+/* ── Valor principal ── */
+.activoVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.025em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.activoVal.neg {
+  color: var(--atlas-v5-neg);
+}
+
+/* ── Delta · cambio últimos 30 días ── */
+.activoDelta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-pos);
+}
+
+.activoDelta.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.activoDelta.muted {
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+/* ── Extra: métrica adicional específica por card ── */
+.activoExtra {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.activoExtraLab {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.activoExtraVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-2);
+}
+
+.activoExtraVal.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.activoExtraVal.neg {
+  color: var(--atlas-v5-neg);
+}
+
+/* ── CTA · "Ver detalle →" ── */
+.activoCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-top: 8px;
+  opacity: 0;
+  transition: opacity 140ms;
+}
+
+.activoCard:hover .activoCta {
+  opacity: 1;
+}

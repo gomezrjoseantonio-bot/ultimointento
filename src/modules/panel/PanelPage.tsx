@@ -2,7 +2,7 @@
 // mockup `docs/audit-inputs/atlas-panel.html` ·
 //   - Saludo personalizado + fecha + campaña IRPF + número de cosas pidiendo atención (22.2)
 //   - Hero patrimonial · valor neto + activos + deuda + composición γ (22.2)
-//   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación.
+//   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación (22.3)
 //
 // Lee de · properties · inversiones · accounts · prestamos. NO toca
 // services internos.
@@ -16,6 +16,7 @@ import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
+import PulseAssetCard from './components/PulseAssetCard';
 import styles from './PanelPage.module.css';
 
 /**
@@ -286,93 +287,62 @@ const PanelPage: React.FC = () => {
             />
           </div>
 
+          {/* Pulso 4 activos · § Z.9 · § AA.4 · T22.3 */}
           <div className={styles.secTitle}>Pulso de los 4 activos</div>
           <div className={styles.activosGrid}>
-            <button
-              type="button"
-              className={styles.activoCard}
+            {/* Inmuebles · § AA.4 Building2 */}
+            <PulseAssetCard
+              variant="inmuebles"
+              label="Inmuebles"
+              value={valorInmuebles}
+              delta={null}
+              extraLabel="Rdto neto mes"
+              extraValue={null}
+              // TODO: conectar con servicio inmuebles para mostrar rdto neto mensual real
               onClick={() => navigate('/inmuebles')}
-            >
-              <div className={styles.activoHead}>
-                <div className={styles.activoNom}>Inmuebles</div>
-                <span className={styles.activoIcon}>
-                  <Icons.Inmuebles size={16} strokeWidth={1.8} />
-                </span>
-              </div>
-              <div className={styles.activoVal}>
-                <MoneyValue value={valorInmuebles} decimals={0} tone="ink" />
-              </div>
-              <div className={styles.activoExtra}>
-                <span className={styles.activoExtraLab}>activos</span>
-                <span className={styles.activoExtraVal}>{properties.length}</span>
-              </div>
-              <span className={styles.activoCta}>Ver detalle →</span>
-            </button>
+            />
 
-            <button
-              type="button"
-              className={styles.activoCard}
+            {/* Inversiones · § AA.4 TrendingUp */}
+            <PulseAssetCard
+              variant="inversiones"
+              label="Inversiones"
+              value={valorInversiones}
+              delta={null}
+              extraLabel="Rentab. YTD"
+              extraValue={null}
+              // TODO: conectar con servicio inversiones para mostrar rentabilidad YTD real
               onClick={() => navigate('/inversiones')}
-            >
-              <div className={styles.activoHead}>
-                <div className={styles.activoNom}>Inversiones</div>
-                <span className={styles.activoIcon}>
-                  <Icons.Inversiones size={16} strokeWidth={1.8} />
-                </span>
-              </div>
-              <div className={styles.activoVal}>
-                <MoneyValue value={valorInversiones} decimals={0} tone="ink" />
-              </div>
-              <div className={styles.activoExtra}>
-                <span className={styles.activoExtraLab}>posiciones</span>
-                <span className={styles.activoExtraVal}>{posiciones.length}</span>
-              </div>
-              <span className={styles.activoCta}>Ver detalle →</span>
-            </button>
+            />
 
-            <button
-              type="button"
-              className={styles.activoCard}
+            {/* Tesorería · § AA.4 Wallet */}
+            <PulseAssetCard
+              variant="tesoreria"
+              label="Tesorería"
+              value={saldoTesoreria}
+              delta={null}
+              extraLabel="Meses colchón"
+              extraValue={null}
+              // TODO: conectar con tesorería/gastoMedio para mostrar meses colchón reales
               onClick={() => navigate('/tesoreria')}
-            >
-              <div className={styles.activoHead}>
-                <div className={styles.activoNom}>Tesorería</div>
-                <span className={styles.activoIcon}>
-                  <Icons.Tesoreria size={16} strokeWidth={1.8} />
-                </span>
-              </div>
-              <div className={styles.activoVal}>
-                <MoneyValue value={saldoTesoreria} decimals={0} tone="ink" />
-              </div>
-              <div className={styles.activoExtra}>
-                <span className={styles.activoExtraLab}>cuentas</span>
-                <span className={styles.activoExtraVal}>{accounts.length}</span>
-              </div>
-              <span className={styles.activoCta}>Ver detalle →</span>
-            </button>
+            />
 
-            <button
-              type="button"
-              className={styles.activoCard}
+            {/* Financiación · § AA.4 Landmark */}
+            <PulseAssetCard
+              variant="financiacion"
+              label="Financiación"
+              value={-deudaViva}
+              valueNeg
+              valueShowSign
+              delta={null}
+              extraLabel="Cuota mes"
+              extraValue={
+                cuotaMensualPrestamos > 0
+                  ? `−${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(cuotaMensualPrestamos)} €`
+                  : null
+              }
+              extraNeg={cuotaMensualPrestamos > 0}
               onClick={() => navigate('/financiacion')}
-            >
-              <div className={styles.activoHead}>
-                <div className={styles.activoNom}>Financiación</div>
-                <span className={styles.activoIcon}>
-                  <Icons.Financiacion size={16} strokeWidth={1.8} />
-                </span>
-              </div>
-              <div className={`${styles.activoVal} ${styles.neg}`}>
-                <MoneyValue value={-deudaViva} decimals={0} showSign tone="neg" />
-              </div>
-              <div className={styles.activoExtra}>
-                <span className={styles.activoExtraLab}>cuota mes</span>
-                <span className={`${styles.activoExtraVal} ${styles.neg}`}>
-                  <MoneyValue value={-cuotaMensualPrestamos} decimals={0} showSign tone="neg" />
-                </span>
-              </div>
-              <span className={styles.activoCta}>Ver detalle →</span>
-            </button>
+            />
           </div>
         </>
       )}
