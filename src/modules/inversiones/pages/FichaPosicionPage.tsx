@@ -6,6 +6,10 @@
 // `PosicionFormDialog`) y añade `<RegistrarCobroDialog>` para los flujos
 // de cobro / dividendo (que el form de aportaciones existente no
 // soporta). Cero migración · cero cambios al modelo de datos.
+//
+// T23.6.1 · dispatcher ampliado: si `posicionId` es un UUID (no entero) ·
+// se trata de un plan de pensiones del store `planesPensiones` · muestra
+// placeholder TODO hasta que T23.6.4 implemente la ficha completa.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -38,6 +42,12 @@ const FichaPosicionPage: React.FC = () => {
   const [showCobro, setShowCobro] = useState<CobroVariant | null>(null);
 
   const idNumber = Number(posicionId);
+  // T23.6.1 · UUID detection: a valid inversiones ID is a positive integer string.
+  // UUIDs from planesPensiones are non-numeric strings (e.g. "abc-xyz-...").
+  // Using strict round-trip check: !NaN + positive + String(parsed) === original.
+  const isNumericId =
+    !Number.isNaN(idNumber) && idNumber > 0 && String(idNumber) === posicionId;
+  const esPlanPensiones = posicionId != null && posicionId !== '' && !isNumericId;
 
   const reload = useCallback(async () => {
     if (!Number.isFinite(idNumber)) {
@@ -55,6 +65,8 @@ const FichaPosicionPage: React.FC = () => {
   }, [idNumber]);
 
   useEffect(() => {
+    // No cargar posición de inversiones si es un plan de pensiones (UUID)
+    if (esPlanPensiones) return;
     let cancelled = false;
     setPosicion(undefined);
     (async () => {
@@ -74,9 +86,23 @@ const FichaPosicionPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [idNumber]);
+  }, [idNumber, esPlanPensiones]);
 
   const handleBack = () => navigate('/inversiones');
+
+  // T23.6.1 · placeholder para plan de pensiones · ficha completa en T23.6.4
+  if (esPlanPensiones) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.notFound}>
+          <div>Ficha plan pensiones · pendiente T23.6.4</div>
+          <button type="button" className={styles.backBtn} onClick={handleBack}>
+            Volver a Inversiones
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // No relanzamos el error al modal · `ActualizarValorDialog` invoca
   // `onSave` sin `await/catch` · si lanzáramos provocaríamos un Unhandled

@@ -130,4 +130,9 @@ export const planesPensionesService = {
   async cambiarTipoAdministrativo(id: string, nuevoTipo: TipoAdministrativo): Promise<PlanPensiones> {
     return this.updatePlan(id, { tipoAdministrativo: nuevoTipo });
   },
+
+  // T23.6.1 · alias público para lectura sin filtros (galería unificada)
+  async getAll(): Promise<PlanPensiones[]> {
+    return this.getAllPlanes();
+  },
 };
