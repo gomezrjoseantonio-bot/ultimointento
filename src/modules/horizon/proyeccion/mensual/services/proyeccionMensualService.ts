@@ -1,7 +1,7 @@
 // src/modules/horizon/proyeccion/mensual/services/proyeccionMensualService.ts
 // ATLAS HORIZON: Monthly financial projection calculation engine
 
-import { initDB, OpexRule, Contract } from '../../../../../services/db';
+import { OpexRule, Contract } from '../../../../../services/db';
 import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { pensionService } from '../../../../../services/pensionService';
@@ -666,7 +666,6 @@ function buildMonthRow(
  * Load and aggregate all base financial data from the database
  */
 async function loadBaseData(): Promise<BaseData> {
-  const db = await initDB();
   const year = START_YEAR;
 
   // Personal data · T14.4 · migrado a fiscalContextService gateway

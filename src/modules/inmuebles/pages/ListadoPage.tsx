@@ -33,9 +33,12 @@ interface DerivedInmueble {
 
 /** Formatea "YYYY-MM" → "abr 2026" en locale es-ES */
 const formatFechaMes = (fechaMes: string): string => {
-  const [year, month] = fechaMes.split('-');
-  if (!year || !month) return fechaMes;
-  const d = new Date(Number(year), Number(month) - 1, 1);
+  const parts = fechaMes.split('-');
+  if (parts.length < 2) return fechaMes;
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return fechaMes;
+  const d = new Date(year, month - 1, 1);
   return new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(d);
 };
 
@@ -44,8 +47,10 @@ const formatFechaCompra = (fecha: string | undefined): string | undefined => {
   if (!fecha) return undefined;
   const parts = fecha.slice(0, 7).split('-');
   if (parts.length < 2) return undefined;
-  const [year, month] = parts;
-  const d = new Date(Number(year), Number(month) - 1, 1);
+  const year = Number(parts[0]);
+  const month = Number(parts[1]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) return undefined;
+  const d = new Date(year, month - 1, 1);
   return new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(d);
 };
 
