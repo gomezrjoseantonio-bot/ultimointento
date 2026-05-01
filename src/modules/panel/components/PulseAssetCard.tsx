@@ -79,7 +79,7 @@ const PulseAssetCard: React.FC<PulseAssetCardProps> = ({
       ? styles.muted
       : delta.sign === 'neg'
         ? styles.neg
-        : '';
+        : styles.pos; // positive delta → green
 
   const extraValClass = [
     styles.activoExtraVal,

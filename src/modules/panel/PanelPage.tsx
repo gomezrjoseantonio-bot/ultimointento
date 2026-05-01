@@ -20,6 +20,13 @@ import PulseAssetCard from './components/PulseAssetCard';
 import styles from './PanelPage.module.css';
 
 /**
+ * Formatea un importe monetario como string resumido para las extra-métricas
+ * de las cards de activos. Ej: 1234 → "1.234 €"
+ */
+const fmtImporte = (n: number): string =>
+  `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n)} €`;
+
+/**
  * Saludo según hora del día · § Z.6 spec T22.2
  * 00-12 → Buenos días · 12-20 → Buenas tardes · 20-24 → Buenas noches
  */
@@ -335,11 +342,7 @@ const PanelPage: React.FC = () => {
               valueShowSign
               delta={null}
               extraLabel="Cuota mes"
-              extraValue={
-                cuotaMensualPrestamos > 0
-                  ? `−${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(cuotaMensualPrestamos)} €`
-                  : null
-              }
+              extraValue={cuotaMensualPrestamos > 0 ? `−${fmtImporte(cuotaMensualPrestamos)}` : null}
               extraNeg={cuotaMensualPrestamos > 0}
               onClick={() => navigate('/financiacion')}
             />
