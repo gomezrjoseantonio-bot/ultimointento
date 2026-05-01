@@ -1,114 +1,150 @@
-// T23.2 · Wizard "Nueva posición" · 3 caminos (§ 3.2 spec).
+// T23.6.3 · Wizard "Nueva posición" v5 · 11/12 tipos + dispatcher PlanFormV5 vs PosicionFormV5.
 //
-// Modal en 2 pasos:
-//   - Paso 1 · 3 tarjetas seleccionables · alta manual · IndexaCapital · aportaciones
-//   - Paso 2A · render `<PosicionFormDialog>` (alta manual · cierra wizard al guardar)
-//   - Paso 2B/2C · navega a la ruta de importador correspondiente y cierra wizard
+// Paso 1 · Grid 4 columnas con tarjetas seleccionables agrupadas:
+//   - PLANES PENSIONES: Plan PP individual · Plan PP empresa
+//   - EQUITY / FONDOS: Acciones · ETF · REIT · Fondo inversión
+//   - RENTA FIJA / CRÉDITO: Préstamo P2P · Préstamo a empresa · Depósito a plazo · Cuenta remunerada
+//   - OTROS: Crypto · Otro
+//   + 2 atajos: [Importar IndexaCapital] · [Importar aportaciones]
 //
-// Reusa `<PosicionFormDialog>` y las rutas `/inversiones/importar-indexa` ·
-// `/inversiones/importar-aportaciones` (intactos · solo cambia el disparador).
+// Paso 2 · Dispatcher:
+//   - Plan PP individual / empresa → <PlanFormV5> con tipoAdministrativoInicial pre-seleccionado
+//   - Resto → <PosicionFormV5> con tipoInicial pre-seleccionado
+//
+// Submit:
+//   - PlanFormV5 escribe en planesPensionesService internamente · llama onPlanSaved()
+//   - PosicionFormV5 delega en onSavePosicion() → inversionesService en InversionesGaleria
+//
+// Reglas inviolables · NUNCA mezclar destinos (planes vs inversiones).
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type { PosicionInversion } from '../../../types/inversiones';
-import PosicionFormDialog from './PosicionFormDialog';
+import type { TipoAdministrativo } from '../../../types/planesPensiones';
+import PlanFormV5 from './wizard/PlanFormV5';
+import PosicionFormV5, { type TipoUI_V5 } from './wizard/PosicionFormV5';
 import styles from './WizardModal.module.css';
 
-type Camino = 'manual' | 'indexa' | 'aportaciones';
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+type TipoWizard =
+  | 'plan_pensiones'
+  | 'plan_empleo'
+  | TipoUI_V5;
 
 interface Props {
-  /**
-   * Persistencia de la posición creada manualmente.
-   * El callback DEBE lanzar (o resolver `false`) si el guardado falla; el
-   * wizard solo cierra el form al éxito (`true` o `void`) para que el
-   * usuario no pierda el trabajo si el `service` rechaza.
-   */
   onSavePosicion: (
     data: Partial<PosicionInversion> & { importe_inicial?: number },
   ) => Promise<void | boolean> | void | boolean;
-  /** Cierre · llamar también después de guardar / navegar. */
+  /** Llamado cuando PlanFormV5 guarda con éxito · para recargar la galería. */
+  onPlanSaved?: () => void;
   onClose: () => void;
 }
 
-type LucideIcon = React.ComponentType<{
-  size?: number | string;
-  strokeWidth?: number | string;
-}>;
+// ── Configuración de grupos y tipos ──────────────────────────────────────────
 
-const OPCIONES: Array<{
-  key: Camino;
+type LucideIcon = React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
+
+interface TipoConfig {
+  key: TipoWizard;
   title: string;
-  sub: string;
-  Icon: LucideIcon;
-}> = [
+  icon: LucideIcon;
+}
+
+interface GrupoConfig {
+  label: string;
+  tipos: TipoConfig[];
+}
+
+const GRUPOS: GrupoConfig[] = [
   {
-    key: 'manual',
-    title: 'Alta manual',
-    sub: 'Crear posición desde cero · indica tipo · entidad · valor · aportaciones.',
-    Icon: Icons.Edit,
+    label: 'Planes pensiones',
+    tipos: [
+      { key: 'plan_pensiones', title: 'Plan PP individual', icon: Icons.PiggyBank },
+      { key: 'plan_empleo', title: 'Plan PP empresa', icon: Icons.PiggyBank },
+    ],
   },
   {
-    key: 'indexa',
-    title: 'Desde IndexaCapital',
-    sub: 'Importar tu cartera Indexa con los datos históricos del broker.',
-    Icon: Icons.Download,
+    label: 'Equity / Fondos',
+    tipos: [
+      { key: 'accion', title: 'Acciones', icon: Icons.ArrowUpRight },
+      { key: 'etf', title: 'ETF', icon: Icons.Rendimientos },
+      { key: 'reit', title: 'REIT', icon: Icons.Inmuebles },
+      { key: 'fondo_inversion', title: 'Fondo inversión', icon: Icons.Fondos },
+    ],
   },
   {
-    key: 'aportaciones',
-    title: 'Desde aportaciones (Excel · CSV · PDF)',
-    sub: 'Importar histórico de aportaciones desde un fichero exportado del broker.',
-    Icon: Icons.Upload,
+    label: 'Renta fija / Crédito',
+    tipos: [
+      { key: 'prestamo_p2p', title: 'Préstamo P2P', icon: Icons.Banknote },
+      { key: 'prestamo_empresa', title: 'Préstamo empresa', icon: Icons.Banknote },
+      { key: 'deposito_plazo', title: 'Depósito a plazo', icon: Icons.Financiacion },
+      { key: 'cuenta_remunerada', title: 'Cuenta remunerada', icon: Icons.Tesoreria },
+    ],
+  },
+  {
+    label: 'Otros',
+    tipos: [
+      { key: 'crypto', title: 'Crypto', icon: Icons.Bitcoin },
+      { key: 'otro', title: 'Otro', icon: Icons.Tag },
+    ],
   },
 ];
 
-const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
-  const navigate = useNavigate();
-  const [camino, setCamino] = useState<Camino | null>(null);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-  // Accesibilidad · foco atrapado en el modal del paso 1 + cierre con
-  // Escape vía evento `modal-escape` (patrón repo · ver
-  // `src/pages/GestionInmuebles/tabs/FacturaSelectorModal.tsx`).
-  const focusTrapRef = useFocusTrap(camino === null);
+const esTipoPlan = (t: TipoWizard): t is 'plan_pensiones' | 'plan_empleo' =>
+  t === 'plan_pensiones' || t === 'plan_empleo';
+
+const tipoAdminFromWizard = (t: 'plan_pensiones' | 'plan_empleo'): TipoAdministrativo =>
+  t === 'plan_empleo' ? 'PPE' : 'PPI';
+
+// ── Componente ────────────────────────────────────────────────────────────────
+
+const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onPlanSaved, onClose }) => {
+  const navigate = useNavigate();
+  const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoWizard | null>(null);
+
+  // Focus trap activo solo en paso 1
+  const focusTrapRef = useFocusTrap(tipoSeleccionado === null);
   useEffect(() => {
     const node = focusTrapRef.current;
     if (!node) return;
     const handler = () => onClose();
     node.addEventListener('modal-escape', handler);
     return () => node.removeEventListener('modal-escape', handler);
-  }, [focusTrapRef, onClose, camino]);
+  }, [focusTrapRef, onClose, tipoSeleccionado]);
 
-  const handleSelect = (key: Camino) => {
-    if (key === 'indexa') {
-      onClose();
-      navigate('/inversiones/importar-indexa');
-      return;
-    }
-    if (key === 'aportaciones') {
-      onClose();
-      navigate('/inversiones/importar-aportaciones');
-      return;
-    }
-    setCamino('manual');
-  };
+  // ── Paso 2 · Plan PP ────────────────────────────────────────────────────
 
-  // Paso 2A · alta manual · `PosicionFormDialog` ya es un modal independiente
-  // y se ocupa de su propio chrome (no envolvemos en el overlay del wizard).
-  if (camino === 'manual') {
+  if (tipoSeleccionado !== null && esTipoPlan(tipoSeleccionado)) {
     return (
-      <PosicionFormDialog
+      <PlanFormV5
+        tipoAdministrativoInicial={tipoAdminFromWizard(tipoSeleccionado)}
+        onSaved={() => {
+          onPlanSaved?.();
+          onClose();
+        }}
+        onClose={onClose}
+      />
+    );
+  }
+
+  // ── Paso 2 · Posición no-plan ────────────────────────────────────────────
+
+  if (tipoSeleccionado !== null && !esTipoPlan(tipoSeleccionado)) {
+    return (
+      <PosicionFormV5
+        tipoInicial={tipoSeleccionado as TipoUI_V5}
         onSave={async (data) => {
-          // Solo cerramos el wizard cuando el guardado ha sido exitoso ·
-          // si el service falla (rechaza · throw · resuelve `false`)
-          // mantenemos el form abierto para que el usuario no pierda el
-          // trabajo. Convención de cierre · `void`/undefined/true = éxito.
           try {
             const result = await onSavePosicion(data);
             if (result === false) return;
             onClose();
           } catch {
-            /* el handler de InversionesGaleria ya muestra toast del error */
+            /* InversionesGaleria ya muestra toast de error */
           }
         }}
         onClose={onClose}
@@ -116,17 +152,28 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
     );
   }
 
-  // Paso 1 · selector de camino
+  // ── Paso 1 · Selector de tipo ────────────────────────────────────────────
+
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="wizard-title" onClick={onClose}>
-      <div ref={focusTrapRef} className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={styles.overlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="wizard-title"
+      onClick={onClose}
+    >
+      <div
+        ref={focusTrapRef}
+        className={`${styles.modal} ${styles.modalWide}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={styles.modalHead}>
           <div>
             <h2 id="wizard-title" className={styles.modalTitle}>
               Nueva posición
             </h2>
             <div className={styles.modalSub}>
-              Elige cómo quieres añadir la posición a tu cartera.
+              ¿Qué tipo de posición quieres añadir?
             </div>
           </div>
           <button
@@ -139,26 +186,50 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
           </button>
         </div>
 
-        <div className={styles.opcionesGrid}>
-          {OPCIONES.map(({ key, title, sub, Icon }) => (
-            <button
-              key={key}
-              type="button"
-              className={styles.opcion}
-              onClick={() => handleSelect(key)}
-            >
-              <div className={styles.opcionIcon}>
-                <Icon size={18} strokeWidth={1.8} />
-              </div>
-              <div className={styles.opcionTextos}>
-                <div className={styles.opcionTitle}>{title}</div>
-                <div className={styles.opcionSub}>{sub}</div>
-              </div>
-              <span className={styles.opcionArrow} aria-hidden>
-                <Icons.ChevronRight size={16} strokeWidth={2} />
-              </span>
-            </button>
+        {/* Grid 4 columnas · tipos agrupados */}
+        <div className={styles.gruposGrid}>
+          {GRUPOS.map((grupo) => (
+            <div key={grupo.label} className={styles.grupo}>
+              <div className={styles.grupoLabel}>{grupo.label}</div>
+              {grupo.tipos.map(({ key, title, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={styles.tipoCard}
+                  onClick={() => setTipoSeleccionado(key)}
+                >
+                  <span className={styles.tipoCardIcon}>
+                    <Icon size={14} strokeWidth={1.8} />
+                  </span>
+                  <span className={styles.tipoCardTitle}>{title}</span>
+                </button>
+              ))}
+            </div>
           ))}
+        </div>
+
+        {/* Atajos · importadores */}
+        <div className={styles.atajos}>
+          <button
+            type="button"
+            className={styles.atajo}
+            onClick={() => {
+              onClose();
+              navigate('/inversiones/importar-indexa');
+            }}
+          >
+            Importar IndexaCapital
+          </button>
+          <button
+            type="button"
+            className={styles.atajo}
+            onClick={() => {
+              onClose();
+              navigate('/inversiones/importar-aportaciones');
+            }}
+          >
+            Importar aportaciones
+          </button>
         </div>
       </div>
     </div>
@@ -166,3 +237,4 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
 };
 
 export default WizardNuevaPosicion;
+

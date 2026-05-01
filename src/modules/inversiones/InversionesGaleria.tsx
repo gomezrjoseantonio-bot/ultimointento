@@ -256,6 +256,7 @@ const InversionesGaleria: React.FC = () => {
       {showWizard && (
         <WizardNuevaPosicion
           onSavePosicion={handleSavePosicion}
+          onPlanSaved={load}
           onClose={() => setShowWizard(false)}
         />
       )}

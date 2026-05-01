@@ -1,0 +1,60 @@
+/* T23.6.3 · PlanFormV5 · tipo selector cards · tokens v5 · cero hex hardcoded */
+
+.tiposLabel {
+  font-size: 11px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+}
+
+.tiposGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tipoBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  background: var(--atlas-v5-card);
+  cursor: pointer;
+  transition: all 120ms ease;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.tipoBtn:hover {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.tipoBtn:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.tipoBtnActive {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.tipoBtnLabel {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.tipoBtnDesc {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  line-height: 1.4;
+}
