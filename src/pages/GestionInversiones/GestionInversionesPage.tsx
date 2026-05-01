@@ -1141,7 +1141,7 @@ const GestionInversionesPage: React.FC = () => {
                     ...(planSeleccionado as any),
                   } as any);
                   setMostrarModalAportacion(false);
-                  const planes = await planesInversionService.getPlanes(personalData.id);
+                  const planes = await planesInversionService.getPlanes(ctx.personalDataId);
                   setPlanesPension(planes as PlanPensiones[]);
                   toast.success('Aportación añadida');
                 }}
