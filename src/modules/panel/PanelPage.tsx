@@ -4,21 +4,24 @@
 //   - Hero patrimonial · valor neto + activos + deuda + composición γ (22.2)
 //   - Grid 4 activos · Inmuebles · Inversiones · Tesorería · Financiación (22.3)
 //   - Pulso del mes · ingresos · gastos · cashflow · saldo fin (22.4)
+//   - Piden tu atención · AttentionList · MAX 5 alertas por urgencia (22.5)
 //
-// Lee de · properties · inversiones · accounts · prestamos · treasuryEvents. NO toca
-// services internos.
+// Lee de · properties · inversiones · accounts · prestamos · treasuryEvents · contracts.
+// NO toca services internos.
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
 import { initDB } from '../../services/db';
-import type { Property, Account, TreasuryEvent } from '../../services/db';
+import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
 import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import PulseAssetCard from './components/PulseAssetCard';
 import PulsoDelMes from './components/PulsoDelMes';
+import AttentionList from './components/AttentionList';
+import type { AlertaItem } from './components/AttentionList';
 import styles from './PanelPage.module.css';
 
 /**
@@ -66,6 +69,7 @@ const PanelPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
 
@@ -77,12 +81,13 @@ const PanelPage: React.FC = () => {
           initDB(),
           getFiscalContextSafe(),
         ]);
-        const [props, inv, accs, prest, tevents] = await Promise.all([
+        const [props, inv, accs, prest, tevents, conts] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
           db.getAll('inversiones') as Promise<PosicionInversion[]>,
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
+          db.getAll('contracts') as Promise<Contract[]>,
         ]);
         if (cancelled) return;
         setProperties(props);
@@ -90,6 +95,7 @@ const PanelPage: React.FC = () => {
         setAccounts(accs);
         setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
         setTreasuryEvents(tevents);
+        setContracts(conts);
         if (ctx?.nombre) setNombreUsuario(ctx.nombre);
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -179,6 +185,79 @@ const PanelPage: React.FC = () => {
     const saldoFin = saldoTesoreria + cashflow;
     return { ingresos, gastos, cashflow, saldoFin };
   }, [treasuryEvents, today, saldoTesoreria]);
+
+  /**
+   * Alertas "Piden tu atención" · § Z.11 · T22.5
+   * MAX 5 · prioridad:
+   *   1. Deudas ejecutiva/apremio            → TODO servicio alertas
+   *   2. Borradores fiscales listos          → TODO servicio alertas
+   *   3. Obligaciones fiscales próximas 30d  → TODO servicio alertas
+   *   4. Contratos vencer en 60d             → derivado de contracts store
+   *   5. Pagos vencidos sin conciliar        → derivado de treasuryEvents store
+   */
+  const alertas = useMemo((): AlertaItem[] => {
+    const lista: AlertaItem[] = [];
+    const hoy = today;
+
+    // 1. TODO: conectar con servicio de alertas para deudas ejecutiva/apremio
+    //    cuando esté disponible · actualmente no hay campo en Prestamo
+
+    // 2. TODO: conectar con servicio de alertas para borradores fiscales listos
+    //    cuando esté disponible · requiere store declaraciones/snapshotsDeclaracion
+
+    // 3. TODO: conectar con servicio de alertas para obligaciones fiscales próximas
+    //    cuando esté disponible · requiere store obligaciones fiscales
+
+    // 4. Contratos activos que vencen en los próximos 60 días · § AA.6 Calendar · warn
+    const en60dias = new Date(hoy.getTime() + 60 * 24 * 60 * 60 * 1000);
+    const contratosVencen = contracts.filter((c) => {
+      if (c.estadoContrato !== 'activo') return false;
+      // fechaFin es el campo canónico · endDate es el campo legacy (db.ts Contract)
+      const fechaFin = c.fechaFin ?? c.endDate;
+      if (!fechaFin) return false;
+      const d = new Date(fechaFin);
+      return d >= hoy && d <= en60dias;
+    });
+    if (contratosVencen.length > 0) {
+      const rentaTotal = contratosVencen.reduce((s, c) => s + (c.rentaMensual ?? 0), 0);
+      lista.push({
+        id: 'contratos-vencer',
+        severity: 'warn',
+        valueSeverity: 'warn',
+        iconType: 'calendar',
+        title: `${contratosVencen.length} contrato${contratosVencen.length === 1 ? '' : 's'} vence${contratosVencen.length === 1 ? '' : 'n'} pronto`,
+        meta: `Vencimiento en los próximos 60 días`,
+        value: rentaTotal,
+        timeWindow: '60 días',
+        href: '/contratos',
+      });
+    }
+
+    // 5. Pagos vencidos (amount < 0, fecha pasada) sin conciliar con movimiento real · neg
+    const pagosVencidos = treasuryEvents.filter((ev) => {
+      if (ev.amount >= 0) return false;
+      if (ev.status === 'executed' || ev.movementId !== undefined) return false;
+      const fecha = new Date(ev.actualDate ?? ev.predictedDate);
+      return fecha < hoy;
+    });
+    if (pagosVencidos.length > 0) {
+      const totalVencido = pagosVencidos.reduce((s, ev) => s + Math.abs(ev.amount), 0);
+      lista.push({
+        id: 'pagos-vencidos',
+        severity: 'neg',
+        valueSeverity: 'neg',
+        iconType: 'filetext',
+        title: `${pagosVencidos.length} pago${pagosVencidos.length === 1 ? '' : 's'} vencido${pagosVencidos.length === 1 ? '' : 's'} sin conciliar`,
+        meta: `Movimientos pasados pendientes de conciliación`,
+        value: totalVencido,
+        timeWindow: 'pendiente',
+        href: '/tesoreria',
+      });
+    }
+
+    // Limite MAX 5 · ordenado ya por prioridad de inserción
+    return lista.slice(0, 5);
+  }, [contracts, treasuryEvents, today]);
 
   if (loading) {
     return (
@@ -393,6 +472,13 @@ const PanelPage: React.FC = () => {
             saldoFin={pulsoMes.saldoFin}
             mesNombre={mesNombre}
             año={añoActual}
+          />
+
+          {/* Piden tu atención · § Z.11 · § AA.6 · T22.5 */}
+          <AttentionList
+            alertas={alertas}
+            onVerTodas={() => navigate('/tesoreria')}
+            onAlertaClick={(a) => navigate(a.href)}
           />
         </>
       )}

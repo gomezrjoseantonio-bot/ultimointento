@@ -1,0 +1,171 @@
+/**
+ * ATLAS · Panel · AttentionList
+ *
+ * Estilos "Piden tu atención" · § Z.11 · TAREA 22.5
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md §6 · mockup §142-190
+ *
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ */
+
+/* ── Contenedor card ── */
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 12px;
+  padding: 22px;
+  margin-bottom: 22px;
+}
+
+/* ── Cabecera card ── */
+.cardHd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+}
+
+.cardSub {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+
+.cardAction {
+  font-size: 12px;
+  color: var(--atlas-v5-gold);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: var(--atlas-v5-fw-medium);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.cardAction:hover {
+  background: var(--atlas-v5-gold-wash);
+}
+
+/* ── Fila de alerta ── */
+.alerta {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  align-items: center;
+  cursor: pointer;
+}
+
+.alerta:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.alerta:first-child {
+  padding-top: 0;
+}
+
+.alerta:hover .alertaTitle {
+  color: var(--atlas-v5-gold);
+}
+
+/* ── Icono de alerta (34×34 · § AA.6 stroke 2.2) ── */
+.alertaIcon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.alertaIcon.neg {
+  background: var(--atlas-v5-neg-wash);
+  color: var(--atlas-v5-neg);
+}
+
+.alertaIcon.warn {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.alertaIcon.pos {
+  background: var(--atlas-v5-pos-wash);
+  color: var(--atlas-v5-pos);
+}
+
+.alertaIcon.muted {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-3);
+}
+
+/* ── Cuerpo de la alerta ── */
+.alertaTitle {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.005em;
+  transition: color 0.15s;
+}
+
+.alertaMeta {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  font-family: var(--atlas-v5-font-mono-num);
+  line-height: 1.4;
+}
+
+/* ── Valor derecho ── */
+.alertaRight {
+  text-align: right;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+}
+
+.alertaRight.neg {
+  color: var(--atlas-v5-neg);
+}
+
+.alertaRight.warn {
+  color: var(--atlas-v5-warn);
+}
+
+.alertaRight.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.alertaRightSub {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+/* ── Empty state ── */
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  color: var(--atlas-v5-pos);
+}
+
+.emptyText {
+  font-size: 13.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+  color: var(--atlas-v5-ink-3);
+}
