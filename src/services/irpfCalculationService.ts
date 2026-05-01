@@ -1,8 +1,21 @@
 // ATLAS HORIZON: Motor de cálculo IRPF
 // Nivel 1: Cálculo IRPF progresivo con todas las fuentes de ingreso
+//
+// T14.3 (2026-04) · IRPF lee el contexto fiscal unificado vía
+// `fiscalContextService` (gateway T14.2) en lugar de leer `personalData`
+// directamente. Cierra los 5 GAPs fiscales del AUDIT-T14:
+//   · GAP 5.1 reducciones autonómicas (escalas Madrid/Asturias/Cataluña
+//     pendientes de auditoría · fallback a supletoria con warning)
+//   · GAP 5.2 bono edad ≥65 / ≥75 sobre mínimo contribuyente
+//   · GAP 5.3 vivienda habitual NO imputa renta
+//   · GAP 5.4 bonus discapacidad descendientes y ascendientes
+//   · GAP 5.6 guard sobre `tributacion` eliminado (gateway garantiza valor)
 
 import { initDB } from './db';
-import { personalDataService } from './personalDataService';
+import {
+  getFiscalContextSafe,
+  type FiscalContext,
+} from './fiscalContextService';
 import { calculateCarryForwards, calculateFiscalSummary } from './fiscalSummaryService';
 import { nominaService } from './nominaService';
 import { conciliarEjercicioFiscal, FiscalConciliationResult } from './fiscalConciliationService';
@@ -12,17 +25,19 @@ import { ejecutarCompensacionAhorro } from './compensacionAhorroService';
 import type { CompensacionAhorroResult } from './compensacionAhorroService';
 import { getCachedDeclaracion, setCachedDeclaracion } from './fiscalCacheService';
 import { getInmueblesDelEjercicio } from './ejercicioResolverService';
+import {
+  ESCALA_ESTATAL_GENERAL_2024,
+  getEscalaAutonomica,
+  type EscalaTramos,
+} from '../data/fiscal/tramosAutonomicos2024';
+import type { NivelDiscapacidad } from '../types/personal';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
-
-const TRAMOS_BASE_GENERAL = [
-  { hasta: 12450, tipo: 0.19 },
-  { hasta: 20200, tipo: 0.24 },
-  { hasta: 35200, tipo: 0.30 },
-  { hasta: 60000, tipo: 0.37 },
-  { hasta: 300000, tipo: 0.45 },
-  { hasta: Infinity, tipo: 0.47 },
-];
+//
+// Nota T14.3 · La escala combinada estatal+autonómica para la base general
+// vive ahora en `data/fiscal/tramosAutonomicos2024.ts`. Aquí solo queda la
+// escala de la base del ahorro · que NO se desdobla por CCAA (LIRPF arts.
+// 66 y 76 · escala única para todos los contribuyentes).
 
 const TRAMOS_BASE_AHORRO = [
   { hasta: 6000, tipo: 0.19 },
@@ -215,6 +230,10 @@ export interface DeclaracionIRPF {
   resultado: number; // positivo = a pagar, negativo = a devolver
   tipoEfectivo: number; // cuota líquida / base imponible total
   conciliacion?: FiscalConciliationResult; // Solo presente si se pidió conciliación
+  // T14.3 · diagnóstico de cierre de GAPs fiscales · qué reglas aplicaron
+  // y cuáles necesitan acción (CCAA pendiente de auditar · datos del titular
+  // ausentes · etc).
+  warnings: string[];
 }
 
 // ─── Función de cálculo progresivo ───────────────────────────────────────────
@@ -322,6 +341,63 @@ export function calcularPorcentajeReduccionContrato(contract: any): number {
 function edadDesde(fechaNacimiento: string, ejercicio: number): number {
   const nacimiento = new Date(fechaNacimiento);
   return ejercicio - nacimiento.getFullYear();
+}
+
+// ─── Helpers fiscales (puros · exportados para testing) ─────────────────────
+
+/**
+ * GAP 5.2 · Bono por edad sobre el mínimo del contribuyente.
+ * Art. 57 LIRPF · acumulativo:
+ *   · ≥65 años → +1.150 €
+ *   · ≥75 años → +1.150 + 1.400 = 2.550 €
+ * Si la edad es null (fechaNacimiento no informada) · devuelve 0.
+ */
+export function calcularBonoEdadContribuyente(edad: number | null): number {
+  if (edad === null || edad < 0) return 0;
+  let bono = 0;
+  if (edad >= 65) bono += CONSTANTES_IRPF.minimoMayor65;
+  if (edad >= 75) bono += CONSTANTES_IRPF.minimoMayor75;
+  return bono;
+}
+
+/**
+ * Traduce los warnings del `fiscalContextService` (que pueden venir en
+ * inglés · ej. 'comunidadAutonoma not informed') a español · para que la
+ * salida user-facing de `DeclaracionIRPF.warnings` no mezcle idiomas.
+ * Si el warning no está en el mapa · se preserva con prefijo de origen.
+ */
+const TRADUCCIONES_WARNINGS_FISCALES: Record<string, string> = {
+  'comunidadAutonoma not informed': 'comunidadAutonoma no informada',
+  'fechaNacimiento not informed': 'fechaNacimiento no informada',
+  'fechaNacimiento not parseable': 'fechaNacimiento no parseable',
+  'viviendaHabitual not registered': 'viviendaHabitual no registrada',
+};
+
+function traducirWarningContextoFiscal(warning: string): string {
+  const trimmed = warning.trim();
+  return TRADUCCIONES_WARNINGS_FISCALES[trimmed] ?? trimmed;
+}
+
+/**
+ * GAP 5.4 · Bonus por discapacidad (mínimo personal y familiar).
+ * Art. 60 LIRPF · importes 2024:
+ *   · 'hasta33'    → 0     (sin grado reconocido)
+ *   · 'entre33y65' → 3.000 (≥33% pero <65%)
+ *   · 'mas65'      → 9.000 (≥65%) + 3.000 asistencia/movilidad reducida
+ *
+ * Se aplica idéntico al titular · descendientes · ascendientes.
+ */
+export function calcularBonusDiscapacidad(nivel: NivelDiscapacidad | undefined): number {
+  switch (nivel) {
+    case 'entre33y65':
+      return 3000;
+    case 'mas65':
+      return 9000 + 3000;
+    case 'hasta33':
+    case 'ninguna':
+    default:
+      return 0;
+  }
 }
 
 // ─── Recopilación datos trabajo ───────────────────────────────────────────────
@@ -541,9 +617,13 @@ export function separarAccesorios(activeProperties: any[]): {
   return { propertiesToProcess, accessoryProperties, linkedAccessoryIds };
 }
 
-async function recopilarDatosInmuebles(ejercicio: number): Promise<{
+async function recopilarDatosInmuebles(
+  ejercicio: number,
+  ctx: FiscalContext | null,
+): Promise<{
   inmuebles: RendimientoInmueble[];
   imputaciones: ImputacionRenta[];
+  viviendaHabitualExcluida: boolean;
 }> {
   const db = await initDB();
   const properties = await db.getAll('properties');
@@ -579,6 +659,20 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
       return false;
     });
   }
+
+  // GAP 5.3 · La vivienda habitual NO genera imputación de renta inmobiliaria
+  // (LIRPF art. 85). Si el usuario hubiera registrado por error su vivienda
+  // habitual también en el store `properties` (inversión), la excluimos
+  // matchando por `cadastralReference`. Reutilizamos el helper puro para
+  // evitar divergencias futuras en normalización de espacios/casing.
+  const {
+    propiedades: activePropertiesSinViviendaHabitual,
+    excluida: viviendaHabitualExcluida,
+  } = filtrarViviendaHabitualDePropiedades(
+    activeProperties,
+    ctx?.viviendaHabitual?.referenciaCatastral,
+  );
+  activeProperties = activePropertiesSinViviendaHabitual;
 
   // Separate main properties from accessories using the exported helper
   const { propertiesToProcess, accessoryProperties, linkedAccessoryIds } = separarAccesorios(activeProperties);
@@ -845,7 +939,7 @@ async function recopilarDatosInmuebles(ejercicio: number): Promise<{
     }
   }
 
-  return { inmuebles, imputaciones };
+  return { inmuebles, imputaciones, viviendaHabitualExcluida };
 }
 
 // ─── Recopilación datos inversiones ──────────────────────────────────────────
@@ -1021,46 +1115,133 @@ async function recopilarDatosInversiones(ejercicio: number): Promise<{
 
 // ─── Cálculo mínimos personales ───────────────────────────────────────────────
 
-async function calcularMinimosPersonales(ejercicio: number): Promise<MinimosPersonales> {
-  const personalData = await personalDataService.getPersonalData();
-  let contribuyente = CONSTANTES_IRPF.minimoContribuyente;
+/**
+ * Versión pura de cálculo de mínimos personales (LIRPF arts. 56-61).
+ * Recibe el contexto fiscal · NO toca BD · exportada para testing directo.
+ *
+ * Cierra GAP 5.2 · bono por edad ≥65 / ≥75 sobre mínimo contribuyente.
+ * Cierra GAP 5.4 · bonus por discapacidad de descendientes y ascendientes.
+ */
+export function calcularMinimosPersonalesFromContext(
+  ctx: FiscalContext | null,
+  ejercicio: number,
+): MinimosPersonales {
+  // GAP 5.2 · mínimo contribuyente + bono edad. La edad debe evaluarse
+  // respecto al ejercicio liquidado (no respecto a la fecha actual del
+  // sistema · `ctx.edadActual` es "hoy") · clave para liquidaciones de
+  // ejercicios pasados.
+  const edadTitularEjercicio =
+    ctx?.fechaNacimiento ? edadDesde(ctx.fechaNacimiento, ejercicio) : null;
+  const bonoEdadTitular = calcularBonoEdadContribuyente(edadTitularEjercicio);
+  const contribuyente = round2(CONSTANTES_IRPF.minimoContribuyente + bonoEdadTitular);
 
-  // Age extras (use birth year estimation from name/dni not available, skip age bonuses)
-  // TODO: add birthdate to PersonalData if needed
-
-  // Descendientes
+  // Descendientes · escalado por orden + extra menores de 3 + GAP 5.4 discapacidad
   let minimoDescendientes = 0;
-  const descendientes = personalData?.descendientes ?? [];
+  const descendientes = ctx?.descendientes ?? [];
   for (let i = 0; i < descendientes.length; i++) {
     const idx = Math.min(i + 1, 4);
-    minimoDescendientes += CONSTANTES_IRPF.minimoDescendientes[idx] ?? CONSTANTES_IRPF.minimoDescendientes[4];
-    // Extra if under 3
-    const edad = edadDesde(descendientes[i].fechaNacimiento, ejercicio);
-    if (edad < 3) minimoDescendientes += CONSTANTES_IRPF.minimoDescendienteMenor3;
-  }
-
-  // Ascendientes
-  let minimoAscendientes = 0;
-  for (const asc of personalData?.ascendientes ?? []) {
-    if (asc.convive && asc.edad >= 65) {
-      minimoAscendientes += CONSTANTES_IRPF.minimoAscendienteMayor65;
-      if (asc.edad >= 75) minimoAscendientes += CONSTANTES_IRPF.minimoAscendienteMayor75;
+    minimoDescendientes +=
+      CONSTANTES_IRPF.minimoDescendientes[idx] ?? CONSTANTES_IRPF.minimoDescendientes[4];
+    // Extra menores de 3
+    if (descendientes[i].fechaNacimiento) {
+      const edad = edadDesde(descendientes[i].fechaNacimiento, ejercicio);
+      if (edad < 3) minimoDescendientes += CONSTANTES_IRPF.minimoDescendienteMenor3;
     }
+    // GAP 5.4 · bonus discapacidad descendiente
+    minimoDescendientes += calcularBonusDiscapacidad(descendientes[i].discapacidad);
   }
 
-  // Discapacidad
-  let minimoDiscapacidad = 0;
-  const discapacidad = personalData?.discapacidad ?? 'ninguna';
-  if (discapacidad === 'hasta33') minimoDiscapacidad = 3000;
-  else if (discapacidad === 'entre33y65') minimoDiscapacidad = 9000;
-  else if (discapacidad === 'mas65') minimoDiscapacidad = 12000;
+  // Ascendientes · ≥65 (LIRPF art. 59) + GAP 5.4 discapacidad
+  let minimoAscendientes = 0;
+  for (const asc of ctx?.ascendientes ?? []) {
+    // El gateway no expone `convive`. Aplicamos solo el filtro de edad
+    // (≥65) que es el principal. La validación de convivencia se hace en
+    // la UI al dar de alta el ascendiente. TODO si en el futuro se decide
+    // exponer `convive` en el gateway.
+    if (asc.edadActual >= 65) {
+      minimoAscendientes += CONSTANTES_IRPF.minimoAscendienteMayor65;
+      if (asc.edadActual >= 75) minimoAscendientes += CONSTANTES_IRPF.minimoAscendienteMayor75;
+    }
+    // GAP 5.4 · bonus discapacidad ascendiente
+    minimoAscendientes += calcularBonusDiscapacidad(asc.discapacidad);
+  }
+
+  // Discapacidad titular (comportamiento previo)
+  const minimoDiscapacidad = ctx
+    ? calcularBonusDiscapacidad(ctx.discapacidadTitular)
+    : 0;
 
   return {
     contribuyente: round2(contribuyente),
     descendientes: round2(minimoDescendientes),
     ascendientes: round2(minimoAscendientes),
     discapacidad: round2(minimoDiscapacidad),
-    total: round2(contribuyente + minimoDescendientes + minimoAscendientes + minimoDiscapacidad),
+    total: round2(
+      contribuyente + minimoDescendientes + minimoAscendientes + minimoDiscapacidad,
+    ),
+  };
+}
+
+/**
+ * GAP 5.3 · Excluye de una lista de inmuebles la vivienda habitual
+ * (matchada por `cadastralReference` con la referencia catastral del
+ * `FiscalContext.viviendaHabitual`). LIRPF art. 85 · la vivienda habitual
+ * no genera imputación de renta inmobiliaria.
+ *
+ * Pure function · exportada para testing directo.
+ */
+export function filtrarViviendaHabitualDePropiedades(
+  properties: any[],
+  viviendaHabitualRef: string | null | undefined,
+): { propiedades: any[]; excluida: boolean } {
+  const ref = viviendaHabitualRef?.trim();
+  if (!ref) {
+    return { propiedades: properties, excluida: false };
+  }
+  const filtered = properties.filter((p: any) => {
+    const refProp = (p.cadastralReference ?? '').trim();
+    return refProp !== ref;
+  });
+  return {
+    propiedades: filtered,
+    excluida: filtered.length < properties.length,
+  };
+}
+
+// ─── Liquidación CCAA-aware (GAP 5.1) ────────────────────────────────────────
+
+/**
+ * Calcula la cuota base general aplicando escala estatal + escala
+ * autonómica de la CCAA del titular. Si la CCAA no tiene tabla auditada
+ * (`verified: false`), cae a la supletoria DT 15ª LIRPF · resultado
+ * idéntico al comportamiento previo a T14.3.
+ *
+ * @returns objeto con la cuota total, las cuotas parciales y la escala
+ *          autonómica efectivamente usada (para diagnóstico y warnings).
+ */
+export function calcularCuotaBaseGeneralCCAA(
+  base: number,
+  ctx: FiscalContext | null,
+  ejercicio: number,
+): {
+  cuotaTotal: number;
+  cuotaEstatal: number;
+  cuotaAutonomica: number;
+  escalaAutonomicaUsada: EscalaTramos;
+  escalaAutonomicaAplicada: boolean;
+  reason?: string;
+} {
+  const ccaa = ctx?.comunidadAutonoma ?? null;
+  const { escala, aplicada, reason } = getEscalaAutonomica(ccaa, ejercicio);
+  const cuotaEstatal = calcularCuotaPorTramos(base, ESCALA_ESTATAL_GENERAL_2024.tramos);
+  const cuotaAutonomica = calcularCuotaPorTramos(base, escala.tramos);
+  return {
+    cuotaTotal: round2(cuotaEstatal + cuotaAutonomica),
+    cuotaEstatal: round2(cuotaEstatal),
+    cuotaAutonomica: round2(cuotaAutonomica),
+    escalaAutonomicaUsada: escala,
+    escalaAutonomicaAplicada: aplicada,
+    reason,
   };
 }
 
@@ -1076,8 +1257,14 @@ export async function calcularDeclaracionIRPF(
     if (cached) return cached;
   }
 
+  // PASO 0 · contexto fiscal unificado (T14.3)
+  // Confiamos en el TTL (30s) del gateway · invalidación explícita queda
+  // a cargo del side de escrituras (T14.4 · cuando se cableen los
+  // consumidores que escriben personalData / viviendaHabitual).
+  const ctx = await getFiscalContextSafe();
+
   // PASO 1: Recopilar datos
-  const [trabajo, autonomo, { inmuebles, imputaciones }, {
+  const [trabajo, autonomo, inmueblesData, {
     rcm,
     capitalMobiliarioBaseGeneral,
     aportacionPensiones,
@@ -1085,10 +1272,11 @@ export async function calcularDeclaracionIRPF(
     await Promise.all([
       recopilarDatosTrabajo(ejercicio),
       recopilarDatosAutonomo(ejercicio),
-      recopilarDatosInmuebles(ejercicio),
+      recopilarDatosInmuebles(ejercicio, ctx),
       recopilarDatosInversiones(ejercicio),
       getRendimientosAtribuidosEjercicio(ejercicio),
     ]);
+  const { inmuebles, imputaciones, viviendaHabitualExcluida } = inmueblesData;
 
   // PASO 1b (opcional): Conciliación fiscal
   let conciliacionResult: FiscalConciliationResult | undefined;
@@ -1260,19 +1448,22 @@ export async function calcularDeclaracionIRPF(
     total: totalPP,
   };
 
-  // PASO 5: Mínimos personales
-  const minimoPersonal = await calcularMinimosPersonales(ejercicio);
+  // PASO 5: Mínimos personales (GAP 5.2 + 5.4 + 5.6 · context-driven)
+  const minimoPersonal = calcularMinimosPersonalesFromContext(ctx, ejercicio);
 
-  // PASO 6: Liquidación
+  // PASO 6: Liquidación · GAP 5.1 · escala estatal + autonómica por CCAA
   const baseImponibleGeneral = round2(Math.max(0, totalBaseGeneral - reducciones.total));
   const baseImponibleAhorro = round2(Math.max(0, baseAhorro.total));
 
-  const cuotaBaseGeneral = calcularCuotaPorTramos(baseImponibleGeneral, TRAMOS_BASE_GENERAL);
-  const cuotaBaseAhorro = calcularCuotaPorTramos(baseImponibleAhorro, TRAMOS_BASE_AHORRO);
-  const cuotaMinimosBaseGeneral = calcularCuotaPorTramos(
+  const cuotaGeneral = calcularCuotaBaseGeneralCCAA(baseImponibleGeneral, ctx, ejercicio);
+  const cuotaMinimos = calcularCuotaBaseGeneralCCAA(
     Math.min(minimoPersonal.total, baseImponibleGeneral),
-    TRAMOS_BASE_GENERAL
+    ctx,
+    ejercicio,
   );
+  const cuotaBaseGeneral = cuotaGeneral.cuotaTotal;
+  const cuotaBaseAhorro = calcularCuotaPorTramos(baseImponibleAhorro, TRAMOS_BASE_AHORRO);
+  const cuotaMinimosBaseGeneral = cuotaMinimos.cuotaTotal;
   const cuotaIntegra = round2((cuotaBaseGeneral - cuotaMinimosBaseGeneral) + cuotaBaseAhorro);
   const deduccionesDobleImposicion = baseAhorroCapitalMobiliario.retenciones; // Solo retenciones integradas en base del ahorro
   const cuotaLiquida = round2(Math.max(0, cuotaIntegra - deduccionesDobleImposicion));
@@ -1310,6 +1501,27 @@ export async function calcularDeclaracionIRPF(
   const totalBase = round2(baseImponibleGeneral + baseImponibleAhorro);
   const tipoEfectivo = totalBase > 0 ? round2((cuotaLiquida / totalBase) * 100) : 0;
 
+  // T14.3 · construir warnings de la declaración. Los warnings que vienen
+  // del gateway pueden estar en inglés ('comunidadAutonoma not informed')
+  // · normalizamos a español para no mezclar idiomas en la salida
+  // user-facing.
+  const declaracionWarnings: string[] = [];
+  if (ctx) {
+    declaracionWarnings.push(...ctx.warnings.map(traducirWarningContextoFiscal));
+  } else {
+    declaracionWarnings.push(
+      'fiscalContext no disponible · cálculo con valores por defecto · sin bonos edad ni discapacidad familiares ni reducciones autonómicas',
+    );
+  }
+  if (cuotaGeneral.reason) {
+    declaracionWarnings.push(`escala autonómica · ${cuotaGeneral.reason}`);
+  }
+  if (viviendaHabitualExcluida) {
+    declaracionWarnings.push(
+      'viviendaHabitual detectada en `properties` · excluida de imputación de renta (LIRPF art. 85)',
+    );
+  }
+
   const declaracionResult: DeclaracionIRPF = {
     ejercicio,
     baseGeneral,
@@ -1320,6 +1532,7 @@ export async function calcularDeclaracionIRPF(
     retenciones,
     resultado,
     tipoEfectivo,
+    warnings: declaracionWarnings,
     ...(compensacionAhorro.fuentes.inmuebles.detalle.length > 0 ? { ventasInmuebles: compensacionAhorro.fuentes.inmuebles.detalle } : {}),
     compensacionAhorro,
     ...(conciliacionResult !== undefined ? { conciliacion: conciliacionResult } : {}),

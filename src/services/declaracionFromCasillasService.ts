@@ -251,6 +251,7 @@ export function reconstruirDeclaracionDesdeCasillas(
     tipoEfectivo: baseLiquidableTotal > 0
       ? round2((liquidacion.cuotaLiquida / baseLiquidableTotal) * 100)
       : 0,
+    warnings: [],
   };
 }
 
