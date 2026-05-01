@@ -65,6 +65,7 @@ export const aportacionesPlanService = {
 
     await db.delete('aportacionesPlan' as any, aportacionId as any);
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const ahora = new Date().toISOString();
     const nuevas: AportacionPlan[] = [];
     for (let mes = 1; mes <= meses; mes++) {
