@@ -83,6 +83,7 @@ import {
   RefreshCw,
   Inbox,
   Banknote,
+  Sparkles,
 } from 'lucide-react';
 
 /**
@@ -175,6 +176,7 @@ export const Icons = {
   Refresh: RefreshCw,
   Inbox,
   Banknote,             // §AA.7 · timeline devolución
+  Sparkles,
 } as const;
 
 export type IconName = keyof typeof Icons;
