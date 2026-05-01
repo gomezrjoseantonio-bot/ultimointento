@@ -116,27 +116,22 @@ const MatrizCobros12m: React.FC<{ item: CartaItem }> = ({ item }) => {
   }, [item, year]);
 
   return (
-    <div style={{ width: '100%' }}>
-      <div
-        className={styles.cartaMatriz}
-        role="img"
-        aria-label="Cobros mensuales del año en curso"
-      >
-        {Array.from({ length: 12 }, (_, i) => {
-          let cls = styles.cartaMatrizCell;
-          if (cobradosPorMes[i]) cls += ' ' + styles.cobrado;
-          else if (i <= mesActual) cls += ' ' + styles.pendiente;
-          else cls += ' ' + styles.futuro;
-          return (
-            <div key={i} className={cls} title={`${MESES[i]} ${year}`} />
-          );
-        })}
-      </div>
-      <div className={styles.cartaMatrizLeyenda}>
-        {MESES.map((m, i) => (
-          <span key={i}>{m}</span>
-        ))}
-      </div>
+    <div
+      className={styles.cartaVizCobros}
+      role="img"
+      aria-label="Cobros mensuales del año en curso"
+    >
+      {Array.from({ length: 12 }, (_, i) => {
+        let cls = styles.cartaVizMes;
+        if (cobradosPorMes[i]) cls += ' ' + styles.cobrado;
+        else if (i <= mesActual) cls += ' ' + styles.pendiente;
+        else cls += ' ' + styles.futuro;
+        return (
+          <div key={i} className={cls} title={`${MESES[i]} ${year}`}>
+            {MESES[i]}
+          </div>
+        );
+      })}
     </div>
   );
 };

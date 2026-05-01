@@ -70,20 +70,20 @@
   }
 }
 
-/* ── Carta base (§ Z.3) ────────────────────────────────────────────────── */
+/* ── Carta base (§ Z.3 · mockup atlas-inversiones-v2.html:89-106) ───────── */
 .carta {
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 14px;
-  padding: 22px;
+  padding: 22px 24px;
+  aspect-ratio: 4 / 3;
+  min-height: 300px;
   cursor: pointer;
-  transition: all 140ms ease;
+  transition: all 180ms ease-out;
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 280px;
   text-align: left;
   font-family: inherit;
   color: inherit;
@@ -101,21 +101,30 @@
   outline-offset: 2px;
 }
 
-/* Borde top color por tipo */
-.carta.plan { border-top: 3px solid var(--atlas-v5-brand); }
-.carta.prestamo { border-top: 3px solid var(--atlas-v5-gold); }
-.carta.accion { border-top: 3px solid var(--atlas-v5-pos); }
-.carta.cripto { border-top: 3px solid var(--atlas-v5-cripto); }
-.carta.fondo { border-top: 3px solid var(--atlas-v5-pos); }    /* T23.6.2 · equity/fondos → pos */
-.carta.deposito { border-top: 3px solid var(--atlas-v5-gold); }/* T23.6.2 · depósitos/P2P → gold */
-.carta.otro { border-top: 3px solid var(--atlas-v5-ink-3); }  /* otro / deposito legacy */
+/* Top bar 3px gradient · mockup .carta::before */
+.carta::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.carta.plan::before { background: linear-gradient(90deg, var(--atlas-v5-brand), var(--atlas-v5-brand-2, var(--atlas-v5-brand))); }
+.carta.prestamo::before { background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-2, var(--atlas-v5-gold))); }
+.carta.accion::before { background: linear-gradient(90deg, var(--atlas-v5-ink-3), var(--atlas-v5-ink-4)); }
+.carta.cripto::before { background: linear-gradient(90deg, var(--atlas-v5-cripto), var(--atlas-v5-cripto)); }
+.carta.fondo::before { background: linear-gradient(90deg, var(--atlas-v5-pos), var(--atlas-v5-pos)); }
+.carta.deposito::before { background: linear-gradient(90deg, var(--atlas-v5-gold), var(--atlas-v5-gold-2, var(--atlas-v5-gold))); }
+.carta.otro::before { background: linear-gradient(90deg, var(--atlas-v5-ink-3), var(--atlas-v5-ink-4)); }
 
-/* Top de carta · marca + chip tipo */
+/* Top de carta · marca + chip tipo · mockup .carta-top */
 .cartaTop {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
+  margin-bottom: 16px;
 }
 
 .cartaMarca {
@@ -134,36 +143,36 @@
   justify-content: center;
   font-family: var(--atlas-v5-font-mono-num);
   font-weight: var(--atlas-v5-fw-bold);
-  font-size: 13px;
+  font-size: 10.5px;
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
   border: 1px solid var(--atlas-v5-line);
   flex-shrink: 0;
 }
 
-/* Logos de marca (§ Z.3 · listados literales del mockup) */
+/* Logos de marca · hex literales del mockup atlas-inversiones-v2.html:115-119 */
 .cartaLogo.myi {
-  background: linear-gradient(135deg, #FF8200, #C8530A);
+  background: #7C3AED;
   color: var(--atlas-v5-white);
   border: none;
 }
 .cartaLogo.smartflip {
-  background: var(--atlas-v5-brand);
+  background: #059669;
   color: var(--atlas-v5-white);
   border: none;
 }
 .cartaLogo.bbva {
-  background: var(--atlas-v5-brand-bbva);
+  background: #004481;
   color: var(--atlas-v5-white);
   border: none;
 }
-.cartaLogo.uni {
-  background: linear-gradient(135deg, #C59A47, #B88A3E);
+.cartaLogo.unihouser {
+  background: #B88A3E;
   color: var(--atlas-v5-white);
   border: none;
 }
-.cartaLogo.orange {
-  background: var(--atlas-v5-brand-ing);
+.cartaLogo.bnp {
+  background: #00915A;
   color: var(--atlas-v5-white);
   border: none;
 }
@@ -175,54 +184,57 @@
 .cartaEntidadLab {
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: var(--atlas-v5-ink-4);
-  font-weight: var(--atlas-v5-fw-semibold);
+  font-weight: var(--atlas-v5-fw-bold);
 }
 
 .cartaEntidadNom {
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: var(--atlas-v5-fw-semibold);
-  color: var(--atlas-v5-ink);
-  margin-top: 1px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cartaTipo {
-  font-size: 10px;
-  padding: 3px 9px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 9px;
+  padding: 3px 8px;
   border-radius: 4px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   font-weight: var(--atlas-v5-fw-bold);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
+/* mockup atlas-inversiones-v2.html:127-129 */
 .cartaTipo.plan { background: var(--atlas-v5-brand-wash); color: var(--atlas-v5-brand); }
 .cartaTipo.prestamo { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
-.cartaTipo.accion { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.cartaTipo.accion { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); border: 1px solid var(--atlas-v5-line); }
 .cartaTipo.cripto { background: var(--atlas-v5-cripto-wash); color: var(--atlas-v5-cripto); }
-.cartaTipo.fondo { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }  /* T23.6.2 · equity/fondos → pos */
-.cartaTipo.deposito { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }/* T23.6.2 · depósito → gold */
-.cartaTipo.otro { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); }
+.cartaTipo.fondo { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.cartaTipo.deposito { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.cartaTipo.otro { background: var(--atlas-v5-bg); color: var(--atlas-v5-ink-3); border: 1px solid var(--atlas-v5-line); }
 
 .cartaNom {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: var(--atlas-v5-fw-bold);
   color: var(--atlas-v5-ink);
-  letter-spacing: -0.018em;
-  line-height: 1.2;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-bottom: 16px;
 }
 
 .cartaValor {
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 26px;
+  font-size: 30px;
   font-weight: var(--atlas-v5-fw-bold);
   color: var(--atlas-v5-ink);
-  letter-spacing: -0.025em;
+  letter-spacing: -0.028em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
@@ -245,99 +257,107 @@
 .delta.gold { color: var(--atlas-v5-gold); }
 .delta.muted { color: var(--atlas-v5-ink-4); font-weight: var(--atlas-v5-fw-medium); }
 
+/* Viz · mockup .carta-viz · empuja al fondo + separador superior */
 .cartaViz {
-  flex: 1;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--atlas-v5-line-2);
   display: flex;
-  align-items: flex-end;
-  min-height: 60px;
+  flex-direction: column;
   width: 100%;
 }
 
 .cartaVizSparkline {
   width: 100%;
-  height: 56px;
+  height: 48px;
   display: block;
 }
 
 .cartaVizPlaceholder {
   width: 100%;
-  height: 56px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   color: var(--atlas-v5-ink-4);
-  border-top: 1px dashed var(--atlas-v5-line);
 }
 
-/* Matriz cobros (§ Z.4 · 12 cuadritos rendimiento periódico) */
-.cartaMatriz {
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 4px;
-  width: 100%;
-  align-items: center;
-}
-
-.cartaMatrizCell {
-  aspect-ratio: 1;
-  border-radius: 3px;
-  background: var(--atlas-v5-line-2);
-  position: relative;
-}
-/* T23.6.2 · Corrige divergencia B.3-B.4: cobrado=verde · pendiente=oro · futuro=neutro */
-.cartaMatrizCell.cobrado {
-  background: var(--atlas-v5-pos-wash);
-  box-shadow: inset 0 0 0 1px var(--atlas-v5-pos-border);
-}
-.cartaMatrizCell.pendiente {
-  background: var(--atlas-v5-gold-wash);
-  box-shadow: inset 0 0 0 1px var(--atlas-v5-warn-border);
-}
-.cartaMatrizCell.futuro {
-  background: var(--atlas-v5-line);
-}
-
-.cartaMatrizLeyenda {
-  margin-top: 6px;
-  font-size: 9.5px;
-  color: var(--atlas-v5-ink-4);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+/* Cobros 12m · mockup .carta-viz-cobros + .carta-viz-mes
+   12 chips horizontales con letra del mes dentro */
+.cartaVizCobros {
   display: flex;
   justify-content: space-between;
-  font-family: var(--atlas-v5-font-mono-num);
+  align-items: center;
+  gap: 4px;
+  width: 100%;
 }
 
-/* Footer de carta */
+.cartaVizMes {
+  flex: 1;
+  height: 32px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 9px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cartaVizMes.cobrado {
+  background: var(--atlas-v5-pos-wash);
+  color: var(--atlas-v5-pos);
+}
+
+.cartaVizMes.pendiente {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  border: 1px solid var(--atlas-v5-gold);
+}
+
+.cartaVizMes.futuro {
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-5);
+  border: 1px dashed var(--atlas-v5-line);
+}
+
+/* Footer de carta · mockup .carta-footer (always visible) */
 .cartaFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 14px;
-  border-top: 1px solid var(--atlas-v5-line-2);
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
 }
 
 .cartaFooterMeta {
   font-size: 11px;
   color: var(--atlas-v5-ink-4);
   font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
 }
 
 .cartaFooterCta {
   font-size: 11px;
   color: var(--atlas-v5-gold);
   font-weight: var(--atlas-v5-fw-bold);
-  opacity: 0;
-  transition: opacity 140ms ease;
+  font-family: var(--atlas-v5-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: color 140ms ease;
 }
 
 .carta:hover .cartaFooterCta,
 .carta:focus-visible .cartaFooterCta {
-  opacity: 1;
+  color: var(--atlas-v5-gold-ink);
 }
 
 /* ── Visualización RSU · 3 filas info (§Z.2.4 T23.6.2) ──────────────── */
