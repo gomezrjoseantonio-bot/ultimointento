@@ -72,6 +72,46 @@ componente ya soporta ambas series · sólo falta cablear datos reales.
 
 ---
 
+### TODO-T20-02 · Módulo Inversiones · galería + fichas dedicadas (mockup vs realidad) ✓
+
+**Origen** · T20 Fase 3d · sub-tarea 20.3d · módulo Inversiones quedó con
+patrón Outlet+4 tabs (Resumen · Cartera · Rendimientos · Individual)
+mientras el mockup `atlas-inversiones-v2.html` definía galería 3 cols
+con cartas heterogéneas + fichas detalle dedicadas.
+
+**Decisión Jose** ·
+> Aceptar con TODO formal · cuando se aborde Inversiones · CC debe
+> migrar las 4 tabs a galería + fichas siguiendo `atlas-inversiones-v2.html`
+> · narrativa estricta de inversor (NO fiscal) · puente opcional
+> discreto al módulo Fiscal solo via referencia explícita.
+
+**Cerrado en** · TAREA 23 (T23.1 → T23.5) · PRs #1205 · #1207 · #1209 ·
+#1210 · #(este PR T23.5 cierre).
+
+**Resumen del cierre** ·
+- Galería v2 con cartas heterogéneas · visualización contextual por tipo
+  (sparkline / matriz cobros / placeholder)
+- Fichas detalle dedicadas por grupo (`<FichaValoracionSimple>` ·
+  `<FichaRendimientoPeriodico>` · `<FichaDividendos>` · `<FichaGenerica>`
+  fallback)
+- Vista expandida `/inversiones/cerradas` con narrativa de inversor ·
+  adaptador que oculta el lenguaje fiscal del XML AEAT y expone
+  `aportado` · `vendido` · `resultado` · `cagr` · `duracionDias`
+- Wizard nueva posición · 3 caminos (alta manual · IndexaCapital ·
+  aportaciones) · importadores legacy preservados intactos
+- Cero migración · `DB_VERSION = 65` · datos del usuario intactos
+- Cero hex hardcoded fuera de los listados literales en § Z.3
+- Cero lenguaje fiscal en UI · puente OPCIONAL al módulo Fiscal solo via
+  botón discreto "Ver detalles fiscales" cuando la posición tiene
+  `referenciaFiscal` (vino del XML AEAT)
+
+**Documentación** ·
+- `docs/AUDIT-T23-inversiones.md` · auditoría inicial T23.1
+- `docs/T23-end-to-end-verification.md` · 9 escenarios verificación
+- `docs/T23-cierre.md` · resumen + diff visual + TODOs documentados
+
+---
+
 ## Convenciones
 
 - Cada TODO lleva ID único `TODO-T20-NN` correlativo.
