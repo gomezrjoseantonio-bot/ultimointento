@@ -1,0 +1,293 @@
+/* ============================================================
+   T23.4 · Inversiones · vista expandida "Posiciones cerradas"
+   Estilos canónicos § 5.3 spec · narrativa inversor (NO fiscal).
+   Cero hex hardcoded · todo via tokens v5.
+   ============================================================ */
+
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13.5px;
+}
+
+/* ── Sub-stats franja secundaria ──────────────────────────────── */
+.subStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 8px 0 22px;
+}
+
+@media (max-width: 900px) {
+  .subStats { grid-template-columns: 1fr; }
+}
+
+.subStat {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 14px 16px;
+}
+
+.subStatLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.subStatVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 18px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 4px;
+}
+
+.subStatSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+}
+
+/* ── Filtros (§ 5.3 spec · narrativa inversor) ────────────────── */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+}
+
+.filtroLab {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-right: 4px;
+}
+
+.filtroSelect {
+  padding: 6px 10px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.filtroSelect:hover {
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.filtroSelect:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+.filtroResultados {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-4);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+/* ── Listado de cartas cerradas ───────────────────────────────── */
+.listado {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  background: var(--atlas-v5-card);
+}
+
+/* ── Carta cerrada (§ 5.3 spec) ───────────────────────────────── */
+.cartaCerrada {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  border-left: 3px solid var(--atlas-v5-ink-3);
+  border-radius: var(--atlas-v5-radius-lg);
+  padding: 18px 22px;
+  cursor: default;
+  transition: all 140ms ease;
+  opacity: 0.92;
+}
+
+.cartaCerrada:hover {
+  border-color: var(--atlas-v5-ink-5);
+  opacity: 1;
+  background: var(--atlas-v5-card);
+}
+
+.cartaCerrada.ganancia { border-left-color: var(--atlas-v5-pos); }
+.cartaCerrada.perdida { border-left-color: var(--atlas-v5-neg); }
+.cartaCerrada.empate { border-left-color: var(--atlas-v5-ink-3); }
+
+.ccHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.ccMarca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ccLogo {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--atlas-v5-bg);
+  border: 1px solid var(--atlas-v5-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+  flex-shrink: 0;
+}
+
+.ccTextos {
+  min-width: 0;
+}
+
+.ccNom {
+  font-size: 14px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ccMeta {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.ccResultado {
+  text-align: right;
+  font-family: var(--atlas-v5-font-mono-num);
+  flex-shrink: 0;
+}
+
+.ccResultado .delta {
+  font-size: 16px;
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+.ccResultado .delta.pos { color: var(--atlas-v5-pos); }
+.ccResultado .delta.neg { color: var(--atlas-v5-neg); }
+.ccResultado .delta.muted { color: var(--atlas-v5-ink-3); }
+
+.ccResultadoPct {
+  display: block;
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 2px;
+  font-weight: var(--atlas-v5-fw-medium);
+}
+
+/* ── Filas de fechas y cifras ─────────────────────────────────── */
+.ccFechas {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+}
+
+.ccItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ccItem .lab {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.ccItem .val {
+  font-size: 12px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.ccItem .val.cagr { color: var(--atlas-v5-gold-ink); }
+
+.ccCifras {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* ── Footer · puente OPCIONAL al módulo Fiscal (§ 5.5) ────────── */
+.ccFooter {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line-2);
+  text-align: right;
+}
+
+.ccLinkFiscal {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-medium);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.ccLinkFiscal:hover {
+  color: var(--atlas-v5-gold-ink);
+}
