@@ -57,7 +57,7 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className }) => {
     fontSize: 'var(--atlas-v5-fs-sub)',
     color: 'var(--atlas-v5-ink-3)',
     boxShadow: 'var(--atlas-v5-shadow-modal)',
-    zIndex: 'var(--atlas-v5-z-dropdown)' as unknown as number,
+    zIndex: 50, /* --atlas-v5-z-dropdown */
     whiteSpace: 'nowrap',
   };
 
@@ -72,7 +72,7 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className }) => {
     fontSize: 'var(--atlas-v5-fs-sub)',
     color: 'var(--atlas-v5-ink-3)',
     boxShadow: 'var(--atlas-v5-shadow-modal)',
-    zIndex: 'var(--atlas-v5-z-dropdown)' as unknown as number,
+    zIndex: 50, /* --atlas-v5-z-dropdown */
     whiteSpace: 'nowrap',
   };
 
