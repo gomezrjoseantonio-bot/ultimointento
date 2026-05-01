@@ -230,6 +230,13 @@ const FiscalContextAudit = lazyWithPreload(() =>
     : Promise.resolve({ default: () => null })
 );
 
+// T9 · sub-tarea 9.1 · compromiso detection showcase · DEV only
+const CompromisoDetection = lazyWithPreload(() =>
+  isDevPagesEnabled
+    ? import('./pages/dev/CompromisoDetection')
+    : Promise.resolve({ default: () => null })
+);
+
 
 // Design Bible page - ATLAS Design System reference
 const DesignBiblePage = lazyWithPreload(() => import('./pages/DesignBiblePage'));
@@ -476,6 +483,18 @@ function App() {
                 element={
                   <React.Suspense fallback={<LoadingSpinner />}>
                     <FiscalContextAudit />
+                  </React.Suspense>
+                }
+              />
+            )}
+
+            {/* T9 · sub-tarea 9.1 · compromiso detection showcase · DEV only · sin layout ni auth */}
+            {isDevPagesEnabled && (
+              <Route
+                path="/dev/compromiso-detection"
+                element={
+                  <React.Suspense fallback={<LoadingSpinner />}>
+                    <CompromisoDetection />
                   </React.Suspense>
                 }
               />
