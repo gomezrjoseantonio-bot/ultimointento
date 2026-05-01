@@ -21,26 +21,24 @@ import CartaAddPosicion from './components/CartaAddPosicion';
 import WizardNuevaPosicion from './components/WizardNuevaPosicion';
 import DialogAportar from './components/DialogAportar';
 import {
+  calcularKpisCerradas,
+  getPosicionesCerradas,
+  type KpisCerradas,
+} from './adapters/posicionesCerradas';
+import {
   esCerrada,
   formatCurrency,
   formatDelta,
-  rangoAnios,
   signClass,
 } from './helpers';
 import styles from './InversionesGaleria.module.css';
 
-type ResumenCerradas = {
-  count: number;
-  resultadoNeto: number;
-  rango: string;
-};
-
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
-  const [posicionesCerradasStore, setPosicionesCerradasStore] = useState<
-    PosicionInversion[]
-  >([]);
+  const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
+    calcularKpisCerradas([]),
+  );
   const [loading, setLoading] = useState(true);
 
   const [showWizard, setShowWizard] = useState(false);
@@ -49,9 +47,15 @@ const InversionesGaleria: React.FC = () => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const { activas, cerradas } = await inversionesService.getAllPosiciones();
+      // Posiciones activas vienen del store; las cerradas las calcula
+      // el adaptador (T23.4) que combina las cerradas nativas con las
+      // del XML AEAT y las expone con narrativa de inversor.
+      const [{ activas }, cerradas] = await Promise.all([
+        inversionesService.getAllPosiciones(),
+        getPosicionesCerradas().catch(() => []),
+      ]);
       setPosiciones(activas);
-      setPosicionesCerradasStore(cerradas);
+      setResumenCerradas(calcularKpisCerradas(cerradas));
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] error cargando datos', err);
@@ -87,32 +91,6 @@ const InversionesGaleria: React.FC = () => {
         .sort((a, b) => (b.valor_actual ?? 0) - (a.valor_actual ?? 0)),
     [posiciones],
   );
-
-  /**
-   * Resumen de "Posiciones cerradas" para el entry-point colapsable de la
-   * galería. En 23.1 solo usamos las posiciones del store con `activo=false`
-   * (suelen ser 0 para el usuario actual). El adaptador 23.4 expandirá esto
-   * con las ventas reales del XML AEAT manteniendo narrativa inversor.
-   */
-  const resumenCerradas: ResumenCerradas = useMemo(() => {
-    const list = posicionesCerradasStore;
-    const resultadoNeto = list.reduce(
-      (sum, p) => sum + Number(p.rentabilidad_euros ?? 0),
-      0,
-    );
-    const fechas = list
-      .flatMap((p) => [
-        p.fecha_compra ?? null,
-        p.plan_liquidacion?.fecha_estimada ?? null,
-        p.fecha_valoracion ?? null,
-      ])
-      .filter((f): f is string => Boolean(f));
-    return {
-      count: list.length,
-      resultadoNeto,
-      rango: rangoAnios(fechas),
-    };
-  }, [posicionesCerradasStore]);
 
   const handleClickCarta = (id: number) => {
     navigate(`/inversiones/${id}`);
@@ -211,7 +189,7 @@ const InversionesGaleria: React.FC = () => {
                 <div className={styles.galleryTitle}>Posiciones cerradas</div>
                 <div className={styles.galleryCount}>
                   {resumenCerradas.count} {resumenCerradas.count === 1 ? 'posición' : 'posiciones'}
-                  {resumenCerradas.rango ? ` · ${resumenCerradas.rango}` : ''}
+                  {resumenCerradas.rangoAnios ? ` · ${resumenCerradas.rangoAnios}` : ''}
                 </div>
               </div>
               <button
