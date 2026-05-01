@@ -20,7 +20,7 @@ El servicio `compromisoDetectionService` (read-only) lee los siguientes stores:
 
 | Store                    | Uso                                                                  |
 |--------------------------|----------------------------------------------------------------------|
-| `movements`              | Universo de gastos a clusterizar · filtrado por `amount<0`, `unifiedStatus !== 'ignorado'`, fecha ≥ `today - maxAntiguedadMeses`. |
+| `movements`              | Universo de gastos a clusterizar · filtrado por `amount<0`, `state !== 'ignored'` (campo legacy `Movement.state` · `UnifiedMovementStatus` no incluye literal `'ignorado'`), fecha ≥ `today - maxAntiguedadMeses`. |
 | `viviendaHabitual`       | Filtro fase 5 · si hay vivienda habitual activa con su tipo (inquilino/propietario), se excluyen candidatos cuyo concepto sugiere comunidad/IBI/seguro hogar/hipoteca/alquiler de la habitual. |
 | `properties`             | Filtro fase 5 · inmuebles de inversión activos · se excluyen candidatos con tokens (alias, dirección, referencia catastral) que matcheen un inmueble. |
 | `compromisosRecurrentes` | Filtro fase 5 · candidatos cuyo `cuentaCargo + conceptoBancario` similar ya tenga compromiso vivo se descartan (porCompromisoExistente). |
@@ -34,9 +34,10 @@ El servicio `compromisoDetectionService` (read-only) lee los siguientes stores:
 
 ```ts
 estadisticas: {
-  movementsAnalizados: number;        // total tras filtro temporal + status
-  movementsAgrupados: number;         // los que entraron en algún cluster
-  movementsDescartados: number;       // los que no caen en ningún cluster ≥ minOcurrencias
+  movementsEnDB: number;              // total bruto de `movements` en DB antes de filtros
+  movementsAnalizados: number;        // movimientos elegibles tras filtros fase 1 (gasto · no ignorado · ventana · descripción normalizable) · universo del clustering
+  movementsAgrupados: number;         // analizados que entraron en algún cluster ≥ minOcurrencias
+  movementsDescartados: number;       // analizados que NO entraron en ningún cluster ≥ minOcurrencias · cumple `analizados = agrupados + descartados`
   clustersTotales: number;            // grupos formados (concepto+cuenta) ≥ minOcurrencias
   candidatosPropuestos: number;       // clusters que pasaron las 5 fases
   candidatosFiltrados: {

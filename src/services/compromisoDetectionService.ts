@@ -112,16 +112,39 @@ export interface DetectionOptions {
   minOcurrencias?: number;
   maxAntiguedadMeses?: number;
   excluirYaConfirmados?: boolean;
+  /**
+   * RESERVADO · spec §2.3 lo define como 5% por defecto · pero en T9.1 el
+   * algoritmo usa umbrales fijos de coeficiente de variación (0.005/0.05/0.20)
+   * para clasificar el modo de importe. Si se pasa un valor distinto al
+   * default, se emite un warning · la opción aún no se enforce. Ampliable
+   * en sub-tarea 9.2 si Jose pide control fino.
+   */
   toleranciaImportePercent?: number;
+  /**
+   * RESERVADO · spec §2.3 lo define como 3 días por defecto · pero en T9.1 el
+   * algoritmo usa umbrales fijos de desviación de intervalos (≤3, ≤4, ≤5,
+   * ≤8, ≤12 días según patrón). Si se pasa un valor distinto al default, se
+   * emite un warning · la opción aún no se enforce.
+   */
   toleranciaDiaMes?: number;
 }
 
 export interface DetectionReport {
   candidatos: CandidatoCompromiso[];
   estadisticas: {
+    /** Total bruto de `movements` en DB antes de filtros. */
+    movementsEnDB: number;
+    /**
+     * Movements elegibles tras filtros de fase 1 (gasto · no ignorado · dentro
+     * de ventana temporal · descripción normalizable). Universo sobre el que
+     * actúa el clustering.
+     */
     movementsAnalizados: number;
+    /** Movements analizados que entraron en algún cluster ≥ minOcurrencias. */
     movementsAgrupados: number;
+    /** Movements analizados que NO entraron en ningún cluster ≥ minOcurrencias. */
     movementsDescartados: number;
+    /** Clusters formados (concepto+cuenta) con ≥ minOcurrencias. */
     clustersTotales: number;
     candidatosPropuestos: number;
     candidatosFiltrados: {
@@ -220,9 +243,9 @@ interface NormalizedMovement {
 // ─── Fase 1 · Carga y normalización ───────────────────────────────────────
 
 async function fase1_loadAndNormalize(
+  db: Awaited<ReturnType<typeof initDB>>,
   opts: Required<Pick<DetectionOptions, 'maxAntiguedadMeses'>>,
 ): Promise<{ normalized: NormalizedMovement[]; totalEnDB: number }> {
-  const db = await initDB();
   const all: Movement[] = await db.getAll('movements');
   const cutoff = subMonthsISO(new Date(), opts.maxAntiguedadMeses);
 
@@ -408,6 +431,20 @@ function detectaSubidaProgresiva(occurrences: NormalizedMovement[]): boolean {
   return last > first * 1.05;
 }
 
+/**
+ * Infiere el `ImporteEvento` a partir de las ocurrencias del cluster.
+ *
+ * En T9.1 este detector solo emite 3 de los 4 modos del modelo:
+ *   - `fijo` · variación despreciable (cv < 0.5%)
+ *   - `variable` · variación suave o subida progresiva
+ *   - `diferenciadoPorMes` · variación moderada con patrón mensual
+ *
+ * El modo `porPago` (mapping mes→importe explícito) NO se infiere · requiere
+ * input usuario para definir qué meses son de pago y con qué importe ·
+ * detectarlo desde clustering produciría falsos positivos. Si Jose detecta
+ * compromisos reales con este modo (ej · IBI dividido en plazos no
+ * estándar), ajustar manualmente desde la UI de 9.3.
+ */
 function fase4_inferImporte(
   occurrences: NormalizedMovement[],
 ): InferenciaImporte | null {
@@ -489,11 +526,11 @@ function matchVivienda(
     }
   }
 
-  // matching por referencia catastral si aparece en concepto (raro pero
-  // posible · ej · "IBI 12345-A-12-12" · al normalizar se pierde el
-  // dígito · pero por seguridad chequeamos también texto crudo en el caller)
-  // -- noop aquí · el match por crudo se hace en el caller con avisos.
-
+  // No se realiza matching por referencia catastral de vivienda habitual en
+  // texto crudo · solo se descarta por cuentaCargo + tokens semánticos
+  // (COMUNIDAD · IBI · HIPOTECA · ALQUILER). Si Jose detecta falsos negativos
+  // por descripciones que incluyen la referencia catastral · ampliar aquí en
+  // sub-tarea futura.
   return { match: false };
 }
 
@@ -710,6 +747,28 @@ export async function detectCompromisos(
   };
 
   const warnings: string[] = [];
+
+  // T9.1 · `toleranciaImportePercent` y `toleranciaDiaMes` están reservadas
+  // pero no se enforce todavía (umbrales fijos en fases 3 y 4). Avisar si el
+  // usuario las modifica respecto del default para que no tenga la falsa
+  // sensación de que controlan el algoritmo.
+  if (
+    options?.toleranciaImportePercent !== undefined &&
+    options.toleranciaImportePercent !== DEFAULT_TOLERANCIA_IMPORTE_PERCENT
+  ) {
+    warnings.push(
+      `opción "toleranciaImportePercent" todavía no se enforce en T9.1 · valor recibido ignorado`,
+    );
+  }
+  if (
+    options?.toleranciaDiaMes !== undefined &&
+    options.toleranciaDiaMes !== DEFAULT_TOLERANCIA_DIA_MES
+  ) {
+    warnings.push(
+      `opción "toleranciaDiaMes" todavía no se enforce en T9.1 · valor recibido ignorado`,
+    );
+  }
+
   const candidatos: CandidatoCompromiso[] = [];
   const filtrado = {
     porViviendaHabitual: 0,
@@ -718,21 +777,26 @@ export async function detectCompromisos(
     porScoreInsuficiente: 0,
   };
 
+  // Inicializar DB una sola vez · reutilizada por fase 1 y carga de contexto.
+  const db = await initDB();
+
   // Fase 1 · cargar y normalizar
-  const { normalized, totalEnDB } = await fase1_loadAndNormalize({
+  const { normalized, totalEnDB } = await fase1_loadAndNormalize(db, {
     maxAntiguedadMeses: opts.maxAntiguedadMeses,
   });
 
   // Cargar contexto · vivienda habitual + inmuebles + compromisos existentes + personalData
-  const db = await initDB();
-  const [viviendas, properties, compromisos, personalDataAll] = await Promise.all([
+  // `personalData` es singleton con keyPath fija id=1 (ver
+  // `personalDataService.getPersonalData`) · leer por get(1) para evitar
+  // depender del orden de retorno de getAll.
+  const [viviendas, properties, compromisos, personalData] = await Promise.all([
     db.getAll('viviendaHabitual') as Promise<ViviendaHabitual[]>,
     db.getAll('properties') as Promise<Property[]>,
     db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
-    db.getAll('personalData') as Promise<Array<{ id?: number }>>,
+    db.get('personalData', 1) as Promise<{ id?: number } | undefined>,
   ]);
   const viviendaActiva = viviendas.find((v) => v.activa);
-  const personalDataIdActivo = personalDataAll[0]?.id;
+  const personalDataIdActivo = personalData?.id;
   const ctx: ContextoFiltrado = {
     viviendaHabitual: viviendaActiva,
     properties,
@@ -855,7 +919,10 @@ export async function detectCompromisos(
   return {
     candidatos,
     estadisticas: {
-      movementsAnalizados: totalEnDB,
+      movementsEnDB: totalEnDB,
+      // `movementsAnalizados` representa el universo post-filtro fase 1 ·
+      // garantiza que `analizados = agrupados + descartados`.
+      movementsAnalizados: normalized.length,
       movementsAgrupados,
       movementsDescartados: normalized.length - movementsAgrupados,
       clustersTotales: clusters.length,

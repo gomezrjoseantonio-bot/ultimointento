@@ -278,7 +278,11 @@ const CompromisoDetection: React.FC = () => {
           <h2>Estadísticas globales</h2>
           <div className={styles.summaryGrid}>
             <div className={styles.summaryCard}>
-              <div className={styles.label}>Movements DB</div>
+              <div className={styles.label}>Movements en DB</div>
+              <div className={styles.value}>{report.estadisticas.movementsEnDB}</div>
+            </div>
+            <div className={styles.summaryCard}>
+              <div className={styles.label}>Analizados</div>
               <div className={styles.value}>{report.estadisticas.movementsAnalizados}</div>
             </div>
             <div className={styles.summaryCard}>
