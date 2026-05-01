@@ -637,21 +637,38 @@ const DetectarCompromisosPage: React.FC = () => {
 
   const compromisosActivos = ctx.compromisos.filter((c) => c.estado === 'activo').length;
 
-  const handleAnalyze = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setSelected(new Set());
-    setDiscarded(new Set());
-    setOverrides(new Map());
-    try {
-      const r = await detectAndPreview({ minOcurrencias, maxAntiguedadMeses });
-      setReport(r);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [minOcurrencias, maxAntiguedadMeses]);
+  const handleAnalyze = useCallback(
+    async (opts?: { preserveSelection?: Set<string> }) => {
+      setLoading(true);
+      setError(null);
+      // En el flujo "analizar" del usuario · reset total. En el flujo
+      // "post-approve" · el caller pasa `preserveSelection` con los ids
+      // ocultos para que sobrevivan tras el re-análisis (los aprobados
+      // visibles desaparecerán del nuevo report vía `porCompromisoExistente`).
+      if (!opts?.preserveSelection) setSelected(new Set());
+      setDiscarded(new Set());
+      setOverrides(new Map());
+      try {
+        const r = await detectAndPreview({ minOcurrencias, maxAntiguedadMeses });
+        setReport(r);
+        if (opts?.preserveSelection) {
+          // Intersect con los candidatos del nuevo report · ids que ya no
+          // existen (porque se aprobaron o cambió el clustering) se descartan.
+          const newIds = new Set(r.candidatos.map((c) => c.id));
+          const keep = new Set<string>();
+          for (const id of opts.preserveSelection) {
+            if (newIds.has(id)) keep.add(id);
+          }
+          setSelected(keep);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [minOcurrencias, maxAntiguedadMeses],
+  );
 
   const visibleCandidatos = useMemo(() => {
     if (!report) return [];
@@ -725,15 +742,21 @@ const DetectarCompromisosPage: React.FC = () => {
     if (!report) return;
     // Solo procesa los seleccionados que actualmente están visibles bajo
     // el filtro activo. Los seleccionados "fuera del filtro" se preservan
-    // en `selected` por si el usuario vuelve a "Todos" sin perder estado.
+    // tras el re-análisis (vía `preserveSelection`) por si el usuario
+    // vuelve a "Todos" sin perder estado.
     const visibleIds = new Set(visibleCandidatos.map((c) => c.id));
-    const ids = Array.from(selected).filter((id) => visibleIds.has(id));
-    if (ids.length === 0) return;
-    const candidatos = report.candidatos.filter((c) => ids.includes(c.id));
+    const visibleSelectedIds = new Set<string>();
+    const hiddenSelectedIds = new Set<string>();
+    for (const id of selected) {
+      if (visibleIds.has(id)) visibleSelectedIds.add(id);
+      else hiddenSelectedIds.add(id);
+    }
+    if (visibleSelectedIds.size === 0) return;
+    const candidatos = report.candidatos.filter((c) => visibleSelectedIds.has(c.id));
     setApproving(true);
     try {
       const result = await createCompromisosFromCandidatos(candidatos, {
-        ajustesPorCandidato: buildOverridesForCreation(ids),
+        ajustesPorCandidato: buildOverridesForCreation(Array.from(visibleSelectedIds)),
       });
       const errores = result.erroresValidacion.length;
       const omitidos = result.duplicadosOmitidos.length;
@@ -750,9 +773,10 @@ const DetectarCompromisosPage: React.FC = () => {
         showToastV5(`Sin cambios · ${errores} errores de validación`);
       }
       // Refrescar contexto Personal y re-correr detección · los aprobados
-      // pasarán a `porCompromisoExistente` y desaparecerán del listado.
+      // pasarán a `porCompromisoExistente` y desaparecerán del listado · los
+      // seleccionados ocultos sobreviven si siguen apareciendo en el report.
       ctx.reload();
-      await handleAnalyze();
+      await handleAnalyze({ preserveSelection: hiddenSelectedIds });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showToastV5(`Error al aprobar: ${msg}`);
