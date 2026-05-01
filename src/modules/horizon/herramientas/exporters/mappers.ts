@@ -114,12 +114,23 @@ export const getDireccionCompleta = (inmueble: Inmueble, property?: ExtendedProp
 export const getLatestValuation = (
   propertyId: string | number,
   valuations: ValoracionHistorica[],
+  propertyNombre?: string,
 ): ValoracionHistorica | null => {
   const candidates = valuations
     .filter((item) => item.tipo_activo === 'inmueble' && String(item.activo_id) === String(propertyId))
     .sort((a, b) => String(b.fecha_valoracion ?? '').localeCompare(String(a.fecha_valoracion ?? '')));
 
-  return candidates[0] ?? null;
+  if (candidates[0]) return candidates[0];
+
+  // T25.1 · fallback por nombre normalizado cuando matching por id falla
+  const keyNombre = String(propertyNombre || '').toLowerCase().trim();
+  if (!keyNombre) return null;
+
+  const byNombre = valuations
+    .filter((item) => item.tipo_activo === 'inmueble' && String(item.activo_nombre || '').toLowerCase().trim() === keyNombre)
+    .sort((a, b) => String(b.fecha_valoracion ?? '').localeCompare(String(a.fecha_valoracion ?? '')));
+
+  return byNombre[0] ?? null;
 };
 
 export const getOutstandingPrincipal = (prestamo: Prestamo, plan?: PlanPagos | null): number => {

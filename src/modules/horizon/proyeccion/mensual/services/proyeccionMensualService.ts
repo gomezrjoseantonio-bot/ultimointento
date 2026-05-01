@@ -204,6 +204,8 @@ function getInvestmentLiquidationCashflowForMonth(
 interface AssetInitialValue {
   id: number;
   initialValue: number;
+  /** Nombre canónico para fallback de matching por nombre (T25.1). */
+  nombre?: string;
 }
 
 interface AutonomoProjectionData {
@@ -259,36 +261,43 @@ interface BaseData {
   irpfForecastByMonth: Map<string, number>;
 }
 
-/** Pre-built index for fast historical valuation lookup: key = "tipo_activo|activo_id" → sorted asc array */
-type ValoracionIndex = Map<string, ValoracionHistorica[]>;
-
 /**
- * Builds a lookup map from a flat list of historical valuations.
- * Each map key is "{tipo_activo}|{activo_id}" and the value is an array
- * sorted ascending by fecha_valoracion so binary search is possible.
+ * Pre-built index for fast historical valuation lookup.
+ * - byId: key = "tipo_activo|activo_id"
+ * - byNombre: key = "tipo_activo|activo_nombre_normalizado" (T25.1 · fallback)
+ * Cada bucket está ordenado asc por fecha para iteración "latest ≤ month".
  */
+type ValoracionIndex = {
+  byId: Map<string, ValoracionHistorica[]>;
+  byNombre: Map<string, ValoracionHistorica[]>;
+};
+
 function buildValoracionIndex(history: ValoracionHistorica[]): ValoracionIndex {
-  const index: ValoracionIndex = new Map();
+  const byId = new Map<string, ValoracionHistorica[]>();
+  const byNombre = new Map<string, ValoracionHistorica[]>();
   for (const v of history) {
-    const key = `${v.tipo_activo}|${v.activo_id}`;
-    const bucket = index.get(key);
-    if (bucket) {
-      bucket.push(v);
-    } else {
-      index.set(key, [v]);
+    const keyId = `${v.tipo_activo}|${v.activo_id}`;
+    const bucketId = byId.get(keyId);
+    if (bucketId) bucketId.push(v); else byId.set(keyId, [v]);
+
+    const nombreNorm = String(v.activo_nombre || '').toLowerCase().trim();
+    if (nombreNorm) {
+      const keyNombre = `${v.tipo_activo}|${nombreNorm}`;
+      const bucketNombre = byNombre.get(keyNombre);
+      if (bucketNombre) bucketNombre.push(v); else byNombre.set(keyNombre, [v]);
     }
   }
-  // Sort each bucket ascending so we can iterate from the end for "latest ≤ month"
-  index.forEach(bucket => {
-    bucket.sort((a: ValoracionHistorica, b: ValoracionHistorica) =>
-      a.fecha_valoracion.localeCompare(b.fecha_valoracion),
-    );
-  });
-  return index;
+  const sortAsc = (bucket: ValoracionHistorica[]): void => {
+    bucket.sort((a, b) => a.fecha_valoracion.localeCompare(b.fecha_valoracion));
+  };
+  byId.forEach(sortAsc);
+  byNombre.forEach(sortAsc);
+  return { byId, byNombre };
 }
 
 /**
  * Returns the last known valuation for an asset at or before a given month (YYYY-MM).
+ * Tries by activo_id first, then by activo_nombre normalizado (T25.1).
  * Falls back to the provided initialValue if no historical record exists.
  */
 function getLastValueForAsset(
@@ -297,14 +306,26 @@ function getLastValueForAsset(
   activoId: number,
   atOrBeforeMonth: string,
   initialValue: number,
+  nombre?: string,
 ): number {
-  const bucket = index.get(`${tipo}|${activoId}`);
-  if (!bucket) return initialValue;
-  // Find the last entry with fecha_valoracion <= atOrBeforeMonth
+  const buckets: ValoracionHistorica[][] = [];
+  const byId = index.byId.get(`${tipo}|${activoId}`);
+  if (byId) buckets.push(byId);
+  const nombreNorm = String(nombre || '').toLowerCase().trim();
+  if (nombreNorm) {
+    const byNombre = index.byNombre.get(`${tipo}|${nombreNorm}`);
+    if (byNombre) buckets.push(byNombre);
+  }
+  if (buckets.length === 0) return initialValue;
   let result = initialValue;
-  for (const v of bucket) {
-    if (v.fecha_valoracion <= atOrBeforeMonth) result = v.valor;
-    else break;
+  let resultFecha = '';
+  for (const bucket of buckets) {
+    for (const v of bucket) {
+      if (v.fecha_valoracion <= atOrBeforeMonth && v.fecha_valoracion >= resultFecha) {
+        result = v.valor;
+        resultFecha = v.fecha_valoracion;
+      }
+    }
   }
   return result;
 }
@@ -319,7 +340,7 @@ function sumAssetValuesForMonth(
   atOrBeforeMonth: string,
 ): number {
   return assets.reduce(
-    (sum, asset) => sum + getLastValueForAsset(index, tipo, asset.id, atOrBeforeMonth, asset.initialValue),
+    (sum, asset) => sum + getLastValueForAsset(index, tipo, asset.id, atOrBeforeMonth, asset.initialValue, asset.nombre),
     0,
   );
 }
@@ -783,6 +804,7 @@ async function loadBaseData(): Promise<BaseData> {
             inmuebleInitialValues.push({
               id: numId,
               initialValue: inm.compra?.precio_compra ?? 0,
+              nombre: inm.alias,
             });
           }
         }
@@ -841,7 +863,7 @@ async function loadBaseData(): Promise<BaseData> {
         valorPlanesPension += inv.valor_actual;
       } else {
         // Non-pension investments use historical valuations; valor_actual is the fallback
-        inversionInitialValues.push({ id: inv.id, initialValue: inv.valor_actual });
+        inversionInitialValues.push({ id: inv.id, initialValue: inv.valor_actual, nombre: (inv as { nombre?: string }).nombre });
       }
       // Collect periodic return payments (cuenta_remunerada, prestamo_p2p, deposito_plazo)
       if (['cuenta_remunerada', 'prestamo_p2p', 'deposito_plazo'].includes(inv.tipo)) {
@@ -856,7 +878,7 @@ async function loadBaseData(): Promise<BaseData> {
   }
 
   // Historical valuations — build index for fast per-asset per-month lookups
-  let valoracionIndex: ValoracionIndex = new Map();
+  let valoracionIndex: ValoracionIndex = { byId: new Map(), byNombre: new Map() };
   try {
     // T24.1: acceso centralizado via valoracionesService
     const valoracionesHistoricas: ValoracionHistorica[] = await valoracionesService.getAllValoraciones();

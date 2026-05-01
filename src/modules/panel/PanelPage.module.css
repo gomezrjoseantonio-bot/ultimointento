@@ -49,6 +49,14 @@
   margin-bottom: 10px;
 }
 
+/* T25.2 · MoneyValue size=kpiStar dentro del hero · forzar 48px sin tocar el
+   token global (--atlas-v5-fs-kpi-star sigue en 32px para otros consumidores). */
+.heroValor > span {
+  font-size: 48px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
 .heroDelta {
   display: inline-flex;
   align-items: center;
@@ -60,6 +68,7 @@
 
 .heroDelta.pos { color: var(--atlas-v5-pos); }
 .heroDelta.neg { color: var(--atlas-v5-neg); }
+.heroDelta.muted { color: var(--atlas-v5-ink-4); }
 
 .heroDeltaMeta {
   color: var(--atlas-v5-ink-4);

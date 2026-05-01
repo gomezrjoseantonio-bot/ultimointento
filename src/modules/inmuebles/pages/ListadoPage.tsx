@@ -113,16 +113,16 @@ const ListadoPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<EstadoFilter>('todos');
 
-  /** Map activo_id (String) → { valor, fecha_valoracion } — cargado una sola vez */
-  const [valoracionesMap, setValoracionesMap] = useState<Map<string, { valor: number; fecha_valoracion: string }>>(new Map());
+  /** Matcher con fallback por nombre — T25.1 · cargado una sola vez */
+  const [valoracionMatcher, setValoracionMatcher] = useState<import('../../../services/valoracionesService').ValoracionMatcher | null>(null);
 
   const today = useMemo(() => new Date(), []);
 
-  // Carga de valoraciones: una sola query al store, resultado en Map
+  // Carga de valoraciones: una sola query al store, resultado en matcher
   useEffect(() => {
     let mounted = true;
-    valoracionesService.getMapValoracionesMasRecientes('inmueble')
-      .then((m) => { if (mounted) setValoracionesMap(m); })
+    valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble')
+      .then((m) => { if (mounted) setValoracionMatcher(m); })
       .catch(() => { /* sin valoraciones disponibles */ });
     return () => { mounted = false; };
   }, []);
@@ -156,12 +156,13 @@ const ListadoPage: React.FC = () => {
   }, [derived, filter, search]);
 
   // KPIs agregados
-  // totalValor usa suma de valoraciones reales (0 para los sin valorar) · T24.2
+  // totalValor usa suma de valoraciones reales (0 para los sin valorar) · T24.2 · matching id+nombre T25.1
   const { totalValor, countSinValorar } = useMemo(() => {
     let sum = 0;
     let sinValorar = 0;
     for (const p of properties) {
-      const val = valoracionesMap.get(String(p.id));
+      const propNombre = p.alias || p.address || '';
+      const val = valoracionMatcher?.getByIdOrNombre(p.id ?? '', propNombre);
       if (val) {
         sum += val.valor;
       } else {
@@ -169,7 +170,7 @@ const ListadoPage: React.FC = () => {
       }
     }
     return { totalValor: sum, countSinValorar: sinValorar };
-  }, [properties, valoracionesMap]);
+  }, [properties, valoracionMatcher]);
   const rentaMensualTotal = derived.reduce((sum, d) => sum + d.rentaMensual, 0);
   const totalUnidades = derived.reduce((sum, d) => sum + d.habitaciones, 0);
   const totalOcupadas = derived.reduce((sum, d) => sum + d.ocupadas, 0);
@@ -333,7 +334,10 @@ const ListadoPage: React.FC = () => {
           ) : (
             filtered.map((d) => {
                 const compradoPor = d.property.acquisitionCosts?.price ?? 0;
-                const valHoy = valoracionesMap.get(String(d.property.id));
+                const valHoy = valoracionMatcher?.getByIdOrNombre(
+                  d.property.id ?? '',
+                  d.property.alias || d.property.address || '',
+                );
                 const hayValoracion = valHoy !== undefined;
                 const valorTone = hayValoracion
                   ? valHoy.valor > compradoPor

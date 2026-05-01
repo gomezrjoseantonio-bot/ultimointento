@@ -10,8 +10,8 @@
  *   deuda     → préstamos que vencen en 365d
  *   devolucion → devoluciones IRPF/IVA pendientes cobrar
  *
- * Posicionamiento · % = días_desde_hoy / 365 * 100
- * Stack-b · si dos hitos < 5% de distancia · el segundo va al carril inferior
+ * Layout (T25.4) · grid 12 columnas · cada columna apila chips verticalmente
+ * sin límite de carriles. La línea HOY roja se superpone en posición absoluta.
  *
  * Iconos · § AA.7 · FileText / Calendar / AlertTriangle / Banknote
  * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
@@ -27,13 +27,15 @@ import styles from './YearTimeline.module.css';
 /** Categoría de un hito del timeline */
 type HitoCategoria = 'fiscal' | 'contrato' | 'deuda' | 'devolucion';
 
-/** Hito ya resuelto con posición calculada */
+/** Hito ya resuelto con posición calculada (mes 0-11 desde mes actual) */
 interface Hito {
   id: string;
   categoria: HitoCategoria;
   label: string;
-  pos: number;       // 0-100 (% sobre 365 días)
-  stack: boolean;    // true → carril inferior
+  /** Índice 0-11 del mes desde el mes actual */
+  mesIdx: number;
+  /** Posición horizontal 0-100 (% sobre 365 días) — usada para HOY y orden */
+  pos: number;
   href: string;
 }
 
@@ -70,24 +72,11 @@ const IconByCategoria: React.FC<{ categoria: HitoCategoria }> = ({ categoria }) 
   }
 };
 
-/** Dado un array de hitos ordenado por pos, aplica flag stack */
-function aplicarStack(hitos: Omit<Hito, 'stack'>[]): Hito[] {
-  const resultado: Hito[] = [];
-  // Recorremos en orden; si la distancia al anterior (carril superior) es < 5%
-  // usamos carril inferior.
-  const lastPosByCarril: Record<'main' | 'alt', number> = { main: -999, alt: -999 };
-  for (const h of hitos) {
-    const solapaMain = h.pos - lastPosByCarril.main < 5;
-    const solapaAlt = h.pos - lastPosByCarril.alt < 5;
-    if (solapaMain && !solapaAlt) {
-      resultado.push({ ...h, stack: true });
-      lastPosByCarril.alt = h.pos;
-    } else {
-      resultado.push({ ...h, stack: false });
-      lastPosByCarril.main = h.pos;
-    }
-  }
-  return resultado;
+/** Calcula el índice del mes (0-11) desde el mes actual para una fecha futura */
+function mesIdxDesde(today: Date, fecha: Date): number {
+  const diffMonths = (fecha.getFullYear() - today.getFullYear()) * 12
+    + (fecha.getMonth() - today.getMonth());
+  return Math.max(0, Math.min(11, diffMonths));
 }
 
 const YearTimeline: React.FC<YearTimelineProps> = ({
@@ -114,12 +103,15 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
   const hitos = useMemo((): Hito[] => {
     const fin365 = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000);
     const msTotal = 365 * 24 * 60 * 60 * 1000;
-    const lista: Omit<Hito, 'stack'>[] = [];
+    const lista: Hito[] = [];
+
+    const posPct = (fecha: Date): number => {
+      const ms = fecha.getTime() - today.getTime();
+      return Math.max(0, Math.min(100, (ms / msTotal) * 100));
+    };
 
     // ── 1. Hitos FISCAL ────────────────────────────────────────────────
     // TODO: conectar con servicio dedicado de obligaciones fiscales cuando esté disponible.
-    // Derivación heurística: treasuryEvents de tipo expense o financing cuya fuente
-    // indica IRPF, autónomo o prevision fiscal, dentro de los próximos 365d.
     const sourcesFiscales: TreasuryEvent['sourceType'][] = [
       'autonomo',
       'irpf_prevision',
@@ -131,41 +123,36 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
     });
     for (const ev of eventsFiscales) {
       const fecha = new Date(ev.actualDate ?? ev.predictedDate);
-      const ms = fecha.getTime() - today.getTime();
-      const pos = Math.max(0, Math.min(100, (ms / msTotal) * 100));
       lista.push({
         id: `fiscal-${ev.id ?? ev.predictedDate}`,
         categoria: 'fiscal',
         label: ev.description.slice(0, 18) || 'Fiscal',
-        pos,
+        mesIdx: mesIdxDesde(today, fecha),
+        pos: posPct(fecha),
         href: '/fiscal',
       });
     }
 
     // ── 2. Hitos CONTRATO ──────────────────────────────────────────────
-    // Contratos activos cuya fechaFin cae en los próximos 365d.
     for (const c of contracts) {
       if (c.estadoContrato !== 'activo') continue;
       const fechaFin = c.fechaFin ?? (c as Contract & { endDate?: string }).endDate;
       if (!fechaFin) continue;
       const fecha = new Date(fechaFin);
       if (fecha <= today || fecha > fin365) continue;
-      const ms = fecha.getTime() - today.getTime();
-      const pos = Math.max(0, Math.min(100, (ms / msTotal) * 100));
       const nombreInquilino =
         c.inquilino?.apellidos ? c.inquilino.apellidos.split(' ')[0] : 'Contrato';
       lista.push({
         id: `contrato-${c.id ?? fechaFin}`,
         categoria: 'contrato',
-        label: `Vto. ${nombreInquilino}`,
-        pos,
-        href: '/contratos',
+        label: nombreInquilino,
+        mesIdx: mesIdxDesde(today, fecha),
+        pos: posPct(fecha),
+        href: '/contratos?tab=acciones',
       });
     }
 
     // ── 3. Hitos DEUDA ─────────────────────────────────────────────────
-    // Préstamos activos cuyo vencimiento calculado (fechaFirma + plazoMeses) cae
-    // en los próximos 365d.
     // TODO: conectar con servicio de préstamos para obtener fecha exacta de
     //       cancelación cuando esté disponible.
     for (const p of prestamos) {
@@ -177,20 +164,17 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
         inicio.getDate(),
       );
       if (fechaVenc <= today || fechaVenc > fin365) continue;
-      const ms = fechaVenc.getTime() - today.getTime();
-      const pos = Math.max(0, Math.min(100, (ms / msTotal) * 100));
       lista.push({
         id: `deuda-${p.id}`,
         categoria: 'deuda',
         label: p.nombre.slice(0, 14) || 'Préstamo',
-        pos,
+        mesIdx: mesIdxDesde(today, fechaVenc),
+        pos: posPct(fechaVenc),
         href: '/financiacion',
       });
     }
 
     // ── 4. Hitos DEVOLUCIÓN ────────────────────────────────────────────
-    // TreasuryEvents con amount > 0 y sourceType 'irpf_prevision' en próximos 365d.
-    // TODO: ampliar a devoluciones IVA cuando el store fiscal tenga campo tipo_devolucion.
     const eventsDevoluciones = treasuryEvents.filter((ev) => {
       if (ev.amount <= 0) return false;
       if (ev.sourceType !== 'irpf_prevision') return false;
@@ -199,21 +183,31 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
     });
     for (const ev of eventsDevoluciones) {
       const fecha = new Date(ev.actualDate ?? ev.predictedDate);
-      const ms = fecha.getTime() - today.getTime();
-      const pos = Math.max(0, Math.min(100, (ms / msTotal) * 100));
       lista.push({
         id: `devolucion-${ev.id ?? ev.predictedDate}`,
         categoria: 'devolucion',
         label: ev.description.slice(0, 16) || 'Devolución',
-        pos,
+        mesIdx: mesIdxDesde(today, fecha),
+        pos: posPct(fecha),
         href: '/fiscal',
       });
     }
 
-    // Ordenar por posición antes de aplicar stack
+    // Orden global por fecha (asc)
     lista.sort((a, b) => a.pos - b.pos);
-    return aplicarStack(lista);
+    return lista;
   }, [treasuryEvents, contracts, prestamos, today]);
+
+  /** Agrupar hitos por mes (0-11) — orden por pos preservado dentro del grupo */
+  const hitosPorMes = useMemo(() => {
+    const mapa = new Map<number, Hito[]>();
+    for (const h of hitos) {
+      const lista = mapa.get(h.mesIdx) ?? [];
+      lista.push(h);
+      mapa.set(h.mesIdx, lista);
+    }
+    return mapa;
+  }, [hitos]);
 
   return (
     <div className={styles.miniTimeline}>
@@ -232,9 +226,9 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
           ))}
         </div>
 
-        {/* Fila eventos */}
-        <div className={styles.miniTlEventsRow}>
-          {/* Línea HOY */}
+        {/* Grid 12 columnas · cada columna apila chips verticalmente · T25.4 */}
+        <div className={styles.miniTlEventsGrid}>
+          {/* Línea HOY · superpuesta sin afectar layout */}
           <div className={styles.miniTlToday} style={{ left: `${posicionHoy}%` }}>
             <span className={styles.miniTlTodayLab}>HOY</span>
           </div>
@@ -243,24 +237,25 @@ const YearTimeline: React.FC<YearTimelineProps> = ({
             <div className={styles.miniTlEmpty}>Sin hitos en los próximos 12 meses</div>
           )}
 
-          {hitos.map((h) => (
-            <button
-              key={h.id}
-              type="button"
-              className={[
-                styles.miniTlEvento,
-                styles[h.categoria],
-                h.stack ? styles.stackB : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              style={{ left: `${h.pos}%` }}
-              onClick={() => navigate(h.href)}
-            >
-              <IconByCategoria categoria={h.categoria} />
-              {h.label}
-            </button>
-          ))}
+          {meses.map((_, idx) => {
+            const eventosDelMes = hitosPorMes.get(idx) ?? [];
+            return (
+              <div key={idx} className={styles.miniTlMesColumn}>
+                {eventosDelMes.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    className={[styles.miniTlEvento, styles[h.categoria]].join(' ')}
+                    onClick={() => navigate(h.href)}
+                    title={h.label}
+                  >
+                    <IconByCategoria categoria={h.categoria} />
+                    <span className={styles.miniTlEventoLab}>{h.label}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 

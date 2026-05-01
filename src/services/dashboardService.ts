@@ -563,11 +563,17 @@ class DashboardService {
       // Inmuebles: use latest valuation when available, fallback to acquisition price.
       const properties = await getCachedStoreRecords<any>('properties');
       const activeProperties = properties.filter((prop: any) => prop.state === 'activo');
-      // T24.1: acceso centralizado via valoracionesService (una sola query, normalización String)
-      const valoracionesMap = await valoracionesService.getMapValoracionesMasRecientes('inmueble').catch(() => new Map());
+      // T25.1: matcher con fallback por nombre cuando matching por id falla
+      const matcher = await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble').catch(() => null);
 
+      const matchStats = { porId: 0, porNombre: 0, sinMatch: 0 };
       const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
-        const ultimaValoracion = valoracionesMap.get(String(prop.id))?.valor;
+        const propNombre = prop.alias || prop.address || '';
+        const match = matcher?.getByIdOrNombre(prop.id, propNombre);
+        if (match?.matchedBy === 'id') matchStats.porId++;
+        else if (match?.matchedBy === 'nombre') matchStats.porNombre++;
+        else matchStats.sinMatch++;
+
         const fallbackValorActual = prop.valor_actual
           ?? prop.currentValue
           ?? prop.marketValue
@@ -578,8 +584,15 @@ class DashboardService {
           ?? prop.acquisitionCosts?.price
           ?? prop.compra?.precio_compra
           ?? 0;
-        return sum + toNumber(ultimaValoracion ?? fallbackValorActual);
+        return sum + toNumber(match?.valor ?? fallbackValorActual);
       }, 0);
+
+      // eslint-disable-next-line no-console
+      console.log('[dashboardService] valoraciones inmuebles · matches:', {
+        totalValoraciones: matcher?.totalValoraciones ?? 0,
+        propiedadesActivas: activeProperties.length,
+        ...matchStats,
+      });
 
       // Cuentas: use Tesorería "HOY" total as single source of truth to avoid divergences.
       const tesoreriaPanel = await this.getTesoreriaPanel();
