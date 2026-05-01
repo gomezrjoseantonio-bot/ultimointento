@@ -41,6 +41,11 @@ const GestionPersonalPage: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // T14.4 · EXCEPCIÓN documentada · esta página pasa el `PersonalData`
+      // entero (`perfil`) a `GestionPersonalHeader` que necesita la forma
+      // exacta del tipo (situacionPersonal · spouseName · housingType ·
+      // situacionLaboralConyugue · etc · campos UI no fiscales). Mantenemos
+      // lectura directa a `personalDataService` para evitar dual-read.
       const perfil = await personalDataService.getPersonalData();
       if (!perfil?.id) {
         setData(null);
