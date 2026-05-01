@@ -18,9 +18,9 @@
   border: 1px solid var(--atlas-v5-line);
   border-radius: var(--atlas-v5-radius-lg);
   padding: 24px 26px;
-  min-width: 480px;
-  max-width: 640px;
-  width: calc(100% - 32px);
+  /* Responsive · cap a 640px en desktop · -32px de gap en viewports
+     pequeños sin permitir que el modal se salga del viewport. */
+  width: min(640px, calc(100% - 32px));
   box-shadow: var(--atlas-v5-shadow-modal);
   font-family: var(--atlas-v5-font-ui);
 }

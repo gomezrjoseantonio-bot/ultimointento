@@ -8,9 +8,10 @@
 // Reusa `<PosicionFormDialog>` y las rutas `/inversiones/importar-indexa` ·
 // `/inversiones/importar-aportaciones` (intactos · solo cambia el disparador).
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type { PosicionInversion } from '../../../types/inversiones';
 import PosicionFormDialog from './PosicionFormDialog';
 import styles from './WizardModal.module.css';
@@ -18,10 +19,15 @@ import styles from './WizardModal.module.css';
 type Camino = 'manual' | 'indexa' | 'aportaciones';
 
 interface Props {
-  /** Persistencia de la posición creada manualmente. */
+  /**
+   * Persistencia de la posición creada manualmente.
+   * El callback DEBE lanzar (o resolver `false`) si el guardado falla; el
+   * wizard solo cierra el form al éxito (`true` o `void`) para que el
+   * usuario no pierda el trabajo si el `service` rechaza.
+   */
   onSavePosicion: (
     data: Partial<PosicionInversion> & { importe_inicial?: number },
-  ) => Promise<void> | void;
+  ) => Promise<void | boolean> | void | boolean;
   /** Cierre · llamar también después de guardar / navegar. */
   onClose: () => void;
 }
@@ -61,6 +67,18 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
   const navigate = useNavigate();
   const [camino, setCamino] = useState<Camino | null>(null);
 
+  // Accesibilidad · foco atrapado en el modal del paso 1 + cierre con
+  // Escape vía evento `modal-escape` (patrón repo · ver
+  // `src/pages/GestionInmuebles/tabs/FacturaSelectorModal.tsx`).
+  const focusTrapRef = useFocusTrap(camino === null);
+  useEffect(() => {
+    const node = focusTrapRef.current;
+    if (!node) return;
+    const handler = () => onClose();
+    node.addEventListener('modal-escape', handler);
+    return () => node.removeEventListener('modal-escape', handler);
+  }, [focusTrapRef, onClose, camino]);
+
   const handleSelect = (key: Camino) => {
     if (key === 'indexa') {
       onClose();
@@ -81,8 +99,17 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
     return (
       <PosicionFormDialog
         onSave={async (data) => {
-          await onSavePosicion(data);
-          onClose();
+          // Solo cerramos el wizard cuando el guardado ha sido exitoso ·
+          // si el service falla (rechaza · throw · resuelve `false`)
+          // mantenemos el form abierto para que el usuario no pierda el
+          // trabajo. Convención de cierre · `void`/undefined/true = éxito.
+          try {
+            const result = await onSavePosicion(data);
+            if (result === false) return;
+            onClose();
+          } catch {
+            /* el handler de InversionesGaleria ya muestra toast del error */
+          }
         }}
         onClose={onClose}
       />
@@ -92,7 +119,7 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onClose }) => {
   // Paso 1 · selector de camino
   return (
     <div className={styles.overlay} role="dialog" aria-modal="true" aria-labelledby="wizard-title" onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div ref={focusTrapRef} className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHead}>
           <div>
             <h2 id="wizard-title" className={styles.modalTitle}>

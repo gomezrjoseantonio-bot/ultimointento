@@ -144,6 +144,9 @@ const InversionesGaleria: React.FC = () => {
       // eslint-disable-next-line no-console
       console.error('[inversiones] save', err);
       showToastV5('Error al guardar la posición.');
+      // Relanzar para que el wizard mantenga el form abierto · el usuario
+      // no pierde lo que llevaba escrito si el service falla.
+      throw err;
     }
   };
 
