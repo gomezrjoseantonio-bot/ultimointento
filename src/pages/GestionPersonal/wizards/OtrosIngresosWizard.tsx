@@ -77,6 +77,9 @@ const OtrosIngresosWizard: React.FC = () => {
 
   useEffect(() => {
     void (async () => {
+      // T14.4 · EXCEPCIÓN documentada · NO migra al gateway · necesita
+      // `spouseName` (campo UI no fiscal). Lectura directa para evitar
+      // dual-read.
       const perfil = await personalDataService.getPersonalData();
       if (perfil?.id) {
         setPid(perfil.id);

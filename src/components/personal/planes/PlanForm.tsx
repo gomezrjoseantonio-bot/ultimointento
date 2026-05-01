@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AtlasModal } from '../../atlas/AtlasComponents';
 import { planesPensionesService } from '../../../services/planesPensionesService';
-import { personalDataService } from '../../../services/personalDataService';
+import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import type { PlanPensiones, TipoAdministrativo, EstadoPlan } from '../../../types/planesPensiones';
 import toast from 'react-hot-toast';
 
@@ -39,8 +39,9 @@ const PlanForm: React.FC<PlanFormProps> = ({ isOpen, onClose, plan, onSaved }) =
   useEffect(() => {
     (async () => {
       try {
-        const pd = await personalDataService.getPersonalData();
-        if (pd?.id) setPersonalDataId(pd.id);
+        // T14.4 · migrado a fiscalContextService gateway
+        const ctx = await getFiscalContextSafe();
+        if (ctx) setPersonalDataId(ctx.personalDataId);
       } catch {/* ignore */}
     })();
   }, []);

@@ -9,7 +9,11 @@
 // of truth for all amounts, ensuring the treasury events match the P&L at the cent.
 
 import { initDB } from '../../../../services/db';
+// T14.4 · `personalDataService` se mantiene SOLO para la lectura de
+// `direccion` en la sección 1 (alquiler · housing pattern matching).
+// Resto de lecturas migradas al gateway `fiscalContextService`.
 import { personalDataService } from '../../../../services/personalDataService';
+import { getFiscalContextSafe } from '../../../../services/fiscalContextService';
 import { patronGastosPersonalesService } from '../../../../services/patronGastosPersonalesService';
 import { nominaService } from '../../../../services/nominaService';
 import { getAllContracts } from '../../../../services/contractService';
@@ -287,6 +291,10 @@ export async function generateMonthlyForecasts(
 
   // ── 2. PATRON GASTOS PERSONALES (spending patterns → forecast events) ─────
   // All personal spending patterns come from patronGastosPersonales.
+  // T14.4 · EXCEPCIÓN documentada · esta lectura necesita `direccion` que NO
+  // se expone en `fiscalContextService` (no es campo fiscal · solo se usa
+  // para matching de patrones de gasto de vivienda). Mantenemos lectura
+  // directa a `personalDataService` para evitar dual-read.
   try {
     const personalData = await personalDataService.getPersonalData();
     const personalDataId = personalData?.id ?? 1;
@@ -423,8 +431,9 @@ export async function generateMonthlyForecasts(
 
   // ── 4. NÓMINAS (salary income) ────────────────────────────────────────────
   try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
+    // T14.4 · migrado a fiscalContextService gateway (solo personalDataId)
+    const ctx = await getFiscalContextSafe();
+    const personalDataId = ctx?.personalDataId ?? 1;
     const nominas = await nominaService.getNominas(personalDataId);
     const nominasActivas = nominas.filter(n => n.activa);
 
@@ -459,8 +468,9 @@ export async function generateMonthlyForecasts(
 
   // ── 4b. OTROS INGRESOS (recurrent income) ─────────────────────────────────
   try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
+    // T14.4 · migrado a fiscalContextService gateway (solo personalDataId)
+    const ctx = await getFiscalContextSafe();
+    const personalDataId = ctx?.personalDataId ?? 1;
     const otrosIngresos = await otrosIngresosService.getOtrosIngresos(personalDataId);
 
     for (const ingreso of otrosIngresos) {
@@ -577,8 +587,9 @@ export async function generateMonthlyForecasts(
 
   // ── 6a. AUTÓNOMO – Ingresos facturados (freelance income) ────────────────
   try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
+    // T14.4 · migrado a fiscalContextService gateway (solo personalDataId)
+    const ctx = await getFiscalContextSafe();
+    const personalDataId = ctx?.personalDataId ?? 1;
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomoActivo = autonomos.find(a => a.activo);
 
@@ -618,8 +629,9 @@ export async function generateMonthlyForecasts(
   // ── 6b. AUTÓNOMO – Gastos actividad + Cuota SS (freelance expenses) ───────
   // Create one treasury event per item so the movement list shows full detail.
   try {
-    const personalData = await personalDataService.getPersonalData();
-    const personalDataId = personalData?.id ?? 1;
+    // T14.4 · migrado a fiscalContextService gateway (solo personalDataId)
+    const ctx = await getFiscalContextSafe();
+    const personalDataId = ctx?.personalDataId ?? 1;
     const autonomos = await autonomoService.getAutonomos(personalDataId);
     const autonomoActivo = autonomos.find(a => a.activo);
 

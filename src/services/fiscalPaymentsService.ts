@@ -158,6 +158,12 @@ export async function generarEventosFiscales(
   declaracion: DeclaracionIRPF
 ): Promise<EventoFiscal[]> {
   const config = await getConfiguracionFiscal();
+  // T14.4 · EXCEPCIÓN documentada · `situacionLaboral` NO está en el
+  // gateway `fiscalContextService` (decisión b · spec §4.4). Razón ·
+  // `situacionLaboral` no es fiscal en sentido IRPF (no afecta la base
+  // imponible) · solo determina obligaciones M130/M303. Mantener este
+  // campo fuera del gateway evita polluciones con datos no estrictamente
+  // fiscales · separación limpia de responsabilidades.
   const personalData = await personalDataService.getPersonalData();
   const eventos: EventoFiscal[] = [];
 
