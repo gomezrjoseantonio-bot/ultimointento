@@ -1,0 +1,98 @@
+/**
+ * ATLAS · Panel · PulsoDelMes
+ *
+ * Estilos "Pulso del mes" · § Z.10 · TAREA 22.4
+ * Ref: TAREA-22-dashboard-sidebar-topbar.md §5 · mockup §132-140
+ *
+ * Tokens · todos via --atlas-v5-* · cero hex hardcoded.
+ */
+
+/* ── Contenedor principal ── */
+.pulso {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 11px;
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  display: grid;
+  grid-template-columns: auto repeat(4, 1fr);
+  gap: 28px;
+  align-items: center;
+}
+
+/* ── Título + mes ── */
+.pulsoTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-bold);
+  border-right: 1px solid var(--atlas-v5-line-2);
+  padding-right: 20px;
+}
+
+.mes {
+  display: block;
+  color: var(--atlas-v5-ink);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  text-transform: none;
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-top: 2px;
+}
+
+/* ── Ítem individual ── */
+.pulsoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ── Etiqueta de ítem ── */
+.pulsoLab {
+  font-size: 10.5px;
+  color: var(--atlas-v5-ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+/* ── Valor monetario ── */
+.pulsoVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 17px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pulsoVal.pos {
+  color: var(--atlas-v5-pos);
+}
+
+.pulsoVal.neg {
+  color: var(--atlas-v5-neg);
+}
+
+/* ── Responsive · colapsa a 2 cols en móvil ── */
+@media (max-width: 900px) {
+  .pulso {
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+  }
+
+  .pulsoTitle {
+    border-right: none;
+    padding-right: 0;
+    border-bottom: 1px solid var(--atlas-v5-line-2);
+    padding-bottom: 12px;
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 500px) {
+  .pulso {
+    grid-template-columns: 1fr;
+  }
+}
