@@ -1,0 +1,399 @@
+/* ============================================================
+   T23.3 · Inversiones · ficha detalle (3 grupos + genérica)
+   Estilos canónicos § Z.7 spec · valores literales del mockup.
+   Cero hex hardcoded fuera de los tokens v5 + cripto purpura
+   listada en § Z.3.
+   ============================================================ */
+
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 22px 32px 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.loading,
+.notFound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13.5px;
+  gap: 10px;
+}
+
+/* ── Header (§ Z.7) ──────────────────────────────────────────── */
+.detailHead {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.detailHeadLeft {
+  min-width: 0;
+  flex: 1;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.backBtn:hover {
+  color: var(--atlas-v5-ink);
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.detailTitle {
+  font-size: 24px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 14px;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+
+.detailSub {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 4px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.detailActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--atlas-v5-radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btnGhost {
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+}
+
+.btnGhost:hover {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink);
+}
+
+.btnGold {
+  border: none;
+  background: linear-gradient(135deg, var(--atlas-v5-gold-2), var(--atlas-v5-gold));
+  color: var(--atlas-v5-white);
+}
+
+.btnGold:hover {
+  background: linear-gradient(135deg, var(--atlas-v5-gold), var(--atlas-v5-gold-ink));
+}
+
+/* ── KPIs grid (§ Z.7) ───────────────────────────────────────── */
+.detailKpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.detailKpi {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 16px 18px;
+}
+
+.detailKpiLab {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.detailKpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 20px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  margin-top: 4px;
+  letter-spacing: -0.018em;
+}
+
+.detailKpiVal.pos { color: var(--atlas-v5-pos); }
+.detailKpiVal.neg { color: var(--atlas-v5-neg); }
+.detailKpiVal.muted { color: var(--atlas-v5-ink-3); }
+
+.detailKpiSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 3px;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+@media (max-width: 1100px) {
+  .detailKpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .detailKpis { grid-template-columns: 1fr; }
+  .page { padding: 18px 16px 40px; }
+}
+
+/* ── 2-col layout (§ Z.7) ────────────────────────────────────── */
+.detailCols {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .detailCols { grid-template-columns: 1fr; }
+}
+
+.detailCard {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: 18px 20px;
+}
+
+.detailCardTit {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  margin-bottom: 14px;
+}
+
+/* ── Sparkline gigante / matriz ──────────────────────────────── */
+.bigSparkline {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+.bigPlaceholder {
+  width: 100%;
+  height: 200px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 12px;
+}
+
+.matrizGrande {
+  display: grid;
+  grid-template-columns: 60px repeat(12, 1fr);
+  gap: 5px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.matrizYearLab {
+  font-size: 11px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  text-align: right;
+  padding-right: 4px;
+}
+
+.matrizCell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--atlas-v5-line-2);
+}
+
+.matrizCell.cobrado { background: var(--atlas-v5-pos); }
+.matrizCell.pendiente { background: var(--atlas-v5-warn); }
+.matrizCell.futuro { background: var(--atlas-v5-line); }
+
+.matrizMesesHeader {
+  display: grid;
+  grid-template-columns: 60px repeat(12, 1fr);
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.matrizMesLab {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-align: center;
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.matrizLeyenda {
+  display: flex;
+  gap: 16px;
+  margin-top: 14px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-4);
+}
+
+.matrizLeyendaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.leyendaDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.leyendaDot.cobrado { background: var(--atlas-v5-pos); }
+.leyendaDot.pendiente { background: var(--atlas-v5-warn); }
+.leyendaDot.futuro { background: var(--atlas-v5-line); }
+
+/* ── Tablas (aportaciones / cobros / dividendos) ─────────────── */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  font-family: inherit;
+}
+
+.tabla th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: var(--atlas-v5-ls-chip);
+  color: var(--atlas-v5-ink-4);
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.tabla td {
+  padding: 10px;
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  color: var(--atlas-v5-ink-2);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.tabla td.tipo,
+.tabla td.txt {
+  font-family: inherit;
+}
+
+.tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tabla td.pos { color: var(--atlas-v5-pos); }
+.tabla td.neg { color: var(--atlas-v5-neg); }
+
+.tablaWrap {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.tablaEmpty {
+  padding: 22px;
+  text-align: center;
+  color: var(--atlas-v5-ink-4);
+  font-size: 13px;
+  border: 1px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+}
+
+/* ── Composición (FichaValoracionSimple right column) ────────── */
+.composicionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.composicionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.composicionRowLab {
+  color: var(--atlas-v5-ink-2);
+}
+
+.composicionRowVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+/* ── Mini chip tipo header ───────────────────────────────────── */
+.tipoChip {
+  display: inline-block;
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-bold);
+  margin-left: 8px;
+  vertical-align: middle;
+  background: var(--atlas-v5-brand-wash);
+  color: var(--atlas-v5-brand);
+}
+
+/* ── Botón link CSV (rendimiento periódico) ──────────────────── */
+.linkBtn {
+  background: none;
+  border: none;
+  color: var(--atlas-v5-gold-ink);
+  font-size: 11.5px;
+  font-weight: var(--atlas-v5-fw-semibold);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.linkBtn:hover { text-decoration: underline; }
