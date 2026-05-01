@@ -5,6 +5,7 @@ import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
 import { prestamosService } from './prestamosService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
 import { getCachedStoreRecords } from './indexedDbCacheService';
+import { valoracionesService } from './valoracionesService';
 
 // Dashboard block types
 export type DashboardBlockType = 
@@ -562,14 +563,11 @@ class DashboardService {
       // Inmuebles: use latest valuation when available, fallback to acquisition price.
       const properties = await getCachedStoreRecords<any>('properties');
       const activeProperties = properties.filter((prop: any) => prop.state === 'activo');
-      const valoraciones = await getCachedStoreRecords<any>('valoraciones_historicas').catch(() => []);
+      // T24.1: acceso centralizado via valoracionesService (una sola query, normalización String)
+      const valoracionesMap = await valoracionesService.getMapValoracionesMasRecientes('inmueble').catch(() => new Map());
 
       const valorInmuebles = activeProperties.reduce((sum: number, prop: any) => {
-        const propertyValuations = (valoraciones as any[])
-          .filter((val) => val.tipo_activo === 'inmueble' && String(val.activo_id) === String(prop.id))
-          .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
-
-        const ultimaValoracion = propertyValuations[0]?.valor;
+        const ultimaValoracion = valoracionesMap.get(String(prop.id))?.valor;
         const fallbackValorActual = prop.valor_actual
           ?? prop.currentValue
           ?? prop.marketValue

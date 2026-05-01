@@ -12,6 +12,7 @@ import type { Inmueble } from '../types/inmueble';
 import type { Prestamo, PlanPagos } from '../types/prestamos';
 import type { PersonalData } from '../types/personal';
 import type { ValoracionHistorica } from '../types/valoraciones';
+import { valoracionesService } from './valoracionesService';
 import {
   getDireccionCompleta,
   getLatestValuation,
@@ -495,9 +496,10 @@ class InformesDataService {
       safe(dashboardService.getTesoreriaPanel(), null),
       safe((async () => {
         const db = await initDB();
+        // T24.1: valoraciones_historicas via valoracionesService (centralizado)
         const [properties, valuations, contracts] = await Promise.all([
           safe(db.getAll('properties'), [] as ExtendedProperty[]),
-          safe(db.getAll('valoraciones_historicas'), [] as ValoracionHistorica[]),
+          safe(valoracionesService.getAllValoraciones(), [] as ValoracionHistorica[]),
           safe(db.getAll('contracts'), [] as Contract[]),
         ]);
         return { properties, valuations, contracts };

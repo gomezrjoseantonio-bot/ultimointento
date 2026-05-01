@@ -21,6 +21,7 @@ import { PosicionInversion, PlanLiquidacion } from '../../../../../types/inversi
 import { MonthlyProjectionRow, ProyeccionAnual, DrillDownItem } from '../types/proyeccionMensual';
 import { calcularDeclaracionIRPF } from '../../../../../services/irpfCalculationService';
 import { generarEventosFiscales, getConfiguracionFiscal } from '../../../../../services/fiscalPaymentsService';
+import { valoracionesService } from '../../../../../services/valoracionesService';
 import {
   calculateOpexForMonth,
   calculateOpexBreakdownForMonth,
@@ -858,7 +859,8 @@ async function loadBaseData(): Promise<BaseData> {
   // Historical valuations — build index for fast per-asset per-month lookups
   let valoracionIndex: ValoracionIndex = new Map();
   try {
-    const valoracionesHistoricas: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    // T24.1: acceso centralizado via valoracionesService
+    const valoracionesHistoricas: ValoracionHistorica[] = await valoracionesService.getAllValoraciones();
     valoracionIndex = buildValoracionIndex(valoracionesHistoricas);
   } catch {
     // No valuation history available

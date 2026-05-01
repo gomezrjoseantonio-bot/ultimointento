@@ -4,6 +4,14 @@
 import { initDB } from './db';
 import type { ValoracionHistorica, ValoracionesMensuales, ValoracionInput, ActivoParaActualizar } from '../types/valoraciones';
 
+export interface AuditResult {
+  tipo: 'inmueble' | 'inversion' | 'plan_pensiones';
+  total_valoraciones: number;
+  huerfanas: number;
+  ids_huerfanos: string[];
+  propiedades_sin_valoracion: string[];
+}
+
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -108,10 +116,112 @@ export const valoracionesService = {
   ): Promise<ValoracionHistorica | undefined> {
     const db = await initDB();
     const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const idStr = String(id);
     const filtered = all
-      .filter((v) => v.tipo_activo === tipo && v.activo_id === id)
-      .sort((a, b) => b.fecha_valoracion.localeCompare(a.fecha_valoracion));
+      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
+      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
     return filtered[0];
+  },
+
+  /**
+   * Alias de getUltimaValoracion con normalización de tipos.
+   * Comparación siempre como String para evitar fallos de matching id number/string.
+   */
+  async getValoracionMasReciente(
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
+    id: number | string
+  ): Promise<ValoracionHistorica | undefined> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const idStr = String(id);
+    const filtered = all
+      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
+      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
+    return filtered[0];
+  },
+
+  /**
+   * Devuelve TODOS los registros de valoraciones_historicas.
+   * Usar para exportaciones bulk y análisis completos.
+   */
+  async getAllValoraciones(): Promise<ValoracionHistorica[]> {
+    const db = await initDB();
+    return db.getAll('valoraciones_historicas');
+  },
+
+  /**
+   * Devuelve un Map de la valoración más reciente por activo_id (como String)
+   * para un tipo dado. Una sola consulta DB — ideal para listas y dashboards.
+   * Key: String(activo_id)  Value: { valor, fecha_valoracion }
+   */
+  async getMapValoracionesMasRecientes(
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones'
+  ): Promise<Map<string, { valor: number; fecha_valoracion: string }>> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const map = new Map<string, { valor: number; fecha_valoracion: string }>();
+    for (const v of all) {
+      if (v.tipo_activo !== tipo) continue;
+      const key = String(v.activo_id);
+      const existing = map.get(key);
+      if (!existing || String(v.fecha_valoracion) > String(existing.fecha_valoracion)) {
+        map.set(key, { valor: v.valor, fecha_valoracion: String(v.fecha_valoracion) });
+      }
+    }
+    return map;
+  },
+
+  /**
+   * Audita el matching activo_id ↔ ids reales del store correspondiente.
+   * NO modifica datos. Solo reporta:
+   * - total_valoraciones: registros para ese tipo
+   * - huerfanas: valoraciones cuyos activo_id no matchean ningún activo existente
+   * - ids_huerfanos: lista de los activo_id problemáticos
+   * - propiedades_sin_valoracion: ids de activos activos sin ninguna valoración
+   */
+  async auditMatching(
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones'
+  ): Promise<AuditResult> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const filtered = all.filter((v) => v.tipo_activo === tipo);
+
+    // Obtener ids de activos existentes para el tipo dado
+    const activoIds = new Set<string>();
+    try {
+      if (tipo === 'inmueble') {
+        const properties: any[] = await db.getAll('properties');
+        properties.forEach((p) => activoIds.add(String(p.id)));
+      } else if (tipo === 'inversion') {
+        const inversiones: any[] = await db.getAll('inversiones');
+        inversiones.forEach((i) => activoIds.add(String(i.id)));
+      } else {
+        const planes: any[] = await (db as any).getAll('planesPensiones');
+        planes.forEach((p) => activoIds.add(String(p.id)));
+      }
+    } catch {
+      // Store puede no existir en DBs antiguas
+    }
+
+    // Valoraciones huérfanas (activo_id sin activo correspondiente)
+    const huerfanasSet = new Set<string>();
+    for (const v of filtered) {
+      if (!activoIds.has(String(v.activo_id))) {
+        huerfanasSet.add(String(v.activo_id));
+      }
+    }
+
+    // Activos sin ninguna valoración
+    const activosConValoracion = new Set(filtered.map((v) => String(v.activo_id)));
+    const sinValoracion = [...activoIds].filter((id) => !activosConValoracion.has(id));
+
+    return {
+      tipo,
+      total_valoraciones: filtered.length,
+      huerfanas: huerfanasSet.size,
+      ids_huerfanos: [...huerfanasSet],
+      propiedades_sin_valoracion: sinValoracion,
+    };
   },
 
   /** Obtener última valoración hasta un mes objetivo (inclusive, YYYY-MM) */
@@ -122,8 +232,9 @@ export const valoracionesService = {
   ): Promise<ValoracionHistorica | undefined> {
     const db = await initDB();
     const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const idStr = String(id);
     const filtered = all
-      .filter((v) => v.tipo_activo === tipo && v.activo_id === id && String(v.fecha_valoracion).slice(0, 7) <= fechaMes)
+      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr && String(v.fecha_valoracion).slice(0, 7) <= fechaMes)
       .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
     return filtered[0];
   },
@@ -134,9 +245,10 @@ export const valoracionesService = {
   ): Promise<ValoracionHistorica[]> {
     const db = await initDB();
     const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    const idStr = String(id);
     return all
-      .filter((v) => v.tipo_activo === tipo && v.activo_id === id)
-      .sort((a, b) => a.fecha_valoracion.localeCompare(b.fecha_valoracion));
+      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
+      .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
   },
 
   // ── Guardar valoraciones ──────────────────────────────────────────────────

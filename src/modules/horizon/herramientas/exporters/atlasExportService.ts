@@ -9,6 +9,8 @@ import type { ProyeccionAnual, MonthlyProjectionRow } from '../../../horizon/pro
 import type { Inmueble } from '../../../../types/inmueble';
 import type { PlanPagos, Prestamo } from '../../../../types/prestamos';
 import type { ValoracionHistorica } from '../../../../types/valoraciones';
+// T24.1: acceso centralizado via valoracionesService (bulk export — lectura de todo el store)
+import { valoracionesService } from '../../../../services/valoracionesService';
 import {
   getLatestValuation,
   mapInmuebleToRow,
@@ -71,7 +73,7 @@ const buildPortfolioContext = async (): Promise<{
       const db = await initDB();
       const [properties, valuations, contracts] = await Promise.all([
         safe(db.getAll('properties'), [] as ExtendedProperty[]),
-        safe(db.getAll('valoraciones_historicas'), [] as ValoracionHistorica[]),
+        safe(valoracionesService.getAllValoraciones(), [] as ValoracionHistorica[]),
         safe(db.getAll('contracts'), [] as Contract[]),
       ]);
       return { properties, valuations, contracts };

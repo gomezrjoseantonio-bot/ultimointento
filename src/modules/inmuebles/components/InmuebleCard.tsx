@@ -23,7 +23,7 @@ export interface InmuebleCardProps {
   /** Chips informativos · tipo · n hab · estilo · m². */
   chips?: Array<{ label: string; isType?: boolean }>;
   /** Métricas · valor · renta · rent neta · cashflow. */
-  metrics?: Array<{ label: string; value: React.ReactNode; tone?: 'pos' | 'muted' }>;
+  metrics?: Array<{ label: string; value: React.ReactNode; sub?: string; tone?: 'pos' | 'muted' | 'neg' }>;
   /** Sub-bloque variable según tipo. */
   type: InmuebleType;
   /** Para tipo='habitaciones'. */
@@ -189,6 +189,7 @@ const InmuebleCard: React.FC<InmuebleCardProps> = ({
               const valCls = [
                 styles.metricVal,
                 m.tone === 'pos' ? styles.pos : '',
+                m.tone === 'neg' ? styles.neg : '',
                 m.tone === 'muted' ? styles.muted : '',
               ]
                 .filter(Boolean)
@@ -197,6 +198,7 @@ const InmuebleCard: React.FC<InmuebleCardProps> = ({
                 <div key={`${m.label}-${i}`}>
                   <div className={styles.metricLab}>{m.label}</div>
                   <div className={valCls}>{m.value}</div>
+                  {m.sub && <div className={styles.metricSub}>{m.sub}</div>}
                 </div>
               );
             })}
