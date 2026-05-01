@@ -63,9 +63,9 @@ const GastosPage: React.FC = () => {
       <EmptyState
         icon={<Icons.Tesoreria size={20} />}
         title="Sin compromisos del hogar"
-        sub="Da de alta suministros, suscripciones, seguros y demás gastos recurrentes para que ATLAS los proyecte automáticamente."
-        ctaLabel="+ nuevo compromiso"
-        onCtaClick={() => showToastV5('Crear nuevo compromiso · pendiente wizard dedicado')}
+        sub="Da de alta suministros, suscripciones, seguros y demás gastos recurrentes para que ATLAS los proyecte automáticamente · o deja que ATLAS los detecte desde tu histórico de movimientos."
+        ctaLabel="Detectar desde histórico"
+        onCtaClick={() => navigate('/personal/gastos/detectar-compromisos')}
       />
     );
   }
@@ -141,6 +141,14 @@ const GastosPage: React.FC = () => {
         >
           <Icons.Upload size={11} strokeWidth={2} style={{ marginRight: 4 }} />
           Importar
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate('/personal/gastos/detectar-compromisos')}
+          style={chipStyle(false)}
+        >
+          <Icons.Sparkles size={11} strokeWidth={2} style={{ marginRight: 4 }} />
+          Detectar desde histórico
         </button>
       </div>
 
