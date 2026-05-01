@@ -472,6 +472,12 @@ class InformesDataService {
       safe(generateProyeccionMensual(), [] as ProyeccionAnual[]),
       safe(inmuebleService.getAll(), [] as Inmueble[]),
       safe(prestamosService.getAllPrestamos(), [] as Prestamo[]),
+      // T14.4 · EXCEPCIÓN documentada · este servicio inyecta el objeto
+      // `PersonalData` completo en el dataset que alimenta los informes
+      // (UI · PDF · email). Los componentes consumidores esperan la forma
+      // exacta del tipo (situacionPersonal · housingType · spouseName ·
+      // etc · campos no fiscales). Forzar el gateway aquí requiere
+      // reescribir todos los informes · fuera del scope de T14.4.
       safe(personalDataService.getPersonalData(), null as PersonalData | null),
       safe(dashboardService.getPatrimonioNeto(), {
         total: 0,

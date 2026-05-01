@@ -219,6 +219,9 @@ const NominaWizard: React.FC = () => {
 
   useEffect(() => {
     void (async () => {
+      // T14.4 · EXCEPCIÓN documentada · NO migra al gateway · necesita
+      // `spouseName` (campo UI no fiscal). Mantener lectura directa
+      // a `personalDataService` evita un dual-read innecesario.
       const perfil = await personalDataService.getPersonalData();
       if (perfil?.id) {
         setPid(perfil.id);
