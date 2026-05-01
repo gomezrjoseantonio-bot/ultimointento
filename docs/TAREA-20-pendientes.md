@@ -6,6 +6,30 @@
 
 ---
 
+## Cierre de deuda T20 · Dashboard / Sidebar por TAREA 22 ✅
+
+> **Cerrado en** · TAREA 22 · v2 · sub-tarea 22.8 · 2026-05-01
+
+La TAREA 22 cierra formalmente la deuda visual de Dashboard y Sidebar detectada
+en la auditoría post-cierre de T20. Los siguientes puntos pendientes de T20
+quedan resueltos:
+
+| Deuda T20 | Descripción | Cerrado en |
+|-----------|-------------|-----------|
+| Dashboard legacy `HorizonPanel` | Reconstruido como Panel V5 · 8 secciones · tokens § Z | T22 ✅ |
+| Sidebar sin agrupación funcional | Sidebar V5 · 11 items · headers + separador · iconos § AA.1 | T22.1 ✅ |
+| Sin Topbar global persistente | TopbarV5 montado en MainLayout · persiste en TODOS los módulos | T22.1 ✅ |
+| Composición patrimonio sin decisión γ | CompositionBar con 3 segmentos activos · sin Financiación | T22.2 ✅ |
+| Grid activos sin pulso | PulseAssetCard × 4 · Inmuebles · Inversiones · Tesorería · Financiación | T22.3 ✅ |
+| Sin pulso mensual | PulsoDelMes · ingresos · gastos · cashflow · saldo fin | T22.4 ✅ |
+| Sin alertas priorizadas | AttentionList · MAX 5 · por urgencia | T22.5 ✅ |
+| Mi Plan sin visibilidad panel | MiPlanCompass · brújula desde store escenario | T22.6 ✅ |
+| Sin timeline hitos anuales | YearTimeline · 12 meses · hitos fiscales + financiación | T22.7 ✅ |
+
+Ver `docs/T22-cierre.md` para diff visual completo y TODOs formales de T22.
+
+---
+
 ## TODOs activos
 
 ### TODO-T20-01 · Cashflow chart · conectar Mi Plan v2 budget API
