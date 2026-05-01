@@ -77,7 +77,7 @@
 /* ── Valor principal ── */
 .activoVal {
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 22px;
+  font-size: 30px;
   font-weight: var(--atlas-v5-fw-bold);
   color: var(--atlas-v5-ink);
   letter-spacing: -0.025em;
