@@ -77,6 +77,9 @@ export type {
 export { default as WizardStepper } from './WizardStepper';
 export type { WizardStepperProps, WizardStep } from './WizardStepper';
 
+export { default as TopbarV5 } from './TopbarV5';
+export type { TopbarV5Props } from './TopbarV5';
+
 export { Icons } from './icons';
 export type { IconName, IconComponent } from './icons';
 

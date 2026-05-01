@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { X, ChevronUp, LogOut } from 'lucide-react';
+import { Icons } from '../../design-system/v5/icons';
 import { getNavigationForModule, NavigationItem } from '../../config/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { preloadRouteResources } from '../../services/navigationPerformanceService';
@@ -44,40 +45,44 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       onMouseLeave={cancelScheduledPreload}
       onBlur={cancelScheduledPreload}
       className={({ isActive }) =>
-        `sidebar-nav-item group flex items-center ${collapsed ? 'justify-center' : ''} px-3 py-2 text-sm rounded-lg transition-all duration-150`
+        `group flex items-center ${collapsed ? 'justify-center' : ''} transition-all duration-150`
       }
       style={({ isActive }) => ({
-        backgroundColor: isActive ? 'var(--navy-900)' : 'transparent',
-        color: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.65)',
-        fontWeight: isActive ? 500 : 400,
-        margin: '1px 8px',
+        padding: isActive ? '9px 12px 9px 10px' : '9px 12px',
+        borderRadius: '7px',
+        gap: '11px',
+        color: isActive ? 'var(--atlas-v5-white)' : 'var(--atlas-v5-ink-5)',
+        fontSize: '13.5px',
+        fontWeight: 500,
+        backgroundColor: isActive ? 'rgba(255,255,255,.07)' : 'transparent',
+        boxShadow: isActive ? 'inset 2px 0 0 var(--atlas-v5-gold)' : 'none',
+        display: 'flex',
+        alignItems: 'center',
       })}
       title={collapsed ? item.name : undefined}
     >
-      <item.icon className={`${collapsed ? '' : 'mr-3'} flex-shrink-0`} size={20} aria-hidden="true" style={{ opacity: 'inherit' }} />
-      {!collapsed && item.name}
+      {({ isActive }) => (
+        <>
+          <item.icon
+            size={16}
+            strokeWidth={1.7}
+            aria-hidden="true"
+            style={{
+              flexShrink: 0,
+              opacity: isActive ? 1 : 0.85,
+              color: isActive ? 'var(--atlas-v5-gold)' : 'inherit',
+            }}
+          />
+          {!collapsed && item.name}
+        </>
+      )}
     </NavLink>
   );
 
-  const mainItems = navigation.filter(item => item.section === 'horizon');
-  const managementItems = navigation.filter(item => item.section === 'pulse');
-  const docsItems = navigation.filter(item => item.section === 'documentation');
-
-  // Sólo renderiza el label si la sección tiene al menos un item · evita
-  // huecos visuales cuando una sección está vacía (ej. Pulse/Gestión post-T20).
-  const SectionLabel = ({ label, count }: { label: string; count: number }) =>
-    collapsed || count === 0 ? null : (
-      <p style={{
-        padding: '20px 16px 8px',
-        fontSize: 'var(--t-xs)',
-        fontWeight: 600,
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-        color: 'rgba(255,255,255,0.35)',
-      }}>
-        {label}
-      </p>
-    );
+  const panelItems = navigation.filter(item => item.section === 'panel');
+  const misActivosItems = navigation.filter(item => item.section === 'mis-activos');
+  const operativaItems = navigation.filter(item => item.section === 'operativa');
+  const ajustesItems = navigation.filter(item => item.section === 'ajustes');
 
   const initials = user?.name
     ? user.name
@@ -94,8 +99,46 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     setAccountMenuOpen(false);
   };
 
+  /* ── Estilos constantes de la barra § Z.4 ── */
+  const sideStyle: React.CSSProperties = {
+    backgroundColor: 'var(--atlas-v5-brand-ink)',
+    width: collapsed ? 64 : 240,
+    height: '100vh',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '22px 0',
+    position: 'sticky',
+    top: 0,
+    flexShrink: 0,
+  };
+
+  const navStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+    padding: '0 12px',
+  };
+
+  const navSectionStyle: React.CSSProperties = collapsed
+    ? { display: 'none' }
+    : {
+        padding: '20px 22px 6px',
+        fontSize: '10px',
+        fontWeight: 600,
+        letterSpacing: '.2em',
+        textTransform: 'uppercase',
+        color: 'rgba(255,255,255,.38)',
+      };
+
+  const navSepStyle: React.CSSProperties = {
+    margin: '14px 22px 4px',
+    borderTop: '1px solid rgba(255,255,255,.06)',
+  };
+
   return (
     <>
+      {/* Mobile overlay */}
       <button
         type="button"
         className={`fixed inset-0 z-40 transition-opacity md:hidden ${
@@ -107,43 +150,111 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       />
 
       <div
-        className={`fixed inset-y-0 left-0 z-[100] transition duration-300 transform md:translate-x-0 md:relative md:flex md:flex-col ${
+        className={`fixed inset-y-0 left-0 z-[100] transition duration-300 transform md:translate-x-0 md:relative ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${collapsed ? 'w-16' : 'w-60'}`}
-        style={{ backgroundColor: 'var(--navy-700)', width: collapsed ? 64 : 240 }}
+        }`}
+        style={sideStyle}
       >
-        <div className="flex items-center justify-between px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Brand header */}
+        <div
+          style={{
+            padding: '4px 22px 20px',
+            borderBottom: '1px solid rgba(255,255,255,.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
           {!collapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: 'var(--navy-900)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, var(--atlas-v5-gold-light), var(--atlas-v5-gold))',
+                  color: 'var(--atlas-v5-brand-ink)',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
                 A
               </div>
-              <h1 className="text-white text-xl font-bold tracking-tight">ATLAS</h1>
+              <div>
+                <div
+                  style={{
+                    color: 'var(--atlas-v5-white)',
+                    fontWeight: 700,
+                    fontSize: 17,
+                    lineHeight: 1,
+                    letterSpacing: '-0.015em',
+                  }}
+                >
+                  ATLAS
+                </div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: '.18em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255,255,255,.42)',
+                    marginTop: 3,
+                  }}
+                >
+                  patrimonio
+                </div>
+              </div>
             </div>
           )}
           {collapsed && (
-            <div className="h-8 w-8 rounded-md flex items-center justify-center text-white font-bold text-sm mx-auto" style={{ backgroundColor: 'var(--navy-900)' }} title="ATLAS">
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--atlas-v5-gold-light), var(--atlas-v5-gold))',
+                color: 'var(--atlas-v5-brand-ink)',
+                fontWeight: 700,
+                fontSize: 15,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto',
+              }}
+              title="ATLAS"
+            >
               A
             </div>
           )}
 
+          {/* Desktop collapse button */}
           <button
-            className="hidden md:block transition-colors duration-150 ease-in-out"
-            style={{ color: 'rgba(255,255,255,0.4)' }}
+            className="hidden md:flex"
+            style={{
+              color: 'rgba(255,255,255,.4)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+              alignItems: 'center',
+            }}
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {collapsed
-                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              }
-            </svg>
+            {collapsed
+              ? <Icons.ChevronsRight size={16} />
+              : <Icons.ChevronsLeft size={16} />
+            }
           </button>
 
+          {/* Mobile close button */}
           <button
             className="md:hidden"
-            style={{ color: 'rgba(255,255,255,0.6)' }}
+            style={{ color: 'rgba(255,255,255,.6)', background: 'none', border: 'none', cursor: 'pointer' }}
             onClick={() => setSidebarOpen(false)}
             aria-label="Cerrar menú"
           >
@@ -151,46 +262,73 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           </button>
         </div>
 
-        <nav className="px-0 mt-3 flex-1 overflow-y-auto">
-          <SectionLabel label="Supervisión" count={mainItems.length} />
-          {mainItems.map(renderNavItem)}
+        {/* Navigation */}
+        <nav style={{ flex: 1, overflowY: 'auto', marginTop: 12 }}>
+          {/* Panel · sin grupo */}
+          <div style={navStyle}>
+            {panelItems.map(renderNavItem)}
+          </div>
 
-          <SectionLabel label="Gestión" count={managementItems.length} />
-          {managementItems.map(renderNavItem)}
+          {/* MIS ACTIVOS */}
+          <p className="nav-section" style={navSectionStyle}>Mis activos</p>
+          <div style={navStyle}>
+            {misActivosItems.map(renderNavItem)}
+          </div>
 
-          <SectionLabel label="Docs" count={docsItems.length} />
-          {docsItems.map(renderNavItem)}
+          {/* OPERATIVA */}
+          <p className="nav-section" style={navSectionStyle}>Operativa</p>
+          <div style={navStyle}>
+            {operativaItems.map(renderNavItem)}
+          </div>
+
+          {/* Separador · .nav-sep */}
+          <div className="nav-sep" style={navSepStyle} role="separator" aria-hidden="true" />
+          <div style={navStyle}>
+            {ajustesItems.map(renderNavItem)}
+          </div>
         </nav>
 
+        {/* Footer usuario */}
         {user && (
-          <div className="p-3 relative" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div
+            className="side-foot"
+            style={{
+              marginTop: 'auto',
+              padding: '14px 22px 4px',
+              borderTop: '1px solid rgba(255,255,255,.06)',
+              position: 'relative',
+            }}
+          >
             {accountMenuOpen && !collapsed && (
               <div
                 className="absolute bottom-[84px] left-3 right-3 bg-white rounded-lg shadow-lg border z-50 overflow-hidden"
-                style={{ borderColor: 'var(--grey-300)' }}
+                style={{ borderColor: 'var(--atlas-v5-line)' }}
               >
-                <div className="px-4 py-2 text-xs border-b" style={{ color: 'var(--grey-500)', borderColor: 'var(--grey-200)' }}>
+                <div
+                  className="px-4 py-2 text-xs border-b"
+                  style={{ color: 'var(--atlas-v5-ink-4)', borderColor: 'var(--atlas-v5-line-2)' }}
+                >
                   {user.email}
                 </div>
                 <button
                   onClick={() => { navigate('/ajustes/perfil'); setAccountMenuOpen(false); }}
                   className="block px-4 py-2 text-sm w-full text-left"
-                  style={{ color: 'var(--grey-700)' }}
+                  style={{ color: 'var(--atlas-v5-ink-2)' }}
                 >
                   Perfil
                 </button>
                 <button
                   onClick={() => { navigate('/ajustes/plan'); setAccountMenuOpen(false); }}
                   className="block px-4 py-2 text-sm w-full text-left"
-                  style={{ color: 'var(--grey-700)' }}
+                  style={{ color: 'var(--atlas-v5-ink-2)' }}
                 >
                   Plan & Facturación
                 </button>
-                <div style={{ borderTop: '1px solid var(--grey-200)', margin: '4px 0' }} />
+                <div style={{ borderTop: '1px solid var(--atlas-v5-line-2)', margin: '4px 0' }} />
                 <button
                   onClick={handleLogout}
                   className="flex items-center px-4 py-2 text-sm w-full text-left"
-                  style={{ color: 'var(--grey-700)' }}
+                  style={{ color: 'var(--atlas-v5-ink-2)' }}
                 >
                   <LogOut size={16} className="mr-2" />
                   Cerrar sesión
@@ -206,24 +344,58 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                 }
                 setAccountMenuOpen((prev) => !prev);
               }}
-              className={`w-full rounded-xl px-3 py-2.5 flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}
-              style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}
-              title={collapsed ? `${user.name} • ${user.subscriptionPlan}` : undefined}
+              style={{
+                width: '100%',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: collapsed ? 0 : 10,
+                justifyContent: collapsed ? 'center' : 'flex-start',
+              }}
+              title={collapsed ? `${user.name} · ${user.subscriptionPlan}` : undefined}
               aria-label="Menú de cuenta"
             >
               <div
-                className="h-9 w-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
-                style={{ backgroundColor: 'var(--navy-900)' }}
+                className="avatar"
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, var(--atlas-v5-gold-light), var(--atlas-v5-gold))',
+                  color: 'var(--atlas-v5-brand-ink)',
+                  fontWeight: 700,
+                  fontSize: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
               >
                 {initials}
               </div>
               {!collapsed && (
                 <>
-                  <div className="min-w-0 text-left flex-1">
-                    <p className="text-sm font-semibold text-white leading-tight truncate">{user.name}</p>
-                    <p className="text-xs leading-tight" style={{ color: 'rgba(255,255,255,0.7)' }}>{user.subscriptionPlan}</p>
+                  <div style={{ minWidth: 0, textAlign: 'left', flex: 1 }}>
+                    <p
+                      className="side-foot-name"
+                      style={{ fontSize: 13, color: 'var(--atlas-v5-white)', fontWeight: 600, lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    >
+                      {user.name}
+                    </p>
+                    <p
+                      className="side-foot-sub"
+                      style={{ fontSize: 11, color: 'rgba(255,255,255,.5)', marginTop: 1 }}
+                    >
+                      {user.subscriptionPlan}
+                    </p>
                   </div>
-                  <ChevronUp className={`h-4 w-4 transition-transform ${accountMenuOpen ? '' : 'rotate-180'}`} style={{ color: 'rgba(255,255,255,0.7)' }} />
+                  <ChevronUp
+                    size={14}
+                    className={`transition-transform ${accountMenuOpen ? '' : 'rotate-180'}`}
+                    style={{ color: 'rgba(255,255,255,.5)', flexShrink: 0 }}
+                  />
                 </>
               )}
             </button>

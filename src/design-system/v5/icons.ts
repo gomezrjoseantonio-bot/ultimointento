@@ -10,17 +10,17 @@
  */
 
 import {
-  // Sidebar nav · 11 items canónicos
+  // Sidebar nav · 11 items canónicos (§ AA.1)
   LayoutGrid,
   Building2,
   TrendingUp,
   Wallet,
   Landmark,
-  Users,
+  User,
   FileText,
   Compass,
-  Monitor,
-  Folder,
+  Receipt,
+  Archive,
   Settings,
   // Sub-módulos Mi Plan
   LineChart,
@@ -40,6 +40,7 @@ import {
   PieChart,
   Activity,
   ArrowUpRight,
+  ArrowDownRight,
   // UI utilitarios
   Upload,
   Download,
@@ -50,6 +51,8 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
+  ChevronsLeft,
+  ChevronsRight,
   X,
   Check,
   Plus,
@@ -79,6 +82,7 @@ import {
   Paperclip,
   RefreshCw,
   Inbox,
+  Banknote,
   Sparkles,
 } from 'lucide-react';
 
@@ -91,17 +95,17 @@ import {
  * en la UI v5.
  */
 export const Icons = {
-  // ===== Módulos sidebar (§13.1) =====
+  // ===== Módulos sidebar (§ AA.1) =====
   Panel: LayoutGrid,
   Inmuebles: Building2,
   Inversiones: TrendingUp,
   Tesoreria: Wallet,
   Financiacion: Landmark,
-  Personal: Users,
+  Personal: User,          // §AA.9 · User (NO Building2 · NO Users · bug mockup corregido)
   Contratos: FileText,
   MiPlan: Compass,
-  Fiscal: Monitor,
-  Archivo: Folder,
+  Fiscal: Receipt,          // §AA.1 · Receipt (NO Monitor)
+  Archivo: Archive,         // §AA.1 · Archive (NO Folder)
   Ajustes: Settings,
 
   // ===== Sub-módulos Mi Plan =====
@@ -117,6 +121,7 @@ export const Icons = {
   Distribucion: PieChart,
   Activity,
   ArrowUpRight,
+  ArrowDownRight,       // §AA.8 · flecha delta negativa
 
   // ===== Tipos de objetivo / fondo =====
   Acumular: Package,
@@ -126,7 +131,7 @@ export const Icons = {
   Colchon: Shield,
   Compra: Home,
   Reforma: Wrench,
-  Impuestos: Monitor,
+  Impuestos: Receipt,
   Capricho: Gift,
 
   // ===== UI utilitarios =====
@@ -139,6 +144,8 @@ export const Icons = {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
+  ChevronsLeft,         // §AA.8 · sidebar collapse
+  ChevronsRight,        // §AA.8 · sidebar expand
   Close: X,
   Check,
   Plus,
@@ -168,6 +175,7 @@ export const Icons = {
   Attach: Paperclip,
   Refresh: RefreshCw,
   Inbox,
+  Banknote,             // §AA.7 · timeline devolución
   Sparkles,
 } as const;
 

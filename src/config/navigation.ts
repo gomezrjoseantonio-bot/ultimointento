@@ -6,7 +6,7 @@ export interface NavigationItem {
   icon: IconComponent;
   module: 'shared';
   subTabs?: { name: string; href: string }[];
-  section?: 'horizon' | 'pulse' | 'documentation';
+  section?: 'panel' | 'mis-activos' | 'operativa' | 'ajustes';
 }
 
 /**
@@ -15,15 +15,11 @@ export interface NavigationItem {
  * Iconos consumidos desde `Icons.<Concepto>` v5 · NO importar directamente
  * Lucide aquí (regla §13.1 de la guía de diseño v5 · 1 icono por concepto).
  *
- * Estado de las rutas legacy ·
- *  - `/personal/supervision` y `/fiscalidad` son redirects (App.tsx) → v5.
- *  - `/inmuebles/supervision` sigue activa como ruta legacy (no redirect)
- *    hasta Phase 4 cleanup · el menú principal apunta a `/inmuebles` v5.
- *  - `/proyeccion/*` legacy se sustituye por Mi Plan · Proyección.
- *
- * Secciones · 'horizon' (módulos principales) · 'documentation' (archivo +
- * ajustes). 'pulse' queda vacía hasta que se incorpore alguna gestión
- * legacy mientras llega Phase 4.
+ * Agrupación T22.1 (§2.1):
+ *  - panel      → Panel solo · sin header
+ *  - mis-activos → MIS ACTIVOS header · Inmuebles · Inversiones · Tesorería · Financiación · Personal
+ *  - operativa  → OPERATIVA header · Contratos · Mi Plan · Fiscal · Archivo
+ *  - ajustes    → separador + Ajustes
  */
 export const navigationConfig: NavigationItem[] = [
   {
@@ -31,21 +27,21 @@ export const navigationConfig: NavigationItem[] = [
     href: '/panel',
     icon: Icons.Panel,
     module: 'shared',
-    section: 'horizon',
+    section: 'panel',
   },
   {
     name: 'Inmuebles',
     href: '/inmuebles',
     icon: Icons.Inmuebles,
     module: 'shared',
-    section: 'horizon',
+    section: 'mis-activos',
   },
   {
     name: 'Inversiones',
     href: '/inversiones',
     icon: Icons.Inversiones,
     module: 'shared',
-    section: 'horizon',
+    section: 'mis-activos',
     subTabs: [
       { name: 'Resumen', href: '/inversiones' },
       { name: 'Cartera', href: '/inversiones/cartera' },
@@ -58,14 +54,14 @@ export const navigationConfig: NavigationItem[] = [
     href: '/tesoreria',
     icon: Icons.Tesoreria,
     module: 'shared',
-    section: 'horizon',
+    section: 'mis-activos',
   },
   {
     name: 'Financiación',
     href: '/financiacion',
     icon: Icons.Financiacion,
     module: 'shared',
-    section: 'horizon',
+    section: 'mis-activos',
     subTabs: [
       { name: 'Dashboard', href: '/financiacion' },
       { name: 'Listado', href: '/financiacion/listado' },
@@ -76,23 +72,23 @@ export const navigationConfig: NavigationItem[] = [
   {
     name: 'Personal',
     href: '/personal',
-    icon: Icons.Personal,
+    icon: Icons.Personal,  // §AA.9 · User (NO Building2)
     module: 'shared',
-    section: 'horizon',
+    section: 'mis-activos',
   },
   {
     name: 'Contratos',
     href: '/contratos',
     icon: Icons.Contratos,
     module: 'shared',
-    section: 'horizon',
+    section: 'operativa',
   },
   {
     name: 'Mi Plan',
     href: '/mi-plan',
     icon: Icons.MiPlan,
     module: 'shared',
-    section: 'horizon',
+    section: 'operativa',
     subTabs: [
       { name: 'Mi Plan', href: '/mi-plan' },
       { name: 'Proyección', href: '/mi-plan/proyeccion' },
@@ -107,7 +103,7 @@ export const navigationConfig: NavigationItem[] = [
     href: '/fiscal',
     icon: Icons.Fiscal,
     module: 'shared',
-    section: 'horizon',
+    section: 'operativa',
     subTabs: [
       { name: 'Calendario', href: '/fiscal' },
       { name: 'Ejercicios', href: '/fiscal/ejercicios' },
@@ -120,14 +116,14 @@ export const navigationConfig: NavigationItem[] = [
     href: '/archivo',
     icon: Icons.Archivo,
     module: 'shared',
-    section: 'documentation',
+    section: 'operativa',
   },
   {
     name: 'Ajustes',
     href: '/ajustes',
     icon: Icons.Ajustes,
     module: 'shared',
-    section: 'documentation',
+    section: 'ajustes',
   },
 ];
 

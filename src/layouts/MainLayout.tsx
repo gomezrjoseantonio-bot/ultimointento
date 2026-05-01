@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/navigation/Sidebar';
-import Header from '../components/navigation/Header';
+import TopbarV5 from '../design-system/v5/TopbarV5';
 import { useCommandPalette } from '../hooks/useCommandPalette';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { preloadRouteResources } from '../services/navigationPerformanceService';
@@ -110,11 +110,12 @@ const MainLayout: React.FC = () => {
       <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-        <Header setSidebarOpen={setSidebarOpen} />
+        {/* TopbarV5 · persistente en TODAS las pantallas · §2.2 */}
+        <TopbarV5 />
         
         <main 
           id="main-content"
-          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${isPanelRoute ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}`}
+          className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${isPanelRoute ? 'px-8 pb-12' : 'p-3 sm:p-4 lg:p-6'}`}
           tabIndex={-1}
         >
           {isPanelRoute ? (
