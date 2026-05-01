@@ -6,7 +6,7 @@ import { nominaService } from '../../../../../services/nominaService';
 import { autonomoService } from '../../../../../services/autonomoService';
 import { pensionService } from '../../../../../services/pensionService';
 import { otrosIngresosService } from '../../../../../services/otrosIngresosService';
-import { personalDataService } from '../../../../../services/personalDataService';
+import { getFiscalContextSafe } from '../../../../../services/fiscalContextService';
 import { getAllContracts } from '../../../../../services/contractService';
 import { inmuebleService } from '../../../../../services/inmuebleService';
 import { prestamosService } from '../../../../../services/prestamosService';
@@ -668,9 +668,9 @@ async function loadBaseData(): Promise<BaseData> {
   const db = await initDB();
   const year = START_YEAR;
 
-  // Personal data
-  const personalData = await personalDataService.getPersonalData();
-  const personalDataId = personalData?.id ?? 1;
+  // Personal data · T14.4 · migrado a fiscalContextService gateway
+  const ctx = await getFiscalContextSafe();
+  const personalDataId = ctx?.personalDataId ?? 1;
 
   // ── A. NÓMINAS ────────────────────────────────────────────────────────────
   // Use calculateSalary() to get the exact monthly net distribution
