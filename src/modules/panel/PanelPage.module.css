@@ -88,65 +88,6 @@
 
 .heroMetaVal.neg { color: var(--atlas-v5-neg); }
 
-.compHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 10px;
-}
-
-.compTitle {
-  font-size: 11px;
-  font-weight: var(--atlas-v5-fw-bold);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--atlas-v5-ink-4);
-}
-
-.compTrack {
-  display: flex;
-  height: 14px;
-  border-radius: 7px;
-  overflow: hidden;
-  background: var(--atlas-v5-line-2);
-  margin-bottom: 12px;
-}
-
-.compSeg.inmuebles { background: var(--atlas-v5-brand); }
-.compSeg.inversiones { background: var(--atlas-v5-gold); }
-.compSeg.tesoreria { background: var(--atlas-v5-pos); }
-.compSeg.financiacion { background: var(--atlas-v5-neg); }
-
-.compLeg {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-}
-
-.compLegItem {
-  display: grid;
-  grid-template-columns: 12px 1fr auto;
-  gap: 10px;
-  align-items: center;
-  font-size: 12.5px;
-  font-family: var(--atlas-v5-font-mono-num);
-}
-
-.compLegDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 4px;
-}
-
-.compLegDot.inmuebles { background: var(--atlas-v5-brand); }
-.compLegDot.inversiones { background: var(--atlas-v5-gold); }
-.compLegDot.tesoreria { background: var(--atlas-v5-pos); }
-.compLegDot.financiacion { background: var(--atlas-v5-neg); }
-
-.compLegNom { color: var(--atlas-v5-ink-3); font-family: var(--atlas-v5-font-ui); font-size: 12px; }
-.compLegVal { color: var(--atlas-v5-ink); font-weight: var(--atlas-v5-fw-bold); }
-.compLegPct { color: var(--atlas-v5-ink-4); font-size: 11px; margin-left: 4px; }
-
 .secTitle {
   font-size: 11px;
   font-weight: var(--atlas-v5-fw-bold);
