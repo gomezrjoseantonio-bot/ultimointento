@@ -38,11 +38,11 @@ const campañaIRPF = (d: Date): string | null => {
   const dia = d.getDate();
   const año = d.getFullYear();
   // Abril (mes 4), Mayo (mes 5) y hasta el 30 de Junio (mes 6)
-  const enCampaña =
+  const enCampana =
     mes === 4 ||
     mes === 5 ||
     (mes === 6 && dia <= 30);
-  if (enCampaña) {
+  if (enCampana) {
     // El ejercicio IRPF es el año anterior
     return `campaña IRPF ${año - 1} activa`;
   }

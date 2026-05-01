@@ -60,7 +60,7 @@ const CompositionBar: React.FC<CompositionBarProps> = ({
       <div
         className={styles.compTrack}
         role="img"
-        aria-label="Composición del patrimonio"
+        aria-label="Composición del patrimonio — haz clic en un segmento para ver el detalle del módulo"
       >
         {activeSegments.map((seg) => {
           const pct = (seg.value / safeTotal) * 100;
@@ -80,7 +80,7 @@ const CompositionBar: React.FC<CompositionBarProps> = ({
 
       {showLegend && (
         <div className={styles.compLeg}>
-          {segments.map((seg) => {
+          {activeSegments.map((seg) => {
             const pct = (seg.value / safeTotal) * 100;
             return (
               <div key={seg.key} className={styles.compLegItem}>
