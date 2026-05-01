@@ -1,0 +1,156 @@
+/* ============================================================
+   T23.6.2 · CintaResumenInversiones · sticky §Z.1
+   Solo visible en módulo Inversiones (galería + fichas).
+   Cero hex hardcoded · todo via tokens v5.
+   El gradient del inv-cinta-mark usa --atlas-v5-gold-light y
+   --atlas-v5-gold como parada inicial/final del grad (§Z.1 spec).
+   ============================================================ */
+
+.invCinta {
+  position: sticky;
+  top: 0;
+  z-index: var(--atlas-v5-z-sticky);
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  padding: 14px 32px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  /* Stretch full-width ignoring page padding */
+  margin: 0 -32px;
+}
+
+@media (max-width: 700px) {
+  .invCinta {
+    padding: 12px 16px;
+    margin: 0 -16px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+}
+
+/* ── Brand mark ─────────────────────────────────────────────── */
+.invCintaBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* §Z.1 · gradient oro del atlas brand-mark. Usa tokens v5 de oro. */
+.invCintaMark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--atlas-v5-gold-light), var(--atlas-v5-gold));
+  color: var(--atlas-v5-brand-ink);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.invCintaName {
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--atlas-v5-white);
+}
+
+.invCintaSub {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 2px;
+}
+
+/* ── Header "MI CARTERA" ───────────────────────────────────── */
+.invCintaHd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 24px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.invCintaHdDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+
+.invCintaHdText {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: var(--atlas-v5-fw-semibold);
+  white-space: nowrap;
+}
+
+/* ── KPIs ──────────────────────────────────────────────────── */
+.invCintaStats {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .invCintaStats {
+    gap: 16px;
+  }
+}
+
+.invCintaStat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.invCintaStatLab {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.invCintaStatVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 17px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-white);
+  letter-spacing: -0.015em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Variantes semánticas */
+.invCintaStatVal.pos { color: var(--atlas-v5-pos-wash); }    /* verde claro sobre ink */
+.invCintaStatVal.neg { color: var(--atlas-v5-neg-wash); }    /* rojo claro sobre ink */
+.invCintaStatVal.gold { color: var(--atlas-v5-gold-light); } /* oro claro sobre ink */
+.pos { color: var(--atlas-v5-pos-wash); }
+.neg { color: var(--atlas-v5-neg-wash); }
+.gold { color: var(--atlas-v5-gold-light); }
+.muted { color: rgba(255, 255, 255, 0.5); }
+
+.invCintaStatSub {
+  font-size: 9.5px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--atlas-v5-font-mono-num);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}

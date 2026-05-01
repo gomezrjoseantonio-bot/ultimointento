@@ -8,6 +8,9 @@
 // `<DialogAportar>` (selector posición + form aportación) con los botones
 // del page-head. La sub-página de cerradas y la ficha detalle individual
 // se construyen en 23.3 y 23.4 · de momento son placeholders con TODO claro.
+//
+// T23.6.1 · fuente unificada (inversiones + planesPensiones) via getAllCartaItems().
+// T23.6.2 · CintaResumenInversiones sticky + CartaPosicion acepta CartaItem directamente.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +21,7 @@ import { migrateInversionesToNewModel } from '../../services/migrations/migrateI
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
 import CartaAddPosicion from './components/CartaAddPosicion';
+import CintaResumenInversiones from './components/CintaResumenInversiones';
 import WizardNuevaPosicion from './components/WizardNuevaPosicion';
 import DialogAportar from './components/DialogAportar';
 import {
@@ -153,6 +157,9 @@ const InversionesGaleria: React.FC = () => {
 
   return (
     <div className={styles.page}>
+      {/* T23.6.2 · Cinta resumen sticky · solo visible en módulo Inversiones */}
+      <CintaResumenInversiones />
+
       <PageHead
         title="Inversiones"
         sub="tus posiciones activas · click en cualquier carta para ver su detalle"
@@ -184,40 +191,14 @@ const InversionesGaleria: React.FC = () => {
           </div>
 
           <div className={styles.galleryGrid}>
-            {activas.map((item) => {
-              // T23.6.1 · CartaPosicion acepta PosicionInversion. Para inversiones
-              // usamos el original directamente (con aportaciones para sparkline).
-              // Para planesPensiones construimos una forma compatible mínima con los
-              // campos que CartaPosicion realmente usa; el onClick usa closure sobre
-              // CartaItem para navegar por _idOriginal (UUID).
-              // TODO T23.6.2 · CartaPosicion será refactorizado para aceptar CartaItem
-              // directamente y este workaround desaparecerá.
-              const posicion =
-                item._origen === 'inversiones'
-                  ? (item._original as PosicionInversion)
-                  : ({
-                      id: 0,
-                      nombre: item.nombre,
-                      tipo: item.tipo,
-                      entidad: item.entidad,
-                      valor_actual: item.valor_actual,
-                      total_aportado: item.total_aportado,
-                      rentabilidad_euros: item.rentabilidad_euros,
-                      rentabilidad_porcentaje: item.rentabilidad_porcentaje,
-                      aportaciones: [],
-                      fecha_valoracion: new Date().toISOString(),
-                      activo: true,
-                      created_at: '',
-                      updated_at: '',
-                    } as PosicionInversion);
-              return (
-                <CartaPosicion
-                  key={String(item._idOriginal)}
-                  posicion={posicion}
-                  onClick={() => handleClickCarta(item)}
-                />
-              );
-            })}
+            {/* T23.6.2 · CartaPosicion ya acepta CartaItem directamente */}
+            {activas.map((item) => (
+              <CartaPosicion
+                key={String(item._idOriginal)}
+                item={item}
+                onClick={handleClickCarta}
+              />
+            ))}
             <CartaAddPosicion onClick={openWizardNueva} />
           </div>
 
