@@ -76,9 +76,14 @@ const PlanFormV5: React.FC<Props> = ({
         estado: plan.estado,
       });
     } else {
+      // Si no hay plan que editar, resetear el form con el tipo inicial de la prop.
+      // tipoAdministrativoInicial no se incluye en el array de deps de forma
+      // intencionada: solo queremos resetear cuando cambia la visibilidad del
+      // form (plan → null), no cada vez que el padre re-renderiza con un prop
+      // de tipo diferente; el wizard ya pasa el tipo en el montaje del paso 2.
       setFormData(emptyForm(tipoAdministrativoInicial));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan]);
 
   // Lock scroll while modal is open

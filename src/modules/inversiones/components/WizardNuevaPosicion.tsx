@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type { PosicionInversion } from '../../../types/inversiones';
-import type { PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
+import type { TipoAdministrativo } from '../../../types/planesPensiones';
 import PlanFormV5 from './wizard/PlanFormV5';
 import PosicionFormV5, { type TipoUI_V5 } from './wizard/PosicionFormV5';
 import styles from './WizardModal.module.css';
@@ -123,11 +123,9 @@ const WizardNuevaPosicion: React.FC<Props> = ({ onSavePosicion, onPlanSaved, onC
     return (
       <PlanFormV5
         tipoAdministrativoInicial={tipoAdminFromWizard(tipoSeleccionado)}
-        onSaved={(plan: PlanPensiones) => {
+        onSaved={() => {
           onPlanSaved?.();
           onClose();
-          // plan guardado · la galería ya recargó vía onPlanSaved
-          void plan;
         }}
         onClose={onClose}
       />

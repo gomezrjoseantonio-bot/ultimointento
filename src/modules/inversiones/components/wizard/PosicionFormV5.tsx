@@ -113,24 +113,29 @@ const TIPO_UI_FROM_POSICION: Partial<Record<TipoPosicion, TipoUI_V5>> = {
   otro: 'otro',
 };
 
+const today = () => new Date().toISOString().split('T')[0];
+const fmt = (n: number) =>
+  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+
+/** Valor canónico que identifica un préstamo a la empresa propia en el store de inversiones. */
+const ENTIDAD_PROPIA = 'propia';
+
+// Fallback en orden de precedencia: campo directo → rendimiento heredado → default 'mensual'
+const resolveFrecuenciaCobro = (l: PosicionLegacy | undefined): Frecuencia =>
+  l?.frecuencia_cobro ?? l?.rendimiento?.frecuencia_pago ?? 'mensual';
+
 const PLACEHOLDERS: Record<TipoUI_V5, { nombre: string; entidad: string }> = {
   accion: { nombre: 'Ej. Apple · Inditex', entidad: 'Ej. DEGIRO · Interactive Brokers…' },
   etf: { nombre: 'Ej. iShares Core S&P 500', entidad: 'Ej. DEGIRO · MyInvestor…' },
   reit: { nombre: 'Ej. Realty Income · Merlin', entidad: 'Ej. DEGIRO · Interactive Brokers…' },
   fondo_inversion: { nombre: 'Ej. Indexa Cartera 10', entidad: 'Ej. Indexa · MyInvestor…' },
   prestamo_p2p: { nombre: 'Ej. Smartflip · Juan…', entidad: 'Ej. Mintos · Bondora…' },
-  prestamo_empresa: { nombre: 'Ej. Préstamo a empresa propia', entidad: 'propia' },
+  prestamo_empresa: { nombre: 'Ej. Préstamo a empresa propia', entidad: ENTIDAD_PROPIA },
   deposito_plazo: { nombre: 'Ej. Depósito 12m BBVA', entidad: 'Ej. BBVA · Raisin…' },
   cuenta_remunerada: { nombre: 'Ej. Cuenta Naranja ING', entidad: 'Ej. ING · Trade Republic…' },
   crypto: { nombre: 'Ej. Bitcoin · Ethereum', entidad: 'Ej. Binance · Kraken…' },
   otro: { nombre: 'Ej. Crowdlending · Coleccionismo', entidad: 'Ej. plataforma · gestor…' },
 };
-
-const today = () => new Date().toISOString().split('T')[0];
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-
-// ── Componente ───────────────────────────────────────────────────────────────
 
 const PosicionFormV5: React.FC<Props> = ({ posicion, tipoInicial, onSave, onClose }) => {
   const legacy = posicion as (PosicionInversion & PosicionLegacy) | undefined;
@@ -153,7 +158,7 @@ const PosicionFormV5: React.FC<Props> = ({ posicion, tipoInicial, onSave, onClos
     tasa_interes_anual: legacy?.rendimiento?.tasa_interes_anual ?? 0,
     duracion_meses: legacy?.duracion_meses ?? 12,
     modalidad_devolucion: legacy?.modalidad_devolucion ?? ('solo_intereses' as Modalidad),
-    frecuencia_cobro: (legacy?.frecuencia_cobro ?? legacy?.rendimiento?.frecuencia_pago ?? 'mensual') as Frecuencia,
+    frecuencia_cobro: resolveFrecuenciaCobro(legacy),
     retencion_fiscal: legacy?.retencion_fiscal ?? 19,
     liquidacion_intereses: (legacy?.liquidacion_intereses ?? 'al_vencimiento') as LiquidacionDeposito,
     ticker: posicion?.ticker ?? '',
@@ -290,7 +295,7 @@ const PosicionFormV5: React.FC<Props> = ({ posicion, tipoInicial, onSave, onClos
 
     if (esPrestamo) {
       if (tipoUI === 'prestamo_empresa') {
-        base.entidad = form.entidad.trim() || 'propia';
+        base.entidad = form.entidad.trim() || ENTIDAD_PROPIA;
       }
       const esVencimiento = form.modalidad_devolucion === 'al_vencimiento';
       const frecuenciaPago = esVencimiento ? 'anual' : form.frecuencia_cobro;
