@@ -1,13 +1,13 @@
-// T23.1 · <InversionesGaleria> · sustituye `InversionesPage` (4 tabs).
+// T23.1+T23.2 · <InversionesGaleria>.
 //
 // Galería 3 columnas con cartas heterogéneas (visualización contextual por
 // tipo · § Z spec) + entry-point colapsable a "Posiciones cerradas" con
 // narrativa de inversor (§ 5.2 spec · prohibido lenguaje fiscal).
 //
-// El wizard `[+ Nueva posición]` se construye en 23.2; aquí abre el
-// `PosicionFormDialog` directo como puente. La sub-página de cerradas y la
-// ficha detalle individual se construyen en 23.3 y 23.4 · de momento son
-// placeholders con TODO claro.
+// T23.2 conecta el wizard `<WizardNuevaPosicion>` (3 caminos) y el
+// `<DialogAportar>` (selector posición + form aportación) con los botones
+// del page-head. La sub-página de cerradas y la ficha detalle individual
+// se construyen en 23.3 y 23.4 · de momento son placeholders con TODO claro.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,8 +18,8 @@ import { migrateInversionesToNewModel } from '../../services/migrations/migrateI
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
 import CartaAddPosicion from './components/CartaAddPosicion';
-import PosicionFormDialog from './components/PosicionFormDialog';
-import AportacionFormDialog from './components/AportacionFormDialog';
+import WizardNuevaPosicion from './components/WizardNuevaPosicion';
+import DialogAportar from './components/DialogAportar';
 import {
   esCerrada,
   formatCurrency,
@@ -35,134 +35,6 @@ type ResumenCerradas = {
   rango: string;
 };
 
-const SelectorPosicionDialog: React.FC<{
-  posiciones: PosicionInversion[];
-  onSelect: (p: PosicionInversion) => void;
-  onClose: () => void;
-}> = ({ posiciones, onSelect, onClose }) => {
-  const [selectedId, setSelectedId] = useState<number | null>(
-    posiciones[0]?.id ?? null,
-  );
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(12, 18, 48, 0.32)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 100,
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="selector-posicion-title"
-      onClick={onClose}
-    >
-      <div
-        style={{
-          background: 'var(--atlas-v5-card)',
-          border: '1px solid var(--atlas-v5-line)',
-          borderRadius: 'var(--atlas-v5-radius-lg)',
-          padding: '22px',
-          minWidth: 360,
-          maxWidth: 480,
-          boxShadow: 'var(--atlas-v5-shadow-modal)',
-          fontFamily: 'var(--atlas-v5-font-ui)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2
-          id="selector-posicion-title"
-          style={{
-            fontSize: '16px',
-            fontWeight: 700,
-            color: 'var(--atlas-v5-ink)',
-            marginBottom: '14px',
-          }}
-        >
-          ¿A qué posición quieres aportar?
-        </h2>
-        {posiciones.length === 0 ? (
-          <div style={{ color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
-            No tienes posiciones activas. Crea una con "Nueva posición".
-          </div>
-        ) : (
-          <select
-            value={selectedId ?? ''}
-            onChange={(e) => setSelectedId(Number(e.target.value))}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: 'var(--atlas-v5-radius-md)',
-              border: '1px solid var(--atlas-v5-line)',
-              background: 'var(--atlas-v5-card)',
-              color: 'var(--atlas-v5-ink)',
-              fontFamily: 'inherit',
-              fontSize: 13,
-            }}
-          >
-            {posiciones.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre || p.entidad || `Posición #${p.id}`}
-              </option>
-            ))}
-          </select>
-        )}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: 8,
-            marginTop: 18,
-          }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '8px 14px',
-              border: '1px solid var(--atlas-v5-line)',
-              background: 'var(--atlas-v5-card)',
-              color: 'var(--atlas-v5-ink-2)',
-              borderRadius: 'var(--atlas-v5-radius-sm)',
-              fontFamily: 'inherit',
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={!selectedId || posiciones.length === 0}
-            onClick={() => {
-              const sel = posiciones.find((p) => p.id === selectedId);
-              if (sel) onSelect(sel);
-            }}
-            style={{
-              padding: '8px 14px',
-              border: 'none',
-              background:
-                'linear-gradient(135deg, var(--atlas-v5-gold-2), var(--atlas-v5-gold))',
-              color: 'var(--atlas-v5-white)',
-              borderRadius: 'var(--atlas-v5-radius-sm)',
-              fontFamily: 'inherit',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: selectedId ? 'pointer' : 'not-allowed',
-              opacity: selectedId ? 1 : 0.5,
-            }}
-          >
-            Continuar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
@@ -172,10 +44,7 @@ const InversionesGaleria: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [showWizard, setShowWizard] = useState(false);
-  const [showSelectorAportar, setShowSelectorAportar] = useState(false);
-  const [posicionParaAportar, setPosicionParaAportar] = useState<
-    PosicionInversion | null
-  >(null);
+  const [showAportar, setShowAportar] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -251,12 +120,12 @@ const InversionesGaleria: React.FC = () => {
 
   const openWizardNueva = () => setShowWizard(true);
 
-  const openSelectorAportar = () => {
+  const openAportar = () => {
     if (activas.length === 0) {
       showToastV5('Aún no tienes posiciones activas. Crea una con "Nueva posición".');
       return;
     }
-    setShowSelectorAportar(true);
+    setShowAportar(true);
   };
 
   const handleSavePosicion = async (
@@ -269,22 +138,26 @@ const InversionesGaleria: React.FC = () => {
         },
       );
       showToastV5('Posición creada.');
-      setShowWizard(false);
       await rendimientosService.generarRendimientosPendientes();
       await load();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] save', err);
       showToastV5('Error al guardar la posición.');
+      // Relanzar para que el wizard mantenga el form abierto · el usuario
+      // no pierde lo que llevaba escrito si el service falla.
+      throw err;
     }
   };
 
-  const handleSaveAportacion = async (aportacion: Omit<Aportacion, 'id'>) => {
-    if (!posicionParaAportar) return;
+  const handleSaveAportacion = async (
+    posicion: PosicionInversion,
+    aportacion: Omit<Aportacion, 'id'>,
+  ) => {
     try {
-      await inversionesService.addAportacion(posicionParaAportar.id, aportacion);
+      await inversionesService.addAportacion(posicion.id, aportacion);
       showToastV5('Aportación añadida.');
-      setPosicionParaAportar(null);
+      setShowAportar(false);
       await load();
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -303,7 +176,7 @@ const InversionesGaleria: React.FC = () => {
             label: 'Aportar',
             variant: 'ghost',
             icon: <Icons.Plus size={14} strokeWidth={1.8} />,
-            onClick: openSelectorAportar,
+            onClick: openAportar,
           },
           {
             label: 'Nueva posición',
@@ -384,33 +257,17 @@ const InversionesGaleria: React.FC = () => {
       )}
 
       {showWizard && (
-        <PosicionFormDialog
-          onSave={handleSavePosicion}
+        <WizardNuevaPosicion
+          onSavePosicion={handleSavePosicion}
           onClose={() => setShowWizard(false)}
         />
       )}
 
-      {showSelectorAportar && (
-        <SelectorPosicionDialog
+      {showAportar && (
+        <DialogAportar
           posiciones={activas}
-          onSelect={(p) => {
-            setShowSelectorAportar(false);
-            setPosicionParaAportar(p);
-          }}
-          onClose={() => setShowSelectorAportar(false)}
-        />
-      )}
-
-      {posicionParaAportar && (
-        <AportacionFormDialog
-          posicionNombre={
-            posicionParaAportar.nombre ||
-            posicionParaAportar.entidad ||
-            `Posición #${posicionParaAportar.id}`
-          }
-          posicion={posicionParaAportar}
           onSave={handleSaveAportacion}
-          onClose={() => setPosicionParaAportar(null)}
+          onClose={() => setShowAportar(false)}
         />
       )}
     </div>
