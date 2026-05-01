@@ -389,11 +389,11 @@ function FichaPosicionPage() {
 `<FichaPlanPensiones>` es nuevo en T23.6.4 · ahora placeholder TODO.
 
 ### 1.5 · Verificación 23.6.1
-- [ ] tsc + build pasa
-- [ ] Galería renderiza · si Jose tiene 2 planes en `planesPensiones` y 3 posiciones en `inversiones` · ve 5 cartas
-- [ ] Click en carta navega a `/inversiones/{id}` · ficha se renderiza correctamente según origen (placeholder TODO si plan)
-- [ ] Sección "Posiciones cerradas" sigue funcionando · ahora también lee planes con estado `rescatado_*` o `traspasado_externo`
-- [ ] DB_VERSION en 65 · NO escrituras en migración
+- [x] tsc + build pasa
+- [x] Galería renderiza · si Jose tiene 2 planes en `planesPensiones` y 3 posiciones en `inversiones` · ve 5 cartas
+- [x] Click en carta navega a `/inversiones/{id}` · ficha se renderiza correctamente según origen (placeholder TODO si plan)
+- [x] Sección "Posiciones cerradas" sigue funcionando · ahora también lee planes con estado `rescatado_*` o `traspasado_externo`
+- [x] DB_VERSION en 65 · NO escrituras en migración
 
 ### 1.6 · PR 23.6.1
 Título · `feat(inversiones): T23.6.1 · galería unificada · lee de inversiones + planesPensiones`
@@ -490,14 +490,14 @@ function CartaPosicion({ item }: { item: CartaItem }) {
 Cada sub-componente despacha según `item.tipo` y campos disponibles. Si un campo necesario para footer no está disponible · render "—" · NUNCA inventa.
 
 ### 2.4 · Verificación 23.6.2
-- [ ] Cinta resumen sticky en galería · scrolleo y queda fija
-- [ ] Cinta visible también en fichas detalle (mismo layout module)
-- [ ] Cinta no aparece en otros módulos (Tesorería · Inmuebles · Panel · etc)
-- [ ] Datos cinta · valor · rentabilidad · cobrado · previsto · todos reales del usuario o "—"
-- [ ] Cartas Smartflip · Unihouser · Acciones Orange RSU corregidas según Z.2.3-Z.2.5
-- [ ] Logos correctos según Z.3 (no más "UPT" en Acciones Orange · sería "BNP")
-- [ ] Cero hex hardcoded
-- [ ] Si Jose tiene plan PP en `planesPensiones` (TAREA 13 v2) · aparece carta con border navy · sparkline · footer "CAGR X% · desde {año}"
+- [x] Cinta resumen sticky en galería · scrolleo y queda fija
+- [x] Cinta visible también en fichas detalle (mismo layout module)
+- [x] Cinta no aparece en otros módulos (Tesorería · Inmuebles · Panel · etc)
+- [x] Datos cinta · valor · rentabilidad · cobrado · previsto · todos reales del usuario o "—"
+- [x] Cartas Smartflip · Unihouser · Acciones Orange RSU corregidas según Z.2.3-Z.2.5
+- [x] Logos correctos según Z.3 (no más "UPT" en Acciones Orange · sería "BNP")
+- [x] Cero hex hardcoded
+- [x] Si Jose tiene plan PP en `planesPensiones` (TAREA 13 v2) · aparece carta con border navy · sparkline · footer "CAGR X% · desde {año}"
 
 ### 2.5 · PR 23.6.2
 Título · `feat(inversiones): T23.6.2 · cinta resumen sticky + cartas refinadas por tipo`
@@ -590,15 +590,15 @@ Es el otro punto de tu decisión #2 · "DOBLE camino"·
 CC verifica al inicio si los modales actuales `<AportacionFormDialog>` y `<RegistrarCobroDialog>` ya escriben en el destino correcto. Si no · ajustar para que sí · sin cambiar modelo.
 
 ### 3.6 · Verificación 23.6.3
-- [ ] Wizard paso 1 · 11 tipos visibles · agrupados en 4 columnas · 2 atajos abajo
-- [ ] Click en cada tipo abre form correcto (PlanFormV5 vs PosicionFormV5)
-- [ ] Plan PP individual abre PlanFormV5 con `tipoAdministrativo='PPI'` pre-seleccionado · usuario puede cambiar
-- [ ] Plan PP empresa abre PlanFormV5 con `tipoAdministrativo='PPE'` pre-seleccionado
-- [ ] Form rico de planes muestra tipoAdministrativo · subtipos según selección · políticas · 3 roles aportantes · TODO lo de TAREA 13 v2
-- [ ] Form genérico cubre los 9 tipos no-plan · cada uno con campos relevantes
-- [ ] Estética v5 · cero hex hardcoded
-- [ ] Submit escribe en store correcto según tipo (planesPensiones vs inversiones) · DB_VERSION 65 intacta
-- [ ] IndexaCapital y aportaciones siguen accesibles desde wizard
+- [x] Wizard paso 1 · 11 tipos visibles · agrupados en 4 columnas · 2 atajos abajo
+- [x] Click en cada tipo abre form correcto (PlanFormV5 vs PosicionFormV5)
+- [x] Plan PP individual abre PlanFormV5 con `tipoAdministrativo='PPI'` pre-seleccionado · usuario puede cambiar
+- [x] Plan PP empresa abre PlanFormV5 con `tipoAdministrativo='PPE'` pre-seleccionado
+- [x] Form rico de planes muestra tipoAdministrativo · subtipos según selección · políticas · 3 roles aportantes · TODO lo de TAREA 13 v2
+- [x] Form genérico cubre los 9 tipos no-plan · cada uno con campos relevantes
+- [x] Estética v5 · cero hex hardcoded
+- [x] Submit escribe en store correcto según tipo (planesPensiones vs inversiones) · DB_VERSION 65 intacta
+- [x] IndexaCapital y aportaciones siguen accesibles desde wizard
 
 ### 3.7 · PR 23.6.3
 Título · `feat(inversiones): T23.6.3 · wizard v5 · 11 tipos · dispatcher PlanForm vs PosicionForm`
@@ -621,13 +621,13 @@ Construir `<FichaPlanPensiones>` según mockup §1615-1802 (Plan Orange BBVA). E
 - Botones acción · "Actualizar valoración" (única acción autónoma · escribe en `valoraciones_historicas` o equivalente del store) + "Aportar" (camino doble · abre modal que escribe en movements+treasuryEvents) + "Editar plan" (abre PlanFormV5 en modo edición · NO mueve dinero · solo cambia campos descriptivos)
 
 ### 4.2 · Verificación 23.6.4
-- [ ] Click en carta plan_pensiones → ficha renderiza
-- [ ] 4 KPIs reales del plan
-- [ ] Sparkline si hay ≥ 2 valoraciones · placeholder si no
-- [ ] Estructura aportación visible solo para PPE/PPES
-- [ ] Ventaja fiscal calculada según tipo · límite anual · marginal
-- [ ] Botones funcionan · Actualizar valoración (autónoma) · Aportar (camino doble · pasa por movements) · Editar (abre form sin mover dinero)
-- [ ] tsc + build pasa
+- [x] Click en carta plan_pensiones → ficha renderiza
+- [x] 4 KPIs reales del plan
+- [x] Sparkline si hay ≥ 2 valoraciones · placeholder si no
+- [x] Estructura aportación visible solo para PPE/PPES
+- [x] Ventaja fiscal calculada según tipo · límite anual · marginal
+- [x] Botones funcionan · Actualizar valoración (autónoma) · Aportar (camino doble · pasa por movements) · Editar (abre form sin mover dinero)
+- [x] tsc + build pasa
 
 ### 4.3 · PR 23.6.4
 Título · `feat(inversiones): T23.6.4 · ficha plan pensiones detallada`
@@ -658,15 +658,15 @@ Título · `chore(inversiones): T23.6.5 · cierre + docs + e2e · TAREA 23.6 ✅
 
 ## 6 · Criterios de aceptación globales T23.6
 
-- [ ] 5 sub-tareas mergeadas con stop-and-wait estricto (cada PR validado por Jose en deploy preview antes de la siguiente)
-- [ ] DB_VERSION en 65 · stores intactos · cero migración
-- [ ] Galería unificada · planes y posiciones en una vista
-- [ ] Cinta resumen sticky en módulo Inversiones · solo aquí · agrega los 2 stores
-- [ ] Cartas con render contextual por tipo · 11 tipos cubiertos · logos por entidad · footer correcto
-- [ ] Wizard v5 con 11 tipos · dispatcher PlanFormV5 vs PosicionFormV5
-- [ ] Camino doble Tesorería ↔ Ficha funcional · ambos escriben en movements+treasuryEvents
-- [ ] Cero hex hardcoded · tokens canónicos
-- [ ] 7 divergencias auditoría sección B corregidas (Smartflip · Unihouser · Acciones Orange RSU · etc)
+- [x] 5 sub-tareas mergeadas con stop-and-wait estricto (cada PR validado por Jose en deploy preview antes de la siguiente)
+- [x] DB_VERSION en 65 · stores intactos · cero migración
+- [x] Galería unificada · planes y posiciones en una vista
+- [x] Cinta resumen sticky en módulo Inversiones · solo aquí · agrega los 2 stores
+- [x] Cartas con render contextual por tipo · 11 tipos cubiertos · logos por entidad · footer correcto
+- [x] Wizard v5 con 11 tipos · dispatcher PlanFormV5 vs PosicionFormV5
+- [x] Camino doble Tesorería ↔ Ficha funcional · ambos escriben en movements+treasuryEvents
+- [x] Cero hex hardcoded · tokens canónicos
+- [x] 7 divergencias auditoría sección B corregidas (Smartflip · Unihouser · Acciones Orange RSU · etc)
 
 ---
 

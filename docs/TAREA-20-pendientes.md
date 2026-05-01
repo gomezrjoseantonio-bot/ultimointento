@@ -96,6 +96,26 @@ componente ya soporta ambas series · sólo falta cablear datos reales.
 
 ---
 
+## Cierre de deuda Inversiones T23.6 · Wizard v5 + Galería unificada ✅
+
+> **Cerrado en** · TAREA 23.6 · sub-tarea 23.6.5 · 2026-05-01
+
+La TAREA 23.6 cierra formalmente los 4 bugs conceptuales detectados en
+`AUDITORIA-T23-mockup-vs-realidad.md` tras la revisión post-T23.1-T23.5.
+Stop-and-wait estricto aplicado en las 5 sub-tareas (a diferencia de T23.1-T23.5
+que se entregaron sin revisión intermedia).
+
+| Deuda | Descripción | Cerrado en |
+|-------|-------------|------------|
+| Galería incompleta | `<InversionesGaleria>` ignoraba el store `planesPensiones` · planes invisibles | T23.6.1 PR #1214 ✅ |
+| Cinta resumen ausente | KPI strip sticky del mockup §477-503 nunca implementada | T23.6.2 PR #1215+#1220 ✅ |
+| Wizard con 6 tipos | Faltaban `prestamo_empresa` · `cuenta_remunerada` · `crypto` · `otro` + dispatcher a `PlanFormV5` | T23.6.3 PR #1216 ✅ |
+| Sin ficha plan PP | Click en carta plan PP mostraba placeholder "TODO pendiente T23.6.4" | T23.6.4 PR #1218 ✅ |
+
+Ver `docs/T23-6-cierre.md` para diff visual completo · audit de datos · TODOs heredados.
+
+---
+
 ### TODO-T20-02 · Módulo Inversiones · galería + fichas dedicadas (mockup vs realidad) ✓
 
 **Origen** · T20 Fase 3d · sub-tarea 20.3d · módulo Inversiones quedó con
