@@ -25,8 +25,9 @@ import {
   getPosicionesCerradas,
   type KpisCerradas,
 } from './adapters/posicionesCerradas';
+import { getAllCartaItems } from './adapters/galeriaAdapter';
+import type { CartaItem } from './types/cartaItem';
 import {
-  esCerrada,
   formatCurrency,
   formatDelta,
   signClass,
@@ -35,7 +36,8 @@ import styles from './InversionesGaleria.module.css';
 
 const InversionesGaleria: React.FC = () => {
   const navigate = useNavigate();
-  const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
+  // T23.6.1 · galería unificada · fuente: ambos stores (inversiones + planesPensiones)
+  const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [resumenCerradas, setResumenCerradas] = useState<KpisCerradas>(() =>
     calcularKpisCerradas([]),
   );
@@ -47,14 +49,12 @@ const InversionesGaleria: React.FC = () => {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      // Posiciones activas vienen del store; las cerradas las calcula
-      // el adaptador (T23.4) que combina las cerradas nativas con las
-      // del XML AEAT y las expone con narrativa de inversor.
-      const [{ activas }, cerradas] = await Promise.all([
-        inversionesService.getAllPosiciones(),
+      // Posiciones activas unificadas (inversiones + planesPensiones · dedup · ordenadas)
+      const [items, cerradas] = await Promise.all([
+        getAllCartaItems(),
         getPosicionesCerradas().catch(() => []),
       ]);
-      setPosiciones(activas);
+      setCartaItems(items);
       setResumenCerradas(calcularKpisCerradas(cerradas));
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -85,21 +85,28 @@ const InversionesGaleria: React.FC = () => {
 
   const activas = useMemo(
     () =>
-      posiciones
-        .filter((p) => !esCerrada(p))
-        .slice()
-        .sort((a, b) => (b.valor_actual ?? 0) - (a.valor_actual ?? 0)),
-    [posiciones],
+      // getAllCartaItems() ya devuelve items activos ordenados por valor_actual descendente
+      cartaItems,
+    [cartaItems],
   );
 
-  const handleClickCarta = (id: number) => {
-    navigate(`/inversiones/${id}`);
+  // Posiciones nativas de inversiones (para DialogAportar · solo acepta PosicionInversion)
+  const posicionesParaAportar = useMemo(
+    () =>
+      cartaItems
+        .filter((item) => item._origen === 'inversiones')
+        .map((item) => item._original as PosicionInversion),
+    [cartaItems],
+  );
+
+  const handleClickCarta = (item: CartaItem) => {
+    navigate(`/inversiones/${item._idOriginal}`);
   };
 
   const openWizardNueva = () => setShowWizard(true);
 
   const openAportar = () => {
-    if (activas.length === 0) {
+    if (posicionesParaAportar.length === 0) {
       showToastV5('Aún no tienes posiciones activas. Crea una con "Nueva posición".');
       return;
     }
@@ -177,9 +184,40 @@ const InversionesGaleria: React.FC = () => {
           </div>
 
           <div className={styles.galleryGrid}>
-            {activas.map((p) => (
-              <CartaPosicion key={p.id} posicion={p} onClick={handleClickCarta} />
-            ))}
+            {activas.map((item) => {
+              // T23.6.1 · CartaPosicion acepta PosicionInversion. Para inversiones
+              // usamos el original directamente (con aportaciones para sparkline).
+              // Para planesPensiones construimos una forma compatible mínima con los
+              // campos que CartaPosicion realmente usa; el onClick usa closure sobre
+              // CartaItem para navegar por _idOriginal (UUID).
+              // TODO T23.6.2 · CartaPosicion será refactorizado para aceptar CartaItem
+              // directamente y este workaround desaparecerá.
+              const posicion =
+                item._origen === 'inversiones'
+                  ? (item._original as PosicionInversion)
+                  : ({
+                      id: 0,
+                      nombre: item.nombre,
+                      tipo: item.tipo,
+                      entidad: item.entidad,
+                      valor_actual: item.valor_actual,
+                      total_aportado: item.total_aportado,
+                      rentabilidad_euros: item.rentabilidad_euros,
+                      rentabilidad_porcentaje: item.rentabilidad_porcentaje,
+                      aportaciones: [],
+                      fecha_valoracion: new Date().toISOString(),
+                      activo: true,
+                      created_at: '',
+                      updated_at: '',
+                    } as PosicionInversion);
+              return (
+                <CartaPosicion
+                  key={String(item._idOriginal)}
+                  posicion={posicion}
+                  onClick={() => handleClickCarta(item)}
+                />
+              );
+            })}
             <CartaAddPosicion onClick={openWizardNueva} />
           </div>
 
@@ -243,7 +281,7 @@ const InversionesGaleria: React.FC = () => {
 
       {showAportar && (
         <DialogAportar
-          posiciones={activas}
+          posiciones={posicionesParaAportar}
           onSave={handleSaveAportacion}
           onClose={() => setShowAportar(false)}
         />

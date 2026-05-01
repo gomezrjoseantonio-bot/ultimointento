@@ -16,6 +16,7 @@
 // `undefined` y la UI muestra "—" (regla § 5.4.6 · NO inventar datos).
 
 import { initDB } from '../../../services/db';
+import { planesPensionesService } from '../../../services/planesPensionesService';
 import type {
   GananciasPerdidas,
   OperacionCripto,
@@ -194,6 +195,8 @@ const extraerCerradasDelEjercicio = (
  * los ejercicios fiscales con `aeat.declaracionCompleta` disponible.
  * Incluye también las posiciones cerradas "nativas" del store
  * `inversiones` (con `activo === false`) · sin duplicar.
+ * T23.6.1 · incluye también planes de pensiones con estado cerrado
+ * (`rescatado_total` · `rescatado_parcial` · `traspasado_externo`).
  *
  * Si el usuario no ha importado ninguna declaración y no tiene
  * posiciones marcadas como cerradas en el store, devuelve `[]`.
@@ -248,7 +251,44 @@ export async function getPosicionesCerradas(): Promise<PosicionCerrada[]> {
       };
     });
 
-  return [...desdeXml, ...desdeStore];
+  // T23.6.1 · planes de pensiones cerrados desde el store `planesPensiones`
+  // (estados: rescatado_total · rescatado_parcial · traspasado_externo)
+  const ESTADOS_CERRADO = new Set(['rescatado_total', 'rescatado_parcial', 'traspasado_externo']);
+  let desdePlanesCerrados: PosicionCerrada[] = [];
+  try {
+    const todosPlanes = await planesPensionesService.getAllPlanes();
+    desdePlanesCerrados = todosPlanes
+      .filter((plan) => ESTADOS_CERRADO.has(plan.estado))
+      .map((plan): PosicionCerrada => {
+        const aportado = safeNumber(plan.importeInicial);
+        const vendido = safeNumber(plan.valorActual);
+        const fechaCierre = plan.fechaActualizacion || new Date().toISOString();
+        const derivados = calcularDerivados(aportado, vendido, fechaCierre, plan.fechaContratacion);
+        const estadoLabel =
+          plan.estado === 'rescatado_total'
+            ? 'rescate total'
+            : plan.estado === 'rescatado_parcial'
+              ? 'rescate parcial'
+              : 'traspaso externo';
+        return {
+          id: `pp-${plan.id}`,
+          nombre: plan.nombre,
+          tipo: 'plan_pensiones',
+          entidad: plan.gestoraActual || '—',
+          fechaApertura: plan.fechaContratacion,
+          fechaCierre,
+          aportado,
+          vendido,
+          ...derivados,
+          referenciaFiscal: undefined,
+          unidadesLabel: estadoLabel,
+        };
+      });
+  } catch {
+    // Si falla la lectura de planesPensiones · continuar sin ellos
+  }
+
+  return [...desdeXml, ...desdeStore, ...desdePlanesCerrados];
 }
 
 /**
