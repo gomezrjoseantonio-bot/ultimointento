@@ -9,7 +9,7 @@ import { inversionesService } from '../../services/inversionesService';
 import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
-import { personalDataService } from '../../services/personalDataService';
+import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import { traspasosPlanesService, PLAN_PENSIONES_TIPOS_INVERSION } from '../../services/traspasosPlanesService';
 import type { TraspasoPlan } from '../../types/personal';
 import type { PlanPensiones } from '../../types/planesPensiones';
@@ -420,17 +420,18 @@ const GestionInversionesPage: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const data = await personalDataService.getPersonalData();
-        if (data?.id == null) {
+        // T14.4 · migrado a fiscalContextService gateway
+        const ctx = await getFiscalContextSafe();
+        if (!ctx) {
           setPlanesPension([]);
           setPersonalDataId(null);
           setTraspasos([]);
           return;
         }
-        setPersonalDataId(data.id);
+        setPersonalDataId(ctx.personalDataId);
         const [planes, tras] = await Promise.all([
-          planesInversionService.getPlanes(data.id),
-          traspasosPlanesService.getTraspasosByPersonal(data.id),
+          planesInversionService.getPlanes(ctx.personalDataId),
+          traspasosPlanesService.getTraspasosByPersonal(ctx.personalDataId),
         ]);
         setPlanesPension(planes as PlanPensiones[]);
         setTraspasos(tras);
@@ -509,9 +510,10 @@ const GestionInversionesPage: React.FC = () => {
     setMostrarFormularioPlan(false);
     setPlanEnEdicion(null);
     try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        const planes = await planesInversionService.getPlanes(personalData.id);
+      // T14.4 · migrado a fiscalContextService gateway
+      const ctx = await getFiscalContextSafe();
+      if (ctx) {
+        const planes = await planesInversionService.getPlanes(ctx.personalDataId);
         setPlanesPension(planes as PlanPensiones[]);
       }
     } catch {
@@ -523,10 +525,11 @@ const GestionInversionesPage: React.FC = () => {
     if (plan.id == null) { toast.error('El plan no tiene ID y no puede eliminarse'); return; }
     if (!window.confirm(`¿Eliminar "${plan.nombre}"? Esta acción no se puede deshacer.`)) return;
     try {
-      const personalData = await personalDataService.getPersonalData();
-      if (!personalData?.id) return;
+      // T14.4 · migrado a fiscalContextService gateway
+      const ctx = await getFiscalContextSafe();
+      if (!ctx) return;
       await planesInversionService.deletePlan(plan.id);
-      const planes = await planesInversionService.getPlanes(personalData.id);
+      const planes = await planesInversionService.getPlanes(ctx.personalDataId);
       setPlanesPension(planes as PlanPensiones[]);
       toast.success(`"${plan.nombre}" eliminado`);
     } catch {
@@ -547,9 +550,10 @@ const GestionInversionesPage: React.FC = () => {
         valor,
       });
       setMostrarModalValor(false);
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        setPlanesPension((await planesInversionService.getPlanes(personalData.id)) as PlanPensiones[]);
+      // T14.4 · migrado a fiscalContextService gateway
+      const ctx = await getFiscalContextSafe();
+      if (ctx) {
+        setPlanesPension((await planesInversionService.getPlanes(ctx.personalDataId)) as PlanPensiones[]);
       }
       toast.success('Valor actualizado y registrado en el histórico');
     } catch {
@@ -1130,8 +1134,9 @@ const GestionInversionesPage: React.FC = () => {
                   const empresa = apEmpresa !== '' ? parseFloat(apEmpresa) : undefined;
                   if (titular === undefined && empresa === undefined) return;
 
-                  const personalData = await personalDataService.getPersonalData();
-                  if (!personalData?.id) return;
+                  // T14.4 · migrado a fiscalContextService gateway
+                  const ctx = await getFiscalContextSafe();
+                  if (!ctx) return;
                   await planesInversionService.updatePlan(planSeleccionado.id!, {
                     ...(planSeleccionado as any),
                   } as any);
