@@ -86,12 +86,10 @@ const ImportarInmueblesPage = lazyWithPreload(() => import('./modules/inmuebles/
 const ImportarValoracionesPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarValoraciones'));
 const ImportarContratosPage = lazyWithPreload(() => import('./modules/inmuebles/import/ImportarContratos'));
 
-// Inversiones Module · T20 Fase 3d · v5 (Outlet + sub-pages)
-const InversionesPage = lazyWithPreload(() => import('./modules/inversiones/InversionesPage'));
-const InversionesResumen = lazyWithPreload(() => import('./modules/inversiones/pages/ResumenPage'));
-const InversionesCartera = lazyWithPreload(() => import('./modules/inversiones/pages/CarteraPage'));
-const InversionesRendimientos = lazyWithPreload(() => import('./modules/inversiones/pages/RendimientosPage'));
-const InversionesIndividual = lazyWithPreload(() => import('./modules/inversiones/pages/IndividualPage'));
+// Inversiones Module · T23.1 · galería v2 (sustituye los 4 tabs T20 Fase 3d)
+const InversionesGaleria = lazyWithPreload(() => import('./modules/inversiones/InversionesGaleria'));
+const InversionesPosicionesCerradas = lazyWithPreload(() => import('./modules/inversiones/pages/PosicionesCerradasPage'));
+const InversionesFichaPosicion = lazyWithPreload(() => import('./modules/inversiones/pages/FichaPosicionPage'));
 const AnalisisCartera = lazyWithPreload(() => import('./modules/horizon/analisis-cartera/AnalisisCartera'));
 
 // T20 Fase 3e · Financiación v5 module · Outlet + 4 sub-pages.
@@ -660,49 +658,46 @@ function App() {
             <Route path="inmuebles/individual" element={<Navigate to="/inmuebles" replace />} />
 
 
-            {/* T20 Fase 3d · Inversiones v5 (Outlet + 4 sub-páginas)
-                · /inversiones (resumen) · /inversiones/cartera
-                · /inversiones/rendimientos · /inversiones/individual
-                · /inversiones/analisis (legacy AnalisisCartera intacto) */}
+            {/* T23.1 · Inversiones · galería v2 (sustituye 4 tabs T20)
+                · /inversiones (galería principal · cartas heterogéneas)
+                · /inversiones/cerradas (placeholder · vista expandida en T23.4)
+                · /inversiones/:posicionId (placeholder · ficha detalle en T23.3)
+                · /inversiones/importar-* (importadores intactos)
+                · /inversiones/analisis (AnalisisCartera intacto)
+                · redirects de las URLs viejas (cartera · resumen · rendimientos · individual) */}
             <Route path="inversiones" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <InversionesPage />
+                <InversionesGaleria />
               </React.Suspense>
-            }>
-              <Route index element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesResumen />
-                </React.Suspense>
-              } />
-              <Route path="cartera" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesCartera />
-                </React.Suspense>
-              } />
-              <Route path="rendimientos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesRendimientos />
-                </React.Suspense>
-              } />
-              <Route path="individual" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesIndividual />
-                </React.Suspense>
-              } />
-              <Route path="importar-aportaciones" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesImportarAportaciones />
-                </React.Suspense>
-              } />
-              <Route path="importar-indexa" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <InversionesImportarIndexa />
-                </React.Suspense>
-              } />
-            </Route>
+            } />
+            <Route path="inversiones/cerradas" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesPosicionesCerradas />
+              </React.Suspense>
+            } />
+            <Route path="inversiones/importar-aportaciones" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesImportarAportaciones />
+              </React.Suspense>
+            } />
+            <Route path="inversiones/importar-indexa" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesImportarIndexa />
+              </React.Suspense>
+            } />
             <Route path="inversiones/analisis" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <AnalisisCartera scope="inversiones" />
+              </React.Suspense>
+            } />
+            {/* Redirects de URLs viejas · evita romper bookmarks externos */}
+            <Route path="inversiones/resumen" element={<Navigate to="/inversiones" replace />} />
+            <Route path="inversiones/cartera" element={<Navigate to="/inversiones" replace />} />
+            <Route path="inversiones/rendimientos" element={<Navigate to="/inversiones" replace />} />
+            <Route path="inversiones/individual" element={<Navigate to="/inversiones" replace />} />
+            <Route path="inversiones/:posicionId" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <InversionesFichaPosicion />
               </React.Suspense>
             } />
             

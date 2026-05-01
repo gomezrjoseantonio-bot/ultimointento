@@ -10,7 +10,7 @@ const ImportarIndexaCapitalPage: React.FC = () => {
   const navigate = useNavigate();
   return (
     <ImportarIndexaCapital
-      onComplete={() => navigate('/inversiones/cartera')}
+      onComplete={() => navigate('/inversiones')}
       onBack={() => navigate('/inversiones')}
     />
   );

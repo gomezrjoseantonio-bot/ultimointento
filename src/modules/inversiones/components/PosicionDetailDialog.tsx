@@ -1,3 +1,8 @@
+// @deprecated · T23.3 sustituye este modal por una ficha detalle dedicada
+// (`<FichaPosicionPage>` con dispatcher por grupo de tipo). Se conserva en
+// 23.1 para no romper el resto del repo · su uso debe migrarse y borrarse
+// cuando 23.3 cierre.
+
 import React, { useMemo, useState } from 'react';
 import { Icons, MoneyValue, showToastV5 } from '../../../design-system/v5';
 import type { PosicionInversion } from '../../../types/inversiones';

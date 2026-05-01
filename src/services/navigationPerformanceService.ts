@@ -62,14 +62,16 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/inversiones')) {
-    const subPage = href.startsWith('/inversiones/cartera')
-      ? import('../modules/inversiones/pages/CarteraPage')
-      : href.startsWith('/inversiones/rendimientos')
-        ? import('../modules/inversiones/pages/RendimientosPage')
-        : href.startsWith('/inversiones/individual')
-          ? import('../modules/inversiones/pages/IndividualPage')
-          : import('../modules/inversiones/pages/ResumenPage');
-    await Promise.all([import('../modules/inversiones/InversionesPage'), subPage]);
+    // T23.1 · galería única reemplaza los 4 tabs (resumen · cartera ·
+    // rendimientos · individual). Las URLs viejas redirigen a /inversiones.
+    const sub = href.startsWith('/inversiones/cerradas')
+      ? import('../modules/inversiones/pages/PosicionesCerradasPage')
+      : /^\/inversiones\/\d+/.test(href)
+        ? import('../modules/inversiones/pages/FichaPosicionPage')
+        : null;
+    await Promise.all(
+      [import('../modules/inversiones/InversionesGaleria'), sub].filter(Boolean) as Promise<unknown>[],
+    );
     return;
   }
   if (href.startsWith('/tesoreria')) {
