@@ -1,6 +1,6 @@
 import { initDB } from './db';
 import { autonomoService } from './autonomoService';
-import { personalDataService } from './personalDataService';
+import { getFiscalContextSafe } from './fiscalContextService';
 import { rollForwardAccountBalancesToMonth } from './accountBalanceService';
 import { prestamosService } from './prestamosService';
 import { generateProyeccionMensual } from '../modules/horizon/proyeccion/mensual/services/proyeccionMensualService';
@@ -944,8 +944,9 @@ class DashboardService {
 
       let autonomoNetoMensual = 0;
       try {
-        const personalData = await personalDataService.getPersonalData();
-        const personalDataId = personalData?.id ?? 1;
+        // T14.4 · migrado a fiscalContextService gateway
+        const ctx = await getFiscalContextSafe();
+        const personalDataId = ctx?.personalDataId ?? 1;
         const autonomos = await autonomoService.getAutonomosActivos(personalDataId);
         if (autonomos.length > 0) {
           const annual = autonomoService.calculateEstimatedAnnualForAutonomos(autonomos);
