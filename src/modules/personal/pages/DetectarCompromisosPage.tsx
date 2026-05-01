@@ -27,6 +27,7 @@ import {
   Pill,
   showToastV5,
 } from '../../../design-system/v5';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import type { PersonalOutletContext } from '../PersonalContext';
 import {
   createCompromisosFromCandidatos,
@@ -183,6 +184,17 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
     current.proveedorNombre ?? baseProp.proveedor.nombre,
   );
 
+  // Accesibilidad · patrón canónico del repo · `useFocusTrap` traps Tab y
+  // dispara CustomEvent('modal-escape') al pulsar Escape.
+  const focusTrapRef = useFocusTrap(true);
+  useEffect(() => {
+    const node = focusTrapRef.current;
+    if (!node) return;
+    const handler = () => onCancel();
+    node.addEventListener('modal-escape', handler);
+    return () => node.removeEventListener('modal-escape', handler);
+  }, [focusTrapRef, onCancel]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -197,9 +209,7 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-candidato-title"
+      role="presentation"
       style={{
         position: 'fixed',
         inset: 0,
@@ -211,8 +221,12 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
       }}
       onClick={onCancel}
     >
-      <form
-        onSubmit={handleSubmit}
+      <div
+        ref={focusTrapRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-candidato-title"
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--atlas-v5-card)',
@@ -223,8 +237,10 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
           maxHeight: '85vh',
           overflowY: 'auto',
           border: '1px solid var(--atlas-v5-line)',
+          outline: 'none',
         }}
       >
+      <form onSubmit={handleSubmit}>
         <h2
           id="edit-candidato-title"
           style={{
@@ -334,6 +350,7 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 };
@@ -646,6 +663,16 @@ const DetectarCompromisosPage: React.FC = () => {
     });
   }, [report, discarded, filterTipo, overrides]);
 
+  // Scope de la selección al filtro activo · si el usuario marca elementos
+  // en "Todos" y luego cambia a "Suministros", solo cuenta y aprueba los
+  // visibles. Los "fuera de filtro" se muestran como aviso textual pero NO
+  // se ejecutan en bulk.
+  const selectedVisibleCount = useMemo(
+    () => visibleCandidatos.reduce((n, c) => n + (selected.has(c.id) ? 1 : 0), 0),
+    [visibleCandidatos, selected],
+  );
+  const hasHiddenSelected = selected.size !== selectedVisibleCount;
+
   const toggleSelected = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -695,8 +722,13 @@ const DetectarCompromisosPage: React.FC = () => {
   };
 
   const handleApproveSelected = async () => {
-    if (!report || selected.size === 0) return;
-    const ids = Array.from(selected);
+    if (!report) return;
+    // Solo procesa los seleccionados que actualmente están visibles bajo
+    // el filtro activo. Los seleccionados "fuera del filtro" se preservan
+    // en `selected` por si el usuario vuelve a "Todos" sin perder estado.
+    const visibleIds = new Set(visibleCandidatos.map((c) => c.id));
+    const ids = Array.from(selected).filter((id) => visibleIds.has(id));
+    if (ids.length === 0) return;
     const candidatos = report.candidatos.filter((c) => ids.includes(c.id));
     setApproving(true);
     try {
@@ -731,8 +763,11 @@ const DetectarCompromisosPage: React.FC = () => {
 
   const handleDiscardOthers = () => {
     if (!report) return;
+    // "Descartar todos los demás" opera dentro del filtro activo · descarta
+    // los candidatos visibles que NO están seleccionados, preservando los
+    // de otros tipos. Los seleccionados visibles se mantienen.
     const next = new Set<string>(discarded);
-    for (const c of report.candidatos) {
+    for (const c of visibleCandidatos) {
       if (!selected.has(c.id)) next.add(c.id);
     }
     setDiscarded(next);
@@ -922,30 +957,40 @@ const DetectarCompromisosPage: React.FC = () => {
                   minWidth: 200,
                 }}
               >
-                <strong>{selected.size}</strong> de {visibleCandidatos.length} candidatos
+                <strong>{selectedVisibleCount}</strong> de {visibleCandidatos.length} candidatos
                 seleccionados
+                {hasHiddenSelected && (
+                  <>
+                    {' · '}
+                    <span style={{ color: 'var(--atlas-v5-warn)' }}>
+                      {selected.size - selectedVisibleCount} fuera del filtro actual
+                    </span>
+                  </>
+                )}
               </span>
               <button
                 type="button"
-                disabled={selected.size === 0 || approving}
+                disabled={selectedVisibleCount === 0 || approving}
                 onClick={() => void handleApproveSelected()}
                 style={{
                   ...btnGoldStyle,
-                  opacity: selected.size === 0 || approving ? 0.5 : 1,
-                  cursor: selected.size === 0 || approving ? 'not-allowed' : 'pointer',
+                  opacity: selectedVisibleCount === 0 || approving ? 0.5 : 1,
+                  cursor: selectedVisibleCount === 0 || approving ? 'not-allowed' : 'pointer',
                 }}
               >
                 <Icons.Check size={13} strokeWidth={2} style={{ marginRight: 6 }} />
-                {approving ? 'Aprobando…' : `Aprobar seleccionados (${selected.size})`}
+                {approving
+                  ? 'Aprobando…'
+                  : `Aprobar seleccionados (${selectedVisibleCount})`}
               </button>
               <button
                 type="button"
                 onClick={handleDiscardOthers}
-                disabled={selected.size === 0}
+                disabled={selectedVisibleCount === 0}
                 style={{
                   ...btnGhostStyle,
-                  opacity: selected.size === 0 ? 0.5 : 1,
-                  cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+                  opacity: selectedVisibleCount === 0 ? 0.5 : 1,
+                  cursor: selectedVisibleCount === 0 ? 'not-allowed' : 'pointer',
                 }}
               >
                 Descartar todos los demás
