@@ -101,85 +101,20 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 14px;
+  margin-bottom: 22px;
 }
 
-.activoCard {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-line);
-  border-radius: 12px;
-  padding: 18px 20px;
-  cursor: pointer;
-  transition: border-color 120ms, box-shadow 120ms;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Responsive · 4 cols >1100px · 2 cols 700-1100px · 1 col <700px · § Z.9 */
+@media (max-width: 1100px) {
+  .activosGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.activoCard:hover {
-  border-color: var(--atlas-v5-ink-5);
-  box-shadow: var(--atlas-v5-shadow-card-hover);
-}
-
-.activoHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.activoNom {
-  font-size: 12.5px;
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-ink);
-}
-
-.activoIcon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--atlas-v5-card-alt);
-  color: var(--atlas-v5-ink-3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.activoVal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-size: 22px;
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-ink);
-  letter-spacing: -0.025em;
-}
-
-.activoVal.neg { color: var(--atlas-v5-neg); }
-
-.activoExtra {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  border-top: 1px solid var(--atlas-v5-line-2);
-  padding-top: 10px;
-  font-size: 12px;
-}
-
-.activoExtraLab {
-  color: var(--atlas-v5-ink-4);
-}
-
-.activoExtraVal {
-  font-family: var(--atlas-v5-font-mono-num);
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-ink);
-}
-
-.activoExtraVal.pos { color: var(--atlas-v5-pos); }
-.activoExtraVal.neg { color: var(--atlas-v5-neg); }
-
-.activoCta {
-  font-size: 11.5px;
-  font-weight: var(--atlas-v5-fw-semibold);
-  color: var(--atlas-v5-gold-ink);
-  align-self: flex-end;
+@media (max-width: 700px) {
+  .activosGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .empty {
