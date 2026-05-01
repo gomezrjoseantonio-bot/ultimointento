@@ -568,7 +568,8 @@ class InformesDataService {
 
     const inmueblesMapeados = inmuebles.map((inmueble) => {
       const rawProperty = getLegacyProperty(dbPayload.properties, inmueble.id);
-      const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations);
+      const propNombre = inmueble.alias || rawProperty?.alias || rawProperty?.address || '';
+      const latestValuation = getLatestValuation(inmueble.id, dbPayload.valuations, propNombre);
       const precioCompra = toNumber(inmueble.compra?.precio_compra);
       const totalGastos = toNumber(inmueble.compra?.total_gastos);
       const totalImpuestos = toNumber(inmueble.compra?.total_impuestos);

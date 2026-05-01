@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   PageHead,
   MoneyValue,
@@ -14,6 +14,10 @@ import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ContratosListPage.module.css';
 
 type Tab = 'disponibilidad' | 'acciones' | 'activos' | 'historico';
+
+const VALID_TABS: Tab[] = ['disponibilidad', 'acciones', 'activos', 'historico'];
+const isValidTab = (value: string | null): value is Tab =>
+  value !== null && (VALID_TABS as string[]).includes(value);
 
 const isContractActiveAt = (c: Contract, today: Date): boolean => {
   if (!c.fechaInicio || !c.fechaFin) return false;
@@ -34,8 +38,24 @@ const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
 const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
   const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
-  const [tab, setTab] = useState<Tab>('activos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab: Tab = isValidTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'activos';
+  const [tab, setTab] = useState<Tab>(initialTab);
   const today = useMemo(() => new Date(), []);
+
+  // Sincronizar tab cuando cambia el query param (navegación externa · back/forward · enlace)
+  useEffect(() => {
+    const queryTab = searchParams.get('tab');
+    if (isValidTab(queryTab) && queryTab !== tab) {
+      setTab(queryTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const handleTabChange = (next: Tab): void => {
+    setTab(next);
+    setSearchParams({ tab: next }, { replace: true });
+  };
 
   const propertyById = useMemo(() => {
     const map = new Map<number, string>();
@@ -113,7 +133,7 @@ const ContratosListPage: React.FC = () => {
               key={t.key}
               type="button"
               className={isActive ? styles.active : ''}
-              onClick={() => setTab(t.key)}
+              onClick={() => handleTabChange(t.key)}
               aria-pressed={isActive}
             >
               {t.label}

@@ -12,6 +12,21 @@ export interface AuditResult {
   propiedades_sin_valoracion: string[];
 }
 
+export interface ValoracionMatch {
+  valor: number;
+  fecha_valoracion: string;
+  activo_nombre: string;
+  matchedBy: 'id' | 'nombre';
+}
+
+export interface ValoracionMatcher {
+  /** Devuelve la valoración más reciente del activo, primero por id, luego por nombre normalizado. */
+  getByIdOrNombre(id: string | number, nombre: string): ValoracionMatch | undefined;
+  totalValoraciones: number;
+  matchesPorId: number;
+  matchesPorNombre: number;
+}
+
 const toNumber = (value: unknown): number => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -169,6 +184,61 @@ export const valoracionesService = {
       }
     }
     return map;
+  },
+
+  /**
+   * Devuelve un matcher enriquecido que resuelve la valoración más reciente por
+   * id (String) y, como fallback, por nombre normalizado (lowercase + trim).
+   * Útil cuando el matching id↔activo_id puede fallar por mismatches de tipo o
+   * por valoraciones importadas antes de que el activo tuviese id estable.
+   */
+  async getMapValoracionesMasRecientesConMatchingPorNombre(
+    tipo: 'inmueble' | 'inversion' | 'plan_pensiones'
+  ): Promise<ValoracionMatcher> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+
+    type RawMatch = { valor: number; fecha_valoracion: string; activo_nombre: string };
+    const byId = new Map<string, RawMatch>();
+    const byNombre = new Map<string, RawMatch>();
+
+    for (const v of all) {
+      if (v.tipo_activo !== tipo) continue;
+      const candidato: RawMatch = {
+        valor: v.valor,
+        fecha_valoracion: String(v.fecha_valoracion),
+        activo_nombre: String(v.activo_nombre || ''),
+      };
+
+      const keyId = String(v.activo_id);
+      const existingId = byId.get(keyId);
+      if (!existingId || candidato.fecha_valoracion > existingId.fecha_valoracion) {
+        byId.set(keyId, candidato);
+      }
+
+      const keyNombre = candidato.activo_nombre.toLowerCase().trim();
+      if (keyNombre) {
+        const existingNombre = byNombre.get(keyNombre);
+        if (!existingNombre || candidato.fecha_valoracion > existingNombre.fecha_valoracion) {
+          byNombre.set(keyNombre, candidato);
+        }
+      }
+    }
+
+    return {
+      getByIdOrNombre(id: string | number, nombre: string): ValoracionMatch | undefined {
+        const idResult = byId.get(String(id));
+        if (idResult) return { ...idResult, matchedBy: 'id' };
+        const keyNombre = String(nombre || '').toLowerCase().trim();
+        if (!keyNombre) return undefined;
+        const nombreResult = byNombre.get(keyNombre);
+        if (!nombreResult) return undefined;
+        return { ...nombreResult, matchedBy: 'nombre' };
+      },
+      totalValoraciones: all.filter((v) => v.tipo_activo === tipo).length,
+      matchesPorId: byId.size,
+      matchesPorNombre: byNombre.size,
+    };
   },
 
   /**

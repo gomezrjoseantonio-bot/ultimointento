@@ -91,17 +91,51 @@ type PropertySnapshot = {
   gastosMes: number;
 };
 
-const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmueble' | 'inversion') => {
-  const latest = new Map<number, number>();
-  const sorted = valoraciones
-    .filter((item) => item.tipo_activo === tipo)
-    .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
+interface LatestValuationLookup {
+  byId: Map<string, number>;
+  byNombre: Map<string, number>;
+  get: (id: number | string | null | undefined, nombre?: string | null) => number | undefined;
+}
 
-  sorted.forEach((item) => {
-    latest.set(item.activo_id, item.valor);
-  });
+const getLatestValuationMap = (valoraciones: ValoracionHistorica[], tipo: 'inmueble' | 'inversion'): LatestValuationLookup => {
+  const byId = new Map<string, { valor: number; fecha: string }>();
+  const byNombre = new Map<string, { valor: number; fecha: string }>();
 
-  return latest;
+  for (const item of valoraciones) {
+    if (item.tipo_activo !== tipo) continue;
+    const fecha = String(item.fecha_valoracion ?? '');
+    const keyId = String(item.activo_id);
+    const prevById = byId.get(keyId);
+    if (!prevById || fecha > prevById.fecha) {
+      byId.set(keyId, { valor: item.valor, fecha });
+    }
+    const keyNombre = String(item.activo_nombre || '').toLowerCase().trim();
+    if (keyNombre) {
+      const prevByNombre = byNombre.get(keyNombre);
+      if (!prevByNombre || fecha > prevByNombre.fecha) {
+        byNombre.set(keyNombre, { valor: item.valor, fecha });
+      }
+    }
+  }
+
+  const idMap = new Map<string, number>();
+  byId.forEach((v, k) => idMap.set(k, v.valor));
+  const nombreMap = new Map<string, number>();
+  byNombre.forEach((v, k) => nombreMap.set(k, v.valor));
+
+  return {
+    byId: idMap,
+    byNombre: nombreMap,
+    get: (id, nombre) => {
+      if (id != null) {
+        const v = idMap.get(String(id));
+        if (v !== undefined) return v;
+      }
+      const keyNombre = String(nombre || '').toLowerCase().trim();
+      if (!keyNombre) return undefined;
+      return nombreMap.get(keyNombre);
+    },
+  };
 };
 
 const parseYear = (value?: string): number | null => {
@@ -1249,7 +1283,7 @@ export default function InmueblesAnalisis() {
             dbCompromisos,
             dbLoans,
             paymentPlansByLoanId,
-            latestInmuebleValorMap.get(property.id as number) ?? property.acquisitionCosts.price,
+            latestInmuebleValorMap.get(property.id, property.alias || property.address) ?? property.acquisitionCosts.price,
             mejorasPorPropiedad[idx],
           )
         );

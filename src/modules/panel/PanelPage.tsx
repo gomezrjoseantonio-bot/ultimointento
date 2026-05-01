@@ -19,6 +19,7 @@ import type { Prestamo } from '../../types/prestamos';
 import type { Escenario } from '../../types/miPlan';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
+import { valoracionesService, type ValoracionMatcher } from '../../services/valoracionesService';
 import PulseAssetCard from './components/PulseAssetCard';
 import PulsoDelMes from './components/PulsoDelMes';
 import AttentionList from './components/AttentionList';
@@ -76,6 +77,12 @@ const PanelPage: React.FC = () => {
   const [escenario, setEscenario] = useState<Escenario | null>(null);
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
+  const [valoracionMatcher, setValoracionMatcher] = useState<ValoracionMatcher | null>(null);
+  // TODO T25.2 · delta 30d real cuando exista snapshot histórico de patrimonio.
+  // patrimonioSnapshots fue eliminado en V62; las valoraciones_historicas solo cubren
+  // inmuebles/inversiones/planes pero no cuentas ni deuda viva, así que no podemos
+  // reconstruir patrimonioNeto a fecha pasada con honestidad. Hasta entonces · null.
+  const [delta30d] = useState<{ valor: number; pct: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,6 +112,15 @@ const PanelPage: React.FC = () => {
         // El store 'escenarios' es un singleton (id=1) · solo existe una entrada
         const escenarios = await db.getAll('escenarios') as Escenario[];
         if (!cancelled) setEscenario(escenarios[0] ?? null);
+
+        // T25.1 · matcher con fallback por nombre
+        try {
+          const matcher = await valoracionesService.getMapValoracionesMasRecientesConMatchingPorNombre('inmueble');
+          if (!cancelled) setValoracionMatcher(matcher);
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('[panel] no se pudo cargar matcher de valoraciones', e);
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[panel] error cargando datos', err);
@@ -120,14 +136,44 @@ const PanelPage: React.FC = () => {
   const today = useMemo(() => new Date(), []);
 
   const valorInmuebles = useMemo(() => {
-    return properties.reduce((s, p) => {
+    const stats = { porId: 0, porNombre: 0, sinMatch: 0 };
+    const total = properties.reduce((s, p) => {
       const propertyValue = p as Property & {
         currentValue?: number;
-        acquisitionCosts?: { price?: number };
+        acquisitionCosts?: { price?: number; currentValue?: number };
+        valor_actual?: number;
+        marketValue?: number;
+        estimatedValue?: number;
+        valuation?: number;
       };
-      return s + (propertyValue.currentValue ?? propertyValue.acquisitionCosts?.price ?? 0);
+      const propNombre = (p.alias || p.address || '');
+      const match = valoracionMatcher?.getByIdOrNombre(p.id ?? '', propNombre);
+      if (match?.matchedBy === 'id') stats.porId++;
+      else if (match?.matchedBy === 'nombre') stats.porNombre++;
+      else stats.sinMatch++;
+
+      const fallback =
+        propertyValue.valor_actual
+        ?? propertyValue.currentValue
+        ?? propertyValue.marketValue
+        ?? propertyValue.estimatedValue
+        ?? propertyValue.valuation
+        ?? propertyValue.acquisitionCosts?.currentValue
+        ?? propertyValue.acquisitionCosts?.price
+        ?? 0;
+      return s + (match?.valor ?? fallback);
     }, 0);
-  }, [properties]);
+
+    if (valoracionMatcher) {
+      // eslint-disable-next-line no-console
+      console.log('[panel] valoraciones inmuebles · matches:', {
+        totalValoraciones: valoracionMatcher.totalValoraciones,
+        propiedades: properties.length,
+        ...stats,
+      });
+    }
+    return total;
+  }, [properties, valoracionMatcher]);
 
   const valorInversiones = useMemo(
     () => posiciones.reduce((s, p) => s + (p.valor_actual ?? 0), 0),
@@ -237,7 +283,7 @@ const PanelPage: React.FC = () => {
         meta: `Vencimiento en los próximos 60 días`,
         value: rentaTotal,
         timeWindow: '60 días',
-        href: '/contratos',
+        href: '/contratos?tab=acciones',
       });
     }
 
@@ -411,15 +457,29 @@ const PanelPage: React.FC = () => {
               <div>
                 <div className={styles.heroLab}>Patrimonio neto</div>
                 <div className={styles.heroValor}>
-                  <MoneyValue value={patrimonioNeto} decimals={0} tone="ink" />
+                  <MoneyValue value={patrimonioNeto} decimals={0} tone="ink" size="kpiStar" />
                 </div>
-                <div className={`${styles.heroDelta} ${patrimonioNeto >= 0 ? styles.pos : styles.neg}`}>
-                  {patrimonioNeto >= 0
-                    ? <Icons.ArrowUpRight size={14} strokeWidth={2} />
-                    : <Icons.ArrowDownRight size={14} strokeWidth={2} />
-                  }
-                  activos brutos · sin deuda
-                  <span className={styles.heroDeltaMeta}>· consolidado</span>
+                <div
+                  className={[
+                    styles.heroDelta,
+                    delta30d ? (delta30d.valor >= 0 ? styles.pos : styles.neg) : styles.muted,
+                  ].filter(Boolean).join(' ')}
+                >
+                  {delta30d ? (
+                    <>
+                      {delta30d.valor >= 0
+                        ? <Icons.ArrowUpRight size={14} strokeWidth={2} />
+                        : <Icons.ArrowDownRight size={14} strokeWidth={2} />
+                      }
+                      <MoneyValue value={delta30d.valor} decimals={0} showSign tone="auto" />
+                      <span>
+                        ({new Intl.NumberFormat('es-ES', { signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(delta30d.pct)}%)
+                      </span>
+                      <span className={styles.heroDeltaMeta}>· últimos 30 días</span>
+                    </>
+                  ) : (
+                    <span className={styles.heroDeltaMeta}>histórico no disponible</span>
+                  )}
                 </div>
               </div>
               <div className={styles.heroMetaRight}>
