@@ -15,7 +15,6 @@ import {
   formatPercent,
   getColorByTipo,
   getTipoLabel,
-  signClass,
 } from '../helpers';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
