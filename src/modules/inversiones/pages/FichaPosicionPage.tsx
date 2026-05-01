@@ -3,24 +3,27 @@
 // Carga la posición desde el store y delega el render a la ficha
 // correspondiente según `clasificarTipo(posicion.tipo)`. Reusa los
 // modales existentes (`ActualizarValorDialog` · `AportacionFormDialog` ·
-// `PosicionFormDialog`) para no duplicar formularios. Cero migración ·
-// cero cambios al modelo de datos.
+// `PosicionFormDialog`) y añade `<RegistrarCobroDialog>` para los flujos
+// de cobro / dividendo (que el form de aportaciones existente no
+// soporta). Cero migración · cero cambios al modelo de datos.
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { showToastV5 } from '../../../design-system/v5';
 import { inversionesService } from '../../../services/inversionesService';
-import { rendimientosService } from '../../../services/rendimientosService';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import ActualizarValorDialog from '../components/ActualizarValorDialog';
 import AportacionFormDialog from '../components/AportacionFormDialog';
 import PosicionFormDialog from '../components/PosicionFormDialog';
+import RegistrarCobroDialog from '../components/RegistrarCobroDialog';
 import FichaValoracionSimple from '../components/FichaValoracionSimple';
 import FichaRendimientoPeriodico from '../components/FichaRendimientoPeriodico';
 import FichaDividendos from '../components/FichaDividendos';
 import FichaGenerica from '../components/FichaGenerica';
 import { clasificarTipo } from '../helpers';
 import styles from './FichaPosicion.module.css';
+
+type CobroVariant = 'cobro' | 'dividendo';
 
 const FichaPosicionPage: React.FC = () => {
   const { posicionId } = useParams();
@@ -32,6 +35,7 @@ const FichaPosicionPage: React.FC = () => {
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
+  const [showCobro, setShowCobro] = useState<CobroVariant | null>(null);
 
   const idNumber = Number(posicionId);
 
@@ -74,6 +78,10 @@ const FichaPosicionPage: React.FC = () => {
 
   const handleBack = () => navigate('/inversiones');
 
+  // No relanzamos el error al modal · `ActualizarValorDialog` invoca
+  // `onSave` sin `await/catch` · si lanzáramos provocaríamos un Unhandled
+  // Promise Rejection. El modal se cierra al éxito (`setShow…(false)`) y
+  // permanece abierto si el toast de error ya alertó al usuario.
   const handleSaveValor = async (nuevoValor: number, fechaValoracionISO: string) => {
     if (!posicion) return;
     try {
@@ -88,7 +96,6 @@ const FichaPosicionPage: React.FC = () => {
       // eslint-disable-next-line no-console
       console.error('[inversiones] actualizar valor', err);
       showToastV5('Error al actualizar el valor.');
-      throw err;
     }
   };
 
@@ -104,13 +111,16 @@ const FichaPosicionPage: React.FC = () => {
             : 'Aportación añadida.',
       );
       setShowAportar(false);
-      await rendimientosService.generarRendimientosPendientes();
+      setShowCobro(null);
+      // Nota · NO disparamos `rendimientosService.generarRendimientosPendientes()`
+      // aquí · es un side-effect global (recorre todas las posiciones · puede
+      // generar movimientos de tesorería). La galería ya lo ejecuta al cargar
+      // si hay rendimientos pendientes; aquí basta con refrescar la posición.
       await reload();
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] aportacion', err);
       showToastV5('Error al guardar el movimiento.');
-      throw err;
     }
   };
 
@@ -127,15 +137,11 @@ const FichaPosicionPage: React.FC = () => {
       // eslint-disable-next-line no-console
       console.error('[inversiones] save', err);
       showToastV5('Error al guardar la posición.');
+      // Relanzamos para que el wizard/form mantenga el dialog abierto · su
+      // contrato (ver `WizardNuevaPosicion`) sí maneja la promesa.
       throw err;
     }
   };
-
-  // El form de aportaciones existente sólo soporta `aportacion`/`reembolso` ·
-  // los cobros/dividendos se introducen seleccionando el tipo dentro del
-  // form (sin pre-fill desde aquí). Cuando 23.3+ amplíe el form a
-  // dividendos podremos pre-rellenar el tipo según el botón.
-  const openAportar = () => setShowAportar(true);
 
   if (posicion === undefined) {
     return (
@@ -168,7 +174,7 @@ const FichaPosicionPage: React.FC = () => {
           posicion={posicion}
           onBack={handleBack}
           onActualizarValor={() => setShowActualizarValor(true)}
-          onAportar={() => openAportar()}
+          onAportar={() => setShowAportar(true)}
           onEditar={() => setShowEditar(true)}
         />
       );
@@ -178,7 +184,7 @@ const FichaPosicionPage: React.FC = () => {
         <FichaRendimientoPeriodico
           posicion={posicion}
           onBack={handleBack}
-          onRegistrarCobro={() => openAportar()}
+          onRegistrarCobro={() => setShowCobro('cobro')}
           onEditar={() => setShowEditar(true)}
         />
       );
@@ -188,8 +194,8 @@ const FichaPosicionPage: React.FC = () => {
         <FichaDividendos
           posicion={posicion}
           onBack={handleBack}
-          onRegistrarDividendo={() => openAportar()}
-          onComprarVender={() => openAportar()}
+          onRegistrarDividendo={() => setShowCobro('dividendo')}
+          onComprarVender={() => setShowAportar(true)}
           onActualizarValor={() => setShowActualizarValor(true)}
         />
       );
@@ -200,11 +206,13 @@ const FichaPosicionPage: React.FC = () => {
           posicion={posicion}
           onBack={handleBack}
           onActualizarValor={() => setShowActualizarValor(true)}
-          onAportar={() => openAportar()}
+          onAportar={() => setShowAportar(true)}
           onEditar={() => setShowEditar(true)}
         />
       );
   }
+
+  const nombrePosicion = posicion.nombre || posicion.entidad || `Posición #${posicion.id}`;
 
   return (
     <>
@@ -212,7 +220,7 @@ const FichaPosicionPage: React.FC = () => {
 
       {showActualizarValor && (
         <ActualizarValorDialog
-          posicionNombre={posicion.nombre || posicion.entidad || `Posición #${posicion.id}`}
+          posicionNombre={nombrePosicion}
           valorActual={posicion.valor_actual}
           onSave={handleSaveValor}
           onClose={() => setShowActualizarValor(false)}
@@ -221,10 +229,19 @@ const FichaPosicionPage: React.FC = () => {
 
       {showAportar && (
         <AportacionFormDialog
-          posicionNombre={posicion.nombre || posicion.entidad || `Posición #${posicion.id}`}
+          posicionNombre={nombrePosicion}
           posicion={posicion}
           onSave={handleSaveAportacion}
           onClose={() => setShowAportar(false)}
+        />
+      )}
+
+      {showCobro && (
+        <RegistrarCobroDialog
+          posicionNombre={nombrePosicion}
+          variante={showCobro}
+          onSave={handleSaveAportacion}
+          onClose={() => setShowCobro(null)}
         />
       )}
 

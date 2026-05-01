@@ -10,6 +10,7 @@ import {
   calculateEstimatedCagr,
   construirSerieValor,
   formatCurrency,
+  formatCurrency2,
   formatDelta,
   formatPercent,
   getColorByTipo,
@@ -117,9 +118,11 @@ const FichaValoracionSimple: React.FC<Props> = ({
         <div className={styles.detailKpi}>
           <div className={styles.detailKpiLab}>CAGR</div>
           <div
-            className={`${styles.detailKpiVal} ${cagr ? styles[signClass(cagr)] : styles.muted}`}
+            className={`${styles.detailKpiVal} ${
+              Number.isFinite(cagr) ? styles[signClass(cagr)] : styles.muted
+            }`}
           >
-            {cagr ? formatPercent(cagr) : '—'}
+            {Number.isFinite(cagr) ? formatPercent(cagr) : '—'}
           </div>
           <div className={styles.detailKpiSub}>tasa anualizada</div>
         </div>
@@ -181,13 +184,13 @@ const FichaValoracionSimple: React.FC<Props> = ({
                     <td className={styles.tipo}>{TIPO_AP_LABEL[a.tipo]}</td>
                     <td className={`${styles.num} ${a.tipo === 'reembolso' ? styles.neg : ''}`}>
                       {a.tipo === 'reembolso' ? '−' : ''}
-                      {formatCurrency(Number(a.importe ?? 0))}
+                      {formatCurrency2(Number(a.importe ?? 0))}
                     </td>
                     <td className={styles.num}>
                       {a.unidades != null ? a.unidades.toLocaleString('es-ES') : '—'}
                     </td>
                     <td className={styles.num}>
-                      {a.precioUnitario != null ? formatCurrency(a.precioUnitario) : '—'}
+                      {a.precioUnitario != null ? formatCurrency2(a.precioUnitario) : '—'}
                     </td>
                   </tr>
                 ))}

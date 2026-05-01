@@ -73,15 +73,21 @@ const FichaDividendos: React.FC<Props> = ({
   );
 
   /**
-   * Yield medio · usamos el yield anualizado aproximado:
-   * dividendosTotal anualizados sobre el capital invertido medio.
-   * Si solo tenemos un año de datos · es directo. Si menos · `—`.
+   * Yield medio · proyección anualizada del flujo de dividendos cobrados
+   * sobre el capital invertido. Si el histórico cubre menos de un mes,
+   * devolvemos `null` (datos insuficientes para anualizar con sentido).
+   * Para 1-12 meses de histórico el cálculo extrapola linealmente y la
+   * UI lo etiqueta como "estimado" para que el usuario sepa que es
+   * proyección, no realización.
    */
   const yieldMedio = useMemo(() => {
     if (dividendos.length === 0 || aportado <= 0) return null;
     const fechas = dividendos.map((d) => new Date(d.fecha).getTime());
     const minTs = Math.min(...fechas);
-    const elapsedYears = Math.max((Date.now() - minTs) / (365.25 * 24 * 60 * 60 * 1000), 1 / 12);
+    const elapsedYears = (Date.now() - minTs) / (365.25 * 24 * 60 * 60 * 1000);
+    // Mínimo · 1 mes (~0.083 años). Por debajo el yield anualizado se
+    // dispararía artificialmente con un único cobro reciente.
+    if (elapsedYears < 1 / 12) return null;
     return (dividendosTotal / aportado / elapsedYears) * 100;
   }, [dividendos, dividendosTotal, aportado]);
 

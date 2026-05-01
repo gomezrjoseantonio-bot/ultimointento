@@ -2,7 +2,7 @@
 // Variante más grande del sparkline inline de cartas · acepta puntos
 // adicionales (markers) para resaltar dividendos / cobros sobre la línea.
 
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import styles from '../pages/FichaPosicion.module.css';
 
 interface Punto {
@@ -31,6 +31,12 @@ const H = 220;
 const PAD = 12;
 
 const SparklineGigante: React.FC<Props> = ({ data, color, markers, ariaLabel }) => {
+  // ID único por instancia · evita colisiones en el DOM si se renderizan
+  // dos sparklines en la misma página (la galería puede tenerlos en
+  // varias cartas, y esta versión gigante en la ficha · el `url(#…)` del
+  // `fill` debe apuntar al `<linearGradient>` propio).
+  const reactId = useId();
+  const gradientId = `sparkArea-${reactId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const { path, areaPath, sx, sy } = useMemo(() => {
     if (data.length < 2) return { path: '', areaPath: '', sx: () => 0, sy: () => 0 };
     const xs = data.map((p) => p.x);
@@ -71,12 +77,12 @@ const SparklineGigante: React.FC<Props> = ({ data, color, markers, ariaLabel }) 
       aria-label={ariaLabel || 'Evolución de valor'}
     >
       <defs>
-        <linearGradient id="sparkArea" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.18" />
           <stop offset="100%" stopColor={stroke} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={areaPath} fill="url(#sparkArea)" />
+      <path d={areaPath} fill={`url(#${gradientId})`} />
       <path d={path} fill="none" stroke={stroke} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
       {markers?.map((m, i) => (
         <circle

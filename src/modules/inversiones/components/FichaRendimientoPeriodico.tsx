@@ -73,17 +73,38 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
   );
   const tin = Number(posicion.rendimiento?.tasa_interes_anual ?? NaN);
   const proximoCobro = useMemo(() => {
-    // Heurística simple · usar `plan_aportaciones` si está activo · si no
-    // mostramos "—". Una implementación más rica vendría con el cierre de 23.3.
-    const plan = posicion.plan_aportaciones;
-    if (plan?.activo && plan.fecha_inicio) {
-      // Próxima fecha futura siguiendo cadencia. Aproximación: mes actual + 1.
-      const next = new Date();
-      next.setMonth(next.getMonth() + 1);
-      return next.toISOString();
-    }
-    return null;
-  }, [posicion.plan_aportaciones]);
+    // Para posiciones de rendimiento periódico, el calendario de cobros se
+    // deriva de `frecuencia_cobro` (semánticamente · "cuándo me pagan los
+    // intereses"). NO confundir con `plan_aportaciones`, que representa
+    // cargos del usuario. Si no tenemos frecuencia o el último cobro no
+    // está informado, devolvemos `null` y la UI muestra "—".
+    const frec = posicion.frecuencia_cobro;
+    if (!frec || frec === 'al_vencimiento') return null;
+    const mesesPorFrecuencia: Record<'mensual' | 'trimestral' | 'semestral' | 'anual', number> = {
+      mensual: 1,
+      trimestral: 3,
+      semestral: 6,
+      anual: 12,
+    };
+    const incremento = mesesPorFrecuencia[frec];
+    if (!incremento) return null;
+    // Siguiente cobro · último cobro registrado + N meses · si no hay
+    // cobros, siguiente = primera fecha de aportación + N meses · si
+    // tampoco hay aportaciones, devolvemos `null`.
+    const aps = posicion.aportaciones || [];
+    const ultimoCobro = aps
+      .filter((a) => a.tipo === 'dividendo' && a.fecha)
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
+    const refIso = ultimoCobro?.fecha
+      ?? aps.find((a) => a.tipo === 'aportacion' && a.fecha)?.fecha
+      ?? null;
+    if (!refIso) return null;
+    const ref = new Date(refIso);
+    if (Number.isNaN(ref.getTime())) return null;
+    const next = new Date(ref);
+    next.setMonth(next.getMonth() + incremento);
+    return next.toISOString();
+  }, [posicion.frecuencia_cobro, posicion.aportaciones]);
 
   const { years, map } = useMemo(() => calcularCobros(posicion.aportaciones || [], 3), [
     posicion.aportaciones,
@@ -92,11 +113,20 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
+  const sanitizeCSVTextCell = (value: string | null | undefined): string => {
+    // Mitiga CSV/Formula injection (Excel ejecuta como fórmula valores que
+    // empiezan por `=`, `+`, `-`, `@`). Prefijamos con apóstrofe para
+    // forzar tratamiento literal · y reemplazamos `;` por `,` para no
+    // romper el separador.
+    const normalized = String(value ?? '').replace(/;/g, ',');
+    return /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
+  };
+
   const exportarCSV = () => {
     const filas = [
       ['Fecha', 'Importe (€)', 'Notas'].join(';'),
       ...cobros.map((c) =>
-        [c.fecha, String(Number(c.importe ?? 0).toFixed(2)), (c.notas || '').replace(/;/g, ',')].join(';'),
+        [c.fecha, String(Number(c.importe ?? 0).toFixed(2)), sanitizeCSVTextCell(c.notas)].join(';'),
       ),
     ].join('\n');
     const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' });
@@ -159,7 +189,9 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             {proximoCobro ? formatDate(proximoCobro) : '—'}
           </div>
           <div className={styles.detailKpiSub}>
-            {proximoCobro ? 'estimado · plan activo' : 'sin plan periódico'}
+            {proximoCobro
+              ? `estimado · ${posicion.frecuencia_cobro}`
+              : 'sin frecuencia configurada'}
           </div>
         </div>
       </div>
