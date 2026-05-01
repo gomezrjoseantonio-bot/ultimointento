@@ -1,7 +1,7 @@
 import { confirmDelete } from '../../../services/confirmationService';
 import React, { useState, useEffect, useCallback } from 'react';
 import { planesPensionesService } from '../../../services/planesPensionesService';
-import { personalDataService } from '../../../services/personalDataService';
+import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
 import type { PlanPensiones } from '../../../types/planesPensiones';
 import type { TraspasoPlan } from '../../../types/personal';
@@ -24,12 +24,13 @@ const PlanesManager: React.FC = () => {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        setPersonalDataId(personalData.id);
-        const planesData = await planesPensionesService.getAllPlanes({ personalDataId: personalData.id });
+      // T14.4 · migrado a fiscalContextService gateway
+      const ctx = await getFiscalContextSafe();
+      if (ctx) {
+        setPersonalDataId(ctx.personalDataId);
+        const planesData = await planesPensionesService.getAllPlanes({ personalDataId: ctx.personalDataId });
         setPlanes(planesData);
-        const traspasosData = await traspasosPlanesService.getTraspasosByPersonal(personalData.id);
+        const traspasosData = await traspasosPlanesService.getTraspasosByPersonal(ctx.personalDataId);
         setTraspasos(traspasosData);
       }
     } catch (error) {

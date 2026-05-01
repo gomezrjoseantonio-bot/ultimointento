@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { nominaService } from '../../../services/nominaService';
-import { personalDataService } from '../../../services/personalDataService';
+import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { Nomina, CalculoNominaResult } from '../../../types/personal';
 import { Plus, Pencil, Trash2, DollarSign } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -18,9 +18,10 @@ const NominaManager: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const personalData = await personalDataService.getPersonalData();
-      if (personalData?.id) {
-        const nominasData = await nominaService.getNominas(personalData.id);
+      // T14.4 · migrado a fiscalContextService gateway
+      const ctx = await getFiscalContextSafe();
+      if (ctx) {
+        const nominasData = await nominaService.getNominas(ctx.personalDataId);
         setNominas(nominasData);
         const calculosMap = new Map<number, CalculoNominaResult>();
         nominasData.forEach(nomina => {
