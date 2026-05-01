@@ -26,7 +26,6 @@ import FichaValoracionSimple from '../components/FichaValoracionSimple';
 import FichaRendimientoPeriodico from '../components/FichaRendimientoPeriodico';
 import FichaDividendos from '../components/FichaDividendos';
 import FichaGenerica from '../components/FichaGenerica';
-import CintaResumenInversiones from '../components/CintaResumenInversiones';
 import FichaPlanPensiones from './FichaPlanPensiones';
 import { clasificarTipo } from '../helpers';
 import styles from './FichaPosicion.module.css';
@@ -96,13 +95,7 @@ const FichaPosicionPage: React.FC = () => {
 
   // T23.6.4 · Ficha completa de plan de pensiones · reemplaza placeholder T23.6.1
   if (esPlanPensiones) {
-    return (
-      <>
-        {/* T23.6.2 · Cinta resumen sticky */}
-        <CintaResumenInversiones />
-        <FichaPlanPensiones planId={posicionId!} onBack={handleBack} />
-      </>
-    );
+    return <FichaPlanPensiones planId={posicionId!} onBack={handleBack} />;
   }
 
   // No relanzamos el error al modal · `ActualizarValorDialog` invoca
@@ -173,7 +166,6 @@ const FichaPosicionPage: React.FC = () => {
   if (posicion === undefined) {
     return (
       <div className={styles.page}>
-        <CintaResumenInversiones />
         <div className={styles.loading}>Cargando posición…</div>
       </div>
     );
@@ -182,7 +174,6 @@ const FichaPosicionPage: React.FC = () => {
   if (posicion === null) {
     return (
       <div className={styles.page}>
-        <CintaResumenInversiones />
         <div className={styles.notFound}>
           <div>No se ha encontrado la posición solicitada.</div>
           <button type="button" className={styles.backBtn} onClick={handleBack}>
@@ -245,8 +236,6 @@ const FichaPosicionPage: React.FC = () => {
 
   return (
     <>
-      {/* T23.6.2 · Cinta resumen sticky · visible en fichas del módulo Inversiones */}
-      <CintaResumenInversiones />
       {ficha}
 
       {showActualizarValor && (

@@ -21,7 +21,6 @@ import { migrateInversionesToNewModel } from '../../services/migrations/migrateI
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
 import CartaAddPosicion from './components/CartaAddPosicion';
-import CintaResumenInversiones from './components/CintaResumenInversiones';
 import WizardNuevaPosicion from './components/WizardNuevaPosicion';
 import DialogAportar from './components/DialogAportar';
 import {
@@ -157,9 +156,8 @@ const InversionesGaleria: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      {/* T23.6.2 · Cinta resumen sticky · solo visible en módulo Inversiones */}
-      <CintaResumenInversiones />
-
+      {/* CintaResumenInversiones se monta desde MainLayout · ocupa el slot
+          del TopbarV5 global en /inversiones/* (mockup atlas-inversiones-v2). */}
       <PageHead
         title="Inversiones"
         sub="tus posiciones activas · click en cualquier carta para ver su detalle"
