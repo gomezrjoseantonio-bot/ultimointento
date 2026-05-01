@@ -667,7 +667,7 @@ export function getFooterMetaFromItem(item: CartaItem): string {
       const cobros = posOrig?.aportaciones?.filter((a) => a.tipo === 'dividendo')?.length ?? 0;
       if (cobros > 0 && item.total_aportado > 0) {
         const divAnual = posOrig?.dividendo_anual_estimado;
-        const yieldPct = typeof divAnual === 'number' && divAnual > 0
+        const yieldPct = typeof divAnual === 'number' && divAnual > 0 && item.valor_actual > 0
           ? ((divAnual / item.valor_actual) * 100).toFixed(2)
           : null;
         return yieldPct

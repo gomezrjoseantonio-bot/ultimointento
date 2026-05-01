@@ -288,11 +288,11 @@
 /* T23.6.2 · Corrige divergencia B.3-B.4: cobrado=verde · pendiente=oro · futuro=neutro */
 .cartaMatrizCell.cobrado {
   background: var(--atlas-v5-pos-wash);
-  outline: 1px solid var(--atlas-v5-pos-border);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-pos-border);
 }
 .cartaMatrizCell.pendiente {
   background: var(--atlas-v5-gold-wash);
-  outline: 1px solid var(--atlas-v5-warn-border);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-warn-border);
 }
 .cartaMatrizCell.futuro {
   background: var(--atlas-v5-line);

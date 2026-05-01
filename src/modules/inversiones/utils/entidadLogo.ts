@@ -234,4 +234,3 @@ export function getEntidadLogoStyle(
   };
 }
 
-// React import for the CSSProperties type (used as return type above)
