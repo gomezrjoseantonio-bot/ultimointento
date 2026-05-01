@@ -131,8 +131,7 @@ const ENTIDAD_MAP: Array<{ pattern: RegExp; config: LogoConfig }> = [
     config: {
       cls: 'unihouser',
       text: 'UH',
-      bg: '',
-      gradient: 'linear-gradient(135deg, #C59A47, #B88A3E)', /* Unihouser gold */
+      bg: '#B88A3E', /* Unihouser · mockup atlas-inversiones-v2.html:117 */
       color: '#FFFFFF',
       noBorder: true,
     },

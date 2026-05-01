@@ -155,6 +155,7 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
           text: logoCfg.text,
           bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
           color: logoCfg.color,
+          noBorder: logoCfg.noBorder,
         },
         title: `${posicion.nombre || 'Posición'}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`,
         meta: (
@@ -176,23 +177,29 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             )}
           </>
         ),
-        stats: [
-          { lab: 'Capital', val: formatCurrency(aportado) },
-          { lab: 'Interés generado', val: formatCurrency(interesGenerado), valVariant: 'gold' },
-          {
-            lab: `Cobrado ${currentYear}`,
-            val: formatCurrency(
-              cobros.filter((c) => new Date(c.fecha).getFullYear() === currentYear)
-                .reduce((s, c) => s + Number(c.importe ?? 0), 0),
-            ),
-            valVariant: 'pos',
-          },
-          {
-            lab: 'Próximo cobro',
-            val: proximoCobro ? formatDate(proximoCobro) : '—',
-            small: true,
-          },
-        ],
+        stats: (() => {
+          const cobradoAnio = cobros
+            .filter((c) => new Date(c.fecha).getFullYear() === currentYear)
+            .reduce((s, c) => s + Number(c.importe ?? 0), 0);
+          return [
+            { lab: 'Capital', val: formatCurrency(aportado) },
+            {
+              lab: 'Interés generado',
+              val: formatCurrency(interesGenerado),
+              valVariant: interesGenerado > 0 ? 'gold' as const : undefined,
+            },
+            {
+              lab: `Cobrado ${currentYear}`,
+              val: cobradoAnio > 0 ? formatCurrency(cobradoAnio) : '—',
+              valVariant: cobradoAnio > 0 ? 'pos' as const : undefined,
+            },
+            {
+              lab: 'Próximo cobro',
+              val: proximoCobro ? formatDate(proximoCobro) : '—',
+              small: true,
+            },
+          ];
+        })(),
       }}
       onBack={onBack}
       actions={[

@@ -8,6 +8,7 @@ import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import {
   construirSerieValor,
   formatCurrency,
+  formatCurrency2,
   formatDelta,
   formatPercent,
   getColorByTipo,
@@ -127,6 +128,7 @@ const FichaDividendos: React.FC<Props> = ({
           text: logoCfg.text,
           bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
           color: logoCfg.color,
+          noBorder: logoCfg.noBorder,
         },
         title: `${posicion.nombre || 'Posición'}${posicion.ticker ? ` · ${posicion.ticker}` : ''}`,
         meta: (
@@ -185,48 +187,48 @@ const FichaDividendos: React.FC<Props> = ({
       ]}
     >
 
-      {posicion.numero_participaciones && posicion.numero_participaciones > 0 && (
-        <div className={styles.priceBlock}>
-          <div>
-            <div className={styles.priceLab}>
-              <span className={styles.priceDotLive} />
-              Precio · {posicion.entidad ?? 'cotización'} · estimado
-            </div>
-            <div className={styles.priceVal}>
-              {(valorActual / posicion.numero_participaciones).toFixed(2).replace('.', ',')} €
-            </div>
-            <div className={styles.priceDelta}>
-              <span
-                className={`${styles.priceDeltaPill} ${
-                  valorActual > aportado ? styles.pos : valorActual < aportado ? styles.neg : ''
-                }`}
-              >
-                {valorActual > aportado ? '+' : ''}
-                {(valorActual - aportado).toFixed(2).replace('.', ',')} €
-              </span>
-              <span className={styles.priceDeltaLabel}>
-                vs aportado · {(aportado / posicion.numero_participaciones).toFixed(2).replace('.', ',')} €
-              </span>
-            </div>
-          </div>
-          <div className={styles.priceRange}>
-            <div className={styles.priceRangeCell}>
-              <div className={styles.priceRangeLab}>Acciones</div>
-              <div className={styles.priceRangeVal}>
-                {posicion.numero_participaciones.toLocaleString('es-ES')}
+      {posicion.numero_participaciones && posicion.numero_participaciones > 0 && (() => {
+        const precioImplicito = valorActual / posicion.numero_participaciones;
+        const precioAportado = aportado / posicion.numero_participaciones;
+        const delta = valorActual - aportado;
+        const deltaCls =
+          delta > 0 ? styles.pos : delta < 0 ? styles.neg : '';
+        return (
+          <div className={styles.priceBlock}>
+            <div>
+              <div className={styles.priceLab}>
+                <span className={styles.priceDotLive} />
+                Precio · {posicion.entidad ?? 'cotización'} · estimado
+              </div>
+              <div className={styles.priceVal}>{formatCurrency2(precioImplicito)}</div>
+              <div className={styles.priceDelta}>
+                <span className={`${styles.priceDeltaPill} ${deltaCls}`}>
+                  {formatDelta(delta)}
+                </span>
+                <span className={styles.priceDeltaLabel}>
+                  vs aportado · {formatCurrency2(precioAportado)}
+                </span>
               </div>
             </div>
-            <div className={styles.priceRangeCell}>
-              <div className={styles.priceRangeLab}>Aportado</div>
-              <div className={styles.priceRangeVal}>{formatCurrency(aportado)}</div>
-            </div>
-            <div className={styles.priceRangeCell}>
-              <div className={styles.priceRangeLab}>Valor</div>
-              <div className={styles.priceRangeVal}>{formatCurrency(valorActual)}</div>
+            <div className={styles.priceRange}>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Acciones</div>
+                <div className={styles.priceRangeVal}>
+                  {posicion.numero_participaciones.toLocaleString('es-ES')}
+                </div>
+              </div>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Aportado</div>
+                <div className={styles.priceRangeVal}>{formatCurrency(aportado)}</div>
+              </div>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Valor</div>
+                <div className={styles.priceRangeVal}>{formatCurrency(valorActual)}</div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className={styles.detailCard}>
         <div className={styles.detailCardTit}>Evolución y dividendos</div>

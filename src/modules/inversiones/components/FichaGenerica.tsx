@@ -70,6 +70,7 @@ const FichaGenerica: React.FC<Props> = ({
           text: logoCfg.text,
           bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
           color: logoCfg.color,
+          noBorder: logoCfg.noBorder,
         },
         title: `${posicion.nombre || 'Posición'}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`,
         meta: posicion.fecha_compra ? (

@@ -3,7 +3,7 @@
    Estilos canónicos § Z spec · valores literales del mockup
    `docs/audit-inputs/atlas-inversiones-v2.html`. Cero hex hardcoded
    fuera de los listados explícitamente en § Z.3 (logos de marca:
-   MyInvestor / SmartFlip / BBVA / Unihouser / Orange · cripto purple).
+   MyInvestor / SmartFlip / BBVA / Unihouser / BNP · cripto purple).
    ============================================================ */
 
 .page {
@@ -414,7 +414,7 @@
   color: var(--atlas-v5-white);
   border: none;
 }
-/* BNP, IndexaCapital, Coinbase, Binance usan inline style (gradients/hex de marca) */
+/* IndexaCapital, Coinbase, Binance usan inline style (gradients/hex de marca) */
 
 /* ── Carta "Añadir posición" (§ Z.5) ───────────────────────────────────── */
 .cartaAdd {

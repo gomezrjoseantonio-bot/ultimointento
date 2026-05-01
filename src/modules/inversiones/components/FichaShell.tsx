@@ -1,8 +1,11 @@
 // Shell común de las fichas detalle · alineado con el mockup canónico
 // `docs/audit-inputs/atlas-inversiones-v2.html` líneas 783-989.
-// Renderiza: detail-head (back button) · detail-hero (badge superior +
-// logo + título + meta + 4 stats horizontales) · acciones opcionales
-// debajo del hero. El bloque de contenido específico va como children.
+// Estructura · `.detailHead` (solo back button como en el mockup) ·
+// `.detailHero` (badge superior + logo + título + meta + N stats
+// horizontales) · barra de acciones opcional `debajo` del hero (las
+// acciones no están en el mockup pero las mantenemos accesibles fuera
+// de `.detailHead` para no contaminar la cabecera). El bloque de
+// contenido específico va como children.
 
 import React from 'react';
 import { Icons } from '../../../design-system/v5';
@@ -31,8 +34,13 @@ export interface FichaShellHero {
   variant: 'plan' | 'prestamo' | 'accion';
   /** Texto del badge superior (mockup ej.: "Plan de pensiones · revalorización · liquidez en jubilación"). */
   badge: React.ReactNode;
-  /** Configuración del logo (background + texto). */
-  logo: { text: string; bg?: string; color?: string };
+  /**
+   * Configuración del logo del hero.
+   * - `bg`: color o gradient (CSS background válido).
+   * - `color`: color de texto.
+   * - `noBorder`: si true, sin border (replica `getEntidadLogoConfig.noBorder`).
+   */
+  logo: { text: string; bg?: string; color?: string; noBorder?: boolean };
   /** Título principal del hero. */
   title: React.ReactNode;
   /** Línea de metadata bajo el título (acepta strings con `<strong>`). */
@@ -71,6 +79,26 @@ const HeroBadgeIcon: React.FC<{ variant: FichaShellHero['variant'] }> = ({ varia
   );
 };
 
+const ActionsBar: React.FC<{ actions: FichaShellAction[] }> = ({ actions }) => (
+  <div className={styles.detailActions}>
+    {actions.map((a, i) => {
+      const variantCls = a.variant === 'gold' ? styles.btnGold : styles.btnGhost;
+      return (
+        <button
+          key={i}
+          type="button"
+          className={`${styles.btn} ${variantCls}`}
+          onClick={a.onClick}
+          disabled={a.disabled}
+        >
+          {a.icon}
+          {a.label}
+        </button>
+      );
+    })}
+  </div>
+);
+
 const FichaShell: React.FC<Props> = ({
   hero,
   title,
@@ -79,86 +107,74 @@ const FichaShell: React.FC<Props> = ({
   onBack,
   actions,
   children,
-}) => (
-  <div className={styles.page}>
-    {/* Detail head · solo back button cuando hay hero (mockup) */}
-    <div className={styles.detailHead}>
-      <button type="button" className={styles.backBtn} onClick={onBack}>
-        <Icons.ChevronLeft size={12} strokeWidth={2} />
-        Volver a Inversiones
-      </button>
-      {actions && actions.length > 0 && (
-        <div className={styles.detailActions}>
-          {actions.map((a, i) => {
-            const variantCls = a.variant === 'gold' ? styles.btnGold : styles.btnGhost;
-            return (
-              <button
-                key={i}
-                type="button"
-                className={`${styles.btn} ${variantCls}`}
-                onClick={a.onClick}
-                disabled={a.disabled}
-              >
-                {a.icon}
-                {a.label}
-              </button>
-            );
-          })}
+}) => {
+  const hasActions = actions && actions.length > 0;
+  return (
+    <div className={styles.page}>
+      {/* Detail head · solo back button (mockup atlas-inversiones-v2.html:786-792) */}
+      <div className={styles.detailHead}>
+        <button type="button" className={styles.backBtn} onClick={onBack}>
+          <Icons.ChevronLeft size={12} strokeWidth={2} />
+          Volver a Inversiones
+        </button>
+      </div>
+
+      {hero ? (
+        <div
+          className={styles.detailHero}
+          style={{ ['--detail-stats' as string]: hero.stats.length }}
+        >
+          <div className={`${styles.detailHeroTop} ${styles[hero.variant]}`}>
+            <HeroBadgeIcon variant={hero.variant} />
+            {hero.badge}
+          </div>
+          <div className={styles.detailHeroBody}>
+            <div
+              className={styles.detailHeroLogo}
+              style={{
+                background: hero.logo.bg ?? 'var(--atlas-v5-bg)',
+                color: hero.logo.color ?? 'var(--atlas-v5-ink-2)',
+                border: hero.logo.noBorder ? 'none' : '1px solid var(--atlas-v5-line)',
+              }}
+            >
+              {hero.logo.text}
+            </div>
+            <div>
+              <div className={styles.detailHeroNom}>{hero.title}</div>
+              {hero.meta != null && <div className={styles.detailHeroMeta}>{hero.meta}</div>}
+            </div>
+            {hero.stats.map((s, i) => (
+              <div key={i} className={styles.detailHeroStat}>
+                <div className={styles.detailHeroStatLab}>{s.lab}</div>
+                <div
+                  className={`${styles.detailHeroStatVal}${s.valVariant ? ' ' + styles[s.valVariant] : ''}`}
+                  style={s.small ? { fontSize: 14 } : undefined}
+                >
+                  {s.val}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        // Fallback legacy · sin hero
+        <div className={styles.detailHeadLeft}>
+          {title && (
+            <h1 className={styles.detailTitle}>
+              {title}
+              {tipoChip && <span className={styles.tipoChip}>{tipoChip}</span>}
+            </h1>
+          )}
+          {subtitle && <div className={styles.detailSub}>{subtitle}</div>}
         </div>
       )}
+
+      {/* Acciones · debajo del hero (extensión nuestra · el mockup no las tiene) */}
+      {hasActions && <ActionsBar actions={actions!} />}
+
+      {children}
     </div>
-
-    {hero ? (
-      <div
-        className={styles.detailHero}
-        style={{ ['--detail-stats' as string]: hero.stats.length }}
-      >
-        <div className={`${styles.detailHeroTop} ${styles[hero.variant]}`}>
-          <HeroBadgeIcon variant={hero.variant} />
-          {hero.badge}
-        </div>
-        <div className={styles.detailHeroBody}>
-          <div
-            className={styles.detailHeroLogo}
-            style={{
-              background: hero.logo.bg ?? 'var(--atlas-v5-bg)',
-              color: hero.logo.color ?? 'var(--atlas-v5-ink-2)',
-            }}
-          >
-            {hero.logo.text}
-          </div>
-          <div>
-            <div className={styles.detailHeroNom}>{hero.title}</div>
-            {hero.meta != null && <div className={styles.detailHeroMeta}>{hero.meta}</div>}
-          </div>
-          {hero.stats.map((s, i) => (
-            <div key={i} className={styles.detailHeroStat}>
-              <div className={styles.detailHeroStatLab}>{s.lab}</div>
-              <div
-                className={`${styles.detailHeroStatVal}${s.valVariant ? ' ' + styles[s.valVariant] : ''}`}
-                style={s.small ? { fontSize: 14 } : undefined}
-              >
-                {s.val}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    ) : (
-      // Fallback legacy · sin hero
-      <div className={styles.detailHeadLeft}>
-        {title && (
-          <h1 className={styles.detailTitle}>
-            {title}
-            {tipoChip && <span className={styles.tipoChip}>{tipoChip}</span>}
-          </h1>
-        )}
-        {subtitle && <div className={styles.detailSub}>{subtitle}</div>}
-      </div>
-    )}
-
-    {children}
-  </div>
-);
+  );
+};
 
 export default FichaShell;
