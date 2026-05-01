@@ -79,6 +79,7 @@ import {
   Paperclip,
   RefreshCw,
   Inbox,
+  Sparkles,
 } from 'lucide-react';
 
 /**
@@ -167,6 +168,7 @@ export const Icons = {
   Attach: Paperclip,
   Refresh: RefreshCw,
   Inbox,
+  Sparkles,
 } as const;
 
 export type IconName = keyof typeof Icons;
