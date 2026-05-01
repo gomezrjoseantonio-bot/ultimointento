@@ -122,3 +122,18 @@
   text-align: center;
   color: var(--atlas-v5-ink-4);
 }
+
+/* ── Two-cols · Alertas (1.5fr) + Mi Plan (1fr) · § Z.11 · T22.6 ── */
+.twoColsGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .twoColsGrid {
+    grid-template-columns: 1fr;
+  }
+}
