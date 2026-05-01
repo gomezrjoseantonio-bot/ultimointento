@@ -219,38 +219,68 @@ Esta cifra es síntoma claro de housekeeping pendiente · la inmensa mayoría so
 
 ## SECCIÓN 6 · Cobertura mockups → componente real
 
-Mockups en `docs/audit-inputs/` (no `docs/mockups/`).
+> ⚠ **Honestidad sobre el alcance de la migración**
+>
+> En la primera versión de esta sección marqué 9 mockups como "✅ MIGRADO V5"
+> de forma facilona. La realidad — confirmada por las §5 (152 TODOs) y los
+> comentarios "pendiente wizard dedicado", "placeholder", "stub", etc. en el
+> código — es que **la mayoría de las "migraciones" son cáscara V5 visual con
+> follow-ups grandes pendientes**: CRUD a medias, KPIs hardcoded, alertas no
+> conectadas, exportaciones sin implementar, wizards de creación que muestran
+> toast "próximamente". Los hay que dan vergüenza ajena. Esta tabla recalibra
+> esa valoración.
 
-Leyenda · ✅ V5 · 🟡 V3/V4 (necesita actualización) · ❌ NO MIGRADO · ➖ no aplica
+Mockups en `docs/audit-inputs/`.
 
-| Mockup | Componente real | Estado |
-|---|---|---|
-| `atlas-panel.html` | `src/modules/panel/PanelPage.tsx` | **✅ MIGRADO V5** (T22.1-22.8 mayo 1 · sidebar v5 · TopbarV5 · ActivosGrid · PulseAssetCard · AttentionList · YearTimeline · MiPlanCompass) |
-| `atlas-tesoreria-v8.html` | `src/modules/tesoreria/` (TesoreriaPage + tabs) | **✅ MIGRADO V5** (CashflowChart + VistaGeneralTab) |
-| `atlas-inmuebles-v3.html` | `src/modules/inmuebles/` (ListadoPage + parent outlet) | **🟡 MIGRADO PERO V3/V4** · parent outlet OK · subpáginas mixtas · ListadoPage TODO 20.3a follow-up |
-| `atlas-inversiones-v2.html` | `src/modules/inversiones/InversionesGaleria.tsx` (+ `pages/FichaPosicionPage.tsx`, `pages/FichaPlanPensiones.tsx`, `pages/PosicionesCerradasPage.tsx`) | **✅ MIGRADO V5** (T23.1-T23.6.5 cerrado mayo 1-2). Ruta `/inversiones` apunta aquí (App.tsx:90,668). |
-| ↳ legacy no rutado: `src/modules/horizon/inversiones/InversionesPage.tsx` | dead code · sólo sus `components/*` siguen consumidos por `pages/GestionInversiones/GestionInversionesPage.tsx` | candidato a limpieza una vez se migre `GestionInversiones` (no es ruta de usuario) |
-| `atlas-contratos-v4.html` | `src/modules/horizon/inmuebles/contratos/` | **🟡 V3/V4** · `ContractsListaEnhanced.tsx` borrada en T23.6.2 (commit `60c5681`) · página activa requiere revisión v5 |
-| `atlas-mi-plan-v2.html` (+ v3 variants) | `src/modules/mi-plan/` (LandingPage + sub-páginas v3) | **✅ MIGRADO V5** (V5.4-V5.7 stores · escenarios+objetivos+fondos+retos) |
-| `atlas-fiscal.html` | `src/modules/fiscal/` (FiscalPage + CalendarioFiscalPage + CorreccionWizard) | **✅ MIGRADO V5** |
-| `atlas-financiacion-v2.html` | `src/modules/horizon/financiacion/` | **🟡 V3/V4** · ruta `horizon/financiacion` no v5 · `PrestamoDetailDrawer` con TODOs export |
-| `atlas-personal-v3.html` | `src/modules/horizon/personal/` (GestionPersonalPage) | **🟡 V3/V4** · `pages/GestionPersonal/` con 2 TODOs · cluster `claude/fix-gestion-personal-*` (3 ramas pendientes) |
-| `atlas-archivo.html` | `src/modules/archivo/` o equivalente | **🟡 PARCIAL** · módulo existe · v5 no auditado a fondo |
-| `atlas-ajustes-v2.html` | `src/modules/horizon/configuracion/` | **🟡 V3/V4** · `BancosManagement` con TODO ATLAS modal · `PreferenciasDatos` · NotificacionesPage v5 |
-| `atlas-onboarding.html` | `src/modules/onboarding/` | **🟡 PARCIAL** · existe · v5 no auditado a fondo |
-| `atlas-wizard-nuevo-contrato.html` | `src/modules/inmuebles/wizards/NuevoContratoWizard.tsx` | **✅ MIGRADO V5** |
-| `atlas-inmueble-fa32-v2.html` | `src/modules/inmuebles/pages/DetallePage.tsx` (+ FichaTab) | **✅ MIGRADO V5** (T25 fixes mayo 1) |
-| `atlas-correccion.html` | `src/modules/fiscal/pages/CorreccionWizard.tsx` | **✅ MIGRADO** · ya implementado (5 pasos) · contradice nota original "NO migrado · flujo futuro" del enunciado |
-| `atlas-historia-jose-v2.html` | — | **➖ narrativo · no UI** |
-| Variantes Mi Plan v3 (landing/proyección/objetivos/fondos/retos/libertad) | `src/modules/mi-plan/pages/*` | **✅ MIGRADO V5** |
+Leyenda revisada:
+- ✅ **V5 completo** — migrado y funcional end-to-end · sin TODOs críticos.
+- 🟢 **V5 + minor** — migrado funcional · TODOs cosméticos.
+- 🟡 **V5 a medias** — cáscara V5 con follow-ups grandes (CRUD parcial · datos hardcoded · stubs) · usable pero incompleto.
+- 🟠 **V5 fachada** — visualmente migrado pero la mayoría de funcionalidad es placeholder · da vergüenza enseñar.
+- 🔵 **V3/V4** — diseño no migrado · funciona pero look antiguo.
+- ❌ NO migrado.
+- ➖ N/A.
 
-**Resumen §6**
+| Mockup | Componente real | Estado real | Deuda concreta |
+|---|---|---|---|
+| `atlas-panel.html` | `src/modules/panel/PanelPage.tsx` | **🟠 V5 fachada** | 32 TODOs · `añoLibertad`/`metaInmuebles` sin simulador · alertas (deudas/borradores/obligaciones 30d) **NO conectadas** · delta 30d patrimonio sin snapshot histórico · KPIs activos rdto neto/YTD/meses colchón **TODOs explícitos** · MiPlanCompass meta inmuebles hardcoded a null · PulsoDelMes proyección no conectada · YearTimeline sin servicio obligaciones fiscales |
+| `atlas-tesoreria-v8.html` | `src/modules/tesoreria/` | **🟢 V5 + minor** | T20-01 cerrado · proyección Mi Plan integrada · CashflowChart con TODO sub-tarea 20.3c (mejoras incrementales) · resto funcional |
+| `atlas-inmuebles-v3.html` | `src/modules/inmuebles/` (ListadoPage) | **🟡 V5 a medias** | ListadoPage:258 TODO "cálculo real desde gastos" (T20.3a follow-up) · `PortfolioMap.tsx:27` "placeholder visual con pins relativos" → mapa de cartera es **decoración**, no datos reales · subpáginas mixtas |
+| `atlas-inversiones-v2.html` | `src/modules/inversiones/InversionesGaleria.tsx` + ficha pages | **🟡 V5 a medias** | Galería + cinta T23.6.1-2 OK · Wizard v5 12 tipos OK · pero `FichaPosicionPage.tsx:12` **es placeholder** "hasta que T23.6.4 implemente la ficha completa" · `FichaPlanPensiones.tsx:624-628` composición plan pensiones pendiente API gestora · `FichaValoracionSimple.tsx:149` datos composición pendientes. **T23.6 cierre ceremonial pero ficha plan pensiones y posición incompletas** |
+| `atlas-contratos-v4.html` | `src/modules/horizon/inmuebles/contratos/` | **🔵 V3/V4** | `ContractsListaEnhanced.tsx` borrada en T23.6.2 sin reemplazo claro · página activa con look antiguo · varias ramas claude/fix-contract-* abiertas |
+| `atlas-mi-plan-v2.html` (+ variantes v3) | `src/modules/mi-plan/pages/*` | **🟠 V5 fachada** | **Estructura visual existe pero NO se puede crear nada vía UI**: `ObjetivosPage:55` toast "Crear objetivo · pendiente wizard dedicado" · `RetosPage:64` toast "Crear reto · pendiente wizard dedicado" · `FondosPage:42` toast "Crear fondo · pendiente wizard dedicado" · `LandingPage:90` "punto de cruce · pendiente conectar con simulador escenarios" → KPI estrella sin valor · ProyeccionPage existe pero comparativa real-vs-presupuesto en TODO |
+| `atlas-fiscal.html` | `src/modules/fiscal/pages/*` | **🟡 V5 a medias** | DashboardPage + EjerciciosPage + DetalleEjercicio + Borrador + Calendario + Deudas funcionales · pero `DetalleEjercicioPage:344` "Documentos asociados · pendiente integración bandeja Inbox" · BorradorIRPF muestra "pendiente" si no Atlas · GAPs IRPF parcialmente cerrados (#1193) · sin AEAT directa |
+| `atlas-financiacion-v2.html` | `src/modules/horizon/financiacion/` | **🔵 V3/V4** + funcional | Ruta `horizon/financiacion` no es V5 (PageHeader antiguo) · CalendarioPagosSection y blocks funcionan · `PrestamoDetailDrawer:141·146` PDF + Excel export TODO · estructura sólida pero look anterior |
+| `atlas-personal-v3.html` | `src/modules/horizon/personal/` (GestionPersonalPage) | **🔵 V3/V4** + bugs abiertos | `pages/GestionPersonal/` con 2 TODOs · **3 ramas pendientes** `claude/fix-gestion-personal-consolidado-v2`, `claude/fix-gestion-personal-header-net`, `claude/fix-gestion-personal-page-rKNVb` → señal de bugs sin cerrar |
+| `atlas-archivo.html` | `src/modules/archivo/ArchivoPage.tsx` | **🟡 V5 a medias** (no auditado a fondo) | Página existe · sin tests visibles · revisar en navegador |
+| `atlas-ajustes-v2.html` | `src/modules/horizon/configuracion/` + `src/modules/ajustes/` | **🔵 mixto V3/V4 + V5** | `BancosManagement:191` TODO "Replace with ATLAS confirmation modal" (usa window.confirm) · `PreferenciasDatos` antigua · `NotificacionesPage` v5 OK · ruta unificada pendiente |
+| `atlas-onboarding.html` | `src/modules/onboarding/OnboardingPage.tsx` | **🟡 V5 a medias** (no auditado a fondo) | Página existe · revisar flujo end-to-end en navegador |
+| `atlas-wizard-nuevo-contrato.html` | `src/modules/inmuebles/wizards/NuevoContratoWizard.tsx` | **🟢 V5 + minor** | Wizard funcional · varias ramas `claude/fix-contract-*` señalan bugs menores aún sin cerrar |
+| `atlas-inmueble-fa32-v2.html` | `src/modules/inmuebles/pages/DetallePage.tsx` + FichaTab | **🟢 V5 + minor** | T25 fixes recientes (#1217) cerraron valor inmuebles + hero + nav contratos + timeline filas variables · revisar follow-ups específicos |
+| `atlas-correccion.html` | `src/modules/fiscal/pages/CorreccionWizard.tsx` | **🟢 V5 + minor** | 5 pasos implementados · validar end-to-end con caso real · contradice "NO migrado · flujo futuro" del enunciado |
+| `atlas-historia-jose-v2.html` | — | ➖ narrativo · no UI | — |
+| Variantes Mi Plan v3 (landing/proyección/objetivos/fondos/retos/libertad/libertad-v3) | `src/modules/mi-plan/pages/*` | **🟠 V5 fachada** (igual que mi-plan-v2 · ver fila arriba) | Mismo problema · UI sin CRUD · KPI cruce pendiente simulador |
+| Topbar v5 (transversal · todos los mockups V5 lo usan) | `src/design-system/v5/TopbarV5.tsx` | **🟠 stubs** | 9 TODOs · búsqueda "próximamente" · panel notificaciones "próximamente" · centro ayuda "próximamente" · badge count hardcoded a 12 · stubs visibles al usuario |
 
-- **9 MIGRADOS V5** (panel · tesorería · inversiones · mi-plan · fiscal · wizard contrato · ficha inmueble · corrección · todas las variantes mi-plan v3).
-- **5 MIGRADOS V3/V4 · necesitan refresh** (inmuebles parent · contratos v4 · financiación v2 · personal v3 · ajustes v2).
-- **2 PARCIAL/no auditado** (archivo · onboarding) · revisar in situ.
-- **2 N/A** (corrección — ya migrada · historia — narrativo).
-- **0 NO MIGRADOS** (la ruta `/inversiones` está en V5; el `horizon/inversiones/InversionesPage.tsx` es dead code no rutado, no cuenta como mockup pendiente).
+**Resumen §6 — recalibrado y honesto**
+
+- **0 mockups en estado ✅ V5 completo** end-to-end sin deudas críticas.
+- **5 en 🟢 V5 + minor** — funcionalmente OK, follow-ups acotados (tesorería · wizard contrato · ficha inmueble fa32 · corrección · ¿wizard contrato?).
+- **5 en 🟡 V5 a medias** — usable pero incompleto (inmuebles parent · inversiones · fiscal · archivo · onboarding).
+- **3 en 🟠 V5 fachada** — visualmente migrado, funcionalidad muy incompleta · **estos son los que dan vergüenza**: panel · mi-plan · topbar v5 transversal.
+- **3 en 🔵 V3/V4** — funciona pero look antiguo (contratos · financiación · personal).
+- **1 mixto** (ajustes).
+- **0 ❌ NO migrados** estrictamente · pero los 🟠 están más cerca de "fachada" que de "migrado".
+- **2 ➖ N/A** (historia · auditoría).
+
+**Patrón común** · La capa visual V5 está mayormente puesta. Lo que falta sistemáticamente es:
+1. **Wizards de creación** (Mi Plan: objetivos·retos·fondos · contratos: bugs · ¿inversiones detalle?).
+2. **Conexión a servicios reales** (Panel: alertas · proyección · simulador · históricos · KPIs activos).
+3. **CRUD secundario** (presupuesto: view/edit/delete · proyección: PDF export · prestamo: PDF/Excel export).
+4. **Stubs de Topbar v5** que el usuario ve en cada pantalla.
+5. **Integraciones diferidas** (AEAT directo · API gestora plan pensiones · simulador Mi Plan · servicio alertas fiscales · servicio obligaciones).
+
+Decir "13 de 14 mockups MIGRADOS V5" como hice en la primera pasada **es engañoso**. Lo correcto: "13 de 14 mockups con scaffolding V5 puesto · pendientes 5-15 follow-ups por mockup según criticidad".
 
 ---
 
@@ -298,7 +328,12 @@ Ninguna rama reciente apunta directamente a AEAT direct (#8), T18 Revolut (#9), 
 | 1.171 ramas remotas (la mayoría stale) | 🟠 medio · housekeeping |
 | `feature/migration-v5` 141 commits behind main · stale | 🟢 bajo · revisar antes de borrar |
 | 152 TODOs · ~50 son trabajo real (concentrados en Panel + Mi Plan + Inversiones) | 🟠 medio · cierre técnico |
-| 5 mockups V3/V4 sin refresh a V5 (inmuebles parent · contratos · financiación · personal · ajustes) · pendiente revisar a fondo si es percepción mía o real | 🟠 medio |
+| **3 mockups en estado 🟠 "fachada V5"** (panel · mi-plan · topbar transversal) — visualmente migrados, funcionalidad muy incompleta · **estos son los que dan vergüenza ajena** | 🔴 alto |
+| **5 mockups en estado 🟡 "V5 a medias"** (inmuebles · inversiones · fiscal · archivo · onboarding) — follow-ups grandes pendientes por mockup | 🟠 medio |
+| 3 mockups en 🔵 V3/V4 sin migrar diseño (contratos · financiación · personal) | 🟠 medio |
+| Mi Plan: **no se puede crear** objetivos/retos/fondos vía UI (toast "pendiente wizard dedicado" en las 3 páginas) | 🔴 alto |
+| Topbar V5 stubs (búsqueda · notificaciones · ayuda) visibles al usuario en TODAS las páginas V5 | 🟠 medio · UX rompe la ilusión |
+| Panel: 32 TODOs · alertas no conectadas · simulador Mi Plan no enchufado · año libertad sin valor real | 🔴 alto · KPI estrella no funciona |
 | AEAT direct (#8) · T18 Revolut (#9) · T8 (#10) · T10 (#11) | 🔴 alto · 100% pendiente |
 
 **Próximo paso recomendado** · regenerar `HANDOFF-V8-atlas.md` con el estado actual + plan T8 (desbloqueado) + housekeeping ramas/PRs + refresh mockups V3/V4 → V5.
