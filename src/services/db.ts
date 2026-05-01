@@ -2224,7 +2224,7 @@ interface AtlasHorizonDB {
   ejerciciosFiscalesCoord: EjercicioFiscalCoord; // V3.7: Modelo fiscal coordinador (4 regímenes)
   vinculosAccesorio: VinculoAccesorio; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
-  compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01)
+  compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
   viviendaHabitual: ViviendaHabitual;           // V5.3: ficha vivienda habitual del hogar · genera derivados (sección 6)
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
   escenarios: Escenario;     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)

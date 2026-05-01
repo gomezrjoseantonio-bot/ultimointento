@@ -257,20 +257,29 @@ Los dominios agrupan los 39 stores activos. El listado alfabético completo est�
 #### compromisosRecurrentes
 **Propósito:** Plantillas de gastos recurrentes que generan eventos de tesorería; unifica ámbito inmueble/personal mediante ambito. Absorbió opexRules y patronGastosPersonales.
 
-**Estado:** ✅ USO CONFIRMADO · vacío válido en snapshot
+**Estado:** ✅ USO CONFIRMADO · ACTIVO con bootstrap T9 (era "vacío válido" hasta cierre T9 en 2026-05).
 
 **Escritores principales:**
-- compromisosRecurrentesService
+- compromisosRecurrentesService (CRUD canónico)
+- compromisoCreationService (T9.2 · escribe candidatos aprobados desde UI · idempotente)
 - migraciones V5.3/V5.4
 - propertySaleService
 
 **Lectores principales:**
 - compromisosRecurrentesService
+- compromisoDetectionService (T9.1 · solo lectura · filtro de duplicados al detectar candidatos)
+- movementSuggestionService (vía A · activada cuando el store tiene contenido · T9 lo provee)
 - propertyExpenses
 - opexService
 - operacionFiscalService
 
-**Datos clave en producción:** 0 registros; puede depender de migraciones/uso posterior.
+**Fuentes de creación de registros:**
+- ✅ Detección desde histórico vía `/personal/gastos/detectar-compromisos` (T9.3 productivo) → `compromisoCreationService.createCompromisosFromCandidatos`
+- ✅ Inspección DEV vía `/dev/compromiso-detection` (T9.1 · solo visualiza, no escribe)
+- 🔄 TODO post-T9 · creación manual via formulario (T9.5 candidato · spec §8.1 de `T9-cierre.md`)
+- 🔄 TODO post-T9 · edición de compromisos existentes desde UI productiva (T9.6 candidato · §8.2)
+
+**Datos clave en producción:** depende del usuario · 0 al inicio · post-T9 típicamente 5-15 compromisos del hogar tras la primera ejecución de detección (suministros · suscripciones · seguros · cuotas).
 
 ### Operación presente y pasado (4)
 
@@ -900,7 +909,7 @@ movements
 ## §E · Próximas tareas planificadas (post-TAREA 7)
 
 - TAREA 8 · refactor schemas restantes (cache derivada balance, histórico rentas activado, etc.).
-- TAREA 9 · bootstrap `compromisosRecurrentes` desde histórico.
+- TAREA 9 · bootstrap `compromisosRecurrentes` desde histórico. ✅ CERRADA (2026-05) · ver `docs/T9-cierre.md`.
 - TAREA 10 · adaptar consumidores legacy pendientes.
 - TAREA 11 · UI flujo wipe + reimport.
 - TAREA 12 · mapeo component→data sobre arquitectura limpia.
