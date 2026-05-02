@@ -12,6 +12,7 @@ import type { PersonalOutletContext } from '../PersonalContext';
 import {
   computeAutonomoIngresoAnualEstimado,
   computeAutonomoIngresoEnMes,
+  computeNominaBrutoAnual,
   computeNominaBrutoEnMes,
 } from '../helpers';
 
@@ -105,8 +106,8 @@ const IngresosPage: React.FC = () => {
                         {n.distribucion.tipo} · {n.distribucion.meses} pagas
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <MoneyValue value={n.salarioBrutoAnual} decimals={0} />
+                    <td style={{ ...tdStyle, textAlign: 'right' }} title="Bruto devengado anual real · suma de meses incluyendo paga extra, variable y bonus">
+                      <MoneyValue value={computeNominaBrutoAnual(n)} decimals={0} />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
                       <MoneyValue value={computeNominaBrutoEnMes(n, mesActual)} decimals={0} tone="pos" />

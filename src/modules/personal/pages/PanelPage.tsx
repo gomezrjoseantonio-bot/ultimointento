@@ -62,12 +62,6 @@ const computeIngresoEnMes = (
   return nominaMes + autonomoMes;
 };
 
-const computeGastoMensualEstimado = (compromisos: CompromisoRecurrente[]): number => {
-  return compromisos
-    .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
-    .reduce((sum, c) => sum + computeCompromisoMonthly(c), 0);
-};
-
 const computeGastoPorFamilia = (
   compromisos: CompromisoRecurrente[],
 ): Map<string, number> => {
@@ -127,14 +121,29 @@ const PanelPage: React.FC = () => {
   // Ingreso del mes EN CURSO (spec v1.1 regla 4 · calendario REAL · no plano).
   // Paga extra entera en junio/diciembre · variable/bonus en su mes pagadero.
   const mesActual = new Date().getMonth() + 1;
-  const ingresosMes = useMemo(
-    () => computeIngresoEnMes(nominas, autonomos, mesActual),
-    [nominas, autonomos, mesActual],
+  // Distribución real de ingresos por mes (12 entradas · índice 0=enero..11=diciembre).
+  // Se usa tanto para el KPI del mes en curso como para el chart "Ingresos vs gastos · 12 meses",
+  // evitando que un pico (paga extra · variable) infle todos los demás meses.
+  const ingresosPorMes = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        computeIngresoEnMes(nominas, autonomos, i + 1),
+      ),
+    [nominas, autonomos],
   );
-  const gastosMes = useMemo(
-    () => computeGastoMensualEstimado(compromisos),
+  const ingresosMes = ingresosPorMes[mesActual - 1];
+  // Distribución real de gastos por mes · usa el importe real del compromiso
+  // en cada mes (estacionalidad · pagos puntuales) en lugar del promedio /12.
+  const gastosPorMes = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        compromisos
+          .filter((c) => c.estado === 'activo' && c.ambito === 'personal')
+          .reduce((sum, c) => sum + computeCompromisoImporteEnMes(c, i), 0),
+      ),
     [compromisos],
   );
+  const gastosMes = gastosPorMes[mesActual - 1];
   const ahorroMes = ingresosMes - gastosMes;
   const tasaAhorroPct = ingresosMes > 0 ? (ahorroMes / ingresosMes) * 100 : 0;
 
@@ -228,10 +237,12 @@ const PanelPage: React.FC = () => {
           <div className={styles.cardBody}>
             <div className={styles.barchart}>
               {MONTH_LABELS.map((m, i) => {
-                const total = ingresosMes;
+                // Ingresos y gastos reales del mes i (regla 4 v1.1 · no prorratear).
+                const ingresoDelMes = ingresosPorMes[i];
+                const gastoDelMes = gastosPorMes[i];
                 const variation = 0.85 + ((i * 13) % 25) / 100;
-                const stackHeightPct = total > 0 ? Math.min(95, 60 * variation + 25) : 0;
-                const gastoPct = total > 0 ? (gastosMes / total) * stackHeightPct : 0;
+                const stackHeightPct = ingresoDelMes > 0 ? Math.min(95, 60 * variation + 25) : 0;
+                const gastoPct = ingresoDelMes > 0 ? (gastoDelMes / ingresoDelMes) * stackHeightPct : 0;
                 const ahorroPct = stackHeightPct - gastoPct;
                 const isCurrent = i === new Date().getMonth();
                 return (
