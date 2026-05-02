@@ -8,6 +8,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { showToastV5 } from '../../../design-system/v5';
+import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { initDB } from '../../../services/db';
 import { createObjetivo } from '../../../services/objetivosService';
 import { getSaldoActualFondo } from '../../../services/fondosService';
@@ -53,6 +54,9 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
+  // Patrón canon del repo · `useFocusTrap` confina Tab dentro del modal y
+  // dispara `modal-escape` al pulsar ESC (ver src/hooks/useFocusTrap.ts).
+  const overlayRef = useFocusTrap(isOpen);
 
   // Reset al abrir y bloquear scroll del body padre.
   useEffect(() => {
@@ -67,15 +71,15 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
     };
   }, [isOpen]);
 
-  // Cerrar con ESC.
+  // Escuchar el evento `modal-escape` que dispara useFocusTrap al pulsar ESC.
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
+    const node = overlayRef.current;
+    if (!node) return;
+    const handle = (): void => onClose();
+    node.addEventListener('modal-escape', handle);
+    return () => node.removeEventListener('modal-escape', handle);
+  }, [isOpen, onClose, overlayRef]);
 
   // Cargar datos auxiliares.
   useEffect(() => {
@@ -319,6 +323,7 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
 
   return (
     <div
+      ref={overlayRef}
       className={styles.overlay}
       role="dialog"
       aria-modal="true"

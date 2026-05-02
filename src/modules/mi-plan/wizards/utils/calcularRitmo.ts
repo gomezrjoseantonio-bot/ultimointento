@@ -15,12 +15,24 @@ export interface RitmoResult {
   mensaje: string;
 }
 
-const MES_MS = 1000 * 60 * 60 * 24 * 30.4375;
-
+// Diferencia en meses por calendario (no por ms / mes-medio) para evitar
+// que plazos válidos del mes siguiente colapsen a 0 (ej. 31/05 → 01/06).
+// Cuenta meses completos · si la fecha destino aún no ha llegado al mismo
+// "día del mes" que hoy, cuenta como mes incompleto pero no se descuenta.
 export function mesesEntre(desde: Date, hasta: Date): number {
   if (!Number.isFinite(desde.getTime()) || !Number.isFinite(hasta.getTime())) return 0;
-  const diff = hasta.getTime() - desde.getTime();
-  return Math.max(0, Math.round(diff / MES_MS));
+  if (hasta.getTime() <= desde.getTime()) return 0;
+  const yearsDiff = hasta.getFullYear() - desde.getFullYear();
+  const monthsDiff = hasta.getMonth() - desde.getMonth();
+  const totalMonths = yearsDiff * 12 + monthsDiff;
+  // Si el día del mes destino está antes del día actual, restamos un mes
+  // completo · pero como queremos que cualquier fecha futura del próximo mes
+  // calendario cuente como ≥ 1, garantizamos mínimo 1 si hay diff de calendario.
+  if (totalMonths <= 0) return 1;
+  if (hasta.getDate() < desde.getDate()) {
+    return Math.max(1, totalMonths);
+  }
+  return totalMonths;
 }
 
 const fmtEur = (n: number): string =>
