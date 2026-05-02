@@ -72,9 +72,9 @@ export function proyectarRentaPasivaLibertad(
       }
     }
 
-    rentaActual *= 1 + subidaRentasMensual;
-    gastosActuales *= 1 + subidaGastosMensual;
-
+    // Registrar el punto del mes actual ANTES de aplicar crecimiento,
+    // para que serie[0] esté alineada con pctCoberturaActual/faltaMensualActual
+    // y el mes de cruce no quede desplazado por el factor de crecimiento.
     const cubierto = rentaActual >= gastosActuales;
     const pctCobertura =
       gastosActuales > 0 ? (rentaActual / gastosActuales) * 100 : 0;
@@ -90,6 +90,10 @@ export function proyectarRentaPasivaLibertad(
     if (cubierto && cruceLibertad === null) {
       cruceLibertad = { anio: yIter, mes: mIter, isoYM };
     }
+
+    // Aplicar crecimiento al final para que afecte al mes siguiente
+    rentaActual *= 1 + subidaRentasMensual;
+    gastosActuales *= 1 + subidaGastosMensual;
 
     mIter++;
     if (mIter > 12) {
@@ -141,8 +145,14 @@ export async function proyectarLibertadDesdeRepo(
 ): Promise<ResultadoLibertad> {
   const escenario = await getEscenarioActivo();
 
-  const config: LibertadConfig =
-    configOverride ?? escenario.libertadConfig ?? STANDARD_LIBERTAD_CONFIG;
+  // Merge defensivo: STANDARD como base, luego config persistida, luego override.
+  // Garantiza que campos requeridos nunca sean undefined aunque IndexedDB entregue
+  // un objeto parcial o corrupto.
+  const config: LibertadConfig = {
+    ...STANDARD_LIBERTAD_CONFIG,
+    ...(escenario.libertadConfig ?? {}),
+    ...(configOverride ?? {}),
+  };
 
   const rentaPasivaActualMensual = await calcularRentaPasivaActual();
 
@@ -201,17 +211,15 @@ async function calcularRentaPasivaActual(): Promise<number> {
   );
 
   const anioActual = new Date().getFullYear();
-  let opexAnualTotal = 0;
-  for (const inmuebleId of inmuebleIdsActivos) {
-    const gastos = await gastosInmuebleService.getByInmuebleYEjercicio(
-      inmuebleId,
-      anioActual,
-    );
-    const gastosConfirmados = gastos.filter(
-      (g) => g.estado === 'confirmado' || g.estado === 'declarado',
-    );
-    opexAnualTotal += gastosConfirmados.reduce((s, g) => s + g.importe, 0);
-  }
+  const gastosArrays = await Promise.all(
+    [...inmuebleIdsActivos].map((id) =>
+      gastosInmuebleService.getByInmuebleYEjercicio(id, anioActual),
+    ),
+  );
+  const opexAnualTotal = gastosArrays
+    .flat()
+    .filter((g) => g.estado === 'confirmado' || g.estado === 'declarado')
+    .reduce((s, g) => s + g.importe, 0);
   const opexMensualEstimado = opexAnualTotal / 12;
 
   const prestamosActivos = prestamos.filter(

@@ -50,7 +50,6 @@ describe('proyectarRentaPasivaLibertad', () => {
 
   describe('Test 3 · cruce con hito de compra', () => {
     it('detecta cruce poco después del mes del hito', () => {
-      const mesHito = new Date('2027-01-01');
       const resultado = proyectarRentaPasivaLibertad(
         datosBase(2000, 4000, [
           {
@@ -69,7 +68,6 @@ describe('proyectarRentaPasivaLibertad', () => {
       // Hito aplica en 2027-01 → renta pasa a 4500 ≥ 4000 → cruce en 2027-01
       expect(cruce.anio).toBe(2027);
       expect(cruce.mes).toBe(1);
-      void mesHito;
     });
   });
 
