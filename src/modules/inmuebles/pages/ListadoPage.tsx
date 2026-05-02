@@ -349,12 +349,6 @@ const ListadoPage: React.FC = () => {
             onClick: () => navigate('/inmuebles/importar'),
           },
           {
-            label: 'Importar valoraciones',
-            variant: 'ghost',
-            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-            onClick: () => navigate('/inmuebles/importar-valoraciones'),
-          },
-          {
             label: 'Nuevo inmueble',
             variant: 'gold',
             icon: <Icons.Plus size={14} strokeWidth={2} />,
@@ -686,6 +680,14 @@ const ListadoPage: React.FC = () => {
                 <MoneyValue value={totalValor} decimals={0} />
               </span>
             </div>
+            <button
+              type="button"
+              className={styles.summaryAction}
+              onClick={() => navigate('/inmuebles/importar-valoraciones')}
+            >
+              <Icons.Upload size={12} strokeWidth={1.8} />
+              Importar valoraciones
+            </button>
           </div>
         </aside>
       </div>
