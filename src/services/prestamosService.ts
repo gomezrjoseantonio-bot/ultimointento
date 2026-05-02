@@ -691,14 +691,20 @@ export class PrestamosService {
       }
     }
 
-    // Save plan only if flags changed, but always recalculate cache so that
-    // data created before this fix (where flags were set but cache was not
-    // updated) gets corrected on first load.
+    const cache = derivarCachePrestamo(plan, prestamo.principalInicial);
+    const cacheInSync =
+      prestamo.cuotasPagadas === cache.cuotasPagadas &&
+      prestamo.principalVivo === cache.principalVivo &&
+      prestamo.fechaUltimaCuotaPagada === cache.fechaUltimaCuotaPagada;
+
+    // Skip all writes when neither flags nor cached fields need updating.
+    // This prevents FinanciacionPage.load() from bumping updatedAt on every visit.
+    if (!changed && cacheInSync) return prestamo;
+
     if (changed) {
       await this.savePaymentPlan(prestamoId, plan);
     }
-
-    return this.updatePrestamo(prestamoId, derivarCachePrestamo(plan, prestamo.principalInicial));
+    return this.updatePrestamo(prestamoId, cache);
   }
 
   /**
