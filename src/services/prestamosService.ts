@@ -179,6 +179,32 @@ export function migratePrestamo(legacy: Prestamo): Prestamo {
   return { ...legacy, destinos, garantias, ambito };
 }
 
+// ── derivarCachePrestamo ──────────────────────────────────────────────────
+// Deriva los campos de caché del préstamo (cuotasPagadas, principalVivo,
+// fechaUltimaCuotaPagada) a partir del plan de pagos. Función pura sin
+// efectos secundarios — adecuada para tests unitarios.
+
+export function derivarCachePrestamo(
+  plan: PlanPagos,
+  principalInicial: number,
+): Pick<Prestamo, 'cuotasPagadas' | 'principalVivo' | 'fechaUltimaCuotaPagada'> {
+  const pagados = plan.periodos.filter((p) => p.pagado);
+  let ultimoPagadoContiguo: PlanPagos['periodos'][number] | null = null;
+
+  for (const periodo of plan.periodos) {
+    if (!periodo.pagado) break;
+    ultimoPagadoContiguo = periodo;
+  }
+
+  return {
+    cuotasPagadas: pagados.length,
+    principalVivo: ultimoPagadoContiguo
+      ? ultimoPagadoContiguo.principalFinal
+      : principalInicial,
+    fechaUltimaCuotaPagada: ultimoPagadoContiguo?.fechaCargo,
+  };
+}
+
 export class PrestamosService {
   private planesGenerados: Map<string, PlanPagos> = new Map();
   private prestamosCache: Prestamo[] | null = null;
@@ -665,20 +691,14 @@ export class PrestamosService {
       }
     }
 
-    if (!changed) return prestamo;
+    // Save plan only if flags changed, but always recalculate cache so that
+    // data created before this fix (where flags were set but cache was not
+    // updated) gets corrected on first load.
+    if (changed) {
+      await this.savePaymentPlan(prestamoId, plan);
+    }
 
-    const pagados = plan.periodos.filter(p => p.pagado);
-    const ultimoPagado = pagados.length > 0 ? pagados[pagados.length - 1] : null;
-    const nuevoPrincipalVivo = ultimoPagado ? ultimoPagado.principalFinal : prestamo.principalVivo;
-
-    const updates: Partial<Prestamo> = {
-      cuotasPagadas: pagados.length,
-      principalVivo: nuevoPrincipalVivo,
-      fechaUltimaCuotaPagada: ultimoPagado?.fechaCargo,
-    };
-
-    await this.savePaymentPlan(prestamoId, plan);
-    return this.updatePrestamo(prestamoId, updates);
+    return this.updatePrestamo(prestamoId, derivarCachePrestamo(plan, prestamo.principalInicial));
   }
 
   /**
@@ -702,18 +722,8 @@ export class PrestamosService {
     if (opciones.fechaPagoReal !== undefined) periodo.fechaPagoReal = opciones.fechaPagoReal;
     if (opciones.movimientoTesoreriaId !== undefined) periodo.movimientoTesoreriaId = opciones.movimientoTesoreriaId;
 
-    const pagados = plan.periodos.filter(p => p.pagado);
-    const ultimoPagado = pagados.length > 0 ? pagados[pagados.length - 1] : null;
-    const nuevoPrincipalVivo = ultimoPagado ? ultimoPagado.principalFinal : prestamo.principalInicial;
-
-    const updates: Partial<Prestamo> = {
-      cuotasPagadas: pagados.length,
-      principalVivo: nuevoPrincipalVivo,
-      fechaUltimaCuotaPagada: ultimoPagado?.fechaCargo,
-    };
-
     await this.savePaymentPlan(prestamoId, plan);
-    return this.updatePrestamo(prestamoId, updates);
+    return this.updatePrestamo(prestamoId, derivarCachePrestamo(plan, prestamo.principalInicial));
   }
 }
 

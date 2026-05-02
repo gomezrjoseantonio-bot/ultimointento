@@ -53,9 +53,15 @@ const FinanciacionPage: React.FC = () => {
     try {
       setLoading(true);
       const list = await prestamosService.getAllPrestamos();
-      setPrestamos(list);
+      // Sync cached fields (cuotasPagadas / principalVivo) for data created
+      // before the autoMarcarCuotasPagadas cache-recalc fix.
+      const synced = await Promise.all(
+        list.map((p) => prestamosService.autoMarcarCuotasPagadas(p.id).catch(() => null)),
+      );
+      const updatedList = synced.map((s, i) => s ?? list[i]);
+      setPrestamos(updatedList);
       const planEntries = await Promise.all(
-        list.map(async (p) => {
+        updatedList.map(async (p) => {
           try {
             const plan = await prestamosService.getPaymentPlan(p.id);
             return [p.id, plan] as const;

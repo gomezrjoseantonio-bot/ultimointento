@@ -179,7 +179,7 @@ El cache (`prestamo.cuotasPagadas` · `prestamo.principalVivo`) se actualiza en 
 - `marcarCuotaManual` recalcula correctamente
 - Conciliación que termina llamando `marcarCuotaManual` recalcula correctamente
 
-Bug detectado · `autoMarcarCuotasPagadas` (`src/services/prestamosService.ts:649`) tiene `if (!changed) return` que salta la actualización del cache si todos los flags ya estaban en `true` antes de la llamada (caso típico tras `createPrestamo`). **Pendiente fix en T28.1.**
+Fix aplicado en T28.1 · `autoMarcarCuotasPagadas` ahora recalcula el cache **siempre** · incluso cuando no hay flags que cambiar. La función pura `derivarCachePrestamo(plan, principalInicial)` centraliza el cálculo. `FinanciacionPage.load()` invoca `autoMarcarCuotasPagadas` para todos los préstamos al cargar · reparando datos creados antes del fix.
 
 ### 5.4 · Si listado o panel muestra cifra rara
 
@@ -240,7 +240,7 @@ Lista cerrada. Si una propuesta cae en cualquiera · se rechaza sin discusión.
 | Resucitar `historicalTreasuryService` para historial de cuotas | Eliminado intencionalmente · es vista derivada del plan |
 | Imputar automáticamente intereses a `gastosInmueble` al alta | §6.3 · feature nueva separada · no automático hoy |
 | Modificar plan de un año declarado fiscalmente sin pasar por `CorreccionWizard` | Año declarado es verdad consumida · cambia solo vía paralela formal |
-| Asumir que `principalVivo` cacheado es correcto en una vista nueva sin verificar que viene de la función pura | Bug T28.1 actual · no replicar el patrón |
+| Asumir que `principalVivo` cacheado es correcto en una vista nueva sin verificar que viene de la función pura | Bug corregido en T28.1 · no replicar el patrón |
 | Generar movements desde el plan al ejecutar `marcarCuotaManual` o conciliación | El movement debe llegar del banco · no inventarse |
 
 ---
@@ -269,14 +269,14 @@ Inventario de problemas detectados en auditoría 2026-05-02 · cada uno asociado
 
 | Problema | Severidad | Sub-tarea propuesta |
 |---|---|---|
-| `autoMarcarCuotasPagadas` retorna early sin actualizar cache cuando flags ya estaban en true | Alta · listado y Panel muestran 0 amortizado | T28.1 · bugfix · 30min-1h |
+| `autoMarcarCuotasPagadas` retorna early sin actualizar cache cuando flags ya estaban en true | ✅ Resuelto en T28.1 | `derivarCachePrestamo()` centraliza cálculo · `autoMarcarCuotasPagadas` recalcula siempre · `FinanciacionPage.load()` sincroniza al cargar |
 | Componente `CuadroAmortizacion.tsx` con cálculo francés inline simplificado | Media · puede mostrar números inconsistentes | T28.4 · convertir a presentación pura · 1h |
 | Hook `useAutoMarcarCuotas` existe pero no se usa en ningún componente | Baja · zombie | T28.4 · eliminar o cablear · decisión Jose |
 | Tipo legacy `CuotaPrestamo` en `src/types/loans.ts` no usado | Baja · zombie | T10 limpieza |
 | Tab "Movimientos" en detalle préstamo · stub | Media · feature anunciada no entregada | T28.5 separada |
 | Tab "Documentos" en detalle préstamo · stub | Media · feature anunciada no entregada | T28.5 separada |
 | `LoanSettlementModal.tsx` existe pero conexión incompleta · liquidación parcial/total | Media · feature parcial | T28.6 separada |
-| Panel V5 lee `principalVivo` cacheado directamente · uno de los 32 TODOs del Panel | Alta · se arregla con T28.1 al actualizar el cache · pero el Panel debería leer función pura | Cubierto por T28.1 si el bugfix incluye cablear `FinanciacionPage.load()` para datos pre-fix |
+| Panel V5 lee `principalVivo` cacheado directamente · uno de los 32 TODOs del Panel | Alta · resuelto por T28.1 (cache siempre sincronizado) | El Panel debería leer función pura a largo plazo · T28.4 |
 | Comisiones (apertura · mantenimiento) en modelo pero no imputadas como deducibles | Baja · feature fiscal pendiente | T28.7 separada · decisión Jose |
 | Inconsistencia · 2 lógicas de cálculo francés (servicio + componente legacy) | Media · cubierta por T28.4 |  |
 
