@@ -85,6 +85,59 @@ async function validateObjetivoInput(
   }
 }
 
+// ── Vinculación bidireccional objetivo ↔ fondo (T27.3) ────────────────────────
+//
+// Si `objetivoId` apunta a `fondoId` nuevo:
+//   1. Si el fondo ya estaba vinculado a OTRO objetivo · ese objetivo pierde su `fondoId`
+//   2. El fondo escribe `objetivoVinculadoId = objetivoId`
+//
+// Implementado con db.put directo · sin recursión a updateFondo/updateObjetivo.
+async function _sincronizarVinculacionFondo(
+  objetivoId: string,
+  fondoId: string,
+): Promise<void> {
+  const db = await initDB();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondo = (await db.get('fondos_ahorro', fondoId)) as any;
+  if (!fondo) return;
+
+  // 1. Si el fondo ya estaba vinculado a otro objetivo distinto · ese objetivo pierde su fondoId
+  const objetivoIdActual = fondo.objetivoVinculadoId as string | undefined;
+  if (objetivoIdActual && objetivoIdActual !== objetivoId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const objetivoAnterior = (await db.get('objetivos', objetivoIdActual)) as any;
+    if (objetivoAnterior) {
+      const { fondoId: _omit, ...rest } = objetivoAnterior;
+      void _omit;
+      await db.put('objetivos', {
+        ...rest,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // 2. El fondo apunta al nuevo objetivo
+  await db.put('fondos_ahorro', {
+    ...fondo,
+    objetivoVinculadoId: objetivoId,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+// Limpia la vinculación inversa cuando un objetivo se desvincula del fondo.
+async function _limpiarVinculacionFondo(fondoId: string): Promise<void> {
+  const db = await initDB();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondo = (await db.get('fondos_ahorro', fondoId)) as any;
+  if (!fondo) return;
+  const { objetivoVinculadoId: _omit, ...rest } = fondo;
+  void _omit;
+  await db.put('fondos_ahorro', {
+    ...rest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 // ── createObjetivo ────────────────────────────────────────────────────────────
 
 export async function createObjetivo(
@@ -100,6 +153,15 @@ export async function createObjetivo(
     updatedAt: now,
   };
   await db.put('objetivos', objetivo);
+
+  // V67 (T27.3) · sincronización inversa · si el objetivo apunta a un fondo ·
+  // ese fondo recibe `objetivoVinculadoId = nuevoObjetivo.id`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondoId = (objetivo as any).fondoId as string | undefined;
+  if (fondoId) {
+    await _sincronizarVinculacionFondo(objetivo.id, fondoId);
+  }
+
   return objetivo;
 }
 
@@ -146,6 +208,21 @@ export async function updateObjetivo(
     updatedAt: new Date().toISOString(),
   } as Objetivo;
   await db.put('objetivos', updated);
+
+  // V67 (T27.3) · sincronizar fondo cuando cambia el fondoId del objetivo.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondoIdAnterior = (current as any).fondoId as string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondoIdNuevo = (updated as any).fondoId as string | undefined;
+  if (fondoIdAnterior !== fondoIdNuevo) {
+    if (fondoIdAnterior) {
+      await _limpiarVinculacionFondo(fondoIdAnterior);
+    }
+    if (fondoIdNuevo) {
+      await _sincronizarVinculacionFondo(id, fondoIdNuevo);
+    }
+  }
+
   return updated;
 }
 
@@ -164,6 +241,12 @@ export async function deleteObjetivo(id: string): Promise<void> {
   }
   if (current.estado !== 'archivado') {
     throw new Error(`Solo se pueden eliminar objetivos archivados. Estado actual: '${current.estado}'`);
+  }
+  // V67 (T27.3) · si el objetivo tenía fondo · ese fondo pierde su vinculación inversa
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondoId = (current as any).fondoId as string | undefined;
+  if (fondoId) {
+    await _limpiarVinculacionFondo(fondoId);
   }
   const db = await initDB();
   await db.delete('objetivos', id);

@@ -1,44 +1,59 @@
 import React from 'react';
 import { Icons } from '../../../../design-system/v5';
-import styles from '../WizardNuevoObjetivo.module.css';
 import type { StepKey } from '../types';
 
-interface StepDef {
+// T27.3 · parametrizado para reuso entre wizard objetivo y wizard fondo.
+// El consumer pasa su CSS module y la lista de steps.
+//
+// `styles` debe exponer · head · titleWrap · titleIcon · title · sub · steps
+// stepInd · active · done · stepNum · stepSep · close
+
+export interface StepDef {
   key: StepKey;
   label: string;
 }
 
-const STEPS: StepDef[] = [
-  { key: 1, label: 'Tipo' },
-  { key: 2, label: 'Meta' },
-  { key: 3, label: 'Plazo' },
-  { key: 4, label: 'Vínculos' },
-  { key: 5, label: 'Resumen' },
-];
+type StylesShape = Readonly<Record<string, string>>;
 
 interface Props {
   current: StepKey;
   /** Step máximo que el usuario ha podido completar (para permitir saltar atrás). */
   maxReached: StepKey;
+  steps: StepDef[];
+  title: string;
+  sub: string;
+  /** Componente del icono Lucide (ej · Icons.Objetivos · Icons.Fondos). */
+  Icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
+  styles: StylesShape;
   onGoTo: (step: StepKey) => void;
   onClose: () => void;
 }
 
-const StepperHeader: React.FC<Props> = ({ current, maxReached, onGoTo, onClose }) => {
+const StepperHeader: React.FC<Props> = ({
+  current,
+  maxReached,
+  steps,
+  title,
+  sub,
+  Icon,
+  styles,
+  onGoTo,
+  onClose,
+}) => {
   return (
     <div className={styles.head}>
       <div className={styles.titleWrap}>
         <div className={styles.titleIcon}>
-          <Icons.Objetivos size={16} strokeWidth={2} />
+          <Icon size={16} strokeWidth={2} />
         </div>
         <div>
-          <div className={styles.title}>Nuevo objetivo</div>
-          <div className={styles.sub}>5 pasos · ~2 min</div>
+          <div className={styles.title}>{title}</div>
+          <div className={styles.sub}>{sub}</div>
         </div>
       </div>
 
       <div className={styles.steps} role="navigation" aria-label="Pasos del wizard">
-        {STEPS.map((s, idx) => {
+        {steps.map((s, idx) => {
           const isActive = s.key === current;
           const isDone = s.key < current;
           const isReachable = s.key <= maxReached;
@@ -61,7 +76,7 @@ const StepperHeader: React.FC<Props> = ({ current, maxReached, onGoTo, onClose }
                 <span className={styles.stepNum}>{s.key}</span>
                 <span>{s.label}</span>
               </button>
-              {idx < STEPS.length - 1 && <div className={styles.stepSep} aria-hidden />}
+              {idx < steps.length - 1 && <div className={styles.stepSep} aria-hidden />}
             </React.Fragment>
           );
         })}

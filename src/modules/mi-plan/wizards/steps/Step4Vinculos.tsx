@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icons, showToastV5 } from '../../../../design-system/v5';
+import { Icons } from '../../../../design-system/v5';
 import styles from '../WizardNuevoObjetivo.module.css';
 import type { ObjetivoDraft } from '../types';
 import type { FondoAhorro, FondoTipo } from '../../../../types/miPlan';
@@ -33,9 +33,22 @@ interface Props {
   fondos: FondoAhorro[];
   saldosFondos: Record<string, number>;
   onPatch: (patch: Partial<ObjetivoDraft>) => void;
+  /**
+   * T27.3 (G.2 opción A) · si presente · "Crear fondo nuevo" llama a esta
+   * callback en lugar de mostrar el toast de pendiente. El padre (wizard
+   * objetivo) gestiona la apertura del wizard fondo y la pre-selección al
+   * volver.
+   */
+  onCrearFondoNuevo?: () => void;
 }
 
-const Step4Vinculos: React.FC<Props> = ({ draft, fondos, saldosFondos, onPatch }) => {
+const Step4Vinculos: React.FC<Props> = ({
+  draft,
+  fondos,
+  saldosFondos,
+  onPatch,
+  onCrearFondoNuevo,
+}) => {
   const tipo = draft.tipo;
   const fondoAplicable = tipo === 'acumular' || tipo === 'comprar';
 
@@ -133,9 +146,9 @@ const Step4Vinculos: React.FC<Props> = ({ draft, fondos, saldosFondos, onPatch }
               <button
                 type="button"
                 className={styles.item}
-                onClick={() =>
-                  showToastV5('Crear fondo · pendiente wizard fondo (T27.3)')
-                }
+                onClick={() => {
+                  if (onCrearFondoNuevo) onCrearFondoNuevo();
+                }}
               >
                 <div
                   className={styles.fondoIcon}
@@ -148,7 +161,7 @@ const Step4Vinculos: React.FC<Props> = ({ draft, fondos, saldosFondos, onPatch }
                     Crear fondo nuevo
                   </div>
                   <div className={styles.itemSub}>
-                    primero el fondo · luego asociar este objetivo
+                    se abre el wizard de fondo · al volver lo dejamos vinculado
                   </div>
                 </div>
                 <div />

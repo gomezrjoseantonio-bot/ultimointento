@@ -1,8 +1,14 @@
 // fondosService · CRUD para el store 'fondos_ahorro' (Mi Plan v3)
 // Gestiona los 6 tipos: colchon · compra · reforma · impuestos · capricho · custom
+//
+// V67 (T27.3) · vinculación bidireccional con `objetivos`:
+//   - createFondo con objetivoVinculadoId sincroniza el `objetivo.fondoId`
+//   - updateFondo limpia el fondo anterior si el objetivo cambia
+//   - deleteFondo limpia el `objetivo.fondoId` antes de borrar
+//   - Si el objetivo ya tenía OTRO fondo · ese fondo pierde su vinculación.
 
 import { initDB } from './db';
-import type { FondoAhorro, FondoTipo, CuentaAsignada } from '../types/miPlan';
+import type { FondoAhorro, FondoTipo, CuentaAsignada, Objetivo } from '../types/miPlan';
 
 // ── UUID helper ───────────────────────────────────────────────────────────────
 
@@ -79,6 +85,61 @@ async function validateCuentasAsignadas(
   }
 }
 
+// ── Vinculación bidireccional fondo ↔ objetivo (T27.3) ────────────────────────
+//
+// Si `nuevoFondoId` se vincula a `objetivoId`:
+//   1. Si el objetivo ya tenía otro fondo · ese fondo pierde su `objetivoVinculadoId`
+//   2. El objetivo escribe `fondoId = nuevoFondoId`
+//
+// Internamente sin recursión · usa db directo · NO llama a updateFondo de nuevo.
+async function _sincronizarVinculacionObjetivo(
+  nuevoFondoId: string,
+  objetivoId: string,
+): Promise<void> {
+  const db = await initDB();
+  const objetivo = (await db.get('objetivos', objetivoId)) as Objetivo | undefined;
+  if (!objetivo) return;
+
+  // 1. Si el objetivo ya tenía otro fondo distinto · ese fondo pierde la vinculación
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fondoIdActual = (objetivo as any).fondoId as string | undefined;
+  if (fondoIdActual && fondoIdActual !== nuevoFondoId) {
+    const fondoAnterior = (await db.get('fondos_ahorro', fondoIdActual)) as
+      | FondoAhorro
+      | undefined;
+    if (fondoAnterior) {
+      const { objetivoVinculadoId: _omit, ...rest } = fondoAnterior;
+      void _omit;
+      await db.put('fondos_ahorro', {
+        ...rest,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // 2. El objetivo apunta al nuevo fondo
+  // (esquivamos validación FK · sabemos que ambos existen)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const objetivoActualizado = {
+    ...objetivo,
+    fondoId: nuevoFondoId,
+    updatedAt: new Date().toISOString(),
+  } as Objetivo;
+  await db.put('objetivos', objetivoActualizado);
+}
+
+// Limpia la vinculación inversa cuando un fondo se desvincula o se elimina.
+async function _limpiarVinculacionObjetivo(objetivoId: string): Promise<void> {
+  const db = await initDB();
+  const objetivo = (await db.get('objetivos', objetivoId)) as Objetivo | undefined;
+  if (!objetivo) return;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const obj: any = { ...objetivo };
+  delete obj.fondoId;
+  obj.updatedAt = new Date().toISOString();
+  await db.put('objetivos', obj as Objetivo);
+}
+
 // ── createFondo ───────────────────────────────────────────────────────────────
 
 export async function createFondo(
@@ -95,7 +156,23 @@ export async function createFondo(
     updatedAt: now,
   };
   await db.put('fondos_ahorro', fondo);
+
+  // V67 · sincronizar vinculación bidireccional
+  if (fondo.objetivoVinculadoId) {
+    await _sincronizarVinculacionObjetivo(fondo.id, fondo.objetivoVinculadoId);
+  }
+
   return fondo;
+}
+
+// ── getFondoByObjetivoId (T27.3) ──────────────────────────────────────────────
+
+export async function getFondoByObjetivoId(
+  objetivoId: string,
+): Promise<FondoAhorro | undefined> {
+  const db = await initDB();
+  const all = (await db.getAll('fondos_ahorro')) as FondoAhorro[];
+  return all.find((f) => f.activo && f.objetivoVinculadoId === objetivoId);
 }
 
 // ── getFondo ──────────────────────────────────────────────────────────────────
@@ -144,13 +221,31 @@ export async function updateFondo(
     updatedAt: new Date().toISOString(),
   };
   await db.put('fondos_ahorro', updated);
+
+  // V67 · sincronizar vinculación bidireccional cuando cambia el objetivo
+  const objetivoAnteriorId = current.objetivoVinculadoId;
+  const objetivoNuevoId = updated.objetivoVinculadoId;
+  if (objetivoAnteriorId !== objetivoNuevoId) {
+    if (objetivoAnteriorId) {
+      await _limpiarVinculacionObjetivo(objetivoAnteriorId);
+    }
+    if (objetivoNuevoId) {
+      await _sincronizarVinculacionObjetivo(id, objetivoNuevoId);
+    }
+  }
+
   return updated;
 }
 
 // ── archiveFondo ──────────────────────────────────────────────────────────────
 
 export async function archiveFondo(id: string): Promise<void> {
-  await updateFondo(id, { activo: false });
+  // V67 · al archivar · limpiar vinculación inversa del objetivo (si la había)
+  const current = await getFondo(id);
+  if (current?.objetivoVinculadoId) {
+    await _limpiarVinculacionObjetivo(current.objetivoVinculadoId);
+  }
+  await updateFondo(id, { activo: false, objetivoVinculadoId: undefined });
 }
 
 // ── reactivateFondo ───────────────────────────────────────────────────────────
