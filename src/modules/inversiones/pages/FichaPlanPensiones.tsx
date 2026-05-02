@@ -294,13 +294,14 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
     const aportadoTitular = aportaciones.reduce((s, a) => s + (a.importeTitular ?? 0), 0);
     const aportadoEmpresa = aportaciones.reduce((s, a) => s + (a.importeEmpresa ?? 0), 0);
     const aportadoConyuge = aportaciones.reduce((s, a) => s + (a.importeConyuge ?? 0), 0);
-    const sumaAportaciones = aportadoTitular + aportadoEmpresa + aportadoConyuge;
     return {
-      aportadoTotal: calcularTotalAportadoPlan(plan ?? { importeInicial: 0 }, sumaAportaciones),
+      aportadoTotal: calcularTotalAportadoPlan(
+        aportadoTitular + aportadoEmpresa + aportadoConyuge,
+      ),
       aportadoTitular,
       aportadoEmpresa,
     };
-  }, [aportaciones, plan]);
+  }, [aportaciones]);
 
   const pgLatente = valorActual - aportadoTotal;
 

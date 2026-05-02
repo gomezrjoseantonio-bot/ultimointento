@@ -186,16 +186,16 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
  * normalizado para la galería unificada.
  *
  * `aportacionesAcumuladas` es la suma de las aportaciones registradas para
- * este plan en `aportacionesPlan` (titular + empresa + cónyuge). El total
- * aportado se calcula con `calcularTotalAportadoPlan`: prevalece la suma de
- * aportaciones; si no hay, se cae a `importeInicial`.
+ * este plan en `aportacionesPlan` (titular + empresa + cónyuge), que es la
+ * única fuente del total aportado canónico. `plan.importeInicial` es el
+ * "valor inicial" del plan (valoración), no una aportación.
  */
 export function planPensionToCartaItem(
   plan: PlanPensiones,
   aportacionesAcumuladas = 0,
 ): CartaItem {
   const valorActual = safeNum(plan.valorActual);
-  const totalAportado = calcularTotalAportadoPlan(plan, safeNum(aportacionesAcumuladas));
+  const totalAportado = calcularTotalAportadoPlan(safeNum(aportacionesAcumuladas));
   const rentEur = valorActual - totalAportado;
   const rentPct = totalAportado > 0 ? (rentEur / totalAportado) * 100 : 0;
 

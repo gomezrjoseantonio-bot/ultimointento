@@ -16,22 +16,17 @@ const genUUID = (): string =>
 /**
  * Fórmula canónica para el total aportado de un plan de pensiones.
  *
- * Regla: si existen registros en `aportacionesPlan` para el plan,
- * la suma de esas aportaciones (titular + empresa + cónyuge) prevalece.
- * Si no hay aportaciones registradas, se cae a `plan.importeInicial`.
+ * `total_aportado = Σ aportacionesPlan` (titular + empresa + cónyuge).
  *
- * Esto evita el doble conteo cuando el importador (Indexa, AEAT, Excel)
- * vuelca aportaciones que ya cubren el importe inicial, y mantiene
- * coherencia entre las 3 vistas (galería, ficha del plan, cerradas).
+ * `plan.importeInicial` es el VALOR inicial del plan (valoración de partida,
+ * etiquetado en el formulario como "Valor inicial"), NO una aportación. Si
+ * el usuario tuvo una aportación inicial debe registrarla como
+ * `AportacionPlan`; aquí no se incluye.
  */
-export function calcularTotalAportadoPlan(
-  plan: Pick<PlanPensiones, 'importeInicial'>,
-  sumaAportaciones: number,
-): number {
-  const suma = Number.isFinite(sumaAportaciones) ? sumaAportaciones : 0;
-  if (suma > 0) return suma;
-  const inicial = Number(plan.importeInicial ?? 0);
-  return Number.isFinite(inicial) ? inicial : 0;
+export function calcularTotalAportadoPlan(sumaAportaciones: number): number {
+  const suma = Number(sumaAportaciones);
+  if (!Number.isFinite(suma) || suma < 0) return 0;
+  return suma;
 }
 
 export interface FiltrosPlanes {

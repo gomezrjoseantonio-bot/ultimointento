@@ -268,7 +268,6 @@ export async function getPosicionesCerradas(): Promise<PosicionCerrada[]> {
     desdePlanesCerrados = planesCerrados
       .map((plan): PosicionCerrada => {
         const aportado = calcularTotalAportadoPlan(
-          plan,
           safeNumber(mapaAportaciones.get(plan.id) ?? 0),
         );
         const vendido = safeNumber(plan.valorActual);
