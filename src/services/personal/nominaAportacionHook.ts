@@ -26,7 +26,9 @@ import type { Nomina } from '../../types/personal';
 // V63 (TAREA 7 sub-tarea 4 · deuda sub-tarea 2): el store legacy `nominas`
 // se eliminó; los registros viven en `ingresos` con `tipo='nomina'`.
 const STORE_INGRESOS = 'ingresos';
-const STORE_TREASURY = 'treasuryEvents';
+// T30.2 · `STORE_TREASURY` constante muerta eliminada (era no-usada y
+// bloqueaba el build una vez el archivo entró en el grafo de imports vía
+// el wire en `treasuryConfirmationService.ts`).
 
 const genUUID = (): string =>
   typeof crypto !== 'undefined' && crypto.randomUUID

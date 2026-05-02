@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Monitor, FileText, Users, AlertCircle, Home, TrendingUp, Heart, PlusCircle, X, Pencil, Trash2 } from 'lucide-react';
+import { Monitor, FileText, Users, AlertCircle, Heart, PlusCircle, Info, X, Pencil, Trash2 } from 'lucide-react';
 import { otrosIngresosService } from '../../../services/otrosIngresosService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
@@ -10,15 +10,16 @@ import type { Account } from '../../../services/db';
 const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
-type TipoIngreso = 'pension' | 'prestacion' | 'alimenticia' | 'indemnizacion' | 'alquiler' | 'dividendo' | 'subsidio' | 'otro';
+// T30.5 · Saneo · `'alquiler'` y `'dividendo'` eliminados como tipos del
+// wizard (violaban Regla A spec v1.1 · alquileres → contracts/rentaMensual ·
+// dividendos → inversiones). Ver banner informativo arriba del selector.
+type TipoIngreso = 'pension' | 'prestacion' | 'alimenticia' | 'indemnizacion' | 'subsidio' | 'otro';
 
 const TIPOS: { tipo: TipoIngreso; label: string; icon: React.ReactNode; existingTipo: OtrosIngresos['tipo']; hasPagador: boolean; hasIRPF: boolean; hasFrecuencia: boolean; }[] = [
   { tipo: 'pension', label: 'Pensión', icon: <Monitor size={16} />, existingTipo: 'otro', hasPagador: true, hasIRPF: true, hasFrecuencia: true },
   { tipo: 'prestacion', label: 'Prestación', icon: <FileText size={16} />, existingTipo: 'prestacion-desempleo', hasPagador: true, hasIRPF: false, hasFrecuencia: true },
   { tipo: 'alimenticia', label: 'Pensión alimenticia', icon: <Users size={16} />, existingTipo: 'pension-alimenticia', hasPagador: false, hasIRPF: false, hasFrecuencia: true },
   { tipo: 'indemnizacion', label: 'Indemnización', icon: <AlertCircle size={16} />, existingTipo: 'otro', hasPagador: true, hasIRPF: true, hasFrecuencia: false },
-  { tipo: 'alquiler', label: 'Alquiler personal', icon: <Home size={16} />, existingTipo: 'otro', hasPagador: false, hasIRPF: false, hasFrecuencia: true },
-  { tipo: 'dividendo', label: 'Dividendo / interés', icon: <TrendingUp size={16} />, existingTipo: 'otro', hasPagador: true, hasIRPF: true, hasFrecuencia: true },
   { tipo: 'subsidio', label: 'Subsidio / beca', icon: <Heart size={16} />, existingTipo: 'subsidio-ayuda', hasPagador: true, hasIRPF: false, hasFrecuencia: true },
   { tipo: 'otro', label: 'Otro ingreso', icon: <PlusCircle size={16} />, existingTipo: 'otro', hasPagador: true, hasIRPF: true, hasFrecuencia: true },
 ];
@@ -198,6 +199,16 @@ const OtrosIngresosWizard: React.FC = () => {
         <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT, marginBottom: 16 }}>
           Añadir ingreso
         </h2>
+        {/* T30.5 · banner informativo · alquileres → Inmuebles · dividendos → Inversiones */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', marginBottom: 16, background: 'var(--grey-100, #EEF1F5)', borderRadius: 10, border: '1px solid var(--grey-200, #DDE3EC)' }}>
+          <span style={{ color: 'var(--navy-900, #042C5E)', flexShrink: 0, marginTop: 1 }}><Info size={14} /></span>
+          <div style={{ fontSize: 12, lineHeight: 1.5, color: 'var(--grey-700, #303A4C)', fontFamily: FONT }}>
+            Si tu ingreso es de <strong>alquiler</strong>, regístralo en{' '}
+            <button type="button" onClick={() => navigate('/inmuebles')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-900, #042C5E)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inmuebles › Contratos</button>.{' '}
+            Si es un <strong>dividendo</strong> o cupón de inversión, regístralo en{' '}
+            <button type="button" onClick={() => navigate('/inversiones')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--navy-900, #042C5E)', textDecoration: 'underline', cursor: 'pointer', fontFamily: FONT, fontSize: 12 }}>Inversiones</button>.
+          </div>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 32 }}>
           {TIPOS.map(t => (
             <button key={t.tipo} onClick={() => openModal(t.tipo)}

@@ -530,6 +530,18 @@ export async function confirmTreasuryEvent(
     console.warn('[treasuryConfirmation] finalizePropertySaleLoanCancellation falló:', err);
   }
 
+  // T30.2 · G-07 · al confirmar un evento de cobro de nómina, generar la
+  // aportación al plan pensiones del trabajador (si la nómina la tiene
+  // configurada). El hook es idempotente. Errores no rompen la confirmación.
+  if (existingEvent.sourceType === 'nomina') {
+    try {
+      const { procesarConfirmacionEvento } = await import('./personal/nominaAportacionHook');
+      await procesarConfirmacionEvento(updatedEvent);
+    } catch (err) {
+      console.warn('[treasuryConfirmation] G-07 hook falló al crear aportación plan', err);
+    }
+  }
+
   return {
     movementId,
     lineaId,
