@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
 import { initDB, type TreasuryEvent } from '../../services/db';
-import type { Nomina, Autonomo } from '../../types/personal';
+import { nominaService } from '../../services/nominaService';
+import { autonomoService } from '../../services/autonomoService';
+import { otrosIngresosService } from '../../services/otrosIngresosService';
+import { personalDataService } from '../../services/personalDataService';
+import type { Nomina, Autonomo, OtrosIngresos } from '../../types/personal';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import type { PersonalOutletContext } from './PersonalContext';
 import styles from './PersonalPage.module.css';
@@ -40,16 +44,21 @@ const PersonalPage: React.FC = () => {
   const location = useLocation();
   const [nominas, setNominas] = useState<Nomina[]>([]);
   const [autonomos, setAutonomos] = useState<Autonomo[]>([]);
-  const [otrosIngresos, setOtrosIngresos] = useState<unknown[]>([]);
+  const [otrosIngresos, setOtrosIngresos] = useState<OtrosIngresos[]>([]);
   const [compromisos, setCompromisos] = useState<CompromisoRecurrente[]>([]);
 
+  // T30.1 · stores legacy `nominas`/`autonomos`/`otrosIngresos` se eliminaron
+  // en V63 · los datos viven en `ingresos` (unión discriminada por `tipo`).
+  // Leemos vía servicios canónicos que filtran por `tipo`.
   const load = useCallback(async () => {
     try {
       const db = await initDB();
+      const personalData = await personalDataService.getPersonalData();
+      const personalDataId = personalData?.id ?? 1;
       const [n, a, o, c] = await Promise.all([
-        db.getAll('nominas') as Promise<Nomina[]>,
-        db.getAll('autonomos') as Promise<Autonomo[]>,
-        db.getAll('otrosIngresos') as Promise<unknown[]>,
+        nominaService.getNominas(personalDataId),
+        autonomoService.getAutonomos(personalDataId),
+        otrosIngresosService.getOtrosIngresos(personalDataId),
         db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
       ]);
       setNominas(n);
