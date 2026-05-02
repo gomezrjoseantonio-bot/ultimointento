@@ -203,10 +203,11 @@ const InversionesGaleria: React.FC = () => {
           {resumenCerradas.count > 0 && (
             <>
               <div className={styles.galleryHd}>
-                <div className={styles.galleryTitle}>Posiciones cerradas</div>
+                <div className={styles.galleryTitle}>Histórico fiscal</div>
                 <div className={styles.galleryCount}>
-                  {resumenCerradas.count} {resumenCerradas.count === 1 ? 'posición' : 'posiciones'}
-                  {resumenCerradas.rangoAnios ? ` · ${resumenCerradas.rangoAnios}` : ''}
+                  {resumenCerradas.rangoAnios
+                    ? `desde XML IRPF · ${resumenCerradas.rangoAnios}`
+                    : 'desde XML IRPF'}
                 </div>
               </div>
               <button
@@ -221,13 +222,15 @@ const InversionesGaleria: React.FC = () => {
                   </div>
                   <div className={styles.cerradasTextos}>
                     <div className={styles.cerradasTitleRow}>
-                      <span className={styles.cerradasTitle}>Lo que ya cerraste</span>
+                      <span className={styles.cerradasTitle}>Posiciones cerradas</span>
                       <span className={styles.cerradasCount}>
                         {resumenCerradas.count}{' '}
-                        {resumenCerradas.count === 1 ? 'posición' : 'posiciones'}
+                        {resumenCerradas.count === 1 ? 'operación' : 'operaciones'}
                       </span>
                     </div>
-                    <div className={styles.cerradasSub}>tu trayectoria como inversor</div>
+                    <div className={styles.cerradasSub}>
+                      importadas desde declaraciones IRPF · ganancia/pérdida patrimonial declarada
+                    </div>
                   </div>
                 </div>
                 <div className={styles.cerradasRight}>
@@ -239,7 +242,11 @@ const InversionesGaleria: React.FC = () => {
                         ? formatCurrency(0)
                         : formatDelta(resumenCerradas.resultadoNeto)}
                     </span>
-                    <span className={styles.cerradasTotalLab}>resultado neto histórico</span>
+                    <span className={styles.cerradasTotalLab}>
+                      {resumenCerradas.resultadoNeto >= 0
+                        ? 'ganancia neta declarada'
+                        : 'pérdida neta declarada'}
+                    </span>
                   </div>
                   <span className={styles.cerradasArrow} aria-hidden>
                     <Icons.ChevronRight size={16} strokeWidth={2} />

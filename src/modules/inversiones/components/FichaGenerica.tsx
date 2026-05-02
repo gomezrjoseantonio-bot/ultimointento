@@ -11,9 +11,8 @@ import {
   formatDelta,
   formatPercent,
   getTipoLabel,
-  getTipoTagLabel,
-  signClass,
 } from '../helpers';
+import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
 import styles from '../pages/FichaPosicion.module.css';
 
@@ -58,11 +57,36 @@ const FichaGenerica: React.FC<Props> = ({
     [posicion.aportaciones],
   );
 
+  const logoCfg = getEntidadLogoConfig(posicion.entidad);
+  const rentVariant: 'pos' | 'neg' | undefined =
+    rentEur > 0 ? 'pos' : rentEur < 0 ? 'neg' : undefined;
+
   return (
     <FichaShell
-      title={posicion.nombre || posicion.entidad || 'Posición'}
-      tipoChip={getTipoTagLabel(posicion.tipo)}
-      subtitle={`${getTipoLabel(posicion.tipo)}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`}
+      hero={{
+        variant: 'plan',
+        badge: getTipoLabel(posicion.tipo),
+        logo: {
+          text: logoCfg.text,
+          bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
+          color: logoCfg.color,
+          noBorder: logoCfg.noBorder,
+        },
+        title: `${posicion.nombre || 'Posición'}${posicion.entidad ? ` · ${posicion.entidad}` : ''}`,
+        meta: posicion.fecha_compra ? (
+          <>abierto <strong>{formatDate(posicion.fecha_compra)}</strong></>
+        ) : null,
+        stats: [
+          { lab: 'Aportado', val: formatCurrency(aportado) },
+          { lab: 'Valor actual', val: formatCurrency(valorActual) },
+          { lab: 'Rentabilidad', val: formatDelta(rentEur), valVariant: rentVariant },
+          {
+            lab: '%',
+            val: aportado > 0 ? formatPercent(rentPct) : '—',
+            valVariant: rentVariant,
+          },
+        ],
+      }}
       onBack={onBack}
       actions={[
         {
@@ -85,35 +109,6 @@ const FichaGenerica: React.FC<Props> = ({
         },
       ]}
     >
-      <div className={styles.detailKpis}>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Aportado</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(aportado)}</div>
-          <div className={styles.detailKpiSub}>
-            {aps.length} {aps.length === 1 ? 'movimiento' : 'movimientos'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Valor actual</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(valorActual)}</div>
-          <div className={styles.detailKpiSub}>al {formatDate(posicion.fecha_valoracion)}</div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Rentabilidad</div>
-          <div className={`${styles.detailKpiVal} ${styles[signClass(rentEur)]}`}>
-            {formatDelta(rentEur)}
-          </div>
-          <div className={styles.detailKpiSub}>
-            {aportado > 0 ? formatPercent(rentPct) : '—'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Tipo</div>
-          <div className={`${styles.detailKpiVal} ${styles.muted}`}>{getTipoLabel(posicion.tipo)}</div>
-          <div className={styles.detailKpiSub}>posición sin ficha dedicada</div>
-        </div>
-      </div>
-
       <div className={styles.detailCard}>
         <div className={styles.detailCardTit}>Movimientos</div>
         {aps.length === 0 ? (

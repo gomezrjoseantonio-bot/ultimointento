@@ -40,9 +40,8 @@ const ENTIDAD_MAP: Array<{ pattern: RegExp; config: LogoConfig }> = [
     pattern: /myinvestor/i,
     config: {
       cls: 'myi',
-      text: 'MYI',
-      bg: '',
-      gradient: 'linear-gradient(135deg, #FF8200, #C8530A)', /* MyInvestor brand orange */
+      text: 'MyI',
+      bg: '#7C3AED', /* MyInvestor · mockup atlas-inversiones-v2.html:115 */
       color: '#FFFFFF',
       noBorder: true,
     },
@@ -112,7 +111,7 @@ const ENTIDAD_MAP: Array<{ pattern: RegExp; config: LogoConfig }> = [
     config: {
       cls: 'bnp',
       text: 'BNP',
-      bg: '#009657', /* BNP Paribas corporate green */
+      bg: '#00915A', /* BNP Paribas · mockup atlas-inversiones-v2.html:119 */
       color: '#FFFFFF',
       noBorder: true,
     },
@@ -122,8 +121,8 @@ const ENTIDAD_MAP: Array<{ pattern: RegExp; config: LogoConfig }> = [
     config: {
       cls: 'smartflip',
       text: 'SF',
-      bg: 'var(--atlas-v5-brand)',
-      color: 'var(--atlas-v5-white)',
+      bg: '#059669', /* SmartFlip · mockup atlas-inversiones-v2.html:116 */
+      color: '#FFFFFF',
       noBorder: true,
     },
   },
@@ -132,8 +131,7 @@ const ENTIDAD_MAP: Array<{ pattern: RegExp; config: LogoConfig }> = [
     config: {
       cls: 'unihouser',
       text: 'UH',
-      bg: '',
-      gradient: 'linear-gradient(135deg, #C59A47, #B88A3E)', /* Unihouser gold */
+      bg: '#B88A3E', /* Unihouser · mockup atlas-inversiones-v2.html:117 */
       color: '#FFFFFF',
       noBorder: true,
     },

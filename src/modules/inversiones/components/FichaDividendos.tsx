@@ -8,13 +8,13 @@ import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
 import {
   construirSerieValor,
   formatCurrency,
+  formatCurrency2,
   formatDelta,
   formatPercent,
   getColorByTipo,
   getTipoLabel,
-  getTipoTagLabel,
-  signClass,
 } from '../helpers';
+import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import FichaShell from './FichaShell';
 import SparklineGigante from './SparklineGigante';
 import styles from '../pages/FichaPosicion.module.css';
@@ -49,7 +49,6 @@ const FichaDividendos: React.FC<Props> = ({
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
   const valorActual = Number(posicion.valor_actual ?? 0);
-  const rentEur = Number(posicion.rentabilidad_euros ?? valorActual - aportado);
 
   const dividendos = useMemo(
     () =>
@@ -117,11 +116,54 @@ const FichaDividendos: React.FC<Props> = ({
       .filter(Boolean);
   }, [dividendos, serie]);
 
+  const logoCfg = getEntidadLogoConfig(posicion.entidad);
+  const heroBadge = `${getTipoLabel(posicion.tipo)} · liquidez disponible · dividendos periódicos`;
+
   return (
     <FichaShell
-      title={posicion.nombre || posicion.entidad || 'Posición'}
-      tipoChip={getTipoTagLabel(posicion.tipo)}
-      subtitle={`${getTipoLabel(posicion.tipo)}${posicion.entidad ? ` · ${posicion.entidad}` : ''}${posicion.ticker ? ` · ${posicion.ticker}` : ''}`}
+      hero={{
+        variant: 'accion',
+        badge: heroBadge,
+        logo: {
+          text: logoCfg.text,
+          bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
+          color: logoCfg.color,
+          noBorder: logoCfg.noBorder,
+        },
+        title: `${posicion.nombre || 'Posición'}${posicion.ticker ? ` · ${posicion.ticker}` : ''}`,
+        meta: (
+          <>
+            {posicion.entidad && (
+              <>broker <strong>{posicion.entidad}</strong></>
+            )}
+            {posicion.isin && (
+              <>
+                {posicion.entidad && <span className={styles.detailHeroSep}>·</span>}
+                ISIN <strong>{posicion.isin}</strong>
+              </>
+            )}
+          </>
+        ),
+        stats: [
+          {
+            lab: 'Nº acciones',
+            val: posicion.numero_participaciones != null
+              ? posicion.numero_participaciones.toLocaleString('es-ES')
+              : '—',
+          },
+          { lab: 'Valor total', val: formatCurrency(valorActual) },
+          {
+            lab: 'Dividendos',
+            val: dividendos.length ? formatDelta(dividendosTotal) : '—',
+            valVariant: dividendos.length ? 'pos' : undefined,
+          },
+          {
+            lab: 'Yield medio',
+            val: yieldMedio == null ? '—' : formatPercent(yieldMedio),
+            valVariant: yieldMedio != null && yieldMedio > 0 ? 'pos' : undefined,
+          },
+        ],
+      }}
       onBack={onBack}
       actions={[
         {
@@ -144,40 +186,49 @@ const FichaDividendos: React.FC<Props> = ({
         },
       ]}
     >
-      <div className={styles.detailKpis}>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Capital invertido</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(aportado)}</div>
-          <div className={styles.detailKpiSub}>
-            {posicion.numero_participaciones != null
-              ? `${posicion.numero_participaciones.toLocaleString('es-ES')} unidades`
-              : '—'}
+
+      {posicion.numero_participaciones && posicion.numero_participaciones > 0 && (() => {
+        const precioImplicito = valorActual / posicion.numero_participaciones;
+        const precioAportado = aportado / posicion.numero_participaciones;
+        const delta = valorActual - aportado;
+        const deltaCls =
+          delta > 0 ? styles.pos : delta < 0 ? styles.neg : '';
+        return (
+          <div className={styles.priceBlock}>
+            <div>
+              <div className={styles.priceLab}>
+                <span className={styles.priceDotLive} />
+                Precio · {posicion.entidad ?? 'cotización'} · estimado
+              </div>
+              <div className={styles.priceVal}>{formatCurrency2(precioImplicito)}</div>
+              <div className={styles.priceDelta}>
+                <span className={`${styles.priceDeltaPill} ${deltaCls}`}>
+                  {formatDelta(delta)}
+                </span>
+                <span className={styles.priceDeltaLabel}>
+                  vs aportado · {formatCurrency2(precioAportado)}
+                </span>
+              </div>
+            </div>
+            <div className={styles.priceRange}>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Acciones</div>
+                <div className={styles.priceRangeVal}>
+                  {posicion.numero_participaciones.toLocaleString('es-ES')}
+                </div>
+              </div>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Aportado</div>
+                <div className={styles.priceRangeVal}>{formatCurrency(aportado)}</div>
+              </div>
+              <div className={styles.priceRangeCell}>
+                <div className={styles.priceRangeLab}>Valor</div>
+                <div className={styles.priceRangeVal}>{formatCurrency(valorActual)}</div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Valor actual</div>
-          <div className={styles.detailKpiVal}>{formatCurrency(valorActual)}</div>
-          <div className={`${styles.detailKpiSub}`}>
-            <span className={styles[signClass(rentEur)]}>{formatDelta(rentEur)}</span>
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Dividendos cobrados</div>
-          <div className={`${styles.detailKpiVal} ${dividendos.length ? styles.pos : styles.muted}`}>
-            {dividendos.length ? formatCurrency(dividendosTotal) : '—'}
-          </div>
-          <div className={styles.detailKpiSub}>
-            {dividendos.length} {dividendos.length === 1 ? 'cobro' : 'cobros'}
-          </div>
-        </div>
-        <div className={styles.detailKpi}>
-          <div className={styles.detailKpiLab}>Yield medio</div>
-          <div className={`${styles.detailKpiVal} ${yieldMedio == null ? styles.muted : ''}`}>
-            {yieldMedio == null ? '—' : formatPercent(yieldMedio)}
-          </div>
-          <div className={styles.detailKpiSub}>anualizado · estimado</div>
-        </div>
-      </div>
+        );
+      })()}
 
       <div className={styles.detailCard}>
         <div className={styles.detailCardTit}>Evolución y dividendos</div>
