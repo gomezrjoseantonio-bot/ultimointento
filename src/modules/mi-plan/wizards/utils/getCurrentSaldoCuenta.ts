@@ -40,7 +40,13 @@ export async function loadSaldosActualesCuentas(): Promise<{
   const saldos = new Map<number, number>();
   const cuentasActivas: Account[] = [];
   for (const acc of accounts) {
-    if (acc.status !== 'ACTIVE') continue;
+    // Patrón canon del repo · acepta tanto el campo nuevo `status: 'ACTIVE'`
+    // como el legacy `activa: true` · solo descarta DELETED. Compatible con
+    // registros previos a la introducción del enum AccountStatus.
+    // (Ver `cuentasService.list` y `accountBalanceService` para el patrón.)
+    if (acc.status === 'DELETED') continue;
+    const isActive = acc.status === 'ACTIVE' || acc.activa !== false;
+    if (!isActive) continue;
     if (acc.id == null) continue;
     cuentasActivas.push(acc);
     const saldo = calculateAccountBalanceAtDate({
