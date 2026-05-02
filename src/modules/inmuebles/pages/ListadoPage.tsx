@@ -680,15 +680,15 @@ const ListadoPage: React.FC = () => {
                 <MoneyValue value={totalValor} decimals={0} />
               </span>
             </div>
-            <button
-              type="button"
-              className={styles.summaryAction}
-              onClick={() => navigate('/inmuebles/importar-valoraciones')}
-            >
-              <Icons.Upload size={12} strokeWidth={1.8} />
-              Importar valoraciones
-            </button>
           </div>
+          <button
+            type="button"
+            className={styles.summaryAction}
+            onClick={() => navigate('/inmuebles/importar-valoraciones')}
+          >
+            <Icons.Upload size={12} strokeWidth={1.8} />
+            Importar valoraciones
+          </button>
         </aside>
       </div>
     </>
