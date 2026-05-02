@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   proyectarLibertadDesdeRepo,
 } from '../services/libertadService';
@@ -22,7 +22,6 @@ export interface UseProyeccionLibertadResult {
   data: ResultadoLibertad | null;
   loading: boolean;
   error: Error | null;
-  refetch: () => Promise<void>;
 }
 
 export function useProyeccionLibertad(
@@ -34,39 +33,55 @@ export function useProyeccionLibertad(
     enabled = true,
   } = options;
 
+  // Primitivos extraídos para deps estables (sin objetos que cambien referencia cada render)
+  const { inflacionAnualPct, subidaAnualRentasPct, subidaAnualGastosVidaPct } = supuestos;
+  const alcance = configOverride?.alcanceRentaPasiva;
+  const reglaCruce = configOverride?.reglaCruce;
+  const horizonte = configOverride?.horizonteAnios;
+
   const [data, setData] = useState<ResultadoLibertad | null>(null);
   const [loading, setLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<Error | null>(null);
 
-  const cargar = useCallback(async () => {
-    if (!enabled) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const resultado = await proyectarLibertadDesdeRepo(supuestos, configOverride);
-      setData(resultado);
-    } catch (err) {
-      const e = err instanceof Error ? err : new Error(String(err));
-      console.error('[useProyeccionLibertad] error', e);
-      setError(e);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    enabled,
-    supuestos.inflacionAnualPct,
-    supuestos.subidaAnualRentasPct,
-    supuestos.subidaAnualGastosVidaPct,
-    configOverride?.alcanceRentaPasiva,
-    configOverride?.reglaCruce,
-    configOverride?.horizonteAnios,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ]);
+  // Refs para acceder a los valores más recientes dentro del efecto sin añadirlos a deps
+  const supuestosRef = useRef(supuestos);
+  supuestosRef.current = supuestos;
+  const configOverrideRef = useRef(configOverride);
+  configOverrideRef.current = configOverride;
 
   useEffect(() => {
-    void cargar();
-  }, [cargar]);
+    if (!enabled) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    proyectarLibertadDesdeRepo(supuestosRef.current, configOverrideRef.current)
+      .then((resultado) => {
+        if (!cancelled) {
+          setData(resultado);
+          setLoading(false);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          const e = err instanceof Error ? err : new Error(String(err));
+          console.error('[useProyeccionLibertad] error', e);
+          setError(e);
+          setData(null);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    enabled,
+    inflacionAnualPct,
+    subidaAnualRentasPct,
+    subidaAnualGastosVidaPct,
+    alcance,
+    reglaCruce,
+    horizonte,
+  ]);
 
-  return { data, loading, error, refetch: cargar };
+  return { data, loading, error };
 }
