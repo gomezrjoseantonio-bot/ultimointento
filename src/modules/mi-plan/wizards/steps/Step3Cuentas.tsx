@@ -345,8 +345,11 @@ const CuentaItem: React.FC<CuentaItemProps> = ({ data, asignacion, onToggle, onS
   // de event delegation con divs anidados. El asignar-row y bloqueada-msg
   // van FUERA del button (HTML inválido tener buttons anidados) · así los
   // botones rápidos `todo`/`50%`/`0` y el input funcionan independientes.
+  // El padding visible vive en el header / rows · NO en el wrapper · así
+  // toda la card es área clicable (incluye el padding · los clicks de
+  // borde funcionan).
   return (
-    <div className={cls} aria-disabled={isDisabled || undefined}>
+    <div className={cls}>
       <button
         type="button"
         className={styles.cuentaItemHeader}

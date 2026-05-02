@@ -1298,7 +1298,11 @@
   background: var(--atlas-v5-card-alt);
   border: 1px solid var(--atlas-v5-line-2);
   border-radius: 9px;
-  padding: 12px 14px;
+  /* Padding 0 en wrapper · vive en cuentaItemHeader / cuentaAsignarRow /
+     cuentaBloqueadaMsg · así el button cubre toda el área clicable visible
+     (incluye los 12/14px del padding · clicks de borde responden). */
+  padding: 0;
+  overflow: hidden;
   transition: all 0.12s;
   display: flex;
   flex-direction: column;
@@ -1327,7 +1331,7 @@
   width: 100%;
   background: none;
   border: none;
-  padding: 0;
+  padding: 12px 14px;
   cursor: pointer;
   text-align: left;
   font-family: inherit;
@@ -1434,12 +1438,14 @@
 }
 
 .cuentaAsignarRow {
+  /* Padding lateral igual al header · top con border y padding · bottom
+     14px para cerrar la card. Border-top va full-width (wrapper sin
+     padding) · estilo divider Material moderno. */
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
+  padding: 12px 14px;
   border-top: 1px solid var(--atlas-v5-line-2);
 }
 .cuentaAsignarLab {
@@ -1509,8 +1515,7 @@
   line-height: 1.4;
 }
 .cuentaBloqueadaMsg {
-  margin-top: 8px;
-  padding-top: 8px;
+  padding: 8px 14px 12px;
   border-top: 1px solid var(--atlas-v5-line-2);
   font-size: 11.5px;
   color: var(--atlas-v5-ink-4);
