@@ -12,6 +12,11 @@ import type { CompromisoRecurrente } from '../types/compromisosRecurrentes';
 import type { ViviendaHabitual } from '../types/viviendaHabitual';
 import type { Escenario, Objetivo, FondoAhorro, Reto } from '../types/miPlan';
 import type {
+  PlanPensiones,
+  AportacionPlan,
+  TraspasoPlanPensiones,
+} from '../types/planesPensiones';
+import type {
   ArrastresEjercicio,
   DeclaracionInmueble,
   DeclaracionIRPF,
@@ -2088,6 +2093,10 @@ interface AtlasHorizonDB {
   ingresos: IngresoPersonal;
   // autonomos: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='autonomo'
   // planesPensionInversion: eliminado en V65 — datos migrados a planesPensiones
+  // ─── Módulo planes de pensiones (V65 · TAREA 13) ────────────────────────
+  planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
+  aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
+  traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'

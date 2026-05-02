@@ -32,7 +32,7 @@ export const planesPensionesService = {
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     };
-    await db.add('planesPensiones' as any, plan as any);
+    await db.add('planesPensiones', plan as any);
     return plan;
   },
 
@@ -41,7 +41,7 @@ export const planesPensionesService = {
     updates: Partial<Omit<PlanPensiones, 'id' | 'fechaCreacion'>>,
   ): Promise<PlanPensiones> {
     const db = await initDB();
-    const existing = await db.get('planesPensiones' as any, id as any);
+    const existing = await db.get('planesPensiones', id as any);
     if (!existing) throw new Error(`Plan ${id} no encontrado`);
     const updated: PlanPensiones = {
       ...(existing as PlanPensiones),
@@ -49,19 +49,19 @@ export const planesPensionesService = {
       id,
       fechaActualizacion: new Date().toISOString(),
     };
-    await db.put('planesPensiones' as any, updated as any);
+    await db.put('planesPensiones', updated as any);
     return updated;
   },
 
   async getPlan(id: string): Promise<PlanPensiones | undefined> {
     const db = await initDB();
-    const result = await db.get('planesPensiones' as any, id as any);
+    const result = await db.get('planesPensiones', id as any);
     return result as PlanPensiones | undefined;
   },
 
   async getAllPlanes(filtros?: FiltrosPlanes): Promise<PlanPensiones[]> {
     const db = await initDB();
-    let planes = (await db.getAll('planesPensiones' as any)) as PlanPensiones[];
+    let planes = (await db.getAll('planesPensiones')) as PlanPensiones[];
     if (filtros?.personalDataId != null) {
       planes = planes.filter((p) => p.personalDataId === filtros.personalDataId);
     }
@@ -79,24 +79,24 @@ export const planesPensionesService = {
 
   async getPlanesPorTipo(tipo: TipoAdministrativo): Promise<PlanPensiones[]> {
     const db = await initDB();
-    const planes = (await db.getAll('planesPensiones' as any)) as PlanPensiones[];
+    const planes = (await db.getAll('planesPensiones')) as PlanPensiones[];
     return planes.filter((p) => p.tipoAdministrativo === tipo);
   },
 
   async eliminarPlan(id: string): Promise<void> {
     const db = await initDB();
     // Cascade: borrar aportaciones
-    const aportaciones = (await db.getAll('aportacionesPlan' as any)) as Array<{ id: string; planId: string }>;
+    const aportaciones = (await db.getAll('aportacionesPlan')) as Array<{ id: string; planId: string }>;
     for (const ap of aportaciones) {
       if (ap.planId === id) {
-        await db.delete('aportacionesPlan' as any, ap.id as any);
+        await db.delete('aportacionesPlan', ap.id as any);
       }
     }
     // Cascade: borrar traspasos
-    const traspasos = (await db.getAll('traspasosPlanPensiones' as any)) as Array<{ id: number; planId: string }>;
+    const traspasos = (await db.getAll('traspasosPlanPensiones')) as Array<{ id: number; planId: string }>;
     for (const t of traspasos) {
       if (t.planId === id) {
-        await db.delete('traspasosPlanPensiones' as any, t.id as any);
+        await db.delete('traspasosPlanPensiones', t.id as any);
       }
     }
     // Cascade: borrar valoraciones (tipo_activo='plan_pensiones', activo_id=UUID)
@@ -106,7 +106,7 @@ export const planesPensionesService = {
         await db.delete('valoraciones_historicas' as any, v.id as any);
       }
     }
-    await db.delete('planesPensiones' as any, id as any);
+    await db.delete('planesPensiones', id as any);
   },
 
   async getValorActualConsolidado(id: string): Promise<number> {
@@ -116,7 +116,7 @@ export const planesPensionesService = {
 
   async getAportacionesAcumuladasTotal(id: string): Promise<{ titular: number; empresa: number; total: number }> {
     const db = await initDB();
-    const aportaciones = (await db.getAll('aportacionesPlan' as any)) as Array<{
+    const aportaciones = (await db.getAll('aportacionesPlan')) as Array<{
       planId: string;
       importeTitular: number;
       importeEmpresa: number;
