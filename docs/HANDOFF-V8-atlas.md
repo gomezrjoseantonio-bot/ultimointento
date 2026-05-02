@@ -2,13 +2,13 @@
 
 > **Fecha de cierre** · 2026-05-02 mañana
 >
-> **Sesión previa** · ver `[HANDOFF-V5-atlas.md](http://HANDOFF-V5-atlas.md)` (V6 y V7 redactadas pero NUNCA commiteadas a repo · drift documental detectado en auditoría 2026-05-02 · regla nueva en §7 lo obliga a partir de ahora)
+> **Sesión previa** · ver [HANDOFF-V5-atlas.md](./HANDOFF-V5-atlas.md) (V6 y V7 redactadas pero NUNCA commiteadas a repo · drift documental detectado en auditoría 2026-05-02 · regla nueva en §7 lo obliga a partir de ahora)
 >
-> **Auditoría base de este handoff** · `docs/[AUDIT-estado-repo-2026-05-02.md](http://AUDIT-estado-repo-2026-05-02.md)`
+> **Auditoría base de este handoff** · [AUDIT-estado-repo-2026-05-02.md](./AUDIT-estado-repo-2026-05-02.md)
 >
 > **Repo** · `gomezrjoseantonio-bot/ultimointento` · rama `main`
 >
-> **Deploy** · `[ultimointentohoy.netlify.app](http://ultimointentohoy.netlify.app)`
+> **Deploy** · [ultimointentohoy.netlify.app](http://ultimointentohoy.netlify.app)
 >
 > **DB_VERSION** · 65 · 40 stores · sin migración pendiente
 >
