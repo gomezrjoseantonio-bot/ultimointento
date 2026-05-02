@@ -11,6 +11,7 @@ import {
   type BudgetProjection,
 } from '../services/budgetProjection';
 import { SHOW_RETOS } from '../featureFlags';
+import { useProyeccionLibertad } from '../../../hooks/useProyeccionLibertad';
 import styles from './LandingPage.module.css';
 
 interface LanCard {
@@ -25,6 +26,14 @@ interface LanCard {
   footPillTone?: 'pos' | 'brand' | 'gold';
 }
 
+/** Formatea un isoYM ('2031-09') como "septiembre 2031" */
+const formatMesAnio = (isoYM: string): string => {
+  const [y, m] = isoYM.split('-').map(Number);
+  return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
+    new Date(y, m - 1, 1),
+  );
+};
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   // T27.2-skip · `retoActivo` se consume solo si `SHOW_RETOS` está activo
@@ -33,6 +42,9 @@ const LandingPage: React.FC = () => {
   const ctx = useOutletContext<MiPlanOutletContext>();
   const { objetivos, fondos } = ctx;
   const retoActivo = SHOW_RETOS ? ctx.retoActivo : null;
+
+  // T27.4.2 · proyección libertad financiera
+  const { data: libertad, loading: libertadLoading } = useProyeccionLibertad();
 
   // Proyección · usa el helper compartido (cierra TODO-T20-01).
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
@@ -91,11 +103,25 @@ const LandingPage: React.FC = () => {
       key: 'libertad',
       title: 'Libertad financiera',
       icon: Icons.Libertad,
-      value: '—',
+      value: libertadLoading ? (
+        <span style={{ fontSize: 22, color: 'var(--atlas-v5-ink-4)' }}>…</span>
+      ) : libertad?.cruceLibertad ? (
+        <span style={{ fontSize: 16, lineHeight: 1.2 }}>
+          {formatMesAnio(libertad.cruceLibertad.isoYM)}
+        </span>
+      ) : (
+        <span style={{ fontSize: 22, color: 'var(--atlas-v5-ink-4)' }}>no se cruza</span>
+      ),
       valueTone: 'gold',
-      sub: 'punto de cruce · pendiente conectar con simulador escenarios',
-      footLab: 'Próxima fecha',
-      footPill: '2040 · simulación',
+      sub: libertadLoading
+        ? 'calculando…'
+        : libertad
+          ? `cubres el ${Math.round(libertad.pctCoberturaActual)}% de tus gastos con renta pasiva`
+          : 'no podemos calcular tu libertad financiera ahora',
+      footLab: 'Tiempo estimado',
+      footPill: libertadLoading
+        ? '…'
+        : libertad?.faltanTexto ?? 'no se cruza',
       footPillTone: 'gold',
     },
     {
