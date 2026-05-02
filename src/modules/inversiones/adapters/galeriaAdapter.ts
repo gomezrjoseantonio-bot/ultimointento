@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { inversionesService } from '../../../services/inversionesService';
 import { planesPensionesService } from '../../../services/planesPensionesService';
+import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { esCerrada } from '../helpers';
 import {
   inversionToCartaItem,
@@ -41,9 +42,10 @@ const PLAN_TIPOS = new Set<string>(['plan_pensiones', 'plan-pensiones', 'plan_em
  * Resultado ordenado por `valor_actual` descendente.
  */
 export async function getAllCartaItems(): Promise<CartaItem[]> {
-  const [posicionesResult, planes] = await Promise.all([
+  const [posicionesResult, planes, mapaAportaciones] = await Promise.all([
     inversionesService.getAllPosiciones(),
     planesPensionesService.getAllPlanes(),
+    aportacionesPlanService.getMapaAportacionesAcumuladas(),
   ]);
 
   const activasInversiones = posicionesResult.activas;
@@ -66,7 +68,9 @@ export async function getAllCartaItems(): Promise<CartaItem[]> {
     })
     .map(inversionToCartaItem);
 
-  const itemsPlanes: CartaItem[] = activasPlanes.map(planPensionToCartaItem);
+  const itemsPlanes: CartaItem[] = activasPlanes.map((plan) =>
+    planPensionToCartaItem(plan, mapaAportaciones.get(plan.id) ?? 0),
+  );
 
   return [...itemsInversiones, ...itemsPlanes].sort(
     (a, b) => b.valor_actual - a.valor_actual,

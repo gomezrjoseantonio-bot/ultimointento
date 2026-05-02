@@ -50,6 +50,20 @@ export const aportacionesPlanService = {
     return { titular, empresa, conyuge, total: titular + empresa + conyuge };
   },
 
+  async getMapaAportacionesAcumuladas(): Promise<Map<string, number>> {
+    const db = await initDB();
+    const all = (await db.getAll('aportacionesPlan')) as AportacionPlan[];
+    const mapa = new Map<string, number>();
+    for (const a of all) {
+      const importe =
+        (a.importeTitular ?? 0) +
+        (a.importeEmpresa ?? 0) +
+        (a.importeConyuge ?? 0);
+      mapa.set(a.planId, (mapa.get(a.planId) ?? 0) + importe);
+    }
+    return mapa;
+  },
+
   async mensualizarAnual(aportacionId: string): Promise<AportacionPlan[]> {
     const db = await initDB();
     const aportacion = (await db.get('aportacionesPlan', aportacionId)) as AportacionPlan | undefined;
