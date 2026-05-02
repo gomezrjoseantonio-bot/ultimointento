@@ -607,6 +607,18 @@
   border: 1px dashed var(--atlas-v5-line);
 }
 
+.leyendaDot.pendiente {
+  background: var(--atlas-v5-gold-wash) !important;
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-gold) !important;
+  border: none !important;
+}
+
+.leyendaDot.futuro {
+  background: var(--atlas-v5-card-alt) !important;
+  border: 1px dashed var(--atlas-v5-line) !important;
+  box-shadow: none !important;
+}
+
 .matrizMesesHeader {
   display: grid;
   grid-template-columns: 60px repeat(12, 1fr);
