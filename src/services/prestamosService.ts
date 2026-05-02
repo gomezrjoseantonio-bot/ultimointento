@@ -189,11 +189,19 @@ export function derivarCachePrestamo(
   principalInicial: number,
 ): Pick<Prestamo, 'cuotasPagadas' | 'principalVivo' | 'fechaUltimaCuotaPagada'> {
   const pagados = plan.periodos.filter((p) => p.pagado);
-  const ultimoPagado = pagados.length > 0 ? pagados[pagados.length - 1] : null;
+  let ultimoPagadoContiguo: PlanPagos['periodos'][number] | null = null;
+
+  for (const periodo of plan.periodos) {
+    if (!periodo.pagado) break;
+    ultimoPagadoContiguo = periodo;
+  }
+
   return {
     cuotasPagadas: pagados.length,
-    principalVivo: ultimoPagado ? ultimoPagado.principalFinal : principalInicial,
-    fechaUltimaCuotaPagada: ultimoPagado?.fechaCargo,
+    principalVivo: ultimoPagadoContiguo
+      ? ultimoPagadoContiguo.principalFinal
+      : principalInicial,
+    fechaUltimaCuotaPagada: ultimoPagadoContiguo?.fechaCargo,
   };
 }
 
