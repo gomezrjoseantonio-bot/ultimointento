@@ -79,7 +79,10 @@ describe('Atlas Navigation Audit · v5', () => {
     expect(subs).toEqual(['Dashboard', 'Listado', 'Snowball', 'Calendario']);
   });
 
-  test('Mi Plan expone sus 6 sub-páginas v5', () => {
+  test('Mi Plan expone sus 5 sub-páginas v5 (Retos postpuesto en T27.2-skip)', () => {
+    // T27.2-skip · "Retos" oculto del menú principal mientras
+    // `SHOW_RETOS` (src/modules/mi-plan/featureFlags) esté en false.
+    // Al revivir · añadir 'Retos' al final del array esperado.
     const miPlan = navigation.find((item) => item.name === 'Mi Plan');
     const subs = miPlan?.subTabs?.map((t) => t.name) ?? [];
     expect(subs).toEqual([
@@ -88,7 +91,6 @@ describe('Atlas Navigation Audit · v5', () => {
       'Libertad financiera',
       'Objetivos',
       'Fondos de ahorro',
-      'Retos',
     ]);
   });
 

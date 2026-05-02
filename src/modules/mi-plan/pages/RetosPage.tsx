@@ -55,13 +55,15 @@ const RetosPage: React.FC = () => {
   const { retos, retoActivo, retosUltimos12 } = useOutletContext<MiPlanOutletContext>();
 
   if (retos.length === 0) {
+    // T27.2-skip · módulo Retos oculto · la página queda inalcanzable desde
+    // UI (la ruta redirige a Objetivos · ver App.tsx) · si alguien fuerza
+    // entrada vía dev tools mostramos el EmptyState SIN CTA · evita el
+    // toast "pendiente wizard" que dejaba de tener sentido.
     return (
       <EmptyState
         icon={<Icons.Retos size={20} />}
         title="Sin retos registrados"
         sub="Define un reto mensual · ahorrar X € · ejecutar Y · disciplina · revisión. Te ayuda a mantener el rumbo."
-        ctaLabel="+ Nuevo reto"
-        onCtaClick={() => showToastV5('Crear reto · pendiente wizard dedicado')}
       />
     );
   }

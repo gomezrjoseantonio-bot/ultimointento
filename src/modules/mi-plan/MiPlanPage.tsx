@@ -9,6 +9,7 @@ import type {
   Reto,
 } from '../../types/miPlan';
 import type { MiPlanOutletContext } from './MiPlanContext';
+import { SHOW_RETOS } from './featureFlags';
 import styles from './MiPlanPage.module.css';
 
 interface TabItem {
@@ -18,7 +19,10 @@ interface TabItem {
   icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
 }
 
-const tabs: TabItem[] = [
+// T27.2-skip · El flag `SHOW_RETOS` (ver `./featureFlags`) controla TODOS
+// los puntos de entrada al submódulo Retos · pestaña · ruta · card landing
+// · sub-tab navigation · sub-text "reto activo" del page-head.
+const allTabs: TabItem[] = [
   { key: 'landing', label: 'Mi Plan', path: '/mi-plan', icon: Icons.MiPlan },
   { key: 'proyeccion', label: 'Proyección', path: '/mi-plan/proyeccion', icon: Icons.Proyeccion },
   { key: 'libertad', label: 'Libertad financiera', path: '/mi-plan/libertad', icon: Icons.Libertad },
@@ -26,6 +30,10 @@ const tabs: TabItem[] = [
   { key: 'fondos', label: 'Fondos de ahorro', path: '/mi-plan/fondos', icon: Icons.Fondos },
   { key: 'retos', label: 'Retos', path: '/mi-plan/retos', icon: Icons.Retos },
 ];
+
+const tabs: TabItem[] = SHOW_RETOS
+  ? allTabs
+  : allTabs.filter((t) => t.key !== 'retos');
 
 const isCurrentMonth = (mes: string): boolean => {
   const d = new Date();
@@ -106,7 +114,8 @@ const MiPlanPage: React.FC = () => {
           <>
             tu brújula hacia la libertad financiera · datos al cierre de{' '}
             <strong>{monthLabel}</strong>
-            {retoActivo ? (
+            {/* T27.2-skip · sub "reto activo" oculto · ver featureFlags.SHOW_RETOS. */}
+            {SHOW_RETOS && retoActivo ? (
               <>
                 {' · '}reto activo <strong>{retoActivo.titulo}</strong>
               </>
