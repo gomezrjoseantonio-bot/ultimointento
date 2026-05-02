@@ -22,7 +22,7 @@ import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ListadoPage.module.css';
 import { valoracionesService } from '../../../services/valoracionesService';
 import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
-import { prestamosService } from '../../../services/prestamosService';
+import { prestamosService, getAllocationFactor } from '../../../services/prestamosService';
 import { computeRentabilidadNeta } from '../utils/computeRentabilidadNeta';
 
 type EstadoFilter = 'todos' | 'habitaciones' | 'completos' | 'reforma' | 'alertas';
@@ -178,23 +178,41 @@ const ListadoPage: React.FC = () => {
       const all = await Promise.all(
         propIds.map(async (id) => {
           try {
-            const prestamos = await prestamosService.getPrestamosByProperty(String(id));
+            const inmuebleIdStr = String(id);
+            const prestamos = await prestamosService.getPrestamosByProperty(inmuebleIdStr);
+            // Canónico repo (loanInterestService / prestamosService.savePrestamo) ·
+            // vivo = activo !== false && estado !== 'cancelado'.
             const vivos = prestamos.filter(
-              (p) => !p.estado || p.estado === 'vivo' || p.estado === 'pendiente_completar',
+              (p) => p.activo !== false && p.estado !== 'cancelado',
             );
             const cuotaMensual = vivos.reduce((sum, p) => {
-              const principal = p.principalVivo ?? p.principalInicial ?? 0;
+              // En amortización francesa la cuota es constante: usar principal
+              // inicial + plazo total da la cuota correcta · usar principalVivo
+              // con plazoMesesTotal infraestima la cuota tras amortización parcial.
+              const principal = p.principalInicial ?? 0;
               if (principal <= 0 || !p.plazoMesesTotal) return sum;
-              const tipoNominal =
-                p.tipoNominalAnualFijo ??
-                ((p.valorIndiceActual ?? 0) + (p.diferencial ?? 0)) * 100;
-              const r = (tipoNominal / 100) / 12;
+              // tipoNominalAnualFijo viene en % (3.2 = 3.2%) · valorIndiceActual y
+              // diferencial vienen en decimal (0.025 = 2.5%) · normalizar a fracción
+              // mensual.
+              let tasaAnualFraccion: number;
+              if (p.tipo === 'FIJO' && p.tipoNominalAnualFijo != null) {
+                tasaAnualFraccion = p.tipoNominalAnualFijo / 100;
+              } else if (p.tipo === 'MIXTO' && p.tipoNominalAnualMixtoFijo != null) {
+                tasaAnualFraccion = p.tipoNominalAnualMixtoFijo / 100;
+              } else {
+                tasaAnualFraccion = (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
+              }
+              const r = tasaAnualFraccion / 12;
               const n = p.plazoMesesTotal;
               const cuota =
                 r > 0
                   ? (principal * r) / (1 - Math.pow(1 + r, -n))
                   : principal / n;
-              return sum + (Number.isFinite(cuota) ? cuota : 0);
+              if (!Number.isFinite(cuota) || cuota <= 0) return sum;
+              // Préstamos repartidos entre varios inmuebles · imputar solo la
+              // fracción correspondiente a este inmueble.
+              const factor = getAllocationFactor(p, inmuebleIdStr);
+              return sum + cuota * factor;
             }, 0);
             return [id, cuotaMensual * 12] as const;
           } catch {

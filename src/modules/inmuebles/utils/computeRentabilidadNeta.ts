@@ -31,8 +31,11 @@ export interface RentabilidadNetaResult {
  * Fórmula · cashflow anual neto / valor inversión × 100.
  * Cashflow neto = renta anual bruta − OPEX anual − cuota anual préstamo.
  *
- * Devuelve undefined en `rentabilidadNetaPct` cuando no hay valor de inversión
- * (cartera vacía o sin datos de adquisición · UI muestra "—").
+ * Solo se agregan propiedades con precio de adquisición > 0 · sin precio no
+ * pueden contribuir al denominador y mezclarías su cashflow con otra base de
+ * inversión, inflando el ratio. Si tras filtrar quedan 0 propiedades válidas
+ * (o no aporta valor inversión), `rentabilidadNetaPct` devuelve undefined y
+ * la UI muestra "—".
  */
 export function computeRentabilidadNeta(args: Args): RentabilidadNetaResult {
   let rentaAnualBruta = 0;
@@ -42,11 +45,13 @@ export function computeRentabilidadNeta(args: Args): RentabilidadNetaResult {
 
   for (const p of args.properties) {
     if (p.id == null) continue;
+    const price = p.acquisitionCosts?.price ?? 0;
+    if (price <= 0) continue;
     const renta = args.rentaMensualPorInmueble.get(p.id) ?? 0;
     rentaAnualBruta += renta * 12;
     opexAnual += args.opexAnualPorInmueble.get(p.id) ?? 0;
     cuotaAnualPrestamo += args.cuotaAnualPrestamoPorInmueble.get(p.id) ?? 0;
-    valorInversion += p.acquisitionCosts?.price ?? 0;
+    valorInversion += price;
   }
 
   const cashflowAnualNeto = rentaAnualBruta - opexAnual - cuotaAnualPrestamo;
