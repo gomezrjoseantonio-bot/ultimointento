@@ -171,7 +171,7 @@
   align-items: baseline;
 }
 
-.summaryRow:last-child { border-bottom: none; }
+.summaryRow:last-of-type { border-bottom: none; }
 
 .summaryLab {
   font-size: 12.5px;
