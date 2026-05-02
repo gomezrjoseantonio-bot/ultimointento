@@ -50,15 +50,68 @@ export const aportacionesPlanService = {
     return { titular, empresa, conyuge, total: titular + empresa + conyuge };
   },
 
-  async getMapaAportacionesAcumuladas(): Promise<Map<string, number>> {
+  /**
+   * Suma `importeTitular + importeEmpresa + importeConyuge` de una lista de aportaciones.
+   */
+  sumaAportaciones(aportaciones: AportacionPlan[]): number {
+    return aportaciones.reduce(
+      (s, a) =>
+        s +
+        (Number(a.importeTitular) || 0) +
+        (Number(a.importeEmpresa) || 0) +
+        (Number(a.importeConyuge) || 0),
+      0,
+    );
+  },
+
+  /**
+   * Total aportado a un plan (suma de todas sus aportaciones registradas).
+   * Usa el índice `planId` para evitar escanear toda la tabla.
+   */
+  async getTotalAportadoPorPlan(planId: string): Promise<number> {
     const db = await initDB();
-    const all = (await db.getAll('aportacionesPlan')) as AportacionPlan[];
+    const aportaciones = (await db.getAllFromIndex(
+      'aportacionesPlan',
+      'planId',
+      planId,
+    )) as AportacionPlan[];
+    return this.sumaAportaciones(aportaciones);
+  },
+
+  /**
+   * Devuelve un mapa `planId → suma de aportaciones`.
+   *
+   * Si se pasa `planIds`, consulta por índice (una query por plan en paralelo)
+   * y solo incluye los planes solicitados, evitando un escaneo completo de
+   * `aportacionesPlan`. Sin argumentos, hace fallback a un `getAll`.
+   */
+  async getMapaAportacionesAcumuladas(
+    planIds?: string[],
+  ): Promise<Map<string, number>> {
+    const db = await initDB();
     const mapa = new Map<string, number>();
+
+    if (planIds && planIds.length > 0) {
+      await Promise.all(
+        planIds.map(async (planId) => {
+          const aportaciones = (await db.getAllFromIndex(
+            'aportacionesPlan',
+            'planId',
+            planId,
+          )) as AportacionPlan[];
+          const total = this.sumaAportaciones(aportaciones);
+          if (total !== 0) mapa.set(planId, total);
+        }),
+      );
+      return mapa;
+    }
+
+    const all = (await db.getAll('aportacionesPlan')) as AportacionPlan[];
     for (const a of all) {
       const importe =
-        (a.importeTitular ?? 0) +
-        (a.importeEmpresa ?? 0) +
-        (a.importeConyuge ?? 0);
+        (Number(a.importeTitular) || 0) +
+        (Number(a.importeEmpresa) || 0) +
+        (Number(a.importeConyuge) || 0);
       mapa.set(a.planId, (mapa.get(a.planId) ?? 0) + importe);
     }
     return mapa;

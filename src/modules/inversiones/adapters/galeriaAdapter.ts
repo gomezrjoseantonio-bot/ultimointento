@@ -42,14 +42,17 @@ const PLAN_TIPOS = new Set<string>(['plan_pensiones', 'plan-pensiones', 'plan_em
  * Resultado ordenado por `valor_actual` descendente.
  */
 export async function getAllCartaItems(): Promise<CartaItem[]> {
-  const [posicionesResult, planes, mapaAportaciones] = await Promise.all([
+  const [posicionesResult, planes] = await Promise.all([
     inversionesService.getAllPosiciones(),
     planesPensionesService.getAllPlanes(),
-    aportacionesPlanService.getMapaAportacionesAcumuladas(),
   ]);
 
   const activasInversiones = posicionesResult.activas;
   const activasPlanes = planes.filter((plan) => plan.estado === 'activo');
+
+  const mapaAportaciones = await aportacionesPlanService.getMapaAportacionesAcumuladas(
+    activasPlanes.map((plan) => plan.id),
+  );
 
   // Construir set de dedup a partir de los planes activos de planesPensiones
   const dedupSet = new Set<string>(
