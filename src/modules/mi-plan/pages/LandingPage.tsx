@@ -44,7 +44,7 @@ const LandingPage: React.FC = () => {
   const retoActivo = SHOW_RETOS ? ctx.retoActivo : null;
 
   // T27.4.2 · proyección libertad financiera
-  const { data: libertad, loading: libertadLoading } = useProyeccionLibertad();
+  const { data: libertad, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
 
   // Proyección · usa el helper compartido (cierra TODO-T20-01).
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
@@ -105,6 +105,8 @@ const LandingPage: React.FC = () => {
       icon: Icons.Libertad,
       value: libertadLoading ? (
         <span style={{ fontSize: 22, color: 'var(--atlas-v5-ink-4)' }}>…</span>
+      ) : libertadError ? (
+        <span style={{ fontSize: 22, color: 'var(--atlas-v5-ink-4)' }}>—</span>
       ) : libertad?.cruceLibertad ? (
         <span style={{ fontSize: 16, lineHeight: 1.2 }}>
           {formatMesAnio(libertad.cruceLibertad.isoYM)}
@@ -115,9 +117,11 @@ const LandingPage: React.FC = () => {
       valueTone: 'gold',
       sub: libertadLoading
         ? 'calculando…'
-        : libertad
-          ? `cubres el ${Math.round(libertad.pctCoberturaActual)}% de tus gastos con renta pasiva`
-          : 'no podemos calcular tu libertad financiera ahora',
+        : libertadError
+          ? 'no podemos calcular tu libertad financiera ahora'
+          : libertad
+            ? `cubres el ${Math.round(libertad.pctCoberturaActual)}% de tus gastos con renta pasiva`
+            : 'configura tus gastos de vida en Ajustes',
       footLab: 'Tiempo estimado',
       footPill: libertadLoading
         ? '…'

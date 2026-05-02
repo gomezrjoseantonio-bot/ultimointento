@@ -71,7 +71,7 @@ const PanelPage: React.FC = () => {
   const navigate = useNavigate();
 
   // T27.4.2 · proyección libertad financiera real
-  const { data: libertadData, loading: libertadLoading } = useProyeccionLibertad();
+  const { data: libertadData, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
@@ -598,15 +598,21 @@ const PanelPage: React.FC = () => {
               onAlertaClick={(a) => navigate(a.href)}
             />
 
-            {/* Mi Plan brújula · § Z.11 · T22.6 · T27.4.2 añoLibertad real */}
+            {/* Mi Plan brújula · § Z.11 · T22.6 · T27.4.2 KPIs reales */}
             <MiPlanCompass
-              pctCobertura={planMetrics.pctCobertura}
+              pctCobertura={
+                // Usar % de cobertura de la proyección neta cuando disponible
+                // para alinear con el año mostrado (ambos usan renta neta)
+                libertadData?.pctCoberturaActual ?? planMetrics.pctCobertura
+              }
               añoLibertad={
                 libertadLoading
                   ? '…'
-                  : libertadData?.cruceLibertad
-                    ? String(libertadData.cruceLibertad.anio)
-                    : '—'
+                  : libertadError
+                    ? 'error al calcular'
+                    : libertadData?.cruceLibertad
+                      ? String(libertadData.cruceLibertad.anio)
+                      : '—'
               }
               mesesColchon={planMetrics.mesesColchon}
               rentaPasiva={planMetrics.rentaPasiva}

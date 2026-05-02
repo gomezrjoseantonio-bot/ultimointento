@@ -38,6 +38,8 @@ export function useProyeccionLibertad(
   const alcance = configOverride?.alcanceRentaPasiva;
   const reglaCruce = configOverride?.reglaCruce;
   const horizonte = configOverride?.horizonteAnios;
+  const mantenimiento = configOverride?.mantenimientoMinMeses;
+  const colchon = configOverride?.colchonPctSobreGastos;
 
   const [data, setData] = useState<ResultadoLibertad | null>(null);
   const [loading, setLoading] = useState<boolean>(enabled);
@@ -81,6 +83,8 @@ export function useProyeccionLibertad(
     alcance,
     reglaCruce,
     horizonte,
+    mantenimiento,
+    colchon,
   ]);
 
   return { data, loading, error };
