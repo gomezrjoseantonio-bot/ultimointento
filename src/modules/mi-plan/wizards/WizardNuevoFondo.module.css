@@ -1300,15 +1300,9 @@
   border-radius: 9px;
   padding: 12px 14px;
   transition: all 0.12s;
-  display: grid;
-  grid-template-columns: 24px 36px 1fr auto;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  font-size: inherit;
-  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
 }
 .cuentaItem:hover {
@@ -1321,10 +1315,32 @@
 }
 .cuentaItem.disabled {
   opacity: 0.55;
-  cursor: not-allowed;
 }
 .cuentaItem.disabled:hover {
   border-color: var(--atlas-v5-line-2);
+}
+.cuentaItemHeader {
+  display: grid;
+  grid-template-columns: 24px 36px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+.cuentaItemHeader:disabled {
+  cursor: not-allowed;
+}
+.cuentaInfoBox {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .cuentaCheck {
   width: 18px;
@@ -1355,11 +1371,13 @@
   background: var(--atlas-v5-ink-3);
 }
 .cuentaInfoTit {
+  display: block;
   font-size: 13px;
   font-weight: 700;
   color: var(--atlas-v5-ink);
 }
 .cuentaInfoSub {
+  display: block;
   font-size: 11.5px;
   color: var(--atlas-v5-ink-4);
   margin-top: 2px;
@@ -1372,10 +1390,13 @@
   padding: 0 4px 0 12px;
 }
 .cuentaCifra {
+  display: flex;
+  flex-direction: column;
   text-align: right;
   min-width: 78px;
 }
 .cuentaCifraLab {
+  display: block;
   font-size: 9.5px;
   text-transform: uppercase;
   letter-spacing: 0.07em;
@@ -1387,6 +1408,7 @@
   color: var(--atlas-v5-gold-ink);
 }
 .cuentaCifraVal {
+  display: block;
   font-family: var(--atlas-v5-font-mono-num);
   font-size: 12.5px;
   color: var(--atlas-v5-ink-2);
@@ -1405,15 +1427,16 @@
   color: var(--atlas-v5-gold-ink);
 }
 .cuentaCifraSub {
+  display: block;
   font-size: 10.5px;
   color: var(--atlas-v5-ink-4);
   margin-top: 1px;
 }
 
 .cuentaAsignarRow {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
@@ -1486,7 +1509,6 @@
   line-height: 1.4;
 }
 .cuentaBloqueadaMsg {
-  grid-column: 1 / -1;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--atlas-v5-line-2);
