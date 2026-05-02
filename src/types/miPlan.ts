@@ -125,6 +125,11 @@ export type CuentaAsignada =
       porcentajeAsignado: number; // 0-100
     };
 
+// V67 (T27.3) · prioridad para cascada en computeAcumuladoFondo
+// · 'alta' paga última (último en estar respaldado · prioritario)
+// · 'normal' paga primero (default retroactivo cuando ausente)
+export type FondoPrioridad = 'alta' | 'normal';
+
 export interface FondoAhorro {
   id: string;                     // UUID
   tipo: FondoTipo;
@@ -132,10 +137,17 @@ export interface FondoAhorro {
   descripcion?: string;
   cuentasAsignadas: CuentaAsignada[];
   metaImporte?: number;           // € · meta opcional
-  metaMeses?: number;             // para tipo='colchon' · ej. 12 meses
+  metaMeses?: number;             // para tipo='colchon' · ej. 12 meses (también
+                                  // se usa como "colchón meses" en T27.3)
   activo: boolean;                // soft-delete sin perder histórico
   createdAt: string;
   updatedAt: string;
+
+  // V67 (T27.3) · campos opcionales con default retroactivo
+  objetivoVinculadoId?: string;   // FK → objetivos.id · vinculación bidireccional
+  prioridad?: FondoPrioridad;     // default 'normal' si ausente (registros V66)
+  fechaObjetivo?: string;         // ISO YYYY-MM-DD · día 1 del mes elegido
+  colchonGastoMensual?: number;   // € · solo tipo='colchon' · reconstruye meta
 }
 
 // ═══════════════════════════════════════════════════

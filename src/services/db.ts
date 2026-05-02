@@ -24,7 +24,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 66; // V66 (T27.1): añade campos opcionales al store `objetivos` · acumular.unidad ('eur'|'meses') · comprar.metric ('valor'|'unidades') · sin migración de datos (campos opcionales · default 'eur'/'valor' al renderizar)
+const DB_VERSION = 67; // V67 (T27.3): añade campos opcionales al store `fondos_ahorro` · objetivoVinculadoId · prioridad ('alta'|'normal') · fechaObjetivo · colchonGastoMensual · sin migración de datos (campos opcionales · default retroactivo al renderizar)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -3963,6 +3963,19 @@ export const initDB = async () => {
           // los valores · los registros existentes simplemente carecen del
           // campo · lo lee el código como `undefined` y aplica default 'eur'
           // / 'valor' al renderizar (compatibilidad retroactiva).
+        }
+
+        if (oldVersion < 67) {
+          // ── V67 (T27.3): wizard nuevo fondo de ahorro ───────────────────────
+          // Solo añade campos OPCIONALES al shape `FondoAhorro`:
+          //   - objetivoVinculadoId?: string  (vinculación bidireccional con objetivos)
+          //   - prioridad?: 'alta' | 'normal' (cascada en computeAcumuladoFondo · default 'normal')
+          //   - fechaObjetivo?: string        (caja ritmo en step 3 · ISO YYYY-MM-DD)
+          //   - colchonGastoMensual?: number  (reconstruir cálculo meta = meses × gasto en colchón)
+          // El campo existente `metaMeses?` se reutiliza como "colchón meses".
+          // Sin migración de datos · campos opcionales · IndexedDB sin schema
+          // rígido · registros V66 sin campos siguen válidos (default
+          // retroactivo · prioridad 'normal' · sin vinculación).
         }
       },
       blocked() {
