@@ -339,75 +339,68 @@ const CuentaItem: React.FC<CuentaItemProps> = ({ data, asignacion, onToggle, onS
     .filter(Boolean)
     .join(' ');
 
-  const handleClick = (e: React.MouseEvent) => {
-    if (isDisabled) return;
-    // Evitar toggle al hacer click sobre el input/botones del row inferior
-    const target = e.target as HTMLElement;
-    if (
-      target.closest(`.${styles.cuentaAsignarRow}`) ||
-      target.closest('input') ||
-      target.closest('button')
-    ) {
-      return;
-    }
-    onToggle();
-  };
-
   const fondoOtroNombre = asignadoAOtrosDetalle[0]?.fondoNombre ?? 'otros fondos';
 
+  // El header es un `<button>` real · clic robusto · sin caer en problemas
+  // de event delegation con divs anidados. El asignar-row y bloqueada-msg
+  // van FUERA del button (HTML inválido tener buttons anidados) · así los
+  // botones rápidos `todo`/`50%`/`0` y el input funcionan independientes.
   return (
-    <div
-      className={cls}
-      onClick={handleClick}
-      role="button"
-      aria-pressed={isSelected}
-      aria-disabled={isDisabled}
-      tabIndex={isDisabled ? -1 : 0}
-    >
-      <div className={styles.cuentaCheck}>
-        {isSelected && <Icons.Check size={11} strokeWidth={3} />}
-      </div>
-      <div
-        className={styles.cuentaLogo}
-        style={{ background: colorBanco(account) }}
-        aria-hidden
+    <div className={cls} aria-disabled={isDisabled || undefined}>
+      <button
+        type="button"
+        className={styles.cuentaItemHeader}
+        onClick={onToggle}
+        disabled={isDisabled}
+        aria-pressed={isSelected}
       >
-        {inicialesBanco(account)}
-      </div>
-      <div>
-        <div className={styles.cuentaInfoTit}>
-          {account.banco?.name ?? account.bank ?? 'Cuenta'} ·{' '}
-          {account.alias ?? account.name ?? `cuenta ${cuentaId}`}
-        </div>
-        <div className={styles.cuentaInfoSub}>{ibanMasked(account)}</div>
-      </div>
-      <div className={styles.cuentaCifras}>
-        <div className={styles.cuentaCifra}>
-          <div className={styles.cuentaCifraLab}>Saldo</div>
-          <div className={styles.cuentaCifraVal}>{fmtEur(saldo)}</div>
-        </div>
-        <div className={styles.cuentaCifra}>
-          <div className={styles.cuentaCifraLab}>Asignado a otros</div>
-          <div
-            className={`${styles.cuentaCifraVal} ${asignadoAOtros > 0 ? styles.cuentaCifraValDim : styles.cuentaCifraValZero}`}
-          >
-            {fmtEur(asignadoAOtros)}
-          </div>
-          {asignadoAOtros > 0 && (
-            <div className={styles.cuentaCifraSub}>{fondoOtroNombre}</div>
-          )}
-        </div>
-        <div className={styles.cuentaCifra}>
-          <div className={`${styles.cuentaCifraLab} ${disponible > 0 ? styles.cuentaCifraLabGold : ''}`}>
-            Disponible
-          </div>
-          <div
-            className={`${styles.cuentaCifraVal} ${disponible > 0 ? styles.cuentaCifraValGold : styles.cuentaCifraValZero}`}
-          >
-            {fmtEur(disponible)}
-          </div>
-        </div>
-      </div>
+        <span className={styles.cuentaCheck} aria-hidden>
+          {isSelected && <Icons.Check size={11} strokeWidth={3} />}
+        </span>
+        <span
+          className={styles.cuentaLogo}
+          style={{ background: colorBanco(account) }}
+          aria-hidden
+        >
+          {inicialesBanco(account)}
+        </span>
+        <span className={styles.cuentaInfoBox}>
+          <span className={styles.cuentaInfoTit}>
+            {account.banco?.name ?? account.bank ?? 'Cuenta'} ·{' '}
+            {account.alias ?? account.name ?? `cuenta ${cuentaId}`}
+          </span>
+          <span className={styles.cuentaInfoSub}>{ibanMasked(account)}</span>
+        </span>
+        <span className={styles.cuentaCifras}>
+          <span className={styles.cuentaCifra}>
+            <span className={styles.cuentaCifraLab}>Saldo</span>
+            <span className={styles.cuentaCifraVal}>{fmtEur(saldo)}</span>
+          </span>
+          <span className={styles.cuentaCifra}>
+            <span className={styles.cuentaCifraLab}>Asignado a otros</span>
+            <span
+              className={`${styles.cuentaCifraVal} ${asignadoAOtros > 0 ? styles.cuentaCifraValDim : styles.cuentaCifraValZero}`}
+            >
+              {fmtEur(asignadoAOtros)}
+            </span>
+            {asignadoAOtros > 0 && (
+              <span className={styles.cuentaCifraSub}>{fondoOtroNombre}</span>
+            )}
+          </span>
+          <span className={styles.cuentaCifra}>
+            <span
+              className={`${styles.cuentaCifraLab} ${disponible > 0 ? styles.cuentaCifraLabGold : ''}`}
+            >
+              Disponible
+            </span>
+            <span
+              className={`${styles.cuentaCifraVal} ${disponible > 0 ? styles.cuentaCifraValGold : styles.cuentaCifraValZero}`}
+            >
+              {fmtEur(disponible)}
+            </span>
+          </span>
+        </span>
+      </button>
 
       {isSelected && (
         <div className={styles.cuentaAsignarRow}>
