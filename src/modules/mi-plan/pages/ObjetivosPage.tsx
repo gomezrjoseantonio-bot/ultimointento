@@ -121,6 +121,16 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
 
   const meta = objetivo.tipo === 'reducir' ? objetivo.metaCantidadMensual : objetivo.metaCantidad;
 
+  // V66 (T27.1) · sufijo según unidad/metric · default 'eur'/'valor' para
+  // registros V65 sin estos campos (compatibilidad retroactiva).
+  const isMetaMeses = objetivo.tipo === 'acumular' && objetivo.unidad === 'meses';
+  const isMetaUnidades = objetivo.tipo === 'comprar' && objetivo.metric === 'unidades';
+  const sufijoSecundario = isMetaMeses
+    ? 'meses'
+    : isMetaUnidades
+      ? 'inmuebles'
+      : '';
+
   return (
     <CardV5
       accent={ACCENT_BY_TIPO[objetivo.tipo]}
@@ -187,7 +197,14 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
               Meta
             </span>
             <div style={{ fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 700, fontSize: 14, color: 'var(--atlas-v5-ink)', marginTop: 2 }}>
-              <MoneyValue value={meta ?? 0} decimals={0} tone="ink" />
+              {sufijoSecundario ? (
+                <>
+                  {(meta ?? 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                  <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginLeft: 4 }}>{sufijoSecundario}</span>
+                </>
+              ) : (
+                <MoneyValue value={meta ?? 0} decimals={0} tone="ink" />
+              )}
               {objetivo.tipo === 'reducir' && (
                 <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginLeft: 4 }}>/mes</span>
               )}

@@ -59,13 +59,20 @@ export interface ObjetivoBase {
   updatedAt: string;              // ISO 8601
 }
 
+// Unidad para tipo='acumular' · default 'eur' (registros V65 sin campo).
+export type AcumularUnidad = 'eur' | 'meses';
+
+// Métrica para tipo='comprar' · default 'valor' (registros V65 sin campo).
+export type ComprarMetric = 'valor' | 'unidades';
+
 // Union discriminada por tipo
 export type Objetivo = ObjetivoBase &
   (
     | {
         tipo: 'acumular';
-        metaCantidad: number;     // €
+        metaCantidad: number;     // valor numérico · interpretado según `unidad`
         fondoId: string;          // FK → fondos_ahorro.id (UUID)
+        unidad?: AcumularUnidad;  // V66 (T27.1) · default 'eur' si ausente
       }
     | {
         tipo: 'amortizar';
@@ -74,9 +81,10 @@ export type Objetivo = ObjetivoBase &
       }
     | {
         tipo: 'comprar';
-        metaCantidad: number;     // €
+        metaCantidad: number;     // valor numérico · interpretado según `metric`
         fondoId: string;          // FK → fondos_ahorro.id
         capacidadEndeudamientoEsperada?: number; // € estimado de financiación bancaria
+        metric?: ComprarMetric;   // V66 (T27.1) · default 'valor' si ausente
       }
     | {
         tipo: 'reducir';

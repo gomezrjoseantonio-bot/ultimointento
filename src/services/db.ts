@@ -24,7 +24,7 @@ import type {
 } from '../types/fiscal';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 65; // V65 (TAREA 13): módulo planes de pensiones · 3 stores nuevos (planesPensiones, aportacionesPlan, traspasosPlanPensiones) · planesPensionInversion+traspasosPlanes eliminados
+const DB_VERSION = 66; // V66 (T27.1): añade campos opcionales al store `objetivos` · acumular.unidad ('eur'|'meses') · comprar.metric ('valor'|'unidades') · sin migración de datos (campos opcionales · default 'eur'/'valor' al renderizar)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -3952,6 +3952,17 @@ export const initDB = async () => {
               db.deleteObjectStore('traspasosPlanes');
             }
           })();
+        }
+
+        if (oldVersion < 66) {
+          // ── V66 (T27.1): wizard nuevo objetivo ──────────────────────────────
+          // Solo añade campos OPCIONALES al shape `Objetivo`:
+          //   - tipo='acumular' → unidad?: 'eur' | 'meses'
+          //   - tipo='comprar'  → metric?: 'valor' | 'unidades'
+          // No requiere migración real · IndexedDB no tiene schema rígido para
+          // los valores · los registros existentes simplemente carecen del
+          // campo · lo lee el código como `undefined` y aplica default 'eur'
+          // / 'valor' al renderizar (compatibilidad retroactiva).
         }
       },
       blocked() {

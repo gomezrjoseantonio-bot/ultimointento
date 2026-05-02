@@ -264,6 +264,7 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
           estado,
           metaCantidad: parseMetaNumeric(draft.acumularValorMeta),
           fondoId: draft.fondoId,
+          unidad: draft.acumularUnidad === 'meses' ? 'meses' : 'eur',
         };
       } else if (draft.tipo === 'amortizar') {
         const p = prestamos.find((x) => x.id === draft.prestamoId);
@@ -287,6 +288,7 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
           estado,
           metaCantidad: parseMetaNumeric(draft.comprarValorMeta),
           fondoId: draft.fondoId,
+          metric: draft.comprarMetric === 'unidades' ? 'unidades' : 'valor',
         };
       } else {
         const categoria =
