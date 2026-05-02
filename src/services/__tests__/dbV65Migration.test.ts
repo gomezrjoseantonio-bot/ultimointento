@@ -132,7 +132,7 @@ describe('DB V65 Migration · TAREA 13 · módulo planes de pensiones', () => {
     expect(db65.objectStoreNames.contains('planesPensionInversion')).toBe(false);
     expect(db65.objectStoreNames.contains('traspasosPlanes')).toBe(false);
 
-    const planes = (await db65.getAll('planesPensiones' as any)) as any[];
+    const planes = (await db65.getAll('planesPensiones')) as any[];
     expect(planes.length).toBeGreaterThanOrEqual(1);
     const planMigrado = planes.find((p: any) => p.nombre === 'Mi plan individual');
     expect(planMigrado).toBeDefined();
@@ -210,14 +210,14 @@ describe('DB V65 Migration · TAREA 13 · módulo planes de pensiones', () => {
 
     expect(db65.version).toBe(65);
 
-    const planes = (await db65.getAll('planesPensiones' as any)) as any[];
+    const planes = (await db65.getAll('planesPensiones')) as any[];
     const planPPE = planes.find((p: any) => p.nombre === 'Plan empleo empresa');
     expect(planPPE).toBeDefined();
     expect(planPPE.tipoAdministrativo).toBe('PPE');
     expect(planPPE.subtipoPPE).toBe('empleador_unico');
 
     // Verificar aportaciones migradas
-    const aportaciones = (await db65.getAll('aportacionesPlan' as any)) as any[];
+    const aportaciones = (await db65.getAll('aportacionesPlan')) as any[];
     const aps = aportaciones.filter((a: any) => a.planId === planPPE.id);
     expect(aps.length).toBeGreaterThanOrEqual(1);
     const ap2023 = aps.find((a: any) => a.ejercicioFiscal === 2023);
@@ -293,7 +293,7 @@ describe('DB V65 Migration · TAREA 13 · módulo planes de pensiones', () => {
     expect(db65.version).toBe(65);
     expect(db65.objectStoreNames.contains('traspasosPlanes')).toBe(false);
 
-    const traspasos = (await db65.getAll('traspasosPlanPensiones' as any)) as any[];
+    const traspasos = (await db65.getAll('traspasosPlanPensiones')) as any[];
     expect(traspasos.length).toBeGreaterThanOrEqual(1);
     const t = traspasos[0];
     expect(t.fechaEjecucion).toBe('2023-06-15');

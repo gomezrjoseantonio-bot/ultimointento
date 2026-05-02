@@ -21,19 +21,19 @@ export const aportacionesPlanService = {
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     };
-    await db.add('aportacionesPlan' as any, aportacion as any);
+    await db.add('aportacionesPlan', aportacion);
     return aportacion;
   },
 
   async getAportacionesPorPlan(planId: string): Promise<AportacionPlan[]> {
     const db = await initDB();
-    const all = (await db.getAll('aportacionesPlan' as any)) as AportacionPlan[];
+    const all = (await db.getAll('aportacionesPlan')) as AportacionPlan[];
     return all.filter((a) => a.planId === planId).sort((a, b) => b.fecha.localeCompare(a.fecha));
   },
 
   async getAportacionesPorAño(planId: string, ejercicio: number): Promise<AportacionPlan[]> {
     const db = await initDB();
-    const all = (await db.getAll('aportacionesPlan' as any)) as AportacionPlan[];
+    const all = (await db.getAll('aportacionesPlan')) as AportacionPlan[];
     return all
       .filter((a) => a.planId === planId && a.ejercicioFiscal === ejercicio)
       .sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -52,7 +52,7 @@ export const aportacionesPlanService = {
 
   async mensualizarAnual(aportacionId: string): Promise<AportacionPlan[]> {
     const db = await initDB();
-    const aportacion = (await db.get('aportacionesPlan' as any, aportacionId as any)) as AportacionPlan | undefined;
+    const aportacion = (await db.get('aportacionesPlan', aportacionId)) as AportacionPlan | undefined;
     if (!aportacion) throw new Error(`Aportación ${aportacionId} no encontrada`);
     if (aportacion.granularidad !== 'anual') {
       throw new Error('Solo se pueden mensualizar aportaciones anuales');
@@ -63,7 +63,7 @@ export const aportacionesPlanService = {
     const importeEmpresaMes = aportacion.importeEmpresa / meses;
     const importeConyugeMes = (aportacion.importeConyuge ?? 0) / meses;
 
-    await db.delete('aportacionesPlan' as any, aportacionId as any);
+    await db.delete('aportacionesPlan', aportacionId);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const ahora = new Date().toISOString();
@@ -92,6 +92,6 @@ export const aportacionesPlanService = {
 
   async eliminarAportacion(id: string): Promise<void> {
     const db = await initDB();
-    await db.delete('aportacionesPlan' as any, id as any);
+    await db.delete('aportacionesPlan', id);
   },
 };

@@ -9,6 +9,7 @@ import type {
   AportanteRol,
   LimitesFiscalesPlan,
   ResultadoValidacionAportacion,
+  PlanPensiones,
 } from '../types/planesPensiones';
 import { aportacionesPlanService } from './aportacionesPlanService';
 
@@ -90,7 +91,7 @@ export const limitesFiscalesPlanesService = {
     rolAportante: AportanteRol,
   ): Promise<ResultadoValidacionAportacion> {
     const db = await initDB();
-    const plan = (await db.get('planesPensiones' as any, planId as any)) as any;
+    const plan = (await db.get('planesPensiones', planId)) as PlanPensiones | undefined;
     if (!plan) throw new Error(`Plan ${planId} no encontrado`);
 
     const limites = this.getLimitesPorTipo(
@@ -134,8 +135,8 @@ export const limitesFiscalesPlanesService = {
 
   async calcularReduccionBaseImponible(personalDataId: number, ejercicio: number): Promise<number> {
     const db = await initDB();
-    const planes = (await db.getAll('planesPensiones' as any)) as any[];
-    const misPlanes = planes.filter((p: any) => p.personalDataId === personalDataId);
+    const planes = (await db.getAll('planesPensiones')) as PlanPensiones[];
+    const misPlanes = planes.filter((p) => p.personalDataId === personalDataId);
 
     let reduccionTotal = 0;
     for (const plan of misPlanes) {
