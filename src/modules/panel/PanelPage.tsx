@@ -26,6 +26,7 @@ import AttentionList from './components/AttentionList';
 import MiPlanCompass from './components/MiPlanCompass';
 import YearTimeline from './components/YearTimeline';
 import type { AlertaItem } from './components/AttentionList';
+import { useProyeccionLibertad } from '../../hooks/useProyeccionLibertad';
 import styles from './PanelPage.module.css';
 
 /**
@@ -68,6 +69,10 @@ const campañaIRPF = (d: Date): string | null => {
 
 const PanelPage: React.FC = () => {
   const navigate = useNavigate();
+
+  // T27.4.2 · proyección libertad financiera real
+  const { data: libertadData, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
+
   const [properties, setProperties] = useState<Property[]>([]);
   const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -342,9 +347,6 @@ const PanelPage: React.FC = () => {
     const mesesColchon =
       gastoVida > 0 ? Math.floor(saldoTesoreria / gastoVida) : null;
 
-    // TODO: calcular añoLibertad desde simulador Mi Plan cuando esté disponible
-    const añoLibertad = '—';
-
     // TODO: obtener metaInmuebles desde escenario/simulador Mi Plan
     const metaInmuebles: number | null = null;
 
@@ -353,7 +355,6 @@ const PanelPage: React.FC = () => {
       gastoVida,
       pctCobertura,
       mesesColchon,
-      añoLibertad,
       metaInmuebles,
       inmueblesActivos: properties.length,
     };
@@ -597,10 +598,22 @@ const PanelPage: React.FC = () => {
               onAlertaClick={(a) => navigate(a.href)}
             />
 
-            {/* Mi Plan brújula · § Z.11 · T22.6 */}
+            {/* Mi Plan brújula · § Z.11 · T22.6 · T27.4.2 KPIs reales */}
             <MiPlanCompass
-              pctCobertura={planMetrics.pctCobertura}
-              añoLibertad={planMetrics.añoLibertad}
+              pctCobertura={
+                // Usar % de cobertura de la proyección neta cuando disponible
+                // para alinear con el año mostrado (ambos usan renta neta)
+                libertadData?.pctCoberturaActual ?? planMetrics.pctCobertura
+              }
+              añoLibertad={
+                libertadLoading
+                  ? '…'
+                  : libertadError
+                    ? 'error al calcular'
+                    : libertadData?.cruceLibertad
+                      ? String(libertadData.cruceLibertad.anio)
+                      : '—'
+              }
               mesesColchon={planMetrics.mesesColchon}
               rentaPasiva={planMetrics.rentaPasiva}
               gastoVida={planMetrics.gastoVida}
