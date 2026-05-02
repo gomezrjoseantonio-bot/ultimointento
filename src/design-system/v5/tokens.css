@@ -53,6 +53,9 @@
   --atlas-v5-pos-border: #C0DBC8;/* borde sobre fondo pos-wash */
   --atlas-v5-pos-bright: #6FD48A;/* verde fluo · texto pos sobre navy */
   --atlas-v5-gold-bright: #E8D9AE;/* oro claro · texto gold sobre navy */
+  --atlas-v5-pos-dark: #155027;  /* Token requerido por T27.1 wizard objetivo · btn-pos hover */
+  --atlas-v5-navy-text-2: #B9BFCC; /* Token requerido por T27.1 wizard objetivo · texto secundario sobre navy oscuro */
+  --atlas-v5-navy-text-disabled: #6E7A92; /* Token requerido por T27.1 wizard objetivo · texto vacío sobre navy oscuro */
 
   --atlas-v5-neg: #A43328;       /* negativo · gasto · alerta · fallado */
   --atlas-v5-neg-wash: #F5E3E0;  /* negativo tinted */

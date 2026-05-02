@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   CardV5,
@@ -11,6 +11,8 @@ import {
 } from '../../../design-system/v5';
 import type { MiPlanOutletContext } from '../MiPlanContext';
 import type { Objetivo, ObjetivoEstado, ObjetivoTipo } from '../../../types/miPlan';
+import WizardNuevoObjetivo from '../wizards/WizardNuevoObjetivo';
+import wizardStyles from '../wizards/WizardNuevoObjetivo.module.css';
 
 const ACCENT_BY_TIPO: Record<ObjetivoTipo, 'brand' | 'gold' | 'gold-soft' | 'neutral'> = {
   acumular: 'gold-soft',
@@ -43,17 +45,29 @@ const LABEL_BY_ESTADO: Record<ObjetivoEstado, string> = {
 };
 
 const ObjetivosPage: React.FC = () => {
-  const { objetivos } = useOutletContext<MiPlanOutletContext>();
+  const { objetivos, reload } = useOutletContext<MiPlanOutletContext>();
+  const [wizardOpen, setWizardOpen] = useState(false);
+
+  const handleCreated = (): void => {
+    reload();
+  };
 
   if (objetivos.length === 0) {
     return (
-      <EmptyState
-        icon={<Icons.Objetivos size={20} />}
-        title="Sin objetivos definidos"
-        sub="Define objetivos concretos · acumular para una compra · amortizar deuda · reducir gasto · ATLAS te acompaña en la ruta."
-        ctaLabel="+ Nuevo objetivo"
-        onCtaClick={() => showToastV5('Crear objetivo · pendiente wizard dedicado')}
-      />
+      <>
+        <EmptyState
+          icon={<Icons.Objetivos size={20} />}
+          title="Sin objetivos definidos"
+          sub="Define objetivos concretos · acumular para una compra · amortizar deuda · reducir gasto · ATLAS te acompaña en la ruta."
+          ctaLabel="+ Nuevo objetivo"
+          onCtaClick={() => setWizardOpen(true)}
+        />
+        <WizardNuevoObjetivo
+          isOpen={wizardOpen}
+          onClose={() => setWizardOpen(false)}
+          onCreated={handleCreated}
+        />
+      </>
     );
   }
 
@@ -67,7 +81,24 @@ const ObjetivosPage: React.FC = () => {
         {[...enProgreso, ...completados, ...enPausa].map((o) => (
           <ObjetivoCard key={o.id} objetivo={o} />
         ))}
+        <button
+          type="button"
+          className={wizardStyles.objCardNew}
+          onClick={() => setWizardOpen(true)}
+          aria-label="Crear nuevo objetivo"
+        >
+          <span className={wizardStyles.objCardNewIcon}>
+            <Icons.Plus size={18} strokeWidth={1.8} />
+          </span>
+          <span className={wizardStyles.objCardNewTit}>Crear nuevo objetivo</span>
+          <span className={wizardStyles.objCardNewSub}>5 pasos · ~2 min</span>
+        </button>
       </div>
+      <WizardNuevoObjetivo
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreated={handleCreated}
+      />
     </>
   );
 };
@@ -89,6 +120,16 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
     : 0;
 
   const meta = objetivo.tipo === 'reducir' ? objetivo.metaCantidadMensual : objetivo.metaCantidad;
+
+  // V66 (T27.1) · sufijo según unidad/metric · default 'eur'/'valor' para
+  // registros V65 sin estos campos (compatibilidad retroactiva).
+  const isMetaMeses = objetivo.tipo === 'acumular' && objetivo.unidad === 'meses';
+  const isMetaUnidades = objetivo.tipo === 'comprar' && objetivo.metric === 'unidades';
+  const sufijoSecundario = isMetaMeses
+    ? 'meses'
+    : isMetaUnidades
+      ? 'inmuebles'
+      : '';
 
   return (
     <CardV5
@@ -156,7 +197,14 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
               Meta
             </span>
             <div style={{ fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 700, fontSize: 14, color: 'var(--atlas-v5-ink)', marginTop: 2 }}>
-              <MoneyValue value={meta ?? 0} decimals={0} tone="ink" />
+              {sufijoSecundario ? (
+                <>
+                  {(meta ?? 0).toLocaleString('es-ES', { maximumFractionDigits: 0 })}
+                  <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginLeft: 4 }}>{sufijoSecundario}</span>
+                </>
+              ) : (
+                <MoneyValue value={meta ?? 0} decimals={0} tone="ink" />
+              )}
               {objetivo.tipo === 'reducir' && (
                 <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginLeft: 4 }}>/mes</span>
               )}
