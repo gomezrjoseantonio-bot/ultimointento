@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { inversionesService } from '../../../services/inversionesService';
 import { planesPensionesService } from '../../../services/planesPensionesService';
+import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { esCerrada } from '../helpers';
 import {
   inversionToCartaItem,
@@ -49,6 +50,10 @@ export async function getAllCartaItems(): Promise<CartaItem[]> {
   const activasInversiones = posicionesResult.activas;
   const activasPlanes = planes.filter((plan) => plan.estado === 'activo');
 
+  const mapaAportaciones = await aportacionesPlanService.getMapaAportacionesAcumuladas(
+    activasPlanes.map((plan) => plan.id),
+  );
+
   // Construir set de dedup a partir de los planes activos de planesPensiones
   const dedupSet = new Set<string>(
     activasPlanes.map((plan) =>
@@ -66,7 +71,9 @@ export async function getAllCartaItems(): Promise<CartaItem[]> {
     })
     .map(inversionToCartaItem);
 
-  const itemsPlanes: CartaItem[] = activasPlanes.map(planPensionToCartaItem);
+  const itemsPlanes: CartaItem[] = activasPlanes.map((plan) =>
+    planPensionToCartaItem(plan, mapaAportaciones.get(plan.id) ?? 0),
+  );
 
   return [...itemsInversiones, ...itemsPlanes].sort(
     (a, b) => b.valor_actual - a.valor_actual,

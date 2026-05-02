@@ -8,6 +8,7 @@
 
 import type { PosicionInversion, TipoPosicion } from '../../../types/inversiones';
 import type { PlanPensiones } from '../../../types/planesPensiones';
+import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
 
 // ── Tipo unificado ────────────────────────────────────────────────────────────
 
@@ -183,10 +184,18 @@ export function inversionToCartaItem(p: PosicionInversion): CartaItem {
 /**
  * Convierte un `PlanPensiones` del store `planesPensiones` en un `CartaItem`
  * normalizado para la galería unificada.
+ *
+ * `aportacionesAcumuladas` es la suma de las aportaciones registradas para
+ * este plan en `aportacionesPlan` (titular + empresa + cónyuge), que es la
+ * única fuente del total aportado canónico. `plan.importeInicial` es el
+ * "valor inicial" del plan (valoración), no una aportación.
  */
-export function planPensionToCartaItem(plan: PlanPensiones): CartaItem {
+export function planPensionToCartaItem(
+  plan: PlanPensiones,
+  aportacionesAcumuladas = 0,
+): CartaItem {
   const valorActual = safeNum(plan.valorActual);
-  const totalAportado = safeNum(plan.importeInicial);
+  const totalAportado = calcularTotalAportadoPlan(safeNum(aportacionesAcumuladas));
   const rentEur = valorActual - totalAportado;
   const rentPct = totalAportado > 0 ? (rentEur / totalAportado) * 100 : 0;
 

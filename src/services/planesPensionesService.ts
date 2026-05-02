@@ -13,6 +13,22 @@ const genUUID = (): string =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
+/**
+ * Fórmula canónica para el total aportado de un plan de pensiones.
+ *
+ * `total_aportado = Σ aportacionesPlan` (titular + empresa + cónyuge).
+ *
+ * `plan.importeInicial` es el VALOR inicial del plan (valoración de partida,
+ * etiquetado en el formulario como "Valor inicial"), NO una aportación. Si
+ * el usuario tuvo una aportación inicial debe registrarla como
+ * `AportacionPlan`; aquí no se incluye.
+ */
+export function calcularTotalAportadoPlan(sumaAportaciones: number): number {
+  const suma = Number(sumaAportaciones);
+  if (!Number.isFinite(suma) || suma < 0) return 0;
+  return suma;
+}
+
 export interface FiltrosPlanes {
   personalDataId?: number;
   titular?: 'yo' | 'pareja';

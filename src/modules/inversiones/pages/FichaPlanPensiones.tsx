@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useMemo, useId, useState } from 'react';
 import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
+import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
 import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { calcularEstimacionEnCurso } from '../../../services/estimacionFiscalEnCursoService';
 import type { AportacionPlan, PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
@@ -292,8 +293,11 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const { aportadoTotal, aportadoTitular, aportadoEmpresa } = useMemo(() => {
     const aportadoTitular = aportaciones.reduce((s, a) => s + (a.importeTitular ?? 0), 0);
     const aportadoEmpresa = aportaciones.reduce((s, a) => s + (a.importeEmpresa ?? 0), 0);
+    const aportadoConyuge = aportaciones.reduce((s, a) => s + (a.importeConyuge ?? 0), 0);
     return {
-      aportadoTotal: aportadoTitular + aportadoEmpresa,
+      aportadoTotal: calcularTotalAportadoPlan(
+        aportadoTitular + aportadoEmpresa + aportadoConyuge,
+      ),
       aportadoTitular,
       aportadoEmpresa,
     };

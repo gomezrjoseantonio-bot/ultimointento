@@ -16,7 +16,11 @@
 // `undefined` y la UI muestra "—" (regla § 5.4.6 · NO inventar datos).
 
 import { initDB } from '../../../services/db';
-import { planesPensionesService } from '../../../services/planesPensionesService';
+import {
+  calcularTotalAportadoPlan,
+  planesPensionesService,
+} from '../../../services/planesPensionesService';
+import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import type {
   GananciasPerdidas,
   OperacionCripto,
@@ -257,10 +261,15 @@ export async function getPosicionesCerradas(): Promise<PosicionCerrada[]> {
   let desdePlanesCerrados: PosicionCerrada[] = [];
   try {
     const todosPlanes = await planesPensionesService.getAllPlanes();
-    desdePlanesCerrados = todosPlanes
-      .filter((plan) => ESTADOS_CERRADO.has(plan.estado))
+    const planesCerrados = todosPlanes.filter((plan) => ESTADOS_CERRADO.has(plan.estado));
+    const mapaAportaciones = await aportacionesPlanService.getMapaAportacionesAcumuladas(
+      planesCerrados.map((plan) => plan.id),
+    );
+    desdePlanesCerrados = planesCerrados
       .map((plan): PosicionCerrada => {
-        const aportado = safeNumber(plan.importeInicial);
+        const aportado = calcularTotalAportadoPlan(
+          safeNumber(mapaAportaciones.get(plan.id) ?? 0),
+        );
         const vendido = safeNumber(plan.valorActual);
         const fechaCierre = plan.fechaActualizacion || new Date().toISOString();
         const derivados = calcularDerivados(aportado, vendido, fechaCierre, plan.fechaContratacion);
