@@ -46,7 +46,7 @@ Reportados por Jose en producción (`https://ultimointentohoy.netlify.app/person
 
 | Regla | Estado | Evidencia |
 |---|---|---|
-| A · Rentas alquiler NO viven en `otrosIngresos` (deben vivir en `contracts` + `rentaMensual`) | ✅ Se cumple | `IngresoOtro` no incluye `'alquiler'` como subtipo (`src/types/personal.ts:362–400`); `contracts.rentaMensual` en `src/services/db.ts:660,688` |
+| A · Rentas alquiler NO viven en `otrosIngresos` (deben vivir en `contracts` + `rentaMensual`) | 🟡 Parcial (modelo ✅ · UI legacy 🔴) | A nivel de **modelo de datos**: `IngresoOtro` no incluye `'alquiler'` como subtipo (`src/types/personal.ts:362–400`); `contracts.rentaMensual` en `src/services/db.ts:660,688`. A nivel de **UI**: `OtrosIngresosWizard.tsx:15–24` sigue ofreciendo `'alquiler'` y `'dividendo'` como tipos seleccionables — viola la regla en runtime (ver B3) |
 | B · `hipoteca` y `alquilerVivienda` NO son `TipoCompromiso` | ✅ Se cumple (compile-time) | `TipoCompromiso` en `src/types/compromisosRecurrentes.ts:59–66` sólo enumera `suministro\|suscripcion\|seguro\|cuota\|comunidad\|impuesto\|otros` |
 | C · `viviendaHabitual` genera eventos directos en `treasuryEvents` sin pasar por `compromisosRecurrentes` | ✅ Se cumple | `generarEventosVivienda()` en `src/services/personal/viviendaHabitualService.ts:113–142`; eventos con `sourceType: 'contrato' \| 'gasto_recurrente'` sin intermediario; `regenerarEventosVivienda()` invocado al guardar (línea 95) |
 | D · `opexRules` y `compromisosRecurrentes` unificados con `ambito` | ✅ Se cumple | `src/types/compromisosRecurrentes.ts:142–145`; comentario migración en `src/services/db.ts:2234` |
@@ -220,26 +220,26 @@ Búsqueda en `src/modules/personal/`, `src/pages/GestionPersonal/`, `src/service
    🟠 **NO · bug de wiring**. `PersonalPage.tsx:48–63` lee stores `nominas/autonomos/otrosIngresos` borrados en V63; los datos reales viven en `ingresos`. Ver B1.
 
 2. **¿El modelo v1.1 está implementado · parcial · ausente?**
-   ✅ **Implementado en alto grado**. 8 de 8 reglas duras: 6 ✅, 1 🟡 (F especies), 1 🟠 (G hook no cableado), 1 ❌ (H presupuesto). Stores legacy migrados (V61–V63), nuevos creados (V5.3 · V65).
+   ✅ **Implementado en alto grado**. 8 de 8 reglas duras: 4 ✅ (B · C · D · E), 2 🟡 (A modelo OK pero UI legacy lo viola · F especies sin guard), 1 🟠 (G hook no cableado), 1 ❌ (H presupuesto). Stores legacy migrados (V61–V63), nuevos creados (V5.3 · V65).
 
-4. **¿Cuántos wizards activos hay y cuántos son legacy?**
+3. **¿Cuántos wizards activos hay y cuántos son legacy?**
    3 wizards (Nomina, Autonomo, OtrosIngresos) · todos en hub `/gestion/personal/*` · funcionales pero arquitectónicamente legacy (no hay v5 propios). NominaWizard cubre v1.1 con gaps (`variableObjetivo` no explícito); OtrosIngresosWizard viola regla A (B3).
 
-5. **¿Qué pestañas del mockup están funcionales · cuáles placeholder · cuáles ausentes?**
+4. **¿Qué pestañas del mockup están funcionales · cuáles placeholder · cuáles ausentes?**
    - Funcionales: Panel · Ingresos · Gastos · Presupuesto (sólo 50/30/20)
    - Placeholder: Mi vivienda (sólo CTAs · sin formulario)
    - Ausentes: Datos personales · Aportaciones plan pensiones · Ahorro standalone · Presupuesto zero-base
 
-6. **¿La generación de eventos a Tesorería desde Personal funciona?**
+5. **¿La generación de eventos a Tesorería desde Personal funciona?**
    ✅ Sí para los tres cauces principales: nómina (`treasurySyncService.generateMonthlyForecasts`), vivienda habitual (`generarEventosVivienda`), compromisos recurrentes (`generarEventosDesdeCompromiso`).
 
-7. **¿El presupuesto personal está implementado?**
+6. **¿El presupuesto personal está implementado?**
    🟡 Parcial · sólo método 50/30/20 en UI; entidad `presupuestoPersonal` no existe como store; no se localiza enlace con cálculo de cumplimiento ni con `cajaLiquida` (regla H).
 
-8. **¿La dispersión fiscal (TAREA 14) sigue presente?**
+7. **¿La dispersión fiscal (TAREA 14) sigue presente?**
    🟡 Parcial · stores legacy ya consolidados (V61–V63), pero los datos fiscales del titular siguen viviendo dispersos entre `personalData` (situación, CCAA, descendientes), `personalModuleConfig` (UI), `viviendaHabitual` (datos catastrales que afectan IRPF) y `escenarios` (no auditado en este pase). La consolidación que la spec v1.1 supone (G-09) está hecha en stores nuevos, pero los datos preexistentes podrían no haberse migrado.
 
-9. **¿El cruce nómina ⇆ aportación plan pensiones está cableado?**
+8. **¿El cruce nómina ⇆ aportación plan pensiones está cableado?**
    🟠 **NO**. Hook `onNominaConfirmada` implementado pero `confirmTreasuryEvent()` no lo invoca (B2).
 
 ---
