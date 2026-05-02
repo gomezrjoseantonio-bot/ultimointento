@@ -1,11 +1,12 @@
 // Helpers compartidos del módulo Personal.
 // T20 Fase 3b · review #1172 · centralizar cálculos del modelo real.
 
-import type { Autonomo } from '../../types/personal';
+import type { Autonomo, Nomina } from '../../types/personal';
 import type {
   CategoriaGastoCompromiso,
   CompromisoRecurrente,
 } from '../../types/compromisosRecurrentes';
+import { nominaService } from '../../services/nominaService';
 
 /**
  * Estimación bruta anual de ingresos para un autónomo.
@@ -27,6 +28,46 @@ export const computeAutonomoIngresoAnualEstimado = (a: Autonomo): number => {
     return a.ingresosFacturados.reduce((sum, i) => sum + (i.importe ?? 0), 0);
   }
   return 0;
+};
+
+/**
+ * Bruto devengado de una nómina en un mes concreto · spec v1.1 regla 4
+ * (calendario REAL, no plano). Incluye paga extra entera en su mes,
+ * variable íntegro en el mes pagadero, bonus íntegro en su mes.
+ *
+ * Devuelve 0 si la nómina está inactiva.
+ *
+ * @param mes 1-12
+ */
+export const computeNominaBrutoEnMes = (n: Nomina, mes: number): number => {
+  if (!n.activa) return 0;
+  try {
+    const r = nominaService.calculateSalary(n);
+    return r.distribucionMensual.find((d) => d.mes === mes)?.totalDevengado ?? 0;
+  } catch {
+    // Si la nómina tiene datos incompletos, fallback prorrateado para no
+    // romper la UI · pero es un caso degradado.
+    return (n.salarioBrutoAnual ?? 0) / 12;
+  }
+};
+
+/**
+ * Ingreso bruto estimado de un autónomo en un mes concreto · suma de
+ * `fuentesIngreso[].importeEstimado` cuyas `meses` incluyen el mes
+ * indicado (sin `meses` definido = todos los meses).
+ *
+ * Devuelve 0 si el autónomo está inactivo o no tiene fuentesIngreso.
+ *
+ * @param mes 1-12
+ */
+export const computeAutonomoIngresoEnMes = (a: Autonomo, mes: number): number => {
+  if (!a.activo) return 0;
+  if (!a.fuentesIngreso || a.fuentesIngreso.length === 0) return 0;
+  return a.fuentesIngreso.reduce((sum, f) => {
+    const aplica =
+      !Array.isArray(f.meses) || f.meses.length === 0 || f.meses.includes(mes);
+    return aplica ? sum + (f.importeEstimado ?? 0) : sum;
+  }, 0);
 };
 
 /**

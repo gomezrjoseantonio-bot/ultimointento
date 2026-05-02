@@ -4,9 +4,10 @@ import { MoneyValue, DateLabel, EmptyState, Icons, showToastV5 } from '../../../
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import {
-  computeAutonomoIngresoAnualEstimado,
+  computeAutonomoIngresoEnMes,
   computeCompromisoMonthly,
   computeCompromisoImporteEnMes,
+  computeNominaBrutoEnMes,
   familiaForCategoria,
   safeDayOfMonth,
 } from '../helpers';
@@ -38,20 +39,27 @@ const FAMILIA_DOTS: Record<string, string> = {
 const colorForFamilia = (fam: string): string =>
   FAMILIA_DOTS[fam] ?? 'var(--atlas-v5-ink-4)';
 
-const computeIngresoMensualEstimado = (
+/**
+ * Ingreso bruto del hogar para un mes concreto · spec v1.1 regla 4
+ * (calendario REAL, no plano · paga extra entera en su mes, variable y
+ * bonus en su mes pagadero).
+ *
+ * @param mes 1-12
+ */
+const computeIngresoEnMes = (
   nominas: PersonalOutletContext['nominas'],
   autonomos: PersonalOutletContext['autonomos'],
+  mes: number,
 ): number => {
-  const nominaMensual = nominas
-    .filter((n) => n.activa)
-    .reduce((sum, n) => sum + (n.salarioBrutoAnual ?? 0) / 12, 0);
-  const autonomoMensual = autonomos
-    .filter((a) => a.activo)
-    .reduce(
-      (sum, a) => sum + computeAutonomoIngresoAnualEstimado(a) / 12,
-      0,
-    );
-  return nominaMensual + autonomoMensual;
+  const nominaMes = nominas.reduce(
+    (sum, n) => sum + computeNominaBrutoEnMes(n, mes),
+    0,
+  );
+  const autonomoMes = autonomos.reduce(
+    (sum, a) => sum + computeAutonomoIngresoEnMes(a, mes),
+    0,
+  );
+  return nominaMes + autonomoMes;
 };
 
 const computeGastoMensualEstimado = (compromisos: CompromisoRecurrente[]): number => {
@@ -116,9 +124,12 @@ const PanelPage: React.FC = () => {
   const navigate = useNavigate();
   const { nominas, autonomos, compromisos } = useOutletContext<PersonalOutletContext>();
 
+  // Ingreso del mes EN CURSO (spec v1.1 regla 4 · calendario REAL · no plano).
+  // Paga extra entera en junio/diciembre · variable/bonus en su mes pagadero.
+  const mesActual = new Date().getMonth() + 1;
   const ingresosMes = useMemo(
-    () => computeIngresoMensualEstimado(nominas, autonomos),
-    [nominas, autonomos],
+    () => computeIngresoEnMes(nominas, autonomos, mesActual),
+    [nominas, autonomos, mesActual],
   );
   const gastosMes = useMemo(
     () => computeGastoMensualEstimado(compromisos),

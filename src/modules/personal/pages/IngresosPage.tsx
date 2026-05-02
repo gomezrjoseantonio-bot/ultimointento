@@ -9,11 +9,23 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
-import { computeAutonomoIngresoAnualEstimado } from '../helpers';
+import {
+  computeAutonomoIngresoAnualEstimado,
+  computeAutonomoIngresoEnMes,
+  computeNominaBrutoEnMes,
+} from '../helpers';
+
+const MES_LABELS = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
 
 const IngresosPage: React.FC = () => {
   const navigate = useNavigate();
   const { nominas, autonomos, otrosIngresos } = useOutletContext<PersonalOutletContext>();
+  // Mes en curso · spec v1.1 regla 4 (calendario REAL · no plano).
+  const mesActual = new Date().getMonth() + 1;
+  const mesLabel = MES_LABELS[mesActual - 1];
 
   const total =
     nominas.length + autonomos.length + (otrosIngresos as unknown[]).length;
@@ -71,7 +83,9 @@ const IngresosPage: React.FC = () => {
                   <th style={thStyle}>Titular</th>
                   <th style={thStyle}>Distribución</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Bruto anual</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Mensual estimado</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Bruto devengado del mes en curso · paga extra entera en su mes · variable/bonus en su mes pagadero">
+                    Bruto · {mesLabel}
+                  </th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
                 </tr>
               </thead>
@@ -95,7 +109,7 @@ const IngresosPage: React.FC = () => {
                       <MoneyValue value={n.salarioBrutoAnual} decimals={0} />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <MoneyValue value={n.salarioBrutoAnual / 12} decimals={0} tone="pos" />
+                      <MoneyValue value={computeNominaBrutoEnMes(n, mesActual)} decimals={0} tone="pos" />
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>
                       <Pill variant={n.activa ? 'pos' : 'gris'} asTag>
@@ -121,12 +135,16 @@ const IngresosPage: React.FC = () => {
                   <th style={thStyle}>Actividad</th>
                   <th style={thStyle}>Titular</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Bruto anual</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Bruto estimado del mes en curso · suma de fuentesIngreso cuyas meses incluyen este mes">
+                    Bruto · {mesLabel}
+                  </th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {autonomos.map((a, index) => {
                   const ingreso = computeAutonomoIngresoAnualEstimado(a);
+                  const ingresoMes = computeAutonomoIngresoEnMes(a, mesActual);
                   const tieneEstimacion = ingreso > 0;
                   return (
                     <tr
@@ -141,6 +159,13 @@ const IngresosPage: React.FC = () => {
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
                         {tieneEstimacion ? (
                           <MoneyValue value={ingreso} decimals={0} />
+                        ) : (
+                          <span style={{ color: 'var(--atlas-v5-ink-4)' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        {ingresoMes > 0 ? (
+                          <MoneyValue value={ingresoMes} decimals={0} tone="pos" />
                         ) : (
                           <span style={{ color: 'var(--atlas-v5-ink-4)' }}>—</span>
                         )}
