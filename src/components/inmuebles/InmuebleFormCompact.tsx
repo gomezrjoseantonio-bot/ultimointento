@@ -4,12 +4,35 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ChevronDown, ChevronUp, Home } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Home,
+  ParkingSquare,
+  Archive,
+  Store,
+  HelpCircle,
+} from 'lucide-react';
 
 import { initDB, Property } from '../../services/db';
+import {
+  TipoActivo,
+  TIPO_ACTIVO_DESCRIPCIONES,
+  TIPO_ACTIVO_LABELS,
+  TIPO_ACTIVO_VALUES,
+} from '../../types/tipoActivo';
+import PhotoUpload from '../../modules/inmuebles/components/PhotoUpload';
 import { getLocationFromPostalCode, inferLocationFromPostalCodeRange, calculateITP, calculateIVA } from '../../utils/locationUtils';
 import { fetchLocationFromAPI } from '../../services/postalCodeApiService';
 import { AJD_RATE } from '../../utils/inmuebleUtils';
+
+const TIPO_ACTIVO_ICON: Record<TipoActivo, React.ComponentType<{ className?: string }>> = {
+  piso: Home,
+  parking: ParkingSquare,
+  trastero: Archive,
+  local: Store,
+  otro: HelpCircle,
+};
 
 interface InmuebleFormCompactProps {
   mode: 'create' | 'edit';
@@ -20,6 +43,10 @@ interface InmuebleFormCompactProps {
 }
 
 interface FormData {
+  // T29 · tipología y foto
+  tipoActivo: TipoActivo;
+  foto?: string;
+
   // Identificación
   alias: string;
   cp: string;
@@ -66,6 +93,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
+    tipologia: true,
+    foto: false,
     identificacion: true,
     ubicacion: true,
     compra: true,
@@ -77,6 +106,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
   
   // Form data
   const [formData, setFormData] = useState<FormData>({
+    tipoActivo: 'piso',
+    foto: undefined,
     alias: '',
     cp: '',
     direccion: '',
@@ -136,6 +167,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
       
       // Map Property to FormData
       setFormData({
+        tipoActivo: property.tipoActivo ?? 'piso',
+        foto: property.foto,
         alias: property.alias,
         cp: property.postalCode,
         direccion: property.address,
@@ -352,6 +385,8 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
     const ccaaFallback = formData.ccaa || locationInfo?.ccaa || 'Madrid';
 
     const property: Omit<Property, 'id'> = {
+      tipoActivo: formData.tipoActivo,
+      foto: formData.foto,
       alias: formData.alias,
       address: formData.direccion || '',
       postalCode: formData.cp,
@@ -484,6 +519,103 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
         
         {/* Form Content - Compact Layout */}
         <div className={`p-6 space-y-4 ${embedded ? 'inmueble-form-compact' : ''}`}>
+          {/* Section: TIPOLOGÍA */}
+          <section className="border border-gray-200 rounded-lg bg-white">
+            <button
+              type="button"
+              onClick={() => toggleSection('tipologia')}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors section-header"
+            >
+              <h3 className="font-medium text-gray-900 flex items-center">
+                {expandedSections.tipologia ? (
+                  <ChevronDown className="w-4 h-4 mr-2 text-gray-500" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 mr-2 text-gray-500" />
+                )}
+                TIPOLOGÍA
+              </h3>
+              <span className="text-xs text-gray-500">
+                {TIPO_ACTIVO_LABELS[formData.tipoActivo]}
+              </span>
+            </button>
+
+            {expandedSections.tipologia && (
+              <div className="p-4 pt-0 space-y-3">
+                <p className="text-xs text-gray-500">
+                  Selecciona el tipo de activo. Afecta a la UI (habitaciones solo si es piso) y a futuros selectores fiscales.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {TIPO_ACTIVO_VALUES.map((tipo) => {
+                    const Icon = TIPO_ACTIVO_ICON[tipo];
+                    const isSelected = formData.tipoActivo === tipo;
+                    return (
+                      <button
+                        key={tipo}
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, tipoActivo: tipo }))
+                        }
+                        aria-pressed={isSelected}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-md border text-center transition-colors ${
+                          isSelected
+                            ? 'border-atlas-blue bg-blue-50 text-atlas-blue'
+                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                        }`}
+                      >
+                        <Icon className="w-5 h-5" />
+                        <span className="text-xs font-semibold">
+                          {TIPO_ACTIVO_LABELS[tipo]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-600">
+                  {TIPO_ACTIVO_DESCRIPCIONES[formData.tipoActivo]}
+                </p>
+                {mode === 'edit' && formData.tipoActivo !== 'piso' && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    Las habitaciones del inmueble quedarán ocultas pero no se perderán ·
+                    podrás volver a "Piso" para recuperarlas.
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Section: FOTO */}
+          <section className="border border-gray-200 rounded-lg bg-white">
+            <button
+              type="button"
+              onClick={() => toggleSection('foto')}
+              className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors section-header"
+            >
+              <h3 className="font-medium text-gray-900 flex items-center">
+                {expandedSections.foto ? (
+                  <ChevronDown className="w-4 h-4 mr-2 text-gray-500" />
+                ) : (
+                  <ChevronUp className="w-4 h-4 mr-2 text-gray-500" />
+                )}
+                FOTO
+              </h3>
+              <span className="text-xs text-gray-500">
+                {formData.foto ? 'Foto añadida' : 'Opcional'}
+              </span>
+            </button>
+
+            {expandedSections.foto && (
+              <div className="p-4 pt-0">
+                <PhotoUpload
+                  value={formData.foto}
+                  onChange={(foto) =>
+                    setFormData((prev) => ({ ...prev, foto: foto ?? undefined }))
+                  }
+                  alt={formData.alias || 'Inmueble'}
+                />
+              </div>
+            )}
+          </section>
+
           {/* Section 1: IDENTIFICACIÓN */}
           <section className="border border-gray-200 rounded-lg bg-white">
             <button
@@ -829,17 +961,19 @@ const InmuebleFormCompact: React.FC<InmuebleFormCompactProps> = ({ mode, propert
                       className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
                     />
                   </div>
-                  <div className="col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Habitaciones
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.habitaciones || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, habitaciones: parseInt(e.target.value) || 0 }))}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
-                    />
-                  </div>
+                  {formData.tipoActivo === 'piso' && (
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Habitaciones
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.habitaciones || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, habitaciones: parseInt(e.target.value) || 0 }))}
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-atlas-blue focus:border-atlas-blue"
+                      />
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Baños

@@ -49,6 +49,15 @@
   font-weight: var(--atlas-v5-fw-medium);
 }
 
+.photoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .stateBadge {
   position: absolute;
   top: 10px;

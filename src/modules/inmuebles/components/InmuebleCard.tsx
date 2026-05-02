@@ -18,6 +18,8 @@ export interface InmuebleCardProps {
   state: InmuebleState;
   stateLabel: string;
   name: string;
+  /** T29 · foto base64 del inmueble · si undefined renderiza placeholder */
+  photoUrl?: string;
   /** Localización · "Oviedo · La Argañosa · 4ª". */
   location: string;
   /** Chips informativos · tipo · n hab · estilo · m². */
@@ -62,6 +64,7 @@ const InmuebleCard: React.FC<InmuebleCardProps> = ({
   state,
   stateLabel,
   name,
+  photoUrl,
   location,
   chips = [],
   metrics = [],
@@ -97,7 +100,11 @@ const InmuebleCard: React.FC<InmuebleCardProps> = ({
       aria-label={`${name} · ${stateLabel}`}
     >
       <div className={styles.photo}>
-        <span className={styles.photoLabel}>FOTO</span>
+        {photoUrl ? (
+          <img src={photoUrl} alt={name} className={styles.photoImg} />
+        ) : (
+          <span className={styles.photoLabel}>FOTO</span>
+        )}
         <span className={`${styles.stateBadge} ${stateAccent[state]}`}>
           {stateLabel}
         </span>
