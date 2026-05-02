@@ -2097,6 +2097,12 @@ interface AtlasHorizonDB {
   planesPensiones: PlanPensiones;            // V65: entidad estable plan (UUID)
   aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
   traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
+  /**
+   * @legacy V65 retiró este store del runtime · tipo mantenido porque
+   * `traspasosPlanesService.ts` aún lo usa desde 4 componentes UI vivos
+   * (PlanesManager · TraspasoForm · TraspasosHistorial · GestionInversionesPage).
+   * Migración pendiente · T27-pre · al cerrar puede eliminarse este tipo.
+   */
   traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
@@ -2209,6 +2215,11 @@ interface AtlasHorizonDB {
   keyval: any;
   // ⚠ DEPRECATED (V5.4): objetivos_financieros fue migrado a 'escenarios' · el store fue eliminado en la migración V5.4
   // Se mantiene en la interfaz TypeScript únicamente para que el código de migración compile.
+  /**
+   * @legacy Solo para upgrade() callback que migra DBs antiguas (~líneas 2370 + 3096).
+   * NO usar en código nuevo. Eliminable solo si se confirma cero DBs antiguas
+   * en producción con este store.
+   */
   objetivos_financieros: {
     id: 1;
     rentaPasivaObjetivo: number;

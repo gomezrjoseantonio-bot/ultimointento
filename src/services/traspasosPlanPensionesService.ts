@@ -15,7 +15,7 @@ export const traspasosPlanPensionesService = {
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     };
-    const id = await db.add('traspasosPlanPensiones', traspaso as any);
+    const id = await db.add('traspasosPlanPensiones', traspaso);
     return { ...traspaso, id: id as number };
   },
 
@@ -32,7 +32,7 @@ export const traspasosPlanPensionesService = {
     traspasos: TraspasoPlanPensiones[];
   }> {
     const db = await initDB();
-    const plan = (await db.get('planesPensiones', planId as any)) as PlanPensiones | undefined;
+    const plan = (await db.get('planesPensiones', planId)) as PlanPensiones | undefined;
     const traspasos = await this.getTraspasosPorPlan(planId);
     return { plan, traspasos };
   },

@@ -21,7 +21,7 @@ export const aportacionesPlanService = {
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     };
-    await db.add('aportacionesPlan', aportacion as any);
+    await db.add('aportacionesPlan', aportacion);
     return aportacion;
   },
 
@@ -52,7 +52,7 @@ export const aportacionesPlanService = {
 
   async mensualizarAnual(aportacionId: string): Promise<AportacionPlan[]> {
     const db = await initDB();
-    const aportacion = (await db.get('aportacionesPlan', aportacionId as any)) as AportacionPlan | undefined;
+    const aportacion = (await db.get('aportacionesPlan', aportacionId)) as AportacionPlan | undefined;
     if (!aportacion) throw new Error(`Aportación ${aportacionId} no encontrada`);
     if (aportacion.granularidad !== 'anual') {
       throw new Error('Solo se pueden mensualizar aportaciones anuales');
@@ -63,7 +63,7 @@ export const aportacionesPlanService = {
     const importeEmpresaMes = aportacion.importeEmpresa / meses;
     const importeConyugeMes = (aportacion.importeConyuge ?? 0) / meses;
 
-    await db.delete('aportacionesPlan', aportacionId as any);
+    await db.delete('aportacionesPlan', aportacionId);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const ahora = new Date().toISOString();
@@ -92,6 +92,6 @@ export const aportacionesPlanService = {
 
   async eliminarAportacion(id: string): Promise<void> {
     const db = await initDB();
-    await db.delete('aportacionesPlan', id as any);
+    await db.delete('aportacionesPlan', id);
   },
 };

@@ -128,7 +128,14 @@ Adicionalmente declara legacy ya retirados en runtime:
 - `traspasosPlanes` (line 2091) · eliminado en V65
 - `objetivos_financieros` (line 2203) · legacy
 
-T26 cierra ambos puntos.
+T26 cierra los 3 stores V65 + `as any` casts. Los 2 tipos legacy se mantienen por motivos legítimos · ver §4.4.
+
+### 4.4 · Tipos legacy mantenidos en interface (decisión T26)
+
+- `traspasosPlanes` · mantenido · `traspasosPlanesService.ts` aún consumido por 4 componentes UI · cleanup en T27-pre antes de migración Mi Plan
+- `objetivos_financieros` · mantenido · necesario para upgrade() de DBs antiguas · eliminable solo a largo plazo
+
+Ambos llevan JSDoc `@legacy` en el interface explicando la razón y la condición de eliminación.
 
 ---
 
@@ -198,6 +205,7 @@ Trabajo a abordar en T27 (Mi Plan wizards · 3 sub-PRs) · T28 (Panel conectar a
 
 | Tarea | Estado | Por qué |
 |---|---|---|
+| **T27-pre** migración consumidores `traspasosPlanesService` → `traspasosPlanPensionesService` | Pendiente · prioridad inmediata pre-T27 | `traspasosPlanesService.ts` (5 llamadas store legacy `traspasosPlanes`) sigue importado por `PlanesManager` · `TraspasoForm` · `TraspasosHistorial` · `GestionInversionesPage`. Migrar consumidores al canónico desbloquea retirar el tipo legacy del interface y cierra el círculo del módulo planes pensiones de una vez. 30-60min CC. |
 | **T8** schemas restantes | Desbloqueado tras T9 cierre · sin iniciar | Cache balance · histórico rentas activado · liquidación préstamo UI · backfill metadata documents · campos ya creados en T7 sub1 esperando uso real |
 | **T18** Revolut calibración | Base existe · perfil detecta Revolut Bank UAB (1583) · falta calibrar parser | Comentario `bankStatementOrchestrator.ts` · "T18 will tighten this" |
 | **T10** TODOs T7 cierre | Bloqueado por T8 | Tras T8 |

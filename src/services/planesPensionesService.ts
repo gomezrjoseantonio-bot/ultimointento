@@ -32,7 +32,7 @@ export const planesPensionesService = {
       fechaCreacion: ahora,
       fechaActualizacion: ahora,
     };
-    await db.add('planesPensiones', plan as any);
+    await db.add('planesPensiones', plan);
     return plan;
   },
 
@@ -41,7 +41,7 @@ export const planesPensionesService = {
     updates: Partial<Omit<PlanPensiones, 'id' | 'fechaCreacion'>>,
   ): Promise<PlanPensiones> {
     const db = await initDB();
-    const existing = await db.get('planesPensiones', id as any);
+    const existing = await db.get('planesPensiones', id);
     if (!existing) throw new Error(`Plan ${id} no encontrado`);
     const updated: PlanPensiones = {
       ...(existing as PlanPensiones),
@@ -49,13 +49,13 @@ export const planesPensionesService = {
       id,
       fechaActualizacion: new Date().toISOString(),
     };
-    await db.put('planesPensiones', updated as any);
+    await db.put('planesPensiones', updated);
     return updated;
   },
 
   async getPlan(id: string): Promise<PlanPensiones | undefined> {
     const db = await initDB();
-    const result = await db.get('planesPensiones', id as any);
+    const result = await db.get('planesPensiones', id);
     return result as PlanPensiones | undefined;
   },
 
@@ -89,14 +89,14 @@ export const planesPensionesService = {
     const aportaciones = (await db.getAll('aportacionesPlan')) as Array<{ id: string; planId: string }>;
     for (const ap of aportaciones) {
       if (ap.planId === id) {
-        await db.delete('aportacionesPlan', ap.id as any);
+        await db.delete('aportacionesPlan', ap.id);
       }
     }
     // Cascade: borrar traspasos
     const traspasos = (await db.getAll('traspasosPlanPensiones')) as Array<{ id: number; planId: string }>;
     for (const t of traspasos) {
       if (t.planId === id) {
-        await db.delete('traspasosPlanPensiones', t.id as any);
+        await db.delete('traspasosPlanPensiones', t.id);
       }
     }
     // Cascade: borrar valoraciones (tipo_activo='plan_pensiones', activo_id=UUID)
@@ -106,7 +106,7 @@ export const planesPensionesService = {
         await db.delete('valoraciones_historicas' as any, v.id as any);
       }
     }
-    await db.delete('planesPensiones', id as any);
+    await db.delete('planesPensiones', id);
   },
 
   async getValorActualConsolidado(id: string): Promise<number> {
