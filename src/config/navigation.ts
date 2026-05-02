@@ -1,4 +1,5 @@
 import { Icons, type IconComponent } from '../design-system/v5';
+import { SHOW_RETOS } from '../modules/mi-plan/featureFlags';
 
 export interface NavigationItem {
   name: string;
@@ -89,14 +90,15 @@ export const navigationConfig: NavigationItem[] = [
     icon: Icons.MiPlan,
     module: 'shared',
     section: 'operativa',
+    // T27.2-skip · sub-tab Retos condicionado a `SHOW_RETOS`
+    // (ver `src/modules/mi-plan/featureFlags`).
     subTabs: [
       { name: 'Mi Plan', href: '/mi-plan' },
       { name: 'Proyección', href: '/mi-plan/proyeccion' },
       { name: 'Libertad financiera', href: '/mi-plan/libertad' },
       { name: 'Objetivos', href: '/mi-plan/objetivos' },
       { name: 'Fondos de ahorro', href: '/mi-plan/fondos' },
-      // T27.2-skip · sub-tab Retos oculto · ver MiPlanPage.SHOW_RETOS_TAB.
-      // { name: 'Retos', href: '/mi-plan/retos' },
+      ...(SHOW_RETOS ? [{ name: 'Retos', href: '/mi-plan/retos' }] : []),
     ],
   },
   {

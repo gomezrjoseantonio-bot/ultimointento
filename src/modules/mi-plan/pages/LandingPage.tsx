@@ -10,6 +10,7 @@ import {
   computeBudgetProjection12mAsync,
   type BudgetProjection,
 } from '../services/budgetProjection';
+import { SHOW_RETOS } from '../featureFlags';
 import styles from './LandingPage.module.css';
 
 interface LanCard {
@@ -26,9 +27,12 @@ interface LanCard {
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  // T27.2-skip · `retoActivo` removido del destructure mientras la card
-  // Retos esté oculta. Restaurar al revivir el módulo.
-  const { objetivos, fondos } = useOutletContext<MiPlanOutletContext>();
+  // T27.2-skip · `retoActivo` se consume solo si `SHOW_RETOS` está activo
+  // (ver `../featureFlags`). El context lo sigue exponiendo · ver
+  // MiPlanContext.
+  const ctx = useOutletContext<MiPlanOutletContext>();
+  const { objetivos, fondos } = ctx;
+  const retoActivo = SHOW_RETOS ? ctx.retoActivo : null;
 
   // Proyección · usa el helper compartido (cierra TODO-T20-01).
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
@@ -130,25 +134,29 @@ const LandingPage: React.FC = () => {
       footPill: `${fondos.reduce((sum, f) => sum + f.cuentasAsignadas.length, 0)}`,
       footPillTone: 'brand',
     },
-    // T27.2-skip · card "Retos" oculta · ver MiPlanPage.SHOW_RETOS_TAB.
-    // Para revivir · descomentar el bloque y restaurar bindings asociados.
-    // {
-    //   key: 'retos',
-    //   title: 'Retos',
-    //   icon: Icons.Retos,
-    //   value: retoActivo ? (
-    //     <span style={{ fontSize: 17, lineHeight: 1.2 }}>{retoActivo.titulo}</span>
-    //   ) : (
-    //     <span style={{ fontSize: 28, color: 'var(--atlas-v5-ink-4)' }}>—</span>
-    //   ),
-    //   valueTone: 'gold',
-    //   sub: retoActivo
-    //     ? `tipo · ${retoActivo.tipo} · estado · ${retoActivo.estado}`
-    //     : 'sin reto activo este mes',
-    //   footLab: 'Mes',
-    //   footPill: retoActivo?.mes ?? '—',
-    //   footPillTone: 'gold',
-    // },
+    // T27.2-skip · card "Retos" condicionada a `SHOW_RETOS`
+    // (ver `../featureFlags`).
+    ...(SHOW_RETOS
+      ? [
+          {
+            key: 'retos' as const,
+            title: 'Retos',
+            icon: Icons.Retos,
+            value: retoActivo ? (
+              <span style={{ fontSize: 17, lineHeight: 1.2 }}>{retoActivo.titulo}</span>
+            ) : (
+              <span style={{ fontSize: 28, color: 'var(--atlas-v5-ink-4)' }}>—</span>
+            ),
+            valueTone: 'gold' as const,
+            sub: retoActivo
+              ? `tipo · ${retoActivo.tipo} · estado · ${retoActivo.estado}`
+              : 'sin reto activo este mes',
+            footLab: 'Mes',
+            footPill: retoActivo?.mes ?? '—',
+            footPillTone: 'gold' as const,
+          },
+        ]
+      : []),
   ];
 
   return (

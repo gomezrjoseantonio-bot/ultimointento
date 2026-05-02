@@ -9,6 +9,7 @@ import type {
   Reto,
 } from '../../types/miPlan';
 import type { MiPlanOutletContext } from './MiPlanContext';
+import { SHOW_RETOS } from './featureFlags';
 import styles from './MiPlanPage.module.css';
 
 interface TabItem {
@@ -18,14 +19,9 @@ interface TabItem {
   icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
 }
 
-// T27.2-skip · Pestaña Retos oculta hasta tener biblioteca curada y lógica
-// de sugerencia automática que la diferencien claramente de Objetivos.
-// Para revivir · cambiar a true Y restaurar el binding de ruta en App.tsx
-// (sustituir <Navigate> por <MiPlanRetos />) Y la card "Retos" en
-// LandingPage Y la entrada en src/config/navigation.ts Y el sub-text
-// "reto activo" del page-head más abajo.
-const SHOW_RETOS_TAB = false;
-
+// T27.2-skip · El flag `SHOW_RETOS` (ver `./featureFlags`) controla TODOS
+// los puntos de entrada al submódulo Retos · pestaña · ruta · card landing
+// · sub-tab navigation · sub-text "reto activo" del page-head.
 const allTabs: TabItem[] = [
   { key: 'landing', label: 'Mi Plan', path: '/mi-plan', icon: Icons.MiPlan },
   { key: 'proyeccion', label: 'Proyección', path: '/mi-plan/proyeccion', icon: Icons.Proyeccion },
@@ -35,7 +31,7 @@ const allTabs: TabItem[] = [
   { key: 'retos', label: 'Retos', path: '/mi-plan/retos', icon: Icons.Retos },
 ];
 
-const tabs: TabItem[] = SHOW_RETOS_TAB
+const tabs: TabItem[] = SHOW_RETOS
   ? allTabs
   : allTabs.filter((t) => t.key !== 'retos');
 
@@ -118,8 +114,8 @@ const MiPlanPage: React.FC = () => {
           <>
             tu brújula hacia la libertad financiera · datos al cierre de{' '}
             <strong>{monthLabel}</strong>
-            {/* T27.2-skip · sub "reto activo" oculto · ver SHOW_RETOS_TAB. */}
-            {SHOW_RETOS_TAB && retoActivo ? (
+            {/* T27.2-skip · sub "reto activo" oculto · ver featureFlags.SHOW_RETOS. */}
+            {SHOW_RETOS && retoActivo ? (
               <>
                 {' · '}reto activo <strong>{retoActivo.titulo}</strong>
               </>

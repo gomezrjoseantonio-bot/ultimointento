@@ -886,8 +886,11 @@ function App() {
             </Route>
 
             {/* T20 Fase 3c · Mi Plan v5 (sustituye horizon/mi-plan legacy)
-                Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos,retos}-v3
-                + atlas-mi-plan-v2. 6 sub-páginas · cierra TODO-T20-01 conectando
+                Mockups · atlas-mi-plan-{landing,proyeccion,libertad,objetivos,fondos}-v3
+                + atlas-mi-plan-v2. 5 sub-páginas accesibles · Retos
+                postpuesto en T27.2-skip (ver `src/modules/mi-plan/featureFlags`)
+                · su mockup atlas-mi-plan-retos-v3 sigue en docs/audit-inputs
+                como referencia para revivir. Cierra TODO-T20-01 conectando
                 cashflow Tesorería al helper computeBudgetProjection12mAsync. */}
             <Route path="mi-plan" element={
               <React.Suspense fallback={<LoadingSpinner />}>
@@ -919,10 +922,11 @@ function App() {
                   <MiPlanFondos />
                 </React.Suspense>
               } />
-              {/* T27.2-skip · pestaña Retos oculta · la ruta redirige a
-                  Objetivos hasta que se decida revivir el módulo. Para
-                  revivir · sustituir el <Navigate> por <MiPlanRetos />
-                  + activar SHOW_RETOS_TAB en MiPlanPage. */}
+              {/* T27.2-skip · módulo Retos postpuesto · ruta condicionada a
+                  `SHOW_RETOS` (ver `src/modules/mi-plan/featureFlags`).
+                  Cuando esté `false` · redirige a Objetivos (path actual).
+                  Cuando esté `true` · descomentar la lazy import arriba y
+                  sustituir el <Navigate> por <MiPlanRetos />. */}
               <Route path="retos" element={
                 <Navigate to="/mi-plan/objetivos" replace />
               } />
