@@ -26,7 +26,9 @@ interface LanCard {
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { objetivos, fondos, retoActivo } = useOutletContext<MiPlanOutletContext>();
+  // T27.2-skip · `retoActivo` removido del destructure mientras la card
+  // Retos esté oculta. Restaurar al revivir el módulo.
+  const { objetivos, fondos } = useOutletContext<MiPlanOutletContext>();
 
   // Proyección · usa el helper compartido (cierra TODO-T20-01).
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
@@ -128,23 +130,25 @@ const LandingPage: React.FC = () => {
       footPill: `${fondos.reduce((sum, f) => sum + f.cuentasAsignadas.length, 0)}`,
       footPillTone: 'brand',
     },
-    {
-      key: 'retos',
-      title: 'Retos',
-      icon: Icons.Retos,
-      value: retoActivo ? (
-        <span style={{ fontSize: 17, lineHeight: 1.2 }}>{retoActivo.titulo}</span>
-      ) : (
-        <span style={{ fontSize: 28, color: 'var(--atlas-v5-ink-4)' }}>—</span>
-      ),
-      valueTone: 'gold',
-      sub: retoActivo
-        ? `tipo · ${retoActivo.tipo} · estado · ${retoActivo.estado}`
-        : 'sin reto activo este mes',
-      footLab: 'Mes',
-      footPill: retoActivo?.mes ?? '—',
-      footPillTone: 'gold',
-    },
+    // T27.2-skip · card "Retos" oculta · ver MiPlanPage.SHOW_RETOS_TAB.
+    // Para revivir · descomentar el bloque y restaurar bindings asociados.
+    // {
+    //   key: 'retos',
+    //   title: 'Retos',
+    //   icon: Icons.Retos,
+    //   value: retoActivo ? (
+    //     <span style={{ fontSize: 17, lineHeight: 1.2 }}>{retoActivo.titulo}</span>
+    //   ) : (
+    //     <span style={{ fontSize: 28, color: 'var(--atlas-v5-ink-4)' }}>—</span>
+    //   ),
+    //   valueTone: 'gold',
+    //   sub: retoActivo
+    //     ? `tipo · ${retoActivo.tipo} · estado · ${retoActivo.estado}`
+    //     : 'sin reto activo este mes',
+    //   footLab: 'Mes',
+    //   footPill: retoActivo?.mes ?? '—',
+    //   footPillTone: 'gold',
+    // },
   ];
 
   return (

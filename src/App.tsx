@@ -252,7 +252,9 @@ const MiPlanProyeccion = lazyWithPreload(() => import('./modules/mi-plan/pages/P
 const MiPlanLibertad = lazyWithPreload(() => import('./modules/mi-plan/pages/LibertadPage'));
 const MiPlanObjetivos = lazyWithPreload(() => import('./modules/mi-plan/pages/ObjetivosPage'));
 const MiPlanFondos = lazyWithPreload(() => import('./modules/mi-plan/pages/FondosPage'));
-const MiPlanRetos = lazyWithPreload(() => import('./modules/mi-plan/pages/RetosPage'));
+// T27.2-skip · lazy import de MiPlanRetos comentada · la ruta redirige a
+// Objetivos. Para revivir · descomentar y restaurar el binding del Route.
+// const MiPlanRetos = lazyWithPreload(() => import('./modules/mi-plan/pages/RetosPage'));
 // T20 Fase 1 · Ajustes v5 module
 const AjustesPage = lazyWithPreload(() => import('./modules/ajustes/AjustesPage'));
 const AjustesPerfil = lazyWithPreload(() => import('./modules/ajustes/pages/PerfilPage'));
@@ -917,10 +919,12 @@ function App() {
                   <MiPlanFondos />
                 </React.Suspense>
               } />
+              {/* T27.2-skip · pestaña Retos oculta · la ruta redirige a
+                  Objetivos hasta que se decida revivir el módulo. Para
+                  revivir · sustituir el <Navigate> por <MiPlanRetos />
+                  + activar SHOW_RETOS_TAB en MiPlanPage. */}
               <Route path="retos" element={
-                <React.Suspense fallback={<LoadingSpinner />}>
-                  <MiPlanRetos />
-                </React.Suspense>
+                <Navigate to="/mi-plan/objetivos" replace />
               } />
             </Route>
 

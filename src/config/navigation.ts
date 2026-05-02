@@ -95,7 +95,8 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Libertad financiera', href: '/mi-plan/libertad' },
       { name: 'Objetivos', href: '/mi-plan/objetivos' },
       { name: 'Fondos de ahorro', href: '/mi-plan/fondos' },
-      { name: 'Retos', href: '/mi-plan/retos' },
+      // T27.2-skip · sub-tab Retos oculto · ver MiPlanPage.SHOW_RETOS_TAB.
+      // { name: 'Retos', href: '/mi-plan/retos' },
     ],
   },
   {
