@@ -11,6 +11,7 @@ import {
 } from '../../../design-system/v5';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import type { Contract } from '../../../services/db';
+import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import styles from './DetallePage.module.css';
 
 type Tab = 'resumen' | 'contratos' | 'cobros' | 'gastos' | 'documentos' | 'fiscalidad';
@@ -63,6 +64,8 @@ const DetallePage: React.FC = () => {
     );
   }
 
+  const tipoActivo = getTipoActivoEffective(property);
+  const esPiso = tipoActivo === 'piso';
   const habitaciones = property.bedrooms || 1;
   const rentaMensual = contratosActivos.reduce(
     (sum, c) => sum + (c.rentaMensual ?? 0),
@@ -100,6 +103,12 @@ const DetallePage: React.FC = () => {
 
       <div className={styles.hero}>
         <div className={styles.heroTop}>
+          <div className={styles.heroLeftRow}>
+            {property.foto && (
+              <div className={styles.heroPhoto}>
+                <img src={property.foto} alt={property.alias} />
+              </div>
+            )}
           <div className={styles.heroLeft}>
             <div className={styles.heroAst}>{astId}</div>
             <div className={styles.heroName}>{property.alias}</div>
@@ -109,13 +118,17 @@ const DetallePage: React.FC = () => {
             </div>
             <div className={styles.heroChips}>
               <span className={styles.heroChip}>
-                {habitaciones > 1 ? 'Por habitaciones' : 'Piso completo'}
+                {esPiso
+                  ? habitaciones > 1
+                    ? 'Por habitaciones'
+                    : 'Piso completo'
+                  : TIPO_ACTIVO_LABELS[tipoActivo]}
               </span>
-              <span className={styles.heroChip}>{habitaciones} hab</span>
+              {esPiso && <span className={styles.heroChip}>{habitaciones} hab</span>}
               {property.squareMeters > 0 && (
                 <span className={styles.heroChip}>{property.squareMeters} m²</span>
               )}
-              {property.bathrooms != null && property.bathrooms > 0 && (
+              {esPiso && property.bathrooms != null && property.bathrooms > 0 && (
                 <span className={styles.heroChip}>{property.bathrooms} baños</span>
               )}
               {property.cadastralReference && (
@@ -124,6 +137,7 @@ const DetallePage: React.FC = () => {
                 </span>
               )}
             </div>
+          </div>
           </div>
           <div className={styles.heroActions}>
             <PageHead
@@ -177,7 +191,11 @@ const DetallePage: React.FC = () => {
                 <MoneyValue value={rentaMensual} decimals={0} tone="pos" />
               </div>
               <div className={styles.kpiHint}>
-                {contratosActivos.length} de {habitaciones} unidades activas
+                {esPiso
+                  ? `${contratosActivos.length} de ${habitaciones} unidades activas`
+                  : contratosActivos.length > 0
+                    ? 'Ocupado'
+                    : 'Libre'}
               </div>
             </div>
             <div className={`${styles.kpi} ${styles.pos}`}>
@@ -185,7 +203,9 @@ const DetallePage: React.FC = () => {
               <div className={`${styles.kpiVal} ${styles.pos}`}>
                 <MoneyValue value={rentaMensual * 12} decimals={0} tone="pos" />
               </div>
-              <div className={styles.kpiHint}>{habitaciones} habitaciones · sin gastos</div>
+              <div className={styles.kpiHint}>
+                {esPiso ? `${habitaciones} habitaciones · sin gastos` : 'sin gastos'}
+              </div>
             </div>
             <div className={styles.kpi}>
               <div className={styles.kpiLab}>Rentabilidad bruta</div>
@@ -198,6 +218,7 @@ const DetallePage: React.FC = () => {
             </div>
           </div>
 
+          {esPiso && (
           <div className={styles.section}>
             <div className={styles.sectionHd}>
               <div>
@@ -267,6 +288,7 @@ const DetallePage: React.FC = () => {
               })}
             </div>
           </div>
+          )}
         </>
       )}
 

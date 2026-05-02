@@ -7,6 +7,12 @@ import {
   Icons,
 } from '../../../design-system/v5';
 import type { Contract, Property } from '../../../services/db';
+import {
+  TIPO_ACTIVO_LABELS,
+  TIPO_ACTIVO_VALUES,
+  TipoActivo,
+  getTipoActivoEffective,
+} from '../../../types/tipoActivo';
 import InmuebleCard, {
   InmuebleState,
   InmuebleType,
@@ -15,12 +21,17 @@ import PortfolioMap from '../components/PortfolioMap';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import styles from './ListadoPage.module.css';
 import { valoracionesService } from '../../../services/valoracionesService';
+import { gastosInmuebleService } from '../../../services/gastosInmuebleService';
+import { prestamosService } from '../../../services/prestamosService';
+import { computeRentabilidadNeta } from '../utils/computeRentabilidadNeta';
 
 type EstadoFilter = 'todos' | 'habitaciones' | 'completos' | 'reforma' | 'alertas';
+type TipoFilter = 'todos' | TipoActivo;
 
 interface DerivedInmueble {
   property: Property;
   astId: string;
+  tipoActivo: TipoActivo;
   type: InmuebleType;
   state: InmuebleState;
   stateLabel: string;
@@ -67,22 +78,28 @@ const deriveInmueble = (
   today: Date,
   index: number,
 ): DerivedInmueble => {
+  const tipoActivo = getTipoActivoEffective(property);
   const propContracts = contracts.filter((c) => c.inmuebleId === property.id);
   const activos = propContracts.filter((c) => isContractActiveAtDate(c, today));
   const habitaciones = property.bedrooms || 1;
   const ocupadas = activos.length;
   const rentaMensual = activos.reduce((sum, c) => sum + (c.rentaMensual ?? 0), 0);
 
-  let type: InmuebleType = 'habitaciones';
-  if (habitaciones <= 1) type = 'completo';
+  // Tipos no-piso · siempre 'completo' (ningún concepto de habitaciones).
+  let type: InmuebleType =
+    tipoActivo === 'piso' ? (habitaciones > 1 ? 'habitaciones' : 'completo') : 'completo';
+
+  // Para tipos no-piso, ocupación es binaria · 1 unidad.
+  const unidadesParaEstado = tipoActivo === 'piso' ? habitaciones : 1;
+  const ocupadasParaEstado = Math.min(ocupadas, unidadesParaEstado);
 
   let state: InmuebleState = 'vacant';
   let stateLabel = 'Vacante';
   let hasAlert = false;
-  if (ocupadas === 0) {
+  if (ocupadasParaEstado === 0) {
     state = 'vacant';
     stateLabel = 'Vacante';
-  } else if (ocupadas < habitaciones) {
+  } else if (ocupadasParaEstado < unidadesParaEstado) {
     state = 'attention';
     stateLabel = 'Atención';
     hasAlert = true;
@@ -96,6 +113,7 @@ const deriveInmueble = (
   return {
     property,
     astId,
+    tipoActivo,
     type,
     state,
     stateLabel,
@@ -112,6 +130,9 @@ const ListadoPage: React.FC = () => {
   const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<EstadoFilter>('todos');
+  const [tipoFilter, setTipoFilter] = useState<TipoFilter>('todos');
+  const [opexAnualPorInmueble, setOpexAnualPorInmueble] = useState<Map<number, number>>(new Map());
+  const [cuotaAnualPorInmueble, setCuotaAnualPorInmueble] = useState<Map<number, number>>(new Map());
 
   /** Matcher con fallback por nombre — T25.1 · cargado una sola vez */
   const [valoracionMatcher, setValoracionMatcher] = useState<import('../../../services/valoracionesService').ValoracionMatcher | null>(null);
@@ -127,6 +148,75 @@ const ListadoPage: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
+  // T29 · Carga inputs para KPI Rentabilidad neta · OPEX año actual + cuota anual préstamos vivos.
+  useEffect(() => {
+    let mounted = true;
+    const ejercicio = today.getFullYear();
+    const propIds = properties
+      .map((p) => p.id)
+      .filter((id): id is number => typeof id === 'number');
+
+    const loadOpex = async () => {
+      const map = new Map<number, number>();
+      const all = await Promise.all(
+        propIds.map(async (id) => {
+          try {
+            const gastos = await gastosInmuebleService.getByInmuebleYEjercicio(id, ejercicio);
+            const total = gastos.reduce((sum, g) => sum + (g.importe ?? 0), 0);
+            return [id, total] as const;
+          } catch {
+            return [id, 0] as const;
+          }
+        }),
+      );
+      for (const [id, total] of all) map.set(id, total);
+      return map;
+    };
+
+    const loadCuotas = async () => {
+      const map = new Map<number, number>();
+      const all = await Promise.all(
+        propIds.map(async (id) => {
+          try {
+            const prestamos = await prestamosService.getPrestamosByProperty(String(id));
+            const vivos = prestamos.filter(
+              (p) => !p.estado || p.estado === 'vivo' || p.estado === 'pendiente_completar',
+            );
+            const cuotaMensual = vivos.reduce((sum, p) => {
+              const principal = p.principalVivo ?? p.principalInicial ?? 0;
+              if (principal <= 0 || !p.plazoMesesTotal) return sum;
+              const tipoNominal =
+                p.tipoNominalAnualFijo ??
+                ((p.valorIndiceActual ?? 0) + (p.diferencial ?? 0)) * 100;
+              const r = (tipoNominal / 100) / 12;
+              const n = p.plazoMesesTotal;
+              const cuota =
+                r > 0
+                  ? (principal * r) / (1 - Math.pow(1 + r, -n))
+                  : principal / n;
+              return sum + (Number.isFinite(cuota) ? cuota : 0);
+            }, 0);
+            return [id, cuotaMensual * 12] as const;
+          } catch {
+            return [id, 0] as const;
+          }
+        }),
+      );
+      for (const [id, total] of all) map.set(id, total);
+      return map;
+    };
+
+    Promise.all([loadOpex(), loadCuotas()])
+      .then(([opex, cuota]) => {
+        if (!mounted) return;
+        setOpexAnualPorInmueble(opex);
+        setCuotaAnualPorInmueble(cuota);
+      })
+      .catch(() => { /* sin datos · KPI mostrará — */ });
+
+    return () => { mounted = false; };
+  }, [properties, today]);
+
   const derived = useMemo(
     () => properties.map((p, i) => deriveInmueble(p, contracts, today, i)),
     [properties, contracts, today],
@@ -134,6 +224,7 @@ const ListadoPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     return derived.filter((d) => {
+      if (tipoFilter !== 'todos' && d.tipoActivo !== tipoFilter) return false;
       if (filter === 'habitaciones' && d.type !== 'habitaciones') return false;
       if (filter === 'completos' && d.type !== 'completo') return false;
       if (filter === 'alertas' && !d.hasAlert) return false;
@@ -153,7 +244,20 @@ const ListadoPage: React.FC = () => {
         )
       );
     });
-  }, [derived, filter, search]);
+  }, [derived, filter, tipoFilter, search]);
+
+  // T29 · Counts por tipología · solo aparece el filtro si hay ≥1 no-piso.
+  const tipoCounts = useMemo(() => {
+    const map = new Map<TipoActivo, number>();
+    for (const d of derived) {
+      map.set(d.tipoActivo, (map.get(d.tipoActivo) ?? 0) + 1);
+    }
+    return map;
+  }, [derived]);
+  const hasNonPisoActivos = useMemo(
+    () => derived.some((d) => d.tipoActivo !== 'piso'),
+    [derived],
+  );
 
   // KPIs agregados
   // totalValor usa suma de valoraciones reales (0 para los sin valorar) · T24.2 · matching id+nombre T25.1
@@ -176,6 +280,24 @@ const ListadoPage: React.FC = () => {
   const totalOcupadas = derived.reduce((sum, d) => sum + d.ocupadas, 0);
   const ocupacionPct =
     totalUnidades > 0 ? Math.round((totalOcupadas / totalUnidades) * 100) : 0;
+
+  // T29 · KPI Rentabilidad neta · cableado real (renta − OPEX − cuota préstamo) / valor inversión.
+  const rentaMensualPorInmueble = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const d of derived) {
+      if (d.property.id != null) map.set(d.property.id, d.rentaMensual);
+    }
+    return map;
+  }, [derived]);
+  const rentabilidad = useMemo(
+    () => computeRentabilidadNeta({
+      properties,
+      rentaMensualPorInmueble,
+      opexAnualPorInmueble,
+      cuotaAnualPrestamoPorInmueble: cuotaAnualPorInmueble,
+    }),
+    [properties, rentaMensualPorInmueble, opexAnualPorInmueble, cuotaAnualPorInmueble],
+  );
 
   // Counts por filtro
   const countAll = derived.length;
@@ -254,19 +376,58 @@ const ListadoPage: React.FC = () => {
         </div>
         <div className={styles.kpi}>
           <div className={styles.kpiLab}>Rentabilidad neta</div>
-          <div className={`${styles.kpiVal} ${styles.pos}`}>
-            {/* TODO 20.3a follow-up · cálculo real desde gastos del módulo Inmuebles */}
-            —
-          </div>
-          <div className={styles.kpiHint}>pendiente cálculo gastos</div>
+          {rentabilidad.rentabilidadNetaPct !== undefined ? (
+            <>
+              <div
+                className={`${styles.kpiVal} ${
+                  rentabilidad.rentabilidadNetaPct > 0
+                    ? styles.pos
+                    : rentabilidad.rentabilidadNetaPct < 0
+                      ? styles.neg
+                      : ''
+                }`}
+              >
+                {rentabilidad.rentabilidadNetaPct.toLocaleString('es-ES', {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 2,
+                })}
+                <span className={styles.kpiUnit}>%</span>
+              </div>
+              <div className={styles.kpiHint}>
+                cashflow{' '}
+                <MoneyValue
+                  value={rentabilidad.cashflowAnualNeto}
+                  decimals={0}
+                  tone={rentabilidad.cashflowAnualNeto >= 0 ? 'pos' : 'neg'}
+                />{' '}
+                / año
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.kpiVal}>—</div>
+              <div className={styles.kpiHint}>datos insuficientes</div>
+            </>
+          )}
         </div>
         <div className={styles.kpi}>
           <div className={styles.kpiLab}>Cashflow anual</div>
-          <div className={`${styles.kpiVal} ${styles.pos}`}>
-            <MoneyValue value={rentaMensualTotal * 12} decimals={0} showSign tone="pos" />
+          <div
+            className={`${styles.kpiVal} ${
+              rentabilidad.cashflowAnualNeto >= 0 ? styles.pos : styles.neg
+            }`}
+          >
+            <MoneyValue
+              value={rentabilidad.cashflowAnualNeto}
+              decimals={0}
+              showSign
+              tone={rentabilidad.cashflowAnualNeto >= 0 ? 'pos' : 'neg'}
+            />
           </div>
           <div className={styles.kpiHint}>
-            <MoneyValue value={rentaMensualTotal} decimals={0} /> / mes bruto
+            <MoneyValue value={rentabilidad.rentaAnualBruta} decimals={0} /> bruto
+            {' · '}
+            <MoneyValue value={rentabilidad.opexAnual + rentabilidad.cuotaAnualPrestamo} decimals={0} /> gastos
           </div>
         </div>
       </div>
@@ -311,6 +472,29 @@ const ListadoPage: React.FC = () => {
         >
           Con alertas · {countAlertas}
         </button>
+
+        {hasNonPisoActivos && (
+          <>
+            <span className={styles.filterDivider} />
+            <button
+              type="button"
+              className={`${styles.filterChip} ${tipoFilter === 'todos' ? styles.active : ''}`}
+              onClick={() => setTipoFilter('todos')}
+            >
+              Todos los tipos
+            </button>
+            {TIPO_ACTIVO_VALUES.filter((t) => (tipoCounts.get(t) ?? 0) > 0).map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`${styles.filterChip} ${tipoFilter === t ? styles.active : ''}`}
+                onClick={() => setTipoFilter(t)}
+              >
+                {TIPO_ACTIVO_LABELS[t]} · {tipoCounts.get(t) ?? 0}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       <div className={styles.layout}>
@@ -349,6 +533,11 @@ const ListadoPage: React.FC = () => {
                 const fechaCompraFmt = formatFechaCompra(d.property.purchaseDate);
                 const fechaValFmt = hayValoracion ? formatFechaMes(valHoy.fecha_valoracion) : undefined;
 
+                const tipoLabel =
+                  d.tipoActivo === 'piso'
+                    ? d.type === 'habitaciones' ? 'Habitaciones' : 'Piso completo'
+                    : TIPO_ACTIVO_LABELS[d.tipoActivo];
+                const showHabChip = d.tipoActivo === 'piso';
                 return (
                   <InmuebleCard
                     key={d.property.id}
@@ -356,15 +545,13 @@ const ListadoPage: React.FC = () => {
                     state={d.state}
                     stateLabel={d.stateLabel}
                     name={d.property.alias}
+                    photoUrl={d.property.foto}
                     location={`${d.property.municipality}${
                       d.property.province ? ' · ' + d.property.province : ''
                     }`}
                     chips={[
-                      {
-                        label: d.type === 'habitaciones' ? 'Habitaciones' : 'Piso completo',
-                        isType: true,
-                      },
-                      { label: `${d.habitaciones} hab` },
+                      { label: tipoLabel, isType: true },
+                      ...(showHabChip ? [{ label: `${d.habitaciones} hab` }] : []),
                       ...(d.property.squareMeters
                         ? [{ label: `${d.property.squareMeters} m²` }]
                         : []),

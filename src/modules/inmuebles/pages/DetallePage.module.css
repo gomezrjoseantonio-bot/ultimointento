@@ -147,6 +147,31 @@
   align-items: flex-start;
 }
 
+.heroPhoto {
+  width: 180px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+}
+
+.heroPhoto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.heroLeftRow {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 280px;
+}
+
 .kpisRow {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

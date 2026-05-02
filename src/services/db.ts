@@ -22,6 +22,7 @@ import type {
   DeclaracionIRPF,
   OrigenDeclaracion,
 } from '../types/fiscal';
+import type { TipoActivo } from '../types/tipoActivo';
 
 const DB_NAME = 'AtlasHorizonDB';
 const DB_VERSION = 66; // V66 (T27.1): añade campos opcionales al store `objetivos` · acumular.unidad ('eur'|'meses') · comprar.metric ('valor'|'unidades') · sin migración de datos (campos opcionales · default 'eur'/'valor' al renderizar)
@@ -106,6 +107,10 @@ export interface Property {
       constructionCadastralValue: number;
     };
   };
+  /** T29 · tipología del activo · default 'piso' efectivo si undefined (registros pre-T29) */
+  tipoActivo?: TipoActivo;
+  /** T29 · foto principal del inmueble · base64 data URL · max 500KB tras compresión · undefined si no hay */
+  foto?: string;
   // H9-FISCAL: AEAT Amortization data
   aeatAmortization?: {
     // Acquisition type and dates

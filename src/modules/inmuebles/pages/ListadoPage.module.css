@@ -42,6 +42,7 @@
 }
 
 .kpiVal.pos { color: var(--atlas-v5-pos); }
+.kpiVal.neg { color: var(--atlas-v5-neg); }
 
 .kpiHint {
   font-size: 11px;
