@@ -3,8 +3,9 @@ import { useOutletContext } from 'react-router-dom';
 import { CardV5, MoneyValue, Icons } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
 import {
-  computeAutonomoIngresoAnualEstimado,
+  computeAutonomoIngresoEnMes,
   computeCompromisoMonthly,
+  computeNominaBrutoEnMes,
   bolsaForCategoria,
 } from '../helpers';
 
@@ -25,13 +26,12 @@ import {
 const PresupuestoPage: React.FC = () => {
   const { nominas, autonomos, compromisos } = useOutletContext<PersonalOutletContext>();
 
+  // Ingreso del mes EN CURSO · spec v1.1 regla 4 (calendario REAL · no plano).
+  // Las metas 50/30/20 se calculan sobre este mes real, no sobre bruto/12.
+  const mesActual = new Date().getMonth() + 1;
   const ingresosMes =
-    nominas
-      .filter((n) => n.activa)
-      .reduce((sum, n) => sum + n.salarioBrutoAnual / 12, 0) +
-    autonomos
-      .filter((a) => a.activo)
-      .reduce((sum, a) => sum + computeAutonomoIngresoAnualEstimado(a) / 12, 0);
+    nominas.reduce((sum, n) => sum + computeNominaBrutoEnMes(n, mesActual), 0) +
+    autonomos.reduce((sum, a) => sum + computeAutonomoIngresoEnMes(a, mesActual), 0);
 
   let necesidades = 0;
   let deseos = 0;

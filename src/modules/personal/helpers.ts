@@ -1,11 +1,12 @@
 // Helpers compartidos del módulo Personal.
 // T20 Fase 3b · review #1172 · centralizar cálculos del modelo real.
 
-import type { Autonomo } from '../../types/personal';
+import type { Autonomo, Nomina } from '../../types/personal';
 import type {
   CategoriaGastoCompromiso,
   CompromisoRecurrente,
 } from '../../types/compromisosRecurrentes';
+import { nominaService } from '../../services/nominaService';
 
 /**
  * Estimación bruta anual de ingresos para un autónomo.
@@ -26,6 +27,88 @@ export const computeAutonomoIngresoAnualEstimado = (a: Autonomo): number => {
   if (a.ingresosFacturados && a.ingresosFacturados.length > 0) {
     return a.ingresosFacturados.reduce((sum, i) => sum + (i.importe ?? 0), 0);
   }
+  return 0;
+};
+
+/**
+ * Bruto devengado de una nómina en un mes concreto · spec v1.1 regla 4
+ * (calendario REAL, no plano). Incluye paga extra entera en su mes,
+ * variable íntegro en el mes pagadero, bonus íntegro en su mes.
+ *
+ * Devuelve 0 si la nómina está inactiva o si los datos están incompletos.
+ * NO hay fallback prorrateado · el spec v1.1 prohibe expresamente prorratear
+ * ficticiamente. Si calculateSalary lanza, se logea y se devuelve 0 (failing
+ * loud · UI muestra dato ausente).
+ *
+ * @param mes 1-12
+ */
+export const computeNominaBrutoEnMes = (n: Nomina, mes: number): number => {
+  if (!n.activa) return 0;
+  try {
+    const r = nominaService.calculateSalary(n);
+    return r.distribucionMensual.find((d) => d.mes === mes)?.totalDevengado ?? 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaBrutoEnMes · calculateSalary lanzó · datos incompletos', err);
+    return 0;
+  }
+};
+
+/**
+ * Bruto anual real de una nómina · usa `calculateSalary(n).totalAnualBruto`
+ * que sí incluye paga extra, variable y bonus (a diferencia de
+ * `n.salarioBrutoAnual` que es sólo la base anual sin variables/bonus).
+ *
+ * Spec v1.1 regla 4 · todas las cifras anuales mostradas deben ser coherentes
+ * con la suma real mes a mes.
+ */
+export const computeNominaBrutoAnual = (n: Nomina): number => {
+  try {
+    return nominaService.calculateSalary(n).totalAnualBruto;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaBrutoAnual · calculateSalary lanzó · datos incompletos', err);
+    return n.salarioBrutoAnual ?? 0;
+  }
+};
+
+/**
+ * Ingreso bruto estimado de un autónomo en un mes concreto.
+ *
+ * Estrategia (en orden):
+ *   1. Si tiene `fuentesIngreso` · suma `importeEstimado` cuyas `meses`
+ *      incluyen el mes indicado (sin `meses` = todos los meses).
+ *   2. Si no tiene `fuentesIngreso` pero sí `ingresosFacturados`
+ *      (autónomos legacy) · suma `importe` de los registros cuya `fecha`
+ *      cae en el mes indicado del año en curso.
+ *   3. Si nada de lo anterior · 0.
+ *
+ * Devuelve 0 si el autónomo está inactivo.
+ *
+ * @param mes 1-12
+ */
+export const computeAutonomoIngresoEnMes = (a: Autonomo, mes: number): number => {
+  if (!a.activo) return 0;
+
+  // Estrategia 1 · proyección con fuentesIngreso
+  if (a.fuentesIngreso && a.fuentesIngreso.length > 0) {
+    return a.fuentesIngreso.reduce((sum, f) => {
+      const aplica =
+        !Array.isArray(f.meses) || f.meses.length === 0 || f.meses.includes(mes);
+      return aplica ? sum + (f.importeEstimado ?? 0) : sum;
+    }, 0);
+  }
+
+  // Estrategia 2 · histórico de facturas del mes (autónomos legacy)
+  if (a.ingresosFacturados && a.ingresosFacturados.length > 0) {
+    return a.ingresosFacturados.reduce((sum, i) => {
+      if (!i.fecha) return sum;
+      // Acepta ISO 'YYYY-MM-DD' o 'YYYY-MM'
+      const mesFecha = parseInt(i.fecha.slice(5, 7), 10);
+      return mesFecha === mes ? sum + (i.importe ?? 0) : sum;
+    }, 0);
+  }
+
   return 0;
 };
 
