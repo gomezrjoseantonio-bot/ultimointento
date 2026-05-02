@@ -6,26 +6,25 @@
 // de Financiación). El servicio existente `fondosService.getSaldoCuenta`
 // usa `openingBalance` · está mal · documentado en "Hallazgos laterales"
 // del PR · no se arregla aquí.
+//
+// FIX postdeploy 2026-05 · usamos `cuentasService.list()` para resolver las
+// cuentas activas en lugar de filtrar manualmente. `cuentasService.list`
+// es el patrón canónico del repo (cubre `status === 'ACTIVE'` nuevo y
+// `activa !== false` legacy + descarta `deleted_at` y `DELETED`).
+// Garantiza paridad con el resto de la app.
 
 import { initDB } from '../../../../services/db';
 import type { Account, Movement, TreasuryEvent } from '../../../../services/db';
 import { calculateAccountBalanceAtDate } from '../../../../services/accountBalanceService';
+import { cuentasService } from '../../../../services/cuentasService';
 
-/**
- * Calcula el saldo actual de TODAS las cuentas activas vía
- * `accountBalanceService` con cutoff = mañana (incluye eventos confirmados
- * de hoy). Devuelve un Map<cuentaId, saldo>.
- *
- * Pensado para llamarse UNA vez al abrir el wizard · no por-cuenta. Reduce
- * los reads de DB de O(N) a O(1) (cargamos todos los eventos+movimientos).
- */
 export async function loadSaldosActualesCuentas(): Promise<{
   cuentas: Account[];
   saldos: Map<number, number>;
 }> {
   const db = await initDB();
-  const [accounts, treasuryEvents, movements] = await Promise.all([
-    db.getAll('accounts') as Promise<Account[]>,
+  const [cuentasActivasRaw, treasuryEvents, movements] = await Promise.all([
+    cuentasService.list(),
     db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
     db.getAll('movements') as Promise<Movement[]>,
   ]);
@@ -39,14 +38,7 @@ export async function loadSaldosActualesCuentas(): Promise<{
 
   const saldos = new Map<number, number>();
   const cuentasActivas: Account[] = [];
-  for (const acc of accounts) {
-    // Patrón canon del repo · acepta tanto el campo nuevo `status: 'ACTIVE'`
-    // como el legacy `activa: true` · solo descarta DELETED. Compatible con
-    // registros previos a la introducción del enum AccountStatus.
-    // (Ver `cuentasService.list` y `accountBalanceService` para el patrón.)
-    if (acc.status === 'DELETED') continue;
-    const isActive = acc.status === 'ACTIVE' || acc.activa !== false;
-    if (!isActive) continue;
+  for (const acc of cuentasActivasRaw) {
     if (acc.id == null) continue;
     cuentasActivas.push(acc);
     const saldo = calculateAccountBalanceAtDate({
