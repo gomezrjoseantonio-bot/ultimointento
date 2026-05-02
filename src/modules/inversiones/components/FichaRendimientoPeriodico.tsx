@@ -1,10 +1,12 @@
-// T23.3 · Ficha detalle · grupo `rendimiento_periodico`
+// Ficha detalle · grupo `rendimiento_periodico`
 // (préstamos P2P · cuentas remuneradas · depósitos a plazo).
-// § 4.3 spec · 4 KPIs · matriz cobros 36 meses (3 años) · tabla cobros.
+//
+// Replica exacta del mockup canónico atlas-inversiones-v2.html
+// líneas 783-940 (SmartFlip · préstamo P2P).
 
 import React, { useMemo } from 'react';
-import { Icons } from '../../../design-system/v5';
 import type { Aportacion, PosicionInversion } from '../../../types/inversiones';
+import type { PagoRendimiento } from '../../../types/inversiones-extended';
 import {
   formatCurrency,
   formatPercent,
@@ -17,12 +19,16 @@ import styles from '../pages/FichaPosicion.module.css';
 interface Props {
   posicion: PosicionInversion;
   onBack: () => void;
+  // Mantenidos en la firma para compat con FichaPosicionPage; en el
+  // mockup canónico la barra de acciones desaparece de la ficha P2P
+  // — los dos handlers se siguen exponiendo desde otros flujos
+  // (galería · rendimientos pendientes en tesorería).
   onRegistrarCobro: () => void;
   onEditar: () => void;
 }
 
-const MESES_ABBR = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 const MES_NOMBRE = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+const MES_NOMBRE_LOWER = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 const formatDate = (iso?: string): string => {
   if (!iso) return '—';
@@ -31,94 +37,121 @@ const formatDate = (iso?: string): string => {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-/** Construye una matriz [year][month] con `true` si hubo cobro. */
-function calcularCobros(
-  aportaciones: Aportacion[],
-  yearsBack: number,
-): { years: number[]; map: Record<number, boolean[]> } {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const startYear = currentYear - (yearsBack - 1);
-  const years: number[] = [];
-  const map: Record<number, boolean[]> = {};
-  for (let y = startYear; y <= currentYear; y++) {
-    years.push(y);
-    map[y] = new Array(12).fill(false);
-  }
-  for (const ap of aportaciones || []) {
-    if (ap.tipo !== 'dividendo' || !ap.fecha) continue;
-    const d = new Date(ap.fecha);
-    const y = d.getFullYear();
-    if (y in map) map[y][d.getMonth()] = true;
-  }
-  return { years, map };
-}
+const formatMesAnio = (iso?: string): string => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${MES_NOMBRE_LOWER[d.getMonth()]} ${d.getFullYear()}`;
+};
+
+const FREC_DIVISOR: Record<string, number> = {
+  mensual: 12,
+  trimestral: 4,
+  semestral: 2,
+  anual: 1,
+};
 
 const FichaRendimientoPeriodico: React.FC<Props> = ({
   posicion,
   onBack,
-  onRegistrarCobro,
-  onEditar,
+  onRegistrarCobro: _onRegistrarCobro,
+  onEditar: _onEditar,
 }) => {
   const aportado = Number(posicion.total_aportado ?? 0);
+  const tin = Number(posicion.rendimiento?.tasa_interes_anual ?? NaN);
+  const frecuencia = posicion.frecuencia_cobro;
+  const duracionMeses = posicion.duracion_meses;
+
+  // ── Cobros registrados (fuente canónica · rendimientos.pagos_generados con
+  //    estado='pagado'; fallback a aportaciones tipo 'dividendo' · legacy) ───
+  const cobrosPagados = useMemo<Array<{ fecha: string; importe: number }>>(() => {
+    const posExt = posicion as PosicionInversion & {
+      rendimiento?: { pagos_generados?: PagoRendimiento[] };
+    };
+    const pagos = posExt.rendimiento?.pagos_generados ?? [];
+    if (pagos.length) {
+      return pagos
+        .filter((p) => p.estado === 'pagado')
+        .map((p) => ({ fecha: p.fecha_pago, importe: p.importe_neto }));
+    }
+    return (posicion.aportaciones ?? [])
+      .filter((a: Aportacion) => a.tipo === 'dividendo' && a.fecha)
+      .map((a) => ({ fecha: a.fecha, importe: Number(a.importe ?? 0) }));
+  }, [posicion]);
+
   const cobros = useMemo(
     () =>
-      (posicion.aportaciones || [])
-        .filter((a) => a.tipo === 'dividendo')
-        .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()),
-    [posicion.aportaciones],
+      [...cobrosPagados].sort(
+        (a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime(),
+      ),
+    [cobrosPagados],
   );
-  const interesGenerado = useMemo(
-    () => cobros.reduce((s, c) => s + Number(c.importe ?? 0), 0),
-    [cobros],
-  );
-  const tin = Number(posicion.rendimiento?.tasa_interes_anual ?? NaN);
-  const proximoCobro = useMemo(() => {
-    // Para posiciones de rendimiento periódico, el calendario de cobros se
-    // deriva de `frecuencia_cobro` (semánticamente · "cuándo me pagan los
-    // intereses"). NO confundir con `plan_aportaciones`, que representa
-    // cargos del usuario. Si no tenemos frecuencia o el último cobro no
-    // está informado, devolvemos `null` y la UI muestra "—".
-    const frec = posicion.frecuencia_cobro;
-    if (!frec || frec === 'al_vencimiento') return null;
-    const mesesPorFrecuencia: Record<'mensual' | 'trimestral' | 'semestral' | 'anual', number> = {
-      mensual: 1,
-      trimestral: 3,
-      semestral: 6,
-      anual: 12,
-    };
-    const incremento = mesesPorFrecuencia[frec];
-    if (!incremento) return null;
-    // Siguiente cobro · último cobro registrado + N meses · si no hay
-    // cobros, siguiente = primera fecha de aportación + N meses · si
-    // tampoco hay aportaciones, devolvemos `null`.
-    const aps = posicion.aportaciones || [];
-    const ultimoCobro = aps
-      .filter((a) => a.tipo === 'dividendo' && a.fecha)
-      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
-    const refIso = ultimoCobro?.fecha
-      ?? aps.find((a) => a.tipo === 'aportacion' && a.fecha)?.fecha
-      ?? null;
-    if (!refIso) return null;
-    const ref = new Date(refIso);
-    if (Number.isNaN(ref.getTime())) return null;
-    const next = new Date(ref);
-    next.setMonth(next.getMonth() + incremento);
-    return next.toISOString();
-  }, [posicion.frecuencia_cobro, posicion.aportaciones]);
 
-  const { years, map } = useMemo(() => calcularCobros(posicion.aportaciones || [], 3), [
-    posicion.aportaciones,
-  ]);
+  const interesAnualEstimado = useMemo(() => {
+    // Mockup muestra interés ANUAL (capital × TIN/100), no acumulado generado.
+    if (!Number.isFinite(tin) || aportado <= 0) return null;
+    return aportado * (tin / 100);
+  }, [tin, aportado]);
+
+  const cuotaPorPeriodo = useMemo(() => {
+    // Importe planificado por período según TIN + frecuencia.
+    if (!frecuencia || !FREC_DIVISOR[frecuencia]) return null;
+    if (interesAnualEstimado == null) return null;
+    return interesAnualEstimado / FREC_DIVISOR[frecuencia];
+  }, [interesAnualEstimado, frecuencia]);
+
+  const fechaVencimiento = useMemo(() => {
+    if (!posicion.fecha_compra || !duracionMeses) return null;
+    const d = new Date(posicion.fecha_compra);
+    if (Number.isNaN(d.getTime())) return null;
+    d.setMonth(d.getMonth() + duracionMeses);
+    return d.toISOString();
+  }, [posicion.fecha_compra, duracionMeses]);
+
+  const aniosOperacion = useMemo(() => {
+    if (!duracionMeses) return null;
+    return Math.round((duracionMeses / 12) * 10) / 10;
+  }, [duracionMeses]);
+
+  const interesesTotalesProyectados = useMemo(() => {
+    if (interesAnualEstimado == null || aniosOperacion == null) return null;
+    return interesAnualEstimado * aniosOperacion;
+  }, [interesAnualEstimado, aniosOperacion]);
+
+  const devolucionTotal = useMemo(() => {
+    if (interesesTotalesProyectados == null) return null;
+    return aportado + interesesTotalesProyectados;
+  }, [aportado, interesesTotalesProyectados]);
+
+  const rentabilidadTotal = useMemo(() => {
+    if (interesesTotalesProyectados == null || aportado <= 0) return null;
+    return (interesesTotalesProyectados / aportado) * 100;
+  }, [interesesTotalesProyectados, aportado]);
+
+  // ── Año/mes actual ─────────────────────────────────────────────────────────
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
 
+  // ── Cobros del año actual indexados por mes ───────────────────────────────
+  const cobrosAnio = useMemo(() => {
+    const arr = new Array<number | null>(12).fill(null);
+    for (const c of cobrosPagados) {
+      const d = new Date(c.fecha);
+      if (d.getFullYear() === currentYear) {
+        arr[d.getMonth()] = (arr[d.getMonth()] ?? 0) + c.importe;
+      }
+    }
+    return arr;
+  }, [cobrosPagados, currentYear]);
+
+  const cobradoAnio = useMemo(
+    () => cobrosAnio.reduce<number>((s, n) => s + (n ?? 0), 0),
+    [cobrosAnio],
+  );
+
+  // ── CSV export ────────────────────────────────────────────────────────────
   const sanitizeCSVTextCell = (value: string | null | undefined): string => {
-    // Mitiga CSV/Formula injection (Excel ejecuta como fórmula valores que
-    // empiezan por `=`, `+`, `-`, `@`). Prefijamos con apóstrofe para
-    // forzar tratamiento literal · y reemplazamos `;` por `,` para no
-    // romper el separador.
     const normalized = String(value ?? '').replace(/;/g, ',');
     return /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
   };
@@ -127,7 +160,15 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     const filas = [
       ['Fecha', 'Importe (€)', 'Notas'].join(';'),
       ...cobros.map((c) =>
-        [c.fecha, String(Number(c.importe ?? 0).toFixed(2)), sanitizeCSVTextCell(c.notas)].join(';'),
+        [
+          c.fecha,
+          String(Number(c.importe ?? 0).toFixed(2)),
+          sanitizeCSVTextCell(
+            (posicion.aportaciones ?? []).find(
+              (a) => a.tipo === 'dividendo' && a.fecha === c.fecha,
+            )?.notas ?? '',
+          ),
+        ].join(';'),
       ),
     ].join('\n');
     const blob = new Blob([filas], { type: 'text/csv;charset=utf-8' });
@@ -141,10 +182,36 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
     URL.revokeObjectURL(url);
   };
 
+  // ── Hero ──────────────────────────────────────────────────────────────────
   const logoCfg = getEntidadLogoConfig(posicion.entidad);
   const heroBadge = `${getTipoLabel(posicion.tipo)} · ${
-    posicion.frecuencia_cobro ?? 'cobro periódico'
-  }${posicion.duracion_meses ? ' · ' + posicion.duracion_meses + ' meses' : ''}`;
+    frecuencia ?? 'cobro periódico'
+  } · vencimiento único`;
+
+  // ── Gráfica intereses acumulados (curva lineal hasta vencimiento) ─────────
+  const chartData = useMemo(() => {
+    if (
+      !posicion.fecha_compra ||
+      duracionMeses == null ||
+      cuotaPorPeriodo == null ||
+      !FREC_DIVISOR[frecuencia ?? '']
+    ) {
+      return null;
+    }
+    const inicio = new Date(posicion.fecha_compra);
+    if (Number.isNaN(inicio.getTime())) return null;
+    const fin = new Date(inicio);
+    fin.setMonth(fin.getMonth() + duracionMeses);
+    const totalIntereses = (interesesTotalesProyectados ?? 0);
+    if (totalIntereses <= 0) return null;
+    const ahora = Date.now();
+    const t0 = inicio.getTime();
+    const t1 = fin.getTime();
+    if (t1 <= t0) return null;
+    const ratioHoy = Math.max(0, Math.min(1, (ahora - t0) / (t1 - t0)));
+    const acumuladoHoy = totalIntereses * ratioHoy;
+    return { t0, t1, totalIntereses, ratioHoy, acumuladoHoy, inicio, fin };
+  }, [posicion.fecha_compra, duracionMeses, cuotaPorPeriodo, frecuencia, interesesTotalesProyectados]);
 
   return (
     <FichaShell
@@ -163,84 +230,87 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             {posicion.fecha_compra && (
               <>firmado <strong>{formatDate(posicion.fecha_compra)}</strong></>
             )}
-            {Number.isFinite(tin) && (
+            {aniosOperacion != null && (
               <>
                 {posicion.fecha_compra && <span className={styles.detailHeroSep}>·</span>}
+                <strong>{aniosOperacion} {aniosOperacion === 1 ? 'año' : 'años'}</strong>
+              </>
+            )}
+            {Number.isFinite(tin) && (
+              <>
+                <span className={styles.detailHeroSep}>·</span>
                 TIN <strong>{formatPercent(tin)}</strong>
               </>
             )}
-            {posicion.frecuencia_cobro && (
-              <>
-                <span className={styles.detailHeroSep}>·</span>
-                cobro <strong>{posicion.frecuencia_cobro}</strong>
-              </>
-            )}
+            <span className={styles.detailHeroSep}>·</span>
+            IRPF <strong>base ahorro</strong>
           </>
         ),
-        stats: (() => {
-          const cobradoAnio = cobros
-            .filter((c) => new Date(c.fecha).getFullYear() === currentYear)
-            .reduce((s, c) => s + Number(c.importe ?? 0), 0);
-          return [
-            { lab: 'Capital', val: formatCurrency(aportado) },
-            {
-              lab: 'Interés generado',
-              val: formatCurrency(interesGenerado),
-              valVariant: interesGenerado > 0 ? 'gold' as const : undefined,
-            },
-            {
-              lab: `Cobrado ${currentYear}`,
-              val: cobradoAnio > 0 ? formatCurrency(cobradoAnio) : '—',
-              valVariant: cobradoAnio > 0 ? 'pos' as const : undefined,
-            },
-            {
-              lab: 'Próximo cobro',
-              val: proximoCobro ? formatDate(proximoCobro) : '—',
-              small: true,
-            },
-          ];
-        })(),
+        stats: [
+          { lab: 'Capital', val: formatCurrency(aportado) },
+          {
+            lab: 'Interés anual',
+            val: interesAnualEstimado != null ? formatCurrency(interesAnualEstimado) : '—',
+            valVariant: interesAnualEstimado != null ? 'gold' : undefined,
+          },
+          {
+            lab: `Cobrado ${currentYear}`,
+            val: cobradoAnio > 0 ? `+${formatCurrency(cobradoAnio)}` : '—',
+            valVariant: cobradoAnio > 0 ? 'pos' : undefined,
+          },
+          {
+            lab: 'Vencimiento',
+            val: fechaVencimiento ? formatMesAnio(fechaVencimiento) : '—',
+            small: true,
+          },
+        ],
       }}
       onBack={onBack}
-      actions={[
-        {
-          label: 'Registrar cobro',
-          variant: 'ghost',
-          icon: <Icons.Plus size={14} strokeWidth={1.8} />,
-          onClick: onRegistrarCobro,
-        },
-        {
-          label: 'Editar posición',
-          variant: 'gold',
-          icon: <Icons.Edit size={14} strokeWidth={1.8} />,
-          onClick: onEditar,
-        },
-      ]}
+      // Sin barra de acciones · mockup detalle P2P no la tiene.
     >
-
+      {/* ── Calendario 12 meses año en curso · mockup l. 825-849 ─────── */}
       <div className={styles.detailCard}>
         <div className={styles.detailCardTit}>Calendario de cobros · año {currentYear}</div>
+        {cuotaPorPeriodo != null && interesAnualEstimado != null && (
+          <div
+            style={{
+              fontSize: 11.5,
+              color: 'var(--atlas-v5-ink-4)',
+              marginTop: -8,
+              marginBottom: 12,
+              fontFamily: 'var(--atlas-v5-font-mono-num)',
+            }}
+          >
+            12 cuotas de {formatCurrency(cuotaPorPeriodo)} ·{' '}
+            {formatCurrency(interesAnualEstimado)} anuales
+            {fechaVencimiento && (
+              <> · capital al vencimiento · {formatMesAnio(fechaVencimiento)}</>
+            )}
+          </div>
+        )}
         <div className={styles.calGrid}>
           {MES_NOMBRE.map((mesLabel, i) => {
-            const cobrado = map[currentYear]?.[i];
+            const importeReal = cobrosAnio[i];
+            const cobrado = importeReal != null && importeReal > 0;
             let cls = styles.calMes;
             let imp: string;
+
             if (cobrado) {
+              // Pago real registrado vía conciliación tesorería
               cls += ' ' + styles.cobrado;
-              const cobrosMes = cobros.filter(
-                (c) => new Date(c.fecha).getFullYear() === currentYear && new Date(c.fecha).getMonth() === i,
-              );
-              const totalMes = cobrosMes.reduce((s, c) => s + Number(c.importe ?? 0), 0);
-              imp = '+' + formatCurrency(totalMes);
-            } else if (i < currentMonth) {
-              cls += ' ' + styles.pendiente;
-              imp = '—';
+              imp = '+' + formatCurrency(importeReal);
             } else if (i === currentMonth) {
+              // Mes actual sin pago aún
               cls += ' ' + styles.pendiente;
-              imp = '—';
-            } else {
+              imp = cuotaPorPeriodo != null ? formatCurrency(cuotaPorPeriodo) : '—';
+            } else if (i > currentMonth) {
+              // Futuro
               cls += ' ' + styles.futuro;
-              imp = '—';
+              imp = cuotaPorPeriodo != null ? formatCurrency(cuotaPorPeriodo) : '—';
+            } else {
+              // Pasado sin pago registrado · pendiente de conciliación
+              cls += ' ' + styles.futuro;
+              imp = cuotaPorPeriodo != null ? formatCurrency(cuotaPorPeriodo) : '—';
             }
             return (
               <div key={i} className={cls}>
@@ -250,35 +320,83 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             );
           })}
         </div>
-        {years.length > 1 && (
-          <div className={styles.detailCardTit} style={{ marginTop: 22, marginBottom: 8 }}>
-            Histórico · {years[0]}–{years[years.length - 2]}
-          </div>
-        )}
-        {years.length > 1 && (
-          <div>
-            <div className={styles.matrizMesesHeader}>
-              <div />
-              {MESES_ABBR.map((m, i) => (
-                <div key={i} className={styles.matrizMesLab}>{m}</div>
-              ))}
-            </div>
-            {years.slice(0, -1).map((y) => (
-              <div key={y} className={styles.matrizGrande}>
-                <div className={styles.matrizYearLab}>{y}</div>
-                {MESES_ABBR.map((_, i) => {
-                  let cls = styles.matrizCell;
-                  if (map[y][i]) cls += ' ' + styles.cobrado;
-                  else cls += ' ' + styles.pendiente;
-                  return <div key={i} className={cls} title={`${MESES_ABBR[i]} ${y}`} />;
-                })}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
-      <div className={styles.detailCard} style={{ marginTop: 16 }}>
+      {/* ── 2 columnas · gráfica + resumen · mockup l. 852-937 ─────────── */}
+      <div className={styles.detailCols} style={{ marginTop: 14 }}>
+        {/* Gráfica intereses acumulados */}
+        <div className={styles.detailCard}>
+          <div className={styles.detailCardTit}>
+            Intereses acumulados{aniosOperacion != null && ` · ${aniosOperacion} ${aniosOperacion === 1 ? 'año' : 'años'}`}
+          </div>
+          {chartData ? (
+            <ChartInteresesAcumulados
+              t0={chartData.t0}
+              t1={chartData.t1}
+              totalIntereses={chartData.totalIntereses}
+              ratioHoy={chartData.ratioHoy}
+              acumuladoHoy={chartData.acumuladoHoy}
+              inicio={chartData.inicio}
+              fin={chartData.fin}
+            />
+          ) : (
+            <div className={styles.bigPlaceholder}>
+              Datos insuficientes (necesitamos firma · duración · TIN · frecuencia).
+            </div>
+          )}
+        </div>
+
+        {/* Resumen de la operación · mockup l. 905-936 */}
+        <div className={styles.detailCard}>
+          <div className={styles.detailCardTit}>Resumen de la operación</div>
+          <div style={{ fontSize: 11.5, color: 'var(--atlas-v5-ink-4)', marginTop: -10, marginBottom: 14 }}>
+            proyección total a vencimiento
+          </div>
+          <div className={styles.statRowList}>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>Capital prestado</span>
+              <span className={styles.statRowVal}>{formatCurrency(aportado)}</span>
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>
+                Intereses totales
+                {aniosOperacion != null && ` · ${aniosOperacion} ${aniosOperacion === 1 ? 'año' : 'años'}`}
+              </span>
+              <span className={`${styles.statRowVal} ${styles.gold}`}>
+                {interesesTotalesProyectados != null
+                  ? `+${formatCurrency(interesesTotalesProyectados)}`
+                  : '—'}
+              </span>
+            </div>
+            <div className={`${styles.statRow} ${styles.highlight}`}>
+              <span className={styles.statRowLab}>Devolución total al vencimiento</span>
+              <span
+                className={`${styles.statRowVal} ${styles.pos}`}
+                style={{ fontSize: 16 }}
+              >
+                {devolucionTotal != null ? formatCurrency(devolucionTotal) : '—'}
+              </span>
+            </div>
+            <div className={styles.statRow}>
+              <span className={styles.statRowLab}>Rentabilidad total</span>
+              <span className={`${styles.statRowVal} ${styles.pos}`}>
+                {rentabilidadTotal != null ? `+${rentabilidadTotal.toFixed(1)}%` : '—'}
+              </span>
+            </div>
+          </div>
+          <div className={styles.fiscalNota}>
+            <strong>Fiscalidad · IRPF base ahorro</strong> · los intereses tributan con retención
+            del <strong>19%</strong> (hasta 6.000 €) · <strong>21%</strong> (6.000-50.000 €) ·{' '}
+            <strong>23%</strong> (50.000-200.000 €). El capital{' '}
+            <strong>queda bloqueado</strong>
+            {fechaVencimiento ? <> hasta {formatMesAnio(fechaVencimiento)}</> : null}
+            {' · '}no hay liquidez anticipada.
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabla cobros histórico (no en el mockup pero necesaria) ───── */}
+      <div className={styles.detailCard} style={{ marginTop: 14 }}>
         <div
           style={{
             display: 'flex',
@@ -287,16 +405,19 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
             marginBottom: 14,
           }}
         >
-          <div className={styles.detailCardTit} style={{ marginBottom: 0 }}>Cobros · histórico</div>
+          <div className={styles.detailCardTit} style={{ marginBottom: 0 }}>
+            Cobros · histórico
+          </div>
           {cobros.length > 0 && (
             <button type="button" className={styles.linkBtn} onClick={exportarCSV}>
-              <Icons.Download size={11} strokeWidth={2} /> Exportar CSV
+              Exportar CSV
             </button>
           )}
         </div>
         {cobros.length === 0 ? (
           <div className={styles.tablaEmpty}>
-            Aún no has registrado ningún cobro. Usa el botón "Registrar cobro" para añadir uno.
+            Aún no se han registrado cobros. Los pagos pasados aparecerán aquí cuando
+            la conciliación de tesorería los marque como cobrados.
           </div>
         ) : (
           <div className={styles.tablaWrap}>
@@ -309,21 +430,192 @@ const FichaRendimientoPeriodico: React.FC<Props> = ({
                 </tr>
               </thead>
               <tbody>
-                {cobros.map((c) => (
-                  <tr key={c.id}>
-                    <td>{formatDate(c.fecha)}</td>
-                    <td className={`${styles.num} ${styles.pos}`}>
-                      {formatCurrency(Number(c.importe ?? 0))}
-                    </td>
-                    <td className={styles.txt}>{c.notas || '—'}</td>
-                  </tr>
-                ))}
+                {cobros.map((c, i) => {
+                  const ap = (posicion.aportaciones ?? []).find(
+                    (a) => a.tipo === 'dividendo' && a.fecha === c.fecha,
+                  );
+                  return (
+                    <tr key={`${c.fecha}-${i}`}>
+                      <td>{formatDate(c.fecha)}</td>
+                      <td className={`${styles.num} ${styles.pos}`}>
+                        {formatCurrency(c.importe)}
+                      </td>
+                      <td className={styles.txt}>{ap?.notas || '—'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
     </FichaShell>
+  );
+};
+
+// ── Sub-componente · gráfica SVG intereses acumulados ─────────────────────
+interface ChartProps {
+  t0: number;
+  t1: number;
+  totalIntereses: number;
+  ratioHoy: number;
+  acumuladoHoy: number;
+  inicio: Date;
+  fin: Date;
+}
+
+const ChartInteresesAcumulados: React.FC<ChartProps> = ({
+  totalIntereses,
+  ratioHoy,
+  acumuladoHoy,
+  inicio,
+  fin,
+}) => {
+  // Eje X = tiempo (0..1) · eje Y = intereses (0..total)
+  const W = 900;
+  const H = 220;
+  const padL = 50;
+  const padR = 30;
+  const padT = 30;
+  const padB = 30;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+
+  const xHoy = padL + innerW * ratioHoy;
+  const yHoy = padT + innerH * (1 - ratioHoy);
+
+  // Etiquetas X · 6 puntos (inicio, 20%, 40%, 60%, 80%, fin)
+  const tickLabels = useMemo(() => {
+    const ticks: { x: number; label: string }[] = [];
+    for (let i = 0; i <= 5; i++) {
+      const ratio = i / 5;
+      const ms = inicio.getTime() + (fin.getTime() - inicio.getTime()) * ratio;
+      const d = new Date(ms);
+      const label = `${MES_NOMBRE_LOWER[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+      ticks.push({ x: padL + innerW * ratio, label });
+    }
+    return ticks;
+  }, [inicio, fin, padL, innerW]);
+
+  // Etiquetas Y · 4 puntos
+  const yLabels = useMemo(() => {
+    const labels: { y: number; label: string }[] = [];
+    for (let i = 0; i <= 3; i++) {
+      const ratio = i / 3;
+      const value = totalIntereses * (1 - ratio);
+      const y = padT + innerH * ratio;
+      labels.push({ y, label: `${Math.round(value / 1000)}K` });
+    }
+    return labels;
+  }, [totalIntereses, padT, innerH]);
+
+  const xEnd = padL + innerW;
+  const yEnd = padT;
+
+  return (
+    <svg className={styles.chartSvg} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+      {/* Grid horizontal */}
+      <g stroke="var(--atlas-v5-line-2)" strokeWidth={1} fill="none">
+        {yLabels.map((y, i) => (
+          <line key={i} x1={padL} y1={y.y} x2={xEnd} y2={y.y} />
+        ))}
+      </g>
+      {/* Etiquetas Y */}
+      <g
+        fontFamily="var(--atlas-v5-font-mono-num)"
+        fontSize={9}
+        fill="var(--atlas-v5-ink-4)"
+        fontWeight={600}
+      >
+        {yLabels.map((y, i) => (
+          <text key={i} x={padL - 5} y={y.y + 4} textAnchor="end">
+            {y.label}
+          </text>
+        ))}
+      </g>
+      {/* Etiquetas X */}
+      <g
+        fontFamily="var(--atlas-v5-font-mono-num)"
+        fontSize={9}
+        fill="var(--atlas-v5-ink-4)"
+        fontWeight={600}
+        textAnchor="middle"
+      >
+        {tickLabels.map((t, i) => (
+          <text key={i} x={t.x} y={H - 10}>
+            {t.label}
+          </text>
+        ))}
+      </g>
+      {/* Área bajo la línea */}
+      <defs>
+        <linearGradient id="gradInteresesP2P" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--atlas-v5-gold)" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="var(--atlas-v5-gold)" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path
+        d={`M ${padL} ${padT + innerH} L ${xEnd} ${yEnd} L ${xEnd} ${padT + innerH} Z`}
+        fill="url(#gradInteresesP2P)"
+        opacity={0.6}
+      />
+      {/* Línea curva (en realidad recta · lineal en el tiempo) */}
+      <path
+        d={`M ${padL} ${padT + innerH} L ${xEnd} ${yEnd}`}
+        stroke="var(--atlas-v5-gold)"
+        strokeWidth={2.8}
+        fill="none"
+        strokeLinecap="round"
+      />
+      {/* Marker HOY · vertical dashed */}
+      <line
+        x1={xHoy}
+        y1={padT}
+        x2={xHoy}
+        y2={padT + innerH}
+        stroke="var(--atlas-v5-gold)"
+        strokeWidth={1}
+        strokeDasharray="3 3"
+        opacity={0.45}
+      />
+      {/* Etiqueta HOY */}
+      <rect x={xHoy - 25} y={padT - 18} width={50} height={14} rx={3} fill="var(--atlas-v5-gold)" />
+      <text
+        x={xHoy}
+        y={padT - 8}
+        textAnchor="middle"
+        fontFamily="var(--atlas-v5-font-mono-num)"
+        fontSize={9}
+        fill="#fff"
+        fontWeight={700}
+      >
+        HOY
+      </text>
+      {/* Pelota HOY con importe */}
+      <circle cx={xHoy} cy={yHoy} r={5} fill="#fff" stroke="var(--atlas-v5-gold)" strokeWidth={2.5} />
+      <text
+        x={xHoy + 10}
+        y={yHoy + 3}
+        fontFamily="var(--atlas-v5-font-mono-num)"
+        fontSize={10}
+        fill="var(--atlas-v5-ink-2)"
+        fontWeight={700}
+      >
+        {formatCurrency(acumuladoHoy)}
+      </text>
+      {/* Etiqueta vencimiento */}
+      <text
+        x={xEnd - 8}
+        y={yEnd - 8}
+        textAnchor="end"
+        fontFamily="var(--atlas-v5-font-mono-num)"
+        fontSize={10}
+        fill="var(--atlas-v5-gold-ink)"
+        fontWeight={700}
+      >
+        {formatCurrency(totalIntereses)} · vencimiento
+      </text>
+    </svg>
   );
 };
 

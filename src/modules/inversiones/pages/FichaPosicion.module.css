@@ -553,6 +553,12 @@
   display: block;
 }
 
+.chartSvg {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
 .bigPlaceholder {
   width: 100%;
   height: 200px;

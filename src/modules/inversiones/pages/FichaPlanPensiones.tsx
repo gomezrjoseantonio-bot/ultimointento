@@ -397,7 +397,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   // ── Render principal ──────────────────────────────────────────────────────
 
   const tipoLabel = TIPO_ADMIN_LABEL[plan.tipoAdministrativo] ?? plan.tipoAdministrativo;
-  const subtitle = [tipoLabel, plan.gestoraActual, plan.isinActual || null]
+  // Subtitle (= meta del hero) sin `tipoLabel` · ya está en el badge superior.
+  const subtitle = [plan.gestoraActual, plan.isinActual || null]
     .filter(Boolean)
     .join(' · ');
   const esPPEoPPES = plan.tipoAdministrativo === 'PPE' || plan.tipoAdministrativo === 'PPES';

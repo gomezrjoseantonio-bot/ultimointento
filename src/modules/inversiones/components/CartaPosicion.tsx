@@ -123,8 +123,11 @@ const MatrizCobros12m: React.FC<{ item: CartaItem }> = ({ item }) => {
     >
       {Array.from({ length: 12 }, (_, i) => {
         let cls = styles.cartaVizMes;
+        // 4 estados: cobrado (verde) · pasado sin cobro (neutro muted) ·
+        // mes actual sin cobro (oro pendiente) · futuro (dashed gris).
         if (cobradosPorMes[i]) cls += ' ' + styles.cobrado;
-        else if (i <= mesActual) cls += ' ' + styles.pendiente;
+        else if (i === mesActual) cls += ' ' + styles.pendiente;
+        else if (i < mesActual) cls += ' ' + styles.pasado;
         else cls += ' ' + styles.futuro;
         return (
           <div key={i} className={cls} title={`${MESES[i]} ${year}`}>
