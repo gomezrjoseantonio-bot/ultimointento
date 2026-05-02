@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas · Nuevo Fondo de Ahorro · v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* === TOKENS V5 === */
+  :root {
+    --bg: #F5F4F1;
+    --card: #FFFFFF;
+    --card-alt: #FBFAF6;
+    --line: #E6E3DC;
+    --line-2: #EFECE5;
+    --line-3: #F3F1EB;
+    --ink: #141B2E;
+    --ink-2: #2C3547;
+    --ink-3: #5B6474;
+    --ink-4: #8A92A0;
+    --ink-5: #B8BEC8;
+    --brand: #1E2954;
+    --brand-2: #2A3875;
+    --brand-ink: #0C1230;
+    --brand-wash: #E8EAF0;
+    --gold: #B88A3E;
+    --gold-2: #C59A47;
+    --gold-soft: #D9B576;
+    --gold-wash: #F3EAD6;
+    --gold-ink: #7C5C1F;
+    --pos: #1E6B3A;
+    --pos-wash: #E4F0E8;
+    --neg: #A43328;
+    --neg-wash: #F5E3E0;
+    --warn: #8A6213;
+    --warn-wash: #F5ECD6;
+    --atlas-v5-pos-bright: #6FD48A;
+    --atlas-v5-gold-bright: #E8D9AE;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.005em;
+    height: 100%;
+    overflow: hidden;
+  }
+  a { color: inherit; text-decoration: none; cursor: pointer; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+  input, select, textarea { font: inherit; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+
+  /* === LAYOUT WIZARD === */
+  .wiz {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    grid-template-rows: 60px 1fr 64px;
+    grid-template-areas:
+      "head head"
+      "body aside"
+      "foot foot";
+    height: 100vh;
+  }
+
+  /* === HEADER === */
+  .wiz-head {
+    grid-area: head;
+    background: var(--brand-ink);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 22px;
+    gap: 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .wiz-title-wrap { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .wiz-title-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(184,138,62,0.18);
+    color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wiz-title { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; }
+  .wiz-sub { font-size: 11px; color: #B9BFCC; margin-top: 1px; }
+
+  .wiz-steps { display: flex; align-items: center; flex: 1; justify-content: center; gap: 4px; }
+  .wiz-step-ind {
+    display: flex; align-items: center; gap: 7px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #B9BFCC;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .wiz-step-ind:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  .wiz-step-ind.active { background: rgba(184,138,62,0.18); color: var(--gold); }
+  .wiz-step-ind.done { color: var(--pos); }
+  .wiz-step-ind.done .wiz-step-num { background: var(--pos); color: #fff; }
+  .wiz-step-num {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .wiz-step-ind.active .wiz-step-num { background: var(--gold); color: var(--brand-ink); }
+  .wiz-step-sep {
+    width: 16px; height: 1px;
+    background: rgba(255,255,255,0.12);
+  }
+  .wiz-close {
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    color: #B9BFCC;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.12s;
+  }
+  .wiz-close:hover { background: rgba(255,255,255,0.07); color: #fff; }
+
+  /* === BODY === */
+  .wiz-body {
+    grid-area: body;
+    overflow-y: auto;
+    padding: 32px 40px 60px;
+    background: var(--bg);
+  }
+  .wiz-body-inner { max-width: 720px; margin: 0 auto; }
+
+  .step { display: none; }
+  .step.active { display: block; }
+  .step-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 8px;
+  }
+  .step-title-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .step-sub {
+    font-size: 13px;
+    color: var(--ink-3);
+    line-height: 1.55;
+    margin-bottom: 28px;
+    max-width: 600px;
+  }
+
+  /* === STEP 1 · CATEGORÍA · 4 cards === */
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .cat-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid;
+    padding: 18px 20px 18px 23px;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    min-height: 168px;
+    position: relative;
+  }
+  .cat-card:hover { border-color: var(--ink-5); box-shadow: 0 1px 4px rgba(0,0,0,0.05); transform: translateY(-1px); }
+  .cat-card.selected { border-color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .cat-card.colchon { border-left-color: var(--gold); }
+  .cat-card.colchon.selected { border-left-color: var(--gold); border-color: var(--gold); }
+  .cat-card.piso { border-left-color: var(--brand); }
+  .cat-card.piso.selected { border-left-color: var(--brand); border-color: var(--brand); }
+  .cat-card.reforma { border-left-color: var(--pos); }
+  .cat-card.reforma.selected { border-left-color: var(--pos); border-color: var(--pos); }
+  .cat-card.impuestos { border-left-color: var(--brand-2); }
+  .cat-card.impuestos.selected { border-left-color: var(--brand-2); border-color: var(--brand-2); }
+
+  .cat-card-hd {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .cat-card-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .cat-card.colchon .cat-card-icon { background: var(--gold-wash); color: var(--gold-ink); }
+  .cat-card.piso .cat-card-icon { background: var(--brand-wash); color: var(--brand); }
+  .cat-card.reforma .cat-card-icon { background: var(--pos-wash); color: var(--pos); }
+  .cat-card.impuestos .cat-card-icon { background: #DFE3EE; color: var(--brand-2); }
+
+  .cat-card-tit {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+  }
+  .cat-card-desc {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    line-height: 1.5;
+    margin-bottom: 10px;
+    flex: 1;
+  }
+  .cat-card-eg {
+    font-size: 11px;
+    color: var(--ink-4);
+    line-height: 1.4;
+    padding-top: 10px;
+    border-top: 1px solid var(--line-2);
+  }
+  .cat-card-eg strong { color: var(--ink-3); font-weight: 600; }
+
+  .cat-card-check {
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: all 0.15s;
+  }
+  .cat-card.selected .cat-card-check {
+    opacity: 1;
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
+  /* === FORMS === */
+  .form-section {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 22px 24px;
+    margin-bottom: 14px;
+  }
+  .form-section-tit {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 14px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-row.single { grid-template-columns: 1fr; }
+
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-lab {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    letter-spacing: 0.01em;
+  }
+  .form-input,
+  .form-select {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 13px;
+    color: var(--ink);
+    transition: border-color 0.12s;
+    width: 100%;
+  }
+  .form-input:focus,
+  .form-select:focus {
+    outline: none;
+    border-color: var(--gold);
+  }
+  .form-input.mono { font-family: 'JetBrains Mono', monospace; }
+  .form-input-group { position: relative; }
+  .form-input-group .form-input { padding-right: 38px; }
+  .form-input-suf {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--ink-4);
+    font-family: 'JetBrains Mono', monospace;
+    pointer-events: none;
+  }
+  .form-help {
+    font-size: 11px;
+    color: var(--ink-4);
+    line-height: 1.4;
+    margin-top: 3px;
+  }
+  .form-help strong { color: var(--ink-3); font-weight: 600; }
+
+  .form-radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .form-radio {
+    flex: 1;
+    min-width: 140px;
+    background: var(--card-alt);
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 11px 14px;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .form-radio:hover { border-color: var(--ink-5); }
+  .form-radio.selected {
+    background: var(--card);
+    border-color: var(--ink);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .form-radio-tit { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .form-radio-sub { font-size: 11px; color: var(--ink-4); }
+  .form-radio.selected .form-radio-tit { color: var(--ink); }
+
+  /* === STEP 2 · meses helper === */
+  .meta-helper {
+    background: var(--gold-wash);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 7px 7px 0;
+    padding: 12px 16px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--gold-ink);
+    line-height: 1.55;
+  }
+  .meta-helper strong { font-weight: 700; }
+
+  /* === STEP 3 · cuentas origen === */
+  .cuentas-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cuenta-item {
+    background: var(--card-alt);
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    padding: 12px 14px;
+    transition: all 0.12s;
+    display: grid;
+    grid-template-columns: 24px 36px 1fr auto;
+    align-items: center;
+    gap: 14px;
+  }
+  .cuenta-item:hover { border-color: var(--ink-5); }
+  .cuenta-item.selected {
+    background: var(--card);
+    border-color: var(--gold);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .cuenta-item.disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .cuenta-item.disabled:hover { border-color: var(--line-2); }
+  .cuenta-check {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    background: var(--card);
+    border: 1.5px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+  }
+  .cuenta-item.selected .cuenta-check {
+    background: var(--gold);
+    border-color: var(--gold);
+  }
+  .cuenta-logo {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0.05em;
+  }
+  .cuenta-info-tit { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .cuenta-info-sub { font-size: 11.5px; color: var(--ink-4); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* 3 cifras lado derecho */
+  .cuenta-cifras {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 4px 0 12px;
+  }
+  .cuenta-cifra {
+    text-align: right;
+    min-width: 78px;
+  }
+  .cuenta-cifra-lab {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink-4);
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .cuenta-cifra-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    font-weight: 700;
+    margin-top: 2px;
+    line-height: 1.1;
+  }
+  .cuenta-cifra-val.dim { color: var(--ink-4); font-weight: 500; }
+  .cuenta-cifra-val.zero { color: var(--ink-4); }
+
+  .cuenta-asignar-row {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-2);
+  }
+  .cuenta-asignar-lab {
+    font-size: 11.5px;
+    color: var(--ink-3);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .cuenta-asignar-input-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 160px;
+  }
+  .cuenta-asignar-input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 30px 6px 10px;
+    font-size: 12.5px;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    color: var(--ink);
+  }
+  .cuenta-asignar-input:focus { outline: none; border-color: var(--gold); }
+  .cuenta-asignar-input.error { border-color: var(--neg); background: var(--neg-wash); }
+  .cuenta-asignar-suf {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: var(--ink-4);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cuenta-asignar-quick {
+    display: flex; gap: 4px;
+  }
+  .cuenta-asignar-quick-btn {
+    font-size: 11px;
+    color: var(--ink-3);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.12s;
+  }
+  .cuenta-asignar-quick-btn:hover { border-color: var(--gold); color: var(--gold-ink); }
+  .cuenta-asignar-error {
+    font-size: 11px;
+    color: var(--neg);
+    flex: 1;
+    line-height: 1.4;
+  }
+  .cuenta-bloqueada-msg {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line-2);
+    font-size: 11.5px;
+    color: var(--ink-4);
+    font-style: italic;
+  }
+
+  /* Resumen 4 líneas tesorería */
+  .resumen-tesoreria {
+    margin-top: 14px;
+    padding: 16px 20px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+  }
+  .resumen-tesoreria-tit {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 12px;
+  }
+  .resumen-tesoreria-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .resumen-tesoreria-block {
+    border-left: 2px solid var(--line-2);
+    padding-left: 12px;
+  }
+  .resumen-tesoreria-block.este {
+    border-left-color: var(--gold);
+  }
+  .resumen-tesoreria-lab {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-4);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .resumen-tesoreria-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .resumen-tesoreria-val.este { color: var(--gold-ink); }
+  .resumen-tesoreria-sub {
+    font-size: 10.5px;
+    color: var(--ink-4);
+    margin-top: 3px;
+  }
+
+  /* === Caja contextual ritmo === */
+  .ritmo-box {
+    background: var(--gold-wash);
+    border: 1px solid #E8D49B;
+    border-radius: 9px;
+    padding: 16px 20px;
+    margin-top: 14px;
+  }
+  .ritmo-box.ok { background: var(--pos-wash); border-color: #C0DBC8; }
+  .ritmo-box.tight { background: var(--warn-wash); border-color: #E8D49B; }
+  .ritmo-box.no { background: var(--neg-wash); border-color: #E8B5AB; }
+
+  .ritmo-tit {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold-ink);
+    margin-bottom: 8px;
+  }
+  .ritmo-box.ok .ritmo-tit { color: var(--pos); }
+  .ritmo-box.tight .ritmo-tit { color: var(--warn); }
+  .ritmo-box.no .ritmo-tit { color: var(--neg); }
+
+  .ritmo-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .ritmo-msg {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .ritmo-msg strong { color: var(--ink); font-weight: 700; }
+
+  /* === STEP 4 · vínculos · selector objetivo === */
+  .vinc-objetivos {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .vinc-obj-item {
+    background: var(--card-alt);
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: grid;
+    grid-template-columns: 18px 32px 1fr auto;
+    align-items: center;
+    gap: 14px;
+  }
+  .vinc-obj-item:hover { border-color: var(--ink-5); }
+  .vinc-obj-item.selected {
+    background: var(--card);
+    border-color: var(--gold);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .vinc-obj-radio {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--card);
+    border: 1.5px solid var(--line);
+  }
+  .vinc-obj-item.selected .vinc-obj-radio {
+    background: var(--gold);
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 3px var(--card);
+  }
+  .vinc-obj-icon {
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .vinc-obj-icon.acumular { background: #F3EBDB; color: #8A6926; }
+  .vinc-obj-icon.comprar { background: var(--gold-wash); color: var(--gold-ink); }
+  .vinc-obj-icon.amortizar { background: var(--brand-wash); color: var(--brand); }
+  .vinc-obj-icon.crear { background: var(--card); border: 1px dashed var(--line); color: var(--ink-4); }
+  .vinc-obj-icon.ninguno { background: var(--card-alt); border: 1px solid var(--line); color: var(--ink-3); }
+
+  .vinc-obj-tit { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .vinc-obj-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 2px; }
+  .vinc-obj-meta {
+    text-align: right;
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+  .vinc-obj-meta-prog {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--gold-ink);
+    font-size: 13px;
+  }
+  .vinc-obj-meta-lab {
+    font-size: 10.5px;
+    color: var(--ink-4);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 1px;
+  }
+
+  .vinc-obj-tag {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 9px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .vinc-obj-tag.acumular { background: #F3EBDB; color: #8A6926; }
+  .vinc-obj-tag.comprar { background: var(--gold-wash); color: var(--gold-ink); }
+  .vinc-obj-tag.amortizar { background: var(--brand-wash); color: var(--brand); }
+  .preview-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--gold);
+    border-radius: 11px;
+    padding: 18px 20px 18px 23px;
+    margin-bottom: 14px;
+  }
+  .preview-card.piso { border-left-color: var(--brand); }
+  .preview-card.reforma { border-left-color: var(--pos); }
+  .preview-card.impuestos { border-left-color: var(--brand-2); }
+
+  .preview-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .preview-cat {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--gold-ink);
+    margin-bottom: 6px;
+  }
+  .preview-cat.piso { color: var(--brand); }
+  .preview-cat.reforma { color: var(--pos); }
+  .preview-cat.impuestos { color: var(--brand-2); }
+  .preview-cat-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+  .preview-cat.piso .preview-cat-dot { background: var(--brand); }
+  .preview-cat.reforma .preview-cat-dot { background: var(--pos); }
+  .preview-cat.impuestos .preview-cat-dot { background: var(--brand-2); }
+
+  .preview-nom {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+  .preview-obj {
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .preview-obj strong { color: var(--ink-2); font-weight: 600; }
+
+  .preview-numbers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--card-alt);
+    border-radius: 10px;
+    border: 1px solid var(--line-2);
+    margin-bottom: 14px;
+  }
+  .preview-num-block {}
+  .preview-num-lab {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-4);
+    font-weight: 600;
+  }
+  .preview-num-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-top: 4px;
+  }
+  .preview-num-val.meta { color: var(--ink-3); }
+  .preview-num-sub {
+    font-size: 10.5px;
+    color: var(--ink-4);
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .preview-prog { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .preview-prog-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--ink-4); }
+  .preview-prog-top .pct { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; font-size: 12px; }
+  .preview-prog-bar { height: 8px; background: var(--bg); border-radius: 4px; border: 1px solid var(--line-2); overflow: hidden; }
+  .preview-prog-fill { height: 100%; border-radius: 4px; background: var(--gold); }
+  .preview-card.piso .preview-prog-fill { background: var(--brand); }
+  .preview-card.reforma .preview-prog-fill { background: var(--pos); }
+  .preview-card.impuestos .preview-prog-fill { background: var(--brand-2); }
+
+  .preview-origen { padding-top: 12px; border-top: 1px solid var(--line-2); }
+  .preview-origen-lab { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-4); font-weight: 600; margin-bottom: 8px; }
+  .preview-origen-list { display: flex; flex-direction: column; gap: 7px; }
+  .preview-origen-item { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+  .preview-origen-banco { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+  .preview-origen-logo { width: 22px; height: 22px; border-radius: 5px; color: #fff; font-weight: 700; font-size: 9px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.05em; }
+  .preview-origen-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--ink); }
+
+  .resumen-extra {
+    background: var(--card-alt);
+    border: 1px solid var(--line-2);
+    border-radius: 9px;
+    padding: 14px 18px;
+  }
+  .resumen-extra-tit {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    margin-bottom: 8px;
+  }
+  .resumen-extra-list { display: flex; flex-direction: column; gap: 6px; }
+  .resumen-extra-row {
+    display: flex; justify-content: space-between;
+    font-size: 12.5px;
+  }
+  .resumen-extra-row-lab { color: var(--ink-3); }
+  .resumen-extra-row-val { color: var(--ink); font-weight: 600; }
+  .resumen-extra-row-val.empty { color: var(--ink-4); font-weight: 500; }
+
+  /* === ASIDE === */
+  .wiz-aside {
+    grid-area: aside;
+    background: var(--brand-ink);
+    color: #fff;
+    padding: 22px 22px 22px 24px;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255,255,255,0.06);
+  }
+  .aside-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #B9BFCC;
+    margin-bottom: 5px;
+  }
+  .aside-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    margin-bottom: 18px;
+    word-break: break-word;
+  }
+  .aside-section { margin-bottom: 18px; }
+  .aside-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .aside-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0;
+    font-size: 11.5px;
+  }
+  .aside-row-lab { color: #B9BFCC; }
+  .aside-row-val { color: #fff; font-weight: 600; text-align: right; }
+  .aside-row-val.empty { color: #6E7A92; font-weight: 400; font-style: italic; }
+  .aside-row-val.mono { font-family: 'JetBrains Mono', monospace; }
+  .aside-row-val.pos { color: var(--atlas-v5-pos-bright); }
+
+  .aside-progress {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 14px;
+  }
+  .aside-prog-lab {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #B9BFCC;
+    margin-bottom: 6px;
+  }
+  .aside-prog-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+  .aside-prog-text {
+    font-size: 11px;
+    color: #B9BFCC;
+    line-height: 1.4;
+  }
+
+  .aside-status {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 11px;
+    color: #B9BFCC;
+    line-height: 1.5;
+  }
+  .aside-status strong { color: #fff; font-weight: 700; }
+
+  /* === FOOTER === */
+  .wiz-footer {
+    grid-area: foot;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 0 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wiz-foot-meta {
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+  .wiz-foot-meta strong { color: var(--ink); font-weight: 700; }
+  .wiz-foot-actions { display: flex; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+    border: 1px solid transparent;
+  }
+  .btn-ghost { color: var(--ink-2); background: var(--card); border-color: var(--line); }
+  .btn-ghost:hover:not([disabled]) { border-color: var(--ink-5); }
+  .btn-ghost[disabled] { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { color: #fff; background: var(--brand); border-color: var(--brand); }
+  .btn-primary:hover { background: var(--brand-2); border-color: var(--brand-2); }
+  .btn-pos { color: #fff; background: var(--pos); border-color: var(--pos); }
+  .btn-pos:hover { background: #155027; border-color: #155027; }
+
+  /* === TOAST === */
+  .toast {
+    position: fixed; bottom: 80px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--brand-ink); color: #fff;
+    padding: 11px 18px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    opacity: 0;
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 100;
+    max-width: 480px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* === Tipo note (variante por categoría) === */
+  .tipo-note {
+    background: var(--gold-wash);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 7px 7px 0;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    font-size: 12px;
+    color: var(--gold-ink);
+    line-height: 1.55;
+  }
+  .tipo-note strong { font-weight: 700; }
+  .tipo-note .tipo-note-lab {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--gold-ink);
+    display: block; margin-bottom: 3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="wiz">
+
+  <!-- ═════════ HEADER ═════════ -->
+  <div class="wiz-head">
+    <div class="wiz-title-wrap">
+      <div class="wiz-title-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+      </div>
+      <div>
+        <div class="wiz-title">Nuevo fondo de ahorro</div>
+        <div class="wiz-sub">5 pasos · ~3 min</div>
+      </div>
+    </div>
+
+    <div class="wiz-steps">
+      <div class="wiz-step-ind active" id="ind-1" onclick="gotoStep(1)">
+        <span class="wiz-step-num">1</span><span>Categoría</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-2" onclick="gotoStep(2)">
+        <span class="wiz-step-num">2</span><span>Meta</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-3" onclick="gotoStep(3)">
+        <span class="wiz-step-num">3</span><span>Cuentas</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-4" onclick="gotoStep(4)">
+        <span class="wiz-step-num">4</span><span>Vínculos</span>
+      </div>
+      <div class="wiz-step-sep"></div>
+      <div class="wiz-step-ind" id="ind-5" onclick="gotoStep(5)">
+        <span class="wiz-step-num">5</span><span>Resumen</span>
+      </div>
+    </div>
+
+    <button class="wiz-close" onclick="showToast('Cerrar wizard · descartar borrador')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- ═════════ BODY ═════════ -->
+  <div class="wiz-body">
+    <div class="wiz-body-inner">
+
+      <!-- ══════ PASO 1 · CATEGORÍA ══════ -->
+      <div class="step active" id="step-1">
+        <div class="step-title"><span class="step-title-num">01</span> ¿Qué tipo de fondo?</div>
+        <div class="step-sub">Selecciona el propósito del fondo. Cada categoría tiene un cálculo de meta sugerido y un color distintivo en el listado.</div>
+
+        <div class="cat-grid">
+
+          <div class="cat-card colchon selected" onclick="selectCategoria(this, 'colchon')">
+            <div class="cat-card-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="cat-card-hd">
+              <div class="cat-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div class="cat-card-tit">Colchón de emergencia</div>
+            </div>
+            <div class="cat-card-desc">Reserva intocable para imprevistos · medida en meses de gastos cubiertos.</div>
+            <div class="cat-card-eg">Ej · <strong>cubrir 24 meses de gastos</strong> · <strong>fondo bajo en colchón</strong></div>
+          </div>
+
+          <div class="cat-card piso" onclick="selectCategoria(this, 'piso')">
+            <div class="cat-card-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="cat-card-hd">
+              <div class="cat-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
+              <div class="cat-card-tit">Próxima compra</div>
+            </div>
+            <div class="cat-card-desc">Ahorrar para entrada + gastos del próximo inmueble · meta en €.</div>
+            <div class="cat-card-eg">Ej · <strong>entrada próximo piso 80.000 €</strong> · <strong>gastos compra Madrid</strong></div>
+          </div>
+
+          <div class="cat-card reforma" onclick="selectCategoria(this, 'reforma')">
+            <div class="cat-card-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="cat-card-hd">
+              <div class="cat-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+              </div>
+              <div class="cat-card-tit">Reforma prevista</div>
+            </div>
+            <div class="cat-card-desc">Reservar para una obra · reforma · adecuación de un inmueble · meta en €.</div>
+            <div class="cat-card-eg">Ej · <strong>reforma cocina T64 · 18.000 €</strong> · <strong>obra fachada FA32</strong></div>
+          </div>
+
+          <div class="cat-card impuestos" onclick="selectCategoria(this, 'impuestos')">
+            <div class="cat-card-check">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="cat-card-hd">
+              <div class="cat-card-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+              </div>
+              <div class="cat-card-tit">Impuestos pendientes</div>
+            </div>
+            <div class="cat-card-desc">Apartar lo que tendrás que pagar a Hacienda · meta sugerida desde el simulador fiscal.</div>
+            <div class="cat-card-eg">Ej · <strong>renta 2025 · ~3.200 €</strong> · <strong>IVA 4T-2026 · ~1.450 €</strong></div>
+          </div>
+
+        </div>
+
+        <div style="margin-top: 24px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; font-size: 12px; color: var(--ink-3); line-height: 1.55;">
+          <strong style="color: var(--ink-2)">¿Necesitas otra categoría?</strong> Las 4 categorías cubren los casos más comunes. Si tu fondo no encaja claramente, elige <strong>Próxima compra</strong> (es la más genérica) y dale el nombre que necesites en el siguiente paso.
+        </div>
+      </div>
+
+      <!-- ══════ PASO 2 · META ══════ -->
+      <div class="step" id="step-2">
+        <div class="step-title"><span class="step-title-num">02</span> Define la meta</div>
+        <div class="step-sub">Pónle nombre al fondo y di cuánto necesitas reunir y para cuándo.</div>
+
+        <div class="tipo-note">
+          <span class="tipo-note-lab">Variante por categoría</span>
+          Esta pantalla muestra los campos de <strong>Colchón de emergencia</strong> · meta calculada automáticamente desde tus gastos mensuales reales. Próxima compra · reforma · impuestos · usan importe libre en €.
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-tit">Identificación</div>
+          <div class="form-row single">
+            <div class="form-field">
+              <div class="form-lab">Nombre del fondo</div>
+              <input class="form-input" type="text" value="Cubrir 24 meses de gastos" placeholder="Describe el fondo en una línea">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-tit">Meta del colchón</div>
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-lab">Meses de gastos a cubrir</div>
+              <div class="form-input-group">
+                <input class="form-input mono" type="number" value="24" min="1" max="60">
+                <span class="form-input-suf">meses</span>
+              </div>
+            </div>
+            <div class="form-field">
+              <div class="form-lab">Gasto vida mensual <span style="color:var(--ink-4); font-weight:500">· auto desde Tesorería</span></div>
+              <div class="form-input-group">
+                <input class="form-input mono" type="text" value="4.120">
+                <span class="form-input-suf">€/mes</span>
+              </div>
+              <div class="form-help">Calculado · media de tus gastos personales últimos 6 meses. Editable.</div>
+            </div>
+          </div>
+
+          <div class="meta-helper">
+            <strong>Meta calculada · 98.880 €</strong> · 24 meses × 4.120 €/mes. Este es el importe que tu colchón debería tener para considerarse completo.
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-tit">Fecha objetivo</div>
+          <div class="form-row">
+            <div class="form-field">
+              <div class="form-lab">Mes / año</div>
+              <div class="form-row" style="margin: 0; gap: 8px;">
+                <select class="form-select">
+                  <option>diciembre</option>
+                  <option>enero</option>
+                  <option>febrero</option>
+                  <option>marzo</option>
+                  <option>abril</option>
+                  <option>mayo</option>
+                  <option>junio</option>
+                </select>
+                <select class="form-select">
+                  <option>2026</option>
+                  <option>2027</option>
+                  <option selected>2028</option>
+                  <option>2029</option>
+                  <option>2030</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <div class="form-lab">Prioridad <span style="color:var(--ink-4); font-weight:500">· cómo lo trata ATLAS</span></div>
+              <div class="form-radio-group">
+                <div class="form-radio selected" onclick="selectRadio(this, this.parentElement)">
+                  <div class="form-radio-tit">Alta</div>
+                  <div class="form-radio-sub">avisa si ralentiza</div>
+                </div>
+                <div class="form-radio" onclick="selectRadio(this, this.parentElement)">
+                  <div class="form-radio-tit">Normal</div>
+                  <div class="form-radio-sub">solo informativo</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════ PASO 3 · CUENTAS ORIGEN ══════ -->
+      <div class="step" id="step-3">
+        <div class="step-title"><span class="step-title-num">03</span> Cuentas que alimentan el fondo</div>
+        <div class="step-sub">Asigna a este fondo el importe que ya tienes apartado en cada cuenta. ATLAS solo permite asignar lo que está realmente disponible · si la cuenta ya alimenta otros fondos · esa parte queda fuera.</div>
+
+        <div class="tipo-note">
+          <span class="tipo-note-lab">Cómo funciona</span>
+          <strong>Acumulado real del fondo</strong> = la menor de · saldo actual de la cuenta · o · importe asignado. Si gastas y el saldo cae · el acumulado baja de forma automática · primero comen los fondos más recientes · el colchón es lo último en pagar.
+        </div>
+
+        <div class="form-section" style="padding: 18px 20px;">
+          <div class="form-section-tit">Tus cuentas en Tesorería</div>
+          <div class="cuentas-list">
+
+            <!-- Santander · saldo 8.200 · ya tiene 1.000 en otros fondos · disponible 7.200 -->
+            <div class="cuenta-item selected">
+              <div class="cuenta-check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="cuenta-logo" style="background: #EC0000;">SA</div>
+              <div>
+                <div class="cuenta-info-tit">Santander · cuenta colchón</div>
+                <div class="cuenta-info-sub">···· 2715</div>
+              </div>
+              <div class="cuenta-cifras">
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Saldo</div>
+                  <div class="cuenta-cifra-val">8.200 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Asignado a otros</div>
+                  <div class="cuenta-cifra-val dim">1.000 €</div>
+                  <div class="resumen-tesoreria-sub" style="margin-top:1px;">Impuestos</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab" style="color: var(--gold-ink);">Disponible</div>
+                  <div class="cuenta-cifra-val" style="color: var(--gold-ink);">7.200 €</div>
+                </div>
+              </div>
+
+              <div class="cuenta-asignar-row">
+                <span class="cuenta-asignar-lab">Asignar a este fondo</span>
+                <div class="cuenta-asignar-input-wrap">
+                  <input class="cuenta-asignar-input" type="text" value="6.200">
+                  <span class="cuenta-asignar-suf">€</span>
+                </div>
+                <div class="cuenta-asignar-quick">
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('Asignar todo lo disponible · 7.200 €')">todo</button>
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('50% del disponible · 3.600 €')">50%</button>
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('Limpiar · 0 €')">0</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Unicaja · saldo 3.600 · sin otros fondos · disponible 3.600 -->
+            <div class="cuenta-item selected">
+              <div class="cuenta-check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="cuenta-logo" style="background: #F2AA00;">UN</div>
+              <div>
+                <div class="cuenta-info-tit">Unicaja · depósito 4437</div>
+                <div class="cuenta-info-sub">···· 4437</div>
+              </div>
+              <div class="cuenta-cifras">
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Saldo</div>
+                  <div class="cuenta-cifra-val">3.600 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Asignado a otros</div>
+                  <div class="cuenta-cifra-val zero">0 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab" style="color: var(--gold-ink);">Disponible</div>
+                  <div class="cuenta-cifra-val" style="color: var(--gold-ink);">3.600 €</div>
+                </div>
+              </div>
+
+              <div class="cuenta-asignar-row">
+                <span class="cuenta-asignar-lab">Asignar a este fondo</span>
+                <div class="cuenta-asignar-input-wrap">
+                  <input class="cuenta-asignar-input" type="text" value="3.600">
+                  <span class="cuenta-asignar-suf">€</span>
+                </div>
+                <div class="cuenta-asignar-quick">
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('Asignar todo lo disponible · 3.600 €')">todo</button>
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('50% del disponible · 1.800 €')">50%</button>
+                  <button class="cuenta-asignar-quick-btn" onclick="showToast('Limpiar · 0 €')">0</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sabadell · saldo 14.200 · YA TODO asignado a Próximo piso · disponible 0 -->
+            <div class="cuenta-item disabled">
+              <div class="cuenta-check"></div>
+              <div class="cuenta-logo" style="background: #006CB3;">SB</div>
+              <div>
+                <div class="cuenta-info-tit">Sabadell · inversión</div>
+                <div class="cuenta-info-sub">···· 0842</div>
+              </div>
+              <div class="cuenta-cifras">
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Saldo</div>
+                  <div class="cuenta-cifra-val">14.200 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Asignado a otros</div>
+                  <div class="cuenta-cifra-val dim">14.200 €</div>
+                  <div class="resumen-tesoreria-sub" style="margin-top:1px;">Próximo piso</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab" style="color: var(--ink-4);">Disponible</div>
+                  <div class="cuenta-cifra-val zero">0 €</div>
+                </div>
+              </div>
+
+              <div class="cuenta-bloqueada-msg">Esta cuenta no tiene saldo libre · ya está enteramente asignada a otro fondo · libera importe en "Próximo piso" si quieres usar esta cuenta aquí.</div>
+            </div>
+
+            <!-- Revolut · saldo 4.840 · sin otros fondos · disponible 4.840 -->
+            <div class="cuenta-item" onclick="toggleCuenta(this)">
+              <div class="cuenta-check">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="cuenta-logo" style="background: #009639;">RV</div>
+              <div>
+                <div class="cuenta-info-tit">Revolut · cuenta principal</div>
+                <div class="cuenta-info-sub">···· 1583</div>
+              </div>
+              <div class="cuenta-cifras">
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Saldo</div>
+                  <div class="cuenta-cifra-val">4.840 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab">Asignado a otros</div>
+                  <div class="cuenta-cifra-val zero">0 €</div>
+                </div>
+                <div class="cuenta-cifra">
+                  <div class="cuenta-cifra-lab" style="color: var(--gold-ink);">Disponible</div>
+                  <div class="cuenta-cifra-val" style="color: var(--gold-ink);">4.840 €</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Resumen tesorería · 4 columnas -->
+        <div class="resumen-tesoreria">
+          <div class="resumen-tesoreria-tit">Tesorería al crear este fondo</div>
+          <div class="resumen-tesoreria-grid">
+            <div class="resumen-tesoreria-block">
+              <div class="resumen-tesoreria-lab">Tesorería total</div>
+              <div class="resumen-tesoreria-val">30.840 €</div>
+              <div class="resumen-tesoreria-sub">4 cuentas · 3 bancos</div>
+            </div>
+            <div class="resumen-tesoreria-block">
+              <div class="resumen-tesoreria-lab">Ya en otros fondos</div>
+              <div class="resumen-tesoreria-val">15.200 €</div>
+              <div class="resumen-tesoreria-sub">Próximo piso · Impuestos</div>
+            </div>
+            <div class="resumen-tesoreria-block este">
+              <div class="resumen-tesoreria-lab">Esta asignación</div>
+              <div class="resumen-tesoreria-val este">9.800 €</div>
+              <div class="resumen-tesoreria-sub">Santander · Unicaja</div>
+            </div>
+            <div class="resumen-tesoreria-block">
+              <div class="resumen-tesoreria-lab">Quedará libre</div>
+              <div class="resumen-tesoreria-val">5.840 €</div>
+              <div class="resumen-tesoreria-sub">sin propósito asignado</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ritmo-box ok">
+          <div class="ritmo-tit">En ruta · sí</div>
+          <div class="ritmo-val mono">+2.780 €/mes</div>
+          <div class="ritmo-msg">Para reunir <strong>89.080 €</strong> faltantes en <strong>32 meses</strong> necesitas aportar 2.780 € al mes. Tu ahorro mensual actual es de <strong>+1.650 €/mes</strong> · te faltan <strong>1.130 €/mes</strong> de capacidad · considera alargar la fecha o subir aportación.</div>
+        </div>
+
+      </div>
+
+      <!-- ══════ PASO 4 · VÍNCULOS ══════ -->
+      <div class="step" id="step-4">
+        <div class="step-title"><span class="step-title-num">04</span> Vincula con un objetivo</div>
+        <div class="step-sub">Conecta este fondo a un objetivo de Mi Plan · ATLAS sabrá entonces que el ahorro de este fondo financia esa meta. La vinculación es opcional · se puede añadir o cambiar después.</div>
+
+        <div class="tipo-note">
+          <span class="tipo-note-lab">Cómo se usa</span>
+          Si vinculas · cuando ATLAS calcule el progreso del objetivo lo hará leyendo el acumulado de este fondo. Te aparecerá tanto en la card del objetivo como en la del fondo.
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-tit">Objetivos compatibles · acumular y comprar</div>
+          <div class="vinc-objetivos">
+
+            <!-- Objetivo existente · acumular sin fondo aún · candidato perfecto -->
+            <div class="vinc-obj-item selected" onclick="selectObjetivo(this)">
+              <div class="vinc-obj-radio"></div>
+              <div class="vinc-obj-icon comprar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/></svg>
+              </div>
+              <div>
+                <div class="vinc-obj-tit">Ahorrar para próximo piso<span class="vinc-obj-tag comprar">comprar</span></div>
+                <div class="vinc-obj-sub">OBJ-06 · meta 80.000 € · sin fondo aún</div>
+              </div>
+              <div class="vinc-obj-meta">
+                <div class="vinc-obj-meta-prog">dic 2027</div>
+                <div class="vinc-obj-meta-lab">fecha objetivo</div>
+              </div>
+            </div>
+
+            <!-- Objetivo existente · acumular ya con fondo · advertencia -->
+            <div class="vinc-obj-item" onclick="selectObjetivo(this)">
+              <div class="vinc-obj-radio"></div>
+              <div class="vinc-obj-icon acumular">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7L12 3 4 7v10l8 4 8-4V7z"/><path d="M12 11v10"/><path d="M4 7l8 4 8-4"/></svg>
+              </div>
+              <div>
+                <div class="vinc-obj-tit">Reserva técnica reformas<span class="vinc-obj-tag acumular">acumular</span></div>
+                <div class="vinc-obj-sub">OBJ-04 · meta 12.000 € · <span style="color: var(--warn);">ya vinculado a fondo "Reforma T64"</span></div>
+              </div>
+              <div class="vinc-obj-meta">
+                <div class="vinc-obj-meta-prog">dic 2026</div>
+                <div class="vinc-obj-meta-lab">fecha objetivo</div>
+              </div>
+            </div>
+
+            <!-- Crear objetivo nuevo -->
+            <div class="vinc-obj-item" onclick="showToast('Crear objetivo · pendiente · abre wizard objetivo')">
+              <div class="vinc-obj-radio"></div>
+              <div class="vinc-obj-icon crear">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </div>
+              <div>
+                <div class="vinc-obj-tit" style="color: var(--ink-3); font-weight: 600;">Crear objetivo nuevo</div>
+                <div class="vinc-obj-sub">se abre el wizard de objetivo · al volver lo dejamos vinculado</div>
+              </div>
+              <div></div>
+            </div>
+
+            <!-- Sin vincular -->
+            <div class="vinc-obj-item" onclick="selectObjetivo(this)">
+              <div class="vinc-obj-radio"></div>
+              <div class="vinc-obj-icon ninguno">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+              <div>
+                <div class="vinc-obj-tit" style="color: var(--ink-3);">Sin vincular objetivo</div>
+                <div class="vinc-obj-sub">creo el fondo independiente · puedo asociarlo después</div>
+              </div>
+              <div></div>
+            </div>
+
+          </div>
+        </div>
+
+        <div style="background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 14px 18px; margin-top: 14px; font-size: 12px; color: var(--ink-3); line-height: 1.5;">
+          <strong style="color: var(--ink-2); display: block; margin-bottom: 4px;">Reglas de vinculación</strong>
+          Solo aparecen objetivos de tipo <strong>acumular</strong> o <strong>comprar</strong> · son los únicos que tiene sentido alimentar con un fondo. Los de tipo amortizar y reducir gestionan su progreso de otra forma. Cada fondo se vincula a un único objetivo · si quieres dividir un fondo entre varias metas · crea fondos separados.
+        </div>
+
+      </div>
+
+      <!-- ══════ PASO 5 · RESUMEN ══════ -->
+      <div class="step" id="step-5">
+        <div class="step-title"><span class="step-title-num">04</span> Confirma y crea</div>
+        <div class="step-sub">Así se va a ver tu fondo en el listado de Mi Plan · Fondos de ahorro. Si todo encaja pulsa <strong>Crear fondo</strong>.</div>
+
+        <div class="preview-card">
+          <div class="preview-head">
+            <div>
+              <div class="preview-cat">
+                <span class="preview-cat-dot"></span>Colchón de emergencia
+              </div>
+              <div class="preview-nom">Cubrir 24 meses de gastos</div>
+              <div class="preview-obj">objetivo meses · <strong>98.880 €</strong></div>
+            </div>
+          </div>
+
+          <div class="preview-numbers">
+            <div class="preview-num-block">
+              <div class="preview-num-lab">Acumulado</div>
+              <div class="preview-num-val">9.800 €</div>
+              <div class="preview-num-sub">cubre 9 meses de gastos</div>
+            </div>
+            <div class="preview-num-block">
+              <div class="preview-num-lab">Meta</div>
+              <div class="preview-num-val meta">98.880 €</div>
+              <div class="preview-num-sub">24 meses · dic 2028</div>
+            </div>
+          </div>
+
+          <div class="preview-prog">
+            <div class="preview-prog-top">
+              <span>Progreso</span>
+              <span class="pct">10%</span>
+            </div>
+            <div class="preview-prog-bar"><div class="preview-prog-fill" style="width: 10%;"></div></div>
+          </div>
+
+          <div class="preview-origen">
+            <div class="preview-origen-lab">Cuentas que alimentan este fondo</div>
+            <div class="preview-origen-list">
+              <div class="preview-origen-item">
+                <div class="preview-origen-banco">
+                  <div class="preview-origen-logo" style="background: #EC0000;">SA</div>
+                  Santander · cuenta colchón ···· 2715
+                </div>
+                <span class="preview-origen-val">6.200 €</span>
+              </div>
+              <div class="preview-origen-item">
+                <div class="preview-origen-banco">
+                  <div class="preview-origen-logo" style="background: #F2AA00;">UN</div>
+                  Unicaja · depósito 4437 ···· 4437
+                </div>
+                <span class="preview-origen-val">3.600 €</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="resumen-extra">
+          <div class="resumen-extra-tit">Detalles del fondo</div>
+          <div class="resumen-extra-list">
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Categoría</span>
+              <span class="resumen-extra-row-val">Colchón de emergencia</span>
+            </div>
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Cuentas vinculadas</span>
+              <span class="resumen-extra-row-val">2 · Santander · Unicaja</span>
+            </div>
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Fecha objetivo</span>
+              <span class="resumen-extra-row-val">dic 2028</span>
+            </div>
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Prioridad</span>
+              <span class="resumen-extra-row-val">Alta</span>
+            </div>
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Ritmo necesario</span>
+              <span class="resumen-extra-row-val">+2.780 €/mes</span>
+            </div>
+            <div class="resumen-extra-row">
+              <span class="resumen-extra-row-lab">Objetivo vinculado</span>
+              <span class="resumen-extra-row-val">OBJ-06 · Ahorrar para próximo piso</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═════════ ASIDE === -->
+  <aside class="wiz-aside">
+    <div class="aside-label">Resumen</div>
+    <div class="aside-title">Cubrir 24 meses de gastos</div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Categoría</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Tipo</span>
+        <span class="aside-row-val">Colchón emergencia</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Color tarjeta</span>
+        <span class="aside-row-val"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);vertical-align:middle;margin-right:5px;"></span>oro</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Meta</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Meses cubiertos</span>
+        <span class="aside-row-val mono">24 meses</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Gasto mensual</span>
+        <span class="aside-row-val mono">4.120 €</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Meta total</span>
+        <span class="aside-row-val mono">98.880 €</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Fecha</span>
+        <span class="aside-row-val">dic 2028</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Cuentas origen</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Seleccionadas</span>
+        <span class="aside-row-val">2</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Asignado total</span>
+        <span class="aside-row-val mono">9.800 €</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Progreso inicial</span>
+        <span class="aside-row-val mono">10%</span>
+      </div>
+    </div>
+
+    <div class="aside-section">
+      <div class="aside-section-title">Vínculos</div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Objetivo</span>
+        <span class="aside-row-val">OBJ-06 · Próximo piso</span>
+      </div>
+      <div class="aside-row">
+        <span class="aside-row-lab">Tipo objetivo</span>
+        <span class="aside-row-val">Comprar</span>
+      </div>
+    </div>
+
+    <div class="aside-progress">
+      <div class="aside-prog-lab">Ritmo necesario</div>
+      <div class="aside-prog-val">+2.780 €/mes</div>
+      <div class="aside-prog-text">tu ahorro mensual actual <strong style="color:#fff">+1.650 €/mes</strong> · faltan <span style="color: var(--atlas-v5-pos-bright);">1.130 €/mes</span></div>
+    </div>
+
+    <div class="aside-status">
+      Este fondo se creará en estado <strong>activo</strong>. ATLAS recalculará el progreso y el ritmo automáticamente cada vez que cambien los saldos de las cuentas vinculadas.
+    </div>
+  </aside>
+
+  <!-- ═════════ FOOTER ═════════ -->
+  <div class="wiz-footer">
+    <div class="wiz-foot-meta">
+      <span id="step-counter">Paso 1 de 5</span> · <strong>borrador autoguardado</strong>
+    </div>
+    <div class="wiz-foot-actions">
+      <button class="btn btn-ghost" id="btn-prev" onclick="prevStep()" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Atrás
+      </button>
+      <button class="btn btn-primary" id="btn-next" onclick="nextStep()">
+        Continuar
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 5;
+
+  function gotoStep(n) {
+    if (n < 1 || n > totalSteps) return;
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+
+    for (let i = 1; i <= totalSteps; i++) {
+      const ind = document.getElementById('ind-' + i);
+      ind.classList.remove('active', 'done');
+      if (i < n) ind.classList.add('done');
+      else if (i === n) ind.classList.add('active');
+    }
+
+    currentStep = n;
+    document.getElementById('step-counter').textContent = `Paso ${n} de ${totalSteps}`;
+    document.getElementById('btn-prev').disabled = (n === 1);
+
+    const btnNext = document.getElementById('btn-next');
+    if (n === totalSteps) {
+      btnNext.className = 'btn btn-pos';
+      btnNext.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Crear fondo';
+      btnNext.onclick = () => showToast('Fondo creado · Cubrir 24 meses de gastos · vinculado a OBJ-06 · ATLAS calcula progreso desde cuentas');
+    } else {
+      btnNext.className = 'btn btn-primary';
+      btnNext.innerHTML = 'Continuar <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
+      btnNext.onclick = nextStep;
+    }
+
+    document.querySelector('.wiz-body').scrollTop = 0;
+  }
+
+  function nextStep() { if (currentStep < totalSteps) gotoStep(currentStep + 1); }
+  function prevStep() { if (currentStep > 1) gotoStep(currentStep - 1); }
+
+  function selectCategoria(el, cat) {
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    showToast('Categoría · ' + cat);
+  }
+
+  function selectRadio(el, container) {
+    container.querySelectorAll('.form-radio').forEach(r => r.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function selectObjetivo(el) {
+    document.querySelectorAll('.vinc-obj-item').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function toggleCuenta(el) {
+    el.classList.toggle('selected');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+</script>
+
+</body>
+</html>
