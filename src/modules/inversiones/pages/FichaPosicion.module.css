@@ -570,7 +570,7 @@
   grid-template-columns: 60px repeat(12, 1fr);
   gap: 5px;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .matrizYearLab {
@@ -583,20 +583,29 @@
 }
 
 .matrizCell {
-  aspect-ratio: 1;
-  border-radius: 4px;
+  height: 18px;
+  border-radius: 3px;
   background: var(--atlas-v5-line-2);
 }
 
-.matrizCell.cobrado { background: var(--atlas-v5-pos); }
-.matrizCell.pendiente { background: var(--atlas-v5-warn); }
-.matrizCell.futuro { background: var(--atlas-v5-line); }
+.matrizCell.cobrado {
+  background: var(--atlas-v5-pos-wash);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-pos);
+}
+.matrizCell.pendiente {
+  background: var(--atlas-v5-gold-wash);
+  box-shadow: inset 0 0 0 1px var(--atlas-v5-gold);
+}
+.matrizCell.futuro {
+  background: var(--atlas-v5-card-alt);
+  border: 1px dashed var(--atlas-v5-line);
+}
 
 .matrizMesesHeader {
   display: grid;
   grid-template-columns: 60px repeat(12, 1fr);
   gap: 5px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .matrizMesLab {
