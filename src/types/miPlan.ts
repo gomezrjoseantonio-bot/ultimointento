@@ -2,6 +2,8 @@
 // Archivo único para los 4 stores de Mi Plan v3:
 //   escenarios · objetivos · fondos_ahorro · retos
 
+import type { LibertadConfig } from './libertad';
+
 // ═══════════════════════════════════════════════════
 // ESCENARIOS
 // ═══════════════════════════════════════════════════
@@ -34,6 +36,9 @@ export interface Escenario {
   ltvMaximo?: number;
   yieldMinimaCartera?: number;
   tasaAhorroMinima?: number;
+
+  /** T27.4.1 · configuración personalizada de cómo calcular la libertad financiera. Si undefined · usa STANDARD_LIBERTAD_CONFIG */
+  libertadConfig?: LibertadConfig;
 
   updatedAt: string;
 }
