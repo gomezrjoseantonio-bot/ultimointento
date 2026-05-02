@@ -1,11 +1,10 @@
-// T27.3 · wrapper sobre `accountBalanceService.calculateAccountBalanceAtDate`
-// para obtener el saldo "actual" (cutoff = mañana) de una cuenta.
+// T27.3 · helpers para resolver el saldo "actual" de las cuentas activas del
+// usuario. NO usa `currentBalance` cacheado del Account ni `openingBalance`
+// (pueden estar obsoletos · es la causa de bugs en el panel de Financiación).
 //
-// JOSÉ § Etapa A B3 · NO usar `currentBalance` cacheado del Account ni
-// `openingBalance` (puede estar obsoleto · es la causa de bugs en el panel
-// de Financiación). El servicio existente `fondosService.getSaldoCuenta`
-// usa `openingBalance` · está mal · documentado en "Hallazgos laterales"
-// del PR · no se arregla aquí.
+// JOSÉ § Etapa A B3 · `fondosService.getSaldoCuenta` actual usa
+// `openingBalance` · está mal · documentado en "Hallazgos laterales" del
+// PR · no se arregla aquí.
 //
 // FIX postdeploy 2026-05 · usamos `cuentasService.list()` para resolver las
 // cuentas activas en lugar de filtrar manualmente. `cuentasService.list`
@@ -18,6 +17,16 @@ import type { Account, Movement, TreasuryEvent } from '../../../../services/db';
 import { calculateAccountBalanceAtDate } from '../../../../services/accountBalanceService';
 import { cuentasService } from '../../../../services/cuentasService';
 
+/**
+ * Carga TODAS las cuentas activas del usuario y calcula el saldo actual de
+ * cada una (cutoff = mañana · incluye eventos confirmados de hoy).
+ *
+ * Devuelve `{ cuentas, saldos }` donde `saldos` es un Map<cuentaId, €>.
+ *
+ * Pensado para llamarse UNA vez al abrir el wizard · cargamos `accounts` ·
+ * `treasuryEvents` y `movements` en paralelo y reusamos los datos para todas
+ * las cuentas (O(1) reads en vez de O(N)).
+ */
 export async function loadSaldosActualesCuentas(): Promise<{
   cuentas: Account[];
   saldos: Map<number, number>;
