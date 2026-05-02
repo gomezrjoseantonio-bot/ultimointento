@@ -7,7 +7,7 @@
 // "Cambios respecto al prototipo".
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { showToastV5 } from '../../../design-system/v5';
+import { Icons, showToastV5 } from '../../../design-system/v5';
 import { useFocusTrap } from '../../../hooks/useFocusTrap';
 import { initDB } from '../../../services/db';
 import { createObjetivo } from '../../../services/objetivosService';
@@ -23,6 +23,7 @@ import Step2Meta from './steps/Step2Meta';
 import Step3Plazo from './steps/Step3Plazo';
 import Step4Vinculos from './steps/Step4Vinculos';
 import Step5Resumen from './steps/Step5Resumen';
+import WizardNuevoFondo from './WizardNuevoFondo';
 import {
   draftInicial,
   parseMetaNumeric,
@@ -40,6 +41,14 @@ interface Props {
 
 const TOTAL_STEPS = 5;
 
+const STEPS_OBJETIVO = [
+  { key: 1 as StepKey, label: 'Tipo' },
+  { key: 2 as StepKey, label: 'Meta' },
+  { key: 3 as StepKey, label: 'Plazo' },
+  { key: 4 as StepKey, label: 'Vínculos' },
+  { key: 5 as StepKey, label: 'Resumen' },
+];
+
 const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) => {
   const [step, setStep] = useState<StepKey>(1);
   const [maxReached, setMaxReached] = useState<StepKey>(1);
@@ -52,6 +61,10 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
   const [proximoAst, setProximoAst] = useState('OBJ-01');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // T27.3 (G.2 opción A) · wizard fondo nested · al volver refrescamos
+  // fondos y pre-seleccionamos el nuevo en step 4.
+  const [wizardFondoOpen, setWizardFondoOpen] = useState(false);
 
   const bodyRef = useRef<HTMLDivElement>(null);
   // Patrón canon del repo · `useFocusTrap` confina Tab dentro del modal y
@@ -335,6 +348,11 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
         <StepperHeader
           current={step}
           maxReached={maxReached}
+          steps={STEPS_OBJETIVO}
+          title="Nuevo objetivo"
+          sub="5 pasos · ~2 min"
+          Icon={Icons.Objetivos}
+          styles={styles}
           onGoTo={goTo}
           onClose={onClose}
         />
@@ -366,6 +384,7 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
                 fondos={fondos}
                 saldosFondos={saldosFondos}
                 onPatch={onPatch}
+                onCrearFondoNuevo={() => setWizardFondoOpen(true)}
               />
             )}
             {step === 5 && (
@@ -395,11 +414,41 @@ const WizardNuevoObjetivo: React.FC<Props> = ({ isOpen, onClose, onCreated }) =>
           totalSteps={TOTAL_STEPS}
           canAdvance={canAdvance}
           isSubmitting={isSubmitting}
+          submitLabel="Crear objetivo"
+          styles={styles}
           onPrev={onPrev}
           onNext={onNext}
           onSubmit={onSubmit}
         />
       </div>
+
+      {/* T27.3 (G.2 opción A) · wizard fondo nested · al cerrar refrescamos
+          la lista de fondos del wizard objetivo · al crear pre-seleccionamos
+          el nuevo fondo en el draft. La vinculación inversa se sincroniza al
+          crear el objetivo (objetivosService._sincronizarVinculacionFondo). */}
+      <WizardNuevoFondo
+        isOpen={wizardFondoOpen}
+        onClose={() => setWizardFondoOpen(false)}
+        onCreated={async (nuevoFondo) => {
+          // Refrescar fondos en local + saldo del nuevo
+          try {
+            const db = await initDB();
+            const all = (await db.getAll('fondos_ahorro')) as FondoAhorro[];
+            const fondosActivos = all.filter((f) => f.activo);
+            setFondos(fondosActivos);
+            const saldo = await getSaldoActualFondo(nuevoFondo.id).catch(() => 0);
+            setSaldosFondos((prev) => ({ ...prev, [nuevoFondo.id]: saldo }));
+            // Pre-seleccionar el nuevo fondo en el draft
+            onPatch({ fondoId: nuevoFondo.id });
+            showToastV5(
+              `Fondo "${nuevoFondo.nombre}" creado · queda vinculado al guardar el objetivo`,
+            );
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('[wizard objetivo] error refrescando fondos', err);
+          }
+        }}
+      />
     </div>
   );
 };
