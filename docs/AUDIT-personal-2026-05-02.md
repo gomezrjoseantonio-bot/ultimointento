@@ -24,7 +24,7 @@ Reportados por Jose en producción (`https://ultimointentohoy.netlify.app/person
 ### 1.1 · Materialización de stores y tipos
 
 | Entidad spec v1.1 | ¿Existe? | DB version | Tipo (path) | Servicio (path) | Notas |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `personalData` | ✅ | V1.2 | `src/types/personal.ts:33–58` | `src/services/personalDataService.ts` | Activo. Ampliado con CCAA, descendientes, ascendientes, tributación |
 | `personalModuleConfig` | ✅ | V1.2 | `src/types/personal.ts:556–568` | `src/services/db.ts:2075` | Activo |
 | `ingresos` (unión `nomina\|autonomo\|pension\|otro`) | ✅ | V61 | `src/types/personal.ts:402` (union) | `src/services/db.ts:2093` + adaptadores | **Store unificado** post-T7. Adaptadores: `nominaService`, `autonomoService`, `otrosIngresosService`, `pensionService` filtran por `tipo` |
@@ -45,7 +45,7 @@ Reportados por Jose en producción (`https://ultimointentohoy.netlify.app/person
 ### 1.2 · Reglas duras del spec v1.1 · cumplimiento
 
 | Regla | Estado | Evidencia |
-|---|---|---|
+| --- | --- | --- |
 | A · Rentas alquiler NO viven en `otrosIngresos` (deben vivir en `contracts` + `rentaMensual`) | 🟡 Parcial (modelo ✅ · UI legacy 🔴) | A nivel de **modelo de datos**: `IngresoOtro` no incluye `'alquiler'` como subtipo (`src/types/personal.ts:362–400`); `contracts.rentaMensual` en `src/services/db.ts:660,688`. A nivel de **UI**: `OtrosIngresosWizard.tsx:15–24` sigue ofreciendo `'alquiler'` y `'dividendo'` como tipos seleccionables — viola la regla en runtime (ver B3) |
 | B · `hipoteca` y `alquilerVivienda` NO son `TipoCompromiso` | ✅ Se cumple (compile-time) | `TipoCompromiso` en `src/types/compromisosRecurrentes.ts:59–66` sólo enumera `suministro\|suscripcion\|seguro\|cuota\|comunidad\|impuesto\|otros` |
 | C · `viviendaHabitual` genera eventos directos en `treasuryEvents` sin pasar por `compromisosRecurrentes` | ✅ Se cumple | `generarEventosVivienda()` en `src/services/personal/viviendaHabitualService.ts:113–142`; eventos con `sourceType: 'contrato' \| 'gasto_recurrente'` sin intermediario; `regenerarEventosVivienda()` invocado al guardar (línea 95) |
@@ -90,7 +90,7 @@ Coexisten **DOS implementaciones de "Personal"**:
 ### 2.3 · UI específicas v1.1 esperadas
 
 | Pieza esperada | ¿Implementada? | Path | Notas |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | UI creación/edición `viviendaHabitual` | 🟡 Sólo CTAs | `src/modules/personal/pages/ViviendaPage.tsx` | Renderiza tarjetas con CTAs hacia otros módulos · NO formulario propio · servicio `viviendaHabitualService` listo pero sin UI |
 | UI configurar beneficios en especie | 🟡 Embebido en NominaWizard | `wizards/NominaWizard.tsx` (via `BeneficioSocial`) | No hay sección dedicada |
 | UI presupuesto personal (50/30/20) | ✅ | `pages/PresupuestoPage.tsx` | Solo método 50/30/20; zero-base no implementado |
@@ -100,7 +100,7 @@ Coexisten **DOS implementaciones de "Personal"**:
 ## 3 · Pestañas / sub-secciones del módulo (V5 producción)
 
 | Sección esperada (mockup `atlas-personal-v3.html`) | Implementada | Path | Estado |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Datos personales (CCAA · tributación · descendientes · ascendientes) | ❌ | — | No hay tab; campos viven en `personalData` y se editan desde `/ajustes/fiscal` |
 | Vivienda habitual | 🟡 Placeholder | `pages/ViviendaPage.tsx` | Sólo CTAs · sin formulario de alta vivienda |
 | Ingresos (nómina · variable · bonus · especies · pensión · autónomo · otros) | ✅ | `pages/IngresosPage.tsx` + wizards en hub | Funcional |
@@ -133,7 +133,7 @@ Coexisten **DOS implementaciones de "Personal"**:
 ## 5 · Generación de eventos a Tesorería
 
 | Origen | Servicio | Estado |
-|---|---|---|
+| --- | --- | --- |
 | Nómina (vía store `ingresos.tipo='nomina'`) | `treasurySyncService.generateMonthlyForecasts()` (`src/modules/horizon/tesoreria/services/treasurySyncService.ts:432–467`) | ✅ Wired · genera eventos mensuales con `sourceType: 'nomina'`, `status: 'predicted'`, control duplicados |
 | Vivienda habitual | `generarEventosVivienda()` + casos `inquilino`/`propietarioSinHipoteca`/`propietarioConHipoteca` (`viviendaHabitualService.ts:113–142, 144–435`) | ✅ Wired · directo a `treasuryEvents` sin intermediario · `regenerarEventosVivienda()` invocado al guardar (línea 95) |
 | Compromiso recurrente (ámbito personal e inmueble) | `generarEventosDesdeCompromiso()` + `regenerarEventosCompromiso()` (`compromisosRecurrentesService.ts:259–410`) | ✅ Wired · expande con `expandirPatron()` (`patronCalendario.ts:121+`, 8 patrones) · invocado en `crearCompromiso()` (línea 78) y `actualizarCompromiso()` (línea 111) |
@@ -247,7 +247,7 @@ Búsqueda en `src/modules/personal/`, `src/pages/GestionPersonal/`, `src/service
 ## 11 · Tabla síntoma → causa raíz
 
 | Síntoma | Causa raíz | Severidad | Archivo principal |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | No se ven datos en Personal | `PersonalPage.tsx` lee stores `nominas/autonomos/otrosIngresos` eliminados en V63 (datos viven en `ingresos`) | 🔴 Alta | `src/modules/personal/PersonalPage.tsx:48–63` |
 | Wizards antiguos persisten | V5 no tiene wizards propios · delega en hub legacy `/gestion/personal/*` (3 wizards) | 🟡 Media | `src/pages/GestionPersonal/wizards/*` + ruteo en `App.tsx:1057–1076` |
 | Dispersión fiscal personalData/etc | Stores nuevos consolidados pero datos preexistentes en `personalData`, `personalModuleConfig`, `viviendaHabitual`, `escenarios` no validados; tab "Datos personales" inexistente · campos editables sólo desde `/ajustes/fiscal` | 🟡 Media | `src/types/personal.ts:33–58`, `src/types/viviendaHabitual.ts` |
@@ -261,7 +261,7 @@ Búsqueda en `src/modules/personal/`, `src/pages/GestionPersonal/`, `src/service
 ## 12 · Recomendación de descomposición de T30
 
 | Sub | Qué cubriría | Esfuerzo CC | Bloqueante para mercado |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | T30.1 | **Hotfix wiring `PersonalPage.tsx`** · sustituir `db.getAll('nominas'/'autonomos'/'otrosIngresos')` por `nominaService.getAllActiveNominas()` + `autonomoService.getAll()` + `otrosIngresosService.getAll()` (todos leen de `ingresos`). Resolver B1 | 1–2h | **Sí** (la página está rota en producción) |
 | T30.2 | **Wire G-07 hook** · invocar `procesarConfirmacionEvento(evento)` desde `confirmTreasuryEvent()` cuando `sourceType === 'nomina'` y status pasa a `confirmed/executed`. Resolver B2 | 1–2h | Alta (decisión cerrada G-07 sin efecto real) |
 | T30.3 | **Tab "Datos personales" en V5** · formulario con `personalData` completo (CCAA · tributación · descendientes · ascendientes · discapacidad). Reemplaza dependencia de `/ajustes/fiscal`. Resolver B8 | 4–6h | No (actualmente accesible vía Ajustes) |
