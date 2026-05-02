@@ -276,17 +276,22 @@ El estado se lee del flag `pagado` dentro del `planPagos` persistido, **no del c
 
 La generación se hace en `generateMonthlyForecasts(year, month)` de `src/modules/horizon/tesoreria/services/treasurySyncService.ts:511-570`. Genera un `treasuryEvent` con `sourceType: 'hipoteca' | 'prestamo'` para el **mes concreto solicitado** si existe un periodo no pagado en ese mes.
 
-**Solo genera para meses presentes o futuros** (los que se soliciten explícitamente). **No backfill** de meses pasados. No existe función que genere eventos confirmados para cuotas pasadas.
+**No existe backfill automático**. `generateMonthlyForecasts(year, month)` puede invocarse para cualquier mes (la UI de Tesorería permite navegar a meses anteriores), pero solo crea un evento cuando encuentra un `PeriodoPago` con `fechaCargo` en ese mes **y `!p.pagado`**. Por tanto, si las cuotas pasadas ya están marcadas como `pagado=true` en el plan (lo que hace `createPrestamo`), no genera ningún evento para ellas. No existe función que genere eventos confirmados para cuotas pasadas ya marcadas como pagadas.
 
 ### Campo origen en movements/treasuryEvents
 
-Sí existe. `treasuryEvents.sourceType: 'hipoteca' | 'prestamo'` distingue los eventos de financiación. Campo `sourceId` almacena el ID del préstamo. No hay `movement.prestamoId` de forma directa pero `PeriodoPago.movimientoTesoreriaId` permite el enlace inverso (cuota → movimiento).
+`TreasuryEvent` define los campos dedicados `prestamoId?: string` y `numeroCuota?: number` (`src/services/db.ts:1188-1189`) para el enlace con cuotas de préstamo. `sourceType: 'hipoteca' | 'prestamo'` identifica el tipo. El campo `sourceId` se deja como `undefined` para eventos de préstamo/hipoteca (comentario en `treasurySyncService.ts:574`: "string UUID – incompatible with numeric sourceId field").
 
 ### Relación `prestamoId` en treasuryEvents
 
-La relación usa `sourceId = prestamo.id` cuando `sourceType === 'prestamo' | 'hipoteca'`. La conciliación inversa es: `TreasuryReconciliationView.tsx:346` llama `prestamosService.marcarCuotaManual(ev.prestamoId, ev.numeroCuota, ...)`.
+`treasurySyncService.ts:562-563` y `577-578` persiste:
+```typescript
+prestamoId: prestamo.id,
+numeroCuota: currentPeriodo?.periodo,
+sourceId: undefined,  // UUID string incompatible con el campo numeric sourceId
+```
 
-**El campo `ev.prestamoId` referenciado en la vista de conciliación proviene de los treasury events de tipo financiación**; no es un campo estándar del tipo `TreasuryEvent` del DB schema, sino que se accede por `sourceId` cuando `sourceType === 'prestamo'` (ver `treasuryConfirmationService.ts:495-497`).
+La conciliación inversa: `TreasuryReconciliationView.tsx:346` y `TesoreriaV4.tsx:543` leen `ev.prestamoId` y `ev.numeroCuota` directamente del treasury event para llamar `prestamosService.marcarCuotaManual(ev.prestamoId, ev.numeroCuota, ...)`.
 
 ---
 
@@ -452,11 +457,11 @@ El componente `DetallePage.tsx` no delega a una función separada. La lógica in
 
 ### De dónde sale el estado Pagada/En curso/Pendiente
 
-- **Pagada**: `per.pagado === true` · flag booleano persitido en `PlanPagos.periodos[n].pagado`
+- **Pagada**: `per.pagado === true` · flag booleano persistido en `PlanPagos.periodos[n].pagado`
 - **En curso**: `per.pagado === false && fechaCargo.year === hoy.year && fechaCargo.month === hoy.month`
 - **Pendiente**: todo lo demás (fecha futura y sin pagar)
 
-**La lógica NO consulta movements**. Solo lee el flag `pagado` del plan persitido. Cuando `createPrestamo` marca periodos pasados como `pagado=true`, el detalle los muestra correctamente como "Pagada". Esto explica la asimetría: detalle funciona porque lee del plan; listado falla porque lee del campo cacheado.
+**La lógica NO consulta movements**. Solo lee el flag `pagado` del plan persistido. Cuando `createPrestamo` marca periodos pasados como `pagado=true`, el detalle los muestra correctamente como "Pagada". Esto explica la asimetría: detalle funciona porque lee del plan; listado falla porque lee del campo cacheado.
 
 ### Cómo se carga el plan en DetallePage
 
