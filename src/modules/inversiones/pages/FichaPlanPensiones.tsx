@@ -19,7 +19,9 @@ import type { AportacionPlan, PlanPensiones, TipoAdministrativo } from '../../..
 import type { ValoracionHistorica } from '../../../types/valoraciones';
 import ActualizarValorPlanDialog from '../components/ActualizarValorPlanDialog';
 import AportacionPlanDialog from '../components/AportacionPlanDialog';
+import FichaShell from '../components/FichaShell';
 import PlanFormV5 from '../components/wizard/PlanFormV5';
+import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import styles from './FichaPosicion.module.css';
 
 // ── Mapping label tipo administrativo ────────────────────────────────────────
@@ -298,7 +300,6 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   }, [aportaciones]);
 
   const pgLatente = valorActual - aportadoTotal;
-  const pgSign = pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : 'muted';
 
   const fechaPrimeraAportacion = useMemo(() => {
     if (!aportaciones.length) return plan?.fechaContratacion ?? null;
@@ -396,90 +397,73 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   // ── Render principal ──────────────────────────────────────────────────────
 
   const tipoLabel = TIPO_ADMIN_LABEL[plan.tipoAdministrativo] ?? plan.tipoAdministrativo;
-  const subtitle = [tipoLabel, plan.gestoraActual, plan.isinActual || null]
+  // Subtitle (= meta del hero) sin `tipoLabel` · ya está en el badge superior.
+  const subtitle = [plan.gestoraActual, plan.isinActual || null]
     .filter(Boolean)
     .join(' · ');
   const esPPEoPPES = plan.tipoAdministrativo === 'PPE' || plan.tipoAdministrativo === 'PPES';
 
+  const logoCfg = getEntidadLogoConfig(plan.gestoraActual ?? '');
+  const heroBadge = `${tipoLabel} · revalorización · liquidez en jubilación`;
+
   return (
     <>
-      <div className={styles.page}>
-        {/* ── 1.1 · Detail-head ─────────────────────────────────────────── */}
-        <div className={styles.detailHead}>
-          <div className={styles.detailHeadLeft}>
-            <button type="button" className={styles.backBtn} onClick={onBack}>
-              <Icons.ChevronLeft size={12} strokeWidth={2} />
-              Volver a Inversiones
-            </button>
-            <h1 className={styles.detailTitle}>
-              {plan.nombre}
-              <span className={styles.tipoChip}>PP</span>
-            </h1>
-            <div className={styles.detailSub}>{subtitle || '—'}</div>
-          </div>
-          <div className={styles.detailActions}>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={() => setShowActualizarValor(true)}
-            >
-              <Icons.Refresh size={14} strokeWidth={1.8} />
-              Actualizar valoración
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnGhost}`}
-              onClick={() => setShowAportar(true)}
-            >
-              <Icons.Plus size={14} strokeWidth={1.8} />
-              Aportar
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnGold}`}
-              onClick={() => setShowEditar(true)}
-            >
-              <Icons.Edit size={14} strokeWidth={1.8} />
-              Editar
-            </button>
-          </div>
-        </div>
-
-        {/* ── 1.2 · 4 KPIs ──────────────────────────────────────────────── */}
-        <div className={styles.detailKpis}>
-          <div className={styles.detailKpi}>
-            <div className={styles.detailKpiLab}>Valor actual</div>
-            <div className={styles.detailKpiVal}>{fmtShort(valorActual)}</div>
-            <div className={styles.detailKpiSub}>
-              {plan.fechaUltimaValoracion ? `al ${formatDate(plan.fechaUltimaValoracion)}` : 'sin valoración'}
-            </div>
-          </div>
-          <div className={styles.detailKpi}>
-            <div className={styles.detailKpiLab}>Aportado total</div>
-            <div className={styles.detailKpiVal}>{fmtShort(aportadoTotal)}</div>
-            <div className={styles.detailKpiSub}>
-              {aportaciones.length} {aportaciones.length === 1 ? 'aportación' : 'aportaciones'}
-            </div>
-          </div>
-          <div className={styles.detailKpi}>
-            <div className={styles.detailKpiLab}>Pérd. / Ganan. latente</div>
-            <div className={`${styles.detailKpiVal} ${styles[pgSign]}`}>
-              {pgLatente >= 0 ? '+' : ''}{fmt(pgLatente)}
-            </div>
-            <div className={styles.detailKpiSub}>
-              {aportadoTotal > 0
-                ? `${((pgLatente / aportadoTotal) * 100).toFixed(1)}% s/aportado`
-                : '—'}
-            </div>
-          </div>
-          <div className={styles.detailKpi}>
-            <div className={styles.detailKpiLab}>CAGR</div>
-            <div className={`${styles.detailKpiVal} ${cagr != null ? styles[cagr >= 0 ? 'pos' : 'neg'] : styles.muted}`}>
-              {cagr != null ? fmtPct(cagr) : '—'}
-            </div>
-            <div className={styles.detailKpiSub}>tasa anualizada</div>
-          </div>
-        </div>
+      <FichaShell
+        hero={{
+          variant: 'plan',
+          badge: heroBadge,
+          logo: {
+            text: logoCfg.text,
+            bg: logoCfg.gradient ?? logoCfg.bg ?? 'var(--atlas-v5-bg)',
+            color: logoCfg.color,
+            noBorder: logoCfg.noBorder,
+          },
+          title: plan.nombre,
+          meta: subtitle ? <>{subtitle}</> : null,
+          stats: [
+            {
+              lab: 'Valor actual',
+              val: fmtShort(valorActual),
+              valVariant: pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : undefined,
+            },
+            {
+              lab: 'Aportado',
+              val: fmtShort(aportadoTotal),
+            },
+            {
+              lab: pgLatente >= 0 ? 'Ganancia' : 'Pérdida',
+              val: `${pgLatente >= 0 ? '+' : ''}${fmt(pgLatente)}`,
+              valVariant: pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : undefined,
+            },
+            {
+              lab: 'CAGR',
+              val: cagr != null ? fmtPct(cagr) : '—',
+              valVariant: cagr != null ? (cagr >= 0 ? 'pos' : 'neg') : undefined,
+            },
+          ],
+        }}
+        onBack={onBack}
+        actions={[
+          {
+            label: 'Actualizar valoración',
+            variant: 'ghost',
+            icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
+            onClick: () => setShowActualizarValor(true),
+          },
+          {
+            label: 'Aportar',
+            variant: 'ghost',
+            icon: <Icons.Plus size={14} strokeWidth={1.8} />,
+            onClick: () => setShowAportar(true),
+          },
+          {
+            label: 'Editar',
+            variant: 'gold',
+            icon: <Icons.Edit size={14} strokeWidth={1.8} />,
+            onClick: () => setShowEditar(true),
+          },
+        ]}
+      >
 
         {/* ── 1.3 · Sparkline gigante ────────────────────────────────────── */}
         <div className={styles.detailCard} style={{ marginBottom: 16 }}>
@@ -707,7 +691,7 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             </div>
           )}
         </div>
-      </div>
+      </FichaShell>
 
       {/* ── Modales ──────────────────────────────────────────────────────────── */}
 

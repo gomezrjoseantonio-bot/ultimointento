@@ -318,6 +318,12 @@
   border: 1px solid var(--atlas-v5-gold);
 }
 
+.cartaVizMes.pasado {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-4);
+  border: 1px solid var(--atlas-v5-line-2);
+}
+
 .cartaVizMes.futuro {
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-5);
