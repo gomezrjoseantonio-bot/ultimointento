@@ -362,7 +362,39 @@ const DetallePage: React.FC = () => {
         </div>
       )}
 
-      {(tab === 'cobros' || tab === 'gastos' || tab === 'documentos' || tab === 'fiscalidad') && (
+      {tab === 'gastos' && (
+        <div className={styles.placeholder}>
+          <strong>Gastos</strong>
+          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea
+          follow-up. Datos del usuario intactos en stores · UI consolidada en
+          próxima iteración.
+          <div style={{ marginTop: 16 }}>
+            <button
+              type="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '9px 18px',
+                border: '1.5px solid var(--atlas-v5-gold)',
+                borderRadius: 7,
+                background: 'var(--atlas-v5-gold)',
+                color: 'var(--atlas-v5-white)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'var(--atlas-v5-font-ui)',
+              }}
+              onClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
+            >
+              <Icons.Plus size={14} strokeWidth={2} />
+              Nuevo gasto recurrente
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(tab === 'cobros' || tab === 'documentos' || tab === 'fiscalidad') && (
         <div className={styles.placeholder}>
           <strong>{tabs.find((t) => t.key === tab)?.label}</strong>
           Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea
