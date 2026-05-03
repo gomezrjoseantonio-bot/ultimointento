@@ -4,10 +4,10 @@ import { MoneyValue, DateLabel, EmptyState, Icons, showToastV5 } from '../../../
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import {
-  computeAutonomoIngresoEnMes,
+  computeAutonomoNetoEnMes,
   computeCompromisoMonthly,
   computeCompromisoImporteEnMes,
-  computeNominaBrutoEnMes,
+  computeNominaNetoEnMes,
   familiaForCategoria,
   safeDayOfMonth,
 } from '../helpers';
@@ -40,23 +40,26 @@ const colorForFamilia = (fam: string): string =>
   FAMILIA_DOTS[fam] ?? 'var(--atlas-v5-ink-4)';
 
 /**
- * Ingreso bruto del hogar para un mes concreto · spec v1.1 regla 4
- * (calendario REAL, no plano · paga extra entera en su mes, variable y
- * bonus en su mes pagadero).
+ * Ingreso NETO del hogar para un mes concreto · lo que llega al banco.
+ * Spec v1.1 regla 4 (calendario REAL, no plano · paga extra entera en su mes,
+ * variable y bonus en su mes pagadero).
+ *
+ * Nómina · `netoTotal` (devengado − SS − IRPF − aportación PP empleado).
+ * Autónomo · `ingresos − gastos − cuota RETA`.
  *
  * @param mes 1-12
  */
-const computeIngresoEnMes = (
+const computeIngresoNetoEnMes = (
   nominas: PersonalOutletContext['nominas'],
   autonomos: PersonalOutletContext['autonomos'],
   mes: number,
 ): number => {
   const nominaMes = nominas.reduce(
-    (sum, n) => sum + computeNominaBrutoEnMes(n, mes),
+    (sum, n) => sum + computeNominaNetoEnMes(n, mes),
     0,
   );
   const autonomoMes = autonomos.reduce(
-    (sum, a) => sum + computeAutonomoIngresoEnMes(a, mes),
+    (sum, a) => sum + computeAutonomoNetoEnMes(a, mes),
     0,
   );
   return nominaMes + autonomoMes;
@@ -121,13 +124,13 @@ const PanelPage: React.FC = () => {
   // Ingreso del mes EN CURSO (spec v1.1 regla 4 · calendario REAL · no plano).
   // Paga extra entera en junio/diciembre · variable/bonus en su mes pagadero.
   const mesActual = new Date().getMonth() + 1;
-  // Distribución real de ingresos por mes (12 entradas · índice 0=enero..11=diciembre).
+  // Distribución real de NETO líquido por mes (lo que llega al banco · 12 entradas).
   // Se usa tanto para el KPI del mes en curso como para el chart "Ingresos vs gastos · 12 meses",
   // evitando que un pico (paga extra · variable) infle todos los demás meses.
   const ingresosPorMes = useMemo(
     () =>
       Array.from({ length: 12 }, (_, i) =>
-        computeIngresoEnMes(nominas, autonomos, i + 1),
+        computeIngresoNetoEnMes(nominas, autonomos, i + 1),
       ),
     [nominas, autonomos],
   );

@@ -3,9 +3,9 @@ import { useOutletContext } from 'react-router-dom';
 import { CardV5, MoneyValue, Icons } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
 import {
-  computeAutonomoIngresoEnMes,
+  computeAutonomoNetoEnMes,
   computeCompromisoMonthly,
-  computeNominaBrutoEnMes,
+  computeNominaNetoEnMes,
   bolsaForCategoria,
 } from '../helpers';
 
@@ -26,12 +26,14 @@ import {
 const PresupuestoPage: React.FC = () => {
   const { nominas, autonomos, compromisos } = useOutletContext<PersonalOutletContext>();
 
-  // Ingreso del mes EN CURSO · spec v1.1 regla 4 (calendario REAL · no plano).
-  // Las metas 50/30/20 se calculan sobre este mes real, no sobre bruto/12.
+  // Ingreso NETO del mes EN CURSO · spec v1.1 regla 4 (calendario REAL · no plano).
+  // El método 50/30/20 se aplica sobre el NETO líquido (lo que llega al banco),
+  // no sobre el bruto, porque las obligaciones fiscales (IRPF · SS) ya quedan
+  // descontadas en origen y no son disponibles para necesidades/deseos/ahorro.
   const mesActual = new Date().getMonth() + 1;
   const ingresosMes =
-    nominas.reduce((sum, n) => sum + computeNominaBrutoEnMes(n, mesActual), 0) +
-    autonomos.reduce((sum, a) => sum + computeAutonomoIngresoEnMes(a, mesActual), 0);
+    nominas.reduce((sum, n) => sum + computeNominaNetoEnMes(n, mesActual), 0) +
+    autonomos.reduce((sum, a) => sum + computeAutonomoNetoEnMes(a, mesActual), 0);
 
   let necesidades = 0;
   let deseos = 0;
