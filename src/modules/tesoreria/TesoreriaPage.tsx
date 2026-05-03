@@ -162,18 +162,15 @@ const TesoreriaPage: React.FC = () => {
           </>
         }
         actions={[
+          // PageHead solo renderiza las 2 primeras acciones. Mantenemos
+          // "Regenerar previsiones" (T31) + "Subir extracto" (uso frecuente).
+          // "Importar cuentas" sigue accesible vía /tesoreria/importar-cuentas.
           {
             label: regenerating ? 'Regenerando…' : 'Regenerar previsiones',
             variant: 'ghost',
             icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
             onClick: handleRegenerarPrevisiones,
             disabled: regenerating,
-          },
-          {
-            label: 'Importar cuentas',
-            variant: 'ghost',
-            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-            onClick: () => navigate('/tesoreria/importar-cuentas'),
           },
           {
             label: 'Subir extracto',

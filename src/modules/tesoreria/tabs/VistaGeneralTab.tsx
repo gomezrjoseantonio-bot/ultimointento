@@ -128,18 +128,27 @@ const VistaGeneralTab: React.FC = () => {
     });
   }, [movByYearMonth, currentYear, currentMonthIdx, totalSaldo, budgetProjection]);
 
-  // T31 · El calendario rodante 24m calcula su propia agregación a partir
-  // de treasuryEvents · ya no necesitamos monthCards 12-meses.
-  const entradasAnuales = useMemo(
-    () =>
-      Array.from(movByYearMonth.values()).reduce((sum, m) => sum + m.entradas, 0),
-    [movByYearMonth],
-  );
-  const salidasAnuales = useMemo(
-    () =>
-      Array.from(movByYearMonth.values()).reduce((sum, m) => sum + m.salidas, 0),
-    [movByYearMonth],
-  );
+  // Totales anuales del chart de cashflow · meses pasados/actual = real
+  // (movements) · meses futuros = proyección Mi Plan (budgetProjection). Esto
+  // mantiene "Entradas previstas" / "Salidas previstas" coherentes con la
+  // curva proyectada del chart.
+  const { entradasAnuales, salidasAnuales } = useMemo(() => {
+    let entradas = 0;
+    let salidas = 0;
+    for (let i = 0; i < 12; i++) {
+      const isFuture = i > currentMonthIdx;
+      if (isFuture) {
+        const proj = budgetProjection?.months[i];
+        entradas += proj?.entradas ?? 0;
+        salidas += proj?.salidas ?? 0;
+      } else {
+        const real = movByYearMonth.get(`${currentYear}-${i}`);
+        entradas += real?.entradas ?? 0;
+        salidas += real?.salidas ?? 0;
+      }
+    }
+    return { entradasAnuales: entradas, salidasAnuales: salidas };
+  }, [movByYearMonth, budgetProjection, currentMonthIdx, currentYear]);
   const saldoInicio = totalSaldo - (entradasAnuales + salidasAnuales);
 
   const pendientesPorCuenta = useMemo(() => {
