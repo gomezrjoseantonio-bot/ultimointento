@@ -30,6 +30,7 @@ import type { TipoGastoValue } from '../../../modules/shared/components/TipoGast
 import {
   TIPOS_GASTO_PERSONAL,
   findSubtipoPersonal,
+  findCatalogEntryByDbFields,
 } from '../wizards/utils/tiposDeGastoPersonal';
 
 // ─── Tipo PatronUI ───────────────────────────────────────────────────────────
@@ -335,18 +336,9 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     if (isNaN(id)) return;
     void obtenerCompromiso(id).then((c) => {
       if (!c) return;
-      let tipoGastoId = '';
-      let subtipoId = '';
-      for (const tipo of TIPOS_GASTO_PERSONAL) {
-        for (const sub of tipo.subtipos) {
-          if (sub.tipoCompromiso === c.tipo && (!c.subtipo || sub.id === c.subtipo)) {
-            tipoGastoId = tipo.id;
-            subtipoId = sub.id;
-            break;
-          }
-        }
-        if (tipoGastoId) break;
-      }
+      const entry = findCatalogEntryByDbFields(c.tipo, c.subtipo ?? undefined);
+      const tipoGastoId = entry?.tipoId ?? '';
+      const subtipoId = entry?.subtipoId ?? '';
 
       let patronUI: PatronUI | '' = '';
       let diaMes = '5';

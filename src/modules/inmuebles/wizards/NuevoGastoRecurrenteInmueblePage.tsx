@@ -35,6 +35,7 @@ import type { TipoGastoValue } from '../../shared/components/TipoGastoSelector';
 import {
   TIPOS_GASTO_INMUEBLE_V2,
   findSubtipoInmueble,
+  findCatalogEntryInmuebleByDbFields,
 } from './utils/tiposDeGastoInmueble';
 
 // ─── Tipo PatronUI ────────────────────────────────────────────────────────────
@@ -378,9 +379,11 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
         }
       }
 
+      const entry = findCatalogEntryInmuebleByDbFields(comp.tipo, comp.subtipo ?? undefined);
+
       setForm({
-        tipoGastoId: comp.categoria?.split('.')[1] ?? '',
-        subtipoId: comp.subtipo ?? '',
+        tipoGastoId: entry?.tipoId ?? '',
+        subtipoId: entry?.subtipoId ?? '',
         nombrePersonalizado: '',
         proveedor: comp.proveedor?.nombre ?? '',
         nif: comp.proveedor?.nif ?? '',
@@ -451,7 +454,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     const patron = buildPatron(form);
     const importe = buildImporte(form);
     const subtipoCatalog = findSubtipoInmueble(form.tipoGastoId, form.subtipoId);
-    if (!patron || !importe || !tipoSeleccionado) {
+    if (!patron || !importe || !tipoSeleccionado || !subtipoCatalog) {
       setErrors(validate(form));
       return;
     }
@@ -468,13 +471,13 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
         : form.proveedor || tipoSeleccionado.label;
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
-      const categoria = subtipoCatalog?.categoria ?? tipoSeleccionado.subtipos?.[0]?.categoria ?? 'inmueble.otros' as const;
+      const categoria = subtipoCatalog.categoria;
 
       const payload = {
         ambito: 'inmueble' as const,
         inmuebleId: propertyId,
         alias,
-        tipo: subtipoCatalog?.tipoCompromiso ?? 'otros' as const,
+        tipo: subtipoCatalog.tipoCompromiso,
         subtipo: form.subtipoId || undefined,
         proveedor: {
           nombre: form.proveedor || tipoSeleccionado.label,
