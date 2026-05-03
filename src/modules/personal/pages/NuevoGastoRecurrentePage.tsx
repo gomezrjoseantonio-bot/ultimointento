@@ -322,6 +322,24 @@ function validate(form: FormState): FormErrors {
 
 // ─── Formateo de resumen de patrón ──────────────────────────────────────────
 
+// ─── Constante de etiquetas de bolsa ────────────────────────────────────────
+
+const BOLSA_LABELS: Record<BolsaPresupuesto, string> = {
+  necesidades: 'Necesidades',
+  deseos: 'Deseos',
+  ahorroInversion: 'Ahorro',
+  obligaciones: 'Obligaciones',
+  inmueble: 'Inmueble',
+};
+
+// ─── Helper seguro para MESES_LABELS ────────────────────────────────────────
+
+function mesLabel(mesStr: string): string {
+  const n = parseInt(mesStr, 10);
+  if (isNaN(n) || n < 1 || n > 12) return '?';
+  return MESES_LABELS[n - 1] ?? '?';
+}
+
 function formatPatronResumen(form: FormState): string {
   if (!form.patronUI) return '—';
   const dia = form.diaMes;
@@ -330,9 +348,9 @@ function formatPatronResumen(form: FormState): string {
     case 'mensualDiaRelativo': return `Mensual · ${form.diaRelativo}`;
     case 'bimestral': return `Cada 2 meses · día ${dia} · ancla mes ${form.mesAncla}`;
     case 'trimestral': return `Cada 3 meses · día ${dia} · ancla mes ${form.mesAncla}`;
-    case 'anual1pago': return `Anual · ${MESES_LABELS[parseInt(form.mesAnual1, 10) - 1] ?? ''} día ${dia}`;
+    case 'anual1pago': return `Anual · ${mesLabel(form.mesAnual1)} día ${dia}`;
     case 'anual2pagos':
-      return `Anual · 2 pagos · ${MESES_LABELS[parseInt(form.mesAnual2a, 10) - 1] ?? ''} + ${MESES_LABELS[parseInt(form.mesAnual2b, 10) - 1] ?? ''} · día ${dia}`;
+      return `Anual · 2 pagos · ${mesLabel(form.mesAnual2a)} + ${mesLabel(form.mesAnual2b)} · día ${dia}`;
     default: return '—';
   }
 }
@@ -434,7 +452,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
         importe,
         variacion: { tipo: 'sinVariacion' },
         cuentaCargo: parseInt(form.cuentaCargoId, 10),
-        conceptoBancario: form.proveedor.toUpperCase() || tipoSeleccionado.label.toUpperCase(),
+        conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : tipoSeleccionado.label.toUpperCase(),
         metodoPago: metodo,
         categoria: tipoSeleccionado.categoria,
         bolsaPresupuesto: form.bolsa as BolsaPresupuesto,
@@ -937,9 +955,14 @@ const NuevoGastoRecurrentePage: React.FC = () => {
                     {' · '}
                     Valle:{' '}
                     <strong>
-                      {Math.min(
-                        ...form.importesEstacionales.map((v) => parseFloat(v) || 0),
-                      ).toFixed(2)} €
+                      {(() => {
+                        const nonZero = form.importesEstacionales
+                          .map((v) => parseFloat(v) || 0)
+                          .filter((v) => v > 0);
+                        return nonZero.length > 0
+                          ? Math.min(...nonZero).toFixed(2)
+                          : '0.00';
+                      })()} €
                     </strong>
                   </div>
                 )}
@@ -1067,9 +1090,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
 
               <dt style={styles.dt}>Bolsa</dt>
               <dd style={form.bolsa ? { ...styles.dd, ...bolsaColorStyle(form.bolsa) } : styles.dd}>
-                {form.bolsa
-                  ? ({ necesidades: 'Necesidades', deseos: 'Deseos', ahorroInversion: 'Ahorro', obligaciones: 'Obligaciones', inmueble: 'Inmueble' } as Record<string, string>)[form.bolsa] ?? form.bolsa
-                  : '—'}
+                {form.bolsa ? BOLSA_LABELS[form.bolsa] : '—'}
               </dd>
             </dl>
 
