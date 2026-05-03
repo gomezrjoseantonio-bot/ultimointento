@@ -118,10 +118,7 @@ const MovimientosTab: React.FC = () => {
         }
         return true; // 'todos'
       })
-      .filter((row) => {
-        if (row.kind === 'movement') return matchesAccount(row.data.accountId, accountFilter);
-        return matchesAccount(row.data.accountId, accountFilter);
-      })
+      .filter((row) => matchesAccount(row.data.accountId, accountFilter))
       .filter((row) => {
         if (row.kind === 'movement') return matchesSearch(row.data, search);
         return matchesSearchEvent(row.data, search);
@@ -359,20 +356,20 @@ const MovimientosTab: React.FC = () => {
                       <button
                         type="button"
                         className={`${styles.chk} ${styles.previstoChk}`}
-                        aria-label="Confirmar evento previsto"
-                        title="Confirmar y crear movimiento bancario"
+                        aria-label={isConfirming ? 'Confirmando…' : e.accountId == null ? 'Sin cuenta asignada — edita el evento para asignar una cuenta' : 'Confirmar evento previsto'}
+                        title={e.accountId == null ? 'Asigna una cuenta al evento para poder confirmarlo' : 'Confirmar y crear movimiento bancario'}
                         disabled={isConfirming || e.accountId == null}
                         onClick={(ev) => handleConfirmEvent(ev, e.id)}
                       >
                         {isConfirming
-                          ? <Icons.Refresh size={12} strokeWidth={2} />
+                          ? <Icons.Refresh size={12} strokeWidth={2} className={styles.spinning} />
                           : <Icons.Check size={12} strokeWidth={2} />
                         }
                       </button>
                     </td>
                     <td className={styles.dateCell}>
                       {e.predictedDate
-                        ? <DateLabel value={e.predictedDate.slice(0, 10)} format="short" />
+                        ? <DateLabel value={e.predictedDate} format="short" />
                         : '—'}
                     </td>
                     <td>
