@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Personal · Nuevo gasto recurrente</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F5F4F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF6;
+    --line:      #E6E3DC;
+    --line-2:    #EFECE5;
+    --ink:       #141B2E;
+    --ink-2:     #2C3547;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --brand:       #1E2954;
+    --brand-2:     #2A3875;
+    --brand-ink:   #0C1230;
+    --brand-wash:  #E8EAF0;
+    --gold:        #B88A3E;
+    --gold-2:      #C59A47;
+    --gold-3:      #D4AB5A;
+    --gold-wash:   #F3EAD6;
+    --gold-wash-2: #FAF3E1;
+    --gold-ink:    #7C5C1F;
+    --pos:         #1E6B3A;
+    --pos-wash:    #E4F0E8;
+    --neg:         #A43328;
+    --neg-wash:    #F5E3E0;
+    --warn:        #8A6213;
+    --warn-wash:   #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .sc { text-transform: uppercase; letter-spacing: .14em; font-size: 10.5px; font-weight: 600; color: var(--ink-4); }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* MAIN */
+  .main { padding: 22px 32px 48px; max-width: 980px; margin: 0 auto; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+  .icon-btn { position: relative; width: 38px; height: 38px; border-radius: 8px; background: var(--card); border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); }
+
+  /* Breadcrumb */
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-4); margin-bottom: 14px; }
+  .breadcrumb a:hover { color: var(--ink-2); cursor: pointer; }
+  .breadcrumb .sep { color: var(--ink-5); }
+  .breadcrumb .current { color: var(--ink-2); font-weight: 500; }
+
+  /* Page head */
+  .page-head { margin-bottom: 22px; }
+  .page-h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.022em; line-height: 1.1; }
+  .page-sub { font-size: 14px; color: var(--ink-3); margin-top: 4px; }
+  .page-sub strong { color: var(--gold-ink); font-weight: 600; }
+
+  /* ═══════════ FORM CONTAINER ═══════════ */
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    overflow: hidden;
+    border-top: 4px solid var(--gold);
+  }
+
+  /* Sección dentro del form */
+  .section {
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .section:last-of-type { border-bottom: none; }
+
+  .section-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 18px;
+  }
+  .section-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--gold-wash);
+    color: var(--gold-ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 12px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 15px; font-weight: 700; color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .section-desc {
+    font-size: 12px; color: var(--ink-3); margin-top: 2px;
+  }
+
+  /* Form rows */
+  .form-row { margin-bottom: 14px; }
+  .form-row:last-child { margin-bottom: 0; }
+  .form-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-cols-2-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  /* Label */
+  .form-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600;
+    color: var(--ink-2);
+    margin-bottom: 6px;
+    letter-spacing: -0.005em;
+  }
+  .form-label .req { color: var(--gold); font-size: 10px; font-weight: 700; }
+  .form-label .opt {
+    font-size: 10px; color: var(--ink-4); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    background: var(--bg); padding: 1px 6px; border-radius: 4px;
+  }
+  .form-label-help { font-size: 11px; color: var(--ink-4); margin-top: 4px; line-height: 1.4; }
+
+  /* Inputs */
+  .form-input, .form-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--ink);
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-wash);
+  }
+  .form-input.mono { font-family: 'JetBrains Mono', monospace; }
+  .form-select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235B6474' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .form-input.with-prefix { padding-left: 38px; }
+  .form-input-wrap { position: relative; }
+  .form-input-prefix {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 600;
+    pointer-events: none;
+  }
+  .form-input-suffix {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--ink-4); font-family: 'JetBrains Mono', monospace; font-weight: 500;
+    pointer-events: none;
+  }
+
+  /* Modo importe · pills */
+  .mode-pills { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .mode-pill {
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--card);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s;
+  }
+  .mode-pill:hover { border-color: var(--ink-5); }
+  .mode-pill.active {
+    border-color: var(--gold);
+    background: var(--gold-wash);
+    box-shadow: 0 0 0 3px var(--gold-wash);
+  }
+  .mode-pill-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .mode-pill-desc { font-size: 11px; color: var(--ink-3); margin-top: 3px; line-height: 1.35; }
+  .mode-pill.active .mode-pill-title { color: var(--gold-ink); }
+
+  /* Importe estacional · grid 12 meses */
+  .month-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+    background: var(--gold-wash-2);
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid var(--gold-wash);
+  }
+  .month-cell .mlab { font-size: 10px; font-weight: 700; color: var(--gold-ink); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; text-align: center; }
+  .month-cell input { padding: 6px 8px; font-size: 12px; text-align: center; }
+  .month-summary {
+    margin-top: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 6px;
+    font-size: 11.5px; color: var(--ink-3);
+  }
+  .month-summary span strong { color: var(--ink); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+  /* Bolsa presupuesto · 3 pills */
+  .bolsa-pills { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .bolsa-pill {
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--card);
+    cursor: pointer;
+    text-align: center;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--ink-3);
+    transition: all .15s;
+  }
+  .bolsa-pill:hover { border-color: var(--ink-5); }
+  .bolsa-pill.active.necesidad { border-color: var(--brand); background: var(--brand-wash); color: var(--brand); }
+  .bolsa-pill.active.deseo { border-color: var(--gold); background: var(--gold-wash); color: var(--gold-ink); }
+  .bolsa-pill.active.ahorro { border-color: var(--pos); background: var(--pos-wash); color: var(--pos); }
+  .bolsa-pill .pct { display: block; font-size: 10px; font-weight: 600; opacity: .7; margin-top: 1px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Resumen lateral · sticky */
+  .form-resume {
+    position: sticky; top: 22px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    border-top: 3px solid var(--brand);
+  }
+  .form-resume-head {
+    font-size: 11px; font-weight: 700; color: var(--ink-4); letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .resume-line { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--line-2); font-size: 12.5px; }
+  .resume-line:last-child { border-bottom: none; }
+  .resume-line .lab { color: var(--ink-3); }
+  .resume-line .val { color: var(--ink); font-weight: 600; }
+  .resume-line .val.empty { color: var(--ink-5); font-style: italic; font-weight: 400; }
+  .resume-kpi {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
+    text-align: center;
+  }
+  .resume-kpi-lab { font-size: 11px; font-weight: 600; color: var(--ink-4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .resume-kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.05; }
+  .resume-kpi-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+
+  /* Footer · acciones */
+  .form-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 28px;
+    background: var(--card-alt);
+    border-top: 1px solid var(--line);
+  }
+  .footer-help { font-size: 12px; color: var(--ink-3); }
+  .footer-help svg { vertical-align: -2px; margin-right: 4px; color: var(--gold); }
+  .footer-actions { display: flex; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: all .15s; }
+  .btn-ghost { background: transparent; color: var(--ink-3); border-color: var(--line); }
+  .btn-ghost:hover { color: var(--ink-2); border-color: var(--ink-5); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+
+  /* Layout: form + resumen */
+  .form-grid {
+    display: grid; grid-template-columns: 1fr 280px; gap: 22px;
+    align-items: flex-start;
+  }
+
+  /* Patrón calendario · subform expandido */
+  .pattern-detail {
+    margin-top: 10px;
+    padding: 14px;
+    background: var(--gold-wash-2);
+    border: 1px solid var(--gold-wash);
+    border-radius: 10px;
+  }
+  .pattern-detail-head {
+    font-size: 10.5px; font-weight: 700; color: var(--gold-ink);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* Sugerencia de catálogo */
+  .catalog-hint {
+    background: var(--gold-wash-2);
+    border: 1px dashed var(--gold-3);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .catalog-hint svg { color: var(--gold); flex-shrink: 0; }
+  .catalog-hint-text { font-size: 12.5px; color: var(--gold-ink); line-height: 1.45; }
+  .catalog-hint-text strong { color: var(--gold-ink); font-weight: 700; }
+
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="brand">
+        <div class="brand-mark">A</div>
+        <div>
+          <div class="brand-name">ATLAS</div>
+          <div class="brand-sub">Patrimonio</div>
+        </div>
+      </div>
+      <div class="nav-section">Mis activos</div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Panel</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Inmuebles</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Inversiones</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="13" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/></svg>Tesorería</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/></svg>Financiación</a>
+        <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+      </nav>
+      <div class="nav-section">Operativa</div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Contratos</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3h18v18H3z"/></svg>Fiscal</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 8v13H3V8"/></svg>Archivo</a>
+      </nav>
+      <div class="nav-sep"></div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+      </nav>
+      <div class="side-foot">
+        <div class="avatar">JG</div>
+        <div>
+          <div class="side-foot-name">José A. Gómez</div>
+          <div class="side-foot-sub">free</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Buscar inmueble, contrato, movimiento…" />
+          <span class="kbd">⌘K</span>
+        </div>
+      </div>
+
+      <!-- Breadcrumb -->
+      <div class="breadcrumb">
+        <a>← Personal</a>
+        <span class="sep">›</span>
+        <a>Gastos</a>
+        <span class="sep">›</span>
+        <span class="current">Nuevo gasto recurrente</span>
+      </div>
+
+      <!-- Page head -->
+      <div class="page-head">
+        <h1 class="page-h1">Nuevo gasto recurrente</h1>
+        <div class="page-sub">Configura un patrón de gasto · ATLAS proyectará los <strong>próximos 24 meses</strong> en Tesorería automáticamente</div>
+      </div>
+
+      <div class="form-grid">
+
+        <!-- ═══════════ FORMULARIO ═══════════ -->
+        <div class="form-card">
+
+          <!-- Hint catálogo -->
+          <div style="padding: 16px 28px 0;">
+            <div class="catalog-hint">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              <div class="catalog-hint-text">
+                <strong>¿Quieres ir más rápido?</strong> Carga el <strong>catálogo típico de un hogar</strong> (luz · gas · internet · seguros · alquiler · IBI · etc) y edita solo los que tengas. <a style="color: var(--gold-ink); font-weight: 700; text-decoration: underline; cursor: pointer;">Cargar catálogo →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 1. QUÉ GASTO ES ── -->
+          <div class="section">
+            <div class="section-head">
+              <div class="section-num">1</div>
+              <div>
+                <div class="section-title">Qué gasto es</div>
+                <div class="section-desc">categoría y proveedor del cargo</div>
+              </div>
+            </div>
+
+            <div class="form-cols-2">
+              <div class="form-row">
+                <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+                <select class="form-select">
+                  <option>— Selecciona un tipo —</option>
+                  <optgroup label="Vivienda">
+                    <option>Alquiler vivienda</option>
+                    <option>IBI</option>
+                    <option>Comunidad</option>
+                    <option>Seguro hogar</option>
+                  </optgroup>
+                  <optgroup label="Gastos del día a día">
+                    <option selected>Suministro</option>
+                    <option>Suscripción digital</option>
+                  </optgroup>
+                  <optgroup label="Otros">
+                    <option>Seguro</option>
+                    <option>Cuota / membresía</option>
+                    <option>Impuesto / tasa</option>
+                    <option>Otros pagos recurrentes</option>
+                  </optgroup>
+                </select>
+              </div>
+              <div class="form-row">
+                <label class="form-label">Subtipo <span class="req">●</span></label>
+                <select class="form-select">
+                  <option>Luz</option>
+                  <option>Gas</option>
+                  <option>Agua</option>
+                  <option>Internet</option>
+                  <option>Móvil</option>
+                  <option>Otros</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-cols-2-3">
+              <div class="form-row">
+                <label class="form-label">Proveedor <span class="opt">opcional · ayuda al matching</span></label>
+                <input class="form-input" type="text" placeholder="Iberdrola Clientes S.A." value="Iberdrola Clientes S.A." />
+                <div class="form-label-help">El nombre que ATLAS verá en el extracto bancario</div>
+              </div>
+              <div class="form-row">
+                <label class="form-label">CIF / NIF <span class="opt">opcional</span></label>
+                <input class="form-input mono" type="text" placeholder="A95758389" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Referencia / contrato <span class="opt">opcional</span></label>
+              <input class="form-input mono" type="text" placeholder="ES0021000123456789AB" />
+              <div class="form-label-help">Si tu factura tiene un número de cuenta o contrato · ATLAS lo usará para conciliar mejor</div>
+            </div>
+          </div>
+
+          <!-- ── 2. CUÁNDO SE COBRA ── -->
+          <div class="section">
+            <div class="section-head">
+              <div class="section-num">2</div>
+              <div>
+                <div class="section-title">Cuándo se cobra</div>
+                <div class="section-desc">elige el patrón real · ATLAS proyectará los días concretos</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Patrón de calendario <span class="req">●</span></label>
+              <select class="form-select">
+                <option selected>Mensual · día fijo · ej. cada día 6</option>
+                <option>Mensual · día relativo · último hábil · primer hábil</option>
+                <option>Cada 2 meses · bimestral con anclaje</option>
+                <option>Cada 3 meses · trimestral con anclaje</option>
+                <option>Anual · 1 pago en mes concreto</option>
+                <option>Anual · 2 pagos en meses concretos · ej. IBI junio + nov</option>
+                <option>Variable · estacional · 12 importes distintos</option>
+              </select>
+            </div>
+
+            <!-- Subform · patrón mensual día fijo -->
+            <div class="pattern-detail">
+              <div class="pattern-detail-head">Configuración · Mensual día fijo</div>
+              <div class="form-cols-3">
+                <div class="form-row" style="margin-bottom:0;">
+                  <label class="form-label">Día del mes <span class="req">●</span></label>
+                  <input class="form-input mono" type="text" value="6" placeholder="1-31" />
+                </div>
+                <div class="form-row" style="margin-bottom:0;">
+                  <label class="form-label">Mes inicio <span class="opt">por defecto · este mes</span></label>
+                  <select class="form-select">
+                    <option selected>Mayo 2026 · este mes</option>
+                    <option>Enero 2026</option>
+                    <option>Febrero 2026</option>
+                    <option>Marzo 2026</option>
+                    <option>Abril 2026</option>
+                    <option>Junio 2026</option>
+                    <option>Julio 2026</option>
+                    <option>Agosto 2026</option>
+                    <option>Septiembre 2026</option>
+                    <option>Octubre 2026</option>
+                    <option>Noviembre 2026</option>
+                    <option>Diciembre 2026</option>
+                  </select>
+                </div>
+                <div class="form-row" style="margin-bottom:0;">
+                  <label class="form-label">Mes fin <span class="opt">vacío si indefinido</span></label>
+                  <select class="form-select">
+                    <option selected>— Indefinido —</option>
+                    <option>Diciembre 2026</option>
+                    <option>Junio 2027</option>
+                    <option>Diciembre 2027</option>
+                    <option>Junio 2028</option>
+                    <option>Diciembre 2028</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ── 3. CUÁNTO SE COBRA ── -->
+          <div class="section">
+            <div class="section-head">
+              <div class="section-num">3</div>
+              <div>
+                <div class="section-title">Cuánto se cobra</div>
+                <div class="section-desc">importe fijo · medio · o estacional por mes</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Modo de importe <span class="req">●</span></label>
+              <select class="form-select">
+                <option>Fijo · mismo importe siempre · ej. alquiler 1.350 €</option>
+                <option>Variable medio · estimación media · ej. ocio 200 €/mes</option>
+                <option selected>Estacional · 12 importes distintos · ej. luz · gas</option>
+              </select>
+            </div>
+
+            <!-- Detalle · estacional 12 valores -->
+            <div class="month-grid">
+              <div class="month-cell">
+                <div class="mlab">ENE</div>
+                <input class="form-input mono" type="text" value="138" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">FEB</div>
+                <input class="form-input mono" type="text" value="122" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">MAR</div>
+                <input class="form-input mono" type="text" value="92" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">ABR</div>
+                <input class="form-input mono" type="text" value="87" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">MAY</div>
+                <input class="form-input mono" type="text" value="74" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">JUN</div>
+                <input class="form-input mono" type="text" value="71" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">JUL</div>
+                <input class="form-input mono" type="text" value="78" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">AGO</div>
+                <input class="form-input mono" type="text" value="80" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">SEP</div>
+                <input class="form-input mono" type="text" value="88" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">OCT</div>
+                <input class="form-input mono" type="text" value="95" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">NOV</div>
+                <input class="form-input mono" type="text" value="110" />
+              </div>
+              <div class="month-cell">
+                <div class="mlab">DIC</div>
+                <input class="form-input mono" type="text" value="124" />
+              </div>
+            </div>
+            <div class="month-summary">
+              <span>Total anual · <strong>1.176 €</strong></span>
+              <span>Media · <strong>98 €/mes</strong></span>
+              <span>Pico · <strong>138 € (ene)</strong></span>
+              <span>Valle · <strong>71 € (jun)</strong></span>
+            </div>
+          </div>
+
+          <!-- ── 4. DÓNDE SE CARGA Y EN QUÉ BOLSA ── -->
+          <div class="section">
+            <div class="section-head">
+              <div class="section-num">4</div>
+              <div>
+                <div class="section-title">Dónde se carga y en qué bolsa</div>
+                <div class="section-desc">cuenta bancaria · y a qué parte del 50 / 30 / 20 pertenece</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Cuenta de cargo <span class="req">●</span></label>
+              <select class="form-select">
+                <option>— Selecciona cuenta —</option>
+                <option>Santander · ···· 2715 · 3.224 €</option>
+                <option>BBVA · ···· 0131 · 2.268 €</option>
+                <option>Unicaja · ···· 4437 · 2.553 €</option>
+                <option selected>Sabadell · ···· 9635 · 2.156 €</option>
+                <option>ING · ···· 0331 · 692 €</option>
+                <option>Abanca · ···· 9511 · 897 €</option>
+                <option>Bankinter · ···· 3033 · 46 €</option>
+                <option>Revolut · ···· 4651 · 1 €</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label class="form-label">Bolsa de presupuesto · 50 / 30 / 20</label>
+              <div class="bolsa-pills">
+                <button class="bolsa-pill active necesidad">Necesidades<span class="pct">obj 50%</span></button>
+                <button class="bolsa-pill">Deseos<span class="pct">obj 30%</span></button>
+                <button class="bolsa-pill">Ahorro<span class="pct">obj 20%</span></button>
+              </div>
+              <div class="form-label-help">ATLAS pre-selecciona en función del tipo de gasto · puedes cambiarlo si tu criterio es distinto</div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="form-footer">
+            <div class="footer-help">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Al guardar · ATLAS proyectará 24 cargos previstos en Tesorería
+            </div>
+            <div class="footer-actions">
+              <button class="btn btn-ghost">Cancelar</button>
+              <button class="btn btn-gold">
+                Guardar y proyectar
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ═══════════ RESUMEN LATERAL · sticky ═══════════ -->
+        <aside class="form-resume">
+          <div class="form-resume-head">Resumen del patrón</div>
+
+          <div class="resume-line">
+            <span class="lab">Tipo</span>
+            <span class="val">Suministro · luz</span>
+          </div>
+          <div class="resume-line">
+            <span class="lab">Proveedor</span>
+            <span class="val">Iberdrola</span>
+          </div>
+          <div class="resume-line">
+            <span class="lab">Calendario</span>
+            <span class="val">Mensual · día 6</span>
+          </div>
+          <div class="resume-line">
+            <span class="lab">Modo importe</span>
+            <span class="val">Estacional</span>
+          </div>
+          <div class="resume-line">
+            <span class="lab">Cuenta</span>
+            <span class="val">Sabadell ···· 9635</span>
+          </div>
+          <div class="resume-line">
+            <span class="lab">Bolsa</span>
+            <span class="val" style="color: var(--brand);">Necesidades</span>
+          </div>
+
+          <div class="resume-kpi">
+            <div class="resume-kpi-lab">Coste anual previsto</div>
+            <div class="resume-kpi-val">−1.176 €</div>
+            <div class="resume-kpi-sub">media 98 € / mes · 12 cargos</div>
+          </div>
+        </aside>
+
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>
