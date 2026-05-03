@@ -108,12 +108,10 @@ export function findCatalogEntryInmuebleByDbFields(
   tipoCompromiso: string,
   subtipoDb: string | undefined,
 ): { tipoId: string; subtipoId: string } | undefined {
+  if (!subtipoDb) return undefined;
   for (const tipo of TIPOS_GASTO_INMUEBLE_V2) {
     for (const sub of tipo.subtipos) {
-      if (
-        sub.tipoCompromiso === tipoCompromiso &&
-        (subtipoDb ? sub.id === subtipoDb : true)
-      ) {
+      if (sub.tipoCompromiso === tipoCompromiso && sub.id === subtipoDb) {
         return { tipoId: tipo.id, subtipoId: sub.id };
       }
     }

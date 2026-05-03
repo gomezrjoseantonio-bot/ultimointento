@@ -220,6 +220,7 @@ function buildImporte(form: FormState): ImporteEvento | null {
 interface FormErrors {
   tipoGastoId?: string;
   subtipoId?: string;
+  nombrePersonalizado?: string;
   patronUI?: string;
   diaMes?: string;
   modoImporte?: string;
@@ -237,6 +238,11 @@ function validate(form: FormState): FormErrors {
     const tipo = TIPOS_GASTO_INMUEBLE_V2.find((t) => t.id === form.tipoGastoId);
     if (tipo?.subtipos && tipo.subtipos.length > 0 && !form.subtipoId) {
       errors.subtipoId = 'Selecciona el subtipo';
+    } else if (form.subtipoId) {
+      const sub = findSubtipoInmueble(form.tipoGastoId, form.subtipoId);
+      if (sub?.isCustom && !form.nombrePersonalizado.trim()) {
+        errors.nombrePersonalizado = 'Introduce el nombre del gasto';
+      }
     }
   }
   if (!form.patronUI) {
@@ -380,11 +386,12 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
       }
 
       const entry = findCatalogEntryInmuebleByDbFields(comp.tipo, comp.subtipo ?? undefined);
+      const subtipoLoaded = entry ? findSubtipoInmueble(entry.tipoId, entry.subtipoId) : undefined;
 
       setForm({
         tipoGastoId: entry?.tipoId ?? '',
         subtipoId: entry?.subtipoId ?? '',
-        nombrePersonalizado: '',
+        nombrePersonalizado: subtipoLoaded?.isCustom ? (comp.alias ?? '') : '',
         proveedor: comp.proveedor?.nombre ?? '',
         nif: comp.proveedor?.nif ?? '',
         referencia: comp.proveedor?.referencia ?? '',

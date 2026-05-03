@@ -220,6 +220,7 @@ function buildImporte(form: FormState): ImporteEvento | null {
 interface FormErrors {
   tipoGastoId?: string;
   subtipoId?: string;
+  nombrePersonalizado?: string;
   patronUI?: string;
   diaMes?: string;
   mesInicio?: string;
@@ -237,6 +238,11 @@ function validate(form: FormState): FormErrors {
     errors.tipoGastoId = 'Selecciona el tipo de gasto';
   } else if (!form.subtipoId) {
     errors.subtipoId = 'Selecciona el subtipo';
+  } else {
+    const sub = findSubtipoPersonal(form.tipoGastoId, form.subtipoId);
+    if (sub?.isCustom && !form.nombrePersonalizado.trim()) {
+      errors.nombrePersonalizado = 'Introduce el nombre del gasto';
+    }
   }
   if (!form.patronUI) errors.patronUI = 'Selecciona el patrón de cobro';
   else {
@@ -386,7 +392,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
         referencia: c.proveedor?.referencia ?? '',
         patronUI,
         diaMes,
-        mesInicio: String(new Date().getMonth() + 1),
+        mesInicio: String(parseInt(c.fechaInicio.slice(5, 7), 10)),
         mesFin: '',
         diaRelativo: 'ultimoHabil',
         mesAncla,
