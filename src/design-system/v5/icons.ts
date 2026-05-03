@@ -90,6 +90,11 @@ import {
   PiggyBank,
   HandCoins,
   Bitcoin,
+  Zap,
+  ShoppingCart,
+  Tv,
+  Users,
+  CirclePlus,
 } from 'lucide-react';
 
 /**
@@ -189,6 +194,12 @@ export const Icons = {
   PiggyBank,
   HandCoins,
   Bitcoin,
+  // ===== T34/T35 · Tipo gasto selector =====
+  Zap,
+  ShoppingCart,
+  Tv,
+  SelectorUsers: Users,
+  CirclePlus,
 } as const;
 
 export type IconName = keyof typeof Icons;

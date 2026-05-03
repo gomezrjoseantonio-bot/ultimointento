@@ -16,38 +16,28 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../design-system/v5';
 import { cuentasService } from '../../../services/cuentasService';
-import { crearCompromiso } from '../../../services/personal/compromisosRecurrentesService';
+import {
+  crearCompromiso,
+  obtenerCompromiso,
+  actualizarCompromiso,
+} from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { Account } from '../../../services/db';
 import type {
-  CategoriaGastoCompromiso,
   ImporteEvento,
   MetodoPagoCompromiso,
   PatronRecurrente,
   ReferenciaDiaRelativo,
-  TipoCompromiso,
 } from '../../../types/compromisosRecurrentes';
 import type { InmueblesOutletContext } from '../InmueblesContext';
-
-// ─── Tipos de gasto del inmueble ─────────────────────────────────────────────
-
-interface TipoGastoInmueble {
-  id: string;
-  label: string;
-  tipo: TipoCompromiso;
-  subtipos: string[] | null;
-  categoria: CategoriaGastoCompromiso;
-}
-
-const TIPOS_GASTO_INMUEBLE: TipoGastoInmueble[] = [
-  { id: 'ibi',             label: 'IBI',                       tipo: 'impuesto', subtipos: null,                                                     categoria: 'inmueble.ibi' },
-  { id: 'comunidad',       label: 'Comunidad',                 tipo: 'comunidad', subtipos: null,                                                    categoria: 'inmueble.comunidad' },
-  { id: 'seguro_inmueble', label: 'Seguro inmueble',           tipo: 'seguro',   subtipos: ['Hogar', 'Impago', 'Otros'],                             categoria: 'inmueble.seguros' },
-  { id: 'suministro',      label: 'Suministro',                tipo: 'suministro', subtipos: ['Luz', 'Gas', 'Agua', 'Internet', 'Otros'],            categoria: 'inmueble.suministros' },
-  { id: 'gestion',         label: 'Gestión',                   tipo: 'otros',    subtipos: ['Honorarios agencia', 'Gestoría', 'Asesoría', 'Otros'],  categoria: 'inmueble.gestionAlquiler' },
-  { id: 'reparacion',      label: 'Reparación y conservación', tipo: 'otros',    subtipos: ['Mantenimiento caldera', 'Mantenimiento integral', 'Limpieza', 'Otros'], categoria: 'inmueble.opex' },
-  { id: 'otros',           label: 'Otros operativos',          tipo: 'otros',    subtipos: null,                                                    categoria: 'inmueble.otros' },
-];
+import { TipoGastoSelector } from '../../shared/components/TipoGastoSelector';
+import type { TipoGastoValue } from '../../shared/components/TipoGastoSelector';
+import {
+  TIPOS_GASTO_INMUEBLE_V2,
+  findSubtipoInmueble,
+  findCatalogEntryInmuebleByDbFields,
+} from './utils/tiposDeGastoInmueble';
+import { buildGastoAlias } from '../../shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ────────────────────────────────────────────────────────────
 
@@ -65,8 +55,9 @@ type ModoImporte = 'fijo' | 'variable' | 'estacional';
 
 interface FormState {
   // Sección 1
-  tipoId: string;
-  subtipoValue: string;
+  tipoGastoId: string;
+  subtipoId: string;
+  nombrePersonalizado: string;
   proveedor: string;
   nif: string;
   referencia: string;
@@ -95,8 +86,9 @@ const MESES_NUMS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const initialForm = (): FormState => {
   const now = new Date();
   return {
-    tipoId: '',
-    subtipoValue: '',
+    tipoGastoId: '',
+    subtipoId: '',
+    nombrePersonalizado: '',
     proveedor: '',
     nif: '',
     referencia: '',
@@ -227,8 +219,9 @@ function buildImporte(form: FormState): ImporteEvento | null {
 // ─── Errores de validación ────────────────────────────────────────────────────
 
 interface FormErrors {
-  tipoId?: string;
-  subtipoValue?: string;
+  tipoGastoId?: string;
+  subtipoId?: string;
+  nombrePersonalizado?: string;
   patronUI?: string;
   diaMes?: string;
   modoImporte?: string;
@@ -240,12 +233,17 @@ interface FormErrors {
 
 function validate(form: FormState): FormErrors {
   const errors: FormErrors = {};
-  if (!form.tipoId) {
-    errors.tipoId = 'Selecciona el tipo de gasto';
+  if (!form.tipoGastoId) {
+    errors.tipoGastoId = 'Selecciona el tipo de gasto';
   } else {
-    const tipo = TIPOS_GASTO_INMUEBLE.find((t) => t.id === form.tipoId);
-    if (tipo?.subtipos && !form.subtipoValue) {
-      errors.subtipoValue = 'Selecciona el subtipo';
+    const tipo = TIPOS_GASTO_INMUEBLE_V2.find((t) => t.id === form.tipoGastoId);
+    if (tipo?.subtipos && tipo.subtipos.length > 0 && !form.subtipoId) {
+      errors.subtipoId = 'Selecciona el subtipo';
+    } else if (form.subtipoId) {
+      const sub = findSubtipoInmueble(form.tipoGastoId, form.subtipoId);
+      if (sub?.isCustom && !form.nombrePersonalizado.trim()) {
+        errors.nombrePersonalizado = 'Introduce el nombre del gasto';
+      }
     }
   }
   if (!form.patronUI) {
@@ -308,9 +306,10 @@ function formatModoImporte(form: FormState): string {
 
 const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id, gastoId } = useParams<{ id: string; gastoId?: string }>();
   const propertyId = Number(id);
   const { properties } = useOutletContext<InmueblesOutletContext>();
+  const editMode = Boolean(gastoId);
 
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
@@ -327,12 +326,101 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     void cuentasService.list().then(setCuentas);
   }, []);
 
+  // Load existing gasto when in edit mode
+  useEffect(() => {
+    if (!editMode || !gastoId) return;
+    void obtenerCompromiso(parseInt(gastoId, 10)).then((comp) => {
+      if (!comp) return;
+      const patron = comp.patron as PatronRecurrente | undefined;
+      const importe = comp.importe as ImporteEvento | undefined;
+
+      let patronUI: PatronUI | '' = '';
+      let diaMes = '5';
+      let mesInicio = '';
+      let mesFin = '';
+      let diaRelativo: string = 'ultimoHabil';
+      let mesAncla = '';
+      let mesAnual1 = '';
+      let mesAnual2a = '6';
+      let mesAnual2b = '11';
+
+      if (patron) {
+        if (patron.tipo === 'mensualDiaFijo') {
+          patronUI = 'mensualDiaFijo';
+          diaMes = String(patron.dia);
+        } else if (patron.tipo === 'mensualDiaRelativo') {
+          patronUI = 'mensualDiaRelativo';
+          diaRelativo = patron.referencia;
+        } else if (patron.tipo === 'cadaNMeses') {
+          patronUI = patron.cadaNMeses === 2 ? 'bimestral' : 'trimestral';
+          diaMes = String(patron.dia);
+          mesAncla = String(patron.mesAncla);
+        } else if (patron.tipo === 'anualMesesConcretos') {
+          if (patron.mesesPago.length >= 2) {
+            patronUI = 'anual2pagos';
+            mesAnual2a = String(patron.mesesPago[0]);
+            mesAnual2b = String(patron.mesesPago[1]);
+          } else {
+            patronUI = 'anual1pago';
+            mesAnual1 = String(patron.mesesPago[0] ?? '');
+          }
+          diaMes = String(patron.diaPago);
+        }
+      }
+
+      let modoImporte: ModoImporte | '' = '';
+      let importeFijo = '';
+      let importeVariable = '';
+      let importesEstacionales: string[] = Array(12).fill('');
+
+      if (importe) {
+        if (importe.modo === 'fijo') {
+          modoImporte = 'fijo';
+          importeFijo = String(importe.importe);
+        } else if (importe.modo === 'variable') {
+          modoImporte = 'variable';
+          importeVariable = String(importe.importeMedio);
+        } else if (importe.modo === 'diferenciadoPorMes') {
+          modoImporte = 'estacional';
+          importesEstacionales = importe.importesPorMes.map(String);
+        }
+      }
+
+      const entry = findCatalogEntryInmuebleByDbFields(comp.tipo, comp.subtipo ?? undefined);
+      const subtipoLoaded = entry ? findSubtipoInmueble(entry.tipoId, entry.subtipoId) : undefined;
+
+      setForm({
+        tipoGastoId: entry?.tipoId ?? '',
+        subtipoId: entry?.subtipoId ?? '',
+        nombrePersonalizado: subtipoLoaded?.isCustom ? (comp.alias ?? '') : '',
+        proveedor: comp.proveedor?.nombre ?? '',
+        nif: comp.proveedor?.nif ?? '',
+        referencia: comp.proveedor?.referencia ?? '',
+        patronUI,
+        diaMes,
+        mesInicio,
+        mesFin,
+        diaRelativo,
+        mesAncla,
+        mesAnual1,
+        mesAnual2a,
+        mesAnual2b,
+        modoImporte,
+        importeFijo,
+        importeVariable,
+        importesEstacionales,
+        cuentaCargoId: comp.cuentaCargo ? String(comp.cuentaCargo) : '',
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, gastoId]);
+
   const setField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      // Al cambiar el tipo, resetear el subtipo
-      if (key === 'tipoId') {
-        next.subtipoValue = '';
+      if (key === 'tipoGastoId') {
+        next.subtipoId = '';
+        next.nombrePersonalizado = '';
       }
       return next;
     });
@@ -348,7 +436,14 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     setErrors((prev) => ({ ...prev, importesEstacionales: undefined }));
   }, []);
 
-  const tipoSeleccionado = TIPOS_GASTO_INMUEBLE.find((t) => t.id === form.tipoId);
+  const tipoSeleccionado = TIPOS_GASTO_INMUEBLE_V2.find((t) => t.id === form.tipoGastoId);
+  const subtipoSeleccionado = tipoSeleccionado?.subtipos?.find((s) => s.id === form.subtipoId);
+  const tipoGastoValueForSelector: TipoGastoValue | null = tipoSeleccionado
+    ? { tipoId: tipoSeleccionado.id, subtipoId: form.subtipoId }
+    : null;
+  const handleTipoGastoChange = useCallback((val: TipoGastoValue | null) => {
+    setField('tipoGastoId', val?.tipoId ?? '');
+  }, [setField]);
   const cuentaSeleccionada = cuentas.find((c) => String(c.id) === form.cuentaCargoId);
   const costeAnual = useMemo(() => calcularCosteAnual(form), [form]);
   const nCargos = cargosAlAnio(form.patronUI);
@@ -366,7 +461,8 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     }
     const patron = buildPatron(form);
     const importe = buildImporte(form);
-    if (!patron || !importe || !tipoSeleccionado) {
+    const subtipoCatalog = findSubtipoInmueble(form.tipoGastoId, form.subtipoId);
+    if (!patron || !importe || !tipoSeleccionado || !subtipoCatalog) {
       setErrors(validate(form));
       return;
     }
@@ -375,19 +471,23 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      const subtipoLabel = form.subtipoValue || undefined;
-      const alias = subtipoLabel
-        ? `${tipoSeleccionado.label} · ${subtipoLabel}${form.proveedor ? ' · ' + form.proveedor : ''}`
-        : form.proveedor || tipoSeleccionado.label;
+      const alias = buildGastoAlias({
+        isCustom: subtipoSeleccionado?.isCustom ?? false,
+        nombrePersonalizado: form.nombrePersonalizado,
+        subtipoLabel: subtipoSeleccionado?.label,
+        tipoLabel: tipoSeleccionado.label,
+        proveedor: form.proveedor,
+      });
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
+      const categoria = subtipoCatalog.categoria;
 
-      await crearCompromiso({
-        ambito: 'inmueble',
+      const payload = {
+        ambito: 'inmueble' as const,
         inmuebleId: propertyId,
         alias,
-        tipo: tipoSeleccionado.tipo,
-        subtipo: subtipoLabel ?? undefined,
+        tipo: subtipoCatalog.tipoCompromiso,
+        subtipo: form.subtipoId || undefined,
         proveedor: {
           nombre: form.proveedor || tipoSeleccionado.label,
           nif: form.nif || undefined,
@@ -395,44 +495,52 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
         },
         patron,
         importe,
-        variacion: { tipo: 'sinVariacion' },
+        variacion: { tipo: 'sinVariacion' as const },
         cuentaCargo: parseInt(form.cuentaCargoId, 10),
         conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : tipoSeleccionado.label.toUpperCase(),
         metodoPago: metodo,
-        categoria: tipoSeleccionado.categoria,
-        bolsaPresupuesto: 'inmueble',
-        responsable: 'titular',
+        categoria,
+        bolsaPresupuesto: 'inmueble' as const,
+        responsable: 'titular' as const,
         fechaInicio: new Date().toISOString().slice(0, 10),
-        estado: 'activo',
-        derivadoDe: { fuente: 'manual' },
-      });
+        estado: 'activo' as const,
+        derivadoDe: { fuente: 'manual' as const },
+      };
+
+      if (editMode && gastoId) {
+        await actualizarCompromiso(parseInt(gastoId, 10), payload);
+      } else {
+        await crearCompromiso(payload);
+      }
 
       // Regenerar previsiones
       try {
         await regenerateForecastsForward({ force: true });
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.warn('[T35] regenerateForecastsForward falló · el compromiso se creó igualmente', err);
-        showToastV5('Gasto del inmueble creado · atención: error al regenerar previsiones en Tesorería', 'warn');
+        console.warn('[T35] regenerateForecastsForward falló · el compromiso se guardó igualmente', err);
+        showToastV5('Gasto del inmueble guardado · atención: error al regenerar previsiones en Tesorería', 'warn');
       }
 
       showToastV5(
-        `Gasto recurrente del inmueble creado · ${nCargos} cargos proyectados en Tesorería`,
+        editMode
+          ? `Gasto recurrente actualizado · ${nCargos} cargos proyectados`
+          : `Gasto recurrente del inmueble creado · ${nCargos} cargos proyectados en Tesorería`,
         'success',
       );
       navigate(`/inmuebles/${propertyId}`);
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[T35] error al crear compromiso', err);
+      console.error('[T35] error al guardar compromiso', err);
       showToastV5(
-        `Error al crear el gasto: ${err instanceof Error ? err.message : String(err)}`,
+        `Error al guardar el gasto: ${err instanceof Error ? err.message : String(err)}`,
         'error',
       );
       submitGuard.current = false;
     } finally {
       setSubmitting(false);
     }
-  }, [form, tipoSeleccionado, propertyId, nCargos, navigate]);
+  }, [form, tipoSeleccionado, subtipoSeleccionado, propertyId, nCargos, navigate, editMode, gastoId]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -533,41 +641,53 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
 
             {/* Tipo de gasto */}
             <div style={styles.fieldGroup}>
-              <label style={styles.label} htmlFor="tipoId">
+              <label style={styles.label} htmlFor="tipoGastoId">
                 Tipo de gasto <span style={styles.required}>*</span>
               </label>
-              <select
-                id="tipoId"
-                style={errors.tipoId ? { ...styles.select, ...styles.selectError } : styles.select}
-                value={form.tipoId}
-                onChange={(e) => setField('tipoId', e.target.value)}
-              >
-                <option value="">— Selecciona un tipo —</option>
-                {TIPOS_GASTO_INMUEBLE.map((t) => (
-                  <option key={t.id} value={t.id}>{t.label}</option>
-                ))}
-              </select>
-              {errors.tipoId && <span style={styles.errorMsg}>{errors.tipoId}</span>}
+              <TipoGastoSelector
+                id="tipoGastoId"
+                catalog={TIPOS_GASTO_INMUEBLE_V2}
+                value={tipoGastoValueForSelector}
+                onChange={handleTipoGastoChange}
+                error={errors.tipoGastoId}
+              />
             </div>
 
             {/* Subtipo dinámico */}
-            {tipoSeleccionado?.subtipos && (
+            {tipoSeleccionado && tipoSeleccionado.subtipos && tipoSeleccionado.subtipos.length > 0 && (
               <div style={styles.fieldGroup}>
-                <label style={styles.label} htmlFor="subtipoValue">
+                <label style={styles.label} htmlFor="subtipoId">
                   Subtipo <span style={styles.required}>*</span>
                 </label>
                 <select
-                  id="subtipoValue"
-                  style={errors.subtipoValue ? { ...styles.select, ...styles.selectError } : styles.select}
-                  value={form.subtipoValue}
-                  onChange={(e) => setField('subtipoValue', e.target.value)}
+                  id="subtipoId"
+                  style={errors.subtipoId ? { ...styles.select, ...styles.selectError } : styles.select}
+                  value={form.subtipoId}
+                  onChange={(e) => setField('subtipoId', e.target.value)}
                 >
                   <option value="">— Selecciona un subtipo —</option>
                   {tipoSeleccionado.subtipos.map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.id} value={s.id}>{s.label}</option>
                   ))}
                 </select>
-                {errors.subtipoValue && <span style={styles.errorMsg}>{errors.subtipoValue}</span>}
+                {errors.subtipoId && <span style={styles.errorMsg}>{errors.subtipoId}</span>}
+              </div>
+            )}
+
+            {/* Nombre personalizado when isCustom */}
+            {subtipoSeleccionado?.isCustom && (
+              <div style={styles.fieldGroup}>
+                <label style={styles.label} htmlFor="nombrePersonalizado">
+                  Nombre del gasto <span style={styles.required}>*</span>
+                </label>
+                <input
+                  id="nombrePersonalizado"
+                  type="text"
+                  style={styles.input}
+                  placeholder="ej. Reparación fontanería…"
+                  value={form.nombrePersonalizado}
+                  onChange={(e) => setField('nombrePersonalizado', e.target.value)}
+                />
               </div>
             )}
 
@@ -1061,7 +1181,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
                 ) : (
                   <>
                     <Icons.Check size={14} strokeWidth={2} style={{ marginRight: 6 }} />
-                    Guardar y proyectar
+                    {editMode ? 'Actualizar y proyectar' : 'Guardar y proyectar'}
                   </>
                 )}
               </button>
@@ -1080,13 +1200,10 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
               </dd>
 
               <dt style={styles.dt}>Tipo</dt>
-              <dd style={styles.dd}>
-                {tipoSeleccionado
-                  ? form.subtipoValue
-                    ? `${tipoSeleccionado.label} · ${form.subtipoValue}`
-                    : tipoSeleccionado.label
-                  : '—'}
-              </dd>
+              <dd style={styles.dd}>{tipoSeleccionado?.label ?? '—'}</dd>
+
+              <dt style={styles.dt}>Subtipo</dt>
+              <dd style={styles.dd}>{subtipoSeleccionado?.label ?? '—'}</dd>
 
               <dt style={styles.dt}>Proveedor</dt>
               <dd style={styles.dd}>{form.proveedor || '—'}</dd>

@@ -6,98 +6,33 @@
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons, showToastV5 } from '../../../design-system/v5';
 import { cuentasService } from '../../../services/cuentasService';
 import { personalDataService } from '../../../services/personalDataService';
-import { crearCompromiso } from '../../../services/personal/compromisosRecurrentesService';
+import {
+  crearCompromiso,
+  obtenerCompromiso,
+  actualizarCompromiso,
+} from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { Account } from '../../../services/db';
 import type {
   BolsaPresupuesto,
-  CategoriaGastoCompromiso,
   ImporteEvento,
   MetodoPagoCompromiso,
   PatronRecurrente,
   ReferenciaDiaRelativo,
-  TipoCompromiso,
 } from '../../../types/compromisosRecurrentes';
 import type { PersonalOutletContext } from '../PersonalContext';
-
-// ─── Constantes de tipos de gasto ──────────────────────────────────────────
-
-interface TipoGastoOption {
-  value: string;        // tipo + ':' + subtipo (o solo tipo si sin subtipo)
-  tipo: TipoCompromiso;
-  subtipo?: string;
-  label: string;
-  grupo: string;
-  categoria: CategoriaGastoCompromiso;
-}
-
-const TIPOS_GASTO: TipoGastoOption[] = [
-  // Vivienda
-  { value: 'comunidad', tipo: 'comunidad', label: 'Comunidad de propietarios', grupo: 'Vivienda', categoria: 'vivienda.comunidad' },
-  { value: 'impuesto:ibi', tipo: 'impuesto', subtipo: 'ibi', label: 'IBI', grupo: 'Vivienda', categoria: 'vivienda.ibi' },
-  { value: 'seguro:hogar', tipo: 'seguro', subtipo: 'hogar', label: 'Seguro hogar', grupo: 'Vivienda', categoria: 'vivienda.seguros' },
-
-  // Gastos del día a día
-  { value: 'suministro:luz', tipo: 'suministro', subtipo: 'luz', label: 'Suministro · Luz', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suministro:gas', tipo: 'suministro', subtipo: 'gas', label: 'Suministro · Gas', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suministro:agua', tipo: 'suministro', subtipo: 'agua', label: 'Suministro · Agua', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suministro:internet', tipo: 'suministro', subtipo: 'internet', label: 'Suministro · Internet', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suministro:movil', tipo: 'suministro', subtipo: 'movil', label: 'Suministro · Móvil', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suministro:otros', tipo: 'suministro', subtipo: 'otros', label: 'Suministro · Otros', grupo: 'Gastos del día a día', categoria: 'vivienda.suministros' },
-  { value: 'suscripcion:streaming', tipo: 'suscripcion', subtipo: 'streaming', label: 'Suscripción · Streaming', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-  { value: 'suscripcion:prensa', tipo: 'suscripcion', subtipo: 'prensa', label: 'Suscripción · Prensa', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-  { value: 'suscripcion:software', tipo: 'suscripcion', subtipo: 'software', label: 'Suscripción · Software', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-  { value: 'suscripcion:musica', tipo: 'suscripcion', subtipo: 'musica', label: 'Suscripción · Música', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-  { value: 'suscripcion:cloud', tipo: 'suscripcion', subtipo: 'cloud', label: 'Suscripción · Cloud', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-  { value: 'suscripcion:otros', tipo: 'suscripcion', subtipo: 'otros', label: 'Suscripción · Otros', grupo: 'Gastos del día a día', categoria: 'suscripciones' },
-
-  // Otros
-  { value: 'seguro:salud', tipo: 'seguro', subtipo: 'salud', label: 'Seguro · Salud', grupo: 'Otros', categoria: 'salud' },
-  { value: 'seguro:coche', tipo: 'seguro', subtipo: 'coche', label: 'Seguro · Coche', grupo: 'Otros', categoria: 'transporte' },
-  { value: 'seguro:vida', tipo: 'seguro', subtipo: 'vida', label: 'Seguro · Vida', grupo: 'Otros', categoria: 'salud' },
-  { value: 'seguro:inquilino', tipo: 'seguro', subtipo: 'inquilino', label: 'Seguro · Inquilino', grupo: 'Otros', categoria: 'vivienda.seguros' },
-  { value: 'seguro:mascotas', tipo: 'seguro', subtipo: 'mascotas', label: 'Seguro · Mascotas', grupo: 'Otros', categoria: 'personal' },
-  { value: 'seguro:otros', tipo: 'seguro', subtipo: 'otros', label: 'Seguro · Otros', grupo: 'Otros', categoria: 'personal' },
-  { value: 'cuota:gimnasio', tipo: 'cuota', subtipo: 'gimnasio', label: 'Cuota · Gimnasio', grupo: 'Otros', categoria: 'ocio' },
-  { value: 'cuota:colegio', tipo: 'cuota', subtipo: 'colegio', label: 'Cuota · Colegio', grupo: 'Otros', categoria: 'educacion' },
-  { value: 'cuota:universidad', tipo: 'cuota', subtipo: 'universidad', label: 'Cuota · Universidad', grupo: 'Otros', categoria: 'educacion' },
-  { value: 'cuota:profesional', tipo: 'cuota', subtipo: 'profesional', label: 'Cuota · Profesional', grupo: 'Otros', categoria: 'educacion' },
-  { value: 'cuota:ong', tipo: 'cuota', subtipo: 'ong', label: 'Cuota · ONG', grupo: 'Otros', categoria: 'ocio' },
-  { value: 'cuota:otros', tipo: 'cuota', subtipo: 'otros', label: 'Cuota / membresía · Otros', grupo: 'Otros', categoria: 'personal' },
-  { value: 'impuesto:tasas', tipo: 'impuesto', subtipo: 'tasas', label: 'Impuesto · Tasas municipales', grupo: 'Otros', categoria: 'obligaciones.multas' },
-  { value: 'impuesto:multas', tipo: 'impuesto', subtipo: 'multas', label: 'Impuesto · Multas', grupo: 'Otros', categoria: 'obligaciones.multas' },
-  { value: 'impuesto:otros', tipo: 'impuesto', subtipo: 'otros', label: 'Impuesto · Otros', grupo: 'Otros', categoria: 'obligaciones.multas' },
-  { value: 'otros', tipo: 'otros', label: 'Otros pagos recurrentes', grupo: 'Otros', categoria: 'personal' },
-];
-
-const GRUPOS_ORDEN = ['Vivienda', 'Gastos del día a día', 'Otros'];
-
-// ─── Inferir bolsa por tipo/subtipo ─────────────────────────────────────────
-
-function inferirBolsa(value: string): BolsaPresupuesto | '' {
-  // Vivienda
-  if (['comunidad', 'impuesto:ibi', 'seguro:hogar'].includes(value)) return 'necesidades';
-  // Suministros
-  if (value.startsWith('suministro:')) return 'necesidades';
-  // Seguros necesidades
-  if (['seguro:salud', 'seguro:coche', 'seguro:vida', 'seguro:inquilino', 'seguro:mascotas'].includes(value)) return 'necesidades';
-  if (value === 'seguro:otros') return 'necesidades';
-  // Cuotas
-  if (['cuota:colegio', 'cuota:universidad', 'cuota:profesional'].includes(value)) return 'necesidades';
-  if (['cuota:gimnasio', 'cuota:ong'].includes(value)) return 'deseos';
-  if (value === 'cuota:otros') return 'deseos';
-  // Suscripciones digitales
-  if (value.startsWith('suscripcion:')) return 'deseos';
-  // Impuestos
-  if (value.startsWith('impuesto:')) return 'necesidades';
-  // Otros pagos recurrentes
-  if (value === 'otros') return '';
-  return '';
-}
+import { TipoGastoSelector } from '../../../modules/shared/components/TipoGastoSelector';
+import type { TipoGastoValue } from '../../../modules/shared/components/TipoGastoSelector';
+import {
+  TIPOS_GASTO_PERSONAL,
+  findSubtipoPersonal,
+  findCatalogEntryByDbFields,
+} from '../wizards/utils/tiposDeGastoPersonal';
+import { buildGastoAlias } from '../../../modules/shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ───────────────────────────────────────────────────────────
 
@@ -115,7 +50,9 @@ type ModoImporte = 'fijo' | 'variable' | 'estacional';
 
 export interface FormState {
   // Sección 1
-  tipoGastoValue: string;
+  tipoGastoId: string;
+  subtipoId: string;
+  nombrePersonalizado: string;
   proveedor: string;
   nif: string;
   referencia: string;
@@ -145,7 +82,9 @@ const MESES_NUMS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 const initialForm = (): FormState => {
   const now = new Date();
   return {
-    tipoGastoValue: '',
+    tipoGastoId: '',
+    subtipoId: '',
+    nombrePersonalizado: '',
     proveedor: '',
     nif: '',
     referencia: '',
@@ -280,7 +219,9 @@ function buildImporte(form: FormState): ImporteEvento | null {
 // ─── Errores de validación ───────────────────────────────────────────────────
 
 interface FormErrors {
-  tipoGastoValue?: string;
+  tipoGastoId?: string;
+  subtipoId?: string;
+  nombrePersonalizado?: string;
   patronUI?: string;
   diaMes?: string;
   mesInicio?: string;
@@ -294,7 +235,16 @@ interface FormErrors {
 
 function validate(form: FormState): FormErrors {
   const errors: FormErrors = {};
-  if (!form.tipoGastoValue) errors.tipoGastoValue = 'Selecciona el tipo de gasto';
+  if (!form.tipoGastoId) {
+    errors.tipoGastoId = 'Selecciona el tipo de gasto';
+  } else if (!form.subtipoId) {
+    errors.subtipoId = 'Selecciona el subtipo';
+  } else {
+    const sub = findSubtipoPersonal(form.tipoGastoId, form.subtipoId);
+    if (sub?.isCustom && !form.nombrePersonalizado.trim()) {
+      errors.nombrePersonalizado = 'Introduce el nombre del gasto';
+    }
+  }
   if (!form.patronUI) errors.patronUI = 'Selecciona el patrón de cobro';
   else {
     const dia = parseInt(form.diaMes, 10);
@@ -367,7 +317,9 @@ function formatModoImporte(form: FormState): string {
 
 const NuevoGastoRecurrentePage: React.FC = () => {
   const navigate = useNavigate();
-  useOutletContext<PersonalOutletContext>(); // ensures we're inside PersonalPage Outlet
+  useOutletContext<PersonalOutletContext>();
+  const { gastoId } = useParams<{ gastoId?: string }>();
+  const editMode = Boolean(gastoId);
 
   const [form, setForm] = useState<FormState>(initialForm);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -384,17 +336,89 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     });
   }, []);
 
+  // Load for edit mode
+  useEffect(() => {
+    if (!gastoId) return;
+    const id = parseInt(gastoId, 10);
+    if (isNaN(id)) return;
+    void obtenerCompromiso(id).then((c) => {
+      if (!c) return;
+      const entry = findCatalogEntryByDbFields(c.tipo, c.subtipo ?? undefined);
+      const tipoGastoId = entry?.tipoId ?? '';
+      const subtipoId = entry?.subtipoId ?? '';
+
+      let patronUI: PatronUI | '' = '';
+      let diaMes = '5';
+      let mesAncla = '1';
+      let mesAnual1 = '1';
+      let mesAnual2a = '6';
+      let mesAnual2b = '11';
+      const p = c.patron;
+      if (p.tipo === 'mensualDiaFijo') { patronUI = 'mensualDiaFijo'; diaMes = String(p.dia); }
+      else if (p.tipo === 'mensualDiaRelativo') { patronUI = 'mensualDiaRelativo'; }
+      else if (p.tipo === 'cadaNMeses') {
+        patronUI = p.cadaNMeses === 2 ? 'bimestral' : 'trimestral';
+        diaMes = String(p.dia);
+        mesAncla = String(p.mesAncla);
+      } else if (p.tipo === 'anualMesesConcretos') {
+        if (p.mesesPago.length === 1) {
+          patronUI = 'anual1pago';
+          mesAnual1 = String(p.mesesPago[0]);
+          diaMes = String(p.diaPago);
+        } else if (p.mesesPago.length >= 2) {
+          patronUI = 'anual2pagos';
+          mesAnual2a = String(p.mesesPago[0]);
+          mesAnual2b = String(p.mesesPago[1]);
+          diaMes = String(p.diaPago);
+        }
+      }
+
+      let modoImporte: ModoImporte | '' = '';
+      let importeFijo = '';
+      let importeVariable = '';
+      let importesEstacionales: string[] = Array(12).fill('');
+      if (c.importe.modo === 'fijo') { modoImporte = 'fijo'; importeFijo = String(c.importe.importe); }
+      else if (c.importe.modo === 'variable') { modoImporte = 'variable'; importeVariable = String(c.importe.importeMedio); }
+      else if (c.importe.modo === 'diferenciadoPorMes') {
+        modoImporte = 'estacional';
+        importesEstacionales = c.importe.importesPorMes.map(String);
+      }
+
+      setForm({
+        tipoGastoId,
+        subtipoId,
+        nombrePersonalizado: c.alias ?? '',
+        proveedor: c.proveedor?.nombre ?? '',
+        nif: c.proveedor?.nif ?? '',
+        referencia: c.proveedor?.referencia ?? '',
+        patronUI,
+        diaMes,
+        mesInicio: String(parseInt(c.fechaInicio.slice(5, 7), 10)),
+        mesFin: '',
+        diaRelativo: 'ultimoHabil',
+        mesAncla,
+        mesAnual1,
+        mesAnual2a,
+        mesAnual2b,
+        modoImporte,
+        importeFijo,
+        importeVariable,
+        importesEstacionales,
+        cuentaCargoId: c.cuentaCargo != null ? String(c.cuentaCargo) : '',
+        bolsa: c.bolsaPresupuesto ?? '',
+      });
+    });
+  }, [gastoId]);
+
   const setField = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      // Auto-inferir bolsa cuando cambia el tipo de gasto
-      if (key === 'tipoGastoValue') {
-        const bolsa = inferirBolsa(value as string);
-        if (bolsa) next.bolsa = bolsa;
+      if (key === 'tipoGastoId') {
+        next.subtipoId = '';
+        next.nombrePersonalizado = '';
       }
       return next;
     });
-    // Clear error for the field
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }, []);
 
@@ -411,8 +435,27 @@ const NuevoGastoRecurrentePage: React.FC = () => {
   const nCargos = cargosAlAnio(form.patronUI);
   const mediaMensual = nCargos > 0 ? costeAnual / 12 : 0;
 
-  const tipoSeleccionado = TIPOS_GASTO.find((t) => t.value === form.tipoGastoValue);
+  const tipoSeleccionado = TIPOS_GASTO_PERSONAL.find((t) => t.id === form.tipoGastoId) ?? null;
+  const subtipoSeleccionado = tipoSeleccionado?.subtipos.find((s) => s.id === form.subtipoId) ?? null;
   const cuentaSeleccionada = cuentas.find((c) => String(c.id) === form.cuentaCargoId);
+
+  const tipoGastoValueForSelector: TipoGastoValue | null = form.tipoGastoId
+    ? { tipoId: form.tipoGastoId, subtipoId: form.subtipoId, nombrePersonalizado: form.nombrePersonalizado }
+    : null;
+
+  const handleTipoGastoChange = useCallback((v: TipoGastoValue | null) => {
+    if (!v) {
+      setField('tipoGastoId', '');
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        tipoGastoId: v.tipoId,
+        subtipoId: '',
+        nombrePersonalizado: '',
+      }));
+      setErrors((prev) => ({ ...prev, tipoGastoId: undefined, subtipoId: undefined }));
+    }
+  }, [setField]);
 
   const handleSubmit = useCallback(async () => {
     if (submitGuard.current) return;
@@ -423,7 +466,8 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     }
     const patron = buildPatron(form);
     const importe = buildImporte(form);
-    if (!patron || !importe || !tipoSeleccionado || !form.bolsa) {
+    const subtipoCatalog = findSubtipoPersonal(form.tipoGastoId, form.subtipoId);
+    if (!patron || !importe || !subtipoCatalog || !form.bolsa) {
       setErrors(validate(form));
       return;
     }
@@ -432,69 +476,77 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      const alias = tipoSeleccionado.subtipo
-        ? `${tipoSeleccionado.label}${form.proveedor ? ' · ' + form.proveedor : ''}`
-        : form.proveedor || tipoSeleccionado.label;
+      const alias = buildGastoAlias({
+        isCustom: subtipoSeleccionado?.isCustom ?? false,
+        nombrePersonalizado: form.nombrePersonalizado,
+        subtipoLabel: subtipoSeleccionado?.label,
+        tipoLabel: tipoSeleccionado?.label ?? '',
+        proveedor: form.proveedor,
+      });
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
 
-      await crearCompromiso({
-        ambito: 'personal',
+      const payload = {
+        ambito: 'personal' as const,
         personalDataId,
         alias,
-        tipo: tipoSeleccionado.tipo,
-        subtipo: tipoSeleccionado.subtipo,
+        tipo: subtipoCatalog.tipoCompromiso,
+        subtipo: form.subtipoId,
         proveedor: {
-          nombre: form.proveedor || tipoSeleccionado.label,
+          nombre: form.proveedor || (tipoSeleccionado?.label ?? ''),
           nif: form.nif || undefined,
           referencia: form.referencia || undefined,
         },
         patron,
         importe,
-        variacion: { tipo: 'sinVariacion' },
+        variacion: { tipo: 'sinVariacion' as const },
         cuentaCargo: parseInt(form.cuentaCargoId, 10),
-        conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : tipoSeleccionado.label.toUpperCase(),
+        conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : (tipoSeleccionado?.label ?? '').toUpperCase(),
         metodoPago: metodo,
-        categoria: tipoSeleccionado.categoria,
+        categoria: subtipoCatalog.categoria,
         bolsaPresupuesto: form.bolsa as BolsaPresupuesto,
-        responsable: 'titular',
+        responsable: 'titular' as const,
         fechaInicio: new Date().toISOString().slice(0, 10),
-        estado: 'activo',
-        derivadoDe: { fuente: 'manual' },
-      });
+        estado: 'activo' as const,
+        derivadoDe: { fuente: 'manual' as const },
+      };
+
+      if (editMode && gastoId) {
+        await actualizarCompromiso(parseInt(gastoId, 10), payload);
+      } else {
+        await crearCompromiso(payload);
+      }
 
       // Regenerar previsiones
       try {
         await regenerateForecastsForward({ force: true });
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.warn('[T34] regenerateForecastsForward falló · el compromiso se creó igualmente', err);
-        showToastV5('Gasto creado · las previsiones se regenerarán pronto', 'warn');
+        console.warn('[T34] regenerateForecastsForward falló · el compromiso se guardó igualmente', err);
+        showToastV5('Gasto guardado · las previsiones se regenerarán pronto', 'warn');
       }
 
-      showToastV5(`Gasto recurrente creado · ${nCargos} cargos proyectados en Tesorería`, 'success');
+      showToastV5(
+        editMode
+          ? `Gasto recurrente actualizado · ${nCargos} cargos proyectados`
+          : `Gasto recurrente creado · ${nCargos} cargos proyectados en Tesorería`,
+        'success',
+      );
       navigate('/personal/gastos');
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('[T34] error al crear compromiso', err);
+      console.error('[T34] error al guardar compromiso', err);
       showToastV5(
-        `Error al crear el gasto: ${err instanceof Error ? err.message : String(err)}`,
+        `Error al guardar el gasto: ${err instanceof Error ? err.message : String(err)}`,
         'error',
       );
       submitGuard.current = false;
     } finally {
       setSubmitting(false);
     }
-  }, [form, tipoSeleccionado, personalDataId, nCargos, navigate]);
+  }, [form, tipoSeleccionado, subtipoSeleccionado, personalDataId, nCargos, navigate, editMode, gastoId]);
 
   // ─── Render ────────────────────────────────────────────────────────────────
-
-  const gruposTipos = useMemo(() => {
-    return GRUPOS_ORDEN.map((grupo) => ({
-      grupo,
-      opciones: TIPOS_GASTO.filter((t) => t.grupo === grupo),
-    }));
-  }, []);
 
   return (
     <div style={styles.page}>
@@ -526,28 +578,63 @@ const NuevoGastoRecurrentePage: React.FC = () => {
             </h2>
 
             <div style={styles.fieldGroup}>
-              <label style={styles.label} htmlFor="tipoGastoValue">
+              <label style={styles.label} htmlFor="tipoGastoId">
                 Tipo de gasto <span style={styles.required}>*</span>
               </label>
-              <select
-                id="tipoGastoValue"
-                style={errors.tipoGastoValue ? { ...styles.select, ...styles.selectError } : styles.select}
-                value={form.tipoGastoValue}
-                onChange={(e) => setField('tipoGastoValue', e.target.value)}
-              >
-                <option value="">— Selecciona un tipo —</option>
-                {gruposTipos.map(({ grupo, opciones }) => (
-                  <optgroup key={grupo} label={grupo}>
-                    {opciones.map((op) => (
-                      <option key={op.value} value={op.value}>
-                        {op.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              {errors.tipoGastoValue && <span style={styles.errorMsg}>{errors.tipoGastoValue}</span>}
+              <TipoGastoSelector
+                id="tipoGastoId"
+                catalog={TIPOS_GASTO_PERSONAL}
+                value={tipoGastoValueForSelector}
+                onChange={handleTipoGastoChange}
+                error={errors.tipoGastoId}
+              />
             </div>
+
+            {/* Subtipo dinámico */}
+            {tipoSeleccionado && tipoSeleccionado.subtipos.length > 0 && (
+              <div style={styles.fieldGroup}>
+                <label style={styles.label} htmlFor="subtipoId">
+                  Subtipo <span style={styles.required}>*</span>
+                </label>
+                <select
+                  id="subtipoId"
+                  style={errors.subtipoId ? { ...styles.select, ...styles.selectError } : styles.select}
+                  value={form.subtipoId}
+                  onChange={(e) => {
+                    const sub = tipoSeleccionado.subtipos.find((s) => s.id === e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      subtipoId: e.target.value,
+                      bolsa: sub?.bolsa ?? prev.bolsa,
+                    }));
+                    setErrors((prev) => ({ ...prev, subtipoId: undefined, bolsa: undefined }));
+                  }}
+                >
+                  <option value="">— Selecciona un subtipo —</option>
+                  {tipoSeleccionado.subtipos.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+                {errors.subtipoId && <span style={styles.errorMsg}>{errors.subtipoId}</span>}
+              </div>
+            )}
+
+            {/* Nombre personalizado when isCustom */}
+            {subtipoSeleccionado?.isCustom && (
+              <div style={styles.fieldGroup}>
+                <label style={styles.label} htmlFor="nombrePersonalizado">
+                  Nombre del gasto <span style={styles.required}>*</span>
+                </label>
+                <input
+                  id="nombrePersonalizado"
+                  type="text"
+                  style={styles.input}
+                  placeholder="ej. Cuota comunidad piscina…"
+                  value={form.nombrePersonalizado}
+                  onChange={(e) => setField('nombrePersonalizado', e.target.value)}
+                />
+              </div>
+            )}
 
             <div style={styles.fieldRow}>
               <div style={{ ...styles.fieldGroup, flex: 2 }}>
@@ -1057,7 +1144,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
                 {submitting ? 'Guardando…' : (
                   <>
                     <Icons.Check size={14} strokeWidth={2} style={{ marginRight: 6 }} />
-                    Guardar y proyectar
+                    {editMode ? 'Actualizar y proyectar' : 'Guardar y proyectar'}
                   </>
                 )}
               </button>
@@ -1072,6 +1159,9 @@ const NuevoGastoRecurrentePage: React.FC = () => {
             <dl style={styles.dl}>
               <dt style={styles.dt}>Tipo</dt>
               <dd style={styles.dd}>{tipoSeleccionado?.label ?? '—'}</dd>
+
+              <dt style={styles.dt}>Subtipo</dt>
+              <dd style={styles.dd}>{subtipoSeleccionado?.label ?? '—'}</dd>
 
               <dt style={styles.dt}>Proveedor</dt>
               <dd style={styles.dd}>{form.proveedor || '—'}</dd>

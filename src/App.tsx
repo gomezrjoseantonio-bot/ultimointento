@@ -607,6 +607,11 @@ function App() {
                   <InmueblesNuevoGastoRecurrente />
                 </React.Suspense>
               } />
+              <Route path=":id/gastos/:gastoId/editar" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <InmueblesNuevoGastoRecurrente />
+                </React.Suspense>
+              } />
             </Route>
 
             {/* Inmuebles · sub-rutas fuera del Outlet · forms y supervision legacy */}
@@ -1010,6 +1015,11 @@ function App() {
                 </React.Suspense>
               } />
               <Route path="gastos/nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalNuevoGastoRecurrente />
+                </React.Suspense>
+              } />
+              <Route path="gastos/:gastoId/editar" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PersonalNuevoGastoRecurrente />
                 </React.Suspense>

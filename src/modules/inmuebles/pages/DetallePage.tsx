@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import {
   PageHead,
@@ -9,8 +9,15 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import {
+  listarCompromisos,
+  eliminarCompromiso,
+} from '../../../services/personal/compromisosRecurrentesService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { computeMonthly } from '../../shared/utils/compromisoUtils';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import type { Contract } from '../../../services/db';
+import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import styles from './DetallePage.module.css';
 
@@ -37,6 +44,29 @@ const DetallePage: React.FC = () => {
   const propertyId = Number(id);
   const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [tab, setTab] = useState<Tab>('resumen');
+  const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
+  const [deleteGastoTarget, setDeleteGastoTarget] = useState<CompromisoRecurrente & { id: number } | null>(null);
+  const [deletingGasto, setDeletingGasto] = useState(false);
+
+  useEffect(() => {
+    void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
+  }, [propertyId]);
+
+  const handleDeleteGasto = useCallback(async () => {
+    if (!deleteGastoTarget) return;
+    setDeletingGasto(true);
+    try {
+      await eliminarCompromiso(deleteGastoTarget.id);
+      showToastV5(`Gasto "${deleteGastoTarget.alias}" eliminado`, 'success');
+      setDeleteGastoTarget(null);
+      const updated = await listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId });
+      setGastos(updated);
+    } catch (err) {
+      showToastV5(`Error al eliminar: ${err instanceof Error ? err.message : String(err)}`, 'error');
+    } finally {
+      setDeletingGasto(false);
+    }
+  }, [deleteGastoTarget, propertyId]);
 
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
@@ -363,12 +393,8 @@ const DetallePage: React.FC = () => {
       )}
 
       {tab === 'gastos' && (
-        <div className={styles.placeholder}>
-          <strong>Gastos</strong>
-          Pestaña en migración a UI v5 · funcionalidad pendiente de sub-tarea
-          follow-up. Datos del usuario intactos en stores · UI consolidada en
-          próxima iteración.
-          <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <button
               type="button"
               style={{
@@ -391,6 +417,66 @@ const DetallePage: React.FC = () => {
               Nuevo gasto recurrente
             </button>
           </div>
+          {gastos.length === 0 ? (
+            <EmptyState
+              icon={<Icons.Tesoreria size={20} />}
+              title="Sin gastos recurrentes"
+              sub="Da de alta los gastos de este inmueble para que ATLAS los proyecte automáticamente."
+              ctaLabel="Nuevo gasto recurrente"
+              onCtaClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
+            />
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--atlas-v5-font-ui)' }}>
+              <thead>
+                <tr>
+                  {['Nombre', 'Tipo', 'Patrón', 'Mensual est.', 'Estado', 'Acciones'].map((h, i) => (
+                    <th key={h} style={{ textAlign: i >= 3 ? 'right' : 'left', padding: '10px 8px', fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--atlas-v5-ink-4)', borderBottom: '1px solid var(--atlas-v5-line)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gastos
+                  .filter((g): g is CompromisoRecurrente & { id: number } => g.id != null)
+                  .map((g) => {
+                    const monthly = computeMonthly(g);
+                    return (
+                      <tr key={g.id}>
+                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><strong>{g.alias}</strong></td>
+                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{g.tipo}</td>
+                        <td style={{ padding: '10px 8px', fontSize: 11.5, fontFamily: 'var(--atlas-v5-font-mono-tech)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{g.patron.tipo}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><MoneyValue value={-monthly} decimals={0} showSign tone="neg" /></td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
+                          <Pill variant={g.estado === 'activo' ? 'pos' : 'gris'} asTag>
+                            {g.estado === 'activo' ? 'Activo' : 'Baja'}
+                          </Pill>
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
+                          <button type="button" aria-label={`Editar ${g.alias}`} title="Editar" onClick={() => navigate(`/inmuebles/${property.id}/gastos/${g.id}/editar`)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-ink-3)' }}>
+                            <Icons.Edit size={13} strokeWidth={1.8} />
+                          </button>
+                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-neg)' }}>
+                            <Icons.Delete size={13} strokeWidth={1.8} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          )}
+          {deleteGastoTarget && (
+            <ConfirmationModal
+              isOpen={true}
+              title="Eliminar gasto recurrente"
+              message={`¿Eliminar "${deleteGastoTarget.alias}"? Esta acción no se puede deshacer.`}
+              confirmText="Eliminar"
+              cancelText="Cancelar"
+              onConfirm={handleDeleteGasto}
+              onClose={() => setDeleteGastoTarget(null)}
+              isLoading={deletingGasto}
+              variant="danger"
+            />
+          )}
         </div>
       )}
 
@@ -407,3 +493,15 @@ const DetallePage: React.FC = () => {
 };
 
 export default DetallePage;
+
+// ── Estilos compartidos ──────────────────────────────────────────────────────
+
+const gastoActionBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '3px 5px',
+  borderRadius: 4,
+  display: 'inline-flex',
+  alignItems: 'center',
+};

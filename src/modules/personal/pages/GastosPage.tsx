@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import {
   CardV5,
@@ -8,29 +8,19 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import { eliminarCompromiso } from '../../../services/personal/compromisosRecurrentesService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { computeMonthly } from '../../shared/utils/compromisoUtils';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 
-const computeMonthly = (c: CompromisoRecurrente): number => {
-  switch (c.importe.modo) {
-    case 'fijo':
-      return c.importe.importe;
-    case 'variable':
-      return c.importe.importeMedio;
-    case 'diferenciadoPorMes':
-      return c.importe.importesPorMes.reduce((s: number, v: number) => s + v, 0) / 12;
-    case 'porPago':
-      return Object.values(c.importe.importesPorPago).reduce((s, v) => s + v, 0) / 12;
-    default:
-      return 0;
-  }
-};
-
 const GastosPage: React.FC = () => {
   const navigate = useNavigate();
-  const { compromisos } = useOutletContext<PersonalOutletContext>();
+  const { compromisos, reload } = useOutletContext<PersonalOutletContext>();
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CompromisoRecurrente & { id: number } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const personalCompromisos = useMemo(
     () => compromisos.filter((c) => c.ambito === 'personal'),
@@ -57,6 +47,21 @@ const GastosPage: React.FC = () => {
   }, [personalCompromisos, filterTipo, search]);
 
   const totalMensual = filtered.reduce((sum, c) => sum + computeMonthly(c), 0);
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await eliminarCompromiso(deleteTarget.id);
+      showToastV5(`Gasto "${deleteTarget.alias}" eliminado`, 'success');
+      setDeleteTarget(null);
+      reload();
+    } catch (err) {
+      showToastV5(`Error al eliminar: ${err instanceof Error ? err.message : String(err)}`, 'error');
+    } finally {
+      setDeleting(false);
+    }
+  }, [deleteTarget, reload]);
 
   if (personalCompromisos.length === 0) {
     return (
@@ -206,17 +211,14 @@ const GastosPage: React.FC = () => {
                   <th style={thStyle}>Patrón</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>Mensual estimado</th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered
                   .filter((c): c is CompromisoRecurrente & { id: number } => c.id != null)
                   .map((c) => (
-                    <tr
-                      key={c.id}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => showToastV5(`Detalle compromiso · ${c.alias}`)}
-                    >
+                    <tr key={c.id} style={{ cursor: 'default' }}>
                       <td style={tdStyle}>
                         <strong>{c.alias}</strong>
                       </td>
@@ -239,6 +241,26 @@ const GastosPage: React.FC = () => {
                           {c.estado === 'activo' ? 'Activo' : c.estado === 'pausado' ? 'Pausado' : 'Baja'}
                         </Pill>
                       </td>
+                      <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          aria-label={`Editar ${c.alias}`}
+                          title="Editar"
+                          onClick={() => navigate(`/personal/gastos/${c.id}/editar`)}
+                          style={actionBtnStyle}
+                        >
+                          <Icons.Edit size={13} strokeWidth={1.8} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Eliminar ${c.alias}`}
+                          title="Eliminar"
+                          onClick={() => setDeleteTarget(c)}
+                          style={{ ...actionBtnStyle, color: 'var(--atlas-v5-neg)' }}
+                        >
+                          <Icons.Delete size={13} strokeWidth={1.8} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -246,6 +268,20 @@ const GastosPage: React.FC = () => {
           )}
         </CardV5.Body>
       </CardV5>
+
+      {deleteTarget && (
+        <ConfirmationModal
+          isOpen={true}
+          title="Eliminar gasto recurrente"
+          message={`¿Eliminar "${deleteTarget.alias}"? Esta acción no se puede deshacer.`}
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          onConfirm={handleDelete}
+          onClose={() => setDeleteTarget(null)}
+          isLoading={deleting}
+          variant="danger"
+        />
+      )}
     </>
   );
 };
@@ -287,6 +323,17 @@ const tdStyle: React.CSSProperties = {
   fontSize: 13,
   color: 'var(--atlas-v5-ink-2)',
   borderBottom: '1px solid var(--atlas-v5-line-2)',
+};
+
+const actionBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '3px 5px',
+  borderRadius: 4,
+  color: 'var(--atlas-v5-ink-3)',
+  display: 'inline-flex',
+  alignItems: 'center',
 };
 
 export default GastosPage;
