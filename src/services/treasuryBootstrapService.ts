@@ -31,6 +31,37 @@ import type { ViviendaHabitual } from '../types/viviendaHabitual';
 
 const DEFAULT_HORIZONTE_MESES = 24;
 const STORE_VIVIENDA = 'viviendaHabitual';
+const STORE_TREASURY = 'treasuryEvents';
+
+/**
+ * Conjunto de sourceTypes que el bootstrap regenera. Solo estos pueden ser
+ * wipeados antes de regenerar · NO incluye 'manual' (movimientos/traspasos
+ * previstos creados por el usuario en TesoreriaV4 / TreasuryReconciliationView)
+ * ni `personal_expense` (legacy lectura directa) que no sigue el ciclo de vida
+ * de los regeneradores.
+ *
+ * Si en el futuro se añade una nueva fuente regenerable · debe incluirse aquí.
+ */
+const REGENERABLE_SOURCE_TYPES = new Set<string>([
+  // generateMonthlyForecasts
+  'opex_rule',
+  'gasto_recurrente',
+  'contrato',
+  'nomina',
+  'hipoteca',
+  'prestamo',
+  'otros_ingresos',
+  'autonomo_ingreso',
+  'autonomo_gasto',
+  'autonomo_cuota',
+  'autonomo_gasto_legacy',
+  'inversion_compra',
+  'inversion_aportacion',
+  'inversion_rendimiento',
+  'inversion_dividendo',
+  'inversion_liquidacion',
+  'irpf_prevision',
+]);
 
 export interface BootstrapResult {
   mesesProcesados: number;
@@ -126,31 +157,25 @@ export async function regenerateForecastsForward(
     hasta: toIsoDate(hasta),
   };
 
-  // 0. Wipe forward-looking · borra todos los predicted con fecha >= desde.
-  //    Cubre el caso de eventos huérfanos cuyo sourceId/sourceType ya no
-  //    existe en el catálogo (ej. compromiso eliminado · contrato baja ·
-  //    préstamo cancelado). insertEvent solo upserta por sourceType+sourceId
-  //    · NO limpia los huérfanos. Esta limpieza inicial garantiza que la
-  //    regeneración produce el conjunto correcto sin dejar fantasmas.
-  //    Confirmed/executed se respetan (filtro por status === 'predicted').
+  // 0. Wipe forward-looking · borra los predicted REGENERABLES en el rango
+  //    [desde, hasta). Cubre el caso de eventos huérfanos cuyo sourceId ya
+  //    no existe (compromiso eliminado · contrato baja · préstamo cancelado)
+  //    · insertEvent solo upserta por sourceType+sourceId · NO limpia
+  //    huérfanos.
+  //
+  //    NO toca:
+  //    · status confirmed / executed (no son predicted)
+  //    · sourceType 'manual' u otros NO regenerables (movimientos previstos
+  //      creados por el usuario en TesoreriaV4 / TreasuryReconciliationView)
+  //    · predicted con fecha >= hasta (más allá del horizonte que este
+  //      bootstrap regenera)
   try {
-    const db = await initDB();
-    const desdeIso = result.desde;
-    const tx = db.transaction('treasuryEvents', 'readwrite');
-    const store = tx.objectStore('treasuryEvents');
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const ev = cursor.value as TreasuryEvent;
-      if (
-        ev.status === 'predicted' &&
-        typeof ev.predictedDate === 'string' &&
-        ev.predictedDate >= desdeIso
-      ) {
-        await cursor.delete();
-      }
-      cursor = await cursor.continue();
-    }
-    await tx.done;
+    const range = makeRange(result.desde, result.hasta, false, true); // [desde, hasta)
+    await deletePredictedInRange(range, (ev) =>
+      ev.status === 'predicted' &&
+      typeof ev.sourceType === 'string' &&
+      REGENERABLE_SOURCE_TYPES.has(ev.sourceType),
+    );
   } catch (err) {
     result.errores.push({
       contexto: 'wipe predicted forward (pre-regeneración)',
@@ -226,24 +251,11 @@ export async function regenerateForecastsForward(
 
   // 4. Defensa final · purgar cualquier predicted que quede con fecha anterior
   //    al primer día del mes en curso. Forward-only estricto · NO retroactivo.
+  //    Aquí NO filtramos por sourceType · queremos garantía estricta de que
+  //    no hay predicted en el pasado independientemente de su origen.
   try {
-    const db = await initDB();
-    const desdeIso = result.desde;
-    const tx = db.transaction('treasuryEvents', 'readwrite');
-    const store = tx.objectStore('treasuryEvents');
-    let cursor = await store.openCursor();
-    while (cursor) {
-      const ev = cursor.value as TreasuryEvent;
-      if (
-        ev.status === 'predicted' &&
-        typeof ev.predictedDate === 'string' &&
-        ev.predictedDate < desdeIso
-      ) {
-        await cursor.delete();
-      }
-      cursor = await cursor.continue();
-    }
-    await tx.done;
+    const range = makeRange(undefined, result.desde, false, true); // < desde
+    await deletePredictedInRange(range, (ev) => ev.status === 'predicted');
   } catch (err) {
     result.errores.push({
       contexto: 'purga predicted retroactivos',
@@ -252,6 +264,53 @@ export async function regenerateForecastsForward(
   }
 
   return result;
+}
+
+// ─── Helpers de borrado en rango ────────────────────────────────────────────
+
+/**
+ * Construye un IDBKeyRange compatible con `predictedDate` (string ISO).
+ * Si `IDBKeyRange` no está disponible (entorno test) devuelve null y el
+ * cursor recorre el store completo · el predicate hace la criba.
+ */
+function makeRange(
+  lower: string | undefined,
+  upper: string | undefined,
+  lowerOpen: boolean,
+  upperOpen: boolean,
+): IDBKeyRange | null {
+  if (typeof IDBKeyRange === 'undefined') return null;
+  if (lower != null && upper != null) {
+    return IDBKeyRange.bound(lower, upper, lowerOpen, upperOpen);
+  }
+  if (lower != null) return IDBKeyRange.lowerBound(lower, lowerOpen);
+  if (upper != null) return IDBKeyRange.upperBound(upper, upperOpen);
+  return null;
+}
+
+/**
+ * Recorre el índice `predictedDate` de `treasuryEvents` (acotado por `range`
+ * cuando se pasa) y borra cada evento que cumpla `predicate`. Una sola
+ * transacción · readwrite. Más eficiente que un scan completo cuando hay
+ * muchos confirmed/executed históricos.
+ */
+async function deletePredictedInRange(
+  range: IDBKeyRange | null,
+  predicate: (ev: TreasuryEvent) => boolean,
+): Promise<void> {
+  const db = await initDB();
+  const tx = db.transaction(STORE_TREASURY, 'readwrite');
+  const store = tx.objectStore(STORE_TREASURY);
+  const idx = store.index('predictedDate');
+  let cursor = await idx.openCursor(range ?? undefined);
+  while (cursor) {
+    const ev = cursor.value as TreasuryEvent;
+    if (predicate(ev)) {
+      await cursor.delete();
+    }
+    cursor = await cursor.continue();
+  }
+  await tx.done;
 }
 
 // ─── exports auxiliares para tests ──────────────────────────────────────────

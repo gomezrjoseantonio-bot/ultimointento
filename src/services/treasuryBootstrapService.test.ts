@@ -13,10 +13,13 @@ import type { TreasuryEvent } from './db';
 
 type StoredEvent = TreasuryEvent & { id: number };
 
-const inMemoryStore: { events: StoredEvent[]; viviendas: any[] } = {
+// Renombrado a `mockStore` · jest.mock permite referenciar variables que
+// empiecen por `mock` desde el factory.
+const mockStore: { events: StoredEvent[]; viviendas: any[] } = {
   events: [],
   viviendas: [],
 };
+const inMemoryStore = mockStore; // alias para no tocar el resto del fichero
 
 let nextEventId = 1;
 let generateMonthlyForecastsMock: jest.Mock;
@@ -24,11 +27,38 @@ let regenerarEventosViviendaMock: jest.Mock;
 let regenerarEventosCompromisoMock: jest.Mock;
 let listarCompromisosMock: jest.Mock;
 
-jest.mock('./db', () => ({
-  initDB: jest.fn(async () => {
-    const txStore = {
-      openCursor: async () => {
-        const arr = inMemoryStore.events.slice();
+// Stub IDBKeyRange en jsdom · refleja el shape mínimo que necesita el helper.
+(globalThis as any).IDBKeyRange = {
+  bound: (lower: string, upper: string, lowerOpen = false, upperOpen = false) => ({
+    lower, upper, lowerOpen, upperOpen,
+  }),
+  lowerBound: (lower: string, lowerOpen = false) => ({
+    lower, lowerOpen, upperOpen: false,
+  }),
+  upperBound: (upper: string, upperOpen = false) => ({
+    upper, lowerOpen: false, upperOpen,
+  }),
+};
+
+jest.mock('./db', () => {
+  // Helper inline · jest.mock factory no puede referenciar variables externas
+  // salvo las que empiezan por `mock`. Dejamos `inRange` como const local.
+  const inRange = (value: string, range: any): boolean => {
+    if (!range) return true;
+    if (range.lower != null) {
+      if (range.lowerOpen ? value <= range.lower : value < range.lower) return false;
+    }
+    if (range.upper != null) {
+      if (range.upperOpen ? value >= range.upper : value > range.upper) return false;
+    }
+    return true;
+  };
+  return {
+    initDB: jest.fn(async () => {
+      const buildCursor = (range: any) => {
+        const arr = mockStore.events.filter((e: any) =>
+          inRange(e.predictedDate ?? '', range ?? null),
+        );
         let i = 0;
         const makeCursor = (): any => {
           if (i >= arr.length) return null;
@@ -36,7 +66,7 @@ jest.mock('./db', () => ({
           return {
             value,
             delete: async () => {
-              inMemoryStore.events = inMemoryStore.events.filter((e) => e.id !== value.id);
+              mockStore.events = mockStore.events.filter((e: any) => e.id !== value.id);
             },
             continue: async () => {
               i += 1;
@@ -45,21 +75,26 @@ jest.mock('./db', () => ({
           };
         };
         return makeCursor();
-      },
-    };
-    return {
-      getAll: async (storeName: string) => {
-        if (storeName === 'treasuryEvents') return inMemoryStore.events.slice();
-        if (storeName === 'viviendaHabitual') return inMemoryStore.viviendas.slice();
-        return [];
-      },
-      transaction: (_storeName: string, _mode: string) => ({
-        objectStore: () => txStore,
-        done: Promise.resolve(),
-      }),
-    };
-  }),
-}));
+      };
+      const indexStore = { openCursor: async (range?: any) => buildCursor(range) };
+      const txStore = {
+        openCursor: async () => buildCursor(undefined),
+        index: (_name: string) => indexStore,
+      };
+      return {
+        getAll: async (storeName: string) => {
+          if (storeName === 'treasuryEvents') return mockStore.events.slice();
+          if (storeName === 'viviendaHabitual') return mockStore.viviendas.slice();
+          return [];
+        },
+        transaction: (_storeName: string, _mode: string) => ({
+          objectStore: () => txStore,
+          done: Promise.resolve(),
+        }),
+      };
+    }),
+  };
+});
 
 jest.mock('../modules/horizon/tesoreria/services/treasurySyncService', () => ({
   generateMonthlyForecasts: jest.fn(),
@@ -173,21 +208,21 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     expect(r2.eventosOmitidos).toBe(r1.eventosOmitidos);
   });
 
-  it('purga predicted retroactivos y wipea predicted forward antes de regenerar · solo confirmed/executed sobreviven', async () => {
+  it('purga predicted retroactivos y wipea predicted forward REGENERABLES · solo confirmed/executed/manual sobreviven', async () => {
     const today = new Date();
     const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const inicioIso = inicioMes.toISOString().substring(0, 10);
 
-    // Predicted antiguo · purgado por la defensa final (forward-only)
-    seedEvent({ predictedDate: '2024-01-15', status: 'predicted' });
+    // Predicted antiguo regenerable · purgado por defensa final (sourceType
+    // no importa para la purga retroactiva · es estricta).
+    seedEvent({ predictedDate: '2024-01-15', status: 'predicted', sourceType: 'nomina' });
     // Confirmed antiguo · NO debe borrarse
-    seedEvent({ predictedDate: '2024-02-15', status: 'confirmed' });
+    seedEvent({ predictedDate: '2024-02-15', status: 'confirmed', sourceType: 'nomina' });
     // Executed antiguo · NO debe borrarse
-    seedEvent({ predictedDate: '2024-03-15', status: 'executed' as any });
-    // Predicted huérfano dentro del horizonte · debe borrarlo el wipe inicial
-    // (mocks de generateMonthlyForecasts/regenerar* devuelven 0 · no se
-    // recrea · sirve de prueba que el wipe sí ocurre).
-    seedEvent({ predictedDate: inicioIso, status: 'predicted' });
+    seedEvent({ predictedDate: '2024-03-15', status: 'executed' as any, sourceType: 'nomina' });
+    // Predicted huérfano regenerable dentro del horizonte · debe borrarlo el
+    // wipe inicial (mocks no recrean nada).
+    seedEvent({ predictedDate: inicioIso, status: 'predicted', sourceType: 'prestamo' });
 
     const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
     await regenerateForecastsForward({ horizonteMeses: 1 });
@@ -195,19 +230,22 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     const restantes = inMemoryStore.events.map((e) => ({
       date: e.predictedDate,
       status: e.status,
+      src: e.sourceType,
     }));
     // Solo sobreviven el confirmed y el executed antiguos
     expect(restantes).toEqual(
       expect.arrayContaining([
-        { date: '2024-02-15', status: 'confirmed' },
-        { date: '2024-03-15', status: 'executed' },
+        { date: '2024-02-15', status: 'confirmed', src: 'nomina' },
+        { date: '2024-03-15', status: 'executed', src: 'nomina' },
       ]),
     );
-    // Predicted antiguo · purgado
+    // Predicted retroactivo · purgado
     expect(restantes.find((e) => e.date === '2024-01-15')).toBeUndefined();
-    // Predicted huérfano del horizonte · wipeado
+    // Predicted huérfano regenerable del horizonte · wipeado
     expect(
-      restantes.find((e) => e.date === inicioIso && e.status === 'predicted'),
+      restantes.find(
+        (e) => e.date === inicioIso && e.status === 'predicted' && e.src === 'prestamo',
+      ),
     ).toBeUndefined();
   });
 
@@ -217,19 +255,68 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     const inicioIso = inicioMes.toISOString().substring(0, 10);
 
     // Confirmed dentro del horizonte · debe sobrevivir
-    seedEvent({ predictedDate: inicioIso, status: 'confirmed' });
+    seedEvent({ predictedDate: inicioIso, status: 'confirmed', sourceType: 'nomina' });
     // Executed dentro del horizonte · debe sobrevivir
-    seedEvent({ predictedDate: inicioIso, status: 'executed' as any });
-    // Predicted dentro del horizonte · debe ser wipeado
-    seedEvent({ predictedDate: inicioIso, status: 'predicted' });
+    seedEvent({ predictedDate: inicioIso, status: 'executed' as any, sourceType: 'nomina' });
+    // Predicted regenerable dentro del horizonte · debe ser wipeado
+    seedEvent({ predictedDate: inicioIso, status: 'predicted', sourceType: 'nomina' });
 
     const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
     await regenerateForecastsForward({ horizonteMeses: 1 });
 
-    const restantes = inMemoryStore.events.map((e) => e.status);
-    expect(restantes).toContain('confirmed');
-    expect(restantes).toContain('executed');
-    expect(restantes).not.toContain('predicted');
+    const statuses = inMemoryStore.events.map((e) => e.status);
+    expect(statuses).toContain('confirmed');
+    expect(statuses).toContain('executed');
+    expect(statuses).not.toContain('predicted');
+  });
+
+  it('wipe inicial NO toca predicted MANUAL del usuario (sourceType: manual)', async () => {
+    const today = new Date();
+    const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    const inicioIso = inicioMes.toISOString().substring(0, 10);
+
+    // Movimiento previsto manual del usuario (TesoreriaV4 / drawer "Añadir
+    // movimiento") · NUNCA debe borrarse · no es regenerable.
+    seedEvent({
+      predictedDate: inicioIso,
+      status: 'predicted',
+      sourceType: 'manual',
+      description: 'Transferencia prevista a Bizum',
+    });
+    // Predicted regenerable · sí debe wipearse
+    seedEvent({
+      predictedDate: inicioIso,
+      status: 'predicted',
+      sourceType: 'gasto_recurrente',
+    });
+
+    const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
+    await regenerateForecastsForward({ horizonteMeses: 1 });
+
+    const restantes = inMemoryStore.events.map((e) => e.sourceType);
+    expect(restantes).toContain('manual'); // sobrevive
+    expect(restantes).not.toContain('gasto_recurrente'); // wipeado
+  });
+
+  it('wipe inicial NO toca predicted más allá del horizonte (>= hasta)', async () => {
+    const today = new Date();
+    const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    // 25 meses adelante = más allá del horizonte de 24
+    const masAllaDate = new Date(Date.UTC(inicioMes.getUTCFullYear(), inicioMes.getUTCMonth() + 25, 15));
+    const masAllaIso = masAllaDate.toISOString().substring(0, 10);
+
+    // Predicted regenerable PERO más allá del horizonte · NO debe borrarse
+    seedEvent({
+      predictedDate: masAllaIso,
+      status: 'predicted',
+      sourceType: 'nomina',
+    });
+
+    const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
+    await regenerateForecastsForward({ horizonteMeses: 24 });
+
+    const restantes = inMemoryStore.events.map((e) => e.predictedDate);
+    expect(restantes).toContain(masAllaIso);
   });
 
   it('un fallo en una fuente NO aborta el bucle · acumula error y sigue', async () => {
