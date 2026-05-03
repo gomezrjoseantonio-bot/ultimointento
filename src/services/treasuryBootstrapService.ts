@@ -126,6 +126,38 @@ export async function regenerateForecastsForward(
     hasta: toIsoDate(hasta),
   };
 
+  // 0. Wipe forward-looking · borra todos los predicted con fecha >= desde.
+  //    Cubre el caso de eventos huérfanos cuyo sourceId/sourceType ya no
+  //    existe en el catálogo (ej. compromiso eliminado · contrato baja ·
+  //    préstamo cancelado). insertEvent solo upserta por sourceType+sourceId
+  //    · NO limpia los huérfanos. Esta limpieza inicial garantiza que la
+  //    regeneración produce el conjunto correcto sin dejar fantasmas.
+  //    Confirmed/executed se respetan (filtro por status === 'predicted').
+  try {
+    const db = await initDB();
+    const desdeIso = result.desde;
+    const tx = db.transaction('treasuryEvents', 'readwrite');
+    const store = tx.objectStore('treasuryEvents');
+    let cursor = await store.openCursor();
+    while (cursor) {
+      const ev = cursor.value as TreasuryEvent;
+      if (
+        ev.status === 'predicted' &&
+        typeof ev.predictedDate === 'string' &&
+        ev.predictedDate >= desdeIso
+      ) {
+        await cursor.delete();
+      }
+      cursor = await cursor.continue();
+    }
+    await tx.done;
+  } catch (err) {
+    result.errores.push({
+      contexto: 'wipe predicted forward (pre-regeneración)',
+      mensaje: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   // 1. Recorrer cada mes del horizonte e invocar generateMonthlyForecasts.
   //    generateMonthlyForecasts es idempotente: respeta status='confirmed' y
   //    upserta el resto, así que no duplica.
