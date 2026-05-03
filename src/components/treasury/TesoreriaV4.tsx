@@ -19,6 +19,11 @@ import { calculateAccountTreasurySummary } from './treasuryBalanceSummary';
 import { calculateTreasuryMonthOpeningBalance } from './treasuryMonthOpeningBalance';
 import { getCachedStoreRecords, invalidateCachedStores } from '../../services/indexedDbCacheService';
 import { generateMonthlyForecasts } from '../../modules/horizon/tesoreria/services/treasurySyncService';
+import {
+  necesitaRegenerar,
+  regenerateForecastsForward,
+} from '../../services/treasuryBootstrapService';
+import CalendarioRolling24m from './CalendarioRolling24m';
 import AccountFormModal from '../../modules/horizon/configuracion/cuentas/components/AccountFormModal';
 import { cuentasService } from '../../services/cuentasService';
 import './treasury-reconciliation.css';
@@ -255,6 +260,36 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // ── T31 · auto-ejecución silenciosa del bootstrap forward-looking ──
+  // Al montar Tesorería · si detectamos gap entre el último predicted y el
+  // horizonte esperado (24m), regeneramos en background sin diálogos ni
+  // spinners ruidosos. Errores quedan en consola.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const necesita = await necesitaRegenerar(24);
+        if (!necesita || cancelled) return;
+        const resultado = await regenerateForecastsForward();
+        if (cancelled) return;
+        if (resultado.eventosCreados > 0) {
+          invalidateCachedStores(['treasuryEvents']);
+          await loadData();
+        }
+        if (resultado.errores.length > 0) {
+          console.warn('[TreasuryBootstrap] errores parciales', resultado.errores);
+        }
+      } catch (err) {
+        console.error('[TreasuryBootstrap] auto-regeneración falló', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Solo al montar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reload after wizard — in useEffect (after render) to avoid racing with React's batched state updates.
   useEffect(() => {
     if (!wizardJustCompleted) return;
@@ -456,6 +491,38 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
 
   const goToMonth = (i: number) => {
     setMesActivo(i); setVista('mensual'); setCuentaSel(-1); setFiltro('pendiente');
+  };
+
+  // ── T31 · Regenerar 24 meses forward-only (botón header) ──
+  const [regenerating, setRegenerating] = useState(false);
+  const handleRegenerarPrevisiones = async () => {
+    setRegenerating(true);
+    try {
+      const result = await regenerateForecastsForward({ force: true });
+      const partes: string[] = [];
+      if (result.eventosCreados > 0) {
+        partes.push(`${result.eventosCreados} creado${result.eventosCreados === 1 ? '' : 's'}`);
+      }
+      if (result.eventosOmitidos > 0) {
+        partes.push(`${result.eventosOmitidos} omitido${result.eventosOmitidos === 1 ? '' : 's'}`);
+      }
+      const resumen = partes.length > 0
+        ? `Previsiones regeneradas · ${partes.join(' · ')}`
+        : 'Previsiones ya estaban al día';
+      if (result.errores.length > 0) {
+        toast(`${resumen} (con avisos · ver consola)`);
+        console.warn('[TreasuryBootstrap] errores parciales', result.errores);
+      } else {
+        toast.success(resumen);
+      }
+      invalidateCachedStores(['treasuryEvents']);
+      await loadData();
+    } catch (err) {
+      console.error('[TreasuryBootstrap] regeneración manual falló', err);
+      toast.error('Error regenerando previsiones · ver consola');
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   // ── Generate forecasts ──
@@ -868,13 +935,6 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
   // ─── RENDER ─────────────────────────────────────────────────────────────────
 
   const hoy = new Date();
-  const mesActualGlobal = hoy.getMonth();
-  const añoActualGlobal = hoy.getFullYear();
-
-  const maxBarHeight = 52;
-  const maxIngAnual = yearMonthData.length > 0
-    ? Math.max(...yearMonthData.map(d => Math.max(d.ing, d.gas, d.fin)), 1)
-    : 1;
 
   return (
     <div className="tv4-page">
@@ -913,7 +973,12 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
         }}
         actions={(conciliacionMode || tab !== 'evolucion') ? (
           <>
-            <HeaderSecondaryButton icon={RefreshCw} label="Generar previsiones" onClick={handleGenerateForecasts} />
+            <HeaderSecondaryButton
+              icon={RefreshCw}
+              label={regenerating ? 'Regenerando…' : 'Regenerar previsiones'}
+              onClick={handleRegenerarPrevisiones}
+              disabled={regenerating}
+            />
             <HeaderPrimaryButton icon={Plus} label="Añadir movimiento" onClick={() => setShowAddModal(true)} />
           </>
         ) : undefined}
@@ -1014,27 +1079,24 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
         {/* ─ TAB: FLUJO DE CAJA ─ */}
         {tab === 'flujo' && (
           <>
-            {/* Vista anual controls */}
-            {vista === 'anual' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 4 }}>
-                {/* Year selector */}
-                <div style={{ display: 'flex' }}>
-                  <button className="period-btn period-btn-left" onClick={() => setAño(año - 1)}>
-                    &lt; {año - 1}
-                  </button>
-                  <button className="period-btn period-btn-active">{año}</button>
-                  <button className="period-btn period-btn-right" onClick={() => setAño(año + 1)}>
-                    {año + 1} &gt;
-                  </button>
+            {/* Vista anual controls — T31 · rango 24 meses rodante */}
+            {vista === 'anual' && (() => {
+              const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+              const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 24, 0);
+              const fmt = (d: Date) => `${MESES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, color: 'var(--grey-500)' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--grey-900)' }}>24 meses</span>
+                    {` · desde ${fmt(inicio)} hasta ${fmt(fin)}`}
+                  </div>
+                  <div style={{ display: 'flex', marginLeft: 'auto' }}>
+                    <button className="toggle-vista on" onClick={() => setVista('anual')}>Vista anual</button>
+                    <button className="toggle-vista" onClick={() => setVista('mensual')}>Vista mensual</button>
+                  </div>
                 </div>
-
-                {/* Vista toggle */}
-                <div style={{ display: 'flex', marginLeft: 'auto' }}>
-                  <button className="toggle-vista on" onClick={() => setVista('anual')}>Vista anual</button>
-                  <button className="toggle-vista" onClick={() => setVista('mensual')}>Vista mensual</button>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Vista mensual nav bar */}
             {vista === 'mensual' && (
@@ -1055,61 +1117,16 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
               </div>
             )}
 
-            {/* ── Vista anual: 12-month grid ── */}
+            {/* ── T31 · Vista anual: calendario rodante 24 meses ── */}
             {vista === 'anual' && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 8 }}>
-                {MESES.map((mes, i) => {
-                  const d = yearMonthData[i];
-                  const esActivo = i === mesActualGlobal && año === añoActualGlobal;
-                  const esCerrado = d.fechaFin < hoy;
-                  const esPrevisto = !esActivo && !esCerrado;
-                  const op = esPrevisto ? 0.4 : 1;
-
-                  return (
-                    <div
-                      key={i}
-                      className="tv4-month-card"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Ir al mes de ${mes}`}
-                      onClick={() => goToMonth(i)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToMonth(i); } }}
-                      style={{ border: `1.5px solid ${esActivo ? 'var(--navy-900)' : 'var(--grey-200)'}` }}
-                    >
-                      {/* Month header */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                        <span style={{
-                          fontSize: 12, fontWeight: 600,
-                          color: esActivo ? 'var(--navy-900)' : esPrevisto ? 'var(--grey-400)' : 'var(--grey-700)',
-                        }}>
-                          {mes}
-                        </span>
-                        {esActivo && <span className="badge-teal-mini">Hoy</span>}
-                        {esCerrado && !esActivo && <CheckCircle2 size={11} color="var(--teal-600)" />}
-                        {esPrevisto && <span style={{ fontSize: 10, color: 'var(--grey-300)' }}>Prev.</span>}
-                      </div>
-
-                      {/* Mini bars */}
-                      <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: maxBarHeight, marginBottom: 7 }}>
-                        <div style={{ flex: 1, background: 'var(--navy-900)', height: Math.max(3, d.ing / maxIngAnual * maxBarHeight), borderRadius: '2px 2px 0 0', opacity: op }} />
-                        <div style={{ flex: 1, background: 'var(--grey-300)', height: Math.max(3, d.gas / maxIngAnual * maxBarHeight), borderRadius: '2px 2px 0 0', opacity: op }} />
-                        <div style={{ flex: 1, background: 'var(--teal-600)', height: Math.max(3, d.fin / maxIngAnual * maxBarHeight), borderRadius: '2px 2px 0 0', opacity: op }} />
-                      </div>
-
-                      {/* Excedente */}
-                      <div style={{
-                        fontSize: 12, fontWeight: 700, fontFamily: 'IBM Plex Mono',
-                        color: d.excedente >= 0 ? 'var(--navy-900)' : 'var(--grey-700)',
-                      }}>
-                        {d.excedente >= 0 ? '+' : '−'}{formatEur(Math.abs(d.excedente))} €
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--grey-400)', marginTop: 1 }}>
-                        {formatEur(d.ing)} € ingresos
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <CalendarioRolling24m
+                events={allDbEvents}
+                movements={allDbMovements as unknown as { date: string; amount: number }[]}
+                onMonthClick={(year, monthIndex0) => {
+                  setAño(year);
+                  goToMonth(monthIndex0);
+                }}
+              />
             )}
 
             {/* ── Vista mensual ── */}
