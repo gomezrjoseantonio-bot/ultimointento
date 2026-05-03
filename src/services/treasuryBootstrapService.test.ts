@@ -173,18 +173,20 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
     expect(r2.eventosOmitidos).toBe(r1.eventosOmitidos);
   });
 
-  it('purga eventos predicted con fecha anterior al primer día del mes en curso (forward-only)', async () => {
+  it('purga predicted retroactivos y wipea predicted forward antes de regenerar · solo confirmed/executed sobreviven', async () => {
     const today = new Date();
     const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
     const inicioIso = inicioMes.toISOString().substring(0, 10);
 
-    // Predicted antiguo (debería borrarse)
+    // Predicted antiguo · purgado por la defensa final (forward-only)
     seedEvent({ predictedDate: '2024-01-15', status: 'predicted' });
-    // Confirmed antiguo (NO debe borrarse)
+    // Confirmed antiguo · NO debe borrarse
     seedEvent({ predictedDate: '2024-02-15', status: 'confirmed' });
-    // Executed antiguo (NO debe borrarse)
+    // Executed antiguo · NO debe borrarse
     seedEvent({ predictedDate: '2024-03-15', status: 'executed' as any });
-    // Predicted en el horizonte (NO debe borrarse)
+    // Predicted huérfano dentro del horizonte · debe borrarlo el wipe inicial
+    // (mocks de generateMonthlyForecasts/regenerar* devuelven 0 · no se
+    // recrea · sirve de prueba que el wipe sí ocurre).
     seedEvent({ predictedDate: inicioIso, status: 'predicted' });
 
     const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
@@ -194,15 +196,40 @@ describe('treasuryBootstrapService · regenerateForecastsForward', () => {
       date: e.predictedDate,
       status: e.status,
     }));
+    // Solo sobreviven el confirmed y el executed antiguos
     expect(restantes).toEqual(
       expect.arrayContaining([
         { date: '2024-02-15', status: 'confirmed' },
         { date: '2024-03-15', status: 'executed' },
-        { date: inicioIso, status: 'predicted' },
       ]),
     );
-    // El predicted retroactivo debe haber desaparecido
+    // Predicted antiguo · purgado
     expect(restantes.find((e) => e.date === '2024-01-15')).toBeUndefined();
+    // Predicted huérfano del horizonte · wipeado
+    expect(
+      restantes.find((e) => e.date === inicioIso && e.status === 'predicted'),
+    ).toBeUndefined();
+  });
+
+  it('wipe inicial NO toca confirmed/executed dentro del horizonte', async () => {
+    const today = new Date();
+    const inicioMes = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+    const inicioIso = inicioMes.toISOString().substring(0, 10);
+
+    // Confirmed dentro del horizonte · debe sobrevivir
+    seedEvent({ predictedDate: inicioIso, status: 'confirmed' });
+    // Executed dentro del horizonte · debe sobrevivir
+    seedEvent({ predictedDate: inicioIso, status: 'executed' as any });
+    // Predicted dentro del horizonte · debe ser wipeado
+    seedEvent({ predictedDate: inicioIso, status: 'predicted' });
+
+    const { regenerateForecastsForward } = await import('./treasuryBootstrapService');
+    await regenerateForecastsForward({ horizonteMeses: 1 });
+
+    const restantes = inMemoryStore.events.map((e) => e.status);
+    expect(restantes).toContain('confirmed');
+    expect(restantes).toContain('executed');
+    expect(restantes).not.toContain('predicted');
   });
 
   it('un fallo en una fuente NO aborta el bucle · acumula error y sigue', async () => {
