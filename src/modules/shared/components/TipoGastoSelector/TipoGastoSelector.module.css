@@ -1,0 +1,215 @@
+/* ── TipoGastoSelector v1 · T34/T35-fix ───────────────────────────────── */
+
+.wrapper {
+  position: relative;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+/* Trigger */
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 12px;
+  height: 38px;
+  border: 1.5px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-sm);
+  background: var(--atlas-v5-card);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--atlas-v5-ink-2);
+  font-family: var(--atlas-v5-font-ui);
+  text-align: left;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.trigger:hover:not(:disabled) {
+  border-color: var(--atlas-v5-gold-soft);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 2px;
+}
+
+.trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.triggerError {
+  border-color: var(--atlas-v5-neg) !important;
+}
+
+.triggerOpen {
+  border-color: var(--atlas-v5-gold);
+}
+
+.triggerIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+  flex-shrink: 0;
+}
+
+.triggerLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.triggerPlaceholder {
+  color: var(--atlas-v5-ink-4);
+}
+
+.triggerChevron {
+  flex-shrink: 0;
+  color: var(--atlas-v5-ink-4);
+  transition: transform 0.2s;
+}
+
+.triggerChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Panel */
+.panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: var(--atlas-v5-z-dropdown);
+  background: var(--atlas-v5-card);
+  border: 1.5px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  max-height: 380px;
+  overflow-y: auto;
+  outline: none;
+}
+
+/* Option */
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border: none;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.option:hover {
+  background: var(--atlas-v5-gold-wash);
+}
+
+.optionFocused {
+  background: var(--atlas-v5-gold-wash);
+}
+
+.optionSelected {
+  background: var(--atlas-v5-gold-wash);
+}
+
+.optionIconBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-2);
+  flex-shrink: 0;
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.optionSelected .optionIconBox,
+.optionFocused .optionIconBox {
+  background: var(--atlas-v5-gold-light);
+  border-color: var(--atlas-v5-gold-soft);
+  color: var(--atlas-v5-gold-ink);
+}
+
+.optionText {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--atlas-v5-ink-1);
+  line-height: 1.3;
+}
+
+.optionDesc {
+  font-size: 11.5px;
+  color: var(--atlas-v5-ink-4);
+  margin-top: 1px;
+}
+
+.optionCheck {
+  color: var(--atlas-v5-gold);
+  flex-shrink: 0;
+}
+
+/* Custom name field */
+.customBlock {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--atlas-v5-gold-wash);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-radius: var(--atlas-v5-radius-sm);
+}
+
+.customLabel {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--atlas-v5-gold-ink);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.customInput {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid var(--atlas-v5-gold-soft);
+  border-radius: 6px;
+  background: var(--atlas-v5-card);
+  font-size: 13px;
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink-1);
+  box-sizing: border-box;
+}
+
+.customInput:focus {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: 1px;
+}
+
+.customHelper {
+  font-size: 11px;
+  color: var(--atlas-v5-gold-ink);
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* Error message */
+.errorMsg {
+  font-size: 11.5px;
+  color: var(--atlas-v5-neg);
+  margin-top: 4px;
+}
