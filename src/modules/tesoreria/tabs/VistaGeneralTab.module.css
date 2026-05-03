@@ -115,9 +115,50 @@
 
 .cuentasGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   margin-bottom: 18px;
+}
+
+@media (max-width: 1100px) {
+  .cuentasGrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 800px) {
+  .cuentasGrid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.cuentasArrows {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.cuentasArr {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--atlas-v5-ink-3);
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.cuentasArr:hover:not(:disabled) {
+  border-color: var(--atlas-v5-ink-3);
+  color: var(--atlas-v5-ink);
+}
+
+.cuentasArr:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.cuentaEmptySlot {
+  visibility: hidden;
 }
 
 .card {

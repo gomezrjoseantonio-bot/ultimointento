@@ -130,7 +130,7 @@ const BankAccountCard: React.FC<BankAccountCardProps> = ({
           value={balance}
           decimals={0}
           tone="ink"
-          size="kpi"
+          size="kpiStar"
         />
       </div>
       {delta30d !== null && (
