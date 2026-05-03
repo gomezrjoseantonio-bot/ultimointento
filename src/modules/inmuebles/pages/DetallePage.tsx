@@ -14,6 +14,7 @@ import {
   eliminarCompromiso,
 } from '../../../services/personal/compromisosRecurrentesService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { computeMonthly } from '../../shared/utils/compromisoUtils';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import type { Contract } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
@@ -437,10 +438,7 @@ const DetallePage: React.FC = () => {
                 {gastos
                   .filter((g): g is CompromisoRecurrente & { id: number } => g.id != null)
                   .map((g) => {
-                    const monthly = g.importe.modo === 'fijo' ? g.importe.importe
-                      : g.importe.modo === 'variable' ? g.importe.importeMedio
-                      : g.importe.modo === 'diferenciadoPorMes' ? g.importe.importesPorMes.reduce((a: number, b: number) => a + b, 0) / 12
-                      : 0;
+                    const monthly = computeMonthly(g);
                     return (
                       <tr key={g.id}>
                         <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><strong>{g.alias}</strong></td>
@@ -456,7 +454,7 @@ const DetallePage: React.FC = () => {
                           <button type="button" aria-label={`Editar ${g.alias}`} title="Editar" onClick={() => navigate(`/inmuebles/${property.id}/gastos/${g.id}/editar`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 5px', borderRadius: 4, color: 'var(--atlas-v5-ink-3)', display: 'inline-flex', alignItems: 'center' }}>
                             <Icons.Edit size={13} strokeWidth={1.8} />
                           </button>
-                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 5px', borderRadius: 4, color: 'var(--atlas-v5-red, #c0392b)', display: 'inline-flex', alignItems: 'center' }}>
+                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 5px', borderRadius: 4, color: 'var(--atlas-v5-neg)', display: 'inline-flex', alignItems: 'center' }}>
                             <Icons.Delete size={13} strokeWidth={1.8} />
                           </button>
                         </td>

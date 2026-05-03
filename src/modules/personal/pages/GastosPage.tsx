@@ -10,23 +10,9 @@ import {
 } from '../../../design-system/v5';
 import { eliminarCompromiso } from '../../../services/personal/compromisosRecurrentesService';
 import ConfirmationModal from '../../../components/common/ConfirmationModal';
+import { computeMonthly } from '../../shared/utils/compromisoUtils';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
-
-const computeMonthly = (c: CompromisoRecurrente): number => {
-  switch (c.importe.modo) {
-    case 'fijo':
-      return c.importe.importe;
-    case 'variable':
-      return c.importe.importeMedio;
-    case 'diferenciadoPorMes':
-      return c.importe.importesPorMes.reduce((s: number, v: number) => s + v, 0) / 12;
-    case 'porPago':
-      return Object.values(c.importe.importesPorPago).reduce((s, v) => s + v, 0) / 12;
-    default:
-      return 0;
-  }
-};
 
 const GastosPage: React.FC = () => {
   const navigate = useNavigate();
@@ -270,7 +256,7 @@ const GastosPage: React.FC = () => {
                           aria-label={`Eliminar ${c.alias}`}
                           title="Eliminar"
                           onClick={() => setDeleteTarget(c)}
-                          style={{ ...actionBtnStyle, color: 'var(--atlas-v5-red, #c0392b)' }}
+                          style={{ ...actionBtnStyle, color: 'var(--atlas-v5-neg)' }}
                         >
                           <Icons.Delete size={13} strokeWidth={1.8} />
                         </button>
