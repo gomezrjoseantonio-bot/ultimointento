@@ -451,10 +451,10 @@ const DetallePage: React.FC = () => {
                           </Pill>
                         </td>
                         <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
-                          <button type="button" aria-label={`Editar ${g.alias}`} title="Editar" onClick={() => navigate(`/inmuebles/${property.id}/gastos/${g.id}/editar`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 5px', borderRadius: 4, color: 'var(--atlas-v5-ink-3)', display: 'inline-flex', alignItems: 'center' }}>
+                          <button type="button" aria-label={`Editar ${g.alias}`} title="Editar" onClick={() => navigate(`/inmuebles/${property.id}/gastos/${g.id}/editar`)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-ink-3)' }}>
                             <Icons.Edit size={13} strokeWidth={1.8} />
                           </button>
-                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '3px 5px', borderRadius: 4, color: 'var(--atlas-v5-neg)', display: 'inline-flex', alignItems: 'center' }}>
+                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-neg)' }}>
                             <Icons.Delete size={13} strokeWidth={1.8} />
                           </button>
                         </td>
@@ -493,3 +493,15 @@ const DetallePage: React.FC = () => {
 };
 
 export default DetallePage;
+
+// ── Estilos compartidos ──────────────────────────────────────────────────────
+
+const gastoActionBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '3px 5px',
+  borderRadius: 4,
+  display: 'inline-flex',
+  alignItems: 'center',
+};

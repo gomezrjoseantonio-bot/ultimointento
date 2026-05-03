@@ -20,3 +20,24 @@ export function computeMonthly(c: CompromisoRecurrente): number {
       return 0;
   }
 }
+
+/**
+ * Builds the display alias for a gasto compromiso from its tipo/subtipo/proveedor.
+ * When isCustom=true, returns the user-entered nombrePersonalizado as the alias.
+ */
+export function buildGastoAlias(params: {
+  isCustom: boolean;
+  nombrePersonalizado: string;
+  subtipoLabel?: string;
+  tipoLabel: string;
+  proveedor: string;
+}): string {
+  const { isCustom, nombrePersonalizado, subtipoLabel, tipoLabel, proveedor } = params;
+  if (isCustom && nombrePersonalizado.trim()) {
+    return nombrePersonalizado.trim();
+  }
+  if (subtipoLabel) {
+    return `${tipoLabel} · ${subtipoLabel}${proveedor ? ' · ' + proveedor : ''}`;
+  }
+  return proveedor || tipoLabel;
+}

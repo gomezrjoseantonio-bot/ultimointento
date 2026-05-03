@@ -37,6 +37,7 @@ import {
   findSubtipoInmueble,
   findCatalogEntryInmuebleByDbFields,
 } from './utils/tiposDeGastoInmueble';
+import { buildGastoAlias } from '../../shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ────────────────────────────────────────────────────────────
 
@@ -470,12 +471,13 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      const subtipoLabel = subtipoSeleccionado?.isCustom && form.nombrePersonalizado
-        ? form.nombrePersonalizado
-        : subtipoSeleccionado?.label;
-      const alias = subtipoLabel
-        ? `${tipoSeleccionado.label} · ${subtipoLabel}${form.proveedor ? ' · ' + form.proveedor : ''}`
-        : form.proveedor || tipoSeleccionado.label;
+      const alias = buildGastoAlias({
+        isCustom: subtipoSeleccionado?.isCustom ?? false,
+        nombrePersonalizado: form.nombrePersonalizado,
+        subtipoLabel: subtipoSeleccionado?.label,
+        tipoLabel: tipoSeleccionado.label,
+        proveedor: form.proveedor,
+      });
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
       const categoria = subtipoCatalog.categoria;

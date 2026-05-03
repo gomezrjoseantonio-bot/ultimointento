@@ -32,6 +32,7 @@ import {
   findSubtipoPersonal,
   findCatalogEntryByDbFields,
 } from '../wizards/utils/tiposDeGastoPersonal';
+import { buildGastoAlias } from '../../../modules/shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ───────────────────────────────────────────────────────────
 
@@ -475,11 +476,13 @@ const NuevoGastoRecurrentePage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      const alias = subtipoSeleccionado?.isCustom && form.nombrePersonalizado
-        ? form.nombrePersonalizado
-        : subtipoSeleccionado
-          ? `${subtipoSeleccionado.label}${form.proveedor ? ' · ' + form.proveedor : ''}`
-          : form.proveedor || (tipoSeleccionado?.label ?? '');
+      const alias = buildGastoAlias({
+        isCustom: subtipoSeleccionado?.isCustom ?? false,
+        nombrePersonalizado: form.nombrePersonalizado,
+        subtipoLabel: subtipoSeleccionado?.label,
+        tipoLabel: tipoSeleccionado?.label ?? '',
+        proveedor: form.proveedor,
+      });
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
 
