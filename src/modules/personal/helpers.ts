@@ -7,6 +7,7 @@ import type {
   CompromisoRecurrente,
 } from '../../types/compromisosRecurrentes';
 import { nominaService } from '../../services/nominaService';
+import { autonomoService } from '../../services/autonomoService';
 
 /**
  * Estimación bruta anual de ingresos para un autónomo.
@@ -110,6 +111,117 @@ export const computeAutonomoIngresoEnMes = (a: Autonomo, mes: number): number =>
   }
 
   return 0;
+};
+
+/**
+ * Neto líquido de una nómina en un mes concreto · lo que llega al banco.
+ * Spec v1.1 regla 4 (calendario REAL · no plano).
+ *
+ * Usa `calculateSalary(n).distribucionMensual.find(d => d.mes === mes)?.netoTotal`,
+ * que es `totalDevengado - SS - IRPF - aportación PP empleado - otras deducciones`.
+ *
+ * Devuelve 0 si la nómina está inactiva o si los datos están incompletos.
+ *
+ * @param mes 1-12
+ */
+export const computeNominaNetoEnMes = (n: Nomina, mes: number): number => {
+  if (!n.activa) return 0;
+  try {
+    const r = nominaService.calculateSalary(n);
+    return r.distribucionMensual.find((d) => d.mes === mes)?.netoTotal ?? 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaNetoEnMes · calculateSalary lanzó · datos incompletos', err);
+    return 0;
+  }
+};
+
+/**
+ * Neto líquido de una nómina por los 12 meses del año (en una sola pasada).
+ * Útil cuando se va a indexar por varios meses para evitar repetir el cálculo
+ * pesado de `calculateSalary` (14 pagas + variables + bonus + SS + IRPF + PP).
+ *
+ * Devuelve `[0, 0, …]` si la nómina está inactiva o los datos son incompletos.
+ */
+export const computeNominaNetoPorMes = (n: Nomina): number[] => {
+  if (!n.activa) return Array(12).fill(0);
+  try {
+    const r = nominaService.calculateSalary(n);
+    return Array.from({ length: 12 }, (_, i) =>
+      r.distribucionMensual.find((d) => d.mes === i + 1)?.netoTotal ?? 0,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaNetoPorMes · calculateSalary lanzó · datos incompletos', err);
+    return Array(12).fill(0);
+  }
+};
+
+/**
+ * Neto anual de una nómina · `calculateSalary(n).totalAnualNeto`.
+ * Suma de los 12 netos mensuales.
+ */
+export const computeNominaNetoAnual = (n: Nomina): number => {
+  if (!n.activa) return 0;
+  try {
+    return nominaService.calculateSalary(n).totalAnualNeto;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaNetoAnual · calculateSalary lanzó · datos incompletos', err);
+    return 0;
+  }
+};
+
+/**
+ * Neto de un autónomo en un mes concreto · `ingresos - gastosRecurrentes - cuotaSS`.
+ * Es la mejor aproximación a "lo que queda" sin contabilizar IRPF retenido por
+ * cliente (Hacienda lo regulariza después en el IRPF anual).
+ *
+ * Usa `autonomoService.getMonthlyDistribution(a)[mes-1].neto`, que ya respeta
+ * `fuentesIngreso[].meses` (estacionalidad) y suma cuota RETA fija a gastos.
+ *
+ * @param mes 1-12
+ */
+export const computeAutonomoNetoEnMes = (a: Autonomo, mes: number): number => {
+  if (!a.activo) return 0;
+  try {
+    const dist = autonomoService.getMonthlyDistribution(a);
+    return dist[mes - 1]?.neto ?? 0;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeAutonomoNetoEnMes · getMonthlyDistribution lanzó', err);
+    return 0;
+  }
+};
+
+/**
+ * Neto de un autónomo por los 12 meses del año (en una sola pasada).
+ * Devuelve `[0, 0, …]` si el autónomo está inactivo.
+ */
+export const computeAutonomoNetoPorMes = (a: Autonomo): number[] => {
+  if (!a.activo) return Array(12).fill(0);
+  try {
+    const dist = autonomoService.getMonthlyDistribution(a);
+    return Array.from({ length: 12 }, (_, i) => dist[i]?.neto ?? 0);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeAutonomoNetoPorMes · getMonthlyDistribution lanzó', err);
+    return Array(12).fill(0);
+  }
+};
+
+/**
+ * Neto anual de un autónomo · suma de los 12 netos mensuales.
+ */
+export const computeAutonomoNetoAnual = (a: Autonomo): number => {
+  if (!a.activo) return 0;
+  try {
+    return autonomoService.getMonthlyDistribution(a).reduce((s, m) => s + m.neto, 0);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeAutonomoNetoAnual · getMonthlyDistribution lanzó', err);
+    return 0;
+  }
 };
 
 /**

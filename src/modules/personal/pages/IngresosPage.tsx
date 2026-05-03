@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import {
   CardV5,
   MoneyValue,
@@ -10,10 +11,8 @@ import {
 } from '../../../design-system/v5';
 import type { PersonalOutletContext } from '../PersonalContext';
 import {
-  computeAutonomoIngresoAnualEstimado,
-  computeAutonomoIngresoEnMes,
-  computeNominaBrutoAnual,
-  computeNominaBrutoEnMes,
+  computeAutonomoNetoPorMes,
+  computeNominaNetoPorMes,
 } from '../helpers';
 
 const MES_LABELS = [
@@ -83,46 +82,69 @@ const IngresosPage: React.FC = () => {
                   <th style={thStyle}>Empresa / Nombre</th>
                   <th style={thStyle}>Titular</th>
                   <th style={thStyle}>Distribución</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Bruto anual</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }} title="Bruto devengado del mes en curso · paga extra entera en su mes · variable/bonus en su mes pagadero">
-                    Bruto · {mesLabel}
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Neto líquido anual · suma de los 12 netos mensuales (incluye paga extra, variable y bonus, deducidas SS, IRPF y aportación PP)">
+                    Neto anual
+                  </th>
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Líquido del mes en curso · lo que llega a la cuenta. Paga extra entera en su mes · variable/bonus en su mes pagadero">
+                    Neto · {mesLabel}
                   </th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
+                  <th style={{ ...thStyle, textAlign: 'center', width: 60 }}>Editar</th>
                 </tr>
               </thead>
               <tbody>
-                {nominas.map((n, index) => (
-                  <tr
-                    key={n.id ?? `${n.empresa?.nombre ?? 'sin-empresa'}-${n.nombre}-${n.titular}-${index}`}
-                    style={{ cursor: 'pointer' }}
-                    title="Editar nómina"
-                    onClick={() => {
-                      if (n.id != null) navigate(`/gestion/personal/nueva-nomina?id=${n.id}`);
-                      else showToastV5('Nómina sin id · no se puede editar');
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <strong>{n.empresa?.nombre ?? n.nombre}</strong>
-                    </td>
-                    <td style={tdStyle}>{n.titular === 'yo' ? 'Titular' : 'Pareja'}</td>
-                    <td style={tdStyle}>
-                      <span style={{ fontFamily: 'var(--atlas-v5-font-mono-tech)' }}>
-                        {n.distribucion.tipo} · {n.distribucion.meses} pagas
-                      </span>
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }} title="Bruto devengado anual real · suma de meses incluyendo paga extra, variable y bonus">
-                      <MoneyValue value={computeNominaBrutoAnual(n)} decimals={0} />
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <MoneyValue value={computeNominaBrutoEnMes(n, mesActual)} decimals={0} tone="pos" />
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                      <Pill variant={n.activa ? 'pos' : 'gris'} asTag>
-                        {n.activa ? 'Activa' : 'Inactiva'}
-                      </Pill>
-                    </td>
-                  </tr>
-                ))}
+                {nominas.map((n, index) => {
+                  // Distribución mensual neta · una sola pasada por fila.
+                  const dist = computeNominaNetoPorMes(n);
+                  const netoAnual = dist.reduce((s, v) => s + v, 0);
+                  const netoMes = dist[mesActual - 1] ?? 0;
+                  const editar = () => {
+                    if (n.id != null) navigate(`/gestion/personal/nueva-nomina?id=${n.id}`);
+                    else showToastV5('Nómina sin id · no se puede editar');
+                  };
+                  return (
+                    <tr
+                      key={n.id ?? `${n.empresa?.nombre ?? 'sin-empresa'}-${n.nombre}-${n.titular}-${index}`}
+                      style={{ cursor: 'pointer' }}
+                      title="Editar nómina"
+                      onClick={editar}
+                    >
+                      <td style={tdStyle}>
+                        <strong>{n.empresa?.nombre ?? n.nombre}</strong>
+                      </td>
+                      <td style={tdStyle}>{n.titular === 'yo' ? 'Titular' : 'Pareja'}</td>
+                      <td style={tdStyle}>
+                        <span style={{ fontFamily: 'var(--atlas-v5-font-mono-tech)' }}>
+                          {n.distribucion.tipo} · {n.distribucion.meses} pagas
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <MoneyValue value={netoAnual} decimals={0} />
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <MoneyValue value={netoMes} decimals={0} tone={netoMes >= 0 ? 'pos' : 'neg'} />
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <Pill variant={n.activa ? 'pos' : 'gris'} asTag>
+                          {n.activa ? 'Activa' : 'Inactiva'}
+                        </Pill>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          aria-label="Editar nómina"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editar();
+                          }}
+                          style={iconBtn}
+                        >
+                          <Pencil size={14} strokeWidth={1.8} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardV5.Body>
@@ -132,49 +154,54 @@ const IngresosPage: React.FC = () => {
       {autonomos.length > 0 && (
         <CardV5 accent="gold" style={{ marginBottom: 14 }}>
           <CardV5.Title>Autónomos · {autonomos.length}</CardV5.Title>
-          <CardV5.Subtitle>actividades por cuenta propia · estimación bruta</CardV5.Subtitle>
+          <CardV5.Subtitle>actividades por cuenta propia · neto líquido (ingresos − gastos − cuota RETA)</CardV5.Subtitle>
           <CardV5.Body>
             <table style={tableStyle}>
               <thead>
                 <tr>
                   <th style={thStyle}>Actividad</th>
                   <th style={thStyle}>Titular</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Bruto anual</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }} title="Bruto estimado del mes en curso · suma de fuentesIngreso cuyas meses incluyen este mes">
-                    Bruto · {mesLabel}
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Neto anual estimado · ingresos − gastos − cuota RETA, sumado por los 12 meses">
+                    Neto anual
+                  </th>
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Neto del mes en curso · ingresos − gastos − cuota RETA. Respeta meses activos de fuentesIngreso">
+                    Neto · {mesLabel}
                   </th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
+                  <th style={{ ...thStyle, textAlign: 'center', width: 60 }}>Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {autonomos.map((a, index) => {
-                  const ingreso = computeAutonomoIngresoAnualEstimado(a);
-                  const ingresoMes = computeAutonomoIngresoEnMes(a, mesActual);
-                  const tieneEstimacion = ingreso > 0;
+                  // Distribución mensual · una sola pasada por fila.
+                  const dist = computeAutonomoNetoPorMes(a);
+                  const netoAnual = dist.reduce((s, v) => s + v, 0);
+                  const netoMes = dist[mesActual - 1] ?? 0;
+                  const editar = () => {
+                    if (a.id != null) navigate(`/gestion/personal/nuevo-autonomo?id=${a.id}`);
+                    else showToastV5('Autónomo sin id · no se puede editar');
+                  };
                   return (
                     <tr
                       key={a.id ?? `${a.nombre ?? 'sin-nombre'}-${a.titular ?? 'sin-titular'}-${index}`}
                       style={{ cursor: 'pointer' }}
                       title="Editar actividad de autónomo"
-                      onClick={() => {
-                        if (a.id != null) navigate(`/gestion/personal/nuevo-autonomo?id=${a.id}`);
-                        else showToastV5('Autónomo sin id · no se puede editar');
-                      }}
+                      onClick={editar}
                     >
                       <td style={tdStyle}>
                         <strong>{a.nombre ?? `Actividad #${a.id}`}</strong>
                       </td>
                       <td style={tdStyle}>{a.titular === 'yo' ? 'Titular' : 'Pareja'}</td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        {tieneEstimacion ? (
-                          <MoneyValue value={ingreso} decimals={0} />
+                        {netoAnual !== 0 ? (
+                          <MoneyValue value={netoAnual} decimals={0} tone={netoAnual >= 0 ? undefined : 'neg'} />
                         ) : (
                           <span style={{ color: 'var(--atlas-v5-ink-4)' }}>—</span>
                         )}
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        {ingresoMes > 0 ? (
-                          <MoneyValue value={ingresoMes} decimals={0} tone="pos" />
+                        {netoMes !== 0 ? (
+                          <MoneyValue value={netoMes} decimals={0} tone={netoMes >= 0 ? 'pos' : 'neg'} />
                         ) : (
                           <span style={{ color: 'var(--atlas-v5-ink-4)' }}>—</span>
                         )}
@@ -183,6 +210,19 @@ const IngresosPage: React.FC = () => {
                         <Pill variant={a.activo ? 'pos' : 'gris'} asTag>
                           {a.activo ? 'Activo' : 'Inactivo'}
                         </Pill>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          aria-label="Editar autónomo"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editar();
+                          }}
+                          style={iconBtn}
+                        >
+                          <Pencil size={14} strokeWidth={1.8} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -207,39 +247,55 @@ const IngresosPage: React.FC = () => {
                   <th style={thStyle}>Tipo</th>
                   <th style={thStyle}>Titular</th>
                   <th style={thStyle}>Frecuencia</th>
-                  <th style={{ ...thStyle, textAlign: 'right' }}>Importe</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }} title="Importe líquido por cobro · lo que llega al banco">
+                    Neto / cobro
+                  </th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
+                  <th style={{ ...thStyle, textAlign: 'center', width: 60 }}>Editar</th>
                 </tr>
               </thead>
               <tbody>
-                {otrosIngresos.map((o, index) => (
-                  <tr
-                    key={o.id ?? `${o.nombre ?? 'sin-nombre'}-${index}`}
-                    style={{ cursor: 'pointer' }}
-                    title="Editar otro ingreso"
-                    onClick={() => {
-                      const titular = o.titularidad === 'pareja' ? 'pareja' : 'yo';
-                      navigate(`/gestion/personal/otros-ingresos?titular=${titular}`);
-                    }}
-                  >
-                    <td style={tdStyle}>
-                      <strong>{o.nombre ?? `Ingreso #${o.id}`}</strong>
-                    </td>
-                    <td style={tdStyle}>{o.tipo}</td>
-                    <td style={tdStyle}>
-                      {o.titularidad === 'pareja' ? 'Pareja' : o.titularidad === 'ambos' ? 'Ambos' : 'Titular'}
-                    </td>
-                    <td style={tdStyle}>{o.frecuencia}</td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <MoneyValue value={o.importe} decimals={0} tone="pos" />
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>
-                      <Pill variant={o.activo ? 'pos' : 'gris'} asTag>
-                        {o.activo ? 'Activo' : 'Inactivo'}
-                      </Pill>
-                    </td>
-                  </tr>
-                ))}
+                {otrosIngresos.map((o, index) => {
+                  const titular = o.titularidad === 'pareja' ? 'pareja' : 'yo';
+                  return (
+                    <tr
+                      key={o.id ?? `${o.nombre ?? 'sin-nombre'}-${index}`}
+                      style={{ cursor: 'pointer' }}
+                      title="Editar otro ingreso"
+                      onClick={() => navigate(`/gestion/personal/otros-ingresos?titular=${titular}`)}
+                    >
+                      <td style={tdStyle}>
+                        <strong>{o.nombre ?? `Ingreso #${o.id}`}</strong>
+                      </td>
+                      <td style={tdStyle}>{o.tipo}</td>
+                      <td style={tdStyle}>
+                        {o.titularidad === 'pareja' ? 'Pareja' : o.titularidad === 'ambos' ? 'Ambos' : 'Titular'}
+                      </td>
+                      <td style={tdStyle}>{o.frecuencia}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <MoneyValue value={o.importe} decimals={0} tone="pos" />
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <Pill variant={o.activo ? 'pos' : 'gris'} asTag>
+                          {o.activo ? 'Activo' : 'Inactivo'}
+                        </Pill>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          aria-label="Editar otro ingreso"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/gestion/personal/otros-ingresos?titular=${titular}`);
+                          }}
+                          style={iconBtn}
+                        >
+                          <Pencil size={14} strokeWidth={1.8} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardV5.Body>
@@ -299,6 +355,20 @@ const tdStyle: React.CSSProperties = {
   fontSize: 13,
   color: 'var(--atlas-v5-ink-2)',
   borderBottom: '1px solid var(--atlas-v5-line-2)',
+};
+
+const iconBtn: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 28,
+  height: 28,
+  padding: 0,
+  border: '1px solid var(--atlas-v5-line)',
+  borderRadius: 6,
+  background: 'var(--atlas-v5-card)',
+  color: 'var(--atlas-v5-ink-2)',
+  cursor: 'pointer',
 };
 
 export default IngresosPage;
