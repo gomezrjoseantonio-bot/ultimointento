@@ -60,13 +60,31 @@ const GastosPage: React.FC = () => {
 
   if (personalCompromisos.length === 0) {
     return (
-      <EmptyState
-        icon={<Icons.Tesoreria size={20} />}
-        title="Sin compromisos del hogar"
-        sub="Da de alta suministros, suscripciones, seguros y demás gastos recurrentes para que ATLAS los proyecte automáticamente · o deja que ATLAS los detecte desde tu histórico de movimientos."
-        ctaLabel="Detectar desde histórico"
-        onCtaClick={() => navigate('/personal/gastos/detectar-compromisos')}
-      />
+      <div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/personal/gastos/nuevo')}
+            style={{
+              ...chipStyle(false),
+              background: 'var(--atlas-v5-gold)',
+              borderColor: 'var(--atlas-v5-gold)',
+              color: 'var(--atlas-v5-white)',
+              fontWeight: 600,
+            }}
+          >
+            <Icons.Plus size={11} strokeWidth={2.5} style={{ marginRight: 4 }} />
+            Nuevo gasto recurrente
+          </button>
+        </div>
+        <EmptyState
+          icon={<Icons.Tesoreria size={20} />}
+          title="Sin compromisos del hogar"
+          sub="Da de alta suministros, suscripciones, seguros y demás gastos recurrentes para que ATLAS los proyecte automáticamente · o deja que ATLAS los detecte desde tu histórico de movimientos."
+          ctaLabel="Detectar desde histórico"
+          onCtaClick={() => navigate('/personal/gastos/detectar-compromisos')}
+        />
+      </div>
     );
   }
 
@@ -134,6 +152,20 @@ const GastosPage: React.FC = () => {
             {t}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => navigate('/personal/gastos/nuevo')}
+          style={{
+            ...chipStyle(false),
+            background: 'var(--atlas-v5-gold)',
+            borderColor: 'var(--atlas-v5-gold)',
+            color: 'var(--atlas-v5-white)',
+            fontWeight: 600,
+          }}
+        >
+          <Icons.Plus size={11} strokeWidth={2.5} style={{ marginRight: 4 }} />
+          Nuevo gasto recurrente
+        </button>
         <button
           type="button"
           onClick={() => navigate('/inmuebles/importar-contratos')}

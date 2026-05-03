@@ -166,6 +166,10 @@ const PersonalGastos = lazyWithPreload(() => import('./modules/personal/pages/Ga
 const PersonalDetectarCompromisos = lazyWithPreload(
   () => import('./modules/personal/pages/DetectarCompromisosPage'),
 );
+// T34 · Wizard "Nuevo gasto recurrente personal"
+const PersonalNuevoGastoRecurrente = lazyWithPreload(
+  () => import('./modules/personal/pages/NuevoGastoRecurrentePage'),
+);
 const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
 const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
 // T20 Fase 3b · ImportarNominas re-ubicado per decisión D3 de Jose.
@@ -993,6 +997,11 @@ function App() {
               <Route path="gastos" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <PersonalGastos />
+                </React.Suspense>
+              } />
+              <Route path="gastos/nuevo" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <PersonalNuevoGastoRecurrente />
                 </React.Suspense>
               } />
               <Route path="gastos/detectar-compromisos" element={
