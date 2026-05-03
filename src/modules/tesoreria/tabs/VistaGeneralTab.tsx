@@ -13,6 +13,7 @@ import {
 } from '../components/BankAccountCard';
 import CashflowChart, { MonthFlow } from '../components/CashflowChart';
 import CalendarioRolling24m from '../../../components/treasury/CalendarioRolling24m';
+import MesDetalleDrawer from '../../../components/treasury/MesDetalleDrawer';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -32,6 +33,9 @@ const MONTH_NAMES = [
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
   const { accounts, movements, treasuryEvents } = useOutletContext<TesoreriaContext>();
+
+  // T31 · drawer detalle mes (mockup atlas-tesoreria-v8)
+  const [drawerMes, setDrawerMes] = useState<{ year: number; monthIndex0: number } | null>(null);
 
   const totalSaldo = useMemo(
     () =>
@@ -284,14 +288,18 @@ const VistaGeneralTab: React.FC = () => {
         <CalendarioRolling24m
           events={treasuryEvents}
           movements={movements as unknown as { date: string; amount: number }[]}
-          onMonthClick={(year, monthIndex0) => {
-            showToastV5(
-              `Abrir desglose · ${MONTH_NAMES[monthIndex0]} ${year}`,
-              'info',
-            );
-          }}
+          onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
         />
       </CardV5>
+
+      <MesDetalleDrawer
+        open={drawerMes !== null}
+        year={drawerMes?.year ?? null}
+        monthIndex0={drawerMes?.monthIndex0 ?? null}
+        events={treasuryEvents}
+        accounts={accounts}
+        onClose={() => setDrawerMes(null)}
+      />
     </>
   );
 };

@@ -2,21 +2,24 @@
 // ATLAS · T31 · CalendarioRolling24m
 // ============================================================================
 //
-// Vista de calendario rodante de 24 meses. 4 secciones jerárquicas en una
-// única tira temporal continua:
+// Vista calendario rodante 24 meses · estilo mes-card del mockup
+// docs/audit-inputs/atlas-tesoreria-v8.html · 4 secciones jerárquicas:
 //
-//   1. Próximos 3 meses          → cards GRANDES (mes en curso + 2 siguientes)
-//   2. Resto del año en curso    → cards MEDIANAS
-//   3. Año siguiente completo    → cards PEQUEÑAS
-//   4. Inicio del año (+2)       → cards PEQUEÑAS
+//   1. Próximos 3 meses           · cards GRANDES (mes en curso + 2 siguientes)
+//   2. Resto del año en curso     · cards estándar
+//   3. Año siguiente completo     · cards estándar
+//   4. Inicio del año (+2)        · cards estándar
 //
-// Las secciones vacías se omiten (no se renderiza ni el título).
-// El mes en curso se destaca con borde acentuado.
-// El clic en una card invoca onMonthClick(year, monthIndex0).
+// Cada card respeta los tokens v5 del mockup:
+//   · background card-alt cream
+//   · border-left 3px de salud (pos · gold · neg)
+//   · tag pill (cerrado · en curso · hoy · previsto · irpf · paga extra · tensión)
+//   · saldo en JetBrains Mono · entradas/salidas mono
+//
+// El clic invoca onMonthClick(year, monthIndex0).
 // ============================================================================
 
 import React, { useMemo } from 'react';
-import { CheckCircle2 } from 'lucide-react';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -28,10 +31,8 @@ const MESES_CORTO = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-// Tipo mínimo del evento que necesitamos. Coincide con el shape de
-// `treasuryEvents` en IndexedDB (campos relevantes para el cálculo mensual).
 export interface CalendarTreasuryEvent {
   predictedDate: string;
   type: 'income' | 'expense' | 'financing';
@@ -42,42 +43,64 @@ export interface CalendarTreasuryEvent {
 export interface CalendarMovement {
   date: string;
   amount: number;
-  // El sentido (ingreso/gasto) lo da el signo de amount o un campo adicional;
-  // para la suma de "movements del mes" usamos amount con signo si existe.
 }
 
 export interface CalendarioRolling24mProps {
-  /** Eventos en `treasuryEvents` (predicted + confirmed + executed) */
   events: CalendarTreasuryEvent[];
-  /** Movimientos bancarios reales en `movements` (para detectar mes "cerrado") */
   movements: CalendarMovement[];
-  /** Callback al hacer clic en una card de mes (year, monthIndex0) */
   onMonthClick: (year: number, monthIndex0: number) => void;
-  /** Default 24. */
   horizonteMeses?: number;
 }
 
-// ─── Helpers de fecha ───────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
-
 function addMonths(d: Date, months: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + months, 1);
 }
 
+type Estado = 'cerrado' | 'en_curso' | 'previsto';
+type Salud = 'pos' | 'gold' | 'neg';
+type TagVariant = 'default' | 'now' | 'warn' | 'good';
+
 interface DatosMes {
   year: number;
   monthIndex0: number;
-  fechaInicio: Date;
-  fechaFin: Date;
-  estado: 'cerrado' | 'en_curso' | 'previsto';
+  estado: Estado;
+  salud: Salud;
+  tagLabel: string;
+  tagVariant: TagVariant;
   saldoFinal: number;
   entradas: number;
   salidas: number;
-  neto: number;
   esMesActual: boolean;
+}
+
+// Etiqueta heurística simple según mes calendario y signo del neto.
+// Identifica IRPF (jun/nov), Paga extra (jul/dic), Tensión (neto < umbral),
+// "en curso · hoy" y "cerrado".
+function deriveTag(
+  monthIndex0: number,
+  estado: Estado,
+  esMesActual: boolean,
+  neto: number,
+): { label: string; variant: TagVariant } {
+  if (esMesActual) return { label: 'en curso · hoy', variant: 'now' };
+  if (estado === 'cerrado') return { label: 'cerrado', variant: 'default' };
+  if (monthIndex0 === 5) return { label: 'irpf', variant: 'warn' };
+  if (monthIndex0 === 10) return { label: 'irpf 2º plazo', variant: 'warn' };
+  if (monthIndex0 === 6 || monthIndex0 === 11) return { label: 'paga extra', variant: 'good' };
+  if (neto < -3000) return { label: 'tensión', variant: 'warn' };
+  return { label: 'previsto', variant: 'default' };
+}
+
+function deriveSalud(neto: number, estado: Estado): Salud {
+  if (estado === 'cerrado') return neto >= 0 ? 'pos' : 'neg';
+  if (neto >= 0) return 'pos';
+  if (neto < -3000) return 'neg';
+  return 'gold';
 }
 
 // ─── Componente ─────────────────────────────────────────────────────────────
@@ -91,13 +114,11 @@ const CalendarioRolling24m: React.FC<CalendarioRolling24mProps> = ({
   const hoy = useMemo(() => new Date(), []);
   const inicioMesActual = useMemo(() => startOfMonth(hoy), [hoy]);
 
-  // Construir lista plana de 24 meses
   const meses: DatosMes[] = useMemo(() => {
     const arr: DatosMes[] = [];
     let saldoAcumulado = 0;
     for (let i = 0; i < horizonteMeses; i++) {
       const fechaInicio = addMonths(inicioMesActual, i);
-      const fechaFin = new Date(fechaInicio.getFullYear(), fechaInicio.getMonth() + 1, 0);
       const year = fechaInicio.getFullYear();
       const m = fechaInicio.getMonth();
 
@@ -123,32 +144,33 @@ const CalendarioRolling24m: React.FC<CalendarioRolling24mProps> = ({
 
       const tieneMov = movsMes.length > 0;
       const tienePredicted = eventosMes.some((e) => e.status === 'predicted');
-      let estado: DatosMes['estado'];
+      let estado: Estado;
       if (tieneMov && !tienePredicted) estado = 'cerrado';
       else if (tieneMov && tienePredicted) estado = 'en_curso';
       else estado = 'previsto';
 
-      const esMesActual =
-        year === hoy.getFullYear() && m === hoy.getMonth();
+      const esMesActual = year === hoy.getFullYear() && m === hoy.getMonth();
       if (esMesActual) estado = 'en_curso';
+
+      const tag = deriveTag(m, estado, esMesActual, neto);
+      const salud = deriveSalud(neto, estado);
 
       arr.push({
         year,
         monthIndex0: m,
-        fechaInicio,
-        fechaFin,
         estado,
+        salud,
+        tagLabel: tag.label,
+        tagVariant: tag.variant,
         saldoFinal: saldoAcumulado,
         entradas,
         salidas,
-        neto,
         esMesActual,
       });
     }
     return arr;
   }, [events, movements, inicioMesActual, hoy, horizonteMeses]);
 
-  // Particionar en 4 secciones
   const secciones = useMemo(() => {
     if (meses.length === 0) {
       return { proximos: [], restoActual: [], anioSig: [], inicioMas2: [] };
@@ -165,49 +187,62 @@ const CalendarioRolling24m: React.FC<CalendarioRolling24mProps> = ({
   const yearActual = inicioMesActual.getFullYear();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* SECCIÓN 1 · Próximos 3 meses · cards grandes */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       {secciones.proximos.length > 0 && (
-        <SectionWrapper title="Próximos 3 meses · corto plazo">
+        <Section title="Próximos 3 meses · corto plazo">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
             {secciones.proximos.map((m) => (
-              <MonthCardLarge key={`l-${m.year}-${m.monthIndex0}`} datos={m} onClick={onMonthClick} />
+              <MesCard
+                key={`p-${m.year}-${m.monthIndex0}`}
+                datos={m}
+                size="lg"
+                onClick={onMonthClick}
+              />
             ))}
           </div>
-        </SectionWrapper>
+        </Section>
       )}
-
-      {/* SECCIÓN 2 · Resto del año en curso · cards medianas */}
       {secciones.restoActual.length > 0 && (
-        <SectionWrapper title={`Resto de ${yearActual}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
+        <Section title={`Resto de ${yearActual}`}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {secciones.restoActual.map((m) => (
-              <MonthCardMedium key={`m-${m.year}-${m.monthIndex0}`} datos={m} onClick={onMonthClick} />
+              <MesCard
+                key={`r-${m.year}-${m.monthIndex0}`}
+                datos={m}
+                size="md"
+                onClick={onMonthClick}
+              />
             ))}
           </div>
-        </SectionWrapper>
+        </Section>
       )}
-
-      {/* SECCIÓN 3 · Año siguiente · 12 cards pequeñas */}
       {secciones.anioSig.length > 0 && (
-        <SectionWrapper title={`Año siguiente · ${yearActual + 1}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 6 }}>
+        <Section title={`Año siguiente · ${yearActual + 1}`}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {secciones.anioSig.map((m) => (
-              <MonthCardSmall key={`s-${m.year}-${m.monthIndex0}`} datos={m} onClick={onMonthClick} />
+              <MesCard
+                key={`s-${m.year}-${m.monthIndex0}`}
+                datos={m}
+                size="md"
+                onClick={onMonthClick}
+              />
             ))}
           </div>
-        </SectionWrapper>
+        </Section>
       )}
-
-      {/* SECCIÓN 4 · Inicio del año +2 · cards pequeñas */}
       {secciones.inicioMas2.length > 0 && (
-        <SectionWrapper title={`Inicio ${yearActual + 2}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 6 }}>
+        <Section title={`Inicio ${yearActual + 2}`}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             {secciones.inicioMas2.map((m) => (
-              <MonthCardSmall key={`s2-${m.year}-${m.monthIndex0}`} datos={m} onClick={onMonthClick} />
+              <MesCard
+                key={`s2-${m.year}-${m.monthIndex0}`}
+                datos={m}
+                size="md"
+                onClick={onMonthClick}
+              />
             ))}
           </div>
-        </SectionWrapper>
+        </Section>
       )}
     </div>
   );
@@ -215,9 +250,9 @@ const CalendarioRolling24m: React.FC<CalendarioRolling24mProps> = ({
 
 export default CalendarioRolling24m;
 
-// ─── Subcomponentes ─────────────────────────────────────────────────────────
+// ─── Sub-componentes ────────────────────────────────────────────────────────
 
-const SectionWrapper: React.FC<{ title: string; children: React.ReactNode }> = ({
+const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
   title,
   children,
 }) => (
@@ -225,11 +260,12 @@ const SectionWrapper: React.FC<{ title: string; children: React.ReactNode }> = (
     <div
       style={{
         fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '.07em',
+        fontWeight: 700,
+        letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        color: 'var(--grey-400)',
-        marginBottom: 8,
+        color: 'var(--atlas-v5-ink-4)',
+        marginBottom: 10,
+        paddingLeft: 4,
       }}
     >
       {title}
@@ -238,56 +274,80 @@ const SectionWrapper: React.FC<{ title: string; children: React.ReactNode }> = (
   </div>
 );
 
-interface MonthCardProps {
+interface MesCardProps {
   datos: DatosMes;
+  size: 'lg' | 'md';
   onClick: (year: number, monthIndex0: number) => void;
 }
 
-const cardBaseStyle = (datos: DatosMes, opacity: number): React.CSSProperties => ({
-  background: 'var(--white)',
-  borderRadius: 10,
-  cursor: 'pointer',
-  transition: 'box-shadow 0.15s',
-  border: `1.5px solid ${datos.esMesActual ? 'var(--navy-900)' : 'var(--grey-200)'}`,
-  opacity,
-});
-
-const labelEstado = (estado: DatosMes['estado'], esMesActual: boolean): React.ReactNode => {
-  if (esMesActual) {
-    return (
-      <span
-        style={{
-          display: 'inline-block',
-          fontSize: 10,
-          fontWeight: 600,
-          padding: '1px 6px',
-          borderRadius: 99,
-          background: 'var(--teal-100)',
-          color: 'var(--teal-600)',
-        }}
-      >
-        Hoy
-      </span>
-    );
-  }
-  if (estado === 'cerrado') {
-    return <CheckCircle2 size={11} color="var(--teal-600)" aria-label="Cerrado" />;
-  }
-  return (
-    <span style={{ fontSize: 10, color: 'var(--grey-300)' }}>
-      {estado === 'en_curso' ? 'En curso' : 'Previsto'}
-    </span>
-  );
+const TAG_STYLES: Record<TagVariant, React.CSSProperties> = {
+  default: {
+    background: 'var(--atlas-v5-bg)',
+    color: 'var(--atlas-v5-ink-4)',
+  },
+  now: {
+    background: 'var(--atlas-v5-gold-2)',
+    color: 'var(--atlas-v5-white)',
+  },
+  warn: {
+    background: 'var(--atlas-v5-warn-wash)',
+    color: 'var(--atlas-v5-gold-ink)',
+  },
+  good: {
+    background: 'var(--atlas-v5-pos-wash)',
+    color: 'var(--atlas-v5-pos)',
+  },
 };
 
-const MonthCardLarge: React.FC<MonthCardProps> = ({ datos, onClick }) => {
+const SALUD_BORDER: Record<Salud, string> = {
+  pos: 'var(--atlas-v5-pos)',
+  gold: 'var(--atlas-v5-gold-2)',
+  neg: 'var(--atlas-v5-neg)',
+};
+
+const MesCard: React.FC<MesCardProps> = ({ datos, size, onClick }) => {
   const handle = (): void => onClick(datos.year, datos.monthIndex0);
+  const isLg = size === 'lg';
+  const isCurrent = datos.esMesActual;
+  const isPast = datos.estado === 'cerrado';
+
+  const mesLabel = isLg
+    ? `${MESES[datos.monthIndex0]} ${datos.year}`
+    : `${MESES_CORTO[datos.monthIndex0]} ${datos.year}`;
+
+  const cardStyle: React.CSSProperties = {
+    background: isCurrent
+      ? 'var(--atlas-v5-gold-wash)'
+      : 'var(--atlas-v5-card-alt)',
+    border: `1px solid ${
+      isCurrent ? 'var(--atlas-v5-gold-2)' : 'var(--atlas-v5-line)'
+    }`,
+    borderLeft: `3px solid ${SALUD_BORDER[datos.salud]}`,
+    borderRadius: 10,
+    padding: isLg ? '16px 16px 16px 13px' : '12px 12px 12px 11px',
+    cursor: 'pointer',
+    transition: 'border-color .12s, transform .12s, box-shadow .12s',
+    opacity: isPast ? 0.78 : 1,
+  };
+
+  const tagStyle: React.CSSProperties = {
+    display: 'inline-block',
+    fontSize: isLg ? 10 : 9.5,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    padding: '2px 6px',
+    borderRadius: 4,
+    fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+    marginBottom: 10,
+    ...TAG_STYLES[datos.tagVariant],
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label={`Detalle de ${MESES[datos.monthIndex0]} ${datos.year}`}
-      className="tv4-month-card"
       onClick={handle}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -295,124 +355,72 @@ const MonthCardLarge: React.FC<MonthCardProps> = ({ datos, onClick }) => {
           handle();
         }
       }}
-      style={{ ...cardBaseStyle(datos, 1), padding: '16px 18px' }}
+      style={cardStyle}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--navy-900)' }}>
-          {MESES[datos.monthIndex0]} {datos.year}
-        </span>
-        {labelEstado(datos.estado, datos.esMesActual)}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--grey-400)', marginBottom: 2 }}>Saldo final estimado</div>
       <div
         style={{
-          fontSize: 22,
+          fontSize: isLg ? 14 : 13,
           fontWeight: 700,
-          fontFamily: 'IBM Plex Mono',
-          color: datos.saldoFinal >= 0 ? 'var(--navy-900)' : 'var(--grey-700)',
-          lineHeight: 1.1,
-          marginBottom: 12,
+          color: 'var(--atlas-v5-ink)',
+          marginBottom: 4,
         }}
       >
-        {datos.saldoFinal >= 0 ? '' : '−'}{formatEur(Math.abs(datos.saldoFinal))} €
+        {mesLabel}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-          <span style={{ color: 'var(--grey-500)' }}>Entradas</span>
-          <span style={{ fontFamily: 'IBM Plex Mono', fontWeight: 600, color: 'var(--navy-900)' }}>
-            +{formatEur(datos.entradas)} €
-          </span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-          <span style={{ color: 'var(--grey-500)' }}>Salidas</span>
-          <span style={{ fontFamily: 'IBM Plex Mono', fontWeight: 600, color: 'var(--grey-700)' }}>
-            −{formatEur(datos.salidas)} €
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const MonthCardMedium: React.FC<MonthCardProps> = ({ datos, onClick }) => {
-  const handle = (): void => onClick(datos.year, datos.monthIndex0);
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Detalle de ${MESES[datos.monthIndex0]} ${datos.year}`}
-      className="tv4-month-card"
-      onClick={handle}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handle();
-        }
-      }}
-      style={{ ...cardBaseStyle(datos, 1), padding: '11px 12px' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--grey-900)' }}>
-          {MESES_CORTO[datos.monthIndex0]} {datos.year}
-        </span>
-        {labelEstado(datos.estado, datos.esMesActual)}
-      </div>
-      <div style={{ fontSize: 10, color: 'var(--grey-400)', marginBottom: 1 }}>Saldo final</div>
+      <div style={tagStyle}>{datos.tagLabel}</div>
       <div
         style={{
-          fontSize: 14,
+          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          fontSize: isLg ? 22 : 18,
           fontWeight: 700,
-          fontFamily: 'IBM Plex Mono',
-          color: datos.saldoFinal >= 0 ? 'var(--navy-900)' : 'var(--grey-700)',
-          marginBottom: 6,
+          color: 'var(--atlas-v5-ink)',
+          letterSpacing: '-0.025em',
+          marginBottom: 10,
         }}
       >
-        {datos.saldoFinal >= 0 ? '' : '−'}{formatEur(Math.abs(datos.saldoFinal))} €
+        {formatEur(datos.saldoFinal)} €
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--grey-500)' }}>
-        <span>+{formatEur(datos.entradas)}</span>
-        <span>−{formatEur(datos.salidas)}</span>
-      </div>
-    </div>
-  );
-};
-
-const MonthCardSmall: React.FC<MonthCardProps> = ({ datos, onClick }) => {
-  const handle = (): void => onClick(datos.year, datos.monthIndex0);
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Detalle de ${MESES[datos.monthIndex0]} ${datos.year}`}
-      className="tv4-month-card"
-      onClick={handle}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handle();
-        }
-      }}
-      style={{ ...cardBaseStyle(datos, 0.85), padding: '8px 10px' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--grey-700)' }}>
-          {MESES_CORTO[datos.monthIndex0]} {datos.year}
-        </span>
-      </div>
-      <div style={{ fontSize: 9, color: 'var(--grey-400)' }}>Saldo</div>
       <div
         style={{
-          fontSize: 12,
-          fontWeight: 700,
-          fontFamily: 'IBM Plex Mono',
-          color: datos.saldoFinal >= 0 ? 'var(--navy-900)' : 'var(--grey-700)',
-          marginBottom: 2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: isLg ? 11 : 10.5,
+          color: 'var(--atlas-v5-ink-4)',
+          padding: '2px 0',
         }}
       >
-        {datos.saldoFinal >= 0 ? '' : '−'}{formatEur(Math.abs(datos.saldoFinal))} €
+        <span>Entradas</span>
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            fontWeight: 600,
+            fontSize: isLg ? 12 : 11,
+            color: 'var(--atlas-v5-pos)',
+          }}
+        >
+          +{formatEur(datos.entradas)}
+        </span>
       </div>
-      <div style={{ fontSize: 9, color: 'var(--grey-500)' }}>
-        Neto · {datos.neto >= 0 ? '+' : '−'}{formatEur(Math.abs(datos.neto))}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: isLg ? 11 : 10.5,
+          color: 'var(--atlas-v5-ink-4)',
+          padding: '2px 0',
+        }}
+      >
+        <span>Salidas</span>
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            fontWeight: 600,
+            fontSize: isLg ? 12 : 11,
+            color: 'var(--atlas-v5-neg)',
+          }}
+        >
+          −{formatEur(datos.salidas)}
+        </span>
       </div>
     </div>
   );
