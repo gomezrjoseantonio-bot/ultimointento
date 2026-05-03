@@ -337,7 +337,8 @@ const BOLSA_LABELS: Record<BolsaPresupuesto, string> = {
 function mesLabel(mesStr: string): string {
   const n = parseInt(mesStr, 10);
   if (isNaN(n) || n < 1 || n > 12) return '?';
-  return MESES_LABELS[n - 1] ?? '?';
+  // n is guaranteed within 0-11 array bounds
+  return MESES_LABELS[n - 1] as string;
 }
 
 function formatPatronResumen(form: FormState): string {
@@ -990,7 +991,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
                 <option value="">— Selecciona una cuenta —</option>
                 {cuentas.map((c) => {
                   const label = c.alias || c.banco?.name || c.iban;
-                  const saldo = (c as { saldo?: number }).saldo;
+                  const saldo = c.balance;
                   const saldoStr = saldo != null ? ` · ${saldo.toLocaleString('es-ES', { minimumFractionDigits: 0 })} €` : '';
                   return (
                     <option key={c.id} value={String(c.id)}>
