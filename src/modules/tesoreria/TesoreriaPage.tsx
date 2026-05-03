@@ -125,9 +125,13 @@ const TesoreriaPage: React.FC = () => {
     (sum, a) => sum + (a.balance ?? a.openingBalance ?? 0),
     0,
   );
-  const pendientesCount = movements.filter(
-    (m) => m.unifiedStatus === 'no_planificado' || m.estado_conciliacion === 'sin_conciliar',
-  ).length;
+  const pendientesCount =
+    movements.filter(
+      (m) => m.unifiedStatus === 'no_planificado' || m.estado_conciliacion === 'sin_conciliar',
+    ).length +
+    treasuryEvents.filter(
+      (e) => e.status !== 'executed' && !e.executedMovementId,
+    ).length;
 
   const tabs: TabItem[] = [
     { key: 'general', label: 'Vista general', path: '/tesoreria' },
@@ -203,7 +207,7 @@ const TesoreriaPage: React.FC = () => {
         }
       />
 
-      <Outlet context={{ accounts, movements, treasuryEvents }} />
+      <Outlet context={{ accounts, movements, treasuryEvents, reload: () => setReloadTick((t) => t + 1) }} />
     </div>
   );
 };
@@ -212,6 +216,7 @@ export interface TesoreriaContext {
   accounts: Account[];
   movements: Movement[];
   treasuryEvents: any[];
+  reload: () => void;
 }
 
 export default TesoreriaPage;

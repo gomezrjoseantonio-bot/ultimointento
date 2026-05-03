@@ -221,3 +221,38 @@
   color: var(--atlas-v5-ink-4);
   font-size: 13.5px;
 }
+
+/* ── Treasury event (PREVISTO) rows ─────────────────────────────────────── */
+
+.previstoRow { background: var(--atlas-v5-gold-wash, #fffbf0); }
+.previstoRow:hover { background: color-mix(in srgb, var(--atlas-v5-gold-wash, #fffbf0) 60%, var(--atlas-v5-bg)); }
+
+.previstoChk {
+  border-style: dashed;
+  border-color: var(--atlas-v5-gold);
+  background: transparent;
+  color: var(--atlas-v5-gold);
+}
+.previstoChk:hover:not(:disabled) {
+  background: var(--atlas-v5-gold-wash, #fffbf0);
+  border-color: var(--atlas-v5-gold-2, #e6a000);
+  color: var(--atlas-v5-gold-2, #e6a000);
+}
+.previstoChk:disabled { opacity: 0.4; cursor: default; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinning { animation: spin 0.8s linear infinite; display: block; }
+
+.pillPrevisto {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--atlas-v5-gold-wash, #fff8e1);
+  color: var(--atlas-v5-gold-2, #b8860b);
+  border: 1px solid var(--atlas-v5-gold, #f5a623);
+  font-family: var(--atlas-v5-font-ui);
+}
