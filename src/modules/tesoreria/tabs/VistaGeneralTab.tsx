@@ -12,7 +12,7 @@ import {
   BankAccountAddCard,
 } from '../components/BankAccountCard';
 import CashflowChart, { MonthFlow } from '../components/CashflowChart';
-import MonthGrid, { MonthCard } from '../components/MonthGrid';
+import CalendarioRolling24m from '../../../components/treasury/CalendarioRolling24m';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -31,7 +31,7 @@ const MONTH_NAMES = [
 
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
-  const { accounts, movements } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents } = useOutletContext<TesoreriaContext>();
 
   const totalSaldo = useMemo(
     () =>
@@ -128,37 +128,18 @@ const VistaGeneralTab: React.FC = () => {
     });
   }, [movByYearMonth, currentYear, currentMonthIdx, totalSaldo, budgetProjection]);
 
-  const monthCards: MonthCard[] = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const realFlow = movByYearMonth.get(`${currentYear}-${i}`);
-      const projectionFlow = budgetProjection?.months[i];
-      const status: MonthCard['status'] =
-        i < currentMonthIdx ? 'past' : i === currentMonthIdx ? 'current' : 'future';
-      // Pasados/actuales · datos reales · futuros · proyección Mi Plan.
-      const entradas =
-        status === 'future'
-          ? projectionFlow?.entradas ?? 0
-          : realFlow?.entradas ?? 0;
-      const salidas =
-        status === 'future'
-          ? projectionFlow?.salidas ?? 0
-          : realFlow?.salidas ?? 0;
-      return {
-        key: `${currentYear}-${i}`,
-        month: i + 1,
-        name: MONTH_NAMES[i],
-        status,
-        saldo: months[i]?.saldoPrevisto ?? totalSaldo,
-        entradas,
-        salidas,
-      };
-    });
-  }, [movByYearMonth, currentYear, currentMonthIdx, months, totalSaldo, budgetProjection]);
-
-  const entradasAnuales = monthCards.reduce((sum, m) => sum + m.entradas, 0);
-  // `salidas` se acumula como suma de `m.amount` cuando el importe es negativo
-  // · ya viene con signo · `entradas + salidas` da el balance neto correcto.
-  const salidasAnuales = monthCards.reduce((sum, m) => sum + m.salidas, 0);
+  // T31 · El calendario rodante 24m calcula su propia agregación a partir
+  // de treasuryEvents · ya no necesitamos monthCards 12-meses.
+  const entradasAnuales = useMemo(
+    () =>
+      Array.from(movByYearMonth.values()).reduce((sum, m) => sum + m.entradas, 0),
+    [movByYearMonth],
+  );
+  const salidasAnuales = useMemo(
+    () =>
+      Array.from(movByYearMonth.values()).reduce((sum, m) => sum + m.salidas, 0),
+    [movByYearMonth],
+  );
   const saldoInicio = totalSaldo - (entradasAnuales + salidasAnuales);
 
   const pendientesPorCuenta = useMemo(() => {
@@ -279,15 +260,27 @@ const VistaGeneralTab: React.FC = () => {
       <CardV5 className={styles.card}>
         <div className={styles.cardHd}>
           <div>
-            <div className={styles.cardTitle}>Calendario anual · {currentYear}</div>
-            <div className={styles.cardSub}>12 meses · clic para ver desglose</div>
+            <div className={styles.cardTitle}>Calendario · 24 meses rodante</div>
+            <div className={styles.cardSub}>
+              {(() => {
+                const inicio = new Date(currentYear, currentMonthIdx, 1);
+                const fin = new Date(currentYear, currentMonthIdx + 24, 0);
+                const fmt = (d: Date) =>
+                  `${MONTH_NAMES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
+                return `desde ${fmt(inicio)} hasta ${fmt(fin)} · próximos 3 meses destacados`;
+              })()}
+            </div>
           </div>
         </div>
-        <MonthGrid
-          months={monthCards}
-          onClick={(m) =>
-            showToastV5(`Abrir desglose · ${m.name} ${currentYear}`)
-          }
+        <CalendarioRolling24m
+          events={treasuryEvents}
+          movements={movements as unknown as { date: string; amount: number }[]}
+          onMonthClick={(year, monthIndex0) => {
+            showToastV5(
+              `Abrir desglose · ${MONTH_NAMES[monthIndex0]} ${year}`,
+              'info',
+            );
+          }}
         />
       </CardV5>
     </>

@@ -28,10 +28,7 @@ import {
   personalExpenseAppliesToMonth,
   getPersonalExpenseAmountForMonth,
 } from '../../../horizon/proyeccion/mensual/services/forecastEngine';
-import {
-  ConfiguracionFiscal,
-  TRAMOS_AHORRO_2026,
-} from '../../../../types/inversiones-extended';
+import { TRAMOS_AHORRO_2026 } from '../../../../types/inversiones-extended';
 import {
   getBusinessDayForRule,
   getPropertyLiteral,
