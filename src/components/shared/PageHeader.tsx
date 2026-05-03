@@ -170,9 +170,11 @@ export const HeaderSecondaryButton: React.FC<{
   icon?: LucideIcon;
   label: string;
   onClick?: () => void;
-}> = ({ icon: BtnIcon, label, onClick }) => (
+  disabled?: boolean;
+}> = ({ icon: BtnIcon, label, onClick, disabled = false }) => (
   <button
     onClick={onClick}
+    disabled={disabled}
     style={{
       display: 'inline-flex',
       alignItems: 'center',
@@ -184,7 +186,8 @@ export const HeaderSecondaryButton: React.FC<{
       color: 'var(--grey-700, #303A4C)',
       fontSize: 'var(--t-base, 0.875rem)',
       fontWeight: 500,
-      cursor: 'pointer',
+      cursor: disabled ? 'not-allowed' : 'pointer',
+      opacity: disabled ? 0.6 : 1,
       fontFamily: "'IBM Plex Sans', system-ui, sans-serif",
       transition: 'all 150ms ease',
     }}
