@@ -31,9 +31,14 @@ const PresupuestoPage: React.FC = () => {
   // no sobre el bruto, porque las obligaciones fiscales (IRPF · SS) ya quedan
   // descontadas en origen y no son disponibles para necesidades/deseos/ahorro.
   const mesActual = new Date().getMonth() + 1;
-  const ingresosMes =
+  const ingresosMesRaw =
     nominas.reduce((sum, n) => sum + computeNominaNetoEnMes(n, mesActual), 0) +
     autonomos.reduce((sum, a) => sum + computeAutonomoNetoEnMes(a, mesActual), 0);
+  // Si el neto del mes es negativo (autónomos con gastos+RETA > ingresos en
+  // un mes sin facturación), las metas 50/30/20 pierden sentido. Mostramos
+  // estado específico "mes en pérdidas" en vez de calcular metas absurdas.
+  const mesEnPerdidas = ingresosMesRaw < 0;
+  const ingresosMes = mesEnPerdidas ? 0 : ingresosMesRaw;
 
   let necesidades = 0;
   let deseos = 0;
@@ -74,10 +79,15 @@ const PresupuestoPage: React.FC = () => {
       <CardV5.Title>Presupuesto · método 50/30/20</CardV5.Title>
       <CardV5.Subtitle>
         cumplimiento del mes en curso · ingresos del hogar{' '}
-        <MoneyValue value={ingresosMes} decimals={0} tone="ink" />
+        <MoneyValue value={ingresosMesRaw} decimals={0} tone={ingresosMesRaw >= 0 ? 'ink' : 'neg'} />
       </CardV5.Subtitle>
       <CardV5.Body>
-        {ingresosMes === 0 ? (
+        {mesEnPerdidas ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--atlas-v5-warn)', fontSize: 13 }}>
+            <Icons.Info size={18} strokeWidth={1.6} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            Mes en pérdidas · gastos y cuotas superan a los ingresos · el método 50/30/20 no aplica este mes.
+          </div>
+        ) : ingresosMes === 0 ? (
           <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
             <Icons.Info size={18} strokeWidth={1.6} style={{ verticalAlign: 'middle', marginRight: 6 }} />
             Sin ingresos registrados · da de alta nóminas o actividad de autónomo para activar el presupuesto.

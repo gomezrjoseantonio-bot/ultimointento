@@ -4,10 +4,10 @@ import { MoneyValue, DateLabel, EmptyState, Icons, showToastV5 } from '../../../
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import {
-  computeAutonomoNetoEnMes,
+  computeAutonomoNetoPorMes,
   computeCompromisoMonthly,
   computeCompromisoImporteEnMes,
-  computeNominaNetoEnMes,
+  computeNominaNetoPorMes,
   familiaForCategoria,
   safeDayOfMonth,
 } from '../helpers';
@@ -40,29 +40,14 @@ const colorForFamilia = (fam: string): string =>
   FAMILIA_DOTS[fam] ?? 'var(--atlas-v5-ink-4)';
 
 /**
- * Ingreso NETO del hogar para un mes concreto · lo que llega al banco.
- * Spec v1.1 regla 4 (calendario REAL, no plano · paga extra entera en su mes,
- * variable y bonus en su mes pagadero).
- *
- * Nómina · `netoTotal` (devengado − SS − IRPF − aportación PP empleado).
- * Autónomo · `ingresos − gastos − cuota RETA`.
- *
- * @param mes 1-12
+ * Suma elemento a elemento de varios arrays de 12 meses.
  */
-const computeIngresoNetoEnMes = (
-  nominas: PersonalOutletContext['nominas'],
-  autonomos: PersonalOutletContext['autonomos'],
-  mes: number,
-): number => {
-  const nominaMes = nominas.reduce(
-    (sum, n) => sum + computeNominaNetoEnMes(n, mes),
-    0,
-  );
-  const autonomoMes = autonomos.reduce(
-    (sum, a) => sum + computeAutonomoNetoEnMes(a, mes),
-    0,
-  );
-  return nominaMes + autonomoMes;
+const sumDistribuciones = (dists: number[][]): number[] => {
+  const out = Array(12).fill(0);
+  for (const d of dists) {
+    for (let i = 0; i < 12; i++) out[i] += d[i] ?? 0;
+  }
+  return out;
 };
 
 const computeGastoPorFamilia = (
@@ -125,15 +110,14 @@ const PanelPage: React.FC = () => {
   // Paga extra entera en junio/diciembre · variable/bonus en su mes pagadero.
   const mesActual = new Date().getMonth() + 1;
   // Distribución real de NETO líquido por mes (lo que llega al banco · 12 entradas).
-  // Se usa tanto para el KPI del mes en curso como para el chart "Ingresos vs gastos · 12 meses",
-  // evitando que un pico (paga extra · variable) infle todos los demás meses.
-  const ingresosPorMes = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, i) =>
-        computeIngresoNetoEnMes(nominas, autonomos, i + 1),
-      ),
-    [nominas, autonomos],
-  );
+  // Calcula la distribución de cada nómina/autónomo UNA SOLA VEZ por cambio de
+  // datos · evita que `calculateSalary` y `getMonthlyDistribution` se ejecuten
+  // 12 × N veces dentro de un loop.
+  const ingresosPorMes = useMemo(() => {
+    const nominaDists = nominas.map((n) => computeNominaNetoPorMes(n));
+    const autonomoDists = autonomos.map((a) => computeAutonomoNetoPorMes(a));
+    return sumDistribuciones([...nominaDists, ...autonomoDists]);
+  }, [nominas, autonomos]);
   const ingresosMes = ingresosPorMes[mesActual - 1];
   // Distribución real de gastos por mes · usa el importe real del compromiso
   // en cada mes (estacionalidad · pagos puntuales) en lugar del promedio /12.

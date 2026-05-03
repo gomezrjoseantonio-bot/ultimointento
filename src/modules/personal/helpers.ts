@@ -117,8 +117,8 @@ export const computeAutonomoIngresoEnMes = (a: Autonomo, mes: number): number =>
  * Neto líquido de una nómina en un mes concreto · lo que llega al banco.
  * Spec v1.1 regla 4 (calendario REAL · no plano).
  *
- * Usa `calculateSalary(n).distribucionMensual[mes-1].netoTotal`, que es
- * `totalDevengado - SS - IRPF - aportación PP empleado - otras deducciones`.
+ * Usa `calculateSalary(n).distribucionMensual.find(d => d.mes === mes)?.netoTotal`,
+ * que es `totalDevengado - SS - IRPF - aportación PP empleado - otras deducciones`.
  *
  * Devuelve 0 si la nómina está inactiva o si los datos están incompletos.
  *
@@ -133,6 +133,27 @@ export const computeNominaNetoEnMes = (n: Nomina, mes: number): number => {
     // eslint-disable-next-line no-console
     console.warn('[helpers] computeNominaNetoEnMes · calculateSalary lanzó · datos incompletos', err);
     return 0;
+  }
+};
+
+/**
+ * Neto líquido de una nómina por los 12 meses del año (en una sola pasada).
+ * Útil cuando se va a indexar por varios meses para evitar repetir el cálculo
+ * pesado de `calculateSalary` (14 pagas + variables + bonus + SS + IRPF + PP).
+ *
+ * Devuelve `[0, 0, …]` si la nómina está inactiva o los datos son incompletos.
+ */
+export const computeNominaNetoPorMes = (n: Nomina): number[] => {
+  if (!n.activa) return Array(12).fill(0);
+  try {
+    const r = nominaService.calculateSalary(n);
+    return Array.from({ length: 12 }, (_, i) =>
+      r.distribucionMensual.find((d) => d.mes === i + 1)?.netoTotal ?? 0,
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeNominaNetoPorMes · calculateSalary lanzó · datos incompletos', err);
+    return Array(12).fill(0);
   }
 };
 
@@ -170,6 +191,22 @@ export const computeAutonomoNetoEnMes = (a: Autonomo, mes: number): number => {
     // eslint-disable-next-line no-console
     console.warn('[helpers] computeAutonomoNetoEnMes · getMonthlyDistribution lanzó', err);
     return 0;
+  }
+};
+
+/**
+ * Neto de un autónomo por los 12 meses del año (en una sola pasada).
+ * Devuelve `[0, 0, …]` si el autónomo está inactivo.
+ */
+export const computeAutonomoNetoPorMes = (a: Autonomo): number[] => {
+  if (!a.activo) return Array(12).fill(0);
+  try {
+    const dist = autonomoService.getMonthlyDistribution(a);
+    return Array.from({ length: 12 }, (_, i) => dist[i]?.neto ?? 0);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[helpers] computeAutonomoNetoPorMes · getMonthlyDistribution lanzó', err);
+    return Array(12).fill(0);
   }
 };
 
