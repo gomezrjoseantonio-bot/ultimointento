@@ -12,8 +12,13 @@ import {
   BankAccountAddCard,
 } from '../components/BankAccountCard';
 import CashflowChart, { MonthFlow } from '../components/CashflowChart';
-import CalendarioRolling24m from '../../../components/treasury/CalendarioRolling24m';
+import CalendarioMes12 from '../../../components/treasury/CalendarioMes12';
 import MesDetalleDrawer from '../../../components/treasury/MesDetalleDrawer';
+import MovimientoDrawer, {
+  type MovimientoDrawerData,
+} from '../../../components/treasury/MovimientoDrawer';
+import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
+import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -34,8 +39,10 @@ const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
   const { accounts, movements, treasuryEvents } = useOutletContext<TesoreriaContext>();
 
-  // T31 · drawer detalle mes (mockup atlas-tesoreria-v8)
+  // T31 · drawer detalle mes (clic en mes-card del calendario)
   const [drawerMes, setDrawerMes] = useState<{ year: number; monthIndex0: number } | null>(null);
+  // T31 · drawer detalle movimiento (clic en pend-card o evento del mes)
+  const [drawerMovId, setDrawerMovId] = useState<number | string | null>(null);
 
   const totalSaldo = useMemo(
     () =>
@@ -270,27 +277,58 @@ const VistaGeneralTab: React.FC = () => {
         />
       </CardV5>
 
-      <CardV5 className={styles.card}>
-        <div className={styles.cardHd}>
-          <div>
-            <div className={styles.cardTitle}>Calendario · 24 meses rodante</div>
-            <div className={styles.cardSub}>
-              {(() => {
-                const inicio = new Date(currentYear, currentMonthIdx, 1);
-                const fin = new Date(currentYear, currentMonthIdx + 24, 0);
-                const fmt = (d: Date) =>
-                  `${MONTH_NAMES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
-                return `desde ${fmt(inicio)} hasta ${fmt(fin)} · próximos 3 meses destacados`;
-              })()}
-            </div>
-          </div>
-        </div>
-        <CalendarioRolling24m
-          events={treasuryEvents}
-          movements={movements as unknown as { date: string; amount: number }[]}
-          onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
-        />
-      </CardV5>
+      {/* Layout 2 columnas · calendario 4×3 + pendientes del día (mockup v8) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 360px',
+          gap: 14,
+          marginTop: 14,
+        }}
+        className={styles.calendarRow}
+      >
+        <CardV5 className={styles.card}>
+          <CalendarioMes12
+            events={treasuryEvents}
+            movements={movements as unknown as { date: string; amount: number }[]}
+            onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
+          />
+        </CardV5>
+
+        <CardV5 className={styles.card}>
+          <PendientesDelDia
+            events={treasuryEvents.map((e: any) => ({
+              id: e.id,
+              predictedDate: e.predictedDate,
+              type: e.type,
+              amount: e.amount,
+              description: e.description,
+              status: e.status,
+              accountId: e.accountId,
+            }))}
+            accounts={accounts}
+            onPuntear={async (id) => {
+              try {
+                const dbId = typeof id === 'number' ? id : Number(id);
+                if (Number.isFinite(dbId)) {
+                  const { confirmTreasuryEvent } = await import(
+                    '../../../services/treasuryConfirmationService'
+                  );
+                  await confirmTreasuryEvent(dbId);
+                  invalidateCachedStores(['treasuryEvents', 'movements']);
+                  showToastV5('Movimiento confirmado', 'success');
+                }
+              } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[Pendientes] confirmar falló', err);
+                showToastV5('No se pudo confirmar · ver consola', 'error');
+              }
+            }}
+            onClick={(id) => setDrawerMovId(id)}
+            onIrAConciliacion={() => navigate('/tesoreria/movimientos')}
+          />
+        </CardV5>
+      </div>
 
       <MesDetalleDrawer
         open={drawerMes !== null}
@@ -299,6 +337,69 @@ const VistaGeneralTab: React.FC = () => {
         events={treasuryEvents}
         accounts={accounts}
         onClose={() => setDrawerMes(null)}
+      />
+
+      <MovimientoDrawer
+        open={drawerMovId !== null}
+        data={(() => {
+          if (drawerMovId == null) return null;
+          const ev = treasuryEvents.find(
+            (e: any) => String(e.id) === String(drawerMovId),
+          );
+          if (!ev) return null;
+          const acc = accounts.find((a) => a.id === (ev as any).accountId);
+          const accountAlias = acc?.alias || acc?.banco?.name || acc?.name;
+          const drawerData: MovimientoDrawerData = {
+            id: ev.id,
+            description: (ev as any).description,
+            predictedDate: (ev as any).predictedDate,
+            type: (ev as any).type,
+            amount: (ev as any).amount,
+            status: (ev as any).status,
+            accountAlias,
+            inmuebleAlias: (ev as any).inmuebleAlias,
+            contratoAlias: (ev as any).contratoAlias,
+            categoryLabel: (ev as any).categoryLabel,
+            origenTexto:
+              (ev as any).sourceType === 'contrato'
+                ? 'Generado automáticamente desde el contrato activo · regla recurrente.'
+                : (ev as any).sourceType === 'nomina'
+                  ? 'Generado automáticamente desde la nómina activa.'
+                  : (ev as any).sourceType === 'hipoteca' ||
+                      (ev as any).sourceType === 'prestamo'
+                    ? 'Generado desde el cuadro de amortización del préstamo.'
+                    : (ev as any).sourceType === 'gasto_recurrente' ||
+                        (ev as any).sourceType === 'opex_rule'
+                      ? 'Generado desde un compromiso recurrente.'
+                      : (ev as any).sourceType === 'manual'
+                        ? 'Movimiento previsto creado manualmente.'
+                        : undefined,
+            sourceType: (ev as any).sourceType,
+          };
+          return drawerData;
+        })()}
+        onClose={() => setDrawerMovId(null)}
+        onConfirmar={async (id) => {
+          try {
+            const dbId = typeof id === 'number' ? id : Number(id);
+            if (Number.isFinite(dbId)) {
+              const { confirmTreasuryEvent } = await import(
+                '../../../services/treasuryConfirmationService'
+              );
+              await confirmTreasuryEvent(dbId);
+              invalidateCachedStores(['treasuryEvents', 'movements']);
+              showToastV5('Pago confirmado', 'success');
+            }
+            setDrawerMovId(null);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[Movimiento] confirmar falló', err);
+            showToastV5('No se pudo confirmar · ver consola', 'error');
+          }
+        }}
+        onEditar={() => {
+          showToastV5('Edición de previsiones · próximamente', 'info');
+        }}
       />
     </>
   );
