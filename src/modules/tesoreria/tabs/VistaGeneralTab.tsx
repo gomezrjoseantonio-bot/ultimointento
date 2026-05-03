@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   CardV5,
-  MoneyValue,
   EmptyState,
   Icons,
   showToastV5,
@@ -12,8 +11,13 @@ import {
   BankAccountAddCard,
 } from '../components/BankAccountCard';
 import CashflowChart, { MonthFlow } from '../components/CashflowChart';
-import CalendarioRolling24m from '../../../components/treasury/CalendarioRolling24m';
+import CalendarioMes12 from '../../../components/treasury/CalendarioMes12';
 import MesDetalleDrawer from '../../../components/treasury/MesDetalleDrawer';
+import MovimientoDrawer, {
+  type MovimientoDrawerData,
+} from '../../../components/treasury/MovimientoDrawer';
+import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
+import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -34,8 +38,12 @@ const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
   const { accounts, movements, treasuryEvents } = useOutletContext<TesoreriaContext>();
 
-  // T31 · drawer detalle mes (mockup atlas-tesoreria-v8)
+  // T31 · drawer detalle mes (clic en mes-card del calendario)
   const [drawerMes, setDrawerMes] = useState<{ year: number; monthIndex0: number } | null>(null);
+  // T31 · drawer detalle movimiento (clic en pend-card o evento del mes)
+  const [drawerMovId, setDrawerMovId] = useState<number | string | null>(null);
+  // T31 · paginación carrusel cuentas (5 visibles · mockup v8)
+  const [cuentasPage, setCuentasPage] = useState(0);
 
   const totalSaldo = useMemo(
     () =>
@@ -188,7 +196,9 @@ const VistaGeneralTab: React.FC = () => {
             </div>
           </div>
           <div className={styles.heroBig}>
-            <MoneyValue value={totalSaldo} decimals={0} tone="ink" />
+            {/* Render directo · NO usar MoneyValue aquí · su size="inline"
+                default forzaba 13px sobre el wrapper de 50px (mockup v8). */}
+            {totalSaldo.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
           </div>
           <div className={styles.heroSub}>
             <strong>{accounts.length}</strong> cuentas activas ·{' '}
@@ -204,7 +214,8 @@ const VistaGeneralTab: React.FC = () => {
           <div className={styles.kpi}>
             <div className={styles.kpiLab}>Entradas · este mes</div>
             <div className={`${styles.kpiVal} ${styles.pos}`}>
-              <MoneyValue value={entradasMes} decimals={0} showSign tone="pos" />
+              {entradasMes >= 0 ? '+' : ''}
+              {entradasMes.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
             </div>
             <div className={styles.kpiHint}>
               {MONTH_NAMES[currentMonthIdx]} {currentYear}
@@ -213,7 +224,8 @@ const VistaGeneralTab: React.FC = () => {
           <div className={styles.kpi}>
             <div className={styles.kpiLab}>Salidas · este mes</div>
             <div className={`${styles.kpiVal} ${styles.neg}`}>
-              <MoneyValue value={salidasMes} decimals={0} showSign tone="neg" />
+              {salidasMes <= 0 ? '−' : '+'}
+              {Math.abs(salidasMes).toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
             </div>
             <div className={styles.kpiHint}>
               {MONTH_NAMES[currentMonthIdx]} {currentYear}
@@ -222,34 +234,88 @@ const VistaGeneralTab: React.FC = () => {
         </div>
       </div>
 
-      <div className={styles.cuentasHd}>
-        <span>Mis cuentas · {accounts.length}</span>
-      </div>
-      {accounts.length === 0 ? (
-        <EmptyState
-          icon={<Icons.Tesoreria size={20} />}
-          title="No hay cuentas registradas"
-          sub="Añade tu primera cuenta para empezar a ver el flujo de tesorería."
-          ctaLabel="+ añadir cuenta"
-          onCtaClick={() => navigate('/tesoreria/importar')}
-        />
-      ) : (
-        <div className={styles.cuentasGrid}>
-          {accounts.map((acc) => (
-            <BankAccountCard
-              key={acc.id}
-              account={acc}
-              pendingCount={pendientesPorCuenta.get(acc.id ?? -1) ?? 0}
-              delta30d={null}
-              onClick={handleAccountClick}
-              onEdit={(id) => showToastV5(`Editar cuenta · #${id}`)}
-            />
-          ))}
-          <BankAccountAddCard
-            onClick={() => showToastV5('Añadir cuenta · busca entre 180+ bancos')}
-          />
-        </div>
-      )}
+      {/* Carrusel cuentas · 5 visibles por página + flechas (mockup v8) */}
+      {(() => {
+        const PAGE_SIZE = 5;
+        const totalPages = Math.max(1, Math.ceil(accounts.length / PAGE_SIZE));
+        const safePage = Math.min(cuentasPage, totalPages - 1);
+        const startIdx = safePage * PAGE_SIZE;
+        const endIdx = Math.min(startIdx + PAGE_SIZE, accounts.length);
+        const pageAccounts = accounts.slice(startIdx, endIdx);
+        const isLastPage = safePage >= totalPages - 1;
+        // Reservamos slots vacíos para mantener 5 columnas exactas
+        const emptySlots = Math.max(
+          0,
+          PAGE_SIZE - pageAccounts.length - (isLastPage ? 1 : 0),
+        );
+        return (
+          <>
+            <div className={styles.cuentasHd}>
+              <span>
+                Mis cuentas · {accounts.length === 0
+                  ? 0
+                  : `${startIdx + 1}-${endIdx} de ${accounts.length}`}
+              </span>
+              {accounts.length > 0 && (
+                <div className={styles.cuentasArrows}>
+                  <button
+                    type="button"
+                    className={styles.cuentasArr}
+                    onClick={() => setCuentasPage((p) => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                    aria-label="Cuentas anteriores"
+                  >
+                    <Icons.ChevronLeft size={14} strokeWidth={1.8} />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cuentasArr}
+                    onClick={() =>
+                      setCuentasPage((p) => Math.min(totalPages - 1, p + 1))
+                    }
+                    disabled={safePage >= totalPages - 1}
+                    aria-label="Cuentas siguientes"
+                  >
+                    <Icons.ChevronRight size={14} strokeWidth={1.8} />
+                  </button>
+                </div>
+              )}
+            </div>
+            {accounts.length === 0 ? (
+              <EmptyState
+                icon={<Icons.Tesoreria size={20} />}
+                title="No hay cuentas registradas"
+                sub="Añade tu primera cuenta para empezar a ver el flujo de tesorería."
+                ctaLabel="+ añadir cuenta"
+                onCtaClick={() => navigate('/tesoreria/importar')}
+              />
+            ) : (
+              <div className={styles.cuentasGrid}>
+                {pageAccounts.map((acc) => (
+                  <BankAccountCard
+                    key={acc.id}
+                    account={acc}
+                    pendingCount={pendientesPorCuenta.get(acc.id ?? -1) ?? 0}
+                    delta30d={null}
+                    onClick={handleAccountClick}
+                    onEdit={(id) => showToastV5(`Editar cuenta · #${id}`)}
+                  />
+                ))}
+                {isLastPage && (
+                  <BankAccountAddCard
+                    onClick={() =>
+                      showToastV5('Añadir cuenta · busca entre 180+ bancos')
+                    }
+                  />
+                )}
+                {Array.from({ length: emptySlots }).map((_, i) => (
+                  <div key={`empty-${i}`} className={styles.cuentaEmptySlot} />
+                ))}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       <CardV5 className={styles.card}>
         <div className={styles.cardHd}>
@@ -270,27 +336,58 @@ const VistaGeneralTab: React.FC = () => {
         />
       </CardV5>
 
-      <CardV5 className={styles.card}>
-        <div className={styles.cardHd}>
-          <div>
-            <div className={styles.cardTitle}>Calendario · 24 meses rodante</div>
-            <div className={styles.cardSub}>
-              {(() => {
-                const inicio = new Date(currentYear, currentMonthIdx, 1);
-                const fin = new Date(currentYear, currentMonthIdx + 24, 0);
-                const fmt = (d: Date) =>
-                  `${MONTH_NAMES[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
-                return `desde ${fmt(inicio)} hasta ${fmt(fin)} · próximos 3 meses destacados`;
-              })()}
-            </div>
-          </div>
-        </div>
-        <CalendarioRolling24m
-          events={treasuryEvents}
-          movements={movements as unknown as { date: string; amount: number }[]}
-          onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
-        />
-      </CardV5>
+      {/* Layout 2 columnas · calendario 4×3 + pendientes del día (mockup v8) */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) 360px',
+          gap: 14,
+          marginTop: 14,
+        }}
+        className={styles.calendarRow}
+      >
+        <CardV5 className={styles.card}>
+          <CalendarioMes12
+            events={treasuryEvents}
+            movements={movements as unknown as { date: string; amount: number }[]}
+            onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
+          />
+        </CardV5>
+
+        <CardV5 className={styles.card}>
+          <PendientesDelDia
+            events={treasuryEvents.map((e: any) => ({
+              id: e.id,
+              predictedDate: e.predictedDate,
+              type: e.type,
+              amount: e.amount,
+              description: e.description,
+              status: e.status,
+              accountId: e.accountId,
+            }))}
+            accounts={accounts}
+            onPuntear={async (id) => {
+              try {
+                const dbId = typeof id === 'number' ? id : Number(id);
+                if (Number.isFinite(dbId)) {
+                  const { confirmTreasuryEvent } = await import(
+                    '../../../services/treasuryConfirmationService'
+                  );
+                  await confirmTreasuryEvent(dbId);
+                  invalidateCachedStores(['treasuryEvents', 'movements']);
+                  showToastV5('Movimiento confirmado', 'success');
+                }
+              } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[Pendientes] confirmar falló', err);
+                showToastV5('No se pudo confirmar · ver consola', 'error');
+              }
+            }}
+            onClick={(id) => setDrawerMovId(id)}
+            onIrAConciliacion={() => navigate('/tesoreria/movimientos')}
+          />
+        </CardV5>
+      </div>
 
       <MesDetalleDrawer
         open={drawerMes !== null}
@@ -299,6 +396,69 @@ const VistaGeneralTab: React.FC = () => {
         events={treasuryEvents}
         accounts={accounts}
         onClose={() => setDrawerMes(null)}
+      />
+
+      <MovimientoDrawer
+        open={drawerMovId !== null}
+        data={(() => {
+          if (drawerMovId == null) return null;
+          const ev = treasuryEvents.find(
+            (e: any) => String(e.id) === String(drawerMovId),
+          );
+          if (!ev) return null;
+          const acc = accounts.find((a) => a.id === (ev as any).accountId);
+          const accountAlias = acc?.alias || acc?.banco?.name || acc?.name;
+          const drawerData: MovimientoDrawerData = {
+            id: ev.id,
+            description: (ev as any).description,
+            predictedDate: (ev as any).predictedDate,
+            type: (ev as any).type,
+            amount: (ev as any).amount,
+            status: (ev as any).status,
+            accountAlias,
+            inmuebleAlias: (ev as any).inmuebleAlias,
+            contratoAlias: (ev as any).contratoAlias,
+            categoryLabel: (ev as any).categoryLabel,
+            origenTexto:
+              (ev as any).sourceType === 'contrato'
+                ? 'Generado automáticamente desde el contrato activo · regla recurrente.'
+                : (ev as any).sourceType === 'nomina'
+                  ? 'Generado automáticamente desde la nómina activa.'
+                  : (ev as any).sourceType === 'hipoteca' ||
+                      (ev as any).sourceType === 'prestamo'
+                    ? 'Generado desde el cuadro de amortización del préstamo.'
+                    : (ev as any).sourceType === 'gasto_recurrente' ||
+                        (ev as any).sourceType === 'opex_rule'
+                      ? 'Generado desde un compromiso recurrente.'
+                      : (ev as any).sourceType === 'manual'
+                        ? 'Movimiento previsto creado manualmente.'
+                        : undefined,
+            sourceType: (ev as any).sourceType,
+          };
+          return drawerData;
+        })()}
+        onClose={() => setDrawerMovId(null)}
+        onConfirmar={async (id) => {
+          try {
+            const dbId = typeof id === 'number' ? id : Number(id);
+            if (Number.isFinite(dbId)) {
+              const { confirmTreasuryEvent } = await import(
+                '../../../services/treasuryConfirmationService'
+              );
+              await confirmTreasuryEvent(dbId);
+              invalidateCachedStores(['treasuryEvents', 'movements']);
+              showToastV5('Pago confirmado', 'success');
+            }
+            setDrawerMovId(null);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[Movimiento] confirmar falló', err);
+            showToastV5('No se pudo confirmar · ver consola', 'error');
+          }
+        }}
+        onEditar={() => {
+          showToastV5('Edición de previsiones · próximamente', 'info');
+        }}
       />
     </>
   );

@@ -67,12 +67,12 @@
 .bal {
   font-family: var(--atlas-v5-font-mono-num);
   font-weight: var(--atlas-v5-fw-bold);
-  font-size: 24px;
+  font-size: 28px;
   color: var(--atlas-v5-ink);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   line-height: 1.05;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .delta {
