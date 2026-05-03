@@ -8,7 +8,8 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { TesoreriaContext } from '../TesoreriaPage';
-import type { Movement, ReconciliationStatus } from '../../../services/db';
+import type { Movement, ReconciliationStatus, TreasuryEvent } from '../../../services/db';
+import { confirmTreasuryEvent } from '../../../services/treasuryConfirmationService';
 import styles from './MovimientosTab.module.css';
 
 type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
@@ -17,12 +18,6 @@ const isReconciled = (m: Movement): boolean =>
   m.estado_conciliacion === 'conciliado' ||
   m.unifiedStatus === 'conciliado' ||
   m.status === 'conciliado';
-
-const matchesStatus = (m: Movement, filter: StatusFilter): boolean => {
-  if (filter === 'todos') return true;
-  if (filter === 'conciliados') return isReconciled(m);
-  return !isReconciled(m);
-};
 
 const matchesSearch = (m: Movement, search: string): boolean => {
   if (!search) return true;
@@ -35,13 +30,37 @@ const matchesSearch = (m: Movement, search: string): boolean => {
   );
 };
 
-const matchesAccount = (m: Movement, accountId: number | null): boolean =>
-  accountId == null || m.accountId === accountId;
+const matchesSearchEvent = (e: TreasuryEvent, search: string): boolean => {
+  if (!search) return true;
+  const s = search.toLowerCase();
+  return (
+    (e.description ?? '').toLowerCase().includes(s) ||
+    (e.counterparty ?? '').toLowerCase().includes(s) ||
+    (e.providerName ?? '').toLowerCase().includes(s) ||
+    String(Math.abs(e.amount)).includes(s)
+  );
+};
+
+const matchesAccount = (accountId: number | undefined, filter: number | null): boolean =>
+  filter == null || accountId === filter;
+
+/** Returns signed amount for a treasury event (positive = income, negative = expense/financing). */
+const eventSignedAmount = (e: TreasuryEvent): number => {
+  const mag = Math.abs(e.actualAmount ?? e.amount);
+  return e.type === 'income' ? mag : -mag;
+};
+
+// ── Unified row types ────────────────────────────────────────────────────────
+
+type MovRow = { kind: 'movement'; data: Movement & { id: number }; sortKey: number };
+type EvtRow = { kind: 'treasury'; data: TreasuryEvent & { id: number }; sortKey: number };
+type UnifiedRow = MovRow | EvtRow;
 
 const MovimientosTab: React.FC = () => {
-  const { accounts, movements } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
@@ -59,17 +78,61 @@ const MovimientosTab: React.FC = () => {
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const filtered = useMemo(() => {
-    return movements
-      .filter((m) => matchesStatus(m, statusFilter))
-      .filter((m) => matchesAccount(m, accountFilter))
-      .filter((m) => matchesSearch(m, search))
-      .sort((a, b) => {
-        const da = a.date ? new Date(a.date).getTime() : 0;
-        const db = b.date ? new Date(b.date).getTime() : 0;
-        return db - da;
+  // ── Build unified list ─────────────────────────────────────────────────────
+
+  /** Pending treasury events: not yet executed, no linked movement. */
+  const pendingEvents = useMemo(
+    () =>
+      (treasuryEvents as TreasuryEvent[]).filter(
+        (e): e is TreasuryEvent & { id: number } =>
+          e.id != null && e.status !== 'executed' && !e.executedMovementId,
+      ),
+    [treasuryEvents],
+  );
+
+  const allRows = useMemo((): UnifiedRow[] => {
+    const movRows: MovRow[] = (movements as Movement[])
+      .filter((m): m is Movement & { id: number } => m.id != null)
+      .map((m) => ({
+        kind: 'movement',
+        data: m,
+        sortKey: m.date ? new Date(m.date).getTime() : 0,
+      }));
+
+    const evtRows: EvtRow[] = pendingEvents.map((e) => ({
+      kind: 'treasury',
+      data: e,
+      sortKey: e.predictedDate ? new Date(e.predictedDate).getTime() : 0,
+    }));
+
+    return [...movRows, ...evtRows].sort((a, b) => b.sortKey - a.sortKey);
+  }, [movements, pendingEvents]);
+
+  const filtered = useMemo((): UnifiedRow[] => {
+    return allRows
+      .filter((row) => {
+        if (statusFilter === 'conciliados') return row.kind === 'movement' && isReconciled(row.data);
+        if (statusFilter === 'pendientes') {
+          if (row.kind === 'treasury') return true;
+          return !isReconciled(row.data);
+        }
+        return true; // 'todos'
+      })
+      .filter((row) => {
+        if (row.kind === 'movement') return matchesAccount(row.data.accountId, accountFilter);
+        return matchesAccount(row.data.accountId, accountFilter);
+      })
+      .filter((row) => {
+        if (row.kind === 'movement') return matchesSearch(row.data, search);
+        return matchesSearchEvent(row.data, search);
       });
-  }, [movements, statusFilter, accountFilter, search]);
+  }, [allRows, statusFilter, accountFilter, search]);
+
+  const totalCount = allRows.length;
+  const pendingCount =
+    movements.filter((m) => !isReconciled(m as Movement)).length + pendingEvents.length;
+
+  // ── Account helpers ────────────────────────────────────────────────────────
 
   const accountById = useMemo(() => {
     const map = new Map<number, string>();
@@ -91,6 +154,8 @@ const MovimientosTab: React.FC = () => {
     return map;
   }, [accounts]);
 
+  // ── Actions ────────────────────────────────────────────────────────────────
+
   const toggleOne = (id: number) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -107,6 +172,23 @@ const MovimientosTab: React.FC = () => {
     clearSelection();
   };
 
+  const handleConfirmEvent = async (e: React.MouseEvent, eventId: number) => {
+    e.stopPropagation();
+    setConfirmingId(eventId);
+    try {
+      await confirmTreasuryEvent(eventId);
+      showToastV5('Evento confirmado y movimiento creado', 'success');
+      reload();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo confirmar el evento';
+      showToastV5(msg, 'error');
+    } finally {
+      setConfirmingId(null);
+    }
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <>
       <div className={styles.filtersBar}>
@@ -115,14 +197,14 @@ const MovimientosTab: React.FC = () => {
           className={`${styles.filtChip} ${statusFilter === 'todos' ? styles.active : ''}`}
           onClick={() => setStatusFilter('todos')}
         >
-          Todos · {movements.length}
+          Todos · {totalCount}
         </button>
         <button
           type="button"
           className={`${styles.filtChip} ${statusFilter === 'pendientes' ? styles.active : ''}`}
           onClick={() => setStatusFilter('pendientes')}
         >
-          Pendientes
+          Pendientes · {pendingCount}
         </button>
         <button
           type="button"
@@ -196,48 +278,108 @@ const MovimientosTab: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered
-                .slice(0, 200)
-                .filter((m): m is Movement & { id: number } => m.id != null)
-                .map((m) => {
-                const id = m.id;
-                const isSelected = selected.has(id);
-                const reconciled = isReconciled(m);
-                const accountName = accountById.get(m.accountId) ?? `#${m.accountId}`;
-                const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
-                const reconciliationStatus: ReconciliationStatus =
-                  m.estado_conciliacion ?? (reconciled ? 'conciliado' : 'sin_conciliar');
+              {filtered.slice(0, 200).map((row) => {
+                if (row.kind === 'movement') {
+                  const m = row.data;
+                  const id = m.id;
+                  const isSelected = selected.has(id);
+                  const reconciled = isReconciled(m);
+                  const accountName = accountById.get(m.accountId) ?? `#${m.accountId}`;
+                  const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
+                  const reconciliationStatus: ReconciliationStatus =
+                    m.estado_conciliacion ?? (reconciled ? 'conciliado' : 'sin_conciliar');
+                  return (
+                    <tr
+                      key={`m:${id}`}
+                      className={isSelected ? styles.selected : undefined}
+                      onClick={() =>
+                        showToastV5(
+                          `Detalle · ${m.description ?? 'Movimiento'} · ${m.amount.toFixed(2)} €`,
+                        )
+                      }
+                    >
+                      <td className={styles.checkCell} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`${styles.chk} ${reconciled ? styles.done : isSelected ? styles.pending : ''}`}
+                          aria-label={reconciled ? 'Movimiento conciliado' : 'Seleccionar movimiento'}
+                          aria-pressed={isSelected || reconciled}
+                          onClick={() => !reconciled && toggleOne(id)}
+                        >
+                          {reconciled && <Icons.Check size={14} strokeWidth={2.5} />}
+                        </button>
+                      </td>
+                      <td className={styles.dateCell}>
+                        {m.date ? <DateLabel value={m.date} format="short" /> : '—'}
+                      </td>
+                      <td>
+                        <div className={styles.tStrong}>
+                          {m.description || m.counterparty || m.providerName || 'Sin concepto'}
+                        </div>
+                        {(m.counterparty || m.providerName) && (
+                          <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
+                            {m.counterparty ?? m.providerName}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className={styles.chipAcc}>
+                          <span className={styles.chipDot} style={{ background: dotColor }} />
+                          {accountName}
+                        </span>
+                      </td>
+                      <td className={`r ${styles.amountCell} ${m.amount >= 0 ? styles.posCol : styles.negCol}`}>
+                        <MoneyValue value={m.amount} decimals={2} showSign tone="auto" />
+                      </td>
+                      <td className="c">
+                        <Pill
+                          variant={reconciliationStatus === 'conciliado' ? 'pos' : 'gold'}
+                          asTag
+                        >
+                          {reconciliationStatus === 'conciliado' ? 'Conciliado' : 'Pendiente'}
+                        </Pill>
+                      </td>
+                    </tr>
+                  );
+                }
+
+                // ── Treasury event row ──────────────────────────────────────
+                const e = row.data;
+                const signedAmt = eventSignedAmount(e);
+                const accountName = e.accountId != null
+                  ? (accountById.get(e.accountId) ?? `#${e.accountId}`)
+                  : '—';
+                const dotColor = e.accountId != null
+                  ? (accountColorById.get(e.accountId) ?? 'var(--atlas-v5-brand)')
+                  : 'var(--atlas-v5-ink-5)';
+                const isConfirming = confirmingId === e.id;
                 return (
-                  <tr
-                    key={id}
-                    className={isSelected ? styles.selected : undefined}
-                    onClick={() =>
-                      showToastV5(
-                        `Detalle · ${m.description ?? 'Movimiento'} · ${m.amount.toFixed(2)} €`,
-                      )
-                    }
-                  >
-                    <td className={styles.checkCell} onClick={(e) => e.stopPropagation()}>
+                  <tr key={`t:${e.id}`} className={styles.previstoRow}>
+                    <td className={styles.checkCell}>
                       <button
                         type="button"
-                        className={`${styles.chk} ${reconciled ? styles.done : isSelected ? styles.pending : ''}`}
-                        aria-label={reconciled ? 'Movimiento conciliado' : 'Seleccionar movimiento'}
-                        aria-pressed={isSelected || reconciled}
-                        onClick={() => !reconciled && toggleOne(id)}
+                        className={`${styles.chk} ${styles.previstoChk}`}
+                        aria-label="Confirmar evento previsto"
+                        title="Confirmar y crear movimiento bancario"
+                        disabled={isConfirming || e.accountId == null}
+                        onClick={(ev) => handleConfirmEvent(ev, e.id)}
                       >
-                        {reconciled && <Icons.Check size={14} strokeWidth={2.5} />}
+                        {isConfirming
+                          ? <Icons.Refresh size={12} strokeWidth={2} />
+                          : <Icons.Check size={12} strokeWidth={2} />
+                        }
                       </button>
                     </td>
                     <td className={styles.dateCell}>
-                      {m.date ? <DateLabel value={m.date} format="short" /> : '—'}
+                      {e.predictedDate
+                        ? <DateLabel value={e.predictedDate.slice(0, 10)} format="short" />
+                        : '—'}
                     </td>
                     <td>
-                      <div className={styles.tStrong}>
-                        {m.description || m.counterparty || m.providerName || 'Sin concepto'}
-                      </div>
-                      {(m.counterparty || m.providerName) && (
+                      <div className={styles.tStrong}>{e.description || 'Sin concepto'}</div>
+                      {(e.counterparty || e.providerName) && (
                         <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
-                          {m.counterparty ?? m.providerName}
+                          {e.counterparty ?? e.providerName}
                         </div>
                       )}
                     </td>
@@ -247,16 +389,11 @@ const MovimientosTab: React.FC = () => {
                         {accountName}
                       </span>
                     </td>
-                    <td className={`r ${styles.amountCell} ${m.amount >= 0 ? styles.posCol : styles.negCol}`}>
-                      <MoneyValue value={m.amount} decimals={2} showSign tone="auto" />
+                    <td className={`r ${styles.amountCell} ${signedAmt >= 0 ? styles.posCol : styles.negCol}`}>
+                      <MoneyValue value={signedAmt} decimals={2} showSign tone="auto" />
                     </td>
                     <td className="c">
-                      <Pill
-                        variant={reconciliationStatus === 'conciliado' ? 'pos' : 'gold'}
-                        asTag
-                      >
-                        {reconciliationStatus === 'conciliado' ? 'Conciliado' : 'Pendiente'}
-                      </Pill>
+                      <span className={styles.pillPrevisto}>PREVISTO</span>
                     </td>
                   </tr>
                 );
