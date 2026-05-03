@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Selector tipo + subtipo · v2</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F5F4F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF6;
+    --line:      #E6E3DC;
+    --line-2:    #EFECE5;
+    --ink:       #141B2E;
+    --ink-2:     #2C3547;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --gold:        #B88A3E;
+    --gold-2:      #C59A47;
+    --gold-wash:   #F3EAD6;
+    --gold-wash-2: #FAF3E1;
+    --gold-ink:    #7C5C1F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .demo-wrap { max-width: 720px; margin: 60px auto; padding: 0 24px; }
+  .demo-title { font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 6px; letter-spacing: -0.022em; }
+  .demo-sub { font-size: 13px; color: var(--ink-3); margin-bottom: 32px; }
+
+  .form-row { margin-bottom: 14px; }
+  .form-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-label { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+  .form-label .req { color: var(--gold); font-size: 10px; font-weight: 700; }
+  .form-label-help { font-size: 11px; color: var(--ink-4); margin-top: 4px; line-height: 1.4; }
+
+  .form-input, .form-select {
+    width: 100%; padding: 11px 14px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); color: var(--ink);
+    font-size: 13.5px; font-family: inherit; outline: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+  .form-select {
+    cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235B6474' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+  }
+  .form-select.disabled {
+    background-color: var(--bg); color: var(--ink-5); cursor: not-allowed;
+  }
+
+  /* Selector con icono · solo para Tipo */
+  .ts-wrap { position: relative; }
+  .ts-trigger {
+    width: 100%; padding: 11px 14px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--card); color: var(--ink);
+    font-size: 13.5px; font-family: inherit; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .ts-trigger:hover { border-color: var(--ink-5); }
+  .ts-trigger.open { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-wash); }
+  .ts-trigger.placeholder { color: var(--ink-4); }
+  .ts-trigger-ico {
+    width: 26px; height: 26px;
+    background: var(--gold-wash);
+    border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--gold-ink); flex-shrink: 0;
+  }
+  .ts-trigger.placeholder .ts-trigger-ico { background: var(--bg); color: var(--ink-4); }
+  .ts-trigger-label { flex: 1; text-align: left; font-weight: 600; }
+  .ts-trigger-arrow { color: var(--ink-4); transition: transform .15s; flex-shrink: 0; }
+  .ts-trigger.open .ts-trigger-arrow { transform: rotate(180deg); }
+
+  /* Panel · solo 6 items · más pequeño */
+  .ts-panel {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.04);
+    z-index: 50; padding: 6px 0;
+    max-height: 380px; overflow-y: auto;
+  }
+  .ts-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 16px; cursor: pointer;
+    transition: background .12s; font-size: 13.5px; color: var(--ink-2);
+  }
+  .ts-item:hover { background: var(--gold-wash-2); }
+  .ts-item.selected { background: var(--gold-wash); color: var(--gold-ink); font-weight: 600; }
+  .ts-item-ico {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--bg); color: var(--ink-3);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .12s;
+  }
+  .ts-item:hover .ts-item-ico { background: var(--gold-wash); color: var(--gold-ink); }
+  .ts-item.selected .ts-item-ico { background: var(--gold); color: #fff; }
+  .ts-item-content { flex: 1; }
+  .ts-item-title { font-weight: 600; }
+  .ts-item-desc { font-size: 11px; color: var(--ink-4); margin-top: 1px; font-weight: 400; }
+  .ts-item.selected .ts-item-desc { color: var(--gold-ink); opacity: .8; }
+  .ts-item-check { color: var(--gold); opacity: 0; flex-shrink: 0; }
+  .ts-item.selected .ts-item-check { opacity: 1; }
+
+  /* Bloque "Nombre del gasto" cuando se elige Personalizado */
+  .custom-name-row {
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: var(--gold-wash-2);
+    border: 1px solid var(--gold-wash);
+    border-radius: 8px;
+  }
+  .custom-name-row .form-label { color: var(--gold-ink); }
+
+  .demo-section { margin-bottom: 56px; padding-bottom: 32px; border-bottom: 1px dashed var(--line); }
+  .demo-section:last-child { border-bottom: none; }
+  .demo-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; color: var(--ink-4); margin-bottom: 16px; }
+
+</style>
+</head>
+<body>
+  <div class="demo-wrap">
+
+    <h1 class="demo-title">Selector v2 · Tipo + Subtipo</h1>
+    <p class="demo-sub">2 niveles · Tipo (6 familias) selector con iconos · Subtipo select dinámico que cambia según el Tipo</p>
+
+    <!-- ═══════════ ESTADO 1 · CERRADO · NADA ELEGIDO ═══════════ -->
+    <div class="demo-section">
+      <div class="demo-section-title">Estado 1 · cerrado · sin selección</div>
+
+      <div class="form-cols-2">
+        <div class="form-row">
+          <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+          <div class="ts-wrap">
+            <button class="ts-trigger placeholder">
+              <span class="ts-trigger-ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              </span>
+              <span class="ts-trigger-label">— Selecciona —</span>
+              <svg class="ts-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Subtipo <span class="req">●</span></label>
+          <select class="form-select disabled" disabled>
+            <option>— Elige primero un tipo —</option>
+          </select>
+          <div class="form-label-help">Se rellena al elegir el tipo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ ESTADO 2 · TIPO ABIERTO ═══════════ -->
+    <div class="demo-section">
+      <div class="demo-section-title">Estado 2 · selector Tipo abierto · 6 familias con iconos</div>
+
+      <div class="form-cols-2">
+        <div class="form-row">
+          <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+          <div class="ts-wrap">
+            <button class="ts-trigger open placeholder">
+              <span class="ts-trigger-ico">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              </span>
+              <span class="ts-trigger-label">— Selecciona —</span>
+              <svg class="ts-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div class="ts-panel">
+              <div class="ts-item">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Vivienda</div>
+                  <div class="ts-item-desc">Alquiler · IBI · comunidad · seguro hogar</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="ts-item selected">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Suministros</div>
+                  <div class="ts-item-desc">Luz · gas · agua · internet · móvil</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="ts-item">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Día a día</div>
+                  <div class="ts-item-desc">Supermercado · transporte · ocio · salud · ropa</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="ts-item">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Suscripciones</div>
+                  <div class="ts-item-desc">Streaming · música · software · cloud · prensa</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="ts-item">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Seguros y cuotas</div>
+                  <div class="ts-item-desc">Seguros · gimnasio · educación · ONG</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div class="ts-item">
+                <span class="ts-item-ico">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                </span>
+                <span class="ts-item-content">
+                  <div class="ts-item-title">Otros</div>
+                  <div class="ts-item-desc">Impuestos · multas · coche · personalizado</div>
+                </span>
+                <svg class="ts-item-check" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">Subtipo <span class="req">●</span></label>
+          <select class="form-select disabled" disabled>
+            <option>— Elige primero un tipo —</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ ESTADO 3 · TIPO ELEGIDO · SUBTIPO ACTIVO ═══════════ -->
+    <div class="demo-section">
+      <div class="demo-section-title">Estado 3 · Tipo "Suministros" elegido · Subtipo se activa</div>
+
+      <div class="form-cols-2">
+        <div class="form-row">
+          <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+          <div class="ts-wrap">
+            <button class="ts-trigger">
+              <span class="ts-trigger-ico" style="background: var(--gold); color: #fff;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </span>
+              <span class="ts-trigger-label">Suministros</span>
+              <svg class="ts-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Subtipo <span class="req">●</span></label>
+          <select class="form-select">
+            <option>— Selecciona —</option>
+            <option selected>Luz</option>
+            <option>Gas</option>
+            <option>Agua</option>
+            <option>Internet</option>
+            <option>Móvil</option>
+            <option>Otros</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ ESTADO 4 · TIPO VIVIENDA · SUBTIPOS ESPECIFICOS ═══════════ -->
+    <div class="demo-section">
+      <div class="demo-section-title">Estado 4 · Tipo "Vivienda" elegido · subtipos cambian</div>
+
+      <div class="form-cols-2">
+        <div class="form-row">
+          <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+          <div class="ts-wrap">
+            <button class="ts-trigger">
+              <span class="ts-trigger-ico" style="background: var(--gold); color: #fff;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              </span>
+              <span class="ts-trigger-label">Vivienda</span>
+              <svg class="ts-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Subtipo <span class="req">●</span></label>
+          <select class="form-select">
+            <option>— Selecciona —</option>
+            <option selected>Alquiler</option>
+            <option>IBI</option>
+            <option>Comunidad</option>
+            <option>Seguro hogar</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ ESTADO 5 · OTROS · PERSONALIZADO ═══════════ -->
+    <div class="demo-section">
+      <div class="demo-section-title">Estado 5 · Tipo "Otros" + Subtipo "Personalizado" · aparece input nombre</div>
+
+      <div class="form-cols-2">
+        <div class="form-row">
+          <label class="form-label">Tipo de gasto <span class="req">●</span></label>
+          <div class="ts-wrap">
+            <button class="ts-trigger">
+              <span class="ts-trigger-ico" style="background: var(--gold); color: #fff;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </span>
+              <span class="ts-trigger-label">Otros</span>
+              <svg class="ts-trigger-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">Subtipo <span class="req">●</span></label>
+          <select class="form-select">
+            <option>— Selecciona —</option>
+            <option>Impuestos · tasas</option>
+            <option>Multas</option>
+            <option>Mantenimiento coche</option>
+            <option selected>Personalizado</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Input adicional · solo cuando Subtipo = Personalizado -->
+      <div class="custom-name-row">
+        <div class="form-row" style="margin-bottom:0;">
+          <label class="form-label">Nombre del gasto <span class="req">●</span></label>
+          <input class="form-input" type="text" placeholder="ej. Cuota de mi club deportivo" value="Cuota socio Real Madrid" />
+          <div class="form-label-help">Aparecerá así en tu listado de gastos</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
