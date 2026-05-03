@@ -387,7 +387,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
         inmuebleId: propertyId,
         alias,
         tipo: tipoSeleccionado.tipo,
-        subtipo: subtipoLabel ? subtipoLabel.toLowerCase() : undefined,
+        subtipo: subtipoLabel ?? undefined,
         proveedor: {
           nombre: form.proveedor || tipoSeleccionado.label,
           nif: form.nif || undefined,
@@ -413,7 +413,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn('[T35] regenerateForecastsForward falló · el compromiso se creó igualmente', err);
-        showToastV5('Gasto del inmueble creado · las previsiones se regenerarán pronto', 'warn');
+        showToastV5('Gasto del inmueble creado · atención: error al regenerar previsiones en Tesorería', 'warn');
       }
 
       showToastV5(
