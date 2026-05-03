@@ -1,10 +1,10 @@
-import type { Nomina, Autonomo } from '../../types/personal';
+import type { Nomina, Autonomo, OtrosIngresos } from '../../types/personal';
 import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 
 export interface PersonalOutletContext {
   nominas: Nomina[];
   autonomos: Autonomo[];
-  otrosIngresos: unknown[];
+  otrosIngresos: OtrosIngresos[];
   compromisos: CompromisoRecurrente[];
   reload: () => void;
 }

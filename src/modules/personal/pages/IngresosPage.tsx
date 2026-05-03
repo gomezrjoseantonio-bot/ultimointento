@@ -95,7 +95,11 @@ const IngresosPage: React.FC = () => {
                   <tr
                     key={n.id ?? `${n.empresa?.nombre ?? 'sin-empresa'}-${n.nombre}-${n.titular}-${index}`}
                     style={{ cursor: 'pointer' }}
-                    onClick={() => showToastV5(`Detalle nómina · ${n.nombre}`)}
+                    title="Editar nómina"
+                    onClick={() => {
+                      if (n.id != null) navigate(`/gestion/personal/nueva-nomina?id=${n.id}`);
+                      else showToastV5('Nómina sin id · no se puede editar');
+                    }}
                   >
                     <td style={tdStyle}>
                       <strong>{n.empresa?.nombre ?? n.nombre}</strong>
@@ -151,7 +155,11 @@ const IngresosPage: React.FC = () => {
                     <tr
                       key={a.id ?? `${a.nombre ?? 'sin-nombre'}-${a.titular ?? 'sin-titular'}-${index}`}
                       style={{ cursor: 'pointer' }}
-                      onClick={() => showToastV5(`Detalle autónomo · ${a.nombre ?? '#' + a.id}`)}
+                      title="Editar actividad de autónomo"
+                      onClick={() => {
+                        if (a.id != null) navigate(`/gestion/personal/nuevo-autonomo?id=${a.id}`);
+                        else showToastV5('Autónomo sin id · no se puede editar');
+                      }}
                     >
                       <td style={tdStyle}>
                         <strong>{a.nombre ?? `Actividad #${a.id}`}</strong>
@@ -185,17 +193,55 @@ const IngresosPage: React.FC = () => {
         </CardV5>
       )}
 
-      {(otrosIngresos as unknown[]).length > 0 && (
+      {otrosIngresos.length > 0 && (
         <CardV5 accent="neutral">
-          <CardV5.Title>Otros ingresos · {(otrosIngresos as unknown[]).length}</CardV5.Title>
+          <CardV5.Title>Otros ingresos · {otrosIngresos.length}</CardV5.Title>
           <CardV5.Subtitle>
             pensiones · subsidios · trabajos esporádicos · ingresos sin contraparte de activo
           </CardV5.Subtitle>
           <CardV5.Body>
-            <div style={{ padding: '12px 0', color: 'var(--atlas-v5-ink-3)', fontSize: 12.5 }}>
-              {(otrosIngresos as unknown[]).length} registros · detalle pendiente de
-              migración del schema en sub-tarea follow-up.
-            </div>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>Nombre</th>
+                  <th style={thStyle}>Tipo</th>
+                  <th style={thStyle}>Titular</th>
+                  <th style={thStyle}>Frecuencia</th>
+                  <th style={{ ...thStyle, textAlign: 'right' }}>Importe</th>
+                  <th style={{ ...thStyle, textAlign: 'center' }}>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {otrosIngresos.map((o, index) => (
+                  <tr
+                    key={o.id ?? `${o.nombre ?? 'sin-nombre'}-${index}`}
+                    style={{ cursor: 'pointer' }}
+                    title="Editar otro ingreso"
+                    onClick={() => {
+                      const titular = o.titularidad === 'pareja' ? 'pareja' : 'yo';
+                      navigate(`/gestion/personal/otros-ingresos?titular=${titular}`);
+                    }}
+                  >
+                    <td style={tdStyle}>
+                      <strong>{o.nombre ?? `Ingreso #${o.id}`}</strong>
+                    </td>
+                    <td style={tdStyle}>{o.tipo}</td>
+                    <td style={tdStyle}>
+                      {o.titularidad === 'pareja' ? 'Pareja' : o.titularidad === 'ambos' ? 'Ambos' : 'Titular'}
+                    </td>
+                    <td style={tdStyle}>{o.frecuencia}</td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>
+                      <MoneyValue value={o.importe} decimals={0} tone="pos" />
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'center' }}>
+                      <Pill variant={o.activo ? 'pos' : 'gris'} asTag>
+                        {o.activo ? 'Activo' : 'Inactivo'}
+                      </Pill>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardV5.Body>
         </CardV5>
       )}

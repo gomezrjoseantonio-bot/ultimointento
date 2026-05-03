@@ -121,6 +121,11 @@ const AutonomoWizard: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const titularParam = (searchParams.get('titular') || 'yo') as 'yo' | 'pareja';
+  const idParam = searchParams.get('id');
+  const parsedAutonomoId = idParam ? Number(idParam) : null;
+  const autonomoId =
+    parsedAutonomoId !== null && Number.isFinite(parsedAutonomoId) ? parsedAutonomoId : null;
+  const isEditing = autonomoId !== null;
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -156,9 +161,74 @@ const AutonomoWizard: React.FC = () => {
         const accs = await cuentasService.list();
         setAccounts(accs.filter(a => !a.deleted_at && a.activa));
         if (accs.length > 0 && accs[0].id) setCuentaId(accs[0].id);
+
+        // Modo edición · cargar autónomo existente y poblar el wizard
+        if (isEditing && autonomoId !== null) {
+          const all = await autonomoService.getAutonomos(perfil.id);
+          const a = all.find((x) => x.id === autonomoId);
+          if (a) {
+            setActividad(a.descripcionActividad ?? a.nombre ?? '');
+            setIae(a.epigrafeIAE ?? '');
+            setModalidad((a.modalidad as 'simplificada' | 'normal') ?? 'simplificada');
+            if (a.cuentaCobro) setCuentaId(a.cuentaCobro);
+            // Tramo SS · índice más cercano por cuotaMin
+            if (a.cuotaAutonomos) {
+              let bestIdx = 2;
+              let bestDiff = Number.POSITIVE_INFINITY;
+              TRAMOS_SS_2026.forEach((t, i) => {
+                const diff = Math.abs(t.cuotaMin - (a.cuotaAutonomos ?? 0));
+                if (diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+              });
+              setTramoSS(bestIdx);
+            }
+            // Reverse-map fuentesIngreso → clientes
+            const fuentes = a.fuentesIngreso ?? [];
+            if (fuentes.length > 0) {
+              setClientes(
+                fuentes.map((f) => {
+                  const mesesActivos = Array.isArray(f.meses) && f.meses.length > 0 ? f.meses : [1,2,3,4,5,6,7,8,9,10,11,12];
+                  const esMensual = mesesActivos.length === 12;
+                  return {
+                    id: f.id ?? uid(),
+                    nombre: f.nombre ?? '',
+                    nif: '',
+                    retencion: f.aplIrpf ? (a.irpfRetencionPorcentaje ?? 15) : 0,
+                    tipo: esMensual ? 'mensual' : 'irregular',
+                    importeMensual: f.importeEstimado ?? 0,
+                    meses: Array.from({ length: 12 }, (_, i) => ({
+                      activo: mesesActivos.includes(i + 1),
+                      importe: f.importeEstimado ?? 0,
+                    })),
+                    expanded: false,
+                  };
+                }),
+              );
+            }
+            // Reverse-map gastosRecurrentesActividad → gastos editables (mantén SS/asesoría/material defaults)
+            const gastosRec = a.gastosRecurrentesActividad ?? [];
+            if (gastosRec.length > 0) {
+              const cuotaSS = a.cuotaAutonomos ?? TRAMOS_SS_2026[2].cuotaMin;
+              const matchTipo = (cat?: string): WizardGasto['tipo'] =>
+                cat === 'asesoria' ? 'asesoria' :
+                cat === 'material' ? 'material' :
+                cat === 'ss' ? 'ss' : 'otro';
+              setGastos([
+                { id: 'ss', nombre: 'Cuota SS autónomo', importe: cuotaSS, frecuencia: 'mensual', editable: false, tipo: 'ss' },
+                ...gastosRec.map((g) => ({
+                  id: g.id ?? uid(),
+                  nombre: g.descripcion ?? '',
+                  importe: g.importe ?? 0,
+                  frecuencia: 'mensual' as const,
+                  editable: true,
+                  tipo: matchTipo(g.categoria),
+                })),
+              ]);
+            }
+          }
+        }
       }
     })();
-  }, [titularParam]);
+  }, [titularParam, isEditing, autonomoId]);
 
   const addCliente = () => setClientes(c => [...c, {
     id: uid(), nombre: '', nif: '', retencion: 15, tipo: 'mensual', importeMensual: 0,
@@ -234,7 +304,7 @@ const AutonomoWizard: React.FC = () => {
         ? clientes.reduce((s, c) => s + clienteTotal(c) * c.retencion / 100, 0) / facturacionBruta * 100
         : 0;
 
-      await autonomoService.saveAutonomo({
+      const autonomoData = {
         personalDataId: pid,
         nombre: actividad,
         titular: titularParam === 'pareja' ? titularNombre : undefined,
@@ -246,14 +316,19 @@ const AutonomoWizard: React.FC = () => {
         irpfRetencionPorcentaje: Math.round(avgRetencion),
         cuentaCobro: cuentaId || 0,
         cuentaPago: cuentaId || 0,
-        reglaCobroDia: { tipo: 'fijo', dia: 5 },
-        reglaPagoDia: { tipo: 'fijo', dia: 5 },
+        reglaCobroDia: { tipo: 'fijo' as const, dia: 5 },
+        reglaPagoDia: { tipo: 'fijo' as const, dia: 5 },
         ingresosFacturados: [],
         gastosDeducibles: [],
         fuentesIngreso: fuentesIngreso,
         gastosRecurrentesActividad: gastosRec,
         activo: true,
-      });
+      };
+      if (isEditing && autonomoId !== null) {
+        await autonomoService.updateAutonomo(autonomoId, autonomoData);
+      } else {
+        await autonomoService.saveAutonomo(autonomoData);
+      }
       navigate('/gestion/personal');
     } catch (e) {
       console.error(e);
