@@ -8,10 +8,11 @@ interface KpiStripProps {
   compromisos: CompromisoRecurrente[];
 }
 
-const MESES: Record<string, number> = {
-  ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5,
-  jul: 6, ago: 7, sep: 8, oct: 9, nov: 10, dic: 11,
-};
+const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+function formatDateShort(d: Date): string {
+  return `${d.getDate()} ${MESES_SHORT[d.getMonth()] ?? ''} ${d.getFullYear()}`;
+}
 
 const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
   const mensual = compromisos
@@ -21,26 +22,17 @@ const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
 
   let nextDate: string | null = null;
   let nextAlias: string | null = null;
-  const now = new Date();
   let nearestMs = Infinity;
 
   for (const c of compromisos) {
     if (c.estado !== 'activo') continue;
     const fp = formatPattern(c.patron, c.fechaInicio);
-    if (fp.secondary && fp.secondary.startsWith('próximo')) {
-      const parts = fp.secondary.replace('próximo · ', '').split(' ');
-      if (parts.length === 3) {
-        const year = parseInt(parts[2] ?? '', 10);
-        const monthKey = parts[1] ?? '';
-        const day = parseInt(parts[0] ?? '', 10);
-        const month = MESES[monthKey] ?? 0;
-        const d = new Date(year, month, day);
-        const ms = d.getTime() - now.getTime();
-        if (ms >= 0 && ms < nearestMs) {
-          nearestMs = ms;
-          nextDate = fp.secondary.replace('próximo · ', '');
-          nextAlias = c.alias;
-        }
+    if (fp.nextDate) {
+      const ms = fp.nextDate.getTime() - Date.now();
+      if (ms >= 0 && ms < nearestMs) {
+        nearestMs = ms;
+        nextDate = formatDateShort(fp.nextDate);
+        nextAlias = c.alias;
       }
     }
   }

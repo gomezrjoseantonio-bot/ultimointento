@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Sparkles, Search } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../design-system/v5';
@@ -52,6 +52,13 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     setSearchInput(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => setSearch(val), 200);
+  }, []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   const [filterFamilia, setFilterFamilia] = useState<string | null>(null);

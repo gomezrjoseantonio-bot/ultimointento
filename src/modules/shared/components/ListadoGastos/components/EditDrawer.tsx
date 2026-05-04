@@ -274,6 +274,14 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
     }
   }, [compromiso]);
 
+  const handleCloseAttempt = useCallback(() => {
+    if (isDirty) {
+      setShowDiscardConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [isDirty, onClose]);
+
   // Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -281,8 +289,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDirty]);
+  }, [handleCloseAttempt]);
 
   const setField = useCallback(<K extends keyof DrawerFormState>(key: K, value: DrawerFormState[K]) => {
     setForm((prev) => {
@@ -306,14 +313,6 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
     setErrors((prev) => ({ ...prev, importesEstacionales: undefined }));
     setIsDirty(true);
   }, []);
-
-  const handleCloseAttempt = useCallback(() => {
-    if (isDirty) {
-      setShowDiscardConfirm(true);
-    } else {
-      onClose();
-    }
-  }, [isDirty, onClose]);
 
   const tipoGastoValue: TipoGastoValue | null = form.tipoGastoId
     ? { tipoId: form.tipoGastoId, subtipoId: form.subtipoId, nombrePersonalizado: form.nombrePersonalizado }
