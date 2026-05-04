@@ -1,7 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import {
-  DateLabel,
+  TrendingUp,
+  CreditCard,
+  Home,
+  Zap,
+  Briefcase,
+  ArrowDownLeft,
+  Building2,
+} from 'lucide-react';
+import {
   MoneyValue,
   Pill,
   Icons,
@@ -74,6 +82,36 @@ const MONTH_NAMES_ES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+
+/** Returns an expense icon based on the category label string. */
+const getExpenseIcon = (categoryLabel: string | undefined): React.ReactElement => {
+  const cat = (categoryLabel ?? '').toLowerCase();
+  if (cat.includes('vivienda') || cat.includes('alquiler'))
+    return <Home size={14} color="var(--atlas-v5-neg)" />;
+  if (cat.includes('suministro') || cat.includes('gas') || cat.includes('luz'))
+    return <Zap size={14} color="var(--atlas-v5-neg)" />;
+  if (cat.includes('gestión') || cat.includes('gestion') || cat.includes('honorario'))
+    return <Briefcase size={14} color="var(--atlas-v5-neg)" />;
+  if (cat.includes('cuota') || cat.includes('hipoteca') || cat.includes('financiación') || cat.includes('financiacion'))
+    return <CreditCard size={14} color="var(--atlas-v5-neg)" />;
+  return <ArrowDownLeft size={14} color="var(--atlas-v5-neg)" />;
+};
+
+/** Returns an icon element for a treasury event based on its type and categoryLabel. */
+const getEventIcon = (
+  type: 'income' | 'expense' | 'financing',
+  categoryLabel?: string,
+): React.ReactElement => {
+  if (type === 'income') return <TrendingUp size={14} color="var(--atlas-v5-pos)" />;
+  if (type === 'financing') return <CreditCard size={14} color="var(--atlas-v5-neg)" />;
+  return getExpenseIcon(categoryLabel);
+};
+
+/** Returns an icon element for a movement based on its amount sign and categoria. */
+const getMovementIcon = (amount: number, categoria?: string): React.ReactElement => {
+  if (amount >= 0) return <TrendingUp size={14} color="var(--atlas-v5-pos)" />;
+  return getExpenseIcon(categoria);
+};
 
 const formatDateGroupLabel = (dateKey: string): string => {
   if (!dateKey) return '—';
@@ -348,6 +386,26 @@ const MovimientosTab: React.FC = () => {
             {a.alias ?? a.banco?.name ?? a.bank ?? `#${a.id}`}
           </button>
         ))}
+        {availableMonths.length > 0 && (
+          <>
+            <span style={{ width: 1, alignSelf: 'stretch', background: 'var(--atlas-v5-line)', margin: '0 4px' }} />
+            <select
+              className={styles.monthSelect}
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              aria-label="Filtrar por mes"
+            >
+              <option value="">Todos los meses</option>
+              {availableMonths.map((ym) => {
+                const [year, month] = ym.split('-');
+                const label = `${MONTH_NAMES_ES[Number(month) - 1]} ${year}`;
+                return (
+                  <option key={ym} value={ym}>{label}</option>
+                );
+              })}
+            </select>
+          </>
+        )}
         <span className={styles.filtSearch}>
           <Icons.Search size={14} strokeWidth={1.8} />
           <input
@@ -359,44 +417,6 @@ const MovimientosTab: React.FC = () => {
           />
         </span>
       </div>
-
-      {/* ── Month filter bar ───────────────────────────────────────────────── */}
-      {availableMonths.length > 0 && (
-        <div className={styles.monthFilterBar} role="group" aria-label="Filtrar por mes">
-          <span className={styles.monthFilterLabel}>Mes:</span>
-          <button
-            type="button"
-            className={`${styles.filtChip} ${monthFilter === '' ? styles.active : ''}`}
-            onClick={() => setMonthFilter('')}
-          >
-            Todos
-          </button>
-          {availableMonths.map((ym) => {
-            const [year, month] = ym.split('-');
-            const label = `${MONTH_NAMES_ES[Number(month) - 1]} ${year}`;
-            return (
-              <button
-                key={ym}
-                type="button"
-                className={`${styles.filtChip} ${monthFilter === ym ? styles.active : ''}`}
-                onClick={() => setMonthFilter(monthFilter === ym ? '' : ym)}
-              >
-                {label}
-              </button>
-            );
-          })}
-          {monthFilter && (
-            <button
-              type="button"
-              className={styles.filtChipClear}
-              onClick={() => setMonthFilter('')}
-              aria-label="Limpiar filtro de mes"
-            >
-              ✕ Limpiar
-            </button>
-          )}
-        </div>
-      )}
 
       {selected.size > 0 && (
         <div className={styles.bulkBar} role="status" aria-live="polite">
@@ -425,7 +445,6 @@ const MovimientosTab: React.FC = () => {
             <thead>
               <tr>
                 <th className={styles.checkCell} aria-label="Seleccionar"></th>
-                <th>Fecha</th>
                 <th>Concepto</th>
                 <th>Cuenta</th>
                 <th className="r">Importe</th>
@@ -438,7 +457,7 @@ const MovimientosTab: React.FC = () => {
                 if (row.kind === 'header') {
                   return (
                     <tr key={`h:${row.dateKey}`} className={styles.dateGroupRow}>
-                      <td colSpan={6} className={styles.dateGroupCell}>
+                      <td colSpan={5} className={styles.dateGroupCell}>
                         {row.label}
                       </td>
                     </tr>
@@ -476,23 +495,28 @@ const MovimientosTab: React.FC = () => {
                           {reconciled && <Icons.Check size={14} strokeWidth={2.5} />}
                         </button>
                       </td>
-                      <td className={styles.dateCell}>
-                        {m.date ? <DateLabel value={m.date} format="short" /> : '—'}
-                      </td>
                       <td>
-                        <div className={styles.tStrong}>
-                          {m.description || m.counterparty || m.providerName || 'Sin concepto'}
+                        <div className={styles.conceptCell}>
+                          <span className={styles.conceptIcon}>
+                            {getMovementIcon(m.amount, m.categoria)}
+                          </span>
+                          <div>
+                            <div className={styles.tStrong}>
+                              {m.description || m.counterparty || m.providerName || 'Sin concepto'}
+                            </div>
+                            {(m.counterparty || m.providerName) && (
+                              <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
+                                {m.counterparty ?? m.providerName}
+                              </div>
+                            )}
+                            {inmuebleAlias ? (
+                              <div className={styles.tInmueble}>
+                                <Building2 size={11} />
+                                {inmuebleAlias}
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
-                        {(m.counterparty || m.providerName) && (
-                          <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
-                            {m.counterparty ?? m.providerName}
-                          </div>
-                        )}
-                        {inmuebleAlias ? (
-                          <div className={styles.tInmueble}>
-                            {inmuebleAlias}
-                          </div>
-                        ) : null}
                       </td>
                       <td>
                         <span className={styles.chipAcc}>
@@ -548,23 +572,26 @@ const MovimientosTab: React.FC = () => {
                         }
                       </button>
                     </td>
-                    <td className={styles.dateCell}>
-                      {e.predictedDate
-                        ? <DateLabel value={e.predictedDate} format="short" />
-                        : '—'}
-                    </td>
                     <td>
-                      <div className={styles.tStrong}>{e.description || 'Sin concepto'}</div>
-                      {(e.counterparty || e.providerName) && (
-                        <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
-                          {e.counterparty ?? e.providerName}
+                      <div className={styles.conceptCell}>
+                        <span className={styles.conceptIcon}>
+                          {getEventIcon(e.type, e.categoryLabel)}
+                        </span>
+                        <div>
+                          <div className={styles.tStrong}>{e.description || 'Sin concepto'}</div>
+                          {(e.counterparty || e.providerName) && (
+                            <div className={styles.tMuted} style={{ fontSize: 11, marginTop: 2 }}>
+                              {e.counterparty ?? e.providerName}
+                            </div>
+                          )}
+                          {evInmuebleAlias ? (
+                            <div className={styles.tInmueble}>
+                              <Building2 size={11} />
+                              {evInmuebleAlias}
+                            </div>
+                          ) : null}
                         </div>
-                      )}
-                      {evInmuebleAlias ? (
-                        <div className={styles.tInmueble}>
-                          {evInmuebleAlias}
-                        </div>
-                      ) : null}
+                      </div>
                     </td>
                     <td>
                       <span className={styles.chipAcc}>
