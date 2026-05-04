@@ -176,10 +176,16 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
     const errors: Record<string, string> = {};
     if (!formData.alias.trim()) errors.alias = 'El alias es obligatorio';
     else if (formData.alias.trim().length > 40) errors.alias = 'El alias no puede superar 40 caracteres';
-    if (formData.tipo !== 'TARJETA_CREDITO' && formData.iban.trim()) {
-      const v = validateIbanEs(formData.iban);
-      if (!v.ok) errors.iban = v.message || 'IBAN inválido';
+
+    // IBAN: obligatorio en cuentas bancarias (no tarjeta)
+    if (formData.tipo !== 'TARJETA_CREDITO') {
+      if (!formData.iban.trim()) errors.iban = 'El IBAN es obligatorio';
+      else {
+        const v = validateIbanEs(formData.iban);
+        if (!v.ok) errors.iban = v.message || 'IBAN inválido';
+      }
     }
+
     if (formData.tipo === 'TARJETA_CREDITO') {
       const day = parseInt(formData.cardSettlementDay || '0', 10);
       if (!day || day < 1 || day > 31) errors.cardSettlementDay = 'Día entre 1 y 31';
@@ -251,8 +257,17 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
       aria-labelledby="account-modal-title"
       className="fixed inset-0 backdrop-blur-sm flex items-start justify-center z-50"
       style={{ backgroundColor: 'var(--bg)', opacity: 0.95, overflowY: 'auto', padding: '24px 0' }}
+      onMouseDown={(e) => {
+        // Close only when clicking on the backdrop (not inside the dialog)
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div ref={dialogRef} className="bg-white w-full max-w-md" style={{ borderRadius: 8, display: 'flex', flexDirection: 'column' }}>
+      <div
+        ref={dialogRef}
+        className="bg-white w-full max-w-md"
+        style={{ borderRadius: 8, display: 'flex', flexDirection: 'column' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
 
         {/* Header */}
         <div style={{ padding: '16px 20px 14px', borderBottom: '1px solid var(--grey-200)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -323,11 +338,11 @@ const AccountFormModal: React.FC<AccountFormModalProps> = ({
               </div>
             )}
 
-            {/* IBAN — opcional */}
+            {/* IBAN — obligatorio salvo tarjeta */}
             {formData.tipo !== 'TARJETA_CREDITO' && (
               <div>
                 <label style={lbl}>
-                  IBAN <span style={{ color: 'var(--grey-400)', fontWeight: 400 }}>— opcional</span>
+                  IBAN <span style={{ color: 'var(--teal-600)' }}>*</span>
                 </label>
                 <input
                   type="text"
