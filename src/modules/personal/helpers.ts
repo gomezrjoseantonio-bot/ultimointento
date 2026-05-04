@@ -2,10 +2,7 @@
 // T20 Fase 3b · review #1172 · centralizar cálculos del modelo real.
 
 import type { Autonomo, Nomina } from '../../types/personal';
-import type {
-  CategoriaGastoCompromiso,
-  CompromisoRecurrente,
-} from '../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { nominaService } from '../../services/nominaService';
 import { autonomoService } from '../../services/autonomoService';
 
@@ -275,7 +272,7 @@ export const computeCompromisoImporteEnMes = (
  * Reparto canónico de categorías → bolsa 50/30/20 según prefijo.
  */
 export const bolsaForCategoria = (
-  categoria: CategoriaGastoCompromiso,
+  categoria: string,
 ): 'necesidades' | 'deseos' | 'ahorroInversion' | 'obligaciones' | 'inmueble' => {
   if (categoria.startsWith('vivienda.')) return 'necesidades';
   if (categoria.startsWith('ahorro.')) return 'ahorroInversion';
@@ -308,7 +305,7 @@ export const bolsaForCategoria = (
  * Devuelve la "familia" de la categoría · útil para colorear donut.
  */
 export const familiaForCategoria = (
-  categoria: CategoriaGastoCompromiso,
+  categoria: string,
 ): string => {
   const prefix = categoria.split('.')[0];
   return prefix; // 'vivienda' · 'ahorro' · 'obligaciones' · 'inmueble' · 'alimentacion' · etc.

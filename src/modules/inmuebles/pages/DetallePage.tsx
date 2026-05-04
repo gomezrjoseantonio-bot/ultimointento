@@ -21,6 +21,40 @@ import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import styles from './DetallePage.module.css';
 
+// ─── T38: labels y filtros por familia inmueble ──────────────────────────────
+
+const FAMILIA_LABELS_INMUEBLE: Record<string, string> = {
+  tributos:    'Tributos',
+  comunidad:   'Comunidad',
+  suministros: 'Suministros',
+  seguros:     'Seguros',
+  gestion:     'Gestión',
+  reparacion:  'Reparación',
+  otros:       'Otros',
+};
+
+const FAMILIAS_INMUEBLE_FILTROS = [
+  'tributos', 'comunidad', 'suministros', 'seguros', 'gestion', 'reparacion', 'otros',
+] as const;
+
+/** Fallback de familia para registros sin tipoFamilia (pre-T38) */
+function inferFamiliaInmueble(tipo: string, subtipo?: string): string {
+  if (tipo === 'impuesto') return 'tributos';
+  if (tipo === 'suministro') return 'suministros';
+  if (tipo === 'seguro') return 'seguros';
+  if (tipo === 'comunidad') return 'comunidad';
+  if (tipo === 'otros') {
+    const s = subtipo ?? '';
+    if (['honorarios_agencia', 'gestoria', 'asesoria'].includes(s)) return 'gestion';
+    if (['mantenimiento_caldera', 'mantenimiento_integral', 'limpieza'].includes(s)) return 'reparacion';
+  }
+  return 'otros';
+}
+
+function getFamiliaInmueble(c: CompromisoRecurrente): string {
+  return c.tipoFamilia ?? inferFamiliaInmueble(c.tipo, c.subtipo);
+}
+
 type Tab = 'resumen' | 'contratos' | 'cobros' | 'gastos' | 'documentos' | 'fiscalidad';
 
 const HABITACION_COLORS = [
@@ -45,6 +79,7 @@ const DetallePage: React.FC = () => {
   const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [tab, setTab] = useState<Tab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
+  const [filterFamiliaInmueble, setFilterFamiliaInmueble] = useState<string | null>(null);
   const [deleteGastoTarget, setDeleteGastoTarget] = useState<CompromisoRecurrente & { id: number } | null>(null);
   const [deletingGasto, setDeletingGasto] = useState(false);
 
@@ -394,7 +429,26 @@ const DetallePage: React.FC = () => {
 
       {tab === 'gastos' && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Filtros familia */}
+            <button
+              type="button"
+              style={gastoChipStyle(filterFamiliaInmueble === null)}
+              onClick={() => setFilterFamiliaInmueble(null)}
+            >
+              Todos · {gastos.length}
+            </button>
+            {FAMILIAS_INMUEBLE_FILTROS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                style={gastoChipStyle(filterFamiliaInmueble === f)}
+                onClick={() => setFilterFamiliaInmueble(f)}
+              >
+                {FAMILIA_LABELS_INMUEBLE[f]}
+              </button>
+            ))}
+            {/* Botón nuevo */}
             <button
               type="button"
               style={{
@@ -410,6 +464,7 @@ const DetallePage: React.FC = () => {
                 fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: 'var(--atlas-v5-font-ui)',
+                marginLeft: 'auto',
               }}
               onClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
             >
@@ -436,13 +491,19 @@ const DetallePage: React.FC = () => {
               </thead>
               <tbody>
                 {gastos
+                  .filter((g) => {
+                    if (filterFamiliaInmueble) {
+                      return getFamiliaInmueble(g) === filterFamiliaInmueble;
+                    }
+                    return true;
+                  })
                   .filter((g): g is CompromisoRecurrente & { id: number } => g.id != null)
                   .map((g) => {
                     const monthly = computeMonthly(g);
                     return (
                       <tr key={g.id}>
                         <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><strong>{g.alias}</strong></td>
-                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{g.tipo}</td>
+                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{FAMILIA_LABELS_INMUEBLE[getFamiliaInmueble(g)] ?? getFamiliaInmueble(g)}</td>
                         <td style={{ padding: '10px 8px', fontSize: 11.5, fontFamily: 'var(--atlas-v5-font-mono-tech)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{g.patron.tipo}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><MoneyValue value={-monthly} decimals={0} showSign tone="neg" /></td>
                         <td style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
@@ -505,3 +566,17 @@ const gastoActionBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
 };
+
+const gastoChipStyle = (active: boolean): React.CSSProperties => ({
+  padding: '4px 10px',
+  borderRadius: 6,
+  fontSize: 12,
+  color: active ? 'var(--atlas-v5-white)' : 'var(--atlas-v5-ink-3)',
+  fontWeight: 500,
+  border: `1px solid ${active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)'}`,
+  background: active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card-alt)',
+  cursor: 'pointer',
+  fontFamily: 'var(--atlas-v5-font-ui)',
+  display: 'inline-flex',
+  alignItems: 'center',
+});

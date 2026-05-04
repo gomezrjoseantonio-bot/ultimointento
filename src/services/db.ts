@@ -25,7 +25,7 @@ import type {
 import type { TipoActivo } from '../types/tipoActivo';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 67; // V67 (T27.3): añade campos opcionales al store `fondos_ahorro` · objetivoVinculadoId · prioridad ('alta'|'normal') · fechaObjetivo · colchonGastoMensual · sin migración de datos (campos opcionales · default retroactivo al renderizar)
+const DB_VERSION = 68; // V68 (T38): añade campo opcional `tipoFamilia` a `compromisosRecurrentes` · migración de datos asíncrona (v68-tipoFamilia.ts) · sin cambios destructivos
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -3981,6 +3981,18 @@ export const initDB = async () => {
           // Sin migración de datos · campos opcionales · IndexedDB sin schema
           // rígido · registros V66 sin campos siguen válidos (default
           // retroactivo · prioridad 'normal' · sin vinculación).
+        }
+
+        if (oldVersion < 68) {
+          // ── V68 (T38): campo tipoFamilia en compromisosRecurrentes ──────────
+          // Añade campo opcional `tipoFamilia?: string` para identificar la
+          // familia real del gasto (vivienda · suministros · dia_a_dia ·
+          // suscripciones · seguros_cuotas · otros · tributos · comunidad ·
+          // seguros · gestion · reparacion).
+          // Sin cambios de schema IndexedDB (campo opcional sin índice nuevo).
+          // La migración de datos (inferir tipoFamilia para registros
+          // existentes) se ejecuta de forma asíncrona POST-upgrade en
+          // App.tsx via `runV68TipoFamiliaMigration` (idempotente · keyval).
         }
       },
       blocked() {
