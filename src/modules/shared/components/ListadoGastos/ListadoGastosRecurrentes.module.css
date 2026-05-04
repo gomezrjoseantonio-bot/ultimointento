@@ -1,0 +1,6 @@
+/* ListadoGastosRecurrentes — minimal CSS module */
+/* Most styles are inline using v5 design tokens */
+
+.root {
+  font-family: var(--atlas-v5-font-ui);
+}

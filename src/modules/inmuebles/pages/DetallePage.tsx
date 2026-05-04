@@ -13,47 +13,15 @@ import {
   listarCompromisos,
   eliminarCompromiso,
 } from '../../../services/personal/compromisosRecurrentesService';
-import ConfirmationModal from '../../../components/common/ConfirmationModal';
-import { computeMonthly } from '../../shared/utils/compromisoUtils';
+import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import type { InmueblesOutletContext } from '../InmueblesContext';
 import type { Contract } from '../../../services/db';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
+import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
+import { TIPOS_GASTO_INMUEBLE_V2 } from '../wizards/utils/tiposDeGastoInmueble';
 import styles from './DetallePage.module.css';
 
-// ─── T38: labels y filtros por familia inmueble ──────────────────────────────
-
-const FAMILIA_LABELS_INMUEBLE: Record<string, string> = {
-  tributos:    'Tributos',
-  comunidad:   'Comunidad',
-  suministros: 'Suministros',
-  seguros:     'Seguros',
-  gestion:     'Gestión',
-  reparacion:  'Reparación',
-  otros:       'Otros',
-};
-
-const FAMILIAS_INMUEBLE_FILTROS = [
-  'tributos', 'comunidad', 'suministros', 'seguros', 'gestion', 'reparacion', 'otros',
-] as const;
-
-/** Fallback de familia para registros sin tipoFamilia (pre-T38) */
-function inferFamiliaInmueble(tipo: string, subtipo?: string): string {
-  if (tipo === 'impuesto') return 'tributos';
-  if (tipo === 'suministro') return 'suministros';
-  if (tipo === 'seguro') return 'seguros';
-  if (tipo === 'comunidad') return 'comunidad';
-  if (tipo === 'otros') {
-    const s = subtipo ?? '';
-    if (['honorarios_agencia', 'gestoria', 'asesoria'].includes(s)) return 'gestion';
-    if (['mantenimiento_caldera', 'mantenimiento_integral', 'limpieza'].includes(s)) return 'reparacion';
-  }
-  return 'otros';
-}
-
-function getFamiliaInmueble(c: CompromisoRecurrente): string {
-  return c.tipoFamilia ?? inferFamiliaInmueble(c.tipo, c.subtipo);
-}
 
 type Tab = 'resumen' | 'contratos' | 'cobros' | 'gastos' | 'documentos' | 'fiscalidad';
 
@@ -79,29 +47,25 @@ const DetallePage: React.FC = () => {
   const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
   const [tab, setTab] = useState<Tab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
-  const [filterFamiliaInmueble, setFilterFamiliaInmueble] = useState<string | null>(null);
-  const [deleteGastoTarget, setDeleteGastoTarget] = useState<CompromisoRecurrente & { id: number } | null>(null);
-  const [deletingGasto, setDeletingGasto] = useState(false);
 
   useEffect(() => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
   }, [propertyId]);
 
-  const handleDeleteGasto = useCallback(async () => {
-    if (!deleteGastoTarget) return;
-    setDeletingGasto(true);
-    try {
-      await eliminarCompromiso(deleteGastoTarget.id);
-      showToastV5(`Gasto "${deleteGastoTarget.alias}" eliminado`, 'success');
-      setDeleteGastoTarget(null);
+  const reloadGastos = useCallback(() => {
+    void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
+  }, [propertyId]);
+
+  const handleDeleteGasto = useCallback(
+    async (c: CompromisoRecurrente) => {
+      if (!c.id) return;
+      await eliminarCompromiso(c.id);
+      await regenerateForecastsForward({ force: true }).catch(() => {});
       const updated = await listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId });
       setGastos(updated);
-    } catch (err) {
-      showToastV5(`Error al eliminar: ${err instanceof Error ? err.message : String(err)}`, 'error');
-    } finally {
-      setDeletingGasto(false);
-    }
-  }, [deleteGastoTarget, propertyId]);
+    },
+    [propertyId],
+  );
 
   const property = useMemo(
     () => properties.find((p) => p.id === propertyId),
@@ -429,115 +393,16 @@ const DetallePage: React.FC = () => {
 
       {tab === 'gastos' && (
         <div style={{ marginTop: 8 }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Filtros familia */}
-            <button
-              type="button"
-              style={gastoChipStyle(filterFamiliaInmueble === null)}
-              onClick={() => setFilterFamiliaInmueble(null)}
-            >
-              Todos · {gastos.length}
-            </button>
-            {FAMILIAS_INMUEBLE_FILTROS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                style={gastoChipStyle(filterFamiliaInmueble === f)}
-                onClick={() => setFilterFamiliaInmueble(f)}
-              >
-                {FAMILIA_LABELS_INMUEBLE[f]}
-              </button>
-            ))}
-            {/* Botón nuevo */}
-            <button
-              type="button"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 18px',
-                border: '1.5px solid var(--atlas-v5-gold)',
-                borderRadius: 7,
-                background: 'var(--atlas-v5-gold)',
-                color: 'var(--atlas-v5-white)',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontFamily: 'var(--atlas-v5-font-ui)',
-                marginLeft: 'auto',
-              }}
-              onClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
-            >
-              <Icons.Plus size={14} strokeWidth={2} />
-              Nuevo gasto recurrente
-            </button>
-          </div>
-          {gastos.length === 0 ? (
-            <EmptyState
-              icon={<Icons.Tesoreria size={20} />}
-              title="Sin gastos recurrentes"
-              sub="Da de alta los gastos de este inmueble para que ATLAS los proyecte automáticamente."
-              ctaLabel="Nuevo gasto recurrente"
-              onCtaClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
-            />
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, fontFamily: 'var(--atlas-v5-font-ui)' }}>
-              <thead>
-                <tr>
-                  {['Nombre', 'Tipo', 'Patrón', 'Mensual est.', 'Estado', 'Acciones'].map((h, i) => (
-                    <th key={h} style={{ textAlign: i >= 3 ? 'right' : 'left', padding: '10px 8px', fontSize: 10.5, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--atlas-v5-ink-4)', borderBottom: '1px solid var(--atlas-v5-line)' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {gastos
-                  .filter((g) => {
-                    if (filterFamiliaInmueble) {
-                      return getFamiliaInmueble(g) === filterFamiliaInmueble;
-                    }
-                    return true;
-                  })
-                  .filter((g): g is CompromisoRecurrente & { id: number } => g.id != null)
-                  .map((g) => {
-                    const monthly = computeMonthly(g);
-                    return (
-                      <tr key={g.id}>
-                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><strong>{g.alias}</strong></td>
-                        <td style={{ padding: '10px 8px', fontSize: 13, color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{FAMILIA_LABELS_INMUEBLE[getFamiliaInmueble(g)] ?? getFamiliaInmueble(g)}</td>
-                        <td style={{ padding: '10px 8px', fontSize: 11.5, fontFamily: 'var(--atlas-v5-font-mono-tech)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>{g.patron.tipo}</td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', color: 'var(--atlas-v5-ink-2)', borderBottom: '1px solid var(--atlas-v5-line-2)' }}><MoneyValue value={-monthly} decimals={0} showSign tone="neg" /></td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
-                          <Pill variant={g.estado === 'activo' ? 'pos' : 'gris'} asTag>
-                            {g.estado === 'activo' ? 'Activo' : 'Baja'}
-                          </Pill>
-                        </td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap', borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
-                          <button type="button" aria-label={`Editar ${g.alias}`} title="Editar" onClick={() => navigate(`/inmuebles/${property.id}/gastos/${g.id}/editar`)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-ink-3)' }}>
-                            <Icons.Edit size={13} strokeWidth={1.8} />
-                          </button>
-                          <button type="button" aria-label={`Eliminar ${g.alias}`} title="Eliminar" onClick={() => setDeleteGastoTarget(g)} style={{ ...gastoActionBtnStyle, color: 'var(--atlas-v5-neg)' }}>
-                            <Icons.Delete size={13} strokeWidth={1.8} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          )}
-          {deleteGastoTarget && (
-            <ConfirmationModal
-              isOpen={true}
-              title="Eliminar gasto recurrente"
-              message={`¿Eliminar "${deleteGastoTarget.alias}"? Esta acción no se puede deshacer.`}
-              confirmText="Eliminar"
-              cancelText="Cancelar"
-              onConfirm={handleDeleteGasto}
-              onClose={() => setDeleteGastoTarget(null)}
-              isLoading={deletingGasto}
-              variant="danger"
-            />
-          )}
+          <ListadoGastosRecurrentes
+            catalog={TIPOS_GASTO_INMUEBLE_V2}
+            compromisos={gastos}
+            mode="inmueble"
+            inmuebleId={propertyId}
+            onEdit={(c) => navigate(`/inmuebles/${property.id}/gastos/${c.id}/editar`)}
+            onDelete={handleDeleteGasto}
+            onReload={reloadGastos}
+            onNuevo={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
+          />
         </div>
       )}
 
@@ -554,29 +419,3 @@ const DetallePage: React.FC = () => {
 };
 
 export default DetallePage;
-
-// ── Estilos compartidos ──────────────────────────────────────────────────────
-
-const gastoActionBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: '3px 5px',
-  borderRadius: 4,
-  display: 'inline-flex',
-  alignItems: 'center',
-};
-
-const gastoChipStyle = (active: boolean): React.CSSProperties => ({
-  padding: '4px 10px',
-  borderRadius: 6,
-  fontSize: 12,
-  color: active ? 'var(--atlas-v5-white)' : 'var(--atlas-v5-ink-3)',
-  fontWeight: 500,
-  border: `1px solid ${active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-line)'}`,
-  background: active ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-card-alt)',
-  cursor: 'pointer',
-  fontFamily: 'var(--atlas-v5-font-ui)',
-  display: 'inline-flex',
-  alignItems: 'center',
-});
