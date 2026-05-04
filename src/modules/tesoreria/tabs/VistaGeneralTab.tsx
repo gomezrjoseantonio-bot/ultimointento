@@ -15,9 +15,11 @@ import CalendarioMes12 from '../../../components/treasury/CalendarioMes12';
 import MesDetalleDrawer from '../../../components/treasury/MesDetalleDrawer';
 import MovimientoDrawer, {
   type MovimientoDrawerData,
+  type MovimientoDrawerPatch,
 } from '../../../components/treasury/MovimientoDrawer';
 import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
+import { updateTreasuryEventFields } from '../../../services/treasuryConfirmationService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -36,7 +38,7 @@ const MONTH_NAMES = [
 
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
-  const { accounts, movements, treasuryEvents } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
 
   // T31 · drawer detalle mes (clic en mes-card del calendario)
   const [drawerMes, setDrawerMes] = useState<{ year: number; monthIndex0: number } | null>(null);
@@ -438,6 +440,22 @@ const VistaGeneralTab: React.FC = () => {
           return drawerData;
         })()}
         onClose={() => setDrawerMovId(null)}
+        accounts={accounts}
+        onSave={async (id, patch: MovimientoDrawerPatch) => {
+          try {
+            const dbId = typeof id === 'number' ? id : Number(id);
+            if (Number.isFinite(dbId)) {
+              await updateTreasuryEventFields(dbId, patch);
+              invalidateCachedStores(['treasuryEvents']);
+              reload();
+              showToastV5('Cambios guardados', 'success');
+            }
+            setDrawerMovId(null);
+          } catch (err) {
+            console.error('[Movimiento] guardar falló', err);
+            showToastV5('No se pudo guardar · ver consola', 'error');
+          }
+        }}
         onConfirmar={async (id) => {
           try {
             const dbId = typeof id === 'number' ? id : Number(id);
@@ -455,9 +473,6 @@ const VistaGeneralTab: React.FC = () => {
             console.error('[Movimiento] confirmar falló', err);
             showToastV5('No se pudo confirmar · ver consola', 'error');
           }
-        }}
-        onEditar={() => {
-          showToastV5('Edición de previsiones · próximamente', 'info');
         }}
       />
     </>
