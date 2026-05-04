@@ -18,6 +18,7 @@ import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphane
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrateKeyvalPlanpagosToPrestamos';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
+import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -323,6 +324,8 @@ function App() {
       // Limpieza de ejercicios fiscales basura — eager para evitar que la UI
       // muestre años futuros residuales durante los primeros 2.5s.
       .then(() => limpiarEjerciciosCoordBasura())
+      // T38: migración v68 · inferir tipoFamilia en compromisosRecurrentes existentes
+      .then(() => runV68TipoFamiliaMigration())
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales:', error);
       });

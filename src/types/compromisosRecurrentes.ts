@@ -170,8 +170,9 @@ export interface CompromisoRecurrente {
   metodoPago: MetodoPagoCompromiso;
 
   // Categorización
-  categoria: CategoriaGastoCompromiso;
+  categoria: string; // normalizado a "familia.subfamilia" en T38; retrocompatible con CategoriaGastoCompromiso legacy
   bolsaPresupuesto: BolsaPresupuesto;
+  tipoFamilia?: string; // T38: familia real ('vivienda' | 'suministros' | 'dia_a_dia' | 'suscripciones' | 'seguros_cuotas' | 'otros' | 'tributos' | 'comunidad' | 'seguros' | 'gestion' | 'reparacion')
   responsable: ResponsableCompromiso;
   porcentajeTitular?: number; // 0-100 · si hogar compartido y % no es 50/50
 

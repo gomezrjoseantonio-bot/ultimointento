@@ -37,6 +37,10 @@ import {
   findSubtipoInmueble,
   findCatalogEntryInmuebleByDbFields,
 } from './utils/tiposDeGastoInmueble';
+import {
+  FAMILIA_TO_TIPO_LEGACY_INMUEBLE,
+  buildCategoriaInmueble,
+} from './utils/familyMappingInmueble';
 import { buildGastoAlias } from '../../shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ────────────────────────────────────────────────────────────
@@ -480,13 +484,13 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
       });
 
       const metodo: MetodoPagoCompromiso = 'domiciliacion';
-      const categoria = subtipoCatalog.categoria;
 
       const payload = {
         ambito: 'inmueble' as const,
         inmuebleId: propertyId,
         alias,
-        tipo: subtipoCatalog.tipoCompromiso,
+        tipoFamilia: form.tipoGastoId,                                                // T38: familia real
+        tipo: FAMILIA_TO_TIPO_LEGACY_INMUEBLE[form.tipoGastoId] ?? subtipoCatalog.tipoCompromiso,  // T38: legacy mapeado desde familia
         subtipo: form.subtipoId || undefined,
         proveedor: {
           nombre: form.proveedor || tipoSeleccionado.label,
@@ -499,7 +503,7 @@ const NuevoGastoRecurrenteInmueblePage: React.FC = () => {
         cuentaCargo: parseInt(form.cuentaCargoId, 10),
         conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : tipoSeleccionado.label.toUpperCase(),
         metodoPago: metodo,
-        categoria,
+        categoria: buildCategoriaInmueble(form.tipoGastoId, form.subtipoId || 'otros'),  // T38: normalizado "inmueble.familia.subfamilia"
         bolsaPresupuesto: 'inmueble' as const,
         responsable: 'titular' as const,
         fechaInicio: new Date().toISOString().slice(0, 10),

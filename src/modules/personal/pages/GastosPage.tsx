@@ -14,11 +14,48 @@ import { computeMonthly } from '../../shared/utils/compromisoUtils';
 import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 
+// ─── T38: labels y filtros por familia ──────────────────────────────────────
+
+const FAMILIA_LABELS_PERSONAL: Record<string, string> = {
+  vivienda:        'Vivienda',
+  suministros:     'Suministros',
+  dia_a_dia:       'Día a día',
+  suscripciones:   'Suscripciones',
+  seguros_cuotas:  'Seguros y cuotas',
+  otros:           'Otros',
+  sin_clasificar:  'Sin clasificar',
+};
+
+const FAMILIAS_PERSONAL_FILTROS = [
+  'vivienda', 'suministros', 'dia_a_dia', 'suscripciones', 'seguros_cuotas', 'otros',
+] as const;
+
+/** Fallback de familia para registros sin tipoFamilia (registros pre-T38) */
+function inferFamiliaFallback(tipo: string, subtipo?: string): string {
+  if (tipo === 'suministro') return 'suministros';
+  if (tipo === 'suscripcion') return 'suscripciones';
+  if (tipo === 'seguro') return 'seguros_cuotas';
+  if (tipo === 'cuota') return 'seguros_cuotas';
+  if (tipo === 'impuesto') return 'otros';
+  if (tipo === 'otros') {
+    const s = subtipo ?? '';
+    if (['alquiler', 'ibi', 'comunidad', 'seguro_hogar'].includes(s)) return 'vivienda';
+    if (['supermercado', 'transporte', 'restaurantes', 'ocio', 'salud', 'ropa', 'cuidado_personal'].includes(s)) return 'dia_a_dia';
+    if (['gimnasio', 'educacion', 'profesional', 'ong'].includes(s)) return 'seguros_cuotas';
+  }
+  return 'otros';
+}
+
+/** Devuelve la familia efectiva del compromiso (tipoFamilia o fallback) */
+function getFamilia(c: CompromisoRecurrente): string {
+  return c.tipoFamilia ?? inferFamiliaFallback(c.tipo, c.subtipo);
+}
+
 const GastosPage: React.FC = () => {
   const navigate = useNavigate();
   const { compromisos, reload } = useOutletContext<PersonalOutletContext>();
   const [search, setSearch] = useState('');
-  const [filterTipo, setFilterTipo] = useState<string | null>(null);
+  const [filterFamilia, setFilterFamilia] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CompromisoRecurrente & { id: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -27,15 +64,12 @@ const GastosPage: React.FC = () => {
     [compromisos],
   );
 
-  const tipos = useMemo(() => {
-    const s = new Set<string>();
-    personalCompromisos.forEach((c) => s.add(c.tipo));
-    return Array.from(s).sort();
-  }, [personalCompromisos]);
-
   const filtered = useMemo(() => {
     return personalCompromisos.filter((c) => {
-      if (filterTipo && c.tipo !== filterTipo) return false;
+      if (filterFamilia) {
+        const familia = getFamilia(c);
+        if (familia !== filterFamilia) return false;
+      }
       if (!search) return true;
       const s = search.toLowerCase();
       return (
@@ -44,7 +78,7 @@ const GastosPage: React.FC = () => {
         c.tipo.toLowerCase().includes(s)
       );
     });
-  }, [personalCompromisos, filterTipo, search]);
+  }, [personalCompromisos, filterFamilia, search]);
 
   const totalMensual = filtered.reduce((sum, c) => sum + computeMonthly(c), 0);
 
@@ -142,19 +176,19 @@ const GastosPage: React.FC = () => {
         </span>
         <button
           type="button"
-          style={chipStyle(filterTipo === null)}
-          onClick={() => setFilterTipo(null)}
+          style={chipStyle(filterFamilia === null)}
+          onClick={() => setFilterFamilia(null)}
         >
           Todos · {personalCompromisos.length}
         </button>
-        {tipos.map((t) => (
+        {FAMILIAS_PERSONAL_FILTROS.map((f) => (
           <button
-            key={t}
+            key={f}
             type="button"
-            style={chipStyle(filterTipo === t)}
-            onClick={() => setFilterTipo(t)}
+            style={chipStyle(filterFamilia === f)}
+            onClick={() => setFilterFamilia(f)}
           >
-            {t}
+            {FAMILIA_LABELS_PERSONAL[f]}
           </button>
         ))}
         <button
@@ -222,7 +256,7 @@ const GastosPage: React.FC = () => {
                       <td style={tdStyle}>
                         <strong>{c.alias}</strong>
                       </td>
-                      <td style={tdStyle}>{c.tipo}</td>
+                      <td style={tdStyle}>{FAMILIA_LABELS_PERSONAL[getFamilia(c)] ?? getFamilia(c)}</td>
                       <td style={tdStyle}>{c.categoria ?? '—'}</td>
                       <td style={{ ...tdStyle, fontFamily: 'var(--atlas-v5-font-mono-tech)', fontSize: 11.5 }}>
                         {c.patron.tipo}

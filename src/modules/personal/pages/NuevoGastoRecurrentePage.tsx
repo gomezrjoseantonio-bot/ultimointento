@@ -32,6 +32,10 @@ import {
   findSubtipoPersonal,
   findCatalogEntryByDbFields,
 } from '../wizards/utils/tiposDeGastoPersonal';
+import {
+  FAMILIA_TO_TIPO_LEGACY_PERSONAL,
+  buildCategoriaPersonal,
+} from '../wizards/utils/familyMapping';
 import { buildGastoAlias } from '../../../modules/shared/utils/compromisoUtils';
 
 // ─── Tipo PatronUI ───────────────────────────────────────────────────────────
@@ -490,7 +494,8 @@ const NuevoGastoRecurrentePage: React.FC = () => {
         ambito: 'personal' as const,
         personalDataId,
         alias,
-        tipo: subtipoCatalog.tipoCompromiso,
+        tipoFamilia: form.tipoGastoId,                                             // T38: familia real
+        tipo: FAMILIA_TO_TIPO_LEGACY_PERSONAL[form.tipoGastoId] ?? subtipoCatalog.tipoCompromiso,  // T38: legacy mapeado desde familia
         subtipo: form.subtipoId,
         proveedor: {
           nombre: form.proveedor || (tipoSeleccionado?.label ?? ''),
@@ -503,7 +508,7 @@ const NuevoGastoRecurrentePage: React.FC = () => {
         cuentaCargo: parseInt(form.cuentaCargoId, 10),
         conceptoBancario: form.proveedor ? form.proveedor.toUpperCase() : (tipoSeleccionado?.label ?? '').toUpperCase(),
         metodoPago: metodo,
-        categoria: subtipoCatalog.categoria,
+        categoria: buildCategoriaPersonal(form.tipoGastoId, form.subtipoId),       // T38: normalizado "familia.subfamilia"
         bolsaPresupuesto: form.bolsa as BolsaPresupuesto,
         responsable: 'titular' as const,
         fechaInicio: new Date().toISOString().slice(0, 10),
