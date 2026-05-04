@@ -256,3 +256,72 @@
   border: 1px solid var(--atlas-v5-gold, #f5a623);
   font-family: var(--atlas-v5-font-ui);
 }
+
+/* ── Month filter bar ──────────────────────────────────────────────────── */
+
+.monthFilterBar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.monthFilterLabel {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-4);
+  margin-right: 2px;
+}
+
+.filtChipClear {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--atlas-v5-neg);
+  font-weight: var(--atlas-v5-fw-medium);
+  border: 1px solid currentColor;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--atlas-v5-font-ui);
+}
+
+.filtChipClear:hover {
+  background: var(--atlas-v5-neg-wash, #fff0f0);
+}
+
+/* ── Date group row ─────────────────────────────────────────────────────── */
+
+.dateGroupRow {
+  pointer-events: none;
+}
+
+.dateGroupCell {
+  padding: 6px 12px 4px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--atlas-v5-ink-4);
+  background: var(--atlas-v5-bg);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  border-top: 1px solid var(--atlas-v5-line);
+  font-family: var(--atlas-v5-font-ui);
+}
+
+/* ── Inmueble sub-label ─────────────────────────────────────────────────── */
+
+.tInmueble {
+  font-size: 10.5px;
+  color: var(--atlas-v5-brand);
+  margin-top: 3px;
+  font-weight: var(--atlas-v5-fw-medium);
+  font-family: var(--atlas-v5-font-ui);
+}

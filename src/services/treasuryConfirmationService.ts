@@ -1214,3 +1214,49 @@ export async function setDocumentNoAplica(
       : { justificanteNoAplica: value };
   await applyDocUpdateToEventAndLinkedRows(eventId, update);
 }
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Edición inline de eventos previstos (no ejecutados)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface TreasuryEventPatch {
+  amount?: number;
+  predictedDate?: string;
+  accountId?: number | null;
+}
+
+/**
+ * Aplica un parche de campos editables (importe, fecha prevista, cuenta) sobre
+ * un treasuryEvent que aún NO ha sido ejecutado (status !== 'executed').
+ * Lanza un Error si el evento no existe o ya está ejecutado.
+ */
+export async function updateTreasuryEventFields(
+  eventId: number,
+  patch: TreasuryEventPatch,
+): Promise<void> {
+  const db = await initDB();
+  const existing = (await db.get('treasuryEvents', eventId)) as
+    | TreasuryEvent
+    | undefined;
+  if (!existing) throw new Error('Previsión no encontrada');
+  if (existing.status === 'executed') {
+    throw new Error('No se puede editar una previsión ya ejecutada');
+  }
+
+  const updated: TreasuryEvent = {
+    ...existing,
+    ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
+    ...(patch.predictedDate !== undefined
+      ? { predictedDate: patch.predictedDate }
+      : {}),
+    ...(patch.accountId !== undefined
+      ? patch.accountId === null
+        ? { accountId: undefined }
+        : { accountId: patch.accountId }
+      : {}),
+    updatedAt: new Date().toISOString(),
+  } as TreasuryEvent & { updatedAt: string };
+
+  await (db as any).put('treasuryEvents', updated);
+}

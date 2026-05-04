@@ -9,7 +9,15 @@ import {
 } from '../../../design-system/v5';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import type { Movement, ReconciliationStatus, TreasuryEvent } from '../../../services/db';
-import { confirmTreasuryEvent } from '../../../services/treasuryConfirmationService';
+import {
+  confirmTreasuryEvent,
+  updateTreasuryEventFields,
+} from '../../../services/treasuryConfirmationService';
+import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
+import MovimientoDrawer, {
+  type MovimientoDrawerData,
+  type MovimientoDrawerPatch,
+} from '../../../components/treasury/MovimientoDrawer';
 import styles from './MovimientosTab.module.css';
 
 type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
@@ -50,17 +58,50 @@ const eventSignedAmount = (e: TreasuryEvent): number => {
   return e.type === 'income' ? mag : -mag;
 };
 
+/** Returns the "YYYY-MM" key for a date string (ISO or YYYY-MM-DD). */
+const toYearMonth = (iso: string | undefined): string => {
+  if (!iso) return '';
+  return iso.slice(0, 7);
+};
+
+/** Returns the date label for the group header row (e.g. "12 may. 2025"). */
+const toDateKey = (iso: string | undefined): string => {
+  if (!iso) return '';
+  return iso.slice(0, 10);
+};
+
+const MONTH_NAMES_ES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+const formatDateGroupLabel = (dateKey: string): string => {
+  if (!dateKey) return '—';
+  const d = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateKey;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mmm = d.toLocaleDateString('es-ES', { month: 'short' });
+  const yyyy = d.getFullYear();
+  return `${dd} ${mmm} ${yyyy}`;
+};
+
 // ── Unified row types ────────────────────────────────────────────────────────
 
 type MovRow = { kind: 'movement'; data: Movement & { id: number }; sortKey: number };
 type EvtRow = { kind: 'treasury'; data: TreasuryEvent & { id: number }; sortKey: number };
 type UnifiedRow = MovRow | EvtRow;
 
+// ── Date group header row ────────────────────────────────────────────────────
+type DateHeaderRow = { kind: 'header'; dateKey: string; label: string };
+type TableRow = DateHeaderRow | UnifiedRow;
+
 const MovimientosTab: React.FC = () => {
   const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [monthFilter, setMonthFilter] = useState<string>(''); // 'YYYY-MM' or ''
+  const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
@@ -120,14 +161,55 @@ const MovimientosTab: React.FC = () => {
       })
       .filter((row) => matchesAccount(row.data.accountId, accountFilter))
       .filter((row) => {
+        if (!monthFilter) return true;
+        const dateStr =
+          row.kind === 'movement'
+            ? (row.data as Movement).date
+            : (row.data as TreasuryEvent).predictedDate;
+        return toYearMonth(dateStr) === monthFilter;
+      })
+      .filter((row) => {
         if (row.kind === 'movement') return matchesSearch(row.data, search);
         return matchesSearchEvent(row.data, search);
       });
-  }, [allRows, statusFilter, accountFilter, search]);
+  }, [allRows, statusFilter, accountFilter, monthFilter, search]);
+
+  /** Rows with date-group headers injected (for treasury events only). */
+  const tableRows = useMemo((): TableRow[] => {
+    const result: TableRow[] = [];
+    let lastDateKey = '';
+    for (const row of filtered) {
+      const dateStr =
+        row.kind === 'treasury'
+          ? (row.data as TreasuryEvent).predictedDate
+          : (row.data as Movement).date;
+      const dk = toDateKey(dateStr);
+      if (dk && dk !== lastDateKey) {
+        result.push({ kind: 'header', dateKey: dk, label: formatDateGroupLabel(dk) });
+        lastDateKey = dk;
+      }
+      result.push(row);
+    }
+    return result;
+  }, [filtered]);
 
   const totalCount = allRows.length;
   const pendingCount =
     movements.filter((m) => !isReconciled(m as Movement)).length + pendingEvents.length;
+
+  /** Available months derived from allRows, for the month filter selector. */
+  const availableMonths = useMemo(() => {
+    const monthSet = new Set<string>();
+    allRows.forEach((row) => {
+      const dateStr =
+        row.kind === 'movement'
+          ? (row.data as Movement).date
+          : (row.data as TreasuryEvent).predictedDate;
+      const ym = toYearMonth(dateStr);
+      if (ym) monthSet.add(ym);
+    });
+    return Array.from(monthSet).sort().reverse();
+  }, [allRows]);
 
   // ── Account helpers ────────────────────────────────────────────────────────
 
@@ -150,6 +232,28 @@ const MovimientosTab: React.FC = () => {
     });
     return map;
   }, [accounts]);
+
+  // ── Drawer data for editing a treasury event ───────────────────────────────
+
+  const drawerData = useMemo((): MovimientoDrawerData | null => {
+    if (drawerEventId == null) return null;
+    const ev = (treasuryEvents as TreasuryEvent[]).find((e) => e.id === drawerEventId);
+    if (!ev) return null;
+    const acc = accounts.find((a) => a.id === ev.accountId);
+    const accountAlias = acc?.alias ?? acc?.banco?.name ?? acc?.name;
+    return {
+      id: ev.id!,
+      description: ev.description,
+      predictedDate: ev.predictedDate,
+      type: ev.type,
+      amount: ev.amount,
+      status: ev.status,
+      accountAlias,
+      inmuebleAlias: ev.inmuebleAlias,
+      contratoAlias: (ev as any).contratoAlias,
+      categoryLabel: ev.categoryLabel,
+    };
+  }, [drawerEventId, treasuryEvents, accounts]);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
@@ -175,12 +279,28 @@ const MovimientosTab: React.FC = () => {
     try {
       await confirmTreasuryEvent(eventId);
       showToastV5('Evento confirmado y movimiento creado', 'success');
+      invalidateCachedStores(['treasuryEvents', 'movements']);
       reload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'No se pudo confirmar el evento';
       showToastV5(msg, 'error');
     } finally {
       setConfirmingId(null);
+    }
+  };
+
+  const handleSaveEvent = async (id: number | string, patch: MovimientoDrawerPatch) => {
+    const dbId = typeof id === 'number' ? id : Number(id);
+    if (!Number.isFinite(dbId)) return;
+    try {
+      await updateTreasuryEventFields(dbId, patch);
+      invalidateCachedStores(['treasuryEvents']);
+      reload();
+      setDrawerEventId(null);
+      showToastV5('Cambios guardados', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'No se pudo guardar';
+      showToastV5(msg, 'error');
     }
   };
 
@@ -240,6 +360,44 @@ const MovimientosTab: React.FC = () => {
         </span>
       </div>
 
+      {/* ── Month filter bar ───────────────────────────────────────────────── */}
+      {availableMonths.length > 0 && (
+        <div className={styles.monthFilterBar} role="group" aria-label="Filtrar por mes">
+          <span className={styles.monthFilterLabel}>Mes:</span>
+          <button
+            type="button"
+            className={`${styles.filtChip} ${monthFilter === '' ? styles.active : ''}`}
+            onClick={() => setMonthFilter('')}
+          >
+            Todos
+          </button>
+          {availableMonths.map((ym) => {
+            const [year, month] = ym.split('-');
+            const label = `${MONTH_NAMES_ES[Number(month) - 1]} ${year}`;
+            return (
+              <button
+                key={ym}
+                type="button"
+                className={`${styles.filtChip} ${monthFilter === ym ? styles.active : ''}`}
+                onClick={() => setMonthFilter(monthFilter === ym ? '' : ym)}
+              >
+                {label}
+              </button>
+            );
+          })}
+          {monthFilter && (
+            <button
+              type="button"
+              className={styles.filtChipClear}
+              onClick={() => setMonthFilter('')}
+              aria-label="Limpiar filtro de mes"
+            >
+              ✕ Limpiar
+            </button>
+          )}
+        </div>
+      )}
+
       {selected.size > 0 && (
         <div className={styles.bulkBar} role="status" aria-live="polite">
           <div className={styles.bulkCount}>
@@ -275,7 +433,18 @@ const MovimientosTab: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 200).map((row) => {
+              {tableRows.slice(0, 250).map((row) => {
+                // ── Date group header ─────────────────────────────────────
+                if (row.kind === 'header') {
+                  return (
+                    <tr key={`h:${row.dateKey}`} className={styles.dateGroupRow}>
+                      <td colSpan={6} className={styles.dateGroupCell}>
+                        {row.label}
+                      </td>
+                    </tr>
+                  );
+                }
+
                 if (row.kind === 'movement') {
                   const m = row.data;
                   const id = m.id;
@@ -285,6 +454,7 @@ const MovimientosTab: React.FC = () => {
                   const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
                   const reconciliationStatus: ReconciliationStatus =
                     m.estado_conciliacion ?? (reconciled ? 'conciliado' : 'sin_conciliar');
+                  const inmuebleAlias = m.inmuebleAlias;
                   return (
                     <tr
                       key={`m:${id}`}
@@ -318,6 +488,11 @@ const MovimientosTab: React.FC = () => {
                             {m.counterparty ?? m.providerName}
                           </div>
                         )}
+                        {inmuebleAlias ? (
+                          <div className={styles.tInmueble}>
+                            {inmuebleAlias}
+                          </div>
+                        ) : null}
                       </td>
                       <td>
                         <span className={styles.chipAcc}>
@@ -350,9 +525,15 @@ const MovimientosTab: React.FC = () => {
                   ? (accountColorById.get(e.accountId) ?? 'var(--atlas-v5-brand)')
                   : 'var(--atlas-v5-ink-5)';
                 const isConfirming = confirmingId === e.id;
+                const evInmuebleAlias = e.inmuebleAlias;
                 return (
-                  <tr key={`t:${e.id}`} className={styles.previstoRow}>
-                    <td className={styles.checkCell}>
+                  <tr
+                    key={`t:${e.id}`}
+                    className={styles.previstoRow}
+                    onClick={() => setDrawerEventId(e.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td className={styles.checkCell} onClick={(ev) => ev.stopPropagation()}>
                       <button
                         type="button"
                         className={`${styles.chk} ${styles.previstoChk}`}
@@ -379,6 +560,11 @@ const MovimientosTab: React.FC = () => {
                           {e.counterparty ?? e.providerName}
                         </div>
                       )}
+                      {evInmuebleAlias ? (
+                        <div className={styles.tInmueble}>
+                          {evInmuebleAlias}
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <span className={styles.chipAcc}>
@@ -399,17 +585,43 @@ const MovimientosTab: React.FC = () => {
           </table>
         )}
       </div>
-      {filtered.length > 200 && (
+      {filtered.length > 250 && (
         <div style={{
           padding: '12px 16px',
           fontSize: 12,
           color: 'var(--atlas-v5-ink-4)',
           fontFamily: 'var(--atlas-v5-font-ui)',
         }}>
-          Mostrando los 200 movimientos más recientes de {filtered.length} totales.
+          Mostrando los 250 movimientos más recientes de {filtered.length} totales.
           Usa los filtros para acotar.
         </div>
       )}
+
+      {/* ── Editing drawer ──────────────────────────────────────────────────── */}
+      <MovimientoDrawer
+        open={drawerEventId !== null}
+        data={drawerData}
+        onClose={() => setDrawerEventId(null)}
+        accounts={accounts}
+        onSave={handleSaveEvent}
+        onConfirmar={async (id) => {
+          const dbId = typeof id === 'number' ? id : Number(id);
+          if (!Number.isFinite(dbId)) return;
+          setConfirmingId(dbId);
+          try {
+            await confirmTreasuryEvent(dbId);
+            invalidateCachedStores(['treasuryEvents', 'movements']);
+            reload();
+            setDrawerEventId(null);
+            showToastV5('Evento confirmado y movimiento creado', 'success');
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : 'No se pudo confirmar';
+            showToastV5(msg, 'error');
+          } finally {
+            setConfirmingId(null);
+          }
+        }}
+      />
     </>
   );
 };
