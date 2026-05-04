@@ -748,7 +748,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
                 <option value="">— Selecciona —</option>
                 {cuentas.map((c) => (
                   <option key={c.id} value={String(c.id)}>
-                    {c.nombre}
+                    {c.alias ?? c.name ?? c.iban}
                   </option>
                 ))}
               </select>
