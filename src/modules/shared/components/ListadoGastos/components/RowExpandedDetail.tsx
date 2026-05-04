@@ -1,7 +1,7 @@
 import React from 'react';
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import { expandirPatron } from '../../../../services/personal/patronCalendario';
-import { computeMonthly } from '../../utils/compromisoUtils';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
+import { expandirPatron } from '../../../../../services/personal/patronCalendario';
+import { computeMonthly } from '../../../utils/compromisoUtils';
 import { formatEur } from '../utils/amountFormatter';
 
 const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

@@ -1,8 +1,8 @@
 import React from 'react';
 import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import { Pill } from '../../../../design-system/v5';
-import { computeMonthly } from '../../utils/compromisoUtils';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
+import { Pill } from '../../../../../design-system/v5';
+import { computeMonthly } from '../../../utils/compromisoUtils';
 import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
 import { getSubtypeIcon } from '../utils/iconMapping';

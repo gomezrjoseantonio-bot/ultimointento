@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { cuentasService } from '../../../../services/cuentasService';
-import { personalDataService } from '../../../../services/personalDataService';
-import { actualizarCompromiso } from '../../../../services/personal/compromisosRecurrentesService';
-import { regenerateForecastsForward } from '../../../../services/treasuryBootstrapService';
-import { showToastV5 } from '../../../../design-system/v5';
-import { useFocusTrap } from '../../../../hooks/useFocusTrap';
-import type { Account } from '../../../../services/db';
+import { cuentasService } from '../../../../../services/cuentasService';
+import { personalDataService } from '../../../../../services/personalDataService';
+import { actualizarCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
+import { regenerateForecastsForward } from '../../../../../services/treasuryBootstrapService';
+import { showToastV5 } from '../../../../../design-system/v5';
+import { useFocusTrap } from '../../../../../hooks/useFocusTrap';
+import type { Account } from '../../../../../services/db';
 import type {
   BolsaPresupuesto,
   CompromisoRecurrente,
@@ -14,11 +14,11 @@ import type {
   MetodoPagoCompromiso,
   PatronRecurrente,
   ReferenciaDiaRelativo,
-} from '../../../../types/compromisosRecurrentes';
-import type { TipoGasto } from '../TipoGastoSelector/TipoGastoSelector.types';
-import { TipoGastoSelector } from '../TipoGastoSelector';
-import type { TipoGastoValue } from '../TipoGastoSelector';
-import { buildGastoAlias } from '../../utils/compromisoUtils';
+} from '../../../../../types/compromisosRecurrentes';
+import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
+import { TipoGastoSelector } from '../../TipoGastoSelector';
+import type { TipoGastoValue } from '../../TipoGastoSelector';
+import { buildGastoAlias } from '../../../utils/compromisoUtils';
 
 type PatronUI =
   | 'mensualDiaFijo'

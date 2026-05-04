@@ -1,6 +1,6 @@
 import React from 'react';
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import { computeMonthly } from '../../utils/compromisoUtils';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
+import { computeMonthly } from '../../../utils/compromisoUtils';
 import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
 

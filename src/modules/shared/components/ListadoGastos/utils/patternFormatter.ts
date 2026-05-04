@@ -1,5 +1,5 @@
-import type { PatronRecurrente } from '../../../../types/compromisosRecurrentes';
-import { expandirPatron } from '../../../../services/personal/patronCalendario';
+import type { PatronRecurrente } from '../../../../../types/compromisosRecurrentes';
+import { expandirPatron } from '../../../../../services/personal/patronCalendario';
 
 const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 

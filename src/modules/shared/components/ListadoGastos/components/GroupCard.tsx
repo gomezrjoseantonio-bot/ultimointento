@@ -1,8 +1,8 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { SortState } from '../ListadoGastosRecurrentes.types';
-import { computeMonthly } from '../../utils/compromisoUtils';
+import { computeMonthly } from '../../../utils/compromisoUtils';
 import { getFamilyIcon } from '../utils/iconMapping';
 import { sortCompromisos } from '../utils/sortingHelpers';
 import { formatEur } from '../utils/amountFormatter';

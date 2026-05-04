@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Sparkles, Search } from 'lucide-react';
-import { EmptyState, Icons, showToastV5 } from '../../../design-system/v5';
-import ConfirmationModal from '../../../components/common/ConfirmationModal';
-import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
+import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
+import ConfirmationModal from '../../../../components/common/ConfirmationModal';
+import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
 import type { ListadoGastosRecurrentesProps, SortField, SortState } from './ListadoGastosRecurrentes.types';
 import { groupByCatalog } from './utils/groupingHelpers';
 import { getFamilyIcon } from './utils/iconMapping';

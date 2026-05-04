@@ -1,5 +1,5 @@
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import type { TipoGasto } from '../TipoGastoSelector/TipoGastoSelector.types';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
+import type { TipoGasto } from '../../TipoGastoSelector/TipoGastoSelector.types';
 
 export interface GastoGroup {
   familiaId: string;

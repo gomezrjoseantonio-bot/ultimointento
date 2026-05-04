@@ -1,6 +1,6 @@
-import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { SortState } from '../ListadoGastosRecurrentes.types';
-import { computeMonthly } from '../../utils/compromisoUtils';
+import { computeMonthly } from '../../../utils/compromisoUtils';
 
 export function sortCompromisos(
   list: (CompromisoRecurrente & { id: number })[],
