@@ -174,8 +174,8 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
   const [alias, setAlias] = useState(current.alias ?? baseProp.alias);
   const [tipo, setTipo] = useState<TipoCompromiso>(current.tipo ?? baseProp.tipo);
   const [subtipo, setSubtipo] = useState(current.subtipo ?? baseProp.subtipo ?? '');
-  const [categoria, setCategoria] = useState<CategoriaGastoCompromiso>(
-    current.categoria ?? baseProp.categoria,
+  const [categoria, setCategoria] = useState<string>(
+    current.categoria ?? baseProp.categoria ?? '',
   );
   const [responsable, setResponsable] = useState<ResponsableCompromiso>(
     current.responsable ?? baseProp.responsable,
@@ -300,7 +300,7 @@ const EditModal: React.FC<EditModalProps> = ({ candidato, current, onSave, onCan
         <Field label="Categoría">
           <select
             value={categoria}
-            onChange={(e) => setCategoria(e.target.value as CategoriaGastoCompromiso)}
+            onChange={(e) => setCategoria(e.target.value)}
             style={inputStyle}
           >
             {CATEGORIAS_EDITABLES.map((c) => (
