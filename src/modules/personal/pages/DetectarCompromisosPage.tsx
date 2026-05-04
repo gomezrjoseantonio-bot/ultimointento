@@ -153,7 +153,7 @@ interface OverrideValues {
   alias?: string;
   tipo?: TipoCompromiso;
   subtipo?: string;
-  categoria?: CategoriaGastoCompromiso;
+  categoria?: string;
   responsable?: ResponsableCompromiso;
   proveedorNombre?: string;
 }
