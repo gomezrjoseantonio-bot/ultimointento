@@ -2,10 +2,7 @@
 // T20 Fase 3b · review #1172 · centralizar cálculos del modelo real.
 
 import type { Autonomo, Nomina } from '../../types/personal';
-import type {
-  CategoriaGastoCompromiso,
-  CompromisoRecurrente,
-} from '../../types/compromisosRecurrentes';
+import type { CompromisoRecurrente } from '../../types/compromisosRecurrentes';
 import { nominaService } from '../../services/nominaService';
 import { autonomoService } from '../../services/autonomoService';
 
