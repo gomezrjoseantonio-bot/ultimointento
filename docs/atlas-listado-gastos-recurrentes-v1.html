@@ -1,0 +1,1384 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Atlas · Listado gastos recurrentes · v1</title>
+<meta name="viewport" content="width=1400" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #F5F4F1;
+    --card:      #FFFFFF;
+    --card-alt:  #FBFAF6;
+    --line:      #E6E3DC;
+    --line-2:    #EFECE5;
+    --ink:       #141B2E;
+    --ink-2:     #2C3547;
+    --ink-3:     #5B6474;
+    --ink-4:     #8A92A0;
+    --ink-5:     #B8BEC8;
+    --brand:       #1E2954;
+    --brand-2:     #2A3875;
+    --brand-ink:   #0C1230;
+    --brand-wash:  #E8EAF0;
+    --gold:        #B88A3E;
+    --gold-2:      #C59A47;
+    --gold-3:      #D4AB5A;
+    --gold-wash:   #F3EAD6;
+    --gold-wash-2: #FAF3E1;
+    --gold-ink:    #7C5C1F;
+    --pos:         #1E6B3A;
+    --pos-wash:    #E4F0E8;
+    --neg:         #A43328;
+    --neg-wash:    #F5E3E0;
+    --warn:        #8A6213;
+    --warn-wash:   #F5ECD6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg); color: var(--ink-2);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; letter-spacing: -0.005em;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .side { background: var(--brand-ink); color: #BFC5D4; padding: 22px 0; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 4px 22px 20px; border-bottom: 1px solid rgba(255,255,255,.06); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 15px; }
+  .brand-name { color: #FFFFFF; font-weight: 700; font-size: 17px; line-height: 1; letter-spacing: -0.015em; }
+  .brand-sub { font-size: 10px; letter-spacing: .18em; text-transform: uppercase; color: rgba(255,255,255,.42); margin-top: 3px; }
+  .nav-section { padding: 20px 22px 6px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+  .nav-sep { margin: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); }
+  .nav { display: flex; flex-direction: column; gap: 1px; padding: 0 12px; }
+  .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 7px; color: #B9BFCC; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+  .nav a:hover { background: rgba(255,255,255,.04); color: #FFFFFF; }
+  .nav a.active { background: rgba(255,255,255,.07); color: #FFFFFF; box-shadow: inset 2px 0 0 var(--gold); padding-left: 10px; }
+  .nav a.active svg { opacity: 1; color: var(--gold); }
+  .nav a svg { flex-shrink: 0; opacity: .85; }
+  .side-foot { margin-top: auto; padding: 14px 22px 4px; border-top: 1px solid rgba(255,255,255,.06); display: flex; align-items: center; gap: 11px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #E8D9AE, #B88A3E); display: flex; align-items: center; justify-content: center; color: var(--brand-ink); font-weight: 700; font-size: 12px; }
+  .side-foot-name { font-size: 13px; color: #FFFFFF; font-weight: 600; line-height: 1.15; }
+  .side-foot-sub { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
+
+  /* MAIN */
+  .main { padding: 22px 32px 48px; max-width: 1240px; margin: 0 auto; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+  .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .search input { border: none; outline: none; flex: 1; font-size: 13px; color: var(--ink); background: transparent; }
+  .search svg { color: var(--ink-4); }
+  .kbd { font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-4); background: var(--bg); }
+
+  /* Page head */
+  .page-head { margin-bottom: 22px; }
+  .page-h1 { font-size: 26px; font-weight: 700; color: var(--ink); letter-spacing: -0.022em; line-height: 1.1; }
+  .page-sub { font-size: 14px; color: var(--ink-3); margin-top: 4px; }
+
+  /* Pestañas */
+  .tabs {
+    display: flex; gap: 0;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 22px;
+  }
+  .tab {
+    padding: 12px 20px;
+    font-size: 13.5px; font-weight: 600;
+    color: var(--ink-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--ink-2); }
+  .tab.active { color: var(--gold-ink); border-bottom-color: var(--gold); }
+  .tab-count { font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--bg); color: var(--ink-4); font-weight: 600; }
+  .tab.active .tab-count { background: var(--gold-wash); color: var(--gold-ink); }
+
+  /* Toolbar · search + filtros + acciones */
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .toolbar-search {
+    flex: 1; min-width: 240px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px;
+  }
+  .toolbar-search input {
+    flex: 1; border: none; outline: none; background: transparent;
+    font-size: 13px; color: var(--ink);
+  }
+  .toolbar-search svg { color: var(--ink-4); flex-shrink: 0; }
+
+  .toolbar-actions { display: flex; gap: 8px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: 1px solid transparent; white-space: nowrap; cursor: pointer; transition: all .15s; }
+  .btn-ghost { background: var(--card); color: var(--ink-3); border-color: var(--line); }
+  .btn-ghost:hover { color: var(--ink-2); border-color: var(--ink-5); }
+  .btn-gold { background: var(--gold); color: #FFFFFF; }
+  .btn-gold:hover { background: var(--gold-2); }
+
+  /* Filter pills · familias */
+  .filter-row {
+    display: flex; gap: 6px; align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .filter-pill {
+    padding: 7px 14px;
+    border-radius: 99px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink-3);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px;
+    transition: all .15s;
+  }
+  .filter-pill:hover { border-color: var(--ink-5); color: var(--ink-2); }
+  .filter-pill.active {
+    background: var(--brand-ink);
+    color: #FFFFFF;
+    border-color: var(--brand-ink);
+  }
+  .filter-pill .count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 99px;
+    background: var(--bg);
+    color: var(--ink-4);
+    font-weight: 600;
+  }
+  .filter-pill.active .count { background: rgba(255,255,255,.15); color: rgba(255,255,255,.85); }
+
+  /* KPI summary · resumen mensual */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 18px;
+    border-top: 3px solid var(--gold);
+  }
+  .kpi-card.brand-top { border-top-color: var(--brand); }
+  .kpi-card.neg-top { border-top-color: var(--neg); }
+  .kpi-label { font-size: 10.5px; font-weight: 700; color: var(--ink-4); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px; }
+  .kpi-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: -0.025em; line-height: 1.05; }
+  .kpi-val.neg { color: var(--neg); }
+  .kpi-sub { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+
+  /* ═══════════ TABLA AGRUPADA ═══════════ */
+  .group-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  }
+
+  .group-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 20px;
+    background: var(--card-alt);
+    border-bottom: 1px solid var(--line-2);
+    cursor: pointer;
+    transition: background .12s;
+  }
+  .group-header:hover { background: var(--gold-wash-2); }
+
+  .group-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: var(--gold-wash);
+    color: var(--gold-ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .group-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    flex-shrink: 0;
+  }
+  .group-meta {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    margin-left: 4px;
+  }
+
+  .group-spacer { flex: 1; }
+
+  .group-total {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--neg);
+    letter-spacing: -0.02em;
+  }
+  .group-total-sub {
+    font-size: 11px;
+    color: var(--ink-4);
+    margin-top: 1px;
+    text-align: right;
+  }
+
+  .group-toggle {
+    color: var(--ink-4);
+    transition: transform .15s;
+    margin-left: 12px;
+  }
+  .group-header.collapsed .group-toggle { transform: rotate(-90deg); }
+
+  /* Filas */
+  .group-body { padding: 0; }
+  .row {
+    display: grid;
+    grid-template-columns: 36px 1fr 200px 200px 130px 80px 70px;
+    gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line-2);
+    align-items: center;
+    transition: background .12s;
+  }
+  .row:last-child { border-bottom: none; }
+  .row:hover { background: var(--gold-wash-2); }
+
+  .row-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: var(--bg);
+    color: var(--ink-3);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .row-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .row-sub {
+    font-size: 11.5px;
+    color: var(--ink-4);
+    margin-top: 1px;
+  }
+
+  .row-pattern {
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .row-pattern strong {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .row-pattern-sub {
+    font-size: 11px;
+    color: var(--ink-4);
+    margin-top: 1px;
+  }
+
+  .row-account {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .row-account-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--gold);
+    flex-shrink: 0;
+  }
+
+  .row-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--neg);
+    text-align: right;
+    letter-spacing: -0.02em;
+  }
+  .row-amount-sub {
+    font-size: 10.5px;
+    color: var(--ink-4);
+    text-align: right;
+    margin-top: 1px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .row-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 99px;
+    background: var(--pos-wash);
+    color: var(--pos);
+    width: fit-content;
+  }
+  .row-status.warn { background: var(--warn-wash); color: var(--warn); }
+
+  .row-actions {
+    display: flex; gap: 4px; justify-content: flex-end;
+  }
+  .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    color: var(--ink-4);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .12s;
+    background: transparent;
+  }
+  .icon-btn:hover {
+    background: var(--bg);
+    color: var(--ink-2);
+  }
+  .icon-btn.danger:hover {
+    background: var(--neg-wash);
+    color: var(--neg);
+  }
+
+  /* Property header · solo en pestaña Inmueble */
+  .property-strip {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--gold);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .property-photo {
+    width: 48px; height: 48px;
+    border-radius: 8px;
+    background: var(--line-2);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .property-info { flex: 1; }
+  .property-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: var(--gold-ink); text-transform: uppercase; }
+  .property-name { font-size: 14.5px; font-weight: 700; color: var(--ink); margin-top: 2px; line-height: 1.2; }
+  .property-addr { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+
+  /* Demo · selector pestañas */
+  .demo-tab-selector {
+    display: inline-flex; gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .demo-tab {
+    padding: 8px 16px;
+    background: var(--card);
+    color: var(--ink-3);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-right: 1px solid var(--line);
+  }
+  .demo-tab:last-child { border-right: none; }
+  .demo-tab.active { background: var(--brand-ink); color: #FFFFFF; }
+
+  .demo-section { display: none; }
+  .demo-section.active { display: block; }
+
+  /* Empty state ejemplo · cuando no hay registros */
+  .empty {
+    background: var(--card);
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--ink-3);
+  }
+  .empty svg { color: var(--ink-5); margin-bottom: 12px; }
+  .empty-title { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+  .empty-sub { font-size: 12.5px; }
+
+</style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="brand">
+        <div class="brand-mark">A</div>
+        <div>
+          <div class="brand-name">ATLAS</div>
+          <div class="brand-sub">Patrimonio</div>
+        </div>
+      </div>
+      <div class="nav-section">Mis activos</div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Panel</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Inmuebles</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Inversiones</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="6" width="20" height="13" rx="2"/><line x1="2" y1="11" x2="22" y2="11"/></svg>Tesorería</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/></svg>Financiación</a>
+        <a class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Personal</a>
+      </nav>
+      <div class="nav-section">Operativa</div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>Contratos</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Mi Plan</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3h18v18H3z"/></svg>Fiscal</a>
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M21 8v13H3V8"/></svg>Archivo</a>
+      </nav>
+      <div class="nav-sep"></div>
+      <nav class="nav">
+        <a><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/></svg>Ajustes</a>
+      </nav>
+      <div class="side-foot">
+        <div class="avatar">JG</div>
+        <div>
+          <div class="side-foot-name">José A. Gómez</div>
+          <div class="side-foot-sub">free</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- Topbar -->
+      <div class="topbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input placeholder="Buscar inmueble, contrato, movimiento…" />
+          <span class="kbd">⌘K</span>
+        </div>
+      </div>
+
+      <!-- Demo selector entre Personal y Inmueble -->
+      <div class="demo-tab-selector">
+        <button class="demo-tab active" onclick="showDemo('personal')">Demo · Personal</button>
+        <button class="demo-tab" onclick="showDemo('inmueble')">Demo · Inmueble FA32</button>
+      </div>
+
+      <!-- ═══════════ DEMO PERSONAL ═══════════ -->
+      <section class="demo-section active" id="demo-personal">
+
+        <div class="page-head">
+          <h1 class="page-h1">Personal</h1>
+          <p class="page-sub">Ingresos · gastos · mi vivienda · presupuesto del hogar</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab">Panel</div>
+          <div class="tab">Ingresos <span class="tab-count">3</span></div>
+          <div class="tab active">Gastos <span class="tab-count">14</span></div>
+          <div class="tab">Mi vivienda</div>
+          <div class="tab">Presupuesto</div>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="kpi-strip">
+          <div class="kpi-card neg-top">
+            <div class="kpi-label">Coste mensual estimado</div>
+            <div class="kpi-val neg">−3.025 €</div>
+            <div class="kpi-sub">14 patrones activos</div>
+          </div>
+          <div class="kpi-card brand-top">
+            <div class="kpi-label">Coste anual previsto</div>
+            <div class="kpi-val">−36.300 €</div>
+            <div class="kpi-sub">proyectado a 12 meses</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Próximo cargo</div>
+            <div class="kpi-val">02 may</div>
+            <div class="kpi-sub">Sanitas · 195 €</div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input placeholder="Buscar gasto · proveedor · subtipo..." />
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-ghost">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importar
+            </button>
+            <button class="btn btn-ghost">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 17a4 4 0 0 0 4-4V5a4 4 0 0 0-8 0v8a4 4 0 0 0 4 4z"/></svg>
+              Detectar
+            </button>
+            <button class="btn btn-gold">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo gasto recurrente
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros · pills familias -->
+        <div class="filter-row">
+          <button class="filter-pill active">Todos <span class="count">14</span></button>
+          <button class="filter-pill">Vivienda <span class="count">1</span></button>
+          <button class="filter-pill">Suministros <span class="count">2</span></button>
+          <button class="filter-pill">Día a día <span class="count">3</span></button>
+          <button class="filter-pill">Suscripciones <span class="count">3</span></button>
+          <button class="filter-pill">Seguros y cuotas <span class="count">2</span></button>
+          <button class="filter-pill">Otros <span class="count">3</span></button>
+        </div>
+
+        <!-- ═══ GRUPO · VIVIENDA ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            </div>
+            <div class="group-title">Vivienda</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−1.350 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Vivienda · Alquiler</div>
+                <div class="row-sub">Casero · Carlos</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 1</div>
+                <div class="row-pattern-sub">próximo · 01 jun 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−1.350 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GRUPO · SUMINISTROS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="group-title">Suministros</div>
+            <div class="group-meta">· 2 patrones</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−63 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Visalia · Luz</div>
+                <div class="row-sub">ES0021000013447435NE</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 18</div>
+                <div class="row-pattern-sub">próximo · 18 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−40 €</div>
+                <div class="row-amount-sub">media mensual</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Naturgy · Gas</div>
+                <div class="row-sub">CUPS ES0218***83NW</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Cada 2 meses</strong> · día 8</div>
+                <div class="row-pattern-sub">próximo · 08 jun 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−23 €</div>
+                <div class="row-amount-sub">media bimestral</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GRUPO · DÍA A DÍA ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+            </div>
+            <div class="group-title">Día a día</div>
+            <div class="group-meta">· 3 patrones</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−866 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Salud · farmacia · médicos</div>
+                <div class="row-sub">estimación variable</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 1</div>
+                <div class="row-pattern-sub">media estimada</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−350 €</div>
+                <div class="row-amount-sub">media mensual</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Supermercado · alimentación</div>
+                <div class="row-sub">Mercadona · Carrefour</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 1</div>
+                <div class="row-pattern-sub">media estimada</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−350 €</div>
+                <div class="row-amount-sub">media mensual</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Día a día · Otros</div>
+                <div class="row-sub">cajeros · gastos varios</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 1</div>
+                <div class="row-pattern-sub">media estimada</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−166 €</div>
+                <div class="row-amount-sub">media mensual</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GRUPO · SUSCRIPCIONES ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div class="group-title">Suscripciones</div>
+            <div class="group-meta">· 3 patrones</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−149 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Claude</div>
+                <div class="row-sub">Anthropic · Suscripción IA</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 5</div>
+                <div class="row-pattern-sub">próximo · 05 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−90 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Netlify</div>
+                <div class="row-sub">Hosting web</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 5</div>
+                <div class="row-pattern-sub">próximo · 05 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−30 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Github</div>
+                <div class="row-sub">Repositorios privados</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 5</div>
+                <div class="row-pattern-sub">próximo · 05 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−29 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GRUPO · SEGUROS Y CUOTAS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="group-title">Seguros y cuotas</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−3 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Segurcaixa · Seguro otros</div>
+                <div class="row-sub">póliza 0049-***-2218</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 15</div>
+                <div class="row-pattern-sub">próximo · 15 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−3 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GRUPO · OTROS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            </div>
+            <div class="group-title">Otros</div>
+            <div class="group-meta">· 4 patrones</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−594 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Renting Peugeot 3008</div>
+                <div class="row-sub">Ayvens · contrato 22-***-3308</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 8</div>
+                <div class="row-pattern-sub">próximo · 08 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−351 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h18v18H3z"/><path d="M9 9h6v6H9z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Impuesto circulación · Mazda</div>
+                <div class="row-sub">AJ Badalona · 1234-XYZ</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Anual</strong> · marzo</div>
+                <div class="row-pattern-sub">próximo · 15 mar 2027</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−144 €</div>
+                <div class="row-amount-sub">1 cargo/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h18v18H3z"/><path d="M9 9h6v6H9z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Impuesto circulación · Kia</div>
+                <div class="row-sub">AJ Badalona · 5678-ABC</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Anual</strong> · marzo</div>
+                <div class="row-pattern-sub">próximo · 15 mar 2027</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−68 €</div>
+                <div class="row-amount-sub">1 cargo/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h18v18H3z"/><path d="M9 9h6v6H9z"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Impuesto · AJ Badalona</div>
+                <div class="row-sub">tasas municipales</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Anual</strong> · enero</div>
+                <div class="row-pattern-sub">próximo · 15 ene 2027</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Sabadell ···· 9635
+              </div>
+              <div>
+                <div class="row-amount">−32 €</div>
+                <div class="row-amount-sub">1 cargo/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ═══════════ DEMO INMUEBLE ═══════════ -->
+      <section class="demo-section" id="demo-inmueble">
+
+        <div class="page-head">
+          <h1 class="page-h1">Fuertes Acevedo</h1>
+          <p class="page-sub">CL Fuertes Acevedo, 32 1 02 DR · Oviedo · Asturias</p>
+        </div>
+
+        <div class="property-strip">
+          <div class="property-photo">
+            <img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=120" alt="" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;display:block;" />
+          </div>
+          <div class="property-info">
+            <div class="property-tag">Inmueble · AST-01</div>
+            <div class="property-name">Fuertes Acevedo · 5 hab · 100m²</div>
+            <div class="property-addr">2 baños · Cat. 7949807... · por habitaciones</div>
+          </div>
+        </div>
+
+        <!-- Tabs ficha inmueble -->
+        <div class="tabs">
+          <div class="tab">Resumen</div>
+          <div class="tab">Contratos <span class="tab-count">31</span></div>
+          <div class="tab">Cobros</div>
+          <div class="tab active">Gastos <span class="tab-count">7</span></div>
+          <div class="tab">Documentos</div>
+          <div class="tab">Fiscalidad</div>
+        </div>
+
+        <!-- KPI strip · inmueble -->
+        <div class="kpi-strip">
+          <div class="kpi-card neg-top">
+            <div class="kpi-label">Gastos mensuales</div>
+            <div class="kpi-val neg">−882 €</div>
+            <div class="kpi-sub">7 patrones activos</div>
+          </div>
+          <div class="kpi-card brand-top">
+            <div class="kpi-label">Coste anual previsto</div>
+            <div class="kpi-val">−10.584 €</div>
+            <div class="kpi-sub">deducibles según contrato</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Próximo cargo</div>
+            <div class="kpi-val">06 may</div>
+            <div class="kpi-sub">DIGI Internet · 25 €</div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input placeholder="Buscar gasto · proveedor..." />
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-gold">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo gasto recurrente
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros · 7 familias inmueble -->
+        <div class="filter-row">
+          <button class="filter-pill active">Todos <span class="count">7</span></button>
+          <button class="filter-pill">Tributos <span class="count">1</span></button>
+          <button class="filter-pill">Comunidad <span class="count">1</span></button>
+          <button class="filter-pill">Suministros <span class="count">3</span></button>
+          <button class="filter-pill">Seguros <span class="count">1</span></button>
+          <button class="filter-pill">Gestión <span class="count">1</span></button>
+        </div>
+
+        <!-- ═══ TRIBUTOS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V10l7-7 7 7v11M9 9h.01M15 9h.01M9 13h.01M15 13h.01"/></svg>
+            </div>
+            <div class="group-title">Tributos</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−36 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V10l7-7 7 7v11"/></svg>
+              </div>
+              <div>
+                <div class="row-name">IBI · Ayto Oviedo</div>
+                <div class="row-sub">tributos · IBI</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Anual</strong> · jun + nov</div>
+                <div class="row-pattern-sub">próximo · 15 jun 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Unicaja ···· 4437
+              </div>
+              <div>
+                <div class="row-amount">−36 €</div>
+                <div class="row-amount-sub">−432 €/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+                <button class="icon-btn danger" title="Eliminar">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ COMUNIDAD ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+            </div>
+            <div class="group-title">Comunidad</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−97 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Comunidad Propietarios</div>
+                <div class="row-sub">cuota ordinaria</div>
+              </div>
+              <div>
+                <div class="row-pattern"><strong>Mensual</strong> · día 5</div>
+                <div class="row-pattern-sub">próximo · 05 may 2026</div>
+              </div>
+              <div class="row-account">
+                <span class="row-account-dot"></span>
+                Unicaja ···· 4437
+              </div>
+              <div>
+                <div class="row-amount">−97 €</div>
+                <div class="row-amount-sub">12 cargos/año</div>
+              </div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SUMINISTROS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="group-title">Suministros</div>
+            <div class="group-meta">· 3 patrones</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−163 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+              <div><div class="row-name">Iberdrola Curenergia · Gas</div><div class="row-sub">CUPS ES0218***83</div></div>
+              <div><div class="row-pattern"><strong>Mensual</strong> · día 12</div><div class="row-pattern-sub">próximo · 12 may 2026</div></div>
+              <div class="row-account"><span class="row-account-dot"></span>Unicaja ···· 4437</div>
+              <div><div class="row-amount">−108 €</div><div class="row-amount-sub">media mensual</div></div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></div>
+              <div><div class="row-name">DIGI · Internet</div><div class="row-sub">contrato 22549143</div></div>
+              <div><div class="row-pattern"><strong>Mensual</strong> · día 6</div><div class="row-pattern-sub">próximo · 06 may 2026</div></div>
+              <div class="row-account"><span class="row-account-dot"></span>Unicaja ···· 4437</div>
+              <div><div class="row-amount">−25 €</div><div class="row-amount-sub">12 cargos/año</div></div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div><div class="row-name">Visalia · Luz</div><div class="row-sub">CUPS ES0021***NE</div></div>
+              <div><div class="row-pattern"><strong>Mensual</strong> · día 18</div><div class="row-pattern-sub">próximo · 18 may 2026</div></div>
+              <div class="row-account"><span class="row-account-dot"></span>Unicaja ···· 4437</div>
+              <div><div class="row-amount">−30 €</div><div class="row-amount-sub">media mensual</div></div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ SEGUROS ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div class="group-title">Seguros</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−21 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div><div class="row-name">Planeta Seguros · Hogar</div><div class="row-sub">póliza 051492790220</div></div>
+              <div><div class="row-pattern"><strong>Mensual</strong> · día 23</div><div class="row-pattern-sub">próximo · 23 may 2026</div></div>
+              <div class="row-account"><span class="row-account-dot"></span>Unicaja ···· 4437</div>
+              <div><div class="row-amount">−21 €</div><div class="row-amount-sub">−256 €/año</div></div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ GESTIÓN ═══ -->
+        <div class="group-card">
+          <div class="group-header">
+            <div class="group-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            </div>
+            <div class="group-title">Gestión</div>
+            <div class="group-meta">· 1 patrón</div>
+            <div class="group-spacer"></div>
+            <div>
+              <div class="group-total">−565 €</div>
+              <div class="group-total-sub">mensual estimado</div>
+            </div>
+            <svg class="group-toggle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="group-body">
+            <div class="row">
+              <div class="row-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+              <div><div class="row-name">Alisser · Honorarios agencia</div><div class="row-sub">gestión integral alquiler</div></div>
+              <div><div class="row-pattern"><strong>Mensual</strong> · día 1</div><div class="row-pattern-sub">próximo · 01 jun 2026</div></div>
+              <div class="row-account"><span class="row-account-dot"></span>Unicaja ···· 4437</div>
+              <div><div class="row-amount">−565 €</div><div class="row-amount-sub">12 cargos/año</div></div>
+              <div><span class="row-status">Activo</span></div>
+              <div class="row-actions">
+                <button class="icon-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    function showDemo(tab) {
+      document.querySelectorAll('.demo-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('demo-' + tab).classList.add('active');
+      document.querySelectorAll('.demo-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>
