@@ -26,6 +26,9 @@ import {
   type BudgetProjection,
 } from '../../mi-plan/services/budgetProjection';
 import styles from './VistaGeneralTab.module.css';
+import AccountFormModal from '../../horizon/configuracion/cuentas/components/AccountFormModal';
+import { cuentasService } from '../../../services/cuentasService';
+import type { Account } from '../../../services/db';
 
 const MONTH_LABELS = [
   'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
@@ -39,6 +42,30 @@ const MONTH_NAMES = [
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
   const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
+
+  // Modal nueva/editar cuenta
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+
+  const openCreateAccount = () => {
+    setEditingAccount(null);
+    setShowAccountModal(true);
+  };
+
+  const openEditAccount = async (id: number) => {
+    try {
+      const acc = await cuentasService.get(id);
+      if (!acc) {
+        showToastV5('Cuenta no encontrada', 'error');
+        return;
+      }
+      setEditingAccount(acc);
+      setShowAccountModal(true);
+    } catch (err) {
+      console.error('[Tesoreria] openEditAccount failed', err);
+      showToastV5('No se pudo abrir la cuenta · ver consola', 'error');
+    }
+  };
 
   // T31 · drawer detalle mes (clic en mes-card del calendario)
   const [drawerMes, setDrawerMes] = useState<{ year: number; monthIndex0: number } | null>(null);
@@ -289,7 +316,7 @@ const VistaGeneralTab: React.FC = () => {
                 title="No hay cuentas registradas"
                 sub="Añade tu primera cuenta para empezar a ver el flujo de tesorería."
                 ctaLabel="+ añadir cuenta"
-                onCtaClick={() => navigate('/tesoreria/importar')}
+                onCtaClick={openCreateAccount}
               />
             ) : (
               <div className={styles.cuentasGrid}>
@@ -300,15 +327,11 @@ const VistaGeneralTab: React.FC = () => {
                     pendingCount={pendientesPorCuenta.get(acc.id ?? -1) ?? 0}
                     delta30d={null}
                     onClick={handleAccountClick}
-                    onEdit={(id) => showToastV5(`Editar cuenta · #${id}`)}
+                    onEdit={(id) => void openEditAccount(id)}
                   />
                 ))}
                 {isLastPage && (
-                  <BankAccountAddCard
-                    onClick={() =>
-                      showToastV5('Añadir cuenta · busca entre 180+ bancos')
-                    }
-                  />
+                  <BankAccountAddCard onClick={openCreateAccount} />
                 )}
                 {Array.from({ length: emptySlots }).map((_, i) => (
                   <div key={`empty-${i}`} className={styles.cuentaEmptySlot} />
@@ -474,6 +497,19 @@ const VistaGeneralTab: React.FC = () => {
             showToastV5('No se pudo confirmar · ver consola', 'error');
           }
         }}
+      />
+
+      <AccountFormModal
+        open={showAccountModal}
+        onClose={() => {
+          setShowAccountModal(false);
+          setEditingAccount(null);
+        }}
+        onSuccess={() => {
+          invalidateCachedStores(['accounts', 'movements', 'treasuryEvents']);
+          reload();
+        }}
+        editingAccount={editingAccount}
       />
     </>
   );
