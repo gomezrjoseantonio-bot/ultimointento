@@ -10,6 +10,11 @@ function formatDateShort(d: Date): string {
   return `${day} ${mon} ${year}`;
 }
 
+/**
+ * Finds the next occurrence of a pattern within an 18-month horizon.
+ * Returns null if no future occurrence is found in that window
+ * (e.g., a puntual pattern whose date has already passed).
+ */
 function nextOccurrenceDate(patron: PatronRecurrente, desde: string): Date | null {
   const today = new Date();
   const hasta = new Date(today);

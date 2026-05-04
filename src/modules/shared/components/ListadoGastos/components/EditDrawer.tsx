@@ -346,7 +346,7 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
 
     try {
       const alias = buildGastoAlias({
-        isCustom: (subtipoSeleccionado as { isCustom?: boolean } | null)?.isCustom ?? false,
+        isCustom: subtipoSeleccionado?.isCustom ?? false,
         nombrePersonalizado: form.nombrePersonalizado,
         subtipoLabel: subtipoSeleccionado?.label,
         tipoLabel: tipoSeleccionado?.label ?? '',

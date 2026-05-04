@@ -19,7 +19,7 @@ const RowExpandedDetail: React.FC<RowExpandedDetailProps> = ({ compromiso: c }) 
 
   let proximosCargos: Date[] = [];
   try {
-    proximosCargos = expandirPatron(c.patron, from, horizonStr).slice(0, 6);
+    proximosCargos = expandirPatron(c.patron, from, horizonStr);
   } catch {
     proximosCargos = [];
   }
