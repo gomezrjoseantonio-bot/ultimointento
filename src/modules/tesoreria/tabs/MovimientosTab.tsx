@@ -249,7 +249,7 @@ const MovimientosTab: React.FC = () => {
       amount: ev.amount,
       status: ev.status,
       accountAlias,
-      inmuebleAlias: (ev as any).inmuebleAlias,
+      inmuebleAlias: ev.inmuebleAlias,
       contratoAlias: (ev as any).contratoAlias,
       categoryLabel: ev.categoryLabel,
     };
@@ -454,7 +454,7 @@ const MovimientosTab: React.FC = () => {
                   const dotColor = accountColorById.get(m.accountId) ?? 'var(--atlas-v5-brand)';
                   const reconciliationStatus: ReconciliationStatus =
                     m.estado_conciliacion ?? (reconciled ? 'conciliado' : 'sin_conciliar');
-                  const inmuebleAlias = (m as any).inmuebleAlias as string | undefined;
+                  const inmuebleAlias = m.inmuebleAlias;
                   return (
                     <tr
                       key={`m:${id}`}
@@ -525,7 +525,7 @@ const MovimientosTab: React.FC = () => {
                   ? (accountColorById.get(e.accountId) ?? 'var(--atlas-v5-brand)')
                   : 'var(--atlas-v5-ink-5)';
                 const isConfirming = confirmingId === e.id;
-                const evInmuebleAlias = (e as any).inmuebleAlias as string | undefined;
+                const evInmuebleAlias = e.inmuebleAlias;
                 return (
                   <tr
                     key={`t:${e.id}`}

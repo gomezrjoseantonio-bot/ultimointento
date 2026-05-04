@@ -89,14 +89,20 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
     }
   }, [open, data]);
 
+  /** Returns the account ID that matches data.accountAlias, or undefined if not found. */
+  const findMatchedAccountId = (): number | '' => {
+    if (!data || !accounts) return '';
+    const match = accounts.find(
+      (a) => a.alias === data.accountAlias || a.banco?.name === data.accountAlias,
+    );
+    return match?.id ?? '';
+  };
+
   const enterEditMode = () => {
     if (!data) return;
     setEditAmount(String(Math.abs(data.amount)));
     setEditDate(data.predictedDate ? data.predictedDate.slice(0, 10) : '');
-    const matchedAcc = accounts?.find(
-      (a) => a.alias === data.accountAlias || a.banco?.name === data.accountAlias,
-    );
-    setEditAccountId(matchedAcc?.id ?? '');
+    setEditAccountId(findMatchedAccountId());
     setEditMode(true);
   };
 
@@ -116,9 +122,8 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
       if (editDate && editDate !== data.predictedDate?.slice(0, 10)) {
         patch.predictedDate = editDate;
       }
-      if (editAccountId !== '' && editAccountId !== (accounts?.find(
-        (a) => a.alias === data.accountAlias || a.banco?.name === data.accountAlias,
-      )?.id)) {
+      const originalAccountId = findMatchedAccountId();
+      if (editAccountId !== originalAccountId) {
         patch.accountId = editAccountId === '' ? null : Number(editAccountId);
       }
       await onSave(data.id, patch);

@@ -1084,6 +1084,8 @@ export interface Movement {
   categoria?: string; // Category assigned automatically or manually
   ambito: 'PERSONAL' | 'INMUEBLE'; // Scope for reconciliation (default PERSONAL)
   inmuebleId?: string; // Required if ambito='INMUEBLE'
+  /** Denormalized alias del inmueble vinculado (para display sin join). */
+  inmuebleAlias?: string;
   statusConciliacion: 'sin_match' | 'match_automatico' | 'match_manual'; // Reconciliation status
   learnKey?: string; // Hash for learning rules (normalized counterparty + description pattern + amount sign)
   isOpeningBalance?: boolean; // Marks the system-generated opening balance movement
@@ -1179,6 +1181,8 @@ export interface TreasuryEvent {
   actualizadoPorDeclaracion?: boolean;   // true si fue ajustado al importar XML
   // GAP-3: Vinculación adicional
   inmuebleId?: number;
+  /** Denormalized alias del inmueble vinculado (para display sin join). */
+  inmuebleAlias?: string;
   contratoId?: number;
   // Account information
   accountId?: number;

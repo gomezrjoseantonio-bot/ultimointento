@@ -418,7 +418,7 @@ const VistaGeneralTab: React.FC = () => {
             amount: (ev as any).amount,
             status: (ev as any).status,
             accountAlias,
-            inmuebleAlias: (ev as any).inmuebleAlias,
+            inmuebleAlias: ev.inmuebleAlias,
             contratoAlias: (ev as any).contratoAlias,
             categoryLabel: (ev as any).categoryLabel,
             origenTexto:
