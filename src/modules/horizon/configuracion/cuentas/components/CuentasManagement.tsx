@@ -365,7 +365,12 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <button className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowModal(false)}>
+        <div
+          className="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowModal(false)}
+        >
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -565,7 +570,7 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
               </div>
             </div>
           </div>
-        </button>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -600,14 +605,14 @@ const CuentasManagement = React.forwardRef<CuentasManagementRef>((props, ref) =>
                   type="button"
                   onClick={() => handleDeactivate(deleteConfirmation)}
                   disabled={deleting}
-                  className="w-full inline-flex justify-center rounded-atlas border border-transparent shadow-sm bg-error-600 text-base font-medium  hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
+                  className="w-full inline-flex justify-center rounded-atlas border border-transparent shadow-sm bg-error-600 text-base font-medium text-white hover:bg-error-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-error-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   {deleting ? 'Desactivando...' : 'Desactivar'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDeleteConfirmation(null)}
-                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:w-auto sm:text-sm"
+                  className="mt-3 w-full inline-flex justify-center rounded-atlas border border-gray-300 shadow-sm bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-atlas-blue sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
                   Cancelar
                 </button>
