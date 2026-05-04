@@ -397,8 +397,8 @@ const EditDrawer: React.FC<EditDrawerProps> = ({ catalog, compromiso, mode, onCl
         `Error al guardar: ${err instanceof Error ? err.message : String(err)}`,
         'error',
       );
-      submitGuard.current = false;
     } finally {
+      submitGuard.current = false;
       setSubmitting(false);
     }
   }, [compromiso, form, mode, tipoSeleccionado, subtipoSeleccionado, onSaved]);

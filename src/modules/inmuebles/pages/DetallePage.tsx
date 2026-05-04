@@ -52,6 +52,10 @@ const DetallePage: React.FC = () => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
   }, [propertyId]);
 
+  const reloadGastos = useCallback(() => {
+    void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
+  }, [propertyId]);
+
   const handleDeleteGasto = useCallback(
     async (c: CompromisoRecurrente) => {
       if (!c.id) return;
@@ -396,6 +400,7 @@ const DetallePage: React.FC = () => {
             inmuebleId={propertyId}
             onEdit={(c) => navigate(`/inmuebles/${property.id}/gastos/${c.id}/editar`)}
             onDelete={handleDeleteGasto}
+            onReload={reloadGastos}
             onNuevo={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
           />
         </div>

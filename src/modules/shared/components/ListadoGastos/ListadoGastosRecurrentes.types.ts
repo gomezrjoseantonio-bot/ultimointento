@@ -7,6 +7,7 @@ export interface ListadoGastosRecurrentesProps {
   mode: 'personal' | 'inmueble';
   onEdit: (c: CompromisoRecurrente) => void;
   onDelete: (c: CompromisoRecurrente) => Promise<void>;
+  onReload?: () => void;
   inmuebleId?: number;
   onNuevo?: () => void;
   onImportar?: () => void;

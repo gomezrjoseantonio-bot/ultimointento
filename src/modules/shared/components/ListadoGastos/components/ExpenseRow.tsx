@@ -84,7 +84,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             color: 'var(--atlas-v5-neg)',
           }}
         >
-          -{formatEur(monthly)}
+          {formatEur(-monthly)}
         </span>
       </td>
       <td style={{ ...td, textAlign: 'center', width: 80 }}>

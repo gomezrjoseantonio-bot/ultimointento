@@ -36,6 +36,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   compromisos,
   mode,
   onDelete,
+  onReload,
   onNuevo,
   onImportar,
   onDetectar,
@@ -264,6 +265,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           onClose={() => setEditTarget(null)}
           onSaved={() => {
             setEditTarget(null);
+            onReload?.();
           }}
         />
       )}

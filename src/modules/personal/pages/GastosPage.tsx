@@ -30,6 +30,7 @@ const GastosPage: React.FC = () => {
       mode="personal"
       onEdit={(c) => navigate(`/personal/gastos/${c.id}/editar`)}
       onDelete={handleDelete}
+      onReload={reload}
     />
   );
 };
