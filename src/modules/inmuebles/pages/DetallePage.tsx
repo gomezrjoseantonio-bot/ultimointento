@@ -455,12 +455,12 @@ const DetallePage: React.FC = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 14px',
+                padding: '9px 18px',
                 border: '1.5px solid var(--atlas-v5-gold)',
                 borderRadius: 7,
                 background: 'var(--atlas-v5-gold)',
                 color: 'var(--atlas-v5-white)',
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: 'pointer',
                 fontFamily: 'var(--atlas-v5-font-ui)',
@@ -468,8 +468,8 @@ const DetallePage: React.FC = () => {
               }}
               onClick={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
             >
-              <Icons.Plus size={12} strokeWidth={2} />
-              Nuevo gasto
+              <Icons.Plus size={14} strokeWidth={2} />
+              Nuevo gasto recurrente
             </button>
           </div>
           {gastos.length === 0 ? (

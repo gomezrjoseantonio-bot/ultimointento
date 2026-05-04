@@ -248,7 +248,7 @@ export async function runV68TipoFamiliaMigration(): Promise<V68MigrationReport> 
 
     // Filtrar solo los que no tienen tipoFamilia
     const sinTipoFamilia = todos.filter(
-      (c) => (c as CompromisoRecurrente & { tipoFamilia?: string }).tipoFamilia == null,
+      (c) => c.tipoFamilia == null,
     );
 
     if (sinTipoFamilia.length === 0) {
