@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { cuentasService } from '../../../../../services/cuentasService';
-import { personalDataService } from '../../../../../services/personalDataService';
 import { actualizarCompromiso } from '../../../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../../../services/treasuryBootstrapService';
 import { showToastV5 } from '../../../../../design-system/v5';

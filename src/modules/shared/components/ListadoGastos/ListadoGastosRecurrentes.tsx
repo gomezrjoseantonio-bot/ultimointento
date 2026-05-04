@@ -4,7 +4,7 @@ import { Plus, Upload, Sparkles, Search } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import type { ListadoGastosRecurrentesProps, SortField, SortState } from './ListadoGastosRecurrentes.types';
+import type { ListadoGastosRecurrentesProps, SortState } from './ListadoGastosRecurrentes.types';
 import { groupByCatalog } from './utils/groupingHelpers';
 import { getFamilyIcon } from './utils/iconMapping';
 import KpiStrip from './components/KpiStrip';
@@ -63,14 +63,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
   const [filterFamilia, setFilterFamilia] = useState<string | null>(null);
 
-  const [sort, setSort] = useState<SortState>({ field: null, dir: 'asc' });
-  const handleSort = useCallback((field: SortField) => {
-    setSort((prev) =>
-      prev.field === field
-        ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : { field, dir: 'asc' },
-    );
-  }, []);
+  const [sort] = useState<SortState>({ field: null, dir: 'asc' });
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadExpandedGroups(mode);
