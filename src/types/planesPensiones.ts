@@ -117,7 +117,12 @@ export interface TraspasoPlanPensiones {
   // por rentabilidadPlanService para cerrar el bloque anterior y abrir el
   // siguiente). Para traspasos totales coincide con importeTraspasado; para
   // parciales son distintos.
-  valorTraspaso: number;
+  //
+  // OPCIONAL · los traspasos legacy (V65 anterior a TAREA 13 v4) sólo
+  // tienen `importeTraspasado`. Al leer, normalizar con
+  // `valorTraspasoNormalizado()` (servicio rentabilidad) que aplica el
+  // fallback `valorTraspaso ?? (esTotal ? importeTraspasado : null)`.
+  valorTraspaso?: number;
   // importeTraspasado: importe efectivamente movido (legacy field, alias del
   // anterior si esTotal=true). Se mantiene para no romper datos previos.
   importeTraspasado: number;
