@@ -10,9 +10,8 @@ import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
-import { traspasosPlanesService } from '../../services/traspasosPlanesService';
-import type { TraspasoPlan } from '../../types/personal';
-import type { PlanPensiones } from '../../types/planesPensiones';
+import { traspasosPlanPensionesService } from '../../services/traspasosPlanPensionesService';
+import type { PlanPensiones, TraspasoPlanPensiones } from '../../types/planesPensiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
 import PosicionDetailModal from '../../modules/horizon/inversiones/components/PosicionDetailModal';
 import AportacionForm from '../../modules/horizon/inversiones/components/AportacionForm';
@@ -404,7 +403,8 @@ const GestionInversionesPage: React.FC = () => {
 
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
   const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
-  const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
+  // TAREA 13 v4 · Commit 1 (C9) · historial leído del store V65.
+  const [traspasos, setTraspasos] = useState<TraspasoPlanPensiones[]>([]);
 
   const refresh = useCallback(async () => {
     try {
@@ -431,7 +431,7 @@ const GestionInversionesPage: React.FC = () => {
         setPersonalDataId(ctx.personalDataId);
         const [planes, tras] = await Promise.all([
           planesInversionService.getPlanes(ctx.personalDataId),
-          traspasosPlanesService.getTraspasosByPersonal(ctx.personalDataId),
+          traspasosPlanPensionesService.getTraspasosPorPersonalData(ctx.personalDataId),
         ]);
         setPlanesPension(planes as PlanPensiones[]);
         setTraspasos(tras);
@@ -453,7 +453,7 @@ const GestionInversionesPage: React.FC = () => {
       try {
         const [planes, tras] = await Promise.all([
           planesInversionService.getPlanes(personalDataId),
-          traspasosPlanesService.getTraspasosByPersonal(personalDataId),
+          traspasosPlanPensionesService.getTraspasosPorPersonalData(personalDataId),
         ]);
         setPlanesPension(planes as PlanPensiones[]);
         setTraspasos(tras);
@@ -949,6 +949,7 @@ const GestionInversionesPage: React.FC = () => {
         <div style={{ marginTop: 24 }}>
           <TraspasosHistorial
             traspasos={traspasos}
+            planes={planesPension}
             onChanged={() => { void handleTraspasoSaved(); }}
           />
         </div>

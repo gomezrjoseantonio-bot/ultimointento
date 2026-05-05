@@ -4,9 +4,8 @@ import { planesPensionesService } from '../../../services/planesPensionesService
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { getRentabilidadTotal } from '../../../services/rentabilidadPlanService';
 import { getFiscalContextSafe } from '../../../services/fiscalContextService';
-import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
-import type { PlanPensiones } from '../../../types/planesPensiones';
-import type { TraspasoPlan } from '../../../types/personal';
+import { traspasosPlanPensionesService } from '../../../services/traspasosPlanPensionesService';
+import type { PlanPensiones, TraspasoPlanPensiones } from '../../../types/planesPensiones';
 import PlanForm from './PlanForm';
 import TraspasoForm, { PlanOrigenInput } from './TraspasoForm';
 import TraspasosHistorial from './TraspasosHistorial';
@@ -27,7 +26,8 @@ const PlanesManager: React.FC = () => {
   const [editingPlan, setEditingPlan] = useState<PlanPensiones | null>(null);
   const [activeFilter, setActiveFilter] = useState<'todos' | 'activos' | 'rescatados'>('todos');
   const [personalDataId, setPersonalDataId] = useState<number | null>(null);
-  const [traspasos, setTraspasos] = useState<TraspasoPlan[]>([]);
+  // TAREA 13 v4 · Commit 1 (C9) · historial leído del store V65.
+  const [traspasos, setTraspasos] = useState<TraspasoPlanPensiones[]>([]);
   const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
   // TAREA 13 v4 · Commit 8 · KPIs por plan (aportado, TWR, rentab. acumulada)
   const [kpisPorPlan, setKpisPorPlan] = useState<Record<string, KpisPlan>>({});
@@ -41,7 +41,12 @@ const PlanesManager: React.FC = () => {
         setPersonalDataId(ctx.personalDataId);
         const planesData = await planesPensionesService.getAllPlanes({ personalDataId: ctx.personalDataId });
         setPlanes(planesData);
-        const traspasosData = await traspasosPlanesService.getTraspasosByPersonal(ctx.personalDataId);
+        // TAREA 13 v4 · Commit 1 (C9) · lee del store V65 traspasosPlanPensiones
+        // (antes leía del legacy traspasosPlanesService · resultado: traspasos
+        // creados con TraspasoForm V65 no aparecían).
+        const traspasosData = await traspasosPlanPensionesService.getTraspasosPorPersonalData(
+          ctx.personalDataId,
+        );
         setTraspasos(traspasosData);
 
         // TAREA 13 v4 · Commit 8 · cargar KPIs en paralelo. Si la
@@ -331,8 +336,8 @@ const PlanesManager: React.FC = () => {
         )}
       </div>
 
-      {/* Traspasos */}
-      <TraspasosHistorial traspasos={traspasos} onChanged={loadData} />
+      {/* Traspasos · V65 */}
+      <TraspasosHistorial traspasos={traspasos} planes={planes} onChanged={loadData} />
 
       {/* Plan Form Modal */}
       <PlanForm

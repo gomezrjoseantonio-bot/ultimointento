@@ -25,7 +25,7 @@ import type {
 import type { TipoActivo } from '../types/tipoActivo';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 68; // V68 (T38): añade campo opcional `tipoFamilia` a `compromisosRecurrentes` · migración de datos asíncrona (v68-tipoFamilia.ts) · sin cambios destructivos
+const DB_VERSION = 69; // V69 (TAREA 13 v4 · cierre lote B+C · C4 review Copilot): añade índice compuesto `tipo-activo` [tipo_activo, activo_id] en `valoraciones_historicas` · perf · solo schema · sin migración de datos · 40 stores (sin cambio en número)
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -2713,6 +2713,12 @@ export const initDB = async () => {
           valoracionesStore.createIndex('activo_id', 'activo_id', { unique: false });
           valoracionesStore.createIndex('fecha_valoracion', 'fecha_valoracion', { unique: false });
           valoracionesStore.createIndex('tipo-activo-fecha', ['tipo_activo', 'activo_id', 'fecha_valoracion'], { unique: false });
+          // V69 (TAREA 13 v4 · C4): índice 2-key `tipo-activo` para queries
+          // que solo filtran por tipo+id sin necesitar fecha (caso más común
+          // · 6 de las 8 queries documentadas). Más limpio que usar el 3-key
+          // con IDBKeyRange.bound. Coste: una entrada de índice extra por
+          // registro (~30 bytes) · ganancia: O(log n) directo.
+          valoracionesStore.createIndex('tipo-activo', ['tipo_activo', 'activo_id'], { unique: false });
         }
 
         // valoraciones_mensuales: store removed in V62 (sub-tarea 3)
@@ -3997,6 +4003,28 @@ export const initDB = async () => {
           // La migración de datos (inferir tipoFamilia para registros
           // existentes) se ejecuta de forma asíncrona POST-upgrade en
           // App.tsx via `runV68TipoFamiliaMigration` (idempotente · keyval).
+        }
+
+        if (oldVersion < 69) {
+          // ── V69 (TAREA 13 v4 · cierre lote B+C · C4 review Copilot) ──
+          // Añade índice compuesto 2-key `tipo-activo` [tipo_activo, activo_id]
+          // en `valoraciones_historicas` para evitar full-scan en queries
+          // que filtran por tipo+id sin fecha (6 de 8 queries documentadas
+          // en `valoracionesService` y `rentabilidadPlanService`).
+          //
+          // Solo schema · NO migra datos · IndexedDB recalcula el índice
+          // automáticamente sobre los registros existentes (sin pérdida).
+          // 40 stores activos antes y después (sin cambio en número).
+          if (db.objectStoreNames.contains('valoraciones_historicas')) {
+            const store = (transaction as any).objectStore(
+              'valoraciones_historicas',
+            );
+            if (!store.indexNames.contains('tipo-activo')) {
+              store.createIndex('tipo-activo', ['tipo_activo', 'activo_id'], {
+                unique: false,
+              });
+            }
+          }
         }
       },
       blocked() {

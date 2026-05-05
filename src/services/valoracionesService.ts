@@ -47,6 +47,67 @@ const resolveCurrentPropertyValue = (property: any): number => {
   );
 };
 
+/**
+ * TAREA 13 v4 · Commit 3 (C4) · helper para usar el índice compuesto
+ * `tipo-activo` (V69) y evitar full-scan al filtrar por tipo+id.
+ *
+ * Comparación dual · primero como número, luego como string (planes V65
+ * usan UUID string · inmuebles/inversiones usan number). IDB compara con
+ * strict equality, así que dos queries por lookup. Coste mínimo · gana
+ * mucho frente al `getAll` sobre la tabla completa.
+ */
+async function getByTipoActivoIndex(
+  db: Awaited<ReturnType<typeof initDB>>,
+  tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
+  id: number | string,
+): Promise<ValoracionHistorica[]> {
+  // Si la DB todavía no tiene el índice (entorno transitorio · DBs muy antiguas
+  // que aún no completaron el upgrade) fallback al getAll + filter.
+  try {
+    const idStr = String(id);
+    const idNum = Number(id);
+    const seen = new Set<number>();
+    const out: ValoracionHistorica[] = [];
+
+    // Primero como string (caso plan_pensiones UUID).
+    const byStr = (await db.getAllFromIndex(
+      'valoraciones_historicas',
+      'tipo-activo' as any,
+      [tipo, idStr] as unknown as IDBValidKey,
+    )) as ValoracionHistorica[];
+    for (const v of byStr) {
+      if (v.id != null && !seen.has(v.id)) {
+        seen.add(v.id);
+        out.push(v);
+      }
+    }
+
+    // Luego como número (caso inmueble/inversion · y plan_pensiones legacy).
+    if (Number.isFinite(idNum) && String(idNum) === idStr) {
+      const byNum = (await db.getAllFromIndex(
+        'valoraciones_historicas',
+        'tipo-activo' as any,
+        [tipo, idNum] as unknown as IDBValidKey,
+      )) as ValoracionHistorica[];
+      for (const v of byNum) {
+        if (v.id != null && !seen.has(v.id)) {
+          seen.add(v.id);
+          out.push(v);
+        }
+      }
+    }
+
+    return out;
+  } catch {
+    // Fallback robusto · DB pre-V69 sin índice o cualquier otra incidencia.
+    const all = (await db.getAll('valoraciones_historicas')) as ValoracionHistorica[];
+    const idStr = String(id);
+    return all.filter(
+      (v) => v.tipo_activo === tipo && String(v.activo_id) === idStr,
+    );
+  }
+}
+
 export const valoracionesService = {
   // ── Activos ──────────────────────────────────────────────────────────────
 
@@ -124,18 +185,17 @@ export const valoracionesService = {
 
   // ── Valoraciones históricas ───────────────────────────────────────────────
 
-  /** Obtener última valoración de un activo específico */
+  /** Obtener última valoración de un activo específico.
+   *  TAREA 13 v4 · Commit 3 (C4) · usa índice 2-key `tipo-activo` (V69)
+   *  para evitar full-scan. Activo_id se compara como número y como string
+   *  porque distintos stores guardaron formatos diferentes históricamente
+   *  (planes V65 = UUID string · inmuebles/inversiones = number). El índice
+   *  IDB compara con strict equality, así que probamos ambas claves. */
   async getUltimaValoracion(
     tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number
   ): Promise<ValoracionHistorica | undefined> {
-    const db = await initDB();
-    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
-    const idStr = String(id);
-    const filtered = all
-      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
-      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
-    return filtered[0];
+    return this.getValoracionMasReciente(tipo, id);
   },
 
   /**
@@ -147,11 +207,10 @@ export const valoracionesService = {
     id: number | string
   ): Promise<ValoracionHistorica | undefined> {
     const db = await initDB();
-    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
-    const idStr = String(id);
-    const filtered = all
-      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
-      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
+    const filtered = await getByTipoActivoIndex(db, tipo, id);
+    filtered.sort((a, b) =>
+      String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)),
+    );
     return filtered[0];
   },
 
@@ -294,31 +353,34 @@ export const valoracionesService = {
     };
   },
 
-  /** Obtener última valoración hasta un mes objetivo (inclusive, YYYY-MM) */
+  /** Obtener última valoración hasta un mes objetivo (inclusive, YYYY-MM).
+   *  TAREA 13 v4 · Commit 3 (C4) · usa índice tipo-activo (V69) +
+   *  filtro de fecha en memoria sobre el subset reducido. */
   async getUltimaValoracionHastaMes(
     tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number,
     fechaMes: string
   ): Promise<ValoracionHistorica | undefined> {
     const db = await initDB();
-    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
-    const idStr = String(id);
-    const filtered = all
-      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr && String(v.fecha_valoracion).slice(0, 7) <= fechaMes)
-      .sort((a, b) => String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)));
+    const filtered = (await getByTipoActivoIndex(db, tipo, id))
+      .filter((v) => String(v.fecha_valoracion).slice(0, 7) <= fechaMes)
+      .sort((a, b) =>
+        String(b.fecha_valoracion).localeCompare(String(a.fecha_valoracion)),
+      );
     return filtered[0];
   },
 
+  /** Devuelve todas las valoraciones de un activo, ordenadas asc por fecha.
+   *  TAREA 13 v4 · Commit 3 (C4) · usa índice tipo-activo (V69). */
   async getEvolucionActivo(
     tipo: 'inmueble' | 'inversion' | 'plan_pensiones',
     id: number
   ): Promise<ValoracionHistorica[]> {
     const db = await initDB();
-    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
-    const idStr = String(id);
-    return all
-      .filter((v) => v.tipo_activo === tipo && String(v.activo_id) === idStr)
-      .sort((a, b) => String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)));
+    const filtered = await getByTipoActivoIndex(db, tipo, id);
+    return filtered.sort((a, b) =>
+      String(a.fecha_valoracion).localeCompare(String(b.fecha_valoracion)),
+    );
   },
 
   // ── Guardar valoraciones ──────────────────────────────────────────────────
