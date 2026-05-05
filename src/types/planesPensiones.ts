@@ -153,9 +153,62 @@ export interface LimitesFiscalesPlan {
   descripcion: string;
 }
 
+/**
+ * @deprecated TAREA 13 v4 · Commit 5 · usar `ResultadoValidacionDetallado`.
+ * Se mantiene el tipo legacy por si algún consumidor externo del SDK lo
+ * importó; ningún consumidor interno lo usa ya.
+ */
 export interface ResultadoValidacionAportacion {
   deducible: number;
   exceso: number;
   limiteAplicable: number;
   totalAportado: number;
+}
+
+/**
+ * TAREA 13 v4 · Commit 5 (G+H) · §3.2 spec.
+ *
+ * Resultado detallado de validación de una aportación: indica si es
+ * deducible, qué porción exacta lo es, motivo si hay tope, etc. Aplica el
+ * doble criterio del art. 52 LIRPF: el menor entre el límite económico
+ * (1.500 € / 8.500 € / 10.000 € / etc.) y el 30 % de los rendimientos netos
+ * del trabajo + actividades económicas.
+ */
+export interface ResultadoValidacionDetallado {
+  esDeducible: boolean;
+  importeDeducible: number;
+  excesoNoDeducible: number;
+  motivo?: string;
+  limiteAplicable: number;
+  totalAportadoEjercicio: number;
+  /** Tope absoluto por la regla del 30 % de rendimientos netos. */
+  tope30Rendimientos?: number;
+  /** Tope económico aplicable según tipo (PPI 1.500 / PPE 8.500 / etc.). */
+  topeEconomico: number;
+}
+
+/**
+ * TAREA 13 v4 · Commit 5 (G+H) · §3.3 spec.
+ *
+ * Cálculo de la reducción de base imponible por aportaciones a planes de
+ * pensiones para un ejercicio. Devuelve desglose por tipo y aviso de exceso.
+ */
+export interface ResultadoReduccionBaseImponible {
+  totalAportadoTitular: number;
+  totalAportadoEmpresa: number;
+  totalAportadoConyuge: number;
+  desgloseDeduciblesPorTipo: {
+    PPI: number;
+    PPA: number;
+    PPE: number;
+    PPES_autonomos: number;
+    PPES_sectorial: number;
+    PPES_publico: number;
+    PPES_cooperativas: number;
+  };
+  totalDeducibleAplicado: number;
+  /** Importe que excede del límite y queda pendiente de aplicación en años posteriores (5 años). */
+  excesoArrastrable: number;
+  /** Avisos para el usuario · ej. "se ha excedido el tope conjunto", "cónyuge supera 8.000 €". */
+  alertas: string[];
 }
