@@ -4,10 +4,10 @@ import { CheckCircle, X, ChevronLeft, Plus, Trash2 } from 'lucide-react';
 import { nominaService } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
-import { planesInversionService } from '../../../services/planesInversionService';
+import { planesPensionesService } from '../../../services/planesPensionesService';
 import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
 import type { Account } from '../../../services/db';
-import type { PlanPensionInversion } from '../../../types/personal';
+import type { PlanPensiones } from '../../../types/planesPensiones';
 
 const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -192,7 +192,7 @@ const NominaWizard: React.FC = () => {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [planes, setPlanes] = useState<PlanPensionInversion[]>([]);
+  const [planes, setPlanes] = useState<PlanPensiones[]>([]);
   const [pid, setPid] = useState<number | null>(null);
   const [titularNombre, setTitularNombre] = useState('');
   const [editingTitular, setEditingTitular] = useState<'yo' | 'pareja'>(titularParam);
@@ -211,7 +211,8 @@ const NominaWizard: React.FC = () => {
   // Step 2 state
   const [variables, setVariables] = useState<WizardVariable[]>([]);
   const [tienePP, setTienePP] = useState(false);
-  const [ppPlanId, setPpPlanId] = useState<number | null>(null);
+  // TAREA 13 v4 (Commit 3 · E): UUID string del plan en planesPensiones (V65).
+  const [ppPlanId, setPpPlanId] = useState<string | null>(null);
   const [ppEmpleado, setPpEmpleado] = useState(0);
   const [ppEmpresa, setPpEmpresa] = useState(0);
   const [tieneEspecie, setTieneEspecie] = useState(false);
@@ -225,12 +226,28 @@ const NominaWizard: React.FC = () => {
       const perfil = await personalDataService.getPersonalData();
       if (perfil?.id) {
         setPid(perfil.id);
-        const [accs, pls] = await Promise.all([
+        // TAREA 13 v4 (Commit 3 · E): leer planes empleo/empleo-simplif. del
+        // titular desde planesPensiones (V65) en vez de planesInversion legacy.
+        // Filtros: tipo PPE/PPES + estado activo. PPI/PPA NO son destino válido
+        // de aportación de nómina (no admiten aportación de empresa).
+        const titularNomina: 'yo' | 'pareja' = isEditing ? editingTitular : titularParam;
+        const [accs, ppe, ppes] = await Promise.all([
           cuentasService.list(),
-          planesInversionService.getPlanes(perfil.id),
+          planesPensionesService.getAllPlanes({
+            personalDataId: perfil.id,
+            titular: titularNomina,
+            tipoAdministrativo: 'PPE',
+            estado: 'activo',
+          }),
+          planesPensionesService.getAllPlanes({
+            personalDataId: perfil.id,
+            titular: titularNomina,
+            tipoAdministrativo: 'PPES',
+            estado: 'activo',
+          }),
         ]);
         setAccounts(accs.filter(a => !a.deleted_at && a.activa));
-        setPlanes(pls as unknown as PlanPensionInversion[]);
+        setPlanes([...ppe, ...ppes]);
 
         if (isEditing && nominaId) {
           // Edit mode: load existing nomina and populate all fields
@@ -280,7 +297,10 @@ const NominaWizard: React.FC = () => {
               setTienePP(true);
               setPpEmpleado(nom.planPensiones.aportacionEmpleado.valor);
               setPpEmpresa(nom.planPensiones.aportacionEmpresa.valor);
-              setPpPlanId(nom.planPensiones.productoDestinoId ?? null);
+              // TAREA 13 v4 (Commit 3 · E): productoDestinoId puede ser legacy
+              // numeric o nuevo UUID string. Normalizamos a string.
+              const destId = nom.planPensiones.productoDestinoId;
+              setPpPlanId(destId !== undefined && destId !== null ? String(destId) : null);
             }
             // Especie
             if (nom.beneficiosSociales?.length) {
@@ -373,8 +393,11 @@ const NominaWizard: React.FC = () => {
       const pp = tienePP ? {
         aportacionEmpleado: { tipo: 'importe' as const, valor: ppEmpleado },
         aportacionEmpresa: { tipo: 'importe' as const, valor: ppEmpresa },
+        // TAREA 13 v4 (Commit 3 · E): UUID string del plan en planesPensiones.
         productoDestinoId: ppPlanId ?? undefined,
-        productoDestinoNombre: ppPlanId ? planes.find(p => p.id === ppPlanId)?.nombre : undefined,
+        productoDestinoNombre: ppPlanId
+          ? planes.find(p => p.id === ppPlanId)?.nombre
+          : undefined,
       } : undefined;
 
       const nominaData = {
@@ -684,9 +707,12 @@ const NominaWizard: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, marginBottom: 12 }}>
                 {planes.map(p => (
                   <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: `1.5px solid ${ppPlanId === p.id ? 'var(--navy-900, #042C5E)' : 'var(--grey-200, #DDE3EC)'}`, borderRadius: 8, cursor: 'pointer', fontFamily: FONT, fontSize: 13 }}>
-                    <input type="radio" name="pp" checked={ppPlanId === p.id} onChange={() => setPpPlanId(p.id ?? null)} />
+                    <input type="radio" name="pp" checked={ppPlanId === p.id} onChange={() => setPpPlanId(p.id)} />
                     <span style={{ fontWeight: 600 }}>{p.nombre}</span>
-                    <span style={{ color: 'var(--grey-400)', fontSize: 11 }}>{p.tipo}</span>
+                    <span style={{ color: 'var(--grey-400)', fontSize: 11 }}>
+                      {p.tipoAdministrativo}
+                      {p.gestoraActual ? ` · ${p.gestoraActual}` : ''}
+                    </span>
                   </label>
                 ))}
               </div>

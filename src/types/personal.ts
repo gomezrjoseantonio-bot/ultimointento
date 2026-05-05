@@ -199,7 +199,16 @@ export interface PlanPensionesNomina {
     valor: number;                       // % o €/mes — SE DESCUENTA del líquido
     salarioBaseObjetivo?: number;
   };
-  productoDestinoId?: number;            // → PosicionInversion.id
+  /**
+   * Identificador del plan destino al que se aporta.
+   *
+   * TAREA 13 v4 (Commit 3 · sub-tarea E): a partir de aquí el wizard
+   * persiste el UUID `string` del plan en `planesPensiones`. Los
+   * registros legacy (pre-V65) pueden conservar `number` (id de la
+   * posición de inversión); el resolver `nominaAportacionHook` ya
+   * compara con `String(productoId)` y soporta ambos.
+   */
+  productoDestinoId?: number | string;
   productoDestinoNombre?: string;        // Nombre para mostrar
 }
 
