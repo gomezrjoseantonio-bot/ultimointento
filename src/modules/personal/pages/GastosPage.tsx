@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { eliminarCompromiso } from '../../../services/personal/compromisosRecurrentesService';
 import { regenerateForecastsForward } from '../../../services/treasuryBootstrapService';
 import { ListadoGastosRecurrentes } from '../../../modules/shared/components/ListadoGastos';
@@ -8,7 +8,6 @@ import type { PersonalOutletContext } from '../PersonalContext';
 import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes';
 
 const GastosPage: React.FC = () => {
-  const navigate = useNavigate();
   const { compromisos, reload } = useOutletContext<PersonalOutletContext>();
 
   const personalCompromisos = compromisos.filter((c) => c.ambito === 'personal');
@@ -28,7 +27,6 @@ const GastosPage: React.FC = () => {
       catalog={TIPOS_GASTO_PERSONAL}
       compromisos={personalCompromisos}
       mode="personal"
-      onEdit={(c) => navigate(`/personal/gastos/${c.id}/editar`)}
       onDelete={handleDelete}
       onReload={reload}
     />

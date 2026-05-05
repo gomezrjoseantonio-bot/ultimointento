@@ -3,8 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Upload, Sparkles, Search } from 'lucide-react';
 import { EmptyState, Icons, showToastV5 } from '../../../../design-system/v5';
 import ConfirmationModal from '../../../../components/common/ConfirmationModal';
+import { cuentasService } from '../../../../services/cuentasService';
+import type { Account } from '../../../../services/db';
 import type { CompromisoRecurrente } from '../../../../types/compromisosRecurrentes';
-import type { ListadoGastosRecurrentesProps, SortState } from './ListadoGastosRecurrentes.types';
+import type {
+  ListadoGastosRecurrentesProps,
+  SortField,
+  SortState,
+} from './ListadoGastosRecurrentes.types';
 import { groupByCatalog } from './utils/groupingHelpers';
 import { getFamilyIcon } from './utils/iconMapping';
 import KpiStrip from './components/KpiStrip';
@@ -54,7 +60,6 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     debounceRef.current = setTimeout(() => setSearch(val), 200);
   }, []);
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -63,7 +68,26 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
   const [filterFamilia, setFilterFamilia] = useState<string | null>(null);
 
-  const [sort] = useState<SortState>({ field: null, dir: 'asc' });
+  const [sort, setSort] = useState<SortState>({ field: null, dir: 'asc' });
+  const handleSort = useCallback((field: SortField) => {
+    setSort((prev) =>
+      prev.field === field
+        ? { field, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { field, dir: 'asc' },
+    );
+  }, []);
+
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  useEffect(() => {
+    void cuentasService.list().then(setAccounts);
+  }, []);
+  const accountsById = useMemo(() => {
+    const map: Record<number, Account> = {};
+    for (const a of accounts) {
+      if (a.id != null) map[a.id] = a;
+    }
+    return map;
+  }, [accounts]);
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     const saved = loadExpandedGroups(mode);
@@ -119,13 +143,19 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
       }
       if (!search) return true;
       const s = search.toLowerCase();
+      const subtipoLabel = (() => {
+        const fam = catalog.find((t) => t.id === (c.tipoFamilia ?? ''));
+        return fam?.subtipos.find((sb) => sb.id === c.subtipo)?.label ?? '';
+      })();
       return (
         c.alias.toLowerCase().includes(s) ||
         (c.proveedor?.nombre ?? '').toLowerCase().includes(s) ||
-        (c.categoria ?? '').toLowerCase().includes(s)
+        (c.categoria ?? '').toLowerCase().includes(s) ||
+        (c.subtipo ?? '').toLowerCase().includes(s) ||
+        subtipoLabel.toLowerCase().includes(s)
       );
     });
-  }, [compromisos, filterFamilia, search]);
+  }, [compromisos, filterFamilia, search, catalog]);
 
   const groups = useMemo(
     () => groupByCatalog(filtered, catalog, mode),
@@ -134,12 +164,14 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
   const pillOptions = useMemo(
     () =>
-      catalog.map((t) => ({
-        id: t.id,
-        label: t.label,
-        icon: getFamilyIcon(t.id, mode),
-        count: compromisos.filter((c) => (c.tipoFamilia ?? 'otros') === t.id).length,
-      })),
+      catalog
+        .map((t) => ({
+          id: t.id,
+          label: t.label,
+          icon: getFamilyIcon(t.id, mode),
+          count: compromisos.filter((c) => (c.tipoFamilia ?? 'otros') === t.id).length,
+        }))
+        .filter((opt) => opt.count > 0),
     [catalog, compromisos, mode],
   );
 
@@ -174,16 +206,18 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
     );
   }
 
+  const noResults = groups.length === 0;
+
   return (
     <>
       <KpiStrip compromisos={compromisos} />
 
       <div style={toolbar}>
         <div style={searchWrap}>
-          <Search size={13} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-4)' }} />
+          <Search size={14} strokeWidth={2} style={{ color: 'var(--atlas-v5-ink-4)' }} />
           <input
             type="search"
-            placeholder="Buscar por nombre, proveedor, categoría…"
+            placeholder="Buscar gasto · proveedor · subtipo..."
             value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             aria-label="Buscar gastos"
@@ -227,20 +261,26 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
         />
       </div>
 
-      {groups.length === 0 && (
-        <div
-          style={{
-            padding: '32px 0',
-            textAlign: 'center',
-            color: 'var(--atlas-v5-ink-4)',
-            fontSize: 13,
-          }}
-        >
-          Sin compromisos que coincidan con los filtros aplicados.
+      {noResults && (
+        <div style={emptyResults}>
+          <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--atlas-v5-ink)', marginBottom: 4 }}>
+            No hay resultados para ese filtro
+          </div>
+          <button
+            type="button"
+            style={btnGhost}
+            onClick={() => {
+              setFilterFamilia(null);
+              setSearchInput('');
+              setSearch('');
+            }}
+          >
+            Limpiar filtros
+          </button>
         </div>
       )}
 
-      {groups.map((g) => (
+      {groups.map((g, idx) => (
         <GroupCard
           key={g.familiaId}
           familiaId={g.familiaId}
@@ -253,7 +293,10 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           onToggleRow={toggleRow}
           onEdit={(c) => setEditTarget(c)}
           onDelete={(c) => setDeleteTarget(c as CompromisoRecurrente & { id: number })}
+          accountsById={accountsById}
           sort={sort}
+          onSort={handleSort}
+          showHeader={idx === 0}
         />
       ))}
 
@@ -289,38 +332,38 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
 
 const toolbar: React.CSSProperties = {
   display: 'flex',
-  gap: 8,
-  marginBottom: 12,
+  gap: 12,
+  marginBottom: 16,
   flexWrap: 'wrap',
   alignItems: 'center',
 };
 const searchWrap: React.CSSProperties = {
   flex: 1,
-  minWidth: 180,
+  minWidth: 240,
   display: 'flex',
   alignItems: 'center',
-  gap: 6,
-  padding: '0 10px',
+  gap: 8,
+  padding: '8px 12px',
   border: '1px solid var(--atlas-v5-line)',
-  borderRadius: 6,
+  borderRadius: 8,
   background: 'var(--atlas-v5-card)',
-  height: 36,
 };
 const searchInputCss: React.CSSProperties = {
   border: 'none',
   outline: 'none',
-  fontSize: 12,
+  fontSize: 13,
   flex: 1,
   background: 'transparent',
-  color: 'var(--atlas-v5-ink-2)',
+  color: 'var(--atlas-v5-ink)',
   fontFamily: 'var(--atlas-v5-font-ui)',
 };
 const btnGold: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
+  gap: 6,
   padding: '8px 14px',
-  borderRadius: 6,
-  fontSize: 12,
+  borderRadius: 8,
+  fontSize: 12.5,
   fontWeight: 600,
   cursor: 'pointer',
   border: '1.5px solid var(--atlas-v5-gold)',
@@ -331,15 +374,28 @@ const btnGold: React.CSSProperties = {
 const btnGhost: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
-  padding: '8px 12px',
-  borderRadius: 6,
-  fontSize: 12,
-  fontWeight: 500,
+  gap: 6,
+  padding: '8px 14px',
+  borderRadius: 8,
+  fontSize: 12.5,
+  fontWeight: 600,
   cursor: 'pointer',
   border: '1px solid var(--atlas-v5-line)',
   background: 'var(--atlas-v5-card)',
   color: 'var(--atlas-v5-ink-3)',
   fontFamily: 'var(--atlas-v5-font-ui)',
+};
+const emptyResults: React.CSSProperties = {
+  background: 'var(--atlas-v5-card)',
+  border: '1px dashed var(--atlas-v5-line)',
+  borderRadius: 12,
+  padding: '32px 20px',
+  textAlign: 'center',
+  marginBottom: 14,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 8,
 };
 
 export default ListadoGastosRecurrentes;

@@ -398,7 +398,6 @@ const DetallePage: React.FC = () => {
             compromisos={gastos}
             mode="inmueble"
             inmuebleId={propertyId}
-            onEdit={(c) => navigate(`/inmuebles/${property.id}/gastos/${c.id}/editar`)}
             onDelete={handleDeleteGasto}
             onReload={reloadGastos}
             onNuevo={() => navigate(`/inmuebles/${property.id}/gastos/nuevo`)}
