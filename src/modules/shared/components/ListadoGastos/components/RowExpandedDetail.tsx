@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
-import { expandirPatron } from '../../../../../services/personal/patronCalendario';
-import { computeMonthly } from '../../../utils/compromisoUtils';
+import type { Movement, TreasuryEvent } from '../../../../../services/db';
+import { initDB } from '../../../../../services/db';
+import {
+  aplicarVariacion,
+  calcularImporte,
+  expandirPatron,
+} from '../../../../../services/personal/patronCalendario';
 import { formatEur } from '../utils/amountFormatter';
 
 const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -10,135 +15,299 @@ interface RowExpandedDetailProps {
   compromiso: CompromisoRecurrente & { id: number };
 }
 
+interface NextCharge {
+  date: Date;
+  amount: number;
+  status: 'predicted' | 'confirmed' | 'executed';
+  source: 'event' | 'computed';
+}
+
+function formatShortDate(d: Date): string {
+  return `${String(d.getDate()).padStart(2, '0')} ${MESES_SHORT[d.getMonth()] ?? ''} ${d.getFullYear()}`;
+}
+
 const RowExpandedDetail: React.FC<RowExpandedDetailProps> = ({ compromiso: c }) => {
-  const today = new Date();
-  const from = today.toISOString().slice(0, 10);
-  const horizon = new Date(today);
-  horizon.setMonth(horizon.getMonth() + 12);
-  const horizonStr = horizon.toISOString().slice(0, 10);
+  const [nextCharges, setNextCharges] = useState<NextCharge[]>([]);
+  const [history, setHistory] = useState<Movement[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  let proximosCargos: Date[] = [];
-  try {
-    proximosCargos = expandirPatron(c.patron, from, horizonStr);
-  } catch {
-    proximosCargos = [];
-  }
+  // Extraer campos primitivos para deps estables (evita re-fetch por nueva
+  // identidad del objeto en cada render del padre).
+  const cId = c.id;
+  const cPatron = c.patron;
+  const cImporte = c.importe;
+  const cVariacion = c.variacion;
+  const cFechaInicio = c.fechaInicio;
+  const cCategoria = c.categoria;
+  const cSubtipo = c.subtipo;
+  const cAmbito = c.ambito;
+  const cInmuebleId = c.inmuebleId;
 
-  const mensual = computeMonthly(c);
+  useEffect(() => {
+    let cancelled = false;
+
+    // El histórico se filtra por atributos del compromiso para evitar
+    // colisiones de `sourceId` entre orígenes distintos.
+    const matchesCompromiso = (e: TreasuryEvent): boolean => {
+      if (e.sourceType !== 'gasto_recurrente') return false;
+      if (e.sourceId !== cId) return false;
+      if (cCategoria != null && e.categoryKey != null && e.categoryKey !== cCategoria) {
+        return false;
+      }
+      if (cSubtipo != null && e.subtypeKey != null && e.subtypeKey !== cSubtipo) {
+        return false;
+      }
+      const ambitoEsperado = cAmbito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+      if (e.ambito != null && e.ambito !== ambitoEsperado) return false;
+      if (cAmbito === 'inmueble' && cInmuebleId != null && e.inmuebleId != null) {
+        if (e.inmuebleId !== cInmuebleId) return false;
+      }
+      return true;
+    };
+
+    void (async () => {
+      try {
+        const db = await initDB();
+
+        const eventTx = db.transaction('treasuryEvents', 'readonly');
+        const eventStore = eventTx.objectStore('treasuryEvents');
+        const eventIdx = eventStore.index('sourceId');
+        const rawEvents = (await eventIdx.getAll(cId)) as TreasuryEvent[];
+        const events = rawEvents.filter(matchesCompromiso);
+
+        const todayMs = Date.now();
+        const futureEvents = events
+          .filter(
+            (e) =>
+              (e.status === 'predicted' || e.status === 'confirmed') &&
+              new Date(e.predictedDate).getTime() >= todayMs - 86_400_000,
+          )
+          .sort(
+            (a, b) =>
+              new Date(a.predictedDate).getTime() - new Date(b.predictedDate).getTime(),
+          )
+          .slice(0, 6)
+          .map<NextCharge>((e) => ({
+            date: new Date(e.predictedDate),
+            amount: e.amount,
+            status: e.status,
+            source: 'event',
+          }));
+
+        // Fallback (compromiso recién creado · sin events). Calcula importe
+        // real por fecha (NO mensual prorrateado) + variación + signo gasto.
+        let charges = futureEvents;
+        if (charges.length === 0) {
+          const horizon = new Date();
+          horizon.setMonth(horizon.getMonth() + 12);
+          try {
+            const dates = expandirPatron(
+              cPatron,
+              new Date().toISOString().slice(0, 10),
+              horizon.toISOString().slice(0, 10),
+            );
+            const fechaInicioDate = new Date(cFechaInicio);
+            charges = dates.slice(0, 6).map<NextCharge>((d) => {
+              let importe = 0;
+              try {
+                const base = calcularImporte(cImporte, d);
+                importe = aplicarVariacion(base, cVariacion, fechaInicioDate, d);
+              } catch {
+                importe = 0;
+              }
+              return {
+                date: d,
+                amount: -Math.abs(importe),
+                status: 'predicted',
+                source: 'computed',
+              };
+            });
+          } catch {
+            charges = [];
+          }
+        }
+
+        // Histórico: movements ejecutados ligados al compromiso vía
+        // executedMovementId, derivados de los events ya filtrados.
+        const executedEventIds = events
+          .filter((e) => e.status === 'executed' && e.executedMovementId)
+          .map((e) => e.executedMovementId as number);
+
+        let movs: Movement[] = [];
+        if (executedEventIds.length > 0) {
+          const movTx = db.transaction('movements', 'readonly');
+          const movStore = movTx.objectStore('movements');
+          const list: Movement[] = [];
+          for (const mId of executedEventIds) {
+            const m = await movStore.get(mId);
+            if (m) list.push(m as Movement);
+          }
+          movs = list
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 6);
+        }
+
+        if (!cancelled) {
+          setNextCharges(charges);
+          setHistory(movs);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setNextCharges([]);
+          setHistory([]);
+          setLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    cId,
+    cPatron,
+    cImporte,
+    cVariacion,
+    cFechaInicio,
+    cCategoria,
+    cSubtipo,
+    cAmbito,
+    cInmuebleId,
+  ]);
+
+  const showHistory = history.length > 0;
 
   return (
-    <tr aria-label={`Detalle de ${c.alias}`}>
-      <td
-        colSpan={7}
-        style={{ padding: '0 20px 14px', background: 'var(--atlas-v5-gold-wash-2)' }}
+    <div
+      role="region"
+      aria-label={`Detalle de ${c.alias}`}
+      style={{
+        background: 'var(--atlas-v5-card-alt)',
+        borderBottom: '1px solid var(--atlas-v5-line-2)',
+        padding: '18px 28px',
+      }}
+    >
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: showHistory ? '1fr 1fr' : '1fr',
+          gap: 24,
+        }}
       >
-        <div style={{ display: 'flex', gap: 24, paddingTop: 12, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={detailTitle}>Datos del gasto</div>
-            <dl style={dlStyle}>
-              <dt style={dtStyle}>Proveedor</dt>
-              <dd style={ddStyle}>{c.proveedor?.nombre || '—'}</dd>
-              {c.proveedor?.nif && (
-                <>
-                  <dt style={dtStyle}>CIF/NIF</dt>
-                  <dd style={ddStyle}>{c.proveedor.nif}</dd>
-                </>
-              )}
-              {c.proveedor?.referencia && (
-                <>
-                  <dt style={dtStyle}>Referencia</dt>
-                  <dd style={ddStyle}>{c.proveedor.referencia}</dd>
-                </>
-              )}
-              <dt style={dtStyle}>Método pago</dt>
-              <dd style={ddStyle}>{c.metodoPago}</dd>
-              <dt style={dtStyle}>Inicio</dt>
-              <dd style={ddStyle}>{c.fechaInicio}</dd>
-              {c.fechaFin && (
-                <>
-                  <dt style={dtStyle}>Fin</dt>
-                  <dd style={ddStyle}>{c.fechaFin}</dd>
-                </>
-              )}
-              <dt style={dtStyle}>Mensual est.</dt>
-              <dd style={{ ...ddStyle, color: 'var(--atlas-v5-neg)', fontWeight: 600 }}>
-                {formatEur(mensual)}
-              </dd>
-            </dl>
-          </div>
-
-          {proximosCargos.length > 0 && (
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={detailTitle}>Próximos cargos (12 meses)</div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                {proximosCargos.map((d, i) => (
-                  <li key={i} style={chargeItem}>
-                    <span
-                      style={{
-                        color: 'var(--atlas-v5-ink-3)',
-                        fontFamily: 'var(--atlas-v5-font-mono-tech)',
-                        fontSize: 12,
-                      }}
-                    >
-                      {d.getDate()} {MESES_SHORT[d.getMonth()]} {d.getFullYear()}
-                    </span>
-                    <span
-                      style={{
-                        color: 'var(--atlas-v5-neg)',
-                        fontFamily: 'var(--atlas-v5-font-mono-num)',
-                        fontSize: 12,
-                      }}
-                    >
-                      {formatEur(mensual)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {c.notas && (
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={detailTitle}>Notas</div>
-              <p style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)', margin: 0 }}>{c.notas}</p>
-            </div>
+        {/* Próximos cargos */}
+        <div>
+          <div style={sectionTitle}>Próximos cargos</div>
+          {loading ? (
+            <div style={emptyStyle}>Cargando…</div>
+          ) : nextCharges.length === 0 ? (
+            <div style={emptyStyle}>Sin próximas previsiones</div>
+          ) : (
+            <ul style={listStyle}>
+              {nextCharges.map((ch, i) => (
+                <li key={i} style={chargeItem}>
+                  <span style={dateLabel}>{formatShortDate(ch.date)}</span>
+                  <span style={amountValue}>{formatEur(ch.amount)}</span>
+                  <span
+                    style={{
+                      ...statusPill,
+                      background:
+                        ch.status === 'confirmed'
+                          ? 'var(--atlas-v5-pos-wash)'
+                          : 'var(--atlas-v5-line-2)',
+                      color:
+                        ch.status === 'confirmed'
+                          ? 'var(--atlas-v5-pos)'
+                          : 'var(--atlas-v5-ink-4)',
+                    }}
+                  >
+                    {ch.status === 'confirmed' ? 'confirmado' : 'previsto'}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
-      </td>
-    </tr>
+
+        {/* Histórico */}
+        {showHistory && (
+          <div>
+            <div style={sectionTitle}>Histórico</div>
+            <ul style={listStyle}>
+              {history.map((m) => (
+                <li key={m.id ?? m.date} style={chargeItem}>
+                  <span style={dateLabel}>{formatShortDate(new Date(m.date))}</span>
+                  <span style={{ ...conceptLabel }}>
+                    {m.description?.slice(0, 32) ?? ''}
+                  </span>
+                  <span style={amountValue}>{formatEur(m.amount)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
-const detailTitle: React.CSSProperties = {
+const sectionTitle: React.CSSProperties = {
   fontSize: 10.5,
-  fontWeight: 600,
+  fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '0.08em',
+  letterSpacing: '0.1em',
   color: 'var(--atlas-v5-ink-4)',
-  marginBottom: 8,
+  marginBottom: 10,
 };
-const dlStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'auto 1fr',
-  gap: '4px 12px',
+const listStyle: React.CSSProperties = {
+  listStyle: 'none',
+  padding: 0,
   margin: 0,
-};
-const dtStyle: React.CSSProperties = {
-  fontSize: 11.5,
-  color: 'var(--atlas-v5-ink-4)',
-  fontWeight: 500,
-};
-const ddStyle: React.CSSProperties = {
-  fontSize: 11.5,
-  color: 'var(--atlas-v5-ink-2)',
-  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
 };
 const chargeItem: React.CSSProperties = {
   display: 'flex',
-  justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '3px 0',
+  gap: 8,
+  padding: '4px 0',
   borderBottom: '1px solid var(--atlas-v5-line-3)',
+  fontSize: 12,
+};
+const dateLabel: React.CSSProperties = {
+  fontFamily: 'var(--atlas-v5-font-mono-num)',
+  color: 'var(--atlas-v5-ink-3)',
+  fontSize: 11.5,
+  minWidth: 80,
+};
+const conceptLabel: React.CSSProperties = {
+  flex: 1,
+  color: 'var(--atlas-v5-ink-3)',
+  fontSize: 11.5,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+const amountValue: React.CSSProperties = {
+  fontFamily: 'var(--atlas-v5-font-mono-num)',
+  fontWeight: 700,
+  color: 'var(--atlas-v5-neg)',
+  fontSize: 12,
+  marginLeft: 'auto',
+};
+const statusPill: React.CSSProperties = {
+  fontSize: 9.5,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  padding: '2px 7px',
+  borderRadius: 99,
+};
+const emptyStyle: React.CSSProperties = {
+  fontSize: 11.5,
+  color: 'var(--atlas-v5-ink-4)',
+  fontStyle: 'italic',
+  padding: '6px 0',
 };
 
 export default RowExpandedDetail;

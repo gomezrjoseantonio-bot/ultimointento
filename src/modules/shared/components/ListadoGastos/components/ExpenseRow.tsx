@@ -1,7 +1,7 @@
 import React from 'react';
-import { Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
-import { Pill } from '../../../../../design-system/v5';
+import type { Account } from '../../../../../services/db';
 import { computeMonthly } from '../../../utils/compromisoUtils';
 import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
@@ -10,14 +10,70 @@ import { getSubtypeIcon } from '../utils/iconMapping';
 interface ExpenseRowProps {
   compromiso: CompromisoRecurrente & { id: number };
   isExpanded: boolean;
+  account: Account | null;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
 
+const ROW_GRID = '36px 1fr 200px 200px 130px 80px 70px';
+
+function formatAccountLabel(account: Account | null): string {
+  if (!account) return '—';
+  const alias = account.alias ?? account.name ?? account.banco?.name ?? '';
+  const last4 = account.iban?.replace(/\s/g, '').slice(-4) ?? '';
+  if (alias && last4) return `${alias} ···· ${last4}`;
+  if (alias) return alias;
+  if (last4) return `···· ${last4}`;
+  return account.iban ?? '—';
+}
+
+function buildSubLabel(c: CompromisoRecurrente): string {
+  if (c.proveedor?.referencia) return c.proveedor.referencia;
+  if (c.proveedor?.nif) return c.proveedor.nif;
+  if (c.proveedor?.nombre) return c.proveedor.nombre;
+  return '';
+}
+
+function buildAmountSub(c: CompromisoRecurrente): string {
+  const tipo = c.patron.tipo;
+  if (tipo === 'mensualDiaFijo' || tipo === 'mensualDiaRelativo') {
+    if (c.importe.modo === 'variable' || c.importe.modo === 'diferenciadoPorMes') {
+      return 'media mensual';
+    }
+    return '12 cargos/año';
+  }
+  if (tipo === 'cadaNMeses') {
+    const n = c.patron.cadaNMeses;
+    if (c.importe.modo === 'variable') {
+      switch (n) {
+        case 2:
+          return 'media bimestral';
+        case 3:
+          return 'media trimestral';
+        case 4:
+          return 'media cuatrimestral';
+        case 6:
+          return 'media semestral';
+        default:
+          return `media cada ${n} meses`;
+      }
+    }
+    if (n > 0 && 12 % n === 0) {
+      return `${12 / n} cargos/año`;
+    }
+    return `cada ${n} meses`;
+  }
+  if (tipo === 'anualMesesConcretos') {
+    return `${c.patron.mesesPago.length} cargos/año`;
+  }
+  return 'media mensual';
+}
+
 const ExpenseRow: React.FC<ExpenseRowProps> = ({
   compromiso: c,
   isExpanded,
+  account,
   onToggle,
   onEdit,
   onDelete,
@@ -25,77 +81,117 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
   const monthly = computeMonthly(c);
   const pattern = formatPattern(c.patron, c.fechaInicio);
   const SubIcon = getSubtypeIcon(c.subtipo);
+  const accountLabel = formatAccountLabel(account);
+  const subLabel = buildSubLabel(c);
+  const amountSub = buildAmountSub(c);
+  const isActivo = c.estado === 'activo';
+  const isPausado = c.estado === 'pausado';
 
   return (
-    <tr
+    <div
+      role="row"
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+      onMouseEnter={(e) => {
+        if (!isExpanded) {
+          (e.currentTarget as HTMLDivElement).style.background = 'var(--atlas-v5-gold-wash-2)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isExpanded) {
+          (e.currentTarget as HTMLDivElement).style.background = '';
+        }
+      }}
       style={{
+        display: 'grid',
+        gridTemplateColumns: ROW_GRID,
+        gap: 16,
+        padding: '14px 20px',
+        borderBottom: '1px solid var(--atlas-v5-line-2)',
+        alignItems: 'center',
         cursor: 'pointer',
         background: isExpanded ? 'var(--atlas-v5-gold-wash-2)' : undefined,
         transition: 'background 120ms ease',
-      }}
-      onMouseEnter={(e) => {
-        if (!isExpanded)
-          (e.currentTarget as HTMLTableRowElement).style.background =
-            'var(--atlas-v5-gold-wash-2)';
-      }}
-      onMouseLeave={(e) => {
-        if (!isExpanded)
-          (e.currentTarget as HTMLTableRowElement).style.background = '';
+        fontFamily: 'var(--atlas-v5-font-ui)',
       }}
       aria-expanded={isExpanded}
+      aria-label={`${c.alias} · ${pattern.primary}`}
     >
-      <td style={{ ...td, width: 36 }}>
-        <div style={iconWrap}>
-          <SubIcon
-            size={16}
-            strokeWidth={1.8}
-            style={{ color: 'var(--atlas-v5-gold-ink)' }}
-          />
+      {/* Col 1 · icono subtipo */}
+      <div role="cell" style={iconWrap}>
+        <SubIcon size={14} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-3)' }} />
+      </div>
+
+      {/* Col 2 · nombre + sub */}
+      <div role="cell" style={{ minWidth: 0 }}>
+        <div style={rowName}>{c.alias}</div>
+        {subLabel && <div style={rowSub}>{subLabel}</div>}
+      </div>
+
+      {/* Col 3 · patrón */}
+      <div role="cell">
+        <div style={rowPattern}>
+          {(() => {
+            const parts = pattern.primary.split(' · ');
+            if (parts.length >= 2) {
+              return (
+                <>
+                  <strong style={{ color: 'var(--atlas-v5-ink-2)', fontWeight: 600 }}>
+                    {parts[0]}
+                  </strong>
+                  <span> · {parts.slice(1).join(' · ')}</span>
+                </>
+              );
+            }
+            return <strong>{pattern.primary}</strong>;
+          })()}
         </div>
-      </td>
-      <td style={td}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--atlas-v5-ink-2)' }}>
-          {c.alias}
-        </div>
-        {c.proveedor?.nombre && (
-          <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 1 }}>
-            {c.proveedor.nombre}
-          </div>
-        )}
-      </td>
-      <td style={{ ...td, width: 200 }}>
-        <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-2)' }}>{pattern.primary}</div>
-        {pattern.secondary && (
-          <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginTop: 1 }}>
-            {pattern.secondary}
-          </div>
-        )}
-      </td>
-      <td style={{ ...td, width: 200 }}>
-        <div style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)' }}>{c.categoria ?? '—'}</div>
-      </td>
-      <td style={{ ...td, textAlign: 'right', width: 130 }}>
+        {pattern.secondary && <div style={rowPatternSub}>{pattern.secondary}</div>}
+      </div>
+
+      {/* Col 4 · cuenta */}
+      <div role="cell" style={rowAccount}>
+        <span style={accountDot} aria-hidden />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {accountLabel}
+        </span>
+      </div>
+
+      {/* Col 5 · importe */}
+      <div role="cell" style={{ textAlign: 'right' }}>
+        <div style={rowAmount}>{formatEur(-Math.abs(monthly))}</div>
+        <div style={rowAmountSub}>{amountSub}</div>
+      </div>
+
+      {/* Col 6 · estado */}
+      <div role="cell">
         <span
           style={{
-            fontFamily: 'var(--atlas-v5-font-mono-num)',
-            fontSize: 13,
-            fontWeight: 600,
-            color: 'var(--atlas-v5-neg)',
+            ...rowStatusBase,
+            background: isActivo
+              ? 'var(--atlas-v5-pos-wash)'
+              : isPausado
+                ? 'var(--atlas-v5-warn-wash)'
+                : 'var(--atlas-v5-line-2)',
+            color: isActivo
+              ? 'var(--atlas-v5-pos)'
+              : isPausado
+                ? 'var(--atlas-v5-warn)'
+                : 'var(--atlas-v5-ink-4)',
           }}
         >
-          {formatEur(-monthly)}
+          {isActivo ? 'Activo' : isPausado ? 'Pausado' : 'Baja'}
         </span>
-      </td>
-      <td style={{ ...td, textAlign: 'center', width: 80 }}>
-        <Pill variant={c.estado === 'activo' ? 'pos' : 'gris'} asTag>
-          {c.estado === 'activo' ? 'Activo' : c.estado === 'pausado' ? 'Pausado' : 'Baja'}
-        </Pill>
-      </td>
-      <td
-        style={{ ...td, textAlign: 'right', width: 70, whiteSpace: 'nowrap' }}
-        onClick={(e) => e.stopPropagation()}
-      >
+      </div>
+
+      {/* Col 7 · acciones */}
+      <div role="cell" style={rowActions} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           aria-label={`Editar ${c.alias}`}
@@ -104,7 +200,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             e.stopPropagation();
             onEdit();
           }}
-          style={actionBtn}
+          style={iconBtn}
         >
           <Pencil size={13} strokeWidth={1.8} />
         </button>
@@ -116,57 +212,121 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
             e.stopPropagation();
             onDelete();
           }}
-          style={{ ...actionBtn, color: 'var(--atlas-v5-neg)' }}
+          style={iconBtnDanger}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--atlas-v5-neg-wash)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--atlas-v5-neg)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--atlas-v5-ink-4)';
+          }}
         >
           <Trash2 size={13} strokeWidth={1.8} />
         </button>
-        <button
-          type="button"
-          aria-label={isExpanded ? 'Colapsar detalle' : 'Ver detalle'}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle();
-          }}
-          style={{
-            ...actionBtn,
-            color: isExpanded ? 'var(--atlas-v5-brand)' : 'var(--atlas-v5-ink-4)',
-          }}
-        >
-          {isExpanded ? (
-            <ChevronUp size={13} strokeWidth={2} />
-          ) : (
-            <ChevronDown size={13} strokeWidth={2} />
-          )}
-        </button>
-      </td>
-    </tr>
+      </div>
+    </div>
   );
 };
 
-const td: React.CSSProperties = {
-  padding: '14px 8px',
-  borderBottom: '1px solid var(--atlas-v5-line-2)',
-  verticalAlign: 'middle',
-};
 const iconWrap: React.CSSProperties = {
-  width: 32,
-  height: 32,
-  borderRadius: 8,
-  background: 'var(--atlas-v5-gold-wash)',
-  display: 'flex',
+  width: 28,
+  height: 28,
+  borderRadius: 7,
+  background: 'var(--atlas-v5-bg)',
+  display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   flexShrink: 0,
 };
-const actionBtn: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  cursor: 'pointer',
-  padding: '3px 4px',
-  borderRadius: 4,
+
+const rowName: React.CSSProperties = {
+  fontSize: 13.5,
+  fontWeight: 600,
+  color: 'var(--atlas-v5-ink)',
+  letterSpacing: '-0.005em',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+const rowSub: React.CSSProperties = {
+  fontSize: 11.5,
+  color: 'var(--atlas-v5-ink-4)',
+  marginTop: 1,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+const rowPattern: React.CSSProperties = {
+  fontSize: 12.5,
   color: 'var(--atlas-v5-ink-3)',
+};
+const rowPatternSub: React.CSSProperties = {
+  fontSize: 11,
+  color: 'var(--atlas-v5-ink-4)',
+  marginTop: 1,
+};
+const rowAccount: React.CSSProperties = {
+  fontSize: 12.5,
+  color: 'var(--atlas-v5-ink-3)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  minWidth: 0,
+};
+const accountDot: React.CSSProperties = {
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: 'var(--atlas-v5-gold)',
+  flexShrink: 0,
+  display: 'inline-block',
+};
+const rowAmount: React.CSSProperties = {
+  fontFamily: 'var(--atlas-v5-font-mono-num)',
+  fontSize: 13.5,
+  fontWeight: 700,
+  color: 'var(--atlas-v5-neg)',
+  letterSpacing: '-0.02em',
+};
+const rowAmountSub: React.CSSProperties = {
+  fontSize: 10.5,
+  color: 'var(--atlas-v5-ink-4)',
+  fontFamily: 'var(--atlas-v5-font-mono-num)',
+  marginTop: 1,
+};
+const rowStatusBase: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
+  fontSize: 10.5,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  padding: '3px 9px',
+  borderRadius: 99,
+  width: 'fit-content',
+};
+const rowActions: React.CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  justifyContent: 'flex-end',
+};
+const iconBtn: React.CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 6,
+  color: 'var(--atlas-v5-ink-4)',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 120ms ease',
+};
+const iconBtnDanger: React.CSSProperties = {
+  ...iconBtn,
 };
 
+export { ROW_GRID };
 export default ExpenseRow;
