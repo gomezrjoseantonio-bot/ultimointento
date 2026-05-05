@@ -14,6 +14,12 @@ import { Icons } from '../../../design-system/v5';
 import { showToastV5 } from '../../../design-system/v5';
 import { aportacionesPlanService } from '../../../services/aportacionesPlanService';
 import { calcularTotalAportadoPlan } from '../../../services/planesPensionesService';
+import {
+  getRentabilidadTotal,
+  getRentabilidadPorBloque,
+  type RentabilidadTotal,
+  type RentabilidadBloque,
+} from '../../../services/rentabilidadPlanService';
 import { getFiscalContextSafe } from '../../../services/fiscalContextService';
 import { calcularEstimacionEnCurso } from '../../../services/estimacionFiscalEnCursoService';
 import type { AportacionPlan, PlanPensiones, TipoAdministrativo } from '../../../types/planesPensiones';
@@ -215,6 +221,10 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [hasFiscalContext, setHasFiscalContext] = useState<boolean | null>(null);
   const [ejercicioActual] = useState(new Date().getFullYear());
 
+  // TAREA 13 v4 · Commit 7 (A · UI) · rentabilidad TWR/MWR/bloques
+  const [rentabilidadTotal, setRentabilidadTotal] = useState<RentabilidadTotal | null>(null);
+  const [bloques, setBloques] = useState<RentabilidadBloque[]>([]);
+
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
@@ -246,6 +256,21 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
       setAportaciones(aps);
       setValoraciones(valHistoricas);
+
+      // TAREA 13 v4 · Commit 7 · cargar rentabilidad TWR/MWR/bloques.
+      try {
+        const [rt, bs] = await Promise.all([
+          getRentabilidadTotal(planId),
+          getRentabilidadPorBloque(planId),
+        ]);
+        setRentabilidadTotal(rt);
+        setBloques(bs);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[inversiones] ficha plan · rentabilidad falló:', err);
+        setRentabilidadTotal(null);
+        setBloques([]);
+      }
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('[inversiones] ficha plan · carga', err);
@@ -439,10 +464,28 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
               val: `${pgLatente >= 0 ? '+' : ''}${fmt(pgLatente)}`,
               valVariant: pgLatente > 0 ? 'pos' : pgLatente < 0 ? 'neg' : undefined,
             },
+            // TAREA 13 v4 · Commit 7 · sustituye CAGR por TWR/año (real,
+            // neutralizando el efecto de las aportaciones). Si no es
+            // calculable (plan reciente · <1 año · sin convergencia), cae
+            // a CAGR como fallback informativo.
             {
-              lab: 'CAGR',
-              val: cagr != null ? fmtPct(cagr) : '—',
-              valVariant: cagr != null ? (cagr >= 0 ? 'pos' : 'neg') : undefined,
+              lab: rentabilidadTotal?.TWR != null ? 'TWR/año' : 'CAGR',
+              val:
+                rentabilidadTotal?.TWR != null
+                  ? fmtPct(rentabilidadTotal.TWR)
+                  : cagr != null
+                  ? fmtPct(cagr)
+                  : '—',
+              valVariant:
+                rentabilidadTotal?.TWR != null
+                  ? rentabilidadTotal.TWR >= 0
+                    ? 'pos'
+                    : 'neg'
+                  : cagr != null
+                  ? cagr >= 0
+                    ? 'pos'
+                    : 'neg'
+                  : undefined,
             },
           ],
         }}
@@ -653,6 +696,110 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
           </div>
         </div>
+
+        {/* ── 1.6.bis · Rentabilidad por bloque (TAREA 13 · Commit 7) ──────── */}
+        {bloques.length > 0 && (
+          <div className={styles.detailCard} style={{ marginTop: 16 }}>
+            <div className={styles.detailCardTit}>
+              Trayectoria · rentabilidad por bloque
+            </div>
+            {rentabilidadTotal?.MWR != null && (
+              <div style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)', marginBottom: 8 }}>
+                MWR/año (rentabilidad ponderada por capital y tiempo): {fmtPct(rentabilidadTotal.MWR)}
+                {rentabilidadTotal.conDatosParciales && (
+                  <span style={{ marginLeft: 8, color: 'var(--atlas-v5-warn, #B07E2A)' }}>
+                    · datos parciales (plan migrado)
+                  </span>
+                )}
+              </div>
+            )}
+            <div className={styles.tablaWrap}>
+              <table className={styles.tabla}>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Gestora</th>
+                    <th>Periodo</th>
+                    <th style={{ textAlign: 'right' }}>Valor inicio</th>
+                    <th style={{ textAlign: 'right' }}>Valor fin</th>
+                    <th style={{ textAlign: 'right' }}>Aportes</th>
+                    <th style={{ textAlign: 'right' }}>Plusvalía</th>
+                    <th style={{ textAlign: 'right' }}>TWR</th>
+                    <th>vs anterior</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bloques.map((b) => {
+                    const sem = b.diferenciaConAnterior?.semaforo;
+                    const delta = b.diferenciaConAnterior?.deltaTWR;
+                    const semIcon =
+                      sem === 'mejor' ? '▲' : sem === 'peor' ? '▼' : sem === 'igual' ? '=' : '—';
+                    const semColor =
+                      sem === 'mejor'
+                        ? 'var(--atlas-v5-pos, #1F7A4D)'
+                        : sem === 'peor'
+                        ? 'var(--atlas-v5-neg, #B23A48)'
+                        : sem === 'igual'
+                        ? 'var(--atlas-v5-warn, #B07E2A)'
+                        : 'var(--atlas-v5-ink-5)';
+                    const periodoTxt =
+                      b.periodoAños < 1
+                        ? `${(b.periodoAños * 12).toFixed(0)} m`
+                        : `${b.periodoAños.toFixed(1)} a`;
+                    const twrTxt =
+                      b.TWR == null
+                        ? '—'
+                        : b.periodoAños < 1
+                        ? `${fmtPct(b.TWR)} (sin anualizar)`
+                        : fmtPct(b.TWR);
+                    return (
+                      <tr key={b.bloqueIndex}>
+                        <td>{b.bloqueIndex}</td>
+                        <td className={styles.txt}>
+                          {b.gestora}
+                          {b.esBloqueActual && (
+                            <span style={{ marginLeft: 6, fontSize: 10, color: 'var(--atlas-v5-ink-4)' }}>
+                              · actual
+                            </span>
+                          )}
+                        </td>
+                        <td className={styles.txt}>
+                          {b.fechaInicio.slice(0, 7)} → {b.fechaFin.slice(0, 7)} · {periodoTxt}
+                        </td>
+                        <td className={styles.num}>{fmtShort(b.valorInicio)}</td>
+                        <td className={styles.num}>{fmtShort(b.valorFin)}</td>
+                        <td className={styles.num}>
+                          {b.aportacionesBloque > 0 ? fmtShort(b.aportacionesBloque) : '—'}
+                        </td>
+                        <td className={styles.num}>
+                          {b.plusvaliaAbsoluta >= 0 ? '+' : ''}
+                          {fmtShort(b.plusvaliaAbsoluta)}
+                          <span style={{ fontSize: 10, color: 'var(--atlas-v5-ink-5)', marginLeft: 4 }}>
+                            ({fmtPct(b.plusvaliaRelativa)})
+                          </span>
+                        </td>
+                        <td className={styles.num}>{twrTxt}</td>
+                        <td style={{ color: semColor, fontSize: 12 }}>
+                          {semIcon}
+                          {delta != null && Math.abs(delta) > 0.05 && (
+                            <span style={{ marginLeft: 4, fontSize: 10 }}>
+                              {delta > 0 ? '+' : ''}
+                              {delta.toFixed(1)} pp
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--atlas-v5-ink-5)', marginTop: 8 }}>
+              TWR · rentabilidad temporal pura (neutraliza efecto de aportaciones · idónea para
+              comparar gestoras). Semáforo: ▲ mejor (+1 pp) · = igual (±1 pp) · ▼ peor (−1 pp).
+            </div>
+          </div>
+        )}
 
         {/* ── 1.7 · Tabla aportaciones históricas ──────────────────────────── */}
         <div className={styles.detailCard} style={{ marginTop: 16 }}>

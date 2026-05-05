@@ -10,7 +10,7 @@ import { PosicionInversion, Aportacion } from '../../types/inversiones';
 import { planesInversionService } from '../../services/planesInversionService';
 import { valoracionesService } from '../../services/valoracionesService';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
-import { traspasosPlanesService, PLAN_PENSIONES_TIPOS_INVERSION } from '../../services/traspasosPlanesService';
+import { traspasosPlanesService } from '../../services/traspasosPlanesService';
 import type { TraspasoPlan } from '../../types/personal';
 import type { PlanPensiones } from '../../types/planesPensiones';
 import PosicionForm from '../../modules/horizon/inversiones/components/PosicionForm';
@@ -744,22 +744,10 @@ const GestionInversionesPage: React.FC = () => {
                           <BarChart2 size={14} />
                         </button>
                       )}
-                      {PLAN_PENSIONES_TIPOS_INVERSION.has(p.tipo) && (
-                        <button
-                          onClick={() => setTraspasoOrigen({
-                            id: p.id,
-                            store: 'inversiones',
-                            nombre: p.nombre,
-                            entidad: p.entidad,
-                            saldo: p.valor_actual ?? 0,
-                          })}
-                          title="Traspasar a otro plan de pensiones"
-                          aria-label={`Traspasar ${p.nombre}`}
-                          style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.n500 }}
-                        >
-                          <ArrowLeftRight size={14} />
-                        </button>
-                      )}
+                      {/* TAREA 13 v4 · Commit 2 (D): traspaso desde inversiones[tipo=plan_pensiones]
+                          eliminado · V65 migró todos los planes a planesPensiones.
+                          Si queda algún registro residual, el usuario debe migrarlo
+                          manualmente antes de traspasar. */}
                       <button
                         onClick={() => handleViewDetail(p.id)}
                         title="Ver detalle y aportaciones"
@@ -881,7 +869,6 @@ const GestionInversionesPage: React.FC = () => {
                           <button
                             onClick={() => setTraspasoOrigen({
                               id: plan.id!,
-                              store: 'planesPensiones',
                               nombre: plan.nombre,
                               entidad: plan.gestoraActual,
                               saldo: plan.valorActual ?? 0,
