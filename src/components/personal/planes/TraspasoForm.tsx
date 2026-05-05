@@ -103,11 +103,37 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
       toast.error('Indica el valor del plan en el momento del traspaso.');
       return;
     }
+    // TAREA 13 v4 · Commit 2 (C6) · validar valor coherente con saldo origen.
+    // Permitimos un margen del 10 % para acomodar movimientos de mercado
+    // entre la última valoración y la fecha de ejecución del traspaso.
+    if (saldoOrigen > 0 && valorNum > saldoOrigen * 1.1) {
+      toast.error(
+        `El valor del traspaso (${formatCurrency(valorNum)}) supera en >10 % el saldo registrado del plan (${formatCurrency(saldoOrigen)}). Actualiza la valoración del plan antes de registrar el traspaso.`,
+      );
+      return;
+    }
     const importeNum =
       tipo === 'total' ? valorNum : parseFloat(importeTraspasado.replace(',', '.'));
     if (tipo === 'parcial' && (!Number.isFinite(importeNum) || importeNum <= 0)) {
       toast.error('Indica el importe a traspasar.');
       return;
+    }
+    // TAREA 13 v4 · Commit 2 (C6) · importe parcial no puede exceder el valor
+    // del plan ni el saldo registrado · datos incoherentes desajustarían la
+    // rentabilidad por bloque y el saldo restante en gestora origen.
+    if (tipo === 'parcial') {
+      if (importeNum > valorNum) {
+        toast.error(
+          `El importe a traspasar (${formatCurrency(importeNum)}) no puede exceder el valor del plan en el momento del traspaso (${formatCurrency(valorNum)}).`,
+        );
+        return;
+      }
+      if (saldoOrigen > 0 && importeNum > saldoOrigen) {
+        toast.error(
+          `El importe a traspasar (${formatCurrency(importeNum)}) no puede exceder el saldo registrado del plan origen (${formatCurrency(saldoOrigen)}).`,
+        );
+        return;
+      }
     }
 
     setLoading(true);
