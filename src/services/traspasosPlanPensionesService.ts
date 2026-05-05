@@ -137,6 +137,31 @@ export const traspasosPlanPensionesService = {
       .sort((a, b) => a.fechaEjecucion.localeCompare(b.fechaEjecucion));
   },
 
+  /**
+   * Devuelve todos los traspasos que afectan a algún plan del personalData
+   * indicado. Útil para el historial agregado de PlanesManager (TAREA 13 v4
+   * · Commit 1 (C9)).
+   */
+  async getTraspasosPorPersonalData(
+    personalDataId: number,
+  ): Promise<TraspasoPlanPensiones[]> {
+    const db = await initDB();
+    const planes = (await db.getAll('planesPensiones')) as PlanPensiones[];
+    const planIds = new Set(
+      planes.filter((p) => p.personalDataId === personalDataId).map((p) => p.id),
+    );
+    if (planIds.size === 0) return [];
+    const all = (await db.getAll('traspasosPlanPensiones')) as TraspasoPlanPensiones[];
+    return all
+      .filter((t) => planIds.has(t.planId) || (t.planIdDestino && planIds.has(t.planIdDestino)))
+      .sort((a, b) => b.fechaEjecucion.localeCompare(a.fechaEjecucion));
+  },
+
+  async eliminarTraspaso(id: number): Promise<void> {
+    const db = await initDB();
+    await db.delete('traspasosPlanPensiones', id);
+  },
+
   async getTrayectoriaCompleta(planId: string): Promise<{
     plan: PlanPensiones | undefined;
     traspasos: TraspasoPlanPensiones[];

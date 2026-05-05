@@ -1,12 +1,31 @@
+// src/components/personal/planes/TraspasosHistorial.tsx
+// TAREA 13 v4 · Commit 1 (C9) · migrado a V65.
+//
+// Antes: leía `TraspasoPlan` del store legacy `traspasosPlanes` vía
+// `traspasosPlanesService` · resultado: traspasos creados con TraspasoForm V65
+// no aparecían en el historial.
+//
+// Ahora: lee `TraspasoPlanPensiones` del store V65 vía
+// `traspasosPlanPensionesService`. La identidad del plan es estable · cada
+// traspaso muestra "Plan · Gestora origen → Gestora destino" en vez del
+// modelo legacy "Plan origen → Plan destino" (que asumía planes distintos).
+//
+// El servicio legacy NO se toca (puede tener otros consumidores). Los datos
+// legacy quedan en su store · en futuras tareas se puede unificar.
+
 import React from 'react';
 import { ArrowRight, ArrowLeftRight, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { confirmDelete } from '../../../services/confirmationService';
-import { traspasosPlanesService } from '../../../services/traspasosPlanesService';
-import type { TraspasoPlan } from '../../../types/personal';
+import {
+  traspasosPlanPensionesService,
+  valorTraspasoNormalizado,
+} from '../../../services/traspasosPlanPensionesService';
+import type { TraspasoPlanPensiones, PlanPensiones } from '../../../types/planesPensiones';
 
 interface TraspasosHistorialProps {
-  traspasos: TraspasoPlan[];
+  traspasos: TraspasoPlanPensiones[];
+  planes: PlanPensiones[];
   onChanged: () => void;
 }
 
@@ -20,21 +39,30 @@ const formatDate = (iso: string): string => {
   return `${d ?? '01'}/${m ?? '01'}/${y}`;
 };
 
-const TraspasosHistorial: React.FC<TraspasosHistorialProps> = ({ traspasos, onChanged }) => {
-  const handleDelete = async (t: TraspasoPlan) => {
+const TraspasosHistorial: React.FC<TraspasosHistorialProps> = ({ traspasos, planes, onChanged }) => {
+  const planById = React.useMemo(() => {
+    const m = new Map<string, PlanPensiones>();
+    for (const p of planes) m.set(p.id, p);
+    return m;
+  }, [planes]);
+
+  const handleDelete = async (t: TraspasoPlanPensiones) => {
     if (t.id === undefined) return;
+    const plan = planById.get(t.planId);
+    const planNombre = plan?.nombre ?? '(plan desconocido)';
+    const importe = valorTraspasoNormalizado(t) ?? t.importeTraspasado;
     const confirmed = await confirmDelete(
-      `este traspaso de ${formatCurrency(t.importe)} (${t.planOrigenNombre} → ${t.planDestinoNombre})`
+      `este traspaso de ${formatCurrency(importe)} (${planNombre} · ${t.gestoraOrigen} → ${t.gestoraDestino})`,
     );
     if (!confirmed) return;
 
     try {
-      await traspasosPlanesService.deleteTraspaso(t.id);
-      toast.success('Traspaso anulado. Saldos restaurados.');
+      await traspasosPlanPensionesService.eliminarTraspaso(t.id);
+      toast.success('Traspaso eliminado del historial.');
       onChanged();
     } catch (err) {
-      console.error('Error anulando traspaso:', err);
-      toast.error(err instanceof Error ? err.message : 'Error al anular el traspaso');
+      console.error('Error eliminando traspaso:', err);
+      toast.error(err instanceof Error ? err.message : 'Error al eliminar el traspaso');
     }
   };
 
@@ -47,45 +75,56 @@ const TraspasosHistorial: React.FC<TraspasosHistorialProps> = ({ traspasos, onCh
 
       {traspasos.length === 0 ? (
         <p className="text-sm text-gray-500">
-          Aún no has registrado ningún traspaso entre planes de pensiones.
+          Aún no has registrado ningún traspaso entre gestoras.
         </p>
       ) : (
         <ul className="divide-y divide-gray-200">
-          {traspasos.map((t) => (
-            <li key={t.id} className="py-3 flex items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 text-sm flex-wrap">
-                  <span className="font-medium text-gray-900">{t.planOrigenNombre}</span>
-                  {t.planOrigenEntidad && (
-                    <span className="text-xs text-gray-500">({t.planOrigenEntidad})</span>
-                  )}
-                  <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="font-medium text-gray-900">{t.planDestinoNombre}</span>
-                  {t.planDestinoEntidad && (
-                    <span className="text-xs text-gray-500">({t.planDestinoEntidad})</span>
-                  )}
-                  {t.esTotal && (
-                    <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
-                      Total
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-600 mt-1">
-                  {formatDate(t.fecha)} · {formatCurrency(t.importe)}
-                  {t.notas && <span className="ml-1">· {t.notas}</span>}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDelete(t)}
-                className="p-2 text-gray-400 hover:text-error-600 flex-shrink-0"
-                title="Anular traspaso y restaurar saldos"
-                aria-label="Anular traspaso"
+          {traspasos.map((t) => {
+            const plan = planById.get(t.planId);
+            const planNombre = plan?.nombre ?? '(plan desconocido)';
+            const importeMostrado = valorTraspasoNormalizado(t) ?? t.importeTraspasado;
+            return (
+              <li
+                key={t.id ?? `${t.planId}-${t.fechaEjecucion}`}
+                className="py-3 flex items-center justify-between gap-4"
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </li>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 text-sm flex-wrap">
+                    <span className="font-medium text-gray-900">{planNombre}</span>
+                    <span className="text-xs text-gray-500">·</span>
+                    <span className="text-gray-700">{t.gestoraOrigen}</span>
+                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="font-medium text-gray-900">{t.gestoraDestino}</span>
+                    {t.esTotal ? (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800 rounded">
+                        Total
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                        Parcial
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {formatDate(t.fechaEjecucion)} · {formatCurrency(importeMostrado)}
+                    {t.fechaSolicitud && t.fechaSolicitud !== t.fechaEjecucion && (
+                      <span className="ml-1">· solicitado {formatDate(t.fechaSolicitud)}</span>
+                    )}
+                    {t.notas && <span className="ml-1">· {t.notas}</span>}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(t)}
+                  className="p-2 text-gray-400 hover:text-error-600 flex-shrink-0"
+                  title="Eliminar traspaso del historial"
+                  aria-label="Eliminar traspaso"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
