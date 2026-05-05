@@ -321,7 +321,7 @@ const NominaWizard: React.FC = () => {
         }
       }
     })();
-  }, [isEditing, nominaId, titularParam]);
+  }, [isEditing, nominaId, titularParam, editingTitular]);
 
   // IRPF auto-calc
   const varTotal = useMemo(() =>

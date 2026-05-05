@@ -424,7 +424,6 @@ export async function getRentabilidadPorBloque(
   }
 
   const delimitadores: DelimitadorBloque[] = [];
-  let valorAcumulado = 0; // valorInicio del primer bloque · 0 (plan vacío al contratar)
 
   if (traspasos.length === 0) {
     delimitadores.push({
@@ -448,7 +447,6 @@ export async function getRentabilidadPorBloque(
       isin: primerTraspaso.isinOrigen,
       esActual: false,
     });
-    valorAcumulado = primerTraspaso.valorTraspaso;
 
     // Bloques intermedios
     for (let i = 1; i < traspasos.length; i++) {
