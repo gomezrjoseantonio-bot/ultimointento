@@ -103,6 +103,9 @@ export interface TraspasoPlanPensiones {
   planId: string; // plan que realiza el traspaso (origen)
   planIdDestino?: string; // plan destino si existe en este sistema
 
+  // Fechas: fechaSolicitud (cuando el partícipe firma) precede a fechaEjecucion
+  // (cuando la gestora destino recibe el dinero · 7-15 días después).
+  fechaSolicitud?: string;
   fechaEjecucion: string;
 
   gestoraOrigen: string;
@@ -110,11 +113,29 @@ export interface TraspasoPlanPensiones {
   isinOrigen?: string;
   isinDestino?: string;
 
+  // valorTraspaso: valor del plan en el momento del traspaso (canónico, usado
+  // por rentabilidadPlanService para cerrar el bloque anterior y abrir el
+  // siguiente). Para traspasos totales coincide con importeTraspasado; para
+  // parciales son distintos.
+  valorTraspaso: number;
+  // importeTraspasado: importe efectivamente movido (legacy field, alias del
+  // anterior si esTotal=true). Se mantiene para no romper datos previos.
   importeTraspasado: number;
   esTotal: boolean;
 
+  // Aportaciones acumuladas hasta este traspaso, snapshot opcional para
+  // reconciliación de rentabilidad.
+  aportacionesAcumuladasMomento?: number;
+
   cambioTipoAdministrativo?: boolean;
+  // tipoAdministrativoOrigen/Destino: snapshot del tipo en el momento del
+  // traspaso. Si cambioTipoAdministrativo=true son distintos.
+  tipoAdministrativoOrigen?: TipoAdministrativo;
+  tipoAdministrativoDestino?: TipoAdministrativo;
   nuevoTipoAdministrativo?: TipoAdministrativo;
+  // politicaInversionOrigen/Destino: snapshot de la política en el momento.
+  politicaInversionOrigen?: PoliticaInversion;
+  politicaInversionDestino?: PoliticaInversion;
   nuevaPoliticaInversion?: PoliticaInversion;
 
   notas?: string;
