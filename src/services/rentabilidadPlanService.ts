@@ -35,6 +35,7 @@ import {
   traspasosPlanPensionesService,
   valorTraspasoNormalizado,
 } from './traspasosPlanPensionesService';
+import { valoracionesService } from './valoracionesService';
 import type {
   AportacionPlan,
   PlanPensiones,
@@ -252,15 +253,16 @@ async function cargarDatosPlan(planId: string): Promise<DatosPlan | null> {
   const db = await initDB();
   const plan = (await db.get('planesPensiones', planId)) as PlanPensiones | undefined;
   if (!plan) return null;
+  // TAREA 13 v4 · Commit 3 (C4) · valoraciones leídas vía índice
+  // `tipo-activo` (V69) en valoracionesService.getEvolucionActivo · sustituye
+  // el getAll + filter en memoria.
   const [aportaciones, traspasos, valoracionesAll] = await Promise.all([
     aportacionesPlanService.getAportacionesPorPlan(planId),
     traspasosPlanPensionesService.getTraspasosPorPlan(planId),
-    (async () => {
-      const all = (await db.getAll('valoraciones_historicas')) as ValoracionHistorica[];
-      return all.filter(
-        (v) => v.tipo_activo === 'plan_pensiones' && String(v.activo_id) === planId,
-      );
-    })(),
+    valoracionesService.getEvolucionActivo(
+      'plan_pensiones',
+      planId as unknown as number,
+    ),
   ]);
 
   // Ordenar

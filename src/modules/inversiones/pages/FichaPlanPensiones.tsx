@@ -240,14 +240,17 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
 
       const [aps, valHistoricas] = await Promise.all([
         aportacionesPlanService.getAportacionesPorPlan(planId),
+        // TAREA 13 v4 · Commit 3 (C4) · usa índice `tipo-activo` (V69) vía
+        // valoracionesService · sustituye el getAll + filter inline.
         (async () => {
           try {
-            const db = (await import('../../../services/db')).initDB;
-            const idb = await db();
-            const all = await idb.getAll('valoraciones_historicas' as any) as ValoracionHistorica[];
-            return all
-              .filter((v) => v.tipo_activo === 'plan_pensiones' && String(v.activo_id) === planId)
-              .sort((a, b) => a.fecha_valoracion.localeCompare(b.fecha_valoracion));
+            const { valoracionesService } = await import(
+              '../../../services/valoracionesService'
+            );
+            return (await valoracionesService.getEvolucionActivo(
+              'plan_pensiones',
+              planId as unknown as number,
+            )) as ValoracionHistorica[];
           } catch {
             return [];
           }
