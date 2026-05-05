@@ -23,9 +23,10 @@ import type {
   ResultadoValidacionDetallado,
   ResultadoReduccionBaseImponible,
   PlanPensiones,
-  AportacionPlan,
 } from '../types/planesPensiones';
 import { aportacionesPlanService } from './aportacionesPlanService';
+
+type Titular = 'yo' | 'pareja';
 
 // ── Tabla de límites 2026 territorio común ───────────────────────────────────
 
@@ -44,6 +45,11 @@ const PORCENTAJE_RENDIMIENTOS = 0.30;
  * Calcula los rendimientos netos del trabajo + actividades económicas del
  * titular en el ejercicio dado · base sobre la que aplica el tope del 30 %.
  *
+ * Si se pasa `titular`, se filtran solo los ingresos cuyo `titular` coincida
+ * (nóminas y pensiones tienen este campo · autónomos también). Sin titular
+ * se agregan todos · útil para totales del hogar pero NO para validar la
+ * aportación de un plan concreto (que pertenece a un titular).
+ *
  * Aproximación pragmática (sin acceso a la declaración cerrada):
  *   - Nómina (`ingresos.tipo='nomina'`) · `salarioBrutoAnual` (descontaríamos
  *     SS si tuviéramos cálculo cerrado · usamos bruto como cota superior
@@ -58,6 +64,7 @@ const PORCENTAJE_RENDIMIENTOS = 0.30;
 async function getRendimientosNetosAprox(
   personalDataId: number,
   ejercicio: number,
+  titular?: Titular,
 ): Promise<number> {
   const db = await initDB();
   const ingresos = (await db.getAll('ingresos')) as Array<Record<string, unknown>>;
@@ -65,6 +72,7 @@ async function getRendimientosNetosAprox(
 
   for (const ing of ingresos) {
     if (ing.personalDataId !== personalDataId) continue;
+    if (titular && ing.titular !== titular) continue;
     const tipo = ing.tipo as string | undefined;
     if (tipo === 'nomina') {
       // El año de la nómina lo determinamos por `fechaAntiguedad` · si hay
@@ -212,6 +220,7 @@ export const limitesFiscalesPlanesService = {
       const rendimientosNetos = await getRendimientosNetosAprox(
         plan.personalDataId,
         ejercicio,
+        plan.titular,
       );
       tope30 = rendimientosNetos * PORCENTAJE_RENDIMIENTOS;
       if (tope30 < topeEconomico) {
@@ -417,9 +426,3 @@ export const limitesFiscalesPlanesService = {
 export const _internalHelpers = {
   getRendimientosNetosAprox,
 };
-
-// Anti-warning · evitar que TS marque AportacionPlan como import no usado en
-// algunos modos estrictos (lo necesitamos por tipo encadenado).
-type _Unused = AportacionPlan;
-const _unused: _Unused | undefined = undefined;
-void _unused;

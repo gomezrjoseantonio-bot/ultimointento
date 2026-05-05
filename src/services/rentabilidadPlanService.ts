@@ -31,7 +31,10 @@
 
 import { initDB } from './db';
 import { aportacionesPlanService } from './aportacionesPlanService';
-import { traspasosPlanPensionesService } from './traspasosPlanPensionesService';
+import {
+  traspasosPlanPensionesService,
+  valorTraspasoNormalizado,
+} from './traspasosPlanPensionesService';
 import type {
   AportacionPlan,
   PlanPensiones,
@@ -299,7 +302,12 @@ export async function getRentabilidadTotal(
   const fechaInicio = plan.fechaContratacion;
   const fechaFin = plan.fechaUltimaValoracion ?? hoyIso();
   const periodoAños = añosEntre(fechaInicio, fechaFin);
-  const numeroBloques = traspasos.length + 1;
+  // Solo cuentan como delimitador los traspasos totales con valor disponible
+  // (alineado con `getRentabilidadPorBloque`).
+  const traspasosDelimitadores = traspasos.filter(
+    (t) => t.esTotal && valorTraspasoNormalizado(t) != null,
+  );
+  const numeroBloques = traspasosDelimitadores.length + 1;
 
   // Plan recién creado · sin aportaciones registradas y valor 0 · todo null.
   if (capitalAportadoTotal === 0 && valorActual === 0) {
@@ -425,7 +433,20 @@ export async function getRentabilidadPorBloque(
 
   const delimitadores: DelimitadorBloque[] = [];
 
-  if (traspasos.length === 0) {
+  // Solo consideramos para delimitar bloques los traspasos TOTALES (los
+  // parciales no cierran el bloque · el partícipe sigue en la gestora origen
+  // con saldo restante). Además normalizamos valorTraspaso para datos legacy
+  // V65 que no lo tengan · si nada disponible, lo descartamos como
+  // delimitador (sin inventar valores).
+  const traspasosUtiles: Array<TraspasoPlanPensiones & { valorEfectivo: number }> = [];
+  for (const t of traspasos) {
+    if (!t.esTotal) continue;
+    const v = valorTraspasoNormalizado(t);
+    if (v == null) continue;
+    traspasosUtiles.push({ ...t, valorEfectivo: v });
+  }
+
+  if (traspasosUtiles.length === 0) {
     delimitadores.push({
       fechaInicio: plan.fechaContratacion,
       fechaFin: fechaFinPlan,
@@ -437,37 +458,37 @@ export async function getRentabilidadPorBloque(
     });
   } else {
     // Bloque 1 · contratación → primer traspaso
-    const primerTraspaso = traspasos[0];
+    const primerTraspaso = traspasosUtiles[0];
     delimitadores.push({
       fechaInicio: plan.fechaContratacion,
       fechaFin: primerTraspaso.fechaEjecucion,
       valorInicio: 0,
-      valorFin: primerTraspaso.valorTraspaso,
+      valorFin: primerTraspaso.valorEfectivo,
       gestora: primerTraspaso.gestoraOrigen,
       isin: primerTraspaso.isinOrigen,
       esActual: false,
     });
 
     // Bloques intermedios
-    for (let i = 1; i < traspasos.length; i++) {
-      const ant = traspasos[i - 1];
-      const cur = traspasos[i];
+    for (let i = 1; i < traspasosUtiles.length; i++) {
+      const ant = traspasosUtiles[i - 1];
+      const cur = traspasosUtiles[i];
       delimitadores.push({
         fechaInicio: ant.fechaEjecucion,
         fechaFin: cur.fechaEjecucion,
-        valorInicio: ant.valorTraspaso,
-        valorFin: cur.valorTraspaso,
+        valorInicio: ant.valorEfectivo,
+        valorFin: cur.valorEfectivo,
         gestora: cur.gestoraOrigen,
         isin: cur.isinOrigen,
         esActual: false,
       });
     }
     // Bloque actual · último traspaso → hoy
-    const ultimo = traspasos[traspasos.length - 1];
+    const ultimo = traspasosUtiles[traspasosUtiles.length - 1];
     delimitadores.push({
       fechaInicio: ultimo.fechaEjecucion,
       fechaFin: fechaFinPlan,
-      valorInicio: ultimo.valorTraspaso,
+      valorInicio: ultimo.valorEfectivo,
       valorFin: valorActualPlan,
       gestora: plan.gestoraActual,
       isin: plan.isinActual,
