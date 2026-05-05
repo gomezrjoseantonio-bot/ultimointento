@@ -233,7 +233,6 @@ const PlanesManager: React.FC = () => {
                     <button
                       onClick={() => setTraspasoOrigen({
                         id: plan.id,
-                        store: 'planesPensiones',
                         nombre: plan.nombre,
                         entidad: plan.gestoraActual,
                         saldo: plan.valorActual ?? 0,

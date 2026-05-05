@@ -1,19 +1,22 @@
+// src/components/personal/planes/TraspasoForm.tsx
+// TAREA 13 v4 · Commit 2 (D) · migrado a servicios V65.
+//
+// Antes: lectura mezcla planesInversionService (legacy) + inversiones[tipo IN
+// PLAN_PENSIONES_TIPOS_INVERSION] + escritura traspasosPlanesService (V62 legacy).
+//
+// Ahora: lectura planesPensionesService (V65) + escritura
+// traspasosPlanPensionesService.registrarTraspaso (que ejecuta los side-effects
+// de §5.8 spec: actualizar plan + crear valoración histórica con valorTraspaso).
+
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AtlasModal } from '../../atlas/AtlasComponents';
-import { planesInversionService } from '../../../services/planesInversionService';
-import { initDB } from '../../../services/db';
-import {
-  PlanRef,
-  PLAN_PENSIONES_TIPOS_INVERSION,
-  traspasosPlanesService,
-} from '../../../services/traspasosPlanesService';
-import type { PlanStore } from '../../../types/personal';
-import type { PosicionInversion } from '../../../types/inversiones';
+import { planesPensionesService } from '../../../services/planesPensionesService';
+import { traspasosPlanPensionesService } from '../../../services/traspasosPlanPensionesService';
+import type { PlanPensiones } from '../../../types/planesPensiones';
 
 export interface PlanOrigenInput {
-  id: number | string;
-  store: PlanStore;
+  id: string; // UUID estable de planesPensiones
   nombre: string;
   entidad?: string;
   saldo: number;
@@ -25,14 +28,6 @@ interface TraspasoFormProps {
   personalDataId: number;
   planOrigen: PlanOrigenInput | null;
   onSaved: () => void;
-}
-
-interface DestinoOption {
-  key: string;           // store|id
-  store: PlanStore;
-  id: number | string;
-  nombre: string;
-  entidad?: string;
 }
 
 const today = (): string => {
@@ -51,57 +46,39 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   onSaved,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [destinos, setDestinos] = useState<DestinoOption[]>([]);
-  const [destinoKey, setDestinoKey] = useState<string>('');
-  const [tipo, setTipo] = useState<'total' | 'parcial'>('parcial');
-  const [importe, setImporte] = useState<string>('');
-  const [fecha, setFecha] = useState<string>(today());
+  const [destinos, setDestinos] = useState<PlanPensiones[]>([]);
+  const [planDestinoId, setPlanDestinoId] = useState<string>('');
+  const [gestoraDestinoManual, setGestoraDestinoManual] = useState<string>('');
+  const [isinDestino, setIsinDestino] = useState<string>('');
+  const [tipo, setTipo] = useState<'total' | 'parcial'>('total');
+  const [importeTraspasado, setImporteTraspasado] = useState<string>('');
+  const [valorTraspaso, setValorTraspaso] = useState<string>('');
+  const [fechaSolicitud, setFechaSolicitud] = useState<string>('');
+  const [fechaEjecucion, setFechaEjecucion] = useState<string>(today());
   const [notas, setNotas] = useState<string>('');
 
   useEffect(() => {
     if (!isOpen || !planOrigen) return;
-    setDestinoKey('');
-    setTipo('parcial');
-    setImporte('');
-    setFecha(today());
+    setPlanDestinoId('');
+    setGestoraDestinoManual('');
+    setIsinDestino('');
+    setTipo('total');
+    setImporteTraspasado('');
+    setValorTraspaso(planOrigen.saldo > 0 ? String(planOrigen.saldo) : '');
+    setFechaSolicitud('');
+    setFechaEjecucion(today());
     setNotas('');
 
     (async () => {
       try {
-        const [planes, db] = await Promise.all([
-          planesInversionService.getPlanes(personalDataId),
-          initDB(),
-        ]);
-        const inversiones = (await db.getAll('inversiones')) as PosicionInversion[];
-
-        const options: DestinoOption[] = [];
-        for (const p of planes) {
-          if (p.id === undefined) continue;
-          const isSameAsOrigen = planOrigen.store === 'planesPensiones' && p.id === planOrigen.id;
-          if (isSameAsOrigen) continue;
-          options.push({
-            key: `planesPensiones|${p.id}`,
-            store: 'planesPensiones',
-            id: p.id,
-            nombre: p.nombre,
-            entidad: (p as any).gestoraActual,
-          });
-        }
-        for (const inv of inversiones) {
-          if (!PLAN_PENSIONES_TIPOS_INVERSION.has(inv.tipo)) continue;
-          const isSameAsOrigen = planOrigen.store === 'inversiones' && inv.id === planOrigen.id;
-          if (isSameAsOrigen) continue;
-          options.push({
-            key: `inversiones|${inv.id}`,
-            store: 'inversiones',
-            id: inv.id,
-            nombre: inv.nombre,
-            entidad: inv.entidad,
-          });
-        }
-        setDestinos(options);
+        const planes = await planesPensionesService.getAllPlanes({
+          personalDataId,
+          estado: 'activo',
+        });
+        // Excluir el propio plan origen del listado de destinos
+        setDestinos(planes.filter((p) => p.id !== planOrigen.id));
       } catch (e) {
-        console.error('Error cargando planes destino:', e);
+        console.error('[TraspasoForm] error cargando destinos:', e);
       }
     })();
   }, [isOpen, personalDataId, planOrigen]);
@@ -109,36 +86,56 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   if (!planOrigen) return null;
 
   const saldoOrigen = planOrigen.saldo;
-  const destinoSeleccionado = destinos.find((d) => d.key === destinoKey);
+  const planDestinoSeleccionado = destinos.find((d) => d.id === planDestinoId);
+  const gestoraDestinoFinal =
+    planDestinoSeleccionado?.gestoraActual ?? gestoraDestinoManual.trim();
+  const isinDestinoFinal =
+    planDestinoSeleccionado?.isinActual ?? (isinDestino.trim() || undefined);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!destinoSeleccionado) {
-      toast.error('Selecciona el plan de destino.');
+    if (!gestoraDestinoFinal) {
+      toast.error('Indica la gestora destino (selecciona un plan o escríbela).');
       return;
     }
-    const importeNum = tipo === 'total' ? saldoOrigen : parseFloat(importe.replace(',', '.'));
+    const valorNum = parseFloat(valorTraspaso.replace(',', '.'));
+    if (!Number.isFinite(valorNum) || valorNum <= 0) {
+      toast.error('Indica el valor del plan en el momento del traspaso.');
+      return;
+    }
+    const importeNum =
+      tipo === 'total' ? valorNum : parseFloat(importeTraspasado.replace(',', '.'));
     if (tipo === 'parcial' && (!Number.isFinite(importeNum) || importeNum <= 0)) {
-      toast.error('Indica un importe válido.');
+      toast.error('Indica el importe a traspasar.');
       return;
     }
 
     setLoading(true);
     try {
-      const origenRef: PlanRef = { id: planOrigen.id, store: planOrigen.store };
-      const destinoRef: PlanRef = { id: destinoSeleccionado.id, store: destinoSeleccionado.store };
-      await traspasosPlanesService.createTraspaso({
-        personalDataId,
-        planOrigen: origenRef,
-        planDestino: destinoRef,
-        fecha,
-        importe: importeNum,
+      // Plan origen actual · necesario para snapshot de tipo y política
+      const planOrigenActual = await planesPensionesService.getPlan(planOrigen.id);
+      if (!planOrigenActual) {
+        throw new Error(`Plan origen ${planOrigen.id} no encontrado`);
+      }
+
+      await traspasosPlanPensionesService.registrarTraspaso({
+        planId: planOrigen.id,
+        planIdDestino: planDestinoSeleccionado?.id,
+        fechaSolicitud: fechaSolicitud || undefined,
+        fechaEjecucion,
+        gestoraOrigen: planOrigenActual.gestoraActual,
+        gestoraDestino: gestoraDestinoFinal,
+        isinOrigen: planOrigenActual.isinActual,
+        isinDestino: isinDestinoFinal,
+        valorTraspaso: valorNum,
+        importeTraspasado: importeNum,
         esTotal: tipo === 'total',
+        tipoAdministrativoOrigen: planOrigenActual.tipoAdministrativo,
+        politicaInversionOrigen: planOrigenActual.politicaInversion,
         notas: notas.trim() || undefined,
       });
-      toast.success(
-        `Traspaso de ${formatCurrency(importeNum)} registrado correctamente.`
-      );
+
+      toast.success(`Traspaso de ${formatCurrency(importeNum)} registrado correctamente.`);
       onSaved();
       onClose();
     } catch (err) {
@@ -159,8 +156,8 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
       <form onSubmit={handleSubmit} className="p-6 space-y-4">
         <div className="rounded-md bg-indigo-50 border border-indigo-200 p-3 text-sm text-indigo-900">
           Un traspaso entre planes de pensiones no tributa (art. 8.8 LRPFP) y no
-          consume el límite anual de aportaciones deducibles. Se mantiene el
-          histórico de valoraciones de cada plan por separado.
+          consume el límite anual de aportaciones deducibles. La identidad del
+          plan se mantiene · solo cambia la gestora actual.
         </div>
 
         <div>
@@ -169,36 +166,54 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
             <span className="font-medium">{planOrigen.nombre}</span>
             {planOrigen.entidad && <span className="text-gray-500"> · {planOrigen.entidad}</span>}
             <span className="block text-xs text-gray-600 mt-0.5">
-              Saldo actual: {formatCurrency(saldoOrigen)}
+              Saldo registrado: {formatCurrency(saldoOrigen)}
             </span>
           </div>
         </div>
 
         <div>
           <label htmlFor="planDestino" className="block text-sm font-medium text-gray-700 mb-1">
-            Plan destino *
+            Plan destino (opcional)
           </label>
           {destinos.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No tienes otro plan de pensiones registrado. Crea primero el plan de destino
-              (desde Gestión inversiones → Nueva posición o desde Personal → Planes) y vuelve
-              aquí.
+            <p className="text-xs text-gray-500 mb-1">
+              No tienes otro plan registrado · escribe a mano la gestora destino.
             </p>
           ) : (
             <select
               id="planDestino"
-              value={destinoKey}
-              onChange={(e) => setDestinoKey(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              required
+              value={planDestinoId}
+              onChange={(e) => setPlanDestinoId(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm mb-2"
             >
-              <option value="">— Selecciona un plan —</option>
+              <option value="">— Manual (escribir gestora destino) —</option>
               {destinos.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.nombre}{d.entidad ? ` (${d.entidad})` : ''}
+                <option key={d.id} value={d.id}>
+                  {d.nombre}
+                  {d.gestoraActual ? ` (${d.gestoraActual})` : ''}
                 </option>
               ))}
             </select>
+          )}
+          {!planDestinoSeleccionado && (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={gestoraDestinoManual}
+                onChange={(e) => setGestoraDestinoManual(e.target.value)}
+                placeholder="Gestora destino *"
+                className="border rounded-md px-3 py-2 text-sm"
+                required
+              />
+              <input
+                type="text"
+                value={isinDestino}
+                onChange={(e) => setIsinDestino(e.target.value)}
+                placeholder="ISIN destino (opcional)"
+                className="border rounded-md px-3 py-2 text-sm"
+                maxLength={12}
+              />
+            </div>
           )}
         </div>
 
@@ -209,38 +224,59 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
               <input
                 type="radio"
                 name="tipoTraspaso"
+                value="total"
+                checked={tipo === 'total'}
+                onChange={() => setTipo('total')}
+              />
+              Total
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="tipoTraspaso"
                 value="parcial"
                 checked={tipo === 'parcial'}
                 onChange={() => setTipo('parcial')}
               />
               Parcial
             </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="tipoTraspaso"
-                value="total"
-                checked={tipo === 'total'}
-                onChange={() => setTipo('total')}
-              />
-              Total ({formatCurrency(saldoOrigen)})
-            </label>
           </div>
+        </div>
+
+        <div>
+          <label htmlFor="valorTraspaso" className="block text-sm font-medium text-gray-700 mb-1">
+            Valor del plan en el momento del traspaso (€) *
+          </label>
+          <input
+            id="valorTraspaso"
+            type="number"
+            step="0.01"
+            min="0"
+            value={valorTraspaso}
+            onChange={(e) => setValorTraspaso(e.target.value)}
+            className="w-full border rounded-md px-3 py-2 text-sm"
+            placeholder="0,00"
+            required
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Imprescindible para el cálculo de rentabilidad por bloque (cierra el
+            bloque de la gestora origen y abre el de la destino).
+          </p>
         </div>
 
         {tipo === 'parcial' && (
           <div>
-            <label htmlFor="importe" className="block text-sm font-medium text-gray-700 mb-1">
-              Importe (€) *
+            <label htmlFor="importeTraspasado" className="block text-sm font-medium text-gray-700 mb-1">
+              Importe efectivo traspasado (€) *
             </label>
             <input
-              id="importe"
+              id="importeTraspasado"
               type="number"
               step="0.01"
               min="0"
               max={saldoOrigen}
-              value={importe}
-              onChange={(e) => setImporte(e.target.value)}
+              value={importeTraspasado}
+              onChange={(e) => setImporteTraspasado(e.target.value)}
               className="w-full border rounded-md px-3 py-2 text-sm"
               placeholder="0,00"
               required
@@ -248,18 +284,32 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           </div>
         )}
 
-        <div>
-          <label htmlFor="fechaTraspaso" className="block text-sm font-medium text-gray-700 mb-1">
-            Fecha del traspaso *
-          </label>
-          <input
-            id="fechaTraspaso"
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="w-full border rounded-md px-3 py-2 text-sm"
-            required
-          />
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label htmlFor="fechaSolicitud" className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha solicitud
+            </label>
+            <input
+              id="fechaSolicitud"
+              type="date"
+              value={fechaSolicitud}
+              onChange={(e) => setFechaSolicitud(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="fechaEjecucion" className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha ejecución *
+            </label>
+            <input
+              id="fechaEjecucion"
+              type="date"
+              value={fechaEjecucion}
+              onChange={(e) => setFechaEjecucion(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              required
+            />
+          </div>
         </div>
 
         <div>
@@ -287,7 +337,7 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           </button>
           <button
             type="submit"
-            disabled={loading || destinos.length === 0}
+            disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-brand-navy rounded-md disabled:opacity-60"
           >
             {loading ? 'Registrando…' : 'Registrar traspaso'}
