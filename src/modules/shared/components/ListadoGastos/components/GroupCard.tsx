@@ -81,86 +81,90 @@ const GroupCard: React.FC<GroupCardProps> = ({
       </button>
 
       {isExpanded && (
-        <div>
+        <div role="table" aria-label={`Gastos de ${familiaLabel}`}>
           {showHeader && (
-            <div
-              role="row"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: ROW_GRID,
-                gap: 16,
-                padding: '10px 20px',
-                borderBottom: '1px solid var(--atlas-v5-line)',
-                background: 'var(--atlas-v5-card-alt)',
-                fontSize: 10.5,
-                fontWeight: 700,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--atlas-v5-ink-4)',
-                fontFamily: 'var(--atlas-v5-font-ui)',
-              }}
-            >
-              <span />
-              <span
-                role="columnheader"
-                aria-sort={
-                  sort.field === 'nombre'
-                    ? sort.dir === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : 'none'
-                }
+            <div role="rowgroup">
+              <div
+                role="row"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: ROW_GRID,
+                  gap: 16,
+                  padding: '10px 20px',
+                  borderBottom: '1px solid var(--atlas-v5-line)',
+                  background: 'var(--atlas-v5-card-alt)',
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                  color: 'var(--atlas-v5-ink-4)',
+                  fontFamily: 'var(--atlas-v5-font-ui)',
+                }}
               >
-                <button
-                  type="button"
-                  onClick={() => onSort('nombre')}
-                  style={sortableHeaderBtn}
+                <span role="columnheader" />
+                <span
+                  role="columnheader"
+                  aria-sort={
+                    sort.field === 'nombre'
+                      ? sort.dir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
                 >
-                  Nombre{sortIndicator('nombre')}
-                </button>
-              </span>
-              <span>Patrón</span>
-              <span>Cuenta</span>
-              <span
-                role="columnheader"
-                style={{ textAlign: 'right' }}
-                aria-sort={
-                  sort.field === 'importe'
-                    ? sort.dir === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : 'none'
-                }
-              >
-                <button
-                  type="button"
-                  onClick={() => onSort('importe')}
-                  style={{ ...sortableHeaderBtn, textAlign: 'right' }}
+                  <button
+                    type="button"
+                    onClick={() => onSort('nombre')}
+                    style={sortableHeaderBtn}
+                  >
+                    Nombre{sortIndicator('nombre')}
+                  </button>
+                </span>
+                <span role="columnheader">Patrón</span>
+                <span role="columnheader">Cuenta</span>
+                <span
+                  role="columnheader"
+                  style={{ textAlign: 'right' }}
+                  aria-sort={
+                    sort.field === 'importe'
+                      ? sort.dir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
                 >
-                  Importe{sortIndicator('importe')}
-                </button>
-              </span>
-              <span>Estado</span>
-              <span />
+                  <button
+                    type="button"
+                    onClick={() => onSort('importe')}
+                    style={{ ...sortableHeaderBtn, textAlign: 'right' }}
+                  >
+                    Importe{sortIndicator('importe')}
+                  </button>
+                </span>
+                <span role="columnheader">Estado</span>
+                <span role="columnheader" />
+              </div>
             </div>
           )}
 
-          {sorted.map((c) => {
-            const account = accountsById[c.cuentaCargo] ?? null;
-            return (
-              <React.Fragment key={c.id}>
-                <ExpenseRow
-                  compromiso={c}
-                  account={account}
-                  isExpanded={expandedRowId === c.id}
-                  onToggle={() => onToggleRow(c.id)}
-                  onEdit={() => onEdit(c)}
-                  onDelete={() => onDelete(c)}
-                />
-                {expandedRowId === c.id && <RowExpandedDetail compromiso={c} />}
-              </React.Fragment>
-            );
-          })}
+          <div role="rowgroup">
+            {sorted.map((c) => {
+              const account = accountsById[c.cuentaCargo] ?? null;
+              return (
+                <React.Fragment key={c.id}>
+                  <ExpenseRow
+                    compromiso={c}
+                    account={account}
+                    isExpanded={expandedRowId === c.id}
+                    onToggle={() => onToggleRow(c.id)}
+                    onEdit={() => onEdit(c)}
+                    onDelete={() => onDelete(c)}
+                  />
+                  {expandedRowId === c.id && <RowExpandedDetail compromiso={c} />}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

@@ -46,6 +46,7 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
   onNuevo,
   onImportar,
   onDetectar,
+  onEdit: onEditOverride,
   inmuebleId,
 }) => {
   const navigate = useNavigate();
@@ -291,7 +292,13 @@ const ListadoGastosRecurrentes: React.FC<ListadoGastosRecurrentesProps> = ({
           onToggleGroup={() => toggleGroup(g.familiaId)}
           expandedRowId={expandedRowId}
           onToggleRow={toggleRow}
-          onEdit={(c) => setEditTarget(c)}
+          onEdit={(c) => {
+            if (onEditOverride) {
+              onEditOverride(c);
+            } else {
+              setEditTarget(c);
+            }
+          }}
           onDelete={(c) => setDeleteTarget(c as CompromisoRecurrente & { id: number })}
           accountsById={accountsById}
           sort={sort}

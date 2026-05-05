@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import type { Movement, TreasuryEvent } from '../../../../../services/db';
 import { initDB } from '../../../../../services/db';
-import { expandirPatron } from '../../../../../services/personal/patronCalendario';
-import { computeMonthly } from '../../../utils/compromisoUtils';
+import {
+  aplicarVariacion,
+  calcularImporte,
+  expandirPatron,
+} from '../../../../../services/personal/patronCalendario';
 import { formatEur } from '../utils/amountFormatter';
 
 const MESES_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -28,23 +31,54 @@ const RowExpandedDetail: React.FC<RowExpandedDetailProps> = ({ compromiso: c }) 
   const [history, setHistory] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Extraer campos primitivos para deps estables (evita re-fetch por nueva
+  // identidad del objeto en cada render del padre).
+  const cId = c.id;
+  const cPatron = c.patron;
+  const cImporte = c.importe;
+  const cVariacion = c.variacion;
+  const cFechaInicio = c.fechaInicio;
+  const cCategoria = c.categoria;
+  const cSubtipo = c.subtipo;
+  const cAmbito = c.ambito;
+  const cInmuebleId = c.inmuebleId;
+
   useEffect(() => {
     let cancelled = false;
+
+    // El histórico se filtra por atributos del compromiso para evitar
+    // colisiones de `sourceId` entre orígenes distintos.
+    const matchesCompromiso = (e: TreasuryEvent): boolean => {
+      if (e.sourceType !== 'gasto_recurrente') return false;
+      if (e.sourceId !== cId) return false;
+      if (cCategoria != null && e.categoryKey != null && e.categoryKey !== cCategoria) {
+        return false;
+      }
+      if (cSubtipo != null && e.subtypeKey != null && e.subtypeKey !== cSubtipo) {
+        return false;
+      }
+      const ambitoEsperado = cAmbito === 'inmueble' ? 'INMUEBLE' : 'PERSONAL';
+      if (e.ambito != null && e.ambito !== ambitoEsperado) return false;
+      if (cAmbito === 'inmueble' && cInmuebleId != null && e.inmuebleId != null) {
+        if (e.inmuebleId !== cInmuebleId) return false;
+      }
+      return true;
+    };
+
     void (async () => {
       try {
         const db = await initDB();
 
-        // Próximos cargos: leer treasuryEvents (status=predicted/confirmed) por sourceId
         const eventTx = db.transaction('treasuryEvents', 'readonly');
         const eventStore = eventTx.objectStore('treasuryEvents');
         const eventIdx = eventStore.index('sourceId');
-        const events = (await eventIdx.getAll(c.id)) as TreasuryEvent[];
+        const rawEvents = (await eventIdx.getAll(cId)) as TreasuryEvent[];
+        const events = rawEvents.filter(matchesCompromiso);
 
         const todayMs = Date.now();
         const futureEvents = events
           .filter(
             (e) =>
-              e.sourceType === 'gasto_recurrente' &&
               (e.status === 'predicted' || e.status === 'confirmed') &&
               new Date(e.predictedDate).getTime() >= todayMs - 86_400_000,
           )
@@ -60,33 +94,44 @@ const RowExpandedDetail: React.FC<RowExpandedDetailProps> = ({ compromiso: c }) 
             source: 'event',
           }));
 
-        // Si no hay events (compromiso recién creado), expandir patrón en cliente
+        // Fallback (compromiso recién creado · sin events). Calcula importe
+        // real por fecha (NO mensual prorrateado) + variación + signo gasto.
         let charges = futureEvents;
         if (charges.length === 0) {
           const horizon = new Date();
           horizon.setMonth(horizon.getMonth() + 12);
           try {
             const dates = expandirPatron(
-              c.patron,
+              cPatron,
               new Date().toISOString().slice(0, 10),
               horizon.toISOString().slice(0, 10),
             );
-            const monthly = computeMonthly(c);
-            charges = dates.slice(0, 6).map<NextCharge>((d) => ({
-              date: d,
-              amount: -Math.abs(monthly),
-              status: 'predicted',
-              source: 'computed',
-            }));
+            const fechaInicioDate = new Date(cFechaInicio);
+            charges = dates.slice(0, 6).map<NextCharge>((d) => {
+              let importe = 0;
+              try {
+                const base = calcularImporte(cImporte, d);
+                importe = aplicarVariacion(base, cVariacion, fechaInicioDate, d);
+              } catch {
+                importe = 0;
+              }
+              return {
+                date: d,
+                amount: -Math.abs(importe),
+                status: 'predicted',
+                source: 'computed',
+              };
+            });
           } catch {
             charges = [];
           }
         }
 
-        // Histórico: movements ejecutados ligados al compromiso vía executedMovementId
+        // Histórico: movements ejecutados ligados al compromiso vía
+        // executedMovementId, derivados de los events ya filtrados.
         const executedEventIds = events
           .filter((e) => e.status === 'executed' && e.executedMovementId)
-          .map((e) => e.executedMovementId!) as number[];
+          .map((e) => e.executedMovementId as number);
 
         let movs: Movement[] = [];
         if (executedEventIds.length > 0) {
@@ -118,7 +163,17 @@ const RowExpandedDetail: React.FC<RowExpandedDetailProps> = ({ compromiso: c }) 
     return () => {
       cancelled = true;
     };
-  }, [c.id, c.patron, c]);
+  }, [
+    cId,
+    cPatron,
+    cImporte,
+    cVariacion,
+    cFechaInicio,
+    cCategoria,
+    cSubtipo,
+    cAmbito,
+    cInmuebleId,
+  ]);
 
   const showHistory = history.length > 0;
 

@@ -45,8 +45,24 @@ function buildAmountSub(c: CompromisoRecurrente): string {
   }
   if (tipo === 'cadaNMeses') {
     const n = c.patron.cadaNMeses;
-    if (c.importe.modo === 'variable') return n === 2 ? 'media bimestral' : 'media trimestral';
-    return `${Math.round(12 / n)} cargos/año`;
+    if (c.importe.modo === 'variable') {
+      switch (n) {
+        case 2:
+          return 'media bimestral';
+        case 3:
+          return 'media trimestral';
+        case 4:
+          return 'media cuatrimestral';
+        case 6:
+          return 'media semestral';
+        default:
+          return `media cada ${n} meses`;
+      }
+    }
+    if (n > 0 && 12 % n === 0) {
+      return `${12 / n} cargos/año`;
+    }
+    return `cada ${n} meses`;
   }
   if (tipo === 'anualMesesConcretos') {
     return `${c.patron.mesesPago.length} cargos/año`;
@@ -73,7 +89,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
 
   return (
     <div
-      role="button"
+      role="row"
       tabIndex={0}
       onClick={onToggle}
       onKeyDown={(e) => {
@@ -108,18 +124,18 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       aria-label={`${c.alias} · ${pattern.primary}`}
     >
       {/* Col 1 · icono subtipo */}
-      <div style={iconWrap}>
+      <div role="cell" style={iconWrap}>
         <SubIcon size={14} strokeWidth={1.8} style={{ color: 'var(--atlas-v5-ink-3)' }} />
       </div>
 
       {/* Col 2 · nombre + sub */}
-      <div style={{ minWidth: 0 }}>
+      <div role="cell" style={{ minWidth: 0 }}>
         <div style={rowName}>{c.alias}</div>
         {subLabel && <div style={rowSub}>{subLabel}</div>}
       </div>
 
       {/* Col 3 · patrón */}
-      <div>
+      <div role="cell">
         <div style={rowPattern}>
           {(() => {
             const parts = pattern.primary.split(' · ');
@@ -140,7 +156,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       </div>
 
       {/* Col 4 · cuenta */}
-      <div style={rowAccount}>
+      <div role="cell" style={rowAccount}>
         <span style={accountDot} aria-hidden />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {accountLabel}
@@ -148,13 +164,13 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       </div>
 
       {/* Col 5 · importe */}
-      <div style={{ textAlign: 'right' }}>
+      <div role="cell" style={{ textAlign: 'right' }}>
         <div style={rowAmount}>{formatEur(-Math.abs(monthly))}</div>
         <div style={rowAmountSub}>{amountSub}</div>
       </div>
 
       {/* Col 6 · estado */}
-      <div>
+      <div role="cell">
         <span
           style={{
             ...rowStatusBase,
@@ -175,7 +191,7 @@ const ExpenseRow: React.FC<ExpenseRowProps> = ({
       </div>
 
       {/* Col 7 · acciones */}
-      <div style={rowActions} onClick={(e) => e.stopPropagation()}>
+      <div role="cell" style={rowActions} onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           aria-label={`Editar ${c.alias}`}

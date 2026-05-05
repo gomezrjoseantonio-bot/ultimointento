@@ -1,6 +1,10 @@
 import React from 'react';
 import type { CompromisoRecurrente } from '../../../../../types/compromisosRecurrentes';
 import { computeMonthly } from '../../../utils/compromisoUtils';
+import {
+  aplicarVariacion,
+  calcularImporte,
+} from '../../../../../services/personal/patronCalendario';
 import { formatEur } from '../utils/amountFormatter';
 import { formatPattern } from '../utils/patternFormatter';
 
@@ -32,7 +36,19 @@ const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
         nearestMs = ms;
         nextDate = fp.nextDate;
         nextAlias = c.alias;
-        nextAmount = computeMonthly(c);
+        // Importe REAL del próximo evento (NO mensual prorrateado).
+        try {
+          const base = calcularImporte(c.importe, fp.nextDate);
+          const conVariacion = aplicarVariacion(
+            base,
+            c.variacion,
+            new Date(c.fechaInicio),
+            fp.nextDate,
+          );
+          nextAmount = -Math.abs(conVariacion);
+        } catch {
+          nextAmount = -Math.abs(computeMonthly(c));
+        }
       }
     }
   }
@@ -62,7 +78,7 @@ const KpiStrip: React.FC<KpiStripProps> = ({ compromisos }) => {
         </div>
         <div style={kpiHint}>
           {nextAlias && nextAmount != null
-            ? `${nextAlias} · ${formatEur(-Math.abs(nextAmount))}`
+            ? `${nextAlias} · ${formatEur(nextAmount)}`
             : 'sin próximos cargos'}
         </div>
       </div>
