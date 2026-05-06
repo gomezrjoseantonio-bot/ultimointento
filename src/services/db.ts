@@ -2080,8 +2080,28 @@ interface AtlasHorizonDB {
   // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[]
   inversiones: PosicionInversion; // V1.3: Investment positions
   // patrimonioSnapshots: ELIMINADO en V62 (sub-tarea 3) — derivable de valoraciones_historicas · 1 registro
-  personalData: PersonalData; // V1.2: Personal data
-  personalModuleConfig: PersonalModuleConfig; // V1.2: Personal module configuration
+  /**
+   * V1.2 · perfil fiscal NÚCLEO del titular (singleton · `id=1`).
+   *
+   * Fuente única de · DNI · CCAA · tributacion · descendientes · ascendientes
+   * · discapacidad · fechaNacimiento · situacionLaboral · etc. Cualquier
+   * cálculo IRPF debe leer este store vía el gateway `fiscalContextService`
+   * (T14.2) · NO leer campos sueltos directamente · `informesDataService` y
+   * un puñado de wizards mantienen lectura directa por necesitar el objeto
+   * completo (excepciones documentadas en cada llamada T14.4).
+   */
+  personalData: PersonalData;
+  /**
+   * V1.2 · flags UI/integración derivados automáticamente de `personalData`.
+   *
+   * NO contiene información fiscal · NO migra al gateway `fiscalContextService`
+   * (decisión T14 · ratificada en T14.4 · validada retro 2026-05-06). Campos
+   * legítimos · `seccionesActivas.{nomina|autonomo|pensionesInversiones|otrosIngresos}`
+   * · `integracionTesoreria` · `integracionProyecciones` · `integracionFiscalidad`
+   * · todos hardcoded `true` excepto `seccionesActivas.{nomina|autonomo}` que
+   * se derivan de `personalData.situacionLaboral`.
+   */
+  personalModuleConfig: PersonalModuleConfig;
   // nominas: ELIMINADO en V63 (sub-tarea 4 · deuda sub-tarea 2) — datos ya copiados a `ingresos` con tipo='nomina' en V61
   /**
    * V61 (TAREA 7 sub-tarea 2): nuevo store unificado de ingresos personales.
@@ -2174,6 +2194,10 @@ interface AtlasHorizonDB {
    *     → Flag idempotencia de la migración T15.3.
    *     → Dueño: `services/migrations/migrateKeyvalPlanpagosToPrestamos.ts`
    *
+   *   `'cleanup_T14_v1'` (D1 · KEEP)
+   *     → Flag idempotencia del cleanup T14.5 · borra `configFiscal` huérfana.
+   *     → Dueño: `services/migrations/cleanupConfigFiscalKeyval.ts`
+   *
    * ── Claves PROHIBIDAS (NO añadir bajo ningún concepto) ──────────────────
    *
    *   `'planpagos_${prestamoId}'` · datos del usuario · vive en
@@ -2186,9 +2210,11 @@ interface AtlasHorizonDB {
    *     en T15.2 · `kpiService` es stub no-op · si vuelve la funcionalidad,
    *     diseñar destino dedicado, NO reutilizar keyval.
    *
-   *   `'configFiscal'` · documentada históricamente aquí pero sin uso real ·
-   *     NO escribir hasta que T14 (configuración fiscal sitio único) decida
-   *     destino canónico.
+   *   `'configFiscal'` · borrada en T14.5 · era residuo del store legacy
+   *     `configuracion_fiscal` (eliminado V62) · sin escritor ni lector
+   *     activos en producción · destino canónico para configuración fiscal
+   *     del titular es el gateway `fiscalContextService` (T14.2) sobre
+   *     `personalData` + `viviendaHabitual` · NO reintroducir esta clave.
    *
    *   `'proveedor-contraparte-migration'` · flag migración consumida (D2) ·
    *     borrada en T15.2 · NO re-escribir.
@@ -2254,7 +2280,18 @@ interface AtlasHorizonDB {
   vinculosAccesorio: VinculoAccesorio; // V3.9: Vínculos temporales accesorio (parking/trastero) por ejercicio
   // ─── ATLAS Personal v1.1 (V5.3) ────────────────────────────────────────
   compromisosRecurrentes: CompromisoRecurrente; // V5.3: catálogo universal de compromisos (unifica opexRules + personal · G-01) · TAREA 9: bootstrap desde histórico vía `compromisoDetectionService` + creación idempotente vía `compromisoCreationService` · activa la vía A del `movementSuggestionService` cuando el store deja de estar vacío. Ver `docs/T9-cierre.md`.
-  viviendaHabitual: ViviendaHabitual;           // V5.3: ficha vivienda habitual del hogar · genera derivados (sección 6)
+  /**
+   * V5.3 · ficha de la vivienda habitual del hogar · genera derivados
+   * (sección 6 del modelo Personal v1.1).
+   *
+   * Subset fiscalmente relevante (catastro · adquisición · IBI · beneficio
+   * fiscal hipoteca pre-2013) se expone vía el gateway `fiscalContextService`
+   * (T14.2) · `irpfCalculationService` lo usa para excluir la vivienda
+   * habitual de la imputación de rentas inmobiliarias (GAP 5.3 · cerrado en
+   * T14.3). El servicio dedicado `viviendaHabitualService` sigue siendo el
+   * único dueño del store · el gateway solo lee.
+   */
+  viviendaHabitual: ViviendaHabitual;
   // ─── Mi Plan v3 (V5.4–V5.7) ─────────────────────────────────────────────
   escenarios: Escenario;     // V5.4: singleton escenario libertad activo (renombrado de objetivos_financieros)
   objetivos: Objetivo;       // V5.5: lista de objetivos (acumular · amortizar · comprar · reducir)

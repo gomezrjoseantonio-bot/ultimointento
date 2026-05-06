@@ -1,30 +1,54 @@
-# Stores activos V60 · arquitectura post-TAREA 7
+# Stores activos · arquitectura post-TAREA 7 · cabecera DB v69
 
-> DB_VERSION: 64  
-> Total stores: 39  
-> Última actualización: 2026-04-26
+> DB_VERSION: 69
+> Total stores: 40
+> Última actualización: 2026-05-06 · refresh cabecera en T14.5 (cierre TAREA 14)
 
 ---
 
 ## Resumen ejecutivo
 
-ATLAS gestiona 39 stores en IndexedDB tras la limpieza V60 ejecutada en TAREA 7. El modelo se redujo de 59 a 39 stores eliminando duplicados, fósiles y conceptos mal modelados. Esta documentación describe el propósito, escritores, lectores y estado de cada store.
+ATLAS gestiona **40 stores** en IndexedDB tras la limpieza V60 (TAREA 7) y las
+sucesivas tareas T13 (módulo planes pensiones · V65) y T14 (configuración
+fiscal · sitio único · DB v69 sin cambios estructurales). El modelo se redujo
+de 59 a 39 stores en TAREA 7 y luego se incorporó el store
+`traspasosPlanPensiones` en V65 para el cierre de planes de pensiones · subiendo
+el total a 40. Esta documentación describe el propósito, escritores, lectores
+y estado de cada store.
+
+### Trayectoria de versiones
+
+| DB_VERSION | TAREA | Cambio principal | Stores resultantes |
+|---|---|---|---:|
+| V59 | pre-T7 | snapshot histórico | 59 |
+| V60-V64 | T7 (sub-tareas 1-5) | limpieza · 19 stores eliminados · 1 renombrado | 39 |
+| V65 | T13 (módulo planes pensiones) | añade `aportacionesPlan` · `traspasosPlanPensiones` · retira `planesPensionInversion` y `traspasosPlanes` legacy del runtime (tipos quedan documentados como `@legacy`) | 40 |
+| V66-V67 | T15 (limpieza keyval) | sin cambios estructurales · solo limpieza de claves residuales | 40 |
+| V68 | T38 (tipoFamilia compromisos) | migración runtime de `compromisosRecurrentes.tipoFamilia` · sin cambios de schema | 40 |
+| V69 | T13 v4 (lote B+C) | índice compuesto `tipo-activo` en `valoraciones_historicas` · sin cambios de stores | 40 |
+| V69 | T14 (configuración fiscal sitio único) | gateway `fiscalContextService` sobre `personalData` + `viviendaHabitual` · 5 GAPs IRPF cerrados · 13 consumidores migrados · `keyval['configFiscal']` borrada · sin cambios de DB | 40 |
 
 ### Estado actual · resumen
 
-- Stores con uso confirmado y propósito correcto: 35
-- Stores con problemas conocidos pendientes (TAREAS 13-16): 4
-  - `inversiones` · doble escritura planes pensiones (TAREA 13)
-  - `planesPensionInversion` · zombie funcional (TAREA 13)
-  - `keyval` · saneado post-T15 · catálogo canónico en `docs/AUDIT-T15-keyval.md` + JSDoc `services/db.ts`
-  - `movementLearningRules` · verificación uso pendiente (TAREA 16)
+- Stores con uso confirmado y propósito correcto: **38**
+- Stores con observaciones pendientes (no bloqueantes): **2**
+  - `keyval` · saneado post-T14.5 + post-T15 · catálogo canónico en
+    `docs/AUDIT-T15-keyval.md` + JSDoc `services/db.ts` · `configFiscal`
+    borrada formalmente en T14.5
+  - `movementLearningRules` · verificación de uso aún pendiente (TAREA 16
+    descongelada al cerrar T14)
+- Frontera fiscal del titular formalizada · gateway único
+  `src/services/fiscalContextService.ts` lee `personalData` +
+  `viviendaHabitual` · `personalModuleConfig` etiquetado como NO fiscal
+  (flags UI/integración) · `keyval['configFiscal']` purgada definitivamente.
 
-### Cambios respecto V59 (TAREA 7 ejecutada)
+### Cambios respecto V59 (TAREA 7 ejecutada · neto V69)
 
 | Acción | Cantidad |
 |---|---:|
 | Stores eliminados | 19 |
 | Stores renombrados | 1 (`nominas` → `ingresos`) |
+| Stores añadidos en V65 (T13) | 2 (`aportacionesPlan` · `traspasosPlanPensiones`) |
 | Stores con schema ampliado | 9 |
 | Stores con funcionalidad absorbida | 10 |
 
@@ -32,9 +56,67 @@ La tabla detallada de cambios está al final del documento (§C).
 
 ---
 
+## Listado canónico · 40 stores activos en V69
+
+Orden alfabético · dominio entre paréntesis · validado contra
+`createObjectStore('NAME')` en `src/services/db.ts` (43 calls totales · 3
+deletes V5.9/V65 → 40 efectivos).
+
+| # | Store | Dominio | Frontera fiscal del titular |
+|---:|---|---|---|
+| 1 | `accounts` | Tesorería · cuentas | — |
+| 2 | `aeatCarryForwards` | Fiscalidad · arrastres legacy | — |
+| 3 | `aportacionesPlan` | Personal · planes pensiones | — |
+| 4 | `arrastresIRPF` | Fiscalidad · arrastres unificados | — |
+| 5 | `compromisosRecurrentes` | Personal · compromisos | — |
+| 6 | `contracts` | Inmuebles · contratos arrendamiento | — |
+| 7 | `documents` | Documental | — |
+| 8 | `ejerciciosFiscalesCoord` | Fiscalidad · workflow anual | — |
+| 9 | `entidadesAtribucion` | Fiscalidad · entidades atribución | — |
+| 10 | `escenarios` | Mi Plan · escenario libertad | — |
+| 11 | `fondos_ahorro` | Mi Plan · fondos | — |
+| 12 | `gastosInmueble` | Inmuebles · gastos | — |
+| 13 | `importBatches` | Tesorería · imports CSV | — |
+| 14 | `ingresos` | Personal · ingresos unificados | — |
+| 15 | `inversiones` | Inversiones · posiciones | — |
+| 16 | `keyval` | General · config + flags D1 | configFiscal borrada en T14.5 · NO reintroducir |
+| 17 | `mejorasInmueble` | Inmuebles · mejoras | — |
+| 18 | `movementLearningRules` | Tesorería · clasificación | — |
+| 19 | `movements` | Tesorería · movimientos | — |
+| 20 | `mueblesInmueble` | Inmuebles · muebles | — |
+| 21 | `objetivos` | Mi Plan · objetivos | — |
+| 22 | `perdidasPatrimonialesAhorro` | Fiscalidad · pérdidas ahorro | — |
+| 23 | `personalData` | Personal · perfil titular | **CORE FISCAL** · gateway `fiscalContextService` |
+| 24 | `personalModuleConfig` | Personal · flags UI | **NO fiscal** · NO migra al gateway |
+| 25 | `planesPensiones` | Personal · planes pensiones | — |
+| 26 | `prestamos` | Financiación · préstamos | — |
+| 27 | `presupuestoLineas` | Tesorería · presupuesto | — |
+| 28 | `presupuestos` | Tesorería · presupuesto | — |
+| 29 | `properties` | Inmuebles · ficha | — |
+| 30 | `propertyDays` | Inmuebles · días fiscales | — |
+| 31 | `property_sales` | Inmuebles · ventas | — |
+| 32 | `proveedores` | Tesorería · proveedores | — |
+| 33 | `resultadosEjercicio` | Fiscalidad · snapshots ejercicio | — |
+| 34 | `retos` | Mi Plan · retos mensuales | — |
+| 35 | `snapshotsDeclaracion` | Fiscalidad · snapshots declaración | — |
+| 36 | `traspasosPlanPensiones` | Personal · planes pensiones | — |
+| 37 | `treasuryEvents` | Tesorería · eventos previstos | — |
+| 38 | `valoraciones_historicas` | Inversiones/Inmuebles · valoraciones | — |
+| 39 | `vinculosAccesorio` | Fiscalidad · accesorios temporales | — |
+| 40 | `viviendaHabitual` | Personal · vivienda habitual | **VIVIENDA FISCAL** · subset expuesto en gateway |
+
+Notas ·
+- `objetivos_financieros` · phantom interface entry · store eliminado en V5.9
+  (`db.deleteObjectStore`) · NO cuenta.
+- `planesPensionInversion` · phantom · eliminado en V65 · NO cuenta.
+- `traspasosPlanes` · phantom · eliminado en V65 · NO cuenta · tipo
+  mantenido para 4 componentes UI legacy hasta T27-pre.
+
+---
+
 ## Stores ordenados por dominio
 
-Los dominios agrupan los 39 stores activos. El listado alfabético completo está en §A.
+Los dominios agrupan los 40 stores activos. El listado alfabético completo está en §A.
 
 ### Inmuebles físicos (6)
 
