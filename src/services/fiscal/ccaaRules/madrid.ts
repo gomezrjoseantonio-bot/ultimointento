@@ -27,8 +27,8 @@
 //     · adquisición vivienda jóvenes · etc. · TODO documentado en notasMigracion.
 // ============================================================================
 
-import type { CcaaRules, FiscalContext } from '../tipos';
-import type { DatosBaseDeduccion, DeduccionAutonomica } from '../tipos';
+import type { CcaaRules } from '../tipos';
+import type { DeduccionAutonomica } from '../tipos';
 
 const FUENTE_DL_1_2010 =
   'Decreto Legislativo 1/2010 CM · Texto Refundido tributos cedidos · BOCM nº 285 de 25/11/2010 (consolidado tras Ley CM 4/2024)';
@@ -70,18 +70,15 @@ const DEDUCCION_ARRENDAMIENTO_VIVIENDA_HABITUAL: DeduccionAutonomica = {
     baseImponibleMaxFamiliar: 61860, // unidad familiar con ≥3 hijos
     porcentajeMinAlquilerSobreBI: 0.2,
     requiereFianzaDepositada: true,
-    requiereTipoVivienda: 'habitual',
-    requiereResidenciaFiscalCcaa: true,
     requiereTitularContrato: true,
+    // requiereTipoVivienda y requiereResidenciaFiscalCcaa NO se setean ·
+    // ATLAS hoy no los puede verificar (ampliar DatosBaseDeduccion en
+    // T18.x cuando aparezca caso de uso · hasta entonces · regla 0.7
+    // SAGRADA · no declarar requisito que no se evalúa).
   },
 
-  calcularImporte: (_ctx: FiscalContext, datosBase: DatosBaseDeduccion): number => {
-    const alquiler = datosBase.alquilerAnual ?? 0;
-    if (alquiler <= 0) return 0;
-    // Base máxima sobre la que se aplica el porcentaje: 4.124 €
-    const baseAplicable = Math.min(alquiler, 4124);
-    return Math.round(baseAplicable * 0.3 * 100) / 100;
-  },
+  // Cálculo · motor genérico aplica `porcentaje × min(alquilerAnual,
+  // baseMaximaCalculo)` · NO necesita `calcularImporte` propio.
 };
 
 // ─── Paquete CCAA · Madrid ──────────────────────────────────────────────────

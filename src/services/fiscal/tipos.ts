@@ -145,9 +145,12 @@ export interface DeduccionAutonomica {
 
   /**
    * Cálculo del importe bruto antes de aplicar topes · puro · idempotente.
-   * Recibe `ctx` (titular) y `datosBase` (cifras del ejercicio).
+   * OPCIONAL · si `undefined`, el motor calcula automáticamente con
+   * `porcentaje × min(alquilerAnual, baseMaximaCalculo)`. Reservar este
+   * hook solo para deducciones con lógica custom (escalas progresivas ·
+   * combinaciones · etc.).
    */
-  calcularImporte: (ctx: FiscalContext, datosBase: DatosBaseDeduccion) => number;
+  calcularImporte?: (ctx: FiscalContext, datosBase: DatosBaseDeduccion) => number;
 }
 
 // ─── Resultado de la evaluación ─────────────────────────────────────────────

@@ -93,9 +93,13 @@ export function evaluarElegibilidad(
   }
 
   // ─── % alquiler sobre BI ──────────────────────────────────────────────────
+  // En conjunta · usar BI conjunta como denominador si está disponible · de
+  // lo contrario individual. Coherente con cómo se evalúan los topes BI.
   if (req.porcentajeMinAlquilerSobreBI !== undefined) {
     const alquiler = datosBase.alquilerAnual ?? 0;
-    const biRef = datosBase.baseImponibleIndividual;
+    const biRef = esConjunta && datosBase.baseImponibleConjunta !== undefined
+      ? datosBase.baseImponibleConjunta
+      : datosBase.baseImponibleIndividual;
     if (biRef <= 0) {
       motivos.push('BI no informada · imposible verificar % alquiler');
     } else {
@@ -135,18 +139,44 @@ export function evaluarElegibilidad(
     }
   }
 
-  // ─── Tipo vivienda · titular contrato · residencia fiscal ────────────────
-  if (req.requiereTitularContrato && datosBase.esTitularContrato === false) {
-    motivos.push('no es titular del contrato');
+  // ─── Titular del contrato · regla 0.7 SAGRADA ────────────────────────────
+  // Si el requisito aplica · exigimos `esTitularContrato === true`. Si no
+  // viene informado (`undefined`) · NO podemos confirmar y NO concedemos la
+  // deducción · motivo legible.
+  if (req.requiereTitularContrato && datosBase.esTitularContrato !== true) {
+    motivos.push('no es titular del contrato (o dato no informado)');
   }
-  // `requiereTipoVivienda` y `requiereResidenciaFiscalCcaa` se asumen TRUE
-  // por contexto de uso (ATLAS solo evalúa si el titular reside en la CCAA
-  // y la deducción es de su vivienda habitual). Si en el futuro se necesita
-  // distinguir explícitamente, ampliar `DatosBaseDeduccion`.
+  // `requiereTipoVivienda` y `requiereResidenciaFiscalCcaa` están modelados
+  // en `RequisitosDeduccion` para ser evaluados cuando ATLAS amplíe
+  // `DatosBaseDeduccion`/`FiscalContext` con esos datos. Hoy, si una
+  // deducción los setea, el motor NO los puede verificar · lo notificamos
+  // explícitamente para evitar silenciosos falsos positivos (regla 0.7
+  // SAGRADA · NUNCA aplicar deducción sin evaluar · si no se puede evaluar
+  // un requisito declarado · marcar no elegible).
+  if (req.requiereTipoVivienda !== undefined) {
+    motivos.push(
+      `requiereTipoVivienda="${req.requiereTipoVivienda}" no verificable · ampliar DatosBaseDeduccion`,
+    );
+  }
+  if (req.requiereResidenciaFiscalCcaa === true) {
+    motivos.push(
+      'requiereResidenciaFiscalCcaa no verificable explícitamente · ampliar DatosBaseDeduccion',
+    );
+  }
 
   // ─── Si elegible · calcular importe ──────────────────────────────────────
   if (motivos.length === 0) {
-    const bruto = deduccion.calcularImporte(ctx, datosBase);
+    // Cálculo · si la deducción provee `calcularImporte`, lo usamos
+    // (excepción · escalas custom). Si no · fórmula genérica con
+    // `porcentaje × min(alquilerAnual, baseMaximaCalculo ?? Infinity)`.
+    let bruto: number;
+    if (deduccion.calcularImporte) {
+      bruto = deduccion.calcularImporte(ctx, datosBase);
+    } else {
+      const cantidadPagada = datosBase.alquilerAnual ?? 0;
+      const baseMax = deduccion.baseMaximaCalculo ?? Infinity;
+      bruto = Math.min(cantidadPagada, baseMax) * deduccion.porcentaje;
+    }
     const tope = esConjunta && deduccion.topeAbsolutoConjunta !== undefined
       ? deduccion.topeAbsolutoConjunta
       : deduccion.topeAbsolutoIndividual;
