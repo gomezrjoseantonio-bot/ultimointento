@@ -98,6 +98,16 @@ export interface DatosBaseDeduccion {
   inversionViviendaHabitualAnual?: number;
   /** True si el titular es víctima de violencia de género (Valencia · Andalucía · etc.). */
   esVictimaViolenciaGenero?: boolean;
+  /** True si la vivienda está en municipio/concejo en riesgo de despoblamiento (Asturias · Cantabria). */
+  viviendaEnZonaDespoblamiento?: boolean;
+  /** True si el contrato de arrendamiento ha presentado el modelo ITP/AJD (Murcia). */
+  itpAjdPresentado?: boolean;
+  /** True si los pagos de arrendamiento son trazables · transferencia/tarjeta/cheque/ingreso (Murcia · Valencia). */
+  pagosTrazables?: boolean;
+  /** True si el contribuyente o miembros de UF son titulares de >50% otra vivienda (Murcia). */
+  propiedadMasMitadOtraVivienda?: boolean;
+  /** Número de hijos menores de edad (Galicia · 2+ hijos menores activa porcentaje incrementado). */
+  numeroHijosMenores?: number;
 }
 
 // ─── Requisitos de elegibilidad ─────────────────────────────────────────────
@@ -127,6 +137,14 @@ export interface RequisitosDeduccion {
   requiereTitularContrato?: boolean;
   /** Duración mínima del contrato en años (Baleares · Valencia · 1 año). */
   duracionContratoMinAnios?: number;
+  /** Murcia · contrato ITP/AJD presentado obligatorio. */
+  requiereItpAjdPresentado?: boolean;
+  /** Murcia · Valencia · pagos trazables · NO efectivo. */
+  requierePagosTrazables?: boolean;
+  /** Murcia · NO ser titular >50% otra vivienda. */
+  requiereNoPropiedadMasMitadOtraVivienda?: boolean;
+  /** Galicia · 2+ hijos menores para porcentaje incrementado · usado en `condicionesElegibilidadOR`. */
+  hijosMenoresMinimo?: number;
 
   /**
    * Conjunto OR de condiciones · si al menos UNA se cumple · la deducción
@@ -156,6 +174,15 @@ export interface DeduccionAutonomica {
   fuenteOficial: string;
   /** True solo si todas las cifras y requisitos están BOE-verificadas. */
   verified: boolean;
+
+  /**
+   * Si está presente · indica que la deducción NO aplica en esta CCAA por
+   * ley · el motor marca SIEMPRE no elegible con el motivo dado.
+   * Útil para CCAA donde una deducción "esperable" (ej · arrendamiento
+   * general en Aragón) no existe legalmente · ATLAS responde con un
+   * mensaje de UX claro en lugar de devolver lista vacía silenciosa.
+   */
+  noAplicableEnCcaaMotivo?: string;
 
   /** Porcentaje aplicado a la base de cálculo · 0.30 = 30%. */
   porcentaje: number;

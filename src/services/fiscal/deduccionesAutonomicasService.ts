@@ -46,6 +46,17 @@ export function evaluarElegibilidad(
   ctx: FiscalContext,
   datosBase: DatosBaseDeduccion,
 ): ResultadoElegibilidad {
+  // T18.2 · Aragón · arrendamiento general · ley NO contempla la deducción
+  // · marcamos SIEMPRE no elegible con el motivo de UX claro · skip resto.
+  if (deduccion.noAplicableEnCcaaMotivo) {
+    return {
+      elegible: false,
+      motivosNoElegible: [deduccion.noAplicableEnCcaaMotivo],
+      importeAplicable: 0,
+      fuenteOficial: deduccion.fuenteOficial,
+    };
+  }
+
   const motivos: string[] = [];
   const req = deduccion.requisitos;
 
@@ -185,6 +196,24 @@ export function evaluarElegibilidad(
         `duración contrato <${req.duracionContratoMinAnios} año(s)`,
       );
     }
+  }
+
+  // ─── Murcia · contrato ITP/AJD presentado ────────────────────────────────
+  if (req.requiereItpAjdPresentado === true && datosBase.itpAjdPresentado !== true) {
+    motivos.push('contrato ITP/AJD no presentado (o dato no informado)');
+  }
+
+  // ─── Murcia · Valencia · pagos trazables ────────────────────────────────
+  if (req.requierePagosTrazables === true && datosBase.pagosTrazables !== true) {
+    motivos.push('pagos no trazables · requiere transferencia/tarjeta/cheque/ingreso (o dato no informado)');
+  }
+
+  // ─── Murcia · NO ser titular >50% otra vivienda ─────────────────────────
+  if (
+    req.requiereNoPropiedadMasMitadOtraVivienda === true &&
+    datosBase.propiedadMasMitadOtraVivienda === true
+  ) {
+    motivos.push('titular o miembro UF posee >50% de otra vivienda');
   }
 
   // ─── Conjunto OR de condiciones · al menos UNA debe cumplirse ──────────

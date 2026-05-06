@@ -22,6 +22,11 @@ import { ANDALUCIA_RULES } from './andalucia';
 import { VALENCIA_RULES } from './valencia';
 import { BALEARES_RULES } from './baleares';
 import { CASTILLA_Y_LEON_RULES } from './castilla_y_leon';
+import { GALICIA_RULES } from './galicia';
+import { ARAGON_RULES } from './aragon';
+import { ASTURIAS_RULES } from './asturias';
+import { MURCIA_RULES } from './murcia';
+import { CANTABRIA_RULES } from './cantabria';
 
 // Regex de combining diacritics (U+0300 a U+036F) construido vía
 // `RegExp` con escapes Unicode string · evita caracteres combining
@@ -60,9 +65,8 @@ export function normalizeCcaaKey(input: string | null | undefined): string | nul
   return cleaned;
 }
 
-// Mapa de paquetes · T18.0 · Madrid · T18.1 · Top 5 mercado · T18.2 · 18.3
-// añadirán Galicia · Aragón · Asturias · Murcia · Cantabria · Canarias · CLM ·
-// Extremadura · La Rioja.
+// Mapa de paquetes · T18.0 · Madrid · T18.1 · Top 5 mercado · T18.2 · mercado
+// medio · T18.3 añadirá Canarias · CLM · Extremadura · La Rioja.
 const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['madrid', MADRID_RULES],
   ['cataluna', CATALUNA_RULES],
@@ -70,6 +74,11 @@ const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['valencia', VALENCIA_RULES],
   ['baleares', BALEARES_RULES],
   ['castilla_y_leon', CASTILLA_Y_LEON_RULES],
+  ['galicia', GALICIA_RULES],
+  ['aragon', ARAGON_RULES],
+  ['asturias', ASTURIAS_RULES],
+  ['murcia', MURCIA_RULES],
+  ['cantabria', CANTABRIA_RULES],
 ]);
 
 /**
