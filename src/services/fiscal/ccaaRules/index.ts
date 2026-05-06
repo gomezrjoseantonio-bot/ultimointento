@@ -17,10 +17,16 @@
 import type { CcaaRules } from '../tipos';
 import { BASE_ESTATAL_RULES } from './_base_estatal';
 import { MADRID_RULES } from './madrid';
+import { CATALUNA_RULES } from './cataluna';
+import { ANDALUCIA_RULES } from './andalucia';
+import { VALENCIA_RULES } from './valencia';
+import { BALEARES_RULES } from './baleares';
+import { CASTILLA_Y_LEON_RULES } from './castilla_y_leon';
 
 // Normalizador · NFD + sin diacríticos + lowercase + trim · resiste
-// 'Cataluña' · 'Catalunya' · 'CATALUÑA' · 'comunidad de madrid'.
-function normalizeCcaaKey(input: string | null | undefined): string | null {
+// 'Cataluña' · 'Catalunya' · 'CATALUÑA' · 'comunidad de madrid' ·
+// 'Comunitat Valenciana' · 'Illes Balears'.
+export function normalizeCcaaKey(input: string | null | undefined): string | null {
   if (!input || typeof input !== 'string') return null;
   const cleaned = input
     .normalize('NFD')
@@ -49,9 +55,16 @@ function normalizeCcaaKey(input: string | null | undefined): string | null {
   return cleaned;
 }
 
-// Mapa de paquetes · solo Madrid en T18.0 · resto se añadirán en T18.1-T18.3.
+// Mapa de paquetes · T18.0 · Madrid · T18.1 · Top 5 mercado · T18.2 · 18.3
+// añadirán Galicia · Aragón · Asturias · Murcia · Cantabria · Canarias · CLM ·
+// Extremadura · La Rioja.
 const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['madrid', MADRID_RULES],
+  ['cataluna', CATALUNA_RULES],
+  ['andalucia', ANDALUCIA_RULES],
+  ['valencia', VALENCIA_RULES],
+  ['baleares', BALEARES_RULES],
+  ['castilla_y_leon', CASTILLA_Y_LEON_RULES],
 ]);
 
 /**

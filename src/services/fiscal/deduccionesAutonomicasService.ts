@@ -21,7 +21,10 @@ import type {
   ResultadoDeduccion,
   ResultadoElegibilidad,
 } from './tipos';
-import { getReglasCcaa as lookupReglasCcaa } from './ccaaRules/index';
+import {
+  getReglasCcaa as lookupReglasCcaa,
+  normalizeCcaaKey,
+} from './ccaaRules/index';
 
 // ─── Re-exports públicos ────────────────────────────────────────────────────
 
@@ -146,22 +149,94 @@ export function evaluarElegibilidad(
   if (req.requiereTitularContrato && datosBase.esTitularContrato !== true) {
     motivos.push('no es titular del contrato (o dato no informado)');
   }
-  // `requiereTipoVivienda` y `requiereResidenciaFiscalCcaa` están modelados
-  // en `RequisitosDeduccion` para ser evaluados cuando ATLAS amplíe
-  // `DatosBaseDeduccion`/`FiscalContext` con esos datos. Hoy, si una
-  // deducción los setea, el motor NO los puede verificar · lo notificamos
-  // explícitamente para evitar silenciosos falsos positivos (regla 0.7
-  // SAGRADA · NUNCA aplicar deducción sin evaluar · si no se puede evaluar
-  // un requisito declarado · marcar no elegible).
+
+  // ─── Tipo vivienda · post-T18.1 evaluable con `datosBase.tipoVivienda` ──
   if (req.requiereTipoVivienda !== undefined) {
-    motivos.push(
-      `requiereTipoVivienda="${req.requiereTipoVivienda}" no verificable · ampliar DatosBaseDeduccion`,
-    );
+    if (datosBase.tipoVivienda === undefined) {
+      motivos.push(
+        `tipoVivienda no informado · requiere "${req.requiereTipoVivienda}"`,
+      );
+    } else if (datosBase.tipoVivienda !== req.requiereTipoVivienda) {
+      motivos.push(
+        `tipoVivienda "${datosBase.tipoVivienda}" no es "${req.requiereTipoVivienda}"`,
+      );
+    }
   }
+
+  // ─── Residencia fiscal CCAA · evaluable contra el contexto + ccaa de la
+  // deducción · ambos pasan por `normalizeCcaaKey` (alias regionales) y
+  // comparamos claves canónicas · soporta 'Cataluña'/'Catalunya' ·
+  // 'Comunitat Valenciana'/'Valencia' · 'Illes Balears'/'Baleares' · etc.
   if (req.requiereResidenciaFiscalCcaa === true) {
-    motivos.push(
-      'requiereResidenciaFiscalCcaa no verificable explícitamente · ampliar DatosBaseDeduccion',
-    );
+    const keyContexto = normalizeCcaaKey(ctx.comunidadAutonoma);
+    const keyDeduccion = normalizeCcaaKey(deduccion.ccaa);
+    if (!keyContexto || keyContexto !== keyDeduccion) {
+      motivos.push(
+        `residencia fiscal "${ctx.comunidadAutonoma ?? '(no informada)'}" distinta de "${deduccion.ccaa}"`,
+      );
+    }
+  }
+
+  // ─── Duración mínima contrato (Baleares · Valencia · ≥1 año) ────────────
+  if (req.duracionContratoMinAnios !== undefined) {
+    const anios = datosBase.duracionContratoAnios ?? 0;
+    if (anios < req.duracionContratoMinAnios) {
+      motivos.push(
+        `duración contrato <${req.duracionContratoMinAnios} año(s)`,
+      );
+    }
+  }
+
+  // ─── Conjunto OR de condiciones · al menos UNA debe cumplirse ──────────
+  // Usado por Cataluña (≤35 OR paro 183+ OR familia numerosa OR monoparental).
+  if (req.condicionesElegibilidadOR && req.condicionesElegibilidadOR.length > 0) {
+    const cumpleAlguna = req.condicionesElegibilidadOR.some((cond) => {
+      if (cond.edadMaxima !== undefined && ctx.edadActual !== null && ctx.edadActual < cond.edadMaxima) {
+        return true;
+      }
+      if (cond.edadMinima !== undefined && ctx.edadActual !== null && ctx.edadActual >= cond.edadMinima) {
+        return true;
+      }
+      if (
+        cond.paroMinimoDias !== undefined &&
+        (datosBase.diasEnParo ?? 0) >= cond.paroMinimoDias
+      ) {
+        return true;
+      }
+      if (cond.requiereFamiliaNumerosa) {
+        const fn = datosBase.familiaNumerosa;
+        if (fn && (cond.requiereFamiliaNumerosa === 'general' || fn === 'especial')) {
+          return true;
+        }
+      }
+      if (cond.requiereFamiliaMonoparental === true && datosBase.familiaMonoparental === true) {
+        return true;
+      }
+      if (cond.requiereDiscapacidad) {
+        const grado = ctx.discapacidadTitular;
+        const minimo = cond.requiereDiscapacidad.gradoMinimo;
+        const cumple =
+          (minimo <= 33 && (grado === 'hasta33' || grado === 'entre33y65' || grado === 'mas65')) ||
+          (minimo <= 65 && (grado === 'entre33y65' || grado === 'mas65')) ||
+          (minimo <= 100 && grado === 'mas65');
+        if (cumple) return true;
+      }
+      return false;
+    });
+    if (!cumpleAlguna) {
+      const partes = req.condicionesElegibilidadOR
+        .map((c) => {
+          if (c.edadMaxima !== undefined) return `edad <${c.edadMaxima}`;
+          if (c.edadMinima !== undefined) return `edad ≥${c.edadMinima}`;
+          if (c.paroMinimoDias !== undefined) return `paro ≥${c.paroMinimoDias} días`;
+          if (c.requiereFamiliaNumerosa) return `familia numerosa ${c.requiereFamiliaNumerosa}`;
+          if (c.requiereFamiliaMonoparental) return 'familia monoparental';
+          if (c.requiereDiscapacidad) return `discapacidad ≥${c.requiereDiscapacidad.gradoMinimo}%`;
+          return 'condición desconocida';
+        })
+        .join(' · ');
+      motivos.push(`no cumple ninguna condición de elegibilidad (${partes})`);
+    }
   }
 
   // ─── Si elegible · calcular importe ──────────────────────────────────────

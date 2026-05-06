@@ -84,8 +84,20 @@ export interface DatosBaseDeduccion {
   esTitularContrato?: boolean;
   /** Familia numerosa · `general` · `especial` · `false`. */
   familiaNumerosa?: 'general' | 'especial' | false;
+  /** True si el titular es de familia monoparental (Ley 18/2003 + Decreto 151/2009 · Cataluña). */
+  familiaMonoparental?: boolean;
+  /** Días en situación de paro durante el ejercicio (Cataluña · ≥183 abre vía elegibilidad). */
+  diasEnParo?: number;
+  /** Tipo de vivienda objeto de la deducción · usado para verificar `requiereTipoVivienda`. */
+  tipoVivienda?: 'habitual' | 'temporada-larga' | 'inversion';
+  /** Duración del contrato de arrendamiento en años · algunas CCAA exigen ≥1. */
+  duracionContratoAnios?: number;
+  /** Ayudas públicas recibidas para arrendamiento (Castilla y León · bono alquiler joven · se restan antes del tope). */
+  ayudasPublicasArrendamiento?: number;
   /** Importes específicos por inversión vivienda habitual · adquisición · obras · etc. */
   inversionViviendaHabitualAnual?: number;
+  /** True si el titular es víctima de violencia de género (Valencia · Andalucía · etc.). */
+  esVictimaViolenciaGenero?: boolean;
 }
 
 // ─── Requisitos de elegibilidad ─────────────────────────────────────────────
@@ -113,6 +125,23 @@ export interface RequisitosDeduccion {
   requiereResidenciaFiscalCcaa?: boolean;
   /** Debe ser titular del contrato (no subarriendo). */
   requiereTitularContrato?: boolean;
+  /** Duración mínima del contrato en años (Baleares · Valencia · 1 año). */
+  duracionContratoMinAnios?: number;
+
+  /**
+   * Conjunto OR de condiciones · si al menos UNA se cumple · la deducción
+   * pasa el filtro de elegibilidad por perfil. Usado por Cataluña (≤35 OR
+   * paro 183+ días OR familia numerosa OR familia monoparental). El resto
+   * de requisitos (BI · titular contrato · etc.) sigue evaluándose en AND.
+   */
+  condicionesElegibilidadOR?: Array<{
+    edadMaxima?: number;
+    edadMinima?: number;
+    paroMinimoDias?: number;
+    requiereFamiliaNumerosa?: 'general' | 'especial';
+    requiereFamiliaMonoparental?: boolean;
+    requiereDiscapacidad?: { gradoMinimo: number };
+  }>;
 }
 
 // ─── Deducción autonómica ───────────────────────────────────────────────────
