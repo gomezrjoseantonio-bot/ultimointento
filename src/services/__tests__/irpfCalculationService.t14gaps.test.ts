@@ -29,7 +29,6 @@ import {
 import {
   ESCALA_ESTATAL_GENERAL_2024,
   ESCALA_AUTONOMICA_SUPLETORIA_2024,
-  TABLAS_AUTONOMICAS_2024,
   getEscalaAutonomica,
   normalizeCCAA,
 } from '../../data/fiscal/tramosAutonomicos2024';
@@ -179,51 +178,34 @@ describe('GAP 5.1 · calcularCuotaBaseGeneralCCAA', () => {
     expect(r.cuotaTotal).toBe(Math.round(expectedHalf * 2 * 100) / 100);
   });
 
-  test('Madrid (verified=false en datos por defecto) · cae a supletoria · warning específico', () => {
+  test('Madrid · post-T18.0 · escala Madrid aplicada (verified=true) · cuota autonómica menor que supletoria', () => {
+    // T18.0 · Madrid pasa a verified=true con su escala BOE 5 tramos.
+    // Cuota autonómica Madrid debe ser menor que la supletoria estatal
+    // (Madrid tiene tipos más bajos · 8,5% / 10,7% / 12,8% / 17,4% / 20,5%).
     const ctx = buildCtx({ comunidadAutonoma: 'Madrid' });
     const r = calcularCuotaBaseGeneralCCAA(30000, ctx, 2024);
+    expect(r.escalaAutonomicaAplicada).toBe(true);
+    expect(r.reason).toBeUndefined();
+    const cuotaSupletoria = calcularCuotaPorTramos(
+      30000,
+      ESCALA_AUTONOMICA_SUPLETORIA_2024.tramos,
+    );
+    expect(r.cuotaAutonomica).toBeLessThan(cuotaSupletoria);
+    // La escala Madrid usada lleva la marca verified=true.
+    expect(r.escalaAutonomicaUsada.verified).toBe(true);
+    expect(r.escalaAutonomicaUsada.fuente).toMatch(/Decreto Legislativo 1\/2010/);
+  });
+
+  test('Asturias · post-T18.0 · sin implementar en módulo nuevo · fallback estatal con warning', () => {
+    // T18.0 solo cubre Madrid · Asturias entrará en T18.2.
+    // Resultado · cuota autonómica = supletoria · reason explica fallback.
+    const ctx = buildCtx({ comunidadAutonoma: 'Asturias' });
+    const r = calcularCuotaBaseGeneralCCAA(30000, ctx, 2024);
     expect(r.escalaAutonomicaAplicada).toBe(false);
-    expect(r.reason).toMatch(/Madrid.*verified=false/);
-    // Sin verificar · cuota igual a la supletoria
+    expect(r.reason).toMatch(/Asturias.*no implementada/);
     expect(r.cuotaAutonomica).toBe(
       calcularCuotaPorTramos(30000, ESCALA_AUTONOMICA_SUPLETORIA_2024.tramos),
     );
-  });
-
-  test('Madrid con tabla forzada verified=true · aplica escala Madrid · cuota autonómica menor que supletoria', () => {
-    // Simulación · auditoría completada · Madrid tipo más bajo
-    const original = TABLAS_AUTONOMICAS_2024.Madrid;
-    TABLAS_AUTONOMICAS_2024.Madrid = { ...original, verified: true };
-    try {
-      const ctx = buildCtx({ comunidadAutonoma: 'Madrid' });
-      const r = calcularCuotaBaseGeneralCCAA(30000, ctx, 2024);
-      expect(r.escalaAutonomicaAplicada).toBe(true);
-      expect(r.reason).toBeUndefined();
-      const cuotaMadrid = calcularCuotaPorTramos(30000, original.tramos);
-      const cuotaSupletoria = calcularCuotaPorTramos(
-        30000,
-        ESCALA_AUTONOMICA_SUPLETORIA_2024.tramos,
-      );
-      expect(r.cuotaAutonomica).toBe(cuotaMadrid);
-      expect(r.cuotaAutonomica).toBeLessThan(cuotaSupletoria);
-    } finally {
-      TABLAS_AUTONOMICAS_2024.Madrid = original;
-    }
-  });
-
-  test('Asturias con tabla forzada verified=true · aplica escala Asturias', () => {
-    const original = TABLAS_AUTONOMICAS_2024.Asturias;
-    TABLAS_AUTONOMICAS_2024.Asturias = { ...original, verified: true };
-    try {
-      const ctx = buildCtx({ comunidadAutonoma: 'Asturias' });
-      const r = calcularCuotaBaseGeneralCCAA(30000, ctx, 2024);
-      expect(r.escalaAutonomicaAplicada).toBe(true);
-      expect(r.cuotaAutonomica).toBe(
-        calcularCuotaPorTramos(30000, original.tramos),
-      );
-    } finally {
-      TABLAS_AUTONOMICAS_2024.Asturias = original;
-    }
   });
 
   test('CCAA con variantes de nombre · normalizeCCAA · "comunidad de madrid" → Madrid', () => {
