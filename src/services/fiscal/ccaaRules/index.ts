@@ -17,14 +17,25 @@
 import type { CcaaRules } from '../tipos';
 import { BASE_ESTATAL_RULES } from './_base_estatal';
 import { MADRID_RULES } from './madrid';
+import { CATALUNA_RULES } from './cataluna';
+import { ANDALUCIA_RULES } from './andalucia';
+import { VALENCIA_RULES } from './valencia';
+import { BALEARES_RULES } from './baleares';
+import { CASTILLA_Y_LEON_RULES } from './castilla_y_leon';
+
+// Regex de combining diacritics (U+0300 a U+036F) construido vía
+// `RegExp` con escapes Unicode string · evita caracteres combining
+// literales en el source (algunos linters/parsers de CRA los rechazan).
+const COMBINING_DIACRITICS_RE = new RegExp('[\\u0300-\\u036F]', 'g');
 
 // Normalizador · NFD + sin diacríticos + lowercase + trim · resiste
-// 'Cataluña' · 'Catalunya' · 'CATALUÑA' · 'comunidad de madrid'.
-function normalizeCcaaKey(input: string | null | undefined): string | null {
+// 'Cataluña' · 'Catalunya' · 'CATALUÑA' · 'comunidad de madrid' ·
+// 'Comunitat Valenciana' · 'Illes Balears'.
+export function normalizeCcaaKey(input: string | null | undefined): string | null {
   if (!input || typeof input !== 'string') return null;
   const cleaned = input
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(COMBINING_DIACRITICS_RE, '')
     .trim()
     .toLowerCase();
   if (!cleaned) return null;
@@ -49,9 +60,16 @@ function normalizeCcaaKey(input: string | null | undefined): string | null {
   return cleaned;
 }
 
-// Mapa de paquetes · solo Madrid en T18.0 · resto se añadirán en T18.1-T18.3.
+// Mapa de paquetes · T18.0 · Madrid · T18.1 · Top 5 mercado · T18.2 · 18.3
+// añadirán Galicia · Aragón · Asturias · Murcia · Cantabria · Canarias · CLM ·
+// Extremadura · La Rioja.
 const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['madrid', MADRID_RULES],
+  ['cataluna', CATALUNA_RULES],
+  ['andalucia', ANDALUCIA_RULES],
+  ['valencia', VALENCIA_RULES],
+  ['baleares', BALEARES_RULES],
+  ['castilla_y_leon', CASTILLA_Y_LEON_RULES],
 ]);
 
 /**
@@ -64,10 +82,8 @@ const CCAA_RULES_MAP = new Map<string, CcaaRules>([
 export function getReglasCcaa(ccaa: string | null | undefined): CcaaRules {
   const key = normalizeCcaaKey(ccaa);
   if (!key) {
-    if (typeof console !== 'undefined') {
-      // CCAA no informada · es un caso esperado (gateway emite el warning
-      // canónico) · no spammeamos logs.
-    }
+    // CCAA no informada · caso esperado (gateway emite el warning canónico)
+    // · NO spammeamos logs aquí.
     return BASE_ESTATAL_RULES;
   }
 

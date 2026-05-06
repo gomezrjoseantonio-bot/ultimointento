@@ -1262,27 +1262,42 @@ export function calcularCuotaBaseGeneralCCAA(
   }
 
   // Año soportado · leemos del módulo nuevo (T18.0).
+  // T18.1 · si el paquete CCAA tiene `verified=false` (escala con TODOs ·
+  // tramos placeholder) usamos `BASE_ESTATAL_RULES.escalaAutonomica`
+  // (supletoria DT 15ª LIRPF) para el cálculo · cero regresión silenciosa.
+  // El paquete sigue exponiendo sus deducciones (que sí pueden estar
+  // verified=true a nivel deducción) · solo la escala cae a supletoria.
   const reglas = getReglasCcaa(ccaa);
-  const isFallback = reglas === BASE_ESTATAL_RULES;
-  const tramosCompat = reglas.escalaAutonomica.map((t) => ({
+  const isFallbackPaquete = reglas === BASE_ESTATAL_RULES;
+  const usarSupletoriaPorVerified = !isFallbackPaquete && !reglas.verified;
+  const escalaParaCalculo = (isFallbackPaquete || usarSupletoriaPorVerified)
+    ? BASE_ESTATAL_RULES.escalaAutonomica
+    : reglas.escalaAutonomica;
+  const fuenteEscala = (isFallbackPaquete || usarSupletoriaPorVerified)
+    ? BASE_ESTATAL_RULES.fuenteOficialEscala
+    : reglas.fuenteOficialEscala;
+  const verifiedEscala = !isFallbackPaquete && reglas.verified;
+  const tramosCompat = escalaParaCalculo.map((t) => ({
     hasta: t.baseHasta,
     tipo: t.tipoMarginal,
   }));
   const escalaAutonomicaUsada: EscalaTramos = {
     tramos: tramosCompat,
-    verified: reglas.verified,
-    fuente: reglas.fuenteOficialEscala,
+    verified: verifiedEscala,
+    fuente: fuenteEscala,
   };
   const cuotaEstatal = calcularCuotaPorTramos(base, ESCALA_ESTATAL_GENERAL_2024.tramos);
   const cuotaAutonomica = calcularCuotaPorTramos(base, tramosCompat);
 
   let reason: string | undefined;
-  if (isFallback) {
+  if (isFallbackPaquete) {
     if (!ccaa || !ccaa.trim()) {
       reason = 'CCAA no informada · usando supletoria';
     } else {
       reason = `CCAA "${ccaa}" no implementada en módulo · usando supletoria · TODO T18.1-T18.3`;
     }
+  } else if (usarSupletoriaPorVerified) {
+    reason = `CCAA "${reglas.ccaa}" implementada pero escala verified=false · usando supletoria como fallback seguro · TODO auditar valores`;
   }
 
   return {
@@ -1290,7 +1305,7 @@ export function calcularCuotaBaseGeneralCCAA(
     cuotaEstatal: round2(cuotaEstatal),
     cuotaAutonomica: round2(cuotaAutonomica),
     escalaAutonomicaUsada,
-    escalaAutonomicaAplicada: !isFallback,
+    escalaAutonomicaAplicada: verifiedEscala,
     reason,
   };
 }
