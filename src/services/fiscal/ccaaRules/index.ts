@@ -23,6 +23,11 @@ import { VALENCIA_RULES } from './valencia';
 import { BALEARES_RULES } from './baleares';
 import { CASTILLA_Y_LEON_RULES } from './castilla_y_leon';
 
+// Regex de combining diacritics (U+0300 a U+036F) construido vía
+// `RegExp` con escapes Unicode string · evita caracteres combining
+// literales en el source (algunos linters/parsers de CRA los rechazan).
+const COMBINING_DIACRITICS_RE = new RegExp('[\\u0300-\\u036F]', 'g');
+
 // Normalizador · NFD + sin diacríticos + lowercase + trim · resiste
 // 'Cataluña' · 'Catalunya' · 'CATALUÑA' · 'comunidad de madrid' ·
 // 'Comunitat Valenciana' · 'Illes Balears'.
@@ -30,7 +35,7 @@ export function normalizeCcaaKey(input: string | null | undefined): string | nul
   if (!input || typeof input !== 'string') return null;
   const cleaned = input
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(COMBINING_DIACRITICS_RE, '')
     .trim()
     .toLowerCase();
   if (!cleaned) return null;
@@ -77,10 +82,8 @@ const CCAA_RULES_MAP = new Map<string, CcaaRules>([
 export function getReglasCcaa(ccaa: string | null | undefined): CcaaRules {
   const key = normalizeCcaaKey(ccaa);
   if (!key) {
-    if (typeof console !== 'undefined') {
-      // CCAA no informada · es un caso esperado (gateway emite el warning
-      // canónico) · no spammeamos logs.
-    }
+    // CCAA no informada · caso esperado (gateway emite el warning canónico)
+    // · NO spammeamos logs aquí.
     return BASE_ESTATAL_RULES;
   }
 
