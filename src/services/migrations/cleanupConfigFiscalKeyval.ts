@@ -45,8 +45,13 @@ export async function cleanupConfigFiscalKeyval(): Promise<ConfigFiscalCleanupRe
   }
 
   try {
-    const existing = await db.get('keyval', TARGET_KEY);
-    if (existing !== undefined && existing !== null) {
+    // Borrado por EXISTENCIA · si la clave está presente (incluso con valor
+    // null) la borramos para no dejar residuo en el store. IndexedDB no
+    // distingue "clave inexistente" de "clave con valor undefined" en su
+    // API · `db.get` devuelve undefined en ambos casos · por eso usamos
+    // `getKey` para detectar presencia real.
+    const presentKey = await db.getKey('keyval', TARGET_KEY);
+    if (presentKey !== undefined) {
       await db.delete('keyval', TARGET_KEY);
       report.deleted = true;
     }

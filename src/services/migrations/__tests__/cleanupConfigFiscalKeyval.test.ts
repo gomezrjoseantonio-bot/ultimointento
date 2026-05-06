@@ -1,10 +1,12 @@
 /**
  * TAREA 14 sub-tarea 14.5 · tests para cleanupConfigFiscalKeyval.
  *
- * Cubre los 3 casos del spec §5.3:
+ * Cubre los 3 casos del spec §5.3 + 1 caso adicional (configFiscal=null ·
+ * Copilot review · borrado por EXISTENCIA · NO por truthiness):
  *   1. keyval con `configFiscal` poblada · run · borrada · flag escrito · deleted=true
  *   2. keyval sin `configFiscal` · run · deleted=false · flag escrito · idempotente
  *   3. 2ª ejecución · skip silencioso · skipped=true · deleted=false
+ *   4. keyval con `configFiscal=null` · run · borrada (presente aunque valor null)
  */
 
 import 'fake-indexeddb/auto';
@@ -91,5 +93,33 @@ describe('cleanupConfigFiscalKeyval', () => {
     // configFiscal manual sigue ahí (NO se borra en skip)
     const stillThere = await db.get('keyval', 'configFiscal');
     expect(stillThere).toEqual({ foo: 'bar2' });
+  });
+
+  it('4 · configFiscal con valor null · borrada (existencia · no truthiness)', async () => {
+    const { initDB } = await import('../../db');
+    const { cleanupConfigFiscalKeyval } = await import('../cleanupConfigFiscalKeyval');
+
+    const db = await initDB();
+    // Clave presente con valor null · escenario edge donde un consumidor
+    // legacy podría haberla seteado a null en lugar de borrarla.
+    await db.put('keyval', null as any, 'configFiscal');
+
+    // Verificamos que la clave realmente está presente con null
+    const presentBefore = await db.getKey('keyval', 'configFiscal');
+    expect(presentBefore).toBe('configFiscal');
+
+    const report = await cleanupConfigFiscalKeyval();
+
+    expect(report.skipped).toBe(false);
+    expect(report.deleted).toBe(true);
+    expect(report.errors).toEqual([]);
+
+    // configFiscal ya no existe (ni siquiera como clave con null)
+    const presentAfter = await db.getKey('keyval', 'configFiscal');
+    expect(presentAfter).toBeUndefined();
+
+    // flag escrito
+    const flag = await db.get('keyval', T14_CLEANUP_FLAG_KEY);
+    expect(flag).toBe('completed');
   });
 });
