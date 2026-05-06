@@ -20,6 +20,7 @@ import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrate
 import { cleanupConfigFiscalKeyval } from './services/migrations/cleanupConfigFiscalKeyval';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
+import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -337,6 +338,18 @@ function App() {
       .then(() => limpiarEjerciciosCoordBasura())
       // T38: migración v68 · inferir tipoFamilia en compromisosRecurrentes existentes
       .then(() => runV68TipoFamiliaMigration())
+      // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
+      // en los 2 patrones documentados (dia_a_dia.otros + seguros_cuotas.seguro_otros).
+      .then(() => cleanupCategoriasT34T35Fix2())
+      .then((t34Fix2Report) => {
+        if (!t34Fix2Report.skipped &&
+            (t34Fix2Report.caso1Corregidos > 0 || t34Fix2Report.caso2Corregidos > 0)) {
+          console.log('[ATLAS] Limpieza T34/T35-fix-2 categorías:', t34Fix2Report);
+        }
+        if (t34Fix2Report.errors.length > 0) {
+          console.warn('[ATLAS] Limpieza T34/T35-fix-2 · errores parciales:', t34Fix2Report.errors);
+        }
+      })
       .catch((error) => {
         console.error('[ATLAS] Error inicializando IndexedDB o ejecutando migraciones iniciales:', error);
       });
