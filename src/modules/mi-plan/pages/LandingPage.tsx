@@ -15,7 +15,7 @@ import { useProyeccionLibertad } from '../../../hooks/useProyeccionLibertad';
 import styles from './LandingPage.module.css';
 
 interface LanCard {
-  key: 'proyeccion' | 'libertad' | 'objetivos' | 'fondos' | 'retos';
+  key: 'proyeccion' | 'libertad' | 'objetivos' | 'fondos';
   title: string;
   icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
   value: React.ReactNode;
@@ -25,6 +25,14 @@ interface LanCard {
   footPill: React.ReactNode;
   footPillTone?: 'pos' | 'brand' | 'gold';
 }
+
+const formatMesReto = (mes: string): string => {
+  const [y, m] = mes.split('-').map(Number);
+  if (!y || !m) return mes;
+  return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
+    new Date(y, m - 1, 1),
+  );
+};
 
 /** Formatea un isoYM ('2031-09') como "septiembre 2031" */
 const formatMesAnio = (isoYM: string): string => {
@@ -164,29 +172,9 @@ const LandingPage: React.FC = () => {
       footPill: `${fondos.reduce((sum, f) => sum + f.cuentasAsignadas.length, 0)}`,
       footPillTone: 'brand',
     },
-    // T27.2-skip · card "Retos" condicionada a `SHOW_RETOS`
-    // (ver `../featureFlags`).
-    ...(SHOW_RETOS
-      ? [
-          {
-            key: 'retos' as const,
-            title: 'Retos',
-            icon: Icons.Retos,
-            value: retoActivo ? (
-              <span style={{ fontSize: 17, lineHeight: 1.2 }}>{retoActivo.titulo}</span>
-            ) : (
-              <span style={{ fontSize: 28, color: 'var(--atlas-v5-ink-4)' }}>—</span>
-            ),
-            valueTone: 'gold' as const,
-            sub: retoActivo
-              ? `tipo · ${retoActivo.tipo} · estado · ${retoActivo.estado}`
-              : 'sin reto activo este mes',
-            footLab: 'Mes',
-            footPill: retoActivo?.mes ?? '—',
-            footPillTone: 'gold' as const,
-          },
-        ]
-      : []),
+    // T-MIPLAN · grid landing v2 · 4 submods (sin retos · sin presupuesto).
+    // El reto activo se destaca debajo del grid como reto-card propia
+    // (mockup atlas-mi-plan-v2). Card "Mi presupuesto" diferida a T19.
   ];
 
   return (
@@ -268,6 +256,48 @@ const LandingPage: React.FC = () => {
           );
         })}
       </div>
+
+      {SHOW_RETOS && retoActivo ? (
+        <section className={styles.retoCard} aria-label="Reto destacado del mes">
+          <div className={styles.retoHead}>
+            <div className={styles.retoIcon} aria-hidden="true">
+              <Icons.Retos size={24} strokeWidth={1.8} />
+            </div>
+            <div className={styles.retoBody}>
+              <div className={styles.retoLab}>Reto de {formatMesReto(retoActivo.mes)}</div>
+              <div className={styles.retoTitulo}>{retoActivo.titulo}</div>
+              {retoActivo.descripcion ? (
+                <div className={styles.retoDesc}>{retoActivo.descripcion}</div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className={styles.retoAction}
+              onClick={() => navigate('/mi-plan/retos')}
+            >
+              Ver detalle <Icons.ArrowRight size={12} strokeWidth={2} />
+            </button>
+          </div>
+          <div className={styles.retoMeta}>
+            <span className={styles.retoMetaItem}>
+              <span className={styles.retoMetaLab}>Tipo</span>
+              <span className={styles.retoMetaVal}>{retoActivo.tipo}</span>
+            </span>
+            <span className={styles.retoMetaItem}>
+              <span className={styles.retoMetaLab}>Estado</span>
+              <span className={styles.retoMetaVal}>{retoActivo.estado}</span>
+            </span>
+            {retoActivo.metaCantidad != null ? (
+              <span className={styles.retoMetaItem}>
+                <span className={styles.retoMetaLab}>Meta</span>
+                <span className={styles.retoMetaVal}>
+                  <MoneyValue value={retoActivo.metaCantidad} decimals={0} tone="ink" />
+                </span>
+              </span>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
     </>
   );
 };
