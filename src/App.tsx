@@ -17,6 +17,7 @@ import { runMigrationIfNeeded as cleanStaleCPAndInferITP } from './services/migr
 import { migrateOrphanedInmuebleIds } from './services/migrations/migrateOrphanedInmuebleIds';
 import { runKeyvalCleanup } from './services/keyvalCleanupService';
 import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrateKeyvalPlanpagosToPrestamos';
+import { cleanupConfigFiscalKeyval } from './services/migrations/cleanupConfigFiscalKeyval';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
 import MainLayout from './layouts/MainLayout';
@@ -319,6 +320,16 @@ function App() {
         }
         if (planpagosReport.errors.length > 0) {
           console.warn('[ATLAS] Migración planpagos_* · errores parciales:', planpagosReport.errors);
+        }
+      })
+      // T14 sub-tarea 14.5 · borra keyval['configFiscal'] huérfana · idempotente.
+      .then(() => cleanupConfigFiscalKeyval())
+      .then((configFiscalReport) => {
+        if (!configFiscalReport.skipped && configFiscalReport.deleted) {
+          console.log('[ATLAS] Limpieza T14.5 configFiscal: borrada keyval residual');
+        }
+        if (configFiscalReport.errors.length > 0) {
+          console.warn('[ATLAS] Limpieza T14.5 configFiscal · errores parciales:', configFiscalReport.errors);
         }
       })
       // Limpieza de ejercicios fiscales basura — eager para evitar que la UI
