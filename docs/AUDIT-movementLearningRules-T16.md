@@ -13,7 +13,7 @@
 
 Las 3 preguntas abiertas de Jose se responden con evidencia directa de código:
 
-1. **Schema** · 13 campos · documentado en `src/services/db.ts:1239-1261` (`MovementLearningRule`) y `src/services/db.ts:1268-1272` (`HistoryEntry`).
+1. **Schema** · 14 campos en `MovementLearningRule` (`src/services/db.ts:1239-1261`, incluyendo `history?`) + 3 campos en `HistoryEntry` (`src/services/db.ts:1268-1272`).
 2. **Cuándo se escribe** · 6 puntos en `src/services/movementLearningService.ts` + 1 punto de migración en `src/services/db.ts`. De ellos, **solo 2 están en una ruta UI activa hoy** (creación/actualización vía `bankStatementOrchestrator.confirmDecisions` desde `/tesoreria/importar`); 3 puntos están enchufados a `performManualReconciliation` que **no tiene caller de producción**, y 1 punto cuelga del legacy `bankStatementImportService` cuyo único importador es un archivo `.backup`.
 3. **`history[]`** · Veredicto · **PARCIALMENTE MUERTO**. **Se escribe** desde los 6 puntos de escritura (incluido el path activo). **No se lee** desde ningún consumidor de producción · `getLearningLogs` (`movementLearningService.ts:578`) y `getLearningRulesStats` (`movementLearningService.ts:535`) son los únicos lectores y **solo se llaman desde tests**.
 
@@ -67,11 +67,11 @@ learningRulesStore.createIndex('createdAt', 'createdAt', { unique: false });
 learningRulesStore.createIndex('appliedCount', 'appliedCount', { unique: false });
 ```
 
-Nota · el comentario en `src/services/db.ts:1235` menciona los índices `learnKey · categoria · ambito · createdAt`. La auditoría TAREA 7-bis citada en el spec se quedó corta · **falta `appliedCount`** que sí existe en código real.
+Nota · la auditoría TAREA 7-bis citada en el spec T16 §1 enumera solo 4 índices (`learnKey · categoria · ambito · createdAt`). El código real (`db.ts:2641`) registra **5 índices** · falta `appliedCount` en aquel listado.
 
 ### 1.4 · Campos sin uso real detectado
 
-- **`source: 'IMPLICIT'`** · literal único en todo el codebase. Nunca se compara, nunca se filtra. Reserva sin consumidor (`grep` en `src/` por `'IMPLICIT'\|'EXPLICIT'` solo encuentra el literal de inicialización en `movementLearningService.ts:175,233` y la definición de tipo).
+- **`source: 'IMPLICIT'`** · sin consumidor real. Nunca se compara ni se filtra. `grep -rn "'IMPLICIT'\\|'EXPLICIT'" src/` devuelve solo · (a) la definición del tipo (`db.ts:1248`), (b) las dos inicializaciones en `movementLearningService.ts:175,233`, y (c) usos en tests (`__tests__/dbV60Migration.test.ts:354`, `__tests__/dbV64Migration.test.ts:147,246`, `__tests__/movementSuggestionService.test.ts:114,262`, `__tests__/movementLearningService.test.ts:219,446`) que solo lo asignan o lo afirman como valor esperado · no lo comparan como discriminante de rama. (Aparte, `'EXPLICIT_SELECTION'` en `propertyAssignmentService.ts` es un enum no relacionado.) Reserva sin consumidor en producción.
 
 ---
 
@@ -249,7 +249,7 @@ No es código *muerto absoluto* (los writers funcionan, los tests verifican el c
 | B3 | 🟡 Baja | `history[]` es escrito por todos los writers pero **0 lectores de producción**. `getLearningLogs` y `getLearningRulesStats` solo se usan en tests. | `src/services/movementLearningService.ts:578-606`, `:535-562` | Decidir · (a) construir UI de auditoría que consuma `getLearningLogs`, o (b) eliminar campo `history`, helper `appendHistory`, ambos getters y la migración V64. NO eliminar sin decisión explícita de Jose. |
 | B4 | 🟡 Baja | `performManualReconciliation` tiene 0 callers de producción. Implementa una UX coherente (reconciliación 1-a-1 + backfill periodo/cuenta) pero la UI que la dispararía nunca se rutó. | `src/services/movementLearningService.ts:427-514` | Decidir si la T17 actual ya cubre este caso (reconciliación masiva post-importación) o si hace falta el flujo 1-a-1. Si se descarta, eliminar `performManualReconciliation`, `createLearningRule`, `applyRuleToGrays` (W1/W2/W5). |
 | B5 | 🟡 Baja | `bankStatementImportService` (servicio legacy, 1 archivo entero) es importado solo desde un `.tsx.backup`. Toda su lógica (`applyLearningRulesToNewMovements`) es código muerto duplicado del orchestrator. | `src/services/bankStatementImportService.ts:60`, `src/components/inbox/BankStatementModal.tsx.backup:6` | Inventariar y borrar el legacy junto con el `.backup`. |
-| B6 | 🟢 Trivial | Comentario obsoleto · `src/services/db.ts:1235` y la auditoría TAREA 7-bis citaron 4 índices · falta `appliedCount` que sí está en `db.ts:2641`. | `src/services/db.ts:1235` (sin comentario explícito · es la auditoría previa la que lo omite) | Documentar 5 índices completos en cualquier doc futura del schema. |
+| B6 | 🟢 Trivial | Listado de índices desactualizado en la auditoría TAREA 7-bis · cita 4 (`learnKey · categoria · ambito · createdAt`) cuando el código real registra 5 (falta `appliedCount`). | `src/services/db.ts:2637-2641` (código real · 5 índices) | Documentar los 5 índices completos en cualquier doc futura del schema. |
 | B7 | 🟢 Trivial | `source: 'IMPLICIT'` no se usa en ninguna comparación · solo en inicialización. Reservado para futuro `'EXPLICIT'` que nunca llegó. | `src/services/movementLearningService.ts:175,233`, `src/services/db.ts:1248` | Si tras T17/T18 sigue sin uso, eliminar el campo. |
 | B8 | 🟢 Trivial | W3/W4 (orchestrator path) escriben entradas `CREATE_RULE` en `history[]` sin `movimientoId`, mientras W1/W2 (manual reconciliation) sí lo incluyen. Pérdida de trazabilidad en la ruta activa. | `src/services/movementLearningService.ts:218,237` | Aceptar `movimientoId` opcional en la firma de `createOrUpdateRule` y propagarlo desde `feedLearningRule`. |
 | B9 | 🟢 Trivial | W5 (`applyRuleToGrays:330-332`) duplica inline el FIFO 50 en vez de usar `appendHistory` en bucle (decisión consciente para no recortar 50 veces, pero rompe DRY). | `src/services/movementLearningService.ts:330-332` | Refactor menor · helper `appendHistoryBatch(rule, entries[])`. Cosmético. |
