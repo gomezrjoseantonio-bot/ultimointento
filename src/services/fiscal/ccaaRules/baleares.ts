@@ -36,14 +36,17 @@ const DEDUCCION_ARRENDAMIENTO: DeduccionAutonomica = {
   ccaa: 'Illes Balears',
   nombre: 'Arrendamiento de vivienda habitual',
   descripcion:
-    '15% (tope 530 €) base ≤36 años o ≥65 sin actividad laboral/profesional · 20% (tope 650 €) si cumple UNA · ≤30 años · discapacidad ≥33% · familia numerosa · familia monoparental con 2+ hijos · autónomo dado de alta ≥183 días · contrato ≥1 año · BI ≤33.000 indiv / ≤52.800 conjunta · ≤39.600 / ≤63.360 familia numerosa.',
+    '15% (tope 530 €) base · perfil base · menor de 36 años (≤35) o mayor de 65 sin actividad laboral/profesional · 20% (tope 650 €) si cumple UNA condición incrementadora · ≤30 años · discapacidad ≥33% · familia numerosa · familia monoparental con 2+ hijos · autónomo dado de alta ≥183 días · contrato ≥1 año · BI ≤33.000 indiv / ≤52.800 conjunta · ≤39.600 / ≤63.360 familia numerosa.',
   fuenteOficial: `${FUENTE_DL_BALEARES} · ${FUENTE_AEAT_MANUAL} · ${URL_AEAT_BALEARES}`,
   verified: true,
 
   // Cálculo en `calcularImporte` por la diferencia base/incrementado.
   porcentaje: 0.15,
-  topeAbsolutoIndividual: 530,
-  topeAbsolutoConjunta: 530,
+  // T18.1 fix · `topeAbsoluto*` al MÁXIMO posible (650 € incrementado) ·
+  // `calcularImporte` selecciona el tope efectivo (530 / 650) · evita doble
+  // tope que recortaba 650 a 530.
+  topeAbsolutoIndividual: 650,
+  topeAbsolutoConjunta: 650,
 
   requisitos: {
     requiereTipoVivienda: 'habitual',

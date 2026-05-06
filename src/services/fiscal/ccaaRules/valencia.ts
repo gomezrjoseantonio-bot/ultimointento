@@ -19,7 +19,12 @@
 //     44k-47k conjunta · CRÍTICO según spec.
 // ============================================================================
 
-import type { CcaaRules, DeduccionAutonomica } from '../tipos';
+import type {
+  CcaaRules,
+  DatosBaseDeduccion,
+  DeduccionAutonomica,
+  FiscalContext,
+} from '../tipos';
 import { BASE_ESTATAL_RULES } from './_base_estatal';
 
 const FUENTE_LEY_13_1997 =
@@ -42,8 +47,8 @@ const URL_HISENDA_GVA =
  *   · Víctima de violencia de género
  */
 function contarCondicionesValencia(
-  ctx: import('../tipos').FiscalContext,
-  datosBase: import('../tipos').DatosBaseDeduccion,
+  ctx: FiscalContext,
+  datosBase: DatosBaseDeduccion,
 ): number {
   let n = 0;
   if (ctx.edadActual !== null && ctx.edadActual <= 35) n += 1;
@@ -88,20 +93,25 @@ const DEDUCCION_ARRENDAMIENTO: DeduccionAutonomica = {
   // Estos campos se documentan para metadatos pero el cálculo real va
   // por `calcularImporte` (porcentajes/topes variables según condiciones
   // cumplidas + reducción progresiva BI).
+  // T18.1 fix · `topeAbsoluto*` al MÁXIMO posible (1.100 €) · `calcularImporte`
+  // selecciona el tope efectivo (800 / 950 / 1.100 según condiciones) ·
+  // evita doble tope que recortaba 950/1100 a 800.
   porcentaje: 0.2,
-  topeAbsolutoIndividual: 800,
-  topeAbsolutoConjunta: 800,
+  topeAbsolutoIndividual: 1100,
+  topeAbsolutoConjunta: 1100,
 
   requisitos: {
     requiereTipoVivienda: 'habitual',
     requiereResidenciaFiscalCcaa: true,
     requiereTitularContrato: true,
     duracionContratoMinAnios: 1,
-    // BI máximo · usamos los topes ABSOLUTOS (más allá de los cuales NO
-    // hay deducción · 30k individual / 47k conjunta). La fórmula
-    // progresiva entre 27k-30k / 44k-47k se aplica en `calcularImporte`.
-    baseImponibleMaxIndividual: 30000,
-    baseImponibleMaxConjunta: 47000,
+    // BI máximo · estrictamente menor que 30.000 / 47.000 · en BI=30.000
+    // (umbral) la fórmula progresiva da factor 0 (importe=0) · alineamos
+    // elegibilidad para evitar el caso confuso de "elegible con importe 0".
+    // Usamos 29999.99 / 46999.99 (precisión céntimo · suficiente para BI
+    // fiscal). T18.1 fix Copilot · alinear umbral con factor 0 de fórmula.
+    baseImponibleMaxIndividual: 29999.99,
+    baseImponibleMaxConjunta: 46999.99,
     // TODO T18.x · contrato posterior 23/04/1998 · NO propietario <50 km ·
     // pagos trazables · ampliar `DatosBaseDeduccion` con flags concretos
     // cuando aparezca el wizard fiscal · hoy no se evalúan (se asumen
@@ -156,8 +166,8 @@ const DEDUCCION_PRIMERA_ADQUISICION: DeduccionAutonomica = {
     edadMaxima: 36, // ≤35
     requiereTipoVivienda: 'habitual',
     requiereResidenciaFiscalCcaa: true,
-    baseImponibleMaxIndividual: 30000,
-    baseImponibleMaxConjunta: 47000,
+    baseImponibleMaxIndividual: 29999.99,
+    baseImponibleMaxConjunta: 46999.99,
     // TODO T18.x · primera vivienda · patrimonio aumenta · pagos trazables
     // · ampliar `DatosBaseDeduccion` con flags · hoy se asumen cumplidos.
   },

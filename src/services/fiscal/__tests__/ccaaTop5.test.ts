@@ -118,8 +118,42 @@ describe('T18.1 · Cataluña', () => {
     });
     const r = evaluarElegibilidad(CATALUNA_RULES.deducciones[0], ctx, datos);
     expect(r.elegible).toBe(true);
-    // 10% × 12000 = 1200 · tope conjunta 1000
+    // 10% × 12000 = 1200 · tope incrementado 1000
     expect(r.importeAplicable).toBe(1000);
+  });
+
+  test('arrendamiento · familia monoparental INDIVIDUAL · alquiler 12.000 → ELEGIBLE 1.000€ (tope incrementado en individual también)', () => {
+    // T18.1 fix Copilot · tope 1.000€ aplica también en individual cuando
+    // hay familia numerosa/monoparental · DL 1/2024 art. 612-3.
+    const ctx = buildCtx({
+      comunidadAutonoma: 'Cataluña',
+      tributacion: 'individual',
+      edadActual: 40,
+    });
+    const datos = buildDatos({
+      baseImponibleIndividual: 22000,
+      alquilerAnual: 12000,
+      familiaMonoparental: true,
+    });
+    const r = evaluarElegibilidad(CATALUNA_RULES.deducciones[0], ctx, datos);
+    expect(r.elegible).toBe(true);
+    expect(r.importeAplicable).toBe(1000);
+  });
+
+  test('arrendamiento · familia numerosa INDIVIDUAL · alquiler 8.000 → ELEGIBLE 800€ (10% bruto · NO alcanza tope incrementado)', () => {
+    const ctx = buildCtx({
+      comunidadAutonoma: 'Cataluña',
+      edadActual: 40,
+    });
+    const datos = buildDatos({
+      baseImponibleIndividual: 18000,
+      alquilerAnual: 8000,
+      familiaNumerosa: 'general',
+    });
+    const r = evaluarElegibilidad(CATALUNA_RULES.deducciones[0], ctx, datos);
+    expect(r.elegible).toBe(true);
+    // 10% × 8000 = 800 · tope incrementado 1000 NO alcanzado
+    expect(r.importeAplicable).toBe(800);
   });
 });
 
@@ -230,7 +264,17 @@ describe('T18.1 · Valencia', () => {
     const datos = buildDatos({ baseImponibleIndividual: 31000, alquilerAnual: 6000 });
     const r = evaluarElegibilidad(VALENCIA_RULES.deducciones[0], ctx, datos);
     expect(r.elegible).toBe(false);
-    expect(r.motivosNoElegible.some((m) => m.includes('30.000'))).toBe(true);
+    expect(r.motivosNoElegible.some((m) => m.includes('29.999'))).toBe(true);
+  });
+
+  test('arrendamiento · BI 30.000 EXACTO (umbral) → NO ELEGIBLE (factor 0 de fórmula · alineado)', () => {
+    // T18.1 fix Copilot · umbral exact 30.000 ahora se trata como NO
+    // elegible · evita el caso confuso "elegible con importe 0".
+    const ctx = buildCtx({ comunidadAutonoma: 'Valencia', edadActual: 30 });
+    const datos = buildDatos({ baseImponibleIndividual: 30000, alquilerAnual: 6000 });
+    const r = evaluarElegibilidad(VALENCIA_RULES.deducciones[0], ctx, datos);
+    expect(r.elegible).toBe(false);
+    expect(r.motivosNoElegible.some((m) => m.includes('29.999'))).toBe(true);
   });
 });
 

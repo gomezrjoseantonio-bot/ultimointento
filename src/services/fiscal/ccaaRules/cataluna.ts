@@ -64,7 +64,10 @@ const DEDUCCION_ARRENDAMIENTO_VIVIENDA_HABITUAL: DeduccionAutonomica = {
   porcentaje: 0.1,
   // baseMaximaCalculo · DL 1/2024 NO fija base máxima · se aplica % directo
   // sobre cantidades pagadas con el tope absoluto.
-  topeAbsolutoIndividual: 500,
+  // T18.1 fix · `topeAbsoluto*` al MÁXIMO posible (1.000 €) · `calcularImporte`
+  // selecciona el tope efectivo (500 base · 1.000 si familia numerosa o
+  // monoparental · independiente de tributación individual o conjunta).
+  topeAbsolutoIndividual: 1000,
   topeAbsolutoConjunta: 1000,
 
   requisitos: {
@@ -82,16 +85,20 @@ const DEDUCCION_ARRENDAMIENTO_VIVIENDA_HABITUAL: DeduccionAutonomica = {
     ],
   },
 
-  // El motor genérico calcula: 10% × alquilerAnual con tope absoluto. La
-  // selección del tope individual vs conjunta la hace el motor según
-  // `ctx.tributacion === 'conjunta'`. Para familia numerosa/monoparental
-  // en tributación individual · el motor genérico aplica `topeAbsolutoIndividual`
-  // (500 €) · NO el incrementado · TODO T18.x si Jose confirma que el
-  // tope incrementado debe aplicar también en individual con familia
-  // numerosa/monoparental, refactor el motor o usar `calcularImporte`
-  // custom. Pre-investigación AEAT 2025 sugiere que el tope incrementado
-  // 1.000 € aplica tanto en conjunta como cuando familia numerosa/monoparental
-  // en individual · documentado en notasMigracion.
+  // T18.1 fix · tope 1.000 € aplica si el titular es familia numerosa o
+  // monoparental · independientemente de tributación individual/conjunta.
+  // Tope 500 € en cualquier otro caso elegible (joven · paro). Pre-investigación
+  // T18.1-CORRECCION-cataluna confirma · DL 1/2024 art. 612-3.
+  calcularImporte: (_ctx, datosBase) => {
+    const cantidad = datosBase.alquilerAnual ?? 0;
+    if (cantidad <= 0) return 0;
+    const importe10 = cantidad * 0.1;
+    const tieneFamiliaIncrementadora =
+      datosBase.familiaMonoparental === true ||
+      (datosBase.familiaNumerosa !== undefined && datosBase.familiaNumerosa !== false);
+    const tope = tieneFamiliaIncrementadora ? 1000 : 500;
+    return Math.round(Math.min(importe10, tope) * 100) / 100;
+  },
 };
 
 // ─── Paquete CCAA · Cataluña ───────────────────────────────────────────────

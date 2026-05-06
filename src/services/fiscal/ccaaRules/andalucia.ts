@@ -42,8 +42,11 @@ const DEDUCCION_ARRENDAMIENTO: DeduccionAutonomica = {
   verified: true,
 
   porcentaje: 0.15,
-  topeAbsolutoIndividual: 1200,
-  topeAbsolutoConjunta: 1200,
+  // T18.1 fix · `topeAbsoluto*` al MÁXIMO posible (1.500 € si discapacidad)
+  // · `calcularImporte` selecciona el tope efectivo (1.200 / 1.500) · evita
+  // doble tope que recortaba 1.500 a 1.200.
+  topeAbsolutoIndividual: 1500,
+  topeAbsolutoConjunta: 1500,
   // baseMaximaCalculo · NO definida · 15% × cantidades pagadas con tope absoluto.
 
   requisitos: {
