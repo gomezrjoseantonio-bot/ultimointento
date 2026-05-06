@@ -2198,6 +2198,12 @@ interface AtlasHorizonDB {
    *     → Flag idempotencia del cleanup T14.5 · borra `configFiscal` huérfana.
    *     → Dueño: `services/migrations/cleanupConfigFiscalKeyval.ts`
    *
+   *   `'cleanup_T34_T35_fix2_categorias'` (D1 · KEEP)
+   *     → Flag idempotencia del cleanup T34/T35-fix-2 · corrige los 2 patrones
+   *       de categoría aplastada a 'otros.*' (dia_a_dia.otros y
+   *       seguros_cuotas.seguro_otros).
+   *     → Dueño: `services/migrations/cleanupCategoriasT34T35fix2.ts`
+   *
    * ── Claves PROHIBIDAS (NO añadir bajo ningún concepto) ──────────────────
    *
    *   `'planpagos_${prestamoId}'` · datos del usuario · vive en
