@@ -27,6 +27,10 @@ import { ARAGON_RULES } from './aragon';
 import { ASTURIAS_RULES } from './asturias';
 import { MURCIA_RULES } from './murcia';
 import { CANTABRIA_RULES } from './cantabria';
+import { CANARIAS_RULES } from './canarias';
+import { CASTILLA_LA_MANCHA_RULES } from './castilla_la_mancha';
+import { EXTREMADURA_RULES } from './extremadura';
+import { LA_RIOJA_RULES } from './la_rioja';
 
 // Regex de combining diacritics (U+0300 a U+036F) construido vía
 // `RegExp` con escapes Unicode string · evita caracteres combining
@@ -65,8 +69,9 @@ export function normalizeCcaaKey(input: string | null | undefined): string | nul
   return cleaned;
 }
 
-// Mapa de paquetes · T18.0 · Madrid · T18.1 · Top 5 mercado · T18.2 · mercado
-// medio · T18.3 añadirá Canarias · CLM · Extremadura · La Rioja.
+// Mapa de paquetes · 15 CCAA régimen común cubiertas (T18 cerrada).
+// Quedan FUERA · País Vasco (3 territorios forales) · Navarra · IRPF foral
+// · TAREA futura cuando aparezca cliente real.
 const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['madrid', MADRID_RULES],
   ['cataluna', CATALUNA_RULES],
@@ -79,6 +84,10 @@ const CCAA_RULES_MAP = new Map<string, CcaaRules>([
   ['asturias', ASTURIAS_RULES],
   ['murcia', MURCIA_RULES],
   ['cantabria', CANTABRIA_RULES],
+  ['canarias', CANARIAS_RULES],
+  ['castilla_la_mancha', CASTILLA_LA_MANCHA_RULES],
+  ['extremadura', EXTREMADURA_RULES],
+  ['la_rioja', LA_RIOJA_RULES],
 ]);
 
 /**

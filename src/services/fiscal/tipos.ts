@@ -108,6 +108,12 @@ export interface DatosBaseDeduccion {
   propiedadMasMitadOtraVivienda?: boolean;
   /** Número de hijos menores de edad (Galicia · 2+ hijos menores activa porcentaje incrementado). */
   numeroHijosMenores?: number;
+  /** Canarias · referencia catastral del inmueble en autoliquidación. */
+  referenciaCatastralPresente?: boolean;
+  /** Población del municipio de la vivienda (Extremadura · La Rioja · CLM · habitantes). */
+  municipioPoblacionHabitantes?: number;
+  /** Ascendiente separado/sin matrimonio con 2+ hijos sin alimentos (Extremadura · excepción BI rural). */
+  esAscendienteSeparadoCon2Hijos?: boolean;
 }
 
 // ─── Requisitos de elegibilidad ─────────────────────────────────────────────
@@ -145,6 +151,20 @@ export interface RequisitosDeduccion {
   requiereNoPropiedadMasMitadOtraVivienda?: boolean;
   /** Galicia · 2+ hijos menores para porcentaje incrementado · usado en `condicionesElegibilidadOR`. */
   hijosMenoresMinimo?: number;
+  /** Canarias · referencia catastral del inmueble obligatoria. */
+  requiereReferenciaCatastral?: boolean;
+
+  /**
+   * Extremadura · excepción al BI máx · si vivienda en municipio rural
+   * (≤`poblacionMaxima` habitantes) Y se cumple alguna condición
+   * adicional · NO se evalúa el BI máx · cliente elegible sin importar BI.
+   * Hoy soporta `familia_numerosa` y `ascendiente_2_hijos`.
+   */
+  excepcionBIRural?: {
+    poblacionMaxima: number;
+    requiereFamiliaNumerosa?: boolean;
+    requiereAscendienteCon2Hijos?: boolean;
+  };
 
   /**
    * Conjunto OR de condiciones · si al menos UNA se cumple · la deducción

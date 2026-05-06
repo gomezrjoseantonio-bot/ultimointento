@@ -82,7 +82,34 @@ export function evaluarElegibilidad(
   const tieneTresMasHijos = (ctx.descendientes?.length ?? 0) >= 3;
   const esConjunta = ctx.tributacion === 'conjunta';
 
-  if (tieneTresMasHijos && req.baseImponibleMaxFamiliar !== undefined) {
+  // T18.3 · Extremadura · excepción BI rural · si vivienda en municipio
+  // rural ≤`poblacionMaxima` Y (familia numerosa O ascendiente con 2 hijos)
+  // · se exime del check BI · regla 0.7 SAGRADA respetada (la excepción
+  // está modelada explícitamente en `requisitos`).
+  let bIRuralEximida = false;
+  if (req.excepcionBIRural !== undefined) {
+    const poblacion = datosBase.municipioPoblacionHabitantes;
+    const enMunicipioRural =
+      poblacion !== undefined && poblacion <= req.excepcionBIRural.poblacionMaxima;
+    if (enMunicipioRural) {
+      const fnVal = datosBase.familiaNumerosa;
+      const cumpleFamiliaNumerosa = !!(
+        req.excepcionBIRural.requiereFamiliaNumerosa &&
+        fnVal !== undefined && fnVal !== false
+      );
+      const cumpleAscendiente2Hijos = !!(
+        req.excepcionBIRural.requiereAscendienteCon2Hijos &&
+        datosBase.esAscendienteSeparadoCon2Hijos === true
+      );
+      if (cumpleFamiliaNumerosa || cumpleAscendiente2Hijos) {
+        bIRuralEximida = true;
+      }
+    }
+  }
+
+  if (bIRuralEximida) {
+    // Sin check BI · pasamos al siguiente bloque.
+  } else if (tieneTresMasHijos && req.baseImponibleMaxFamiliar !== undefined) {
     const bi = esConjunta && datosBase.baseImponibleConjunta !== undefined
       ? datosBase.baseImponibleConjunta
       : datosBase.baseImponibleIndividual;
@@ -198,9 +225,14 @@ export function evaluarElegibilidad(
     }
   }
 
-  // ─── Murcia · contrato ITP/AJD presentado ────────────────────────────────
+  // ─── Murcia · La Rioja · contrato ITP/AJD presentado ────────────────────
   if (req.requiereItpAjdPresentado === true && datosBase.itpAjdPresentado !== true) {
     motivos.push('contrato ITP/AJD no presentado (o dato no informado)');
+  }
+
+  // ─── Canarias · referencia catastral en autoliquidación ─────────────────
+  if (req.requiereReferenciaCatastral === true && datosBase.referenciaCatastralPresente !== true) {
+    motivos.push('referencia catastral no informada en autoliquidación');
   }
 
   // ─── Murcia · Valencia · pagos trazables ────────────────────────────────
