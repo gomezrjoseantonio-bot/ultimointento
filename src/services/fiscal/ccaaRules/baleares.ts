@@ -75,11 +75,13 @@ const DEDUCCION_ARRENDAMIENTO: DeduccionAutonomica = {
     const cantidad = datosBase.alquilerAnual ?? 0;
     if (cantidad <= 0) return 0;
 
+    const tieneFamiliaNumerosa =
+      datosBase.familiaNumerosa !== undefined && datosBase.familiaNumerosa !== false;
     const cumpleIncrementado =
       (ctx.edadActual !== null && ctx.edadActual <= 30) ||
       ctx.discapacidadTitular === 'entre33y65' ||
       ctx.discapacidadTitular === 'mas65' ||
-      datosBase.familiaNumerosa !== undefined && datosBase.familiaNumerosa !== false ||
+      tieneFamiliaNumerosa ||
       datosBase.familiaMonoparental === true;
 
     const porcentaje = cumpleIncrementado ? 0.2 : 0.15;
