@@ -30,6 +30,11 @@ import {
   getEscalaAutonomica,
   type EscalaTramos,
 } from '../data/fiscal/tramosAutonomicos2024';
+// T18.0 · motor elegibilidad deducciones autonómicas + reglas CCAA por archivo.
+// `calcularCuotaBaseGeneralCCAA` deja de leer tablas inline · pasa a leer del
+// módulo `src/services/fiscal/ccaaRules/` · Madrid verified=true.
+import { getReglasCcaa } from './fiscal/deduccionesAutonomicasService';
+import { BASE_ESTATAL_RULES } from './fiscal/ccaaRules/_base_estatal';
 import type { NivelDiscapacidad } from '../types/personal';
 
 // ─── Constantes fiscales 2025/2026 ───────────────────────────────────────────
@@ -1212,9 +1217,17 @@ export function filtrarViviendaHabitualDePropiedades(
 
 /**
  * Calcula la cuota base general aplicando escala estatal + escala
- * autonómica de la CCAA del titular. Si la CCAA no tiene tabla auditada
- * (`verified: false`), cae a la supletoria DT 15ª LIRPF · resultado
- * idéntico al comportamiento previo a T14.3.
+ * autonómica de la CCAA del titular.
+ *
+ * T18.0 · lee del módulo `src/services/fiscal/ccaaRules/` · Madrid
+ * verified=true con escala BOE · resto CCAA caen al fallback estatal
+ * (`BASE_ESTATAL_RULES`) que es supletoria DT 15ª LIRPF (idéntica en
+ * tramos a la estatal · tipo máximo 22.5%) · resultado equivalente al
+ * comportamiento previo a T14.3 para CCAA no implementadas.
+ *
+ * Para Madrid · post-T18.0 se aplica la escala propia (8,5% a 20,5%) ·
+ * lo que cierra GAP 5.1 (AUDIT-T14) y produce diferencia esperada vs el
+ * cálculo previo (Madrid era verified=false · caía a supletoria).
  *
  * @returns objeto con la cuota total, las cuotas parciales y la escala
  *          autonómica efectivamente usada (para diagnóstico y warnings).
@@ -1232,15 +1245,52 @@ export function calcularCuotaBaseGeneralCCAA(
   reason?: string;
 } {
   const ccaa = ctx?.comunidadAutonoma ?? null;
-  const { escala, aplicada, reason } = getEscalaAutonomica(ccaa, ejercicio);
+
+  // Año fuera de soporte · mantiene comportamiento previo · supletoria.
+  if (ejercicio !== 2024 && ejercicio !== 2025) {
+    const { escala, aplicada, reason } = getEscalaAutonomica(ccaa, ejercicio);
+    const cuotaEstatal = calcularCuotaPorTramos(base, ESCALA_ESTATAL_GENERAL_2024.tramos);
+    const cuotaAutonomica = calcularCuotaPorTramos(base, escala.tramos);
+    return {
+      cuotaTotal: round2(cuotaEstatal + cuotaAutonomica),
+      cuotaEstatal: round2(cuotaEstatal),
+      cuotaAutonomica: round2(cuotaAutonomica),
+      escalaAutonomicaUsada: escala,
+      escalaAutonomicaAplicada: aplicada,
+      reason,
+    };
+  }
+
+  // Año soportado · leemos del módulo nuevo (T18.0).
+  const reglas = getReglasCcaa(ccaa);
+  const isFallback = reglas === BASE_ESTATAL_RULES;
+  const tramosCompat = reglas.escalaAutonomica.map((t) => ({
+    hasta: t.baseHasta,
+    tipo: t.tipoMarginal,
+  }));
+  const escalaAutonomicaUsada: EscalaTramos = {
+    tramos: tramosCompat,
+    verified: reglas.verified,
+    fuente: reglas.fuenteOficialEscala,
+  };
   const cuotaEstatal = calcularCuotaPorTramos(base, ESCALA_ESTATAL_GENERAL_2024.tramos);
-  const cuotaAutonomica = calcularCuotaPorTramos(base, escala.tramos);
+  const cuotaAutonomica = calcularCuotaPorTramos(base, tramosCompat);
+
+  let reason: string | undefined;
+  if (isFallback) {
+    if (!ccaa || !ccaa.trim()) {
+      reason = 'CCAA no informada · usando supletoria';
+    } else {
+      reason = `CCAA "${ccaa}" no implementada en módulo · usando supletoria · TODO T18.1-T18.3`;
+    }
+  }
+
   return {
     cuotaTotal: round2(cuotaEstatal + cuotaAutonomica),
     cuotaEstatal: round2(cuotaEstatal),
     cuotaAutonomica: round2(cuotaAutonomica),
-    escalaAutonomicaUsada: escala,
-    escalaAutonomicaAplicada: aplicada,
+    escalaAutonomicaUsada,
+    escalaAutonomicaAplicada: !isFallback,
     reason,
   };
 }
