@@ -5,7 +5,7 @@
 > **Fecha** · 2026-05-06
 > **Spec ejecutado** · `docs/TAREA-14-2-a-14-5-fiscal-config-v2.md` §2
 
-Per regla §0.2 del spec ("Si CC encuentra ambigüedad · PARAR · comentar PR · esperar input") y §0.6 ("Si la auditoría detecta divergencia · PARAR y reportar") · **NO se ha creado ningún archivo nuevo · NO se ha tocado código**. El working tree de esta rama es idéntico a `main`.
+Per regla §0.2 del spec ("Si CC encuentra ambigüedad · PARAR · comentar PR · esperar input") y §0.6 ("Si la auditoría detecta divergencia · PARAR y reportar") · **NO se ha creado ni modificado ningún archivo en `src/`** (cero cambios de código). El único archivo nuevo de esta rama es **este propio reporte** en `docs/`.
 
 ---
 
@@ -47,12 +47,12 @@ La forma del `FiscalContext` exportado es **idéntica al spec §2.2** salvo que 
 
 ```
 src/services/__tests__/fiscalContextService.test.ts (11.027 bytes · 2026-05-02)
-- 10 tests obligatorios según spec §2.3 + 1 idempotencia adicional
+- 9 tests obligatorios según spec §2.3 + 1 extra de idempotencia · 10 total
 - Mocks de personalDataService y obtenerViviendaActiva
 - jest.useFakeTimers + setSystemTime(2026-04-30)
 ```
 
-Spec pedía 9 tests · presente con 10. Cobertura mayor.
+Spec §2.3 pedía 9 tests · el archivo presente cubre los 9 + 1 extra de idempotencia · 10 en total. Cobertura mayor que la exigida.
 
 ### 2.3 · T14.3 ya implementada
 
