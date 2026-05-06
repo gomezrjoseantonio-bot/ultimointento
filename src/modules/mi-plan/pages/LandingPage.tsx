@@ -26,17 +26,11 @@ interface LanCard {
   footPillTone?: 'pos' | 'brand' | 'gold';
 }
 
-const formatMesReto = (mes: string): string => {
-  const [y, m] = mes.split('-').map(Number);
-  if (!y || !m) return mes;
-  return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
-    new Date(y, m - 1, 1),
-  );
-};
-
-/** Formatea un isoYM ('2031-09') como "septiembre 2031" */
+/** Formatea un isoYM ('2031-09') como "septiembre 2031". Devuelve el input
+ *  original si el formato no es válido. */
 const formatMesAnio = (isoYM: string): string => {
   const [y, m] = isoYM.split('-').map(Number);
+  if (!y || !m) return isoYM;
   return new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(
     new Date(y, m - 1, 1),
   );
@@ -264,7 +258,7 @@ const LandingPage: React.FC = () => {
               <Icons.Retos size={24} strokeWidth={1.8} />
             </div>
             <div className={styles.retoBody}>
-              <div className={styles.retoLab}>Reto de {formatMesReto(retoActivo.mes)}</div>
+              <div className={styles.retoLab}>Reto de {formatMesAnio(retoActivo.mes)}</div>
               <div className={styles.retoTitulo}>{retoActivo.titulo}</div>
               {retoActivo.descripcion ? (
                 <div className={styles.retoDesc}>{retoActivo.descripcion}</div>
