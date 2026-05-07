@@ -12,12 +12,29 @@ const formatYearLabel = (year: number) => `${year}`;
 const ProyeccionPage: React.FC = () => {
   const year = new Date().getFullYear();
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
+  const [projectionError, setProjectionError] = useState<string | null>(null);
 
+  // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores de la proyección y
+  // los exponemos en banner · NO mostramos 0€ silenciosamente.
   useEffect(() => {
     let cancelled = false;
-    computeBudgetProjection12mAsync(year).then((p) => {
-      if (!cancelled) setProjection(p);
-    });
+    computeBudgetProjection12mAsync(year)
+      .then((p) => {
+        if (!cancelled) {
+          setProjection(p);
+          setProjectionError(null);
+        }
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[mi-plan/proyeccion] error proyección · banner UI', err);
+        if (!cancelled) {
+          setProjection(null);
+          setProjectionError(
+            err instanceof Error ? err.message : 'Error cargando proyección',
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -41,6 +58,23 @@ const ProyeccionPage: React.FC = () => {
 
   return (
     <>
+      {projectionError && (
+        <div
+          role="alert"
+          style={{
+            background: 'var(--s-neg-bg)',
+            color: 'var(--s-neg)',
+            border: '1px solid var(--s-neg)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 14,
+            fontSize: 13,
+          }}
+        >
+          <strong>No se pudo calcular la proyección.</strong>{' '}
+          {projectionError} · revisa la consola para más detalle.
+        </div>
+      )}
       <CardV5 accent="brand" style={{ marginBottom: 14 }}>
         <CardV5.Title>Resultado caja · {formatYearLabel(year)}</CardV5.Title>
         <CardV5.Subtitle>

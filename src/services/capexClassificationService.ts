@@ -1,11 +1,17 @@
-import { initDB, Document } from './db';
+import { initDB, Document, MejoraInmueble } from './db';
 import toast from 'react-hot-toast';
+import { mejorasInmuebleService } from './mejorasInmuebleService';
+import { mueblesInmuebleService } from './mueblesInmuebleService';
 
 /**
  * Enhanced Mejora Classification Service
  * Handles classification between repairs, improvements, and furniture with proper amortization
- * NOTE: The mejora IndexedDB store has been removed. Functions that read/write mejora now
- * return empty results or no-op. Use mejorasInmueble for new mejora records.
+ *
+ * NOTE · El store legacy `mejora` se eliminó en v62. Las funciones de
+ * escritura siguen siendo no-op (createMejoraFromDocument · update*) hasta
+ * que se reescriban contra `mejorasInmueble`. La lectura `getMejora-
+ * AmortizationSummary` SÍ se reconectó a `mejorasInmuebleService` y
+ * `mueblesInmuebleService` (T-RECONNECT-1 · Hallazgo 2.B) — ver función.
  */
 
 /** Local Mejora type kept for backward-compatible signatures */
@@ -183,8 +189,14 @@ export const calculateMejoraAmortization = (
     classification.amortizationYears - yearsSinceAcquisition - 1
   );
 
+  // Copilot review #1280 · el último ejercicio amortizable también suma
+  // `annualAmortization` (antes daba 0 cuando `remainingYears === 0`,
+  // infraestimando el cierre). Devolvemos amortización mientras estemos
+  // dentro de la vida útil; años posteriores → 0.
+  const isWithinAmortizationLife = yearsSinceAcquisition < classification.amortizationYears;
+
   return {
-    annualAmortization: remainingYears > 0 ? annualAmortization : 0,
+    annualAmortization: isWithinAmortizationLife ? annualAmortization : 0,
     remainingYears,
     totalAmortized,
     remainingValue
@@ -192,7 +204,40 @@ export const calculateMejoraAmortization = (
 };
 
 /**
+ * Adapta una `MejoraInmueble` (schema canónico actual) a la estructura
+ * legacy `Mejora` que esperan callers ya escritos contra esta API.
+ * T-RECONNECT-1 · Hallazgo 2.B.
+ */
+const mapMejoraInmuebleToLegacy = (m: MejoraInmueble): Mejora => {
+  const tipoLegacy: MejoraTipo =
+    m.tipo === 'reparacion' ? 'reparacion'
+      : m.tipo === 'ampliacion' ? 'ampliacion'
+        : 'mejora';
+  return {
+    id: m.id,
+    inmueble_id: m.inmuebleId,
+    contraparte: m.proveedorNombre ?? '',
+    fecha_emision: m.fecha,
+    total: m.importe,
+    tipo: tipoLegacy,
+    anos_amortizacion: Mejora_CLASSIFICATION_RULES[tipoLegacy].amortizationYears,
+    estado: m.estadoTesoreria ?? 'confirmed',
+    createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
+  };
+};
+
+/**
  * Get amortization summary for all Mejora of a property
+ *
+ * T-RECONNECT-1 · Hallazgo 2.B · reconectado a `mejorasInmuebleService` y
+ * `mueblesInmuebleService` después de la migración v62 que eliminó el
+ * store legacy `mejora`. Antes devolvía siempre 0€ (cable suelto).
+ *
+ * - improvementAmortization · suma anual de mejoras + ampliaciones (lineal 15 años · ver `Mejora_CLASSIFICATION_RULES`)
+ * - repairExpenses · reparaciones del año en curso (deducibles 100% en el ejercicio)
+ * - furnitureAmortization · suma anual de mobiliario (lineal 10 años por defecto · `mueblesInmueble`)
+ * - propertyAmortization · sigue leyéndose de `property.aeatAmortization`
  */
 export const getMejoraAmortizationSummary = async (
   propertyId: number,
@@ -211,42 +256,60 @@ export const getMejoraAmortizationSummary = async (
 }> => {
   const db = await initDB();
 
-  // mejora store removed — return empty set
-  const propertyMejora: Mejora[] = [];
-
   const summary = {
     propertyAmortization: 0,
     improvementAmortization: 0,
     furnitureAmortization: 0,
     repairExpenses: 0,
     totalAmortization: 0,
-    details: [] as any[]
+    details: [] as Array<{
+      mejora: Mejora;
+      classification: MejoraClassification;
+      amortization: ReturnType<typeof calculateMejoraAmortization>;
+    }>,
   };
 
-  for (const mejora of propertyMejora) {
+  // Mejoras / ampliaciones / reparaciones (canónico v62+)
+  const mejorasRaw = await mejorasInmuebleService.getHastaEjercicio(propertyId, exerciseYear);
+  for (const raw of mejorasRaw) {
+    const mejora = mapMejoraInmuebleToLegacy(raw);
     const nature = mejora.tipo as MejoraNature;
     const classification = Mejora_CLASSIFICATION_RULES[nature] || Mejora_CLASSIFICATION_RULES.mejora;
     const amortization = calculateMejoraAmortization(mejora, exerciseYear);
 
-    summary.details.push({
-      mejora,
-      classification,
-      amortization
-    });
+    summary.details.push({ mejora, classification, amortization });
 
-    // Accumulate by type
     switch (nature) {
       case 'reparacion':
+        // Reparaciones · deducibles 100% el año del gasto
         summary.repairExpenses += amortization.annualAmortization;
         break;
       case 'mejora':
       case 'ampliacion':
         summary.improvementAmortization += amortization.annualAmortization;
         break;
-      case 'mobiliario':
-        summary.furnitureAmortization += amortization.annualAmortization;
-        break;
     }
+  }
+
+  // Mobiliario (store independiente desde v62)
+  // Copilot review #1280 · idéntico filtro que `mueblesInmuebleService.calcularAmortizacionMobiliarioAnual`
+  // · descartamos muebles dados de baja sin fecha (activo=false sin fechaBaja)
+  // para no sesgar los KPIs.
+  const muebles = await mueblesInmuebleService.getPorInmueble(propertyId);
+  for (const mueble of muebles) {
+    if (!mueble.activo && !mueble.fechaBaja) continue;
+    const fechaAlta = new Date(mueble.fechaAlta);
+    if (Number.isNaN(fechaAlta.getTime())) continue;
+    const altaYear = fechaAlta.getFullYear();
+    if (altaYear > exerciseYear) continue;
+    if (mueble.fechaBaja) {
+      const fechaBaja = new Date(mueble.fechaBaja);
+      if (!Number.isNaN(fechaBaja.getTime()) && fechaBaja.getFullYear() < exerciseYear) continue;
+    }
+    const vidaUtil = mueble.vidaUtil || 10;
+    const yearsSinceAlta = exerciseYear - altaYear;
+    if (yearsSinceAlta >= vidaUtil) continue;
+    summary.furnitureAmortization += mueble.importe / vidaUtil;
   }
 
   // Property base amortization (separate from improvements)
@@ -255,8 +318,8 @@ export const getMejoraAmortizationSummary = async (
     summary.propertyAmortization = property.aeatAmortization.propertyAmortization;
   }
 
-  summary.totalAmortization = summary.propertyAmortization + 
-                             summary.improvementAmortization + 
+  summary.totalAmortization = summary.propertyAmortization +
+                             summary.improvementAmortization +
                              summary.furnitureAmortization;
 
   return summary;

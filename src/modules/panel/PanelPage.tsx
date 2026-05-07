@@ -20,6 +20,12 @@ import type { Escenario } from '../../types/miPlan';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import { valoracionesService, type ValoracionMatcher } from '../../services/valoracionesService';
+import { obtenerDeclaracionParaEjercicio } from '../../services/declaracionResolverService';
+import { getEjercicio } from '../../services/ejercicioResolverService';
+import {
+  generarAlertasFiscales,
+  type AlertaFiscal,
+} from '../../services/alertasFiscalesService';
 import PulseAssetCard from './components/PulseAssetCard';
 import PulsoDelMes from './components/PulsoDelMes';
 import AttentionList from './components/AttentionList';
@@ -45,6 +51,33 @@ const saludo = (d: Date): string => {
   if (h < 12) return 'Buenos días';
   if (h < 20) return 'Buenas tardes';
   return 'Buenas noches';
+};
+
+/**
+ * T-RECONNECT-1 · Hallazgo 6.A · mapeo AlertaFiscal → AlertaItem para
+ * consumo en `AttentionList`. Los 6 tipos del servicio fiscal se traducen
+ * a los iconos / severidades del componente Panel.
+ */
+const mapAlertaFiscalToItem = (a: AlertaFiscal): AlertaItem => {
+  const severity: AlertaItem['severity'] =
+    a.prioridad === 'alta' ? 'neg' : a.prioridad === 'media' ? 'warn' : 'muted';
+  const iconType: AlertaItem['iconType'] =
+    a.tipo === 'arrastre_caduca' || a.tipo === 'm130_pendiente'
+      ? 'calendar'
+      : a.tipo === 'retenciones_insuficientes' || a.tipo === 'plan_pensiones'
+        ? 'warning'
+        : 'filetext';
+  return {
+    id: a.id,
+    severity,
+    valueSeverity: severity,
+    iconType,
+    title: a.titulo,
+    meta: a.descripcion,
+    value: a.importeImpacto ?? 0,
+    timeWindow: 'fiscal',
+    href: a.accion?.ruta ?? '/fiscal',
+  };
 };
 
 /**
@@ -83,6 +116,10 @@ const PanelPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [nombreUsuario, setNombreUsuario] = useState<string>('usuario');
   const [valoracionMatcher, setValoracionMatcher] = useState<ValoracionMatcher | null>(null);
+  // T-RECONNECT-1 · Hallazgo 6.A · alertas fiscales reales en el bloque
+  // "Piden tu atención" · sustituye los TODO previos (deudas ejecutiva ·
+  // borradores fiscales · obligaciones próximas 30d).
+  const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
   // TODO T25.2 · delta 30d real cuando exista snapshot histórico de patrimonio.
   // patrimonioSnapshots fue eliminado en V62; las valoraciones_historicas solo cubren
   // inmuebles/inversiones/planes pero no cuentas ni deuda viva, así que no podemos
@@ -131,6 +168,37 @@ const PanelPage: React.FC = () => {
         console.error('[panel] error cargando datos', err);
       } finally {
         if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // T-RECONNECT-1 · Hallazgo 6.A · cargar alertas fiscales para el ejercicio
+  // en curso. Si el ejercicio ya está declarado/prescrito · no se generan.
+  // Errores capturados sin propagar (panel no puede romper por fiscal).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const año = new Date().getFullYear();
+        const ejercicio = await getEjercicio(año);
+        if (ejercicio?.estado === 'declarado' || ejercicio?.estado === 'prescrito') {
+          if (!cancelled) setAlertasFiscales([]);
+          return;
+        }
+        const { declaracion } = await obtenerDeclaracionParaEjercicio(año);
+        if (!declaracion) {
+          if (!cancelled) setAlertasFiscales([]);
+          return;
+        }
+        const lista = await generarAlertasFiscales(declaracion, año);
+        if (!cancelled) setAlertasFiscales(lista);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[panel] no se pudieron cargar alertas fiscales', err);
+        if (!cancelled) setAlertasFiscales([]);
       }
     })();
     return () => {
@@ -248,26 +316,24 @@ const PanelPage: React.FC = () => {
   /**
    * Alertas "Piden tu atención" · § Z.11 · T22.5
    * MAX 5 · prioridad:
-   *   1. Deudas ejecutiva/apremio            → TODO servicio alertas
-   *   2. Borradores fiscales listos          → TODO servicio alertas
-   *   3. Obligaciones fiscales próximas 30d  → TODO servicio alertas
-   *   4. Contratos vencer en 60d             → derivado de contracts store
-   *   5. Pagos vencidos sin conciliar        → derivado de treasuryEvents store
+   *   1. Alertas fiscales (alta prioridad)   → alertasFiscalesService · T-RECONNECT-1 6.A
+   *      cubre · arrastres caducan · M130 pendiente · retenciones insuficientes
+   *      · gastos faltantes · plan pensiones · datos fiscales disponibles
+   *   2. Contratos vencer en 60d             → derivado de contracts store
+   *   3. Pagos vencidos sin conciliar        → derivado de treasuryEvents store
+   *   4. Resto alertas fiscales (media/baja)
    */
   const alertas = useMemo((): AlertaItem[] => {
     const lista: AlertaItem[] = [];
     const hoy = today;
 
-    // 1. TODO: conectar con servicio de alertas para deudas ejecutiva/apremio
-    //    cuando esté disponible · actualmente no hay campo en Prestamo
+    // 1. Alertas fiscales · prioridad alta primero (T-RECONNECT-1 · Hallazgo 6.A)
+    const fiscalAlta = alertasFiscales.filter((a) => a.prioridad === 'alta');
+    for (const a of fiscalAlta) {
+      lista.push(mapAlertaFiscalToItem(a));
+    }
 
-    // 2. TODO: conectar con servicio de alertas para borradores fiscales listos
-    //    cuando esté disponible · requiere store declaraciones/snapshotsDeclaracion
-
-    // 3. TODO: conectar con servicio de alertas para obligaciones fiscales próximas
-    //    cuando esté disponible · requiere store obligaciones fiscales
-
-    // 4. Contratos activos que vencen en los próximos 60 días · § AA.6 Calendar · warn
+    // 2. Contratos activos que vencen en los próximos 60 días · § AA.6 Calendar · warn
     const en60dias = new Date(hoy.getTime() + 60 * 24 * 60 * 60 * 1000);
     const contratosVencen = contracts.filter((c) => {
       if (c.estadoContrato !== 'activo') return false;
@@ -292,7 +358,7 @@ const PanelPage: React.FC = () => {
       });
     }
 
-    // 5. Pagos vencidos (amount < 0, fecha pasada) sin conciliar con movimiento real · neg
+    // 3. Pagos vencidos (amount < 0, fecha pasada) sin conciliar con movimiento real · neg
     const pagosVencidos = treasuryEvents.filter((ev) => {
       if (ev.amount >= 0) return false;
       if (ev.status === 'executed' || ev.movementId !== undefined) return false;
@@ -314,9 +380,15 @@ const PanelPage: React.FC = () => {
       });
     }
 
+    // 4. Resto de alertas fiscales (media/baja prioridad) al final
+    const fiscalRestoMediaBaja = alertasFiscales.filter((a) => a.prioridad !== 'alta');
+    for (const a of fiscalRestoMediaBaja) {
+      lista.push(mapAlertaFiscalToItem(a));
+    }
+
     // Limite MAX 5 · ordenado ya por prioridad de inserción
     return lista.slice(0, 5);
-  }, [contracts, treasuryEvents, today]);
+  }, [contracts, treasuryEvents, today, alertasFiscales]);
 
   /**
    * Mi Plan · brújula · § Z.11 · T22.6

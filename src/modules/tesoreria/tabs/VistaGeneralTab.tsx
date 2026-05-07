@@ -108,12 +108,29 @@ const VistaGeneralTab: React.FC = () => {
   // T20-01 · Proyección presupuesto desde Mi Plan (cierra TODO formal).
   // Combina nominas + autonomos + compromisosRecurrentes + contracts para
   // proyección estructural · sustituye proyección lineal simple.
+  // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores y los exponemos en banner
+  // · NO 0€ silenciosos.
   const [budgetProjection, setBudgetProjection] = useState<BudgetProjection | null>(null);
+  const [projectionError, setProjectionError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    computeBudgetProjection12mAsync(currentYear).then((p) => {
-      if (!cancelled) setBudgetProjection(p);
-    });
+    computeBudgetProjection12mAsync(currentYear)
+      .then((p) => {
+        if (!cancelled) {
+          setBudgetProjection(p);
+          setProjectionError(null);
+        }
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[tesoreria/vista-general] error proyección · banner UI', err);
+        if (!cancelled) {
+          setBudgetProjection(null);
+          setProjectionError(
+            err instanceof Error ? err.message : 'Error cargando proyección',
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -212,6 +229,24 @@ const VistaGeneralTab: React.FC = () => {
 
   return (
     <>
+      {projectionError && (
+        <div
+          role="alert"
+          style={{
+            background: 'var(--s-neg-bg)',
+            color: 'var(--s-neg)',
+            border: '1px solid var(--s-neg)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 14,
+            fontSize: 13,
+          }}
+        >
+          <strong>No se pudo calcular la proyección de saldo.</strong>{' '}
+          {projectionError} · los meses futuros no se mostrarán proyectados ·
+          revisa la consola para más detalle.
+        </div>
+      )}
       <div className={styles.heroRow}>
         <div className={styles.hero}>
           <div className={styles.heroTop}>
