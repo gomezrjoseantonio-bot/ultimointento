@@ -286,17 +286,24 @@ export const emptyBudgetProjection = (year: number): BudgetProjection =>
  * (corrupción · schema mismatch · etc.) la promesa rechaza y el caller debe
  * decidir cómo reaccionar (mostrar banner · usar `emptyBudgetProjection`
  * como fallback explícito · etc.).
+ *
+ * T-RECONNECT-1.1 · los stores legacy `nominas` y `autonomos` se eliminaron
+ * en V63 (rename a `ingresos` con unión discriminada por `tipo`). Antes de
+ * este fix, `db.getAll('nominas')` rompía con "object stores not found".
+ * Ahora leemos `ingresos` y filtramos por `tipo`, igual que hacen
+ * `nominaService.getAllActiveNominas` y `autonomoService.getAutonomos`.
  */
 export const computeBudgetProjection12mAsync = async (
   year: number,
 ): Promise<BudgetProjection> => {
   const db = await initDB();
-  const [nominas, autonomos, compromisos, contracts] = await Promise.all([
-    db.getAll('nominas') as Promise<Nomina[]>,
-    db.getAll('autonomos') as Promise<Autonomo[]>,
+  const [ingresos, compromisos, contracts] = await Promise.all([
+    db.getAll('ingresos') as Promise<Array<Nomina | Autonomo>>,
     db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
     db.getAll('contracts') as Promise<Contract[]>,
   ]);
+  const nominas = ingresos.filter((i): i is Nomina => (i as { tipo?: string }).tipo === 'nomina');
+  const autonomos = ingresos.filter((i): i is Autonomo => (i as { tipo?: string }).tipo === 'autonomo');
   return computeBudgetProjectionFromData(year, {
     nominas,
     autonomos,
