@@ -8,7 +8,7 @@
  * generador de learnKey y la persistencia de movimientos.
  */
 
-import { learningService } from '../movementLearningService';
+import { learningService, buildLearnKey } from '../movementLearningService';
 import { initDB, Movement, MovementLearningRule } from '../db';
 
 // Test data generators
@@ -153,39 +153,54 @@ describe('Treasury Learning Engine', () => {
     });
   });
 
-  describe('N-gram Learn Key Generation', () => {
-    test('should generate consistent learn keys for similar movements', () => {
-      const movement1 = createTestMovement({
+  // `buildLearnKey` no está cubierta en otros suites · `movementSuggestionService.test.ts`
+  // la mockea (jest.mock). Aquí ejecutamos la función real para validar las dos
+  // propiedades clave del v1 hash · estabilidad frente a tokens volátiles
+  // (fechas/refs/importes) y separación por contraparte/signo.
+  describe('buildLearnKey', () => {
+    test('genera la misma clave para dos movimientos del mismo proveedor con tokens volátiles distintos', () => {
+      const m1 = createTestMovement({
         description: 'ENDESA ESPAÑA SA RECIBO LUZ ENE2024 REF123456',
         counterparty: 'ENDESA ESPAÑA SA',
-        amount: -45.23
+        amount: -45.23,
       });
-
-      const movement2 = createTestMovement({
-        description: 'ENDESA ESPAÑA SA RECIBO ELECTRICIDAD FEB2024 REF789012',
+      const m2 = createTestMovement({
+        description: 'ENDESA ESPAÑA SA RECIBO LUZ FEB2024 REF789012',
         counterparty: 'ENDESA ESPAÑA SA',
-        amount: -42.15
+        amount: -42.15,
       });
 
-      // Sanity check on the fixture builder rather than the hash itself
-      // (buildLearnKey is exercised via the N-gram tests in suggestionService).
-      expect(movement1.counterparty).toBe(movement2.counterparty);
+      expect(buildLearnKey(m1)).toBe(buildLearnKey(m2));
     });
 
-    test('should generate different keys for different types of movements', () => {
-      const endesa = createTestMovement({
+    test('genera claves distintas para contrapartes distintas', () => {
+      const endesa = buildLearnKey(createTestMovement({
         description: 'ENDESA ESPAÑA SA RECIBO LUZ',
         counterparty: 'ENDESA ESPAÑA SA',
-        amount: -45.23
-      });
-
-      const iberdrola = createTestMovement({
+        amount: -45.23,
+      }));
+      const iberdrola = buildLearnKey(createTestMovement({
         description: 'IBERDROLA GENERACION SAU RECIBO GAS',
         counterparty: 'IBERDROLA GENERACION',
-        amount: -45.23
-      });
+        amount: -45.23,
+      }));
 
-      expect(endesa.counterparty).not.toBe(iberdrola.counterparty);
+      expect(endesa).not.toBe(iberdrola);
+    });
+
+    test('genera claves distintas para signos opuestos del mismo proveedor', () => {
+      const gasto = buildLearnKey(createTestMovement({
+        description: 'EMPRESA ABC SL TRANSFERENCIA',
+        counterparty: 'EMPRESA ABC SL',
+        amount: -100,
+      }));
+      const ingreso = buildLearnKey(createTestMovement({
+        description: 'EMPRESA ABC SL TRANSFERENCIA',
+        counterparty: 'EMPRESA ABC SL',
+        amount: 100,
+      }));
+
+      expect(gasto).not.toBe(ingreso);
     });
   });
 
