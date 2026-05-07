@@ -4,7 +4,6 @@
  */
 
 import { TreasuryAccountsAPI } from '../services/treasuryApiService';
-import { importBankStatement, ImportOptions } from '../services/bankStatementImportService';
 import { FLAGS } from '../config/flags';
 
 // Mock IndexedDB for testing  
@@ -69,43 +68,9 @@ describe('Production Mode Integration Tests', () => {
     });
   });
 
-  describe('Bank Import Flow Validation', () => {
-    beforeEach(() => {
-      // Mock the file parser and movement creation
-      jest.mock('../features/inbox/importers/bankParser');
-      mockDB.getAll.mockImplementation((store: string) => {
-        if (store === 'movements') return Promise.resolve([]);
-        return Promise.resolve([]);
-      });
-    });
-
-    it('should require destinationAccountId and reject without it', async () => {
-      const testFile = new File(['date,description,amount\n2024-01-01,Test,100'], 'test.csv');
-      
-      // Test 1: Missing destinationAccountId should fail
-      try {
-        await importBankStatement({
-          file: testFile,
-          destinationAccountId: undefined as any
-        });
-        fail('Should have thrown error for missing destinationAccountId');
-      } catch (error) {
-        // Expected to fail validation
-      }
-
-      // Test 2: With valid destinationAccountId should proceed
-      const options: ImportOptions = {
-        file: testFile,
-        destinationAccountId: 42,
-        usuario: 'test-user'
-      };
-
-      // This would normally parse and import, but our mocks will handle it
-      // The important thing is the validation passes
-      expect(options.destinationAccountId).toBe(42);
-      expect(typeof options.destinationAccountId).toBe('number');
-    });
-  });
+  // T16-cleanup · 'Bank Import Flow Validation' block removed along with the
+  // legacy `bankStatementImportService`. Replaced in production by
+  // `bankStatementOrchestrator` (covered by its own integration tests).
 
   describe('Logo Display Requirements', () => {
     it('should use real logos or monogram fallback, no demo images', () => {

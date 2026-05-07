@@ -1,18 +1,24 @@
-import { initDB, Movement, MovementLearningRule, HistoryEntry } from './db';
-import { finalizePropertySaleLoanCancellation } from './propertySaleService';
-
-/** Append a HistoryEntry to a rule respecting the FIFO cap of 50. */
-function appendHistory(rule: MovementLearningRule, entry: HistoryEntry): void {
-  const prev = rule.history ?? [];
-  const updated = [...prev, entry];
-  rule.history = updated.length > 50 ? updated.slice(updated.length - 50) : updated;
-}
+import { initDB, Movement, MovementLearningRule } from './db';
 
 /**
- * V1.1 Treasury - Movement Learning Service
- * 
- * Handles learning from manual reconciliation actions and applying
- * learned rules to similar movements automatically.
+ * V1.1 Treasury · Movement Learning Service
+ *
+ * Aprende de las confirmaciones del usuario en `/tesoreria/importar` para
+ * auto-categorizar futuras importaciones. El path activo es
+ * bankStatementOrchestrator.confirmDecisions → feedLearningRule →
+ * createOrUpdateRule.
+ *
+ * T16-cleanup (este PR):
+ * - Eliminado el subsistema `performManualReconciliation` + `createLearningRule`
+ *   + `applyRuleToGrays` (sin callers de UI desde 2025).
+ * - Eliminado el subsistema de auditoría history[] (`appendHistory`,
+ *   `getLearningLogs`, `getLearningRulesStats`) — no había lectores de
+ *   producción. El campo `MovementLearningRule.history?` queda marcado como
+ *   @deprecated en `db.ts`; los registros existentes lo conservan dormido
+ *   hasta el próximo bump DB.
+ * - `createOrUpdateRule` ya no escribe entradas a `history[]`. Resto del
+ *   contrato (T16-fix-functional · appliedCount, patrones, lastAppliedAt) se
+ *   mantiene intacto.
  */
 
 /**
@@ -62,7 +68,7 @@ function removeVolatileTokens(text: string): string {
 function extractNGrams(text: string, maxGrams: number = 3): string[] {
   const words = text.split(/\s+/).filter(word => word.length > 2); // Filter short words
   const ngrams: string[] = [];
-  
+
   // Generate 2-grams and 3-grams
   for (let i = 0; i < words.length; i++) {
     // 2-grams
@@ -74,13 +80,13 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
       ngrams.push(`${words[i]} ${words[i + 1]} ${words[i + 2]}`);
     }
   }
-  
+
   // Count frequency and return most common
   const counts: { [key: string]: number } = {};
   ngrams.forEach(gram => {
     counts[gram] = (counts[gram] || 0) + 1;
   });
-  
+
   return Object.entries(counts)
     .sort(([,a], [,b]) => b - a)
     .slice(0, maxGrams)
@@ -91,120 +97,54 @@ function extractNGrams(text: string, maxGrams: number = 3): string[] {
  * Build robust learn key per problem statement v1 format
  * Structure: v1|signo|ngramA|ngramB|ngramC
  *
- * Exported for TAREA 17 sub-task 17.3 (movementSuggestionService): the
- * suggestion engine looks up rules by computing the same learnKey from a
- * just-imported movement.
+ * Exported for movementSuggestionService: the suggestion engine looks up rules
+ * by computing the same learnKey from a just-imported movement.
  */
 export function buildLearnKey(movement: Movement): string {
   const contraparte = normalizeText(movement.counterparty || '');
   const descripcion = normalizeText(movement.description || '');
-  
+
   // Remove volatile tokens
   const cleanContraparte = removeVolatileTokens(contraparte);
   const cleanDescripcion = removeVolatileTokens(descripcion);
-  
+
   // Combine both texts for n-gram extraction
   const combinedText = `${cleanContraparte} ${cleanDescripcion}`.trim();
-  
+
   // Extract top 3 n-grams
   const ngrams = extractNGrams(combinedText, 3);
-  
+
   // Determine amount sign
   const signo = movement.amount >= 0 ? 'positive' : 'negative';
-  
+
   // Build key: v1|signo|ngramA|ngramB|ngramC
   const keyParts = ['v1', signo, ...ngrams];
   const keyString = keyParts.join('|');
-  
+
   return simpleHash(keyString);
 }
 
 /**
- * Generate a learn key for a movement (updated implementation)
- * This key identifies similar movements for learning purposes
+ * Generate a learn key for a movement (alias kept for internal use).
  */
 function generateLearnKey(movement: Movement): string {
   return buildLearnKey(movement);
 }
 
 /**
- * Create a learning rule from a manually reconciled movement
- */
-export async function createLearningRule(
-  movement: Movement,
-  categoria: string,
-  ambito: 'PERSONAL' | 'INMUEBLE',
-  inmuebleId?: string
-): Promise<MovementLearningRule> {
-  try {
-    const db = await initDB();
-    
-    const learnKey = generateLearnKey(movement);
-    const counterparty = normalizeText(movement.counterparty || '');
-    const cleanDescripcion = removeVolatileTokens(normalizeText(movement.description || ''));
-    const amountSign = movement.amount >= 0 ? 'positive' : 'negative';
-
-    // Check if rule already exists
-    const existingRules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
-    
-    if (existingRules.length > 0) {
-      // Update existing rule
-      const rule = existingRules[0];
-      rule.categoria = categoria;
-      rule.ambito = ambito;
-      rule.inmuebleId = inmuebleId;
-      rule.appliedCount = rule.appliedCount + 1;
-      rule.updatedAt = new Date().toISOString();
-      rule.lastAppliedAt = new Date().toISOString();
-      appendHistory(rule, { action: 'CREATE_RULE', movimientoId: movement.id, ts: new Date().toISOString() });
-
-      await db.put('movementLearningRules', rule);
-
-      console.log(`📚 Updated existing learning rule: ${learnKey}`);
-      return rule;
-    } else {
-      // Create new rule
-      const newRule: MovementLearningRule = {
-        learnKey,
-        counterpartyPattern: counterparty,
-        descriptionPattern: cleanDescripcion,
-        amountSign: amountSign as 'positive' | 'negative',
-        categoria,
-        ambito,
-        inmuebleId,
-        source: 'IMPLICIT',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        appliedCount: 1,
-        lastAppliedAt: new Date().toISOString(),
-        history: [{ action: 'CREATE_RULE', movimientoId: movement.id, ts: new Date().toISOString() }],
-      };
-
-      const ruleId = await db.add('movementLearningRules', newRule);
-      newRule.id = ruleId as number;
-
-      console.log(`📚 Created new learning rule: ${learnKey}`);
-      return newRule;
-    }
-  } catch (error) {
-    console.error('❌ Error creating learning rule:', error);
-    throw error;
-  }
-}
-
-/**
  * Create or update a learning rule by learn key.
  *
- * T16-fix-functional (B1+B2+B8):
- * - Each call counts as one application of the rule (`appliedCount` arranca en
- *   1 al crear y se incrementa al actualizar). Esto hace que el boost de
- *   confianza en `movementSuggestionService.suggestFromLearningRule` opere
- *   sobre datos reales, no quedándose siempre en `confidence = 50`.
+ * T16-fix-functional preserved:
+ * - Each call counts as one application (`appliedCount` arranca en 1 al crear
+ *   y se incrementa al actualizar). Esto alimenta el boost de confianza en
+ *   `movementSuggestionService.suggestFromLearningRule`.
  * - Cuando el caller dispone del `Movement` (orchestrator), lo pasa en
  *   `params.movement` para rellenar `counterpartyPattern`, `descriptionPattern`
  *   y `amountSign` en la creación, y para no dejar patrones vacíos en upserts
  *   sobre reglas previamente creadas sin contexto.
- * - El `movimientoId` se propaga a `history[]` cuando está disponible.
+ *
+ * T16-cleanup: ya no escribe entradas a `history[]`. El campo permanece en el
+ * tipo como @deprecated y los registros viejos lo mantienen dormido.
  */
 export async function createOrUpdateRule(params: {
   learnKey: string;
@@ -227,7 +167,6 @@ export async function createOrUpdateRule(params: {
     const derivedAmountSign: 'positive' | 'negative' | undefined = movement
       ? (movement.amount >= 0 ? 'positive' : 'negative')
       : undefined;
-    const movimientoId = movement?.id;
 
     // Check if rule already exists
     const existingRules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
@@ -250,25 +189,18 @@ export async function createOrUpdateRule(params: {
         rule.descriptionPattern = derivedDescription;
       }
       if (derivedAmountSign !== undefined && wasOrchestratorPlaceholder) {
-        // Only override the placeholder default when the rule had no real
-        // pattern signature yet — flag for orchestrator-created-without-context.
         rule.amountSign = derivedAmountSign;
       }
       // B1 · this call counts as one application
       rule.appliedCount = (rule.appliedCount ?? 0) + 1;
       rule.lastAppliedAt = now;
       rule.updatedAt = now;
-      appendHistory(rule, {
-        action: 'CREATE_RULE',
-        ...(movimientoId != null && { movimientoId }),
-        ts: now,
-      });
 
       await db.put('movementLearningRules', rule);
       console.log(`📚 Updated learning rule: ${learnKey}`);
       return rule;
     } else {
-      // Create new rule
+      // Create new rule (sin history writes — T16-cleanup)
       const newRule: MovementLearningRule = {
         learnKey,
         counterpartyPattern: derivedCounterparty ?? '',
@@ -282,11 +214,6 @@ export async function createOrUpdateRule(params: {
         updatedAt: now,
         appliedCount: 1, // B1 · creation already counts as the first application
         lastAppliedAt: now,
-        history: [{
-          action: 'CREATE_RULE',
-          ...(movimientoId != null && { movimientoId }),
-          ts: now,
-        }],
       };
 
       const ruleId = await db.add('movementLearningRules', newRule);
@@ -302,110 +229,22 @@ export async function createOrUpdateRule(params: {
 }
 
 /**
- * Apply rule to gray movements in same period and account (backfill)
- */
-export async function applyRuleToGrays(params: {
-  learnKey: string;
-  periodo: string; // YYYY or YYYY-MM
-  cuentaId: number;
-  limit?: number;
-}): Promise<{ updated: number; total: number }> {
-  try {
-    const db = await initDB();
-    const { learnKey, periodo, cuentaId, limit = 500 } = params;
-
-    // Get the learning rule
-    const rules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
-    if (rules.length === 0) {
-      throw new Error(`Learning rule not found for key: ${learnKey}`);
-    }
-    
-    const rule = rules[0];
-
-    // Get all movements for the period and account
-    const allMovements = await db.getAll('movements');
-    
-    const candidateMovements = allMovements.filter(movement => {
-      // Only sin_match movements
-      if (movement.statusConciliacion !== 'sin_match') return false;
-      
-      // Same account
-      if (movement.accountId !== cuentaId) return false;
-      
-      // Same period (year or year-month)
-      const movementDate = new Date(movement.date);
-      const movementPeriod = periodo.length === 4 
-        ? movementDate.getFullYear().toString()
-        : `${movementDate.getFullYear()}-${String(movementDate.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (movementPeriod !== periodo) return false;
-      
-      // Check if movement matches the learn key
-      return generateLearnKey(movement) === learnKey;
-    });
-
-    // Apply limit
-    const movementsToUpdate = candidateMovements.slice(0, limit);
-    let updated = 0;
-    const backfillEntries: HistoryEntry[] = [];
-
-    // Process in batches to avoid blocking
-    const batchSize = 100;
-    for (let i = 0; i < movementsToUpdate.length; i += batchSize) {
-      const batch = movementsToUpdate.slice(i, i + batchSize);
-
-      for (const movement of batch) {
-        const updatedMovement: Movement = {
-          ...movement,
-          categoria: rule.categoria,
-          ambito: rule.ambito,
-          inmuebleId: rule.inmuebleId,
-          statusConciliacion: 'match_automatico',
-          learnKey,
-          updatedAt: new Date().toISOString()
-        };
-
-        await db.put('movements', updatedMovement);
-        backfillEntries.push({ action: 'BACKFILL', movimientoId: movement.id, ts: new Date().toISOString() });
-        updated++;
-      }
-
-      // Small delay between batches to prevent blocking
-      await new Promise(resolve => setTimeout(resolve, 10));
-    }
-
-    // Update rule applied count + history (FIFO cap applied once)
-    if (updated > 0) {
-      rule.appliedCount += updated;
-      rule.lastAppliedAt = new Date().toISOString();
-      rule.updatedAt = new Date().toISOString();
-      const prev = rule.history ?? [];
-      const merged = [...prev, ...backfillEntries];
-      rule.history = merged.length > 50 ? merged.slice(merged.length - 50) : merged;
-      await db.put('movementLearningRules', rule);
-    }
-
-    console.log(`🔄 Backfill applied ${updated}/${candidateMovements.length} movements for rule ${learnKey}`);
-    
-    return { updated, total: candidateMovements.length };
-
-  } catch (error) {
-    console.error('❌ Error applying rule to gray movements:', error);
-    throw error;
-  }
-}
-
-/**
- * Apply all learning rules to movements during import
+ * Apply all learning rules to movements during import.
+ *
+ * Sin lectores activos tras T16-cleanup (el legacy `bankStatementImportService`
+ * fue eliminado en este PR). Se mantiene como API pública para futuros
+ * consumidores. El path UI activo (orchestrator) usa
+ * `movementSuggestionService.suggestForUnmatched`, que muestra sugerencias al
+ * usuario antes de aplicarlas — distinto contrato.
  */
 export async function applyAllRulesOnImport(movements: Movement[]): Promise<Movement[]> {
   try {
     const db = await initDB();
-    
+
     // Get all learning rules
     const allRules = await db.getAll('movementLearningRules');
     const rulesMap = new Map<string, MovementLearningRule>();
-    
+
     allRules.forEach(rule => {
       rulesMap.set(rule.learnKey, rule);
     });
@@ -413,7 +252,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
     const processedMovements = movements.map(movement => {
       const learnKey = generateLearnKey(movement);
       const rule = rulesMap.get(learnKey);
-      
+
       if (rule) {
         // Apply learned classification
         return {
@@ -426,7 +265,7 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
           updatedAt: new Date().toISOString()
         };
       }
-      
+
       // No rule found, keep as sin_match with default ambito
       return {
         ...movement,
@@ -444,14 +283,13 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
       }
     });
 
-    // Update applied counts asynchronously
+    // Update applied counts asynchronously (sin history writes — T16-cleanup)
     for (const learnKey of Array.from(appliedRules)) {
       const rule = rulesMap.get(learnKey);
       if (rule && rule.id) {
         rule.appliedCount += 1;
         rule.lastAppliedAt = new Date().toISOString();
         rule.updatedAt = new Date().toISOString();
-        appendHistory(rule, { action: 'APPLY_RULE', ts: new Date().toISOString() });
         await db.put('movementLearningRules', rule);
       }
     }
@@ -474,98 +312,6 @@ export async function applyAllRulesOnImport(movements: Movement[]): Promise<Move
 }
 
 /**
- * Perform manual reconciliation with learning and validation
- */
-export async function performManualReconciliation(
-  movementId: number,
-  categoria: string,
-  ambito: 'PERSONAL' | 'INMUEBLE',
-  inmuebleId?: string
-): Promise<{ appliedToSimilar: number }> {
-  try {
-    const db = await initDB();
-    
-    // Validation: categoria is required
-    if (!categoria || categoria.trim() === '') {
-      throw new Error('No se pudo crear la regla de aprendizaje.');
-    }
-    
-    // Validation: ambito is required
-    if (!ambito) {
-      throw new Error('No se pudo crear la regla de aprendizaje.');
-    }
-    
-    // Validation: if ambito='INMUEBLE' then inmuebleId is required
-    if (ambito === 'INMUEBLE' && (!inmuebleId || inmuebleId.trim() === '')) {
-      throw new Error('No se pudo crear la regla de aprendizaje.');
-    }
-    
-    // Get the movement
-    const movement = await db.get('movements', movementId);
-    if (!movement) {
-      throw new Error(`Movement ${movementId} not found`);
-    }
-
-    // Update the source movement to match_manual
-    const learnKey = generateLearnKey(movement);
-    const updatedMovement: Movement = {
-      ...movement,
-      categoria,
-      ambito,
-      inmuebleId,
-      statusConciliacion: 'match_manual',
-      learnKey,
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.put('movements', updatedMovement);
-
-    try {
-      await finalizePropertySaleLoanCancellation(movementId);
-    } catch (error) {
-      console.error('Error finalizando cancelación de préstamo por venta:', error);
-    }
-
-    // Create/update learning rule
-    await createLearningRule(movement, categoria, ambito, inmuebleId);
-
-    // Backfill: apply to similar movements in same period and account
-    const movementDate = new Date(movement.date);
-    const periodo = movementDate.getFullYear().toString(); // Use year as period
-    const cuentaId = movement.accountId || 999;
-    
-    let appliedToSimilar = 0;
-    try {
-      const backfillResult = await applyRuleToGrays({
-        learnKey,
-        periodo,
-        cuentaId,
-        limit: 500 // Configurable limit per problem statement
-      });
-      appliedToSimilar = backfillResult.updated;
-      
-      if (backfillResult.total > backfillResult.updated) {
-        console.warn(`Backfill parcial aplicado: ${backfillResult.updated}/${backfillResult.total}.`);
-      }
-    } catch (backfillError) {
-      console.error('Backfill error:', backfillError);
-      // Continue even if backfill fails
-    }
-
-    console.log(`✅ Manual reconciliation completed for movement ${movementId}`);
-    
-    // TODO: Emit treasury:movementsUpdated event for UI refresh
-    // This would be implemented when event system is available
-    
-    return { appliedToSimilar };
-
-  } catch (error) {
-    console.error('❌ Error in manual reconciliation:', error);
-    throw error;
-  }
-}
-
-/**
  * Apply existing learning rules to new movements during import (alias for applyAllRulesOnImport)
  */
 export async function applyLearningRulesToNewMovements(movements: Movement[]): Promise<Movement[]> {
@@ -573,86 +319,9 @@ export async function applyLearningRulesToNewMovements(movements: Movement[]): P
 }
 
 /**
- * Export object with the main service functions as specified in problem statement
+ * Service surface kept for compat with consumers that destructure the bundle.
  */
 export const learningService = {
   createOrUpdateRule,
-  applyRuleToGrays,
-  applyAllRulesOnImport
+  applyAllRulesOnImport,
 };
-
-/**
- * Get learning rules statistics
- */
-export async function getLearningRulesStats(): Promise<{
-  totalRules: number;
-  totalApplications: number;
-  recentRules: MovementLearningRule[];
-}> {
-  try {
-    const db = await initDB();
-    const allRules = await db.getAll('movementLearningRules');
-    
-    const totalApplications = allRules.reduce((sum, rule) => sum + rule.appliedCount, 0);
-    const recentRules = allRules
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 10);
-
-    return {
-      totalRules: allRules.length,
-      totalApplications,
-      recentRules
-    };
-  } catch (error) {
-    console.error('❌ Error getting learning rules stats:', error);
-    return {
-      totalRules: 0,
-      totalApplications: 0,
-      recentRules: []
-    };
-  }
-}
-
-export type LearningLogEntry = {
-  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
-  movimientoId?: number;
-  ruleId?: number;
-  learnKey: string;
-  categoria: string;
-  ambito: 'PERSONAL' | 'INMUEBLE';
-  inmuebleId?: string;
-  ts: string;
-};
-
-/**
- * Get learning audit trail aggregated from movementLearningRules.history[].
- */
-export async function getLearningLogs(limit: number = 100): Promise<LearningLogEntry[]> {
-  try {
-    const db = await initDB();
-    const allRules = await db.getAll('movementLearningRules');
-
-    const logs: LearningLogEntry[] = [];
-    for (const rule of allRules) {
-      for (const entry of (rule.history ?? [])) {
-        logs.push({
-          action: entry.action,
-          movimientoId: entry.movimientoId,
-          ruleId: rule.id,
-          learnKey: rule.learnKey,
-          categoria: rule.categoria,
-          ambito: rule.ambito,
-          inmuebleId: rule.inmuebleId,
-          ts: entry.ts,
-        });
-      }
-    }
-
-    return logs
-      .sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-      .slice(0, limit);
-  } catch (error) {
-    console.error('❌ Error getting learning logs:', error);
-    return [];
-  }
-}
