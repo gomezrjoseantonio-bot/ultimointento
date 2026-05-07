@@ -49,12 +49,29 @@ const LandingPage: React.FC = () => {
   const { data: libertad, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
 
   // Proyección · usa el helper compartido (cierra TODO-T20-01).
+  // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores y los exponemos a UI
+  // en lugar de mostrar 0€ silenciosamente.
   const [projection, setProjection] = useState<BudgetProjection | null>(null);
+  const [projectionError, setProjectionError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    computeBudgetProjection12mAsync(new Date().getFullYear()).then((p) => {
-      if (!cancelled) setProjection(p);
-    });
+    computeBudgetProjection12mAsync(new Date().getFullYear())
+      .then((p) => {
+        if (!cancelled) {
+          setProjection(p);
+          setProjectionError(null);
+        }
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[mi-plan/landing] error proyección · banner UI', err);
+        if (!cancelled) {
+          setProjection(null);
+          setProjectionError(
+            err instanceof Error ? err.message : 'Error cargando proyección',
+          );
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -173,6 +190,23 @@ const LandingPage: React.FC = () => {
 
   return (
     <>
+      {projectionError && (
+        <div
+          role="alert"
+          style={{
+            background: 'var(--s-neg-bg)',
+            color: 'var(--s-neg)',
+            border: '1px solid var(--s-neg)',
+            borderRadius: 10,
+            padding: '12px 16px',
+            marginBottom: 14,
+            fontSize: 13,
+          }}
+        >
+          <strong>No se pudo calcular la proyección.</strong>{' '}
+          {projectionError} · revisa la consola para más detalle.
+        </div>
+      )}
       <div className={styles.heroNarrative}>
         <HeroBanner
           variant="compact"

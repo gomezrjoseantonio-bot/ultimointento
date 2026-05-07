@@ -265,36 +265,44 @@ export const computeBudgetProjectionFromData = (
 };
 
 /**
+ * Devuelve una proyección estructural vacía (todos los meses a 0). Pensada
+ * para que los callers la usen como ÚLTIMO recurso cuando capturan un error
+ * y necesitan renderizar algo · NO se devuelve silenciosamente desde
+ * `computeBudgetProjection12mAsync` (T-AUDIT-9 · Hallazgo 5.A).
+ */
+export const emptyBudgetProjection = (year: number): BudgetProjection =>
+  computeBudgetProjectionFromData(year, {
+    nominas: [],
+    autonomos: [],
+    compromisos: [],
+    contracts: [],
+  });
+
+/**
  * Variante async · carga los stores de DB y devuelve la proyección.
- * Devuelve estructura con totales 0 si la DB falla · NO lanza.
+ *
+ * **Propaga errores** al caller · ya NO traga la excepción ni devuelve una
+ * estructura silenciosa de ceros (T-AUDIT-9 · Hallazgo 5.A). Si la DB falla
+ * (corrupción · schema mismatch · etc.) la promesa rechaza y el caller debe
+ * decidir cómo reaccionar (mostrar banner · usar `emptyBudgetProjection`
+ * como fallback explícito · etc.).
  */
 export const computeBudgetProjection12mAsync = async (
   year: number,
 ): Promise<BudgetProjection> => {
-  try {
-    const db = await initDB();
-    const [nominas, autonomos, compromisos, contracts] = await Promise.all([
-      db.getAll('nominas') as Promise<Nomina[]>,
-      db.getAll('autonomos') as Promise<Autonomo[]>,
-      db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
-      db.getAll('contracts') as Promise<Contract[]>,
-    ]);
-    return computeBudgetProjectionFromData(year, {
-      nominas,
-      autonomos,
-      compromisos,
-      contracts,
-    });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[budgetProjection] error cargando datos · devuelve vacío', err);
-    return computeBudgetProjectionFromData(year, {
-      nominas: [],
-      autonomos: [],
-      compromisos: [],
-      contracts: [],
-    });
-  }
+  const db = await initDB();
+  const [nominas, autonomos, compromisos, contracts] = await Promise.all([
+    db.getAll('nominas') as Promise<Nomina[]>,
+    db.getAll('autonomos') as Promise<Autonomo[]>,
+    db.getAll('compromisosRecurrentes') as Promise<CompromisoRecurrente[]>,
+    db.getAll('contracts') as Promise<Contract[]>,
+  ]);
+  return computeBudgetProjectionFromData(year, {
+    nominas,
+    autonomos,
+    compromisos,
+    contracts,
+  });
 };
 
 /**
