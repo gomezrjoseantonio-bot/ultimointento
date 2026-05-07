@@ -189,8 +189,14 @@ export const calculateMejoraAmortization = (
     classification.amortizationYears - yearsSinceAcquisition - 1
   );
 
+  // Copilot review #1280 · el último ejercicio amortizable también suma
+  // `annualAmortization` (antes daba 0 cuando `remainingYears === 0`,
+  // infraestimando el cierre). Devolvemos amortización mientras estemos
+  // dentro de la vida útil; años posteriores → 0.
+  const isWithinAmortizationLife = yearsSinceAcquisition < classification.amortizationYears;
+
   return {
-    annualAmortization: remainingYears > 0 ? annualAmortization : 0,
+    annualAmortization: isWithinAmortizationLife ? annualAmortization : 0,
     remainingYears,
     totalAmortized,
     remainingValue
@@ -286,8 +292,12 @@ export const getMejoraAmortizationSummary = async (
   }
 
   // Mobiliario (store independiente desde v62)
+  // Copilot review #1280 · idéntico filtro que `mueblesInmuebleService.calcularAmortizacionMobiliarioAnual`
+  // · descartamos muebles dados de baja sin fecha (activo=false sin fechaBaja)
+  // para no sesgar los KPIs.
   const muebles = await mueblesInmuebleService.getPorInmueble(propertyId);
   for (const mueble of muebles) {
+    if (!mueble.activo && !mueble.fechaBaja) continue;
     const fechaAlta = new Date(mueble.fechaAlta);
     if (Number.isNaN(fechaAlta.getTime())) continue;
     const altaYear = fechaAlta.getFullYear();
