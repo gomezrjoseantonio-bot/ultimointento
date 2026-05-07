@@ -193,29 +193,76 @@ export async function createLearningRule(
 }
 
 /**
- * Create or update a learning rule by learn key
+ * Create or update a learning rule by learn key.
+ *
+ * T16-fix-functional (B1+B2+B8):
+ * - Each call counts as one application of the rule (`appliedCount` arranca en
+ *   1 al crear y se incrementa al actualizar). Esto hace que el boost de
+ *   confianza en `movementSuggestionService.suggestFromLearningRule` opere
+ *   sobre datos reales, no quedándose siempre en `confidence = 50`.
+ * - Cuando el caller dispone del `Movement` (orchestrator), lo pasa en
+ *   `params.movement` para rellenar `counterpartyPattern`, `descriptionPattern`
+ *   y `amountSign` en la creación, y para no dejar patrones vacíos en upserts
+ *   sobre reglas previamente creadas sin contexto.
+ * - El `movimientoId` se propaga a `history[]` cuando está disponible.
  */
 export async function createOrUpdateRule(params: {
   learnKey: string;
   categoria: string;
   ambito: 'PERSONAL' | 'INMUEBLE';
   inmuebleId?: string;
+  movement?: Movement;
 }): Promise<MovementLearningRule> {
   try {
     const db = await initDB();
-    const { learnKey, categoria, ambito, inmuebleId } = params;
+    const { learnKey, categoria, ambito, inmuebleId, movement } = params;
+    const now = new Date().toISOString();
+
+    const derivedCounterparty = movement
+      ? normalizeText(movement.counterparty || '')
+      : undefined;
+    const derivedDescription = movement
+      ? removeVolatileTokens(normalizeText(movement.description || ''))
+      : undefined;
+    const derivedAmountSign: 'positive' | 'negative' | undefined = movement
+      ? (movement.amount >= 0 ? 'positive' : 'negative')
+      : undefined;
+    const movimientoId = movement?.id;
 
     // Check if rule already exists
     const existingRules = await db.getAllFromIndex('movementLearningRules', 'learnKey', learnKey);
-    
+
     if (existingRules.length > 0) {
       // Update existing rule
       const rule = existingRules[0];
+      // Snapshot before any mutation so the amountSign override condition
+      // checks the rule's PRE-existing state, not what we are about to write.
+      const wasOrchestratorPlaceholder =
+        !rule.counterpartyPattern && !rule.descriptionPattern;
       rule.categoria = categoria;
       rule.ambito = ambito;
       rule.inmuebleId = inmuebleId;
-      rule.updatedAt = new Date().toISOString();
-      appendHistory(rule, { action: 'CREATE_RULE', ts: new Date().toISOString() });
+      // B2 · backfill empty patterns when caller now provides a Movement
+      if (derivedCounterparty !== undefined && !rule.counterpartyPattern) {
+        rule.counterpartyPattern = derivedCounterparty;
+      }
+      if (derivedDescription !== undefined && !rule.descriptionPattern) {
+        rule.descriptionPattern = derivedDescription;
+      }
+      if (derivedAmountSign !== undefined && wasOrchestratorPlaceholder) {
+        // Only override the placeholder default when the rule had no real
+        // pattern signature yet — flag for orchestrator-created-without-context.
+        rule.amountSign = derivedAmountSign;
+      }
+      // B1 · this call counts as one application
+      rule.appliedCount = (rule.appliedCount ?? 0) + 1;
+      rule.lastAppliedAt = now;
+      rule.updatedAt = now;
+      appendHistory(rule, {
+        action: 'CREATE_RULE',
+        ...(movimientoId != null && { movimientoId }),
+        ts: now,
+      });
 
       await db.put('movementLearningRules', rule);
       console.log(`📚 Updated learning rule: ${learnKey}`);
@@ -224,17 +271,22 @@ export async function createOrUpdateRule(params: {
       // Create new rule
       const newRule: MovementLearningRule = {
         learnKey,
-        counterpartyPattern: '', // Will be filled when movement is processed
-        descriptionPattern: '',
-        amountSign: 'positive', // Default, will be updated
+        counterpartyPattern: derivedCounterparty ?? '',
+        descriptionPattern: derivedDescription ?? '',
+        amountSign: derivedAmountSign ?? 'positive',
         categoria,
         ambito,
         inmuebleId,
         source: 'IMPLICIT',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        appliedCount: 0,
-        history: [{ action: 'CREATE_RULE', ts: new Date().toISOString() }],
+        createdAt: now,
+        updatedAt: now,
+        appliedCount: 1, // B1 · creation already counts as the first application
+        lastAppliedAt: now,
+        history: [{
+          action: 'CREATE_RULE',
+          ...(movimientoId != null && { movimientoId }),
+          ts: now,
+        }],
       };
 
       const ruleId = await db.add('movementLearningRules', newRule);
