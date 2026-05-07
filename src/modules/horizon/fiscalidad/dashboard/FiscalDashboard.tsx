@@ -20,7 +20,15 @@ import {
   AlertaFiscal,
 } from '../../../../services/alertasFiscalesService';
 import { getOpexRulesForProperty } from '../../../../services/opexService';
-import type { OpexRule } from '../../../../services/db';
+import type { GastoInmueble, MejoraInmueble } from '../../../../services/db';
+import { gastosInmuebleService } from '../../../../services/gastosInmuebleService';
+import { mejorasInmuebleService } from '../../../../services/mejorasInmuebleService';
+import { prestamosService } from '../../../../services/prestamosService';
+import {
+  EXPECTED_FISCAL_CATEGORIES,
+  isCategoryRegistered,
+  type CategoryMatchContext,
+} from '../../../../services/fiscalDashboardMatch';
 
 // ── Formatters ──────────────────────────────────────────────
 const fmtAmount = (n: number) =>
@@ -46,16 +54,8 @@ const ESTADO_LABEL: Record<EstadoType, string> = {
   prescrito: 'Resultado declarado (prescrito)',
 };
 
-// ── Expected expense categories ─────────────────────────────
-const EXPECTED_CATEGORIES: { key: string; label: string; match: (r: OpexRule) => boolean; alwaysRegistered?: boolean }[] = [
-  { key: 'comunidad', label: 'Comunidad', match: (r) => r.categoria === 'comunidad' },
-  { key: 'ibi', label: 'IBI', match: (r) => r.categoria === 'impuesto' && r.concepto.toLowerCase().includes('ibi') },
-  { key: 'seguro', label: 'Seguro', match: (r) => r.categoria === 'seguro' },
-  { key: 'suministros', label: 'Suministros', match: (r) => r.categoria === 'suministro' },
-  { key: 'amortizacion', label: 'Amortización', match: () => true, alwaysRegistered: true },
-  { key: 'intereses', label: 'Intereses hipoteca', match: (r) => r.concepto.toLowerCase().includes('hipoteca') || r.concepto.toLowerCase().includes('interés') || r.concepto.toLowerCase().includes('interes') },
-  { key: 'reparaciones', label: 'Reparaciones', match: (r) => r.concepto.toLowerCase().includes('reparac') || r.concepto.toLowerCase().includes('conservac') },
-];
+// Expected categories y la lógica match viven en `services/fiscalDashboardMatch.ts`
+// para mantener la pureza · permitir tests aislados (T-OPEX-RECONNECT §2.6 #7-8).
 
 // ── Component ───────────────────────────────────────────────
 type FuenteResolver = Awaited<ReturnType<typeof getDeclaracion>>['fuente'];
@@ -77,8 +77,8 @@ const FiscalDashboard: React.FC = () => {
   const [alertasFiscales, setAlertasFiscales] = useState<AlertaFiscal[]>([]);
   const [showAllAlertas, setShowAllAlertas] = useState(false);
 
-  // Opex per inmueble
-  const [opexByInmueble, setOpexByInmueble] = useState<Record<number, OpexRule[]>>({});
+  // T-OPEX-RECONNECT (Q2/Q3): contexto de match por inmueble · 4 fuentes
+  const [matchCtxByInmueble, setMatchCtxByInmueble] = useState<Record<number, CategoryMatchContext>>({});
 
   // Load available years (with one-time cleanup of garbage records)
   useEffect(() => {
@@ -125,16 +125,26 @@ const FiscalDashboard: React.FC = () => {
           arrastres.perdidasPatrimoniales.reduce((s, p) => s + p.importePendiente, 0);
         setArrastresTotal(totalArrastres);
 
-        // Load opex rules for inmuebles
+        // Load match context for inmuebles (4 fuentes · Q2/Q3)
         try {
           const inmuebleIds = await getInmueblesDelEjercicio(selectedYear);
-          const opexMap: Record<number, OpexRule[]> = {};
+          const ctxMap: Record<number, CategoryMatchContext> = {};
           await Promise.all(inmuebleIds.map(async (id) => {
-            opexMap[id] = await getOpexRulesForProperty(id);
+            const [rules, gastos, prestamos, mejoras] = await Promise.all([
+              getOpexRulesForProperty(id),
+              gastosInmuebleService.getByInmuebleYEjercicio(id, selectedYear).catch(() => [] as GastoInmueble[]),
+              prestamosService.getPrestamosByProperty(String(id)).catch(() => []),
+              mejorasInmuebleService.getPorInmueble(id).catch(() => [] as MejoraInmueble[]),
+            ]);
+            const hasActiveLoan = prestamos.some(
+              (p) => p.activo !== false && p.estado !== 'cancelado',
+            );
+            const hasReparacionMejora = mejoras.some((m) => m.tipo === 'reparacion');
+            ctxMap[id] = { rules, gastos, hasActiveLoan, hasReparacionMejora };
           }));
-          if (!cancelled) setOpexByInmueble(opexMap);
+          if (!cancelled) setMatchCtxByInmueble(ctxMap);
         } catch {
-          if (!cancelled) setOpexByInmueble({});
+          if (!cancelled) setMatchCtxByInmueble({});
         }
       } catch (e) {
         console.error('Error loading fiscal estado:', e);
@@ -359,7 +369,12 @@ const FiscalDashboard: React.FC = () => {
                 {declaracion.baseGeneral.rendimientosInmuebles
                   .filter((inm) => inm.inmuebleId >= 0)
                   .map((inmueble) => {
-                    const rules = opexByInmueble[inmueble.inmuebleId] ?? [];
+                    const ctx: CategoryMatchContext = matchCtxByInmueble[inmueble.inmuebleId] ?? {
+                      rules: [],
+                      gastos: [],
+                      hasActiveLoan: false,
+                      hasReparacionMejora: false,
+                    };
                     return (
                       <article
                         key={inmueble.inmuebleId}
@@ -422,8 +437,8 @@ const FiscalDashboard: React.FC = () => {
 
                         {/* Expense tags */}
                         <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {EXPECTED_CATEGORIES.map((cat) => {
-                            const registered = cat.alwaysRegistered || rules.some((r) => r.activo && cat.match(r));
+                          {EXPECTED_FISCAL_CATEGORIES.map((cat) => {
+                            const registered = isCategoryRegistered(cat, ctx);
                             if (registered) {
                               return (
                                 <span key={cat.key} style={{
