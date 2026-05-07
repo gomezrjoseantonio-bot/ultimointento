@@ -30,7 +30,6 @@ import {
 import { gastosInmuebleService } from '../../services/gastosInmuebleService';
 import {
   getOpexRulesForProperty,
-  generateBaseOpexForProperty,
   deleteOpexRule,
   saveOpexRule,
 } from '../../services/opexService';
@@ -235,11 +234,7 @@ const InmueblePresupuestoTab: React.FC<InmueblePresupuestoTabProps> = ({ propert
       setAccounts(allAccounts.filter((a) => a.activa && a.status !== 'DELETED'));
       setPropertyAlias(property?.alias || '');
 
-      let opexRules = await getOpexRulesForProperty(propertyId);
-      if (opexRules.length === 0) {
-        await generateBaseOpexForProperty(propertyId);
-        opexRules = await getOpexRulesForProperty(propertyId);
-      }
+      const opexRules = await getOpexRulesForProperty(propertyId);
       setRules(opexRules);
 
       await generarOperacionesDesdeRecurrentes(propertyId, currentExerciseYear);
