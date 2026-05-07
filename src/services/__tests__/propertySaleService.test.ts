@@ -520,8 +520,12 @@ describe('propertySaleService', () => {
     );
     expect(cancellationMovement).toBeTruthy();
 
-    const { performManualReconciliation } = await import('../movementLearningService');
-    await performManualReconciliation(cancellationMovement!.id, 'Intereses', 'INMUEBLE', String(propertyId));
+    // T16-cleanup · `performManualReconciliation` fue eliminado · este test
+    // sólo valida la finalización del préstamo, así que invocamos directamente
+    // `finalizePropertySaleLoanCancellation`, que es lo que la función
+    // eliminada llamaba internamente.
+    const { finalizePropertySaleLoanCancellation } = await import('../propertySaleService');
+    await finalizePropertySaleLoanCancellation(cancellationMovement!.id);
 
     const loanAfterPunteo = await db.get('prestamos', 'loan-punteo-1');
     expect(loanAfterPunteo?.activo).toBe(false);
