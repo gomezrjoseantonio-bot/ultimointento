@@ -548,11 +548,15 @@ async function feedLearningRule(movement: Movement, derived: DerivedCategory | n
   if (!derived) return;
   try {
     const learnKey = buildLearnKey(movement);
+    // T16-fix-functional · pasar el movimiento permite a createOrUpdateRule
+    // rellenar counterpartyPattern/descriptionPattern/amountSign y propagar
+    // movimientoId al history[] (B2 + B8 del audit T16).
     await createOrUpdateRule({
       learnKey,
       categoria: derived.categoria,
       ambito: derived.ambito,
       inmuebleId: derived.inmuebleId,
+      movement,
     });
   } catch (err) {
     // Learning is opportunistic — do not block confirmation if it fails.

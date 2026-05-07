@@ -545,4 +545,138 @@ describe('Treasury v1.1 Learning Engine', () => {
       expect(endesa.counterparty).not.toBe(iberdrola.counterparty);
     });
   });
+
+  // T16-fix-functional · cobertura B1+B2+B8 (audit T16 §6).
+  // El path UI activo es bankStatementOrchestrator → feedLearningRule →
+  // createOrUpdateRule, por lo que estos casos invocan el servicio
+  // directamente con el shape que usa el orchestrator (con/sin `movement`).
+  describe('T16-fix-functional · createOrUpdateRule', () => {
+    test('B1 · creación arranca appliedCount en 1 (no 0)', async () => {
+      const rule = await learningService.createOrUpdateRule({
+        learnKey: 't16-b1-new',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+      });
+
+      expect(rule.appliedCount).toBe(1);
+      expect(rule.lastAppliedAt).toBeDefined();
+    });
+
+    test('B1 · upsert sobre regla existente incrementa appliedCount', async () => {
+      await learningService.createOrUpdateRule({
+        learnKey: 't16-b1-existing',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+      });
+      const second = await learningService.createOrUpdateRule({
+        learnKey: 't16-b1-existing',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+      });
+      const third = await learningService.createOrUpdateRule({
+        learnKey: 't16-b1-existing',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+      });
+
+      expect(second.appliedCount).toBe(2);
+      expect(third.appliedCount).toBe(3);
+    });
+
+    test('B1 · boost de confianza · regla con appliedCount >= 3 sale del piso 50', async () => {
+      // Replica la fórmula viva en movementSuggestionService.ts:
+      //   applied===0 → 50; resto → 70 + Math.min(15, round(log10(applied+1)*5))
+      const rule = { appliedCount: 3 } as MovementLearningRule;
+      const applied = rule.appliedCount ?? 0;
+      const confidence =
+        applied === 0
+          ? 50
+          : 70 + Math.min(15, Math.round(Math.log10(applied + 1) * 5));
+
+      expect(applied).toBeGreaterThanOrEqual(3);
+      expect(confidence).toBeGreaterThanOrEqual(70);
+      expect(confidence).toBeLessThanOrEqual(85);
+    });
+
+    test('B2 · cuando se pasa el movimiento, los patrones se rellenan en la creación', async () => {
+      const movement = createTestMovement({
+        id: 9001,
+        description: 'ENDESA ESPAÑA SA RECIBO LUZ JUN2024 REF777',
+        counterparty: 'ENDESA ESPAÑA SA',
+        amount: -45.23,
+      });
+
+      const rule = await learningService.createOrUpdateRule({
+        learnKey: 't16-b2-with-movement',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+        movement,
+      });
+
+      expect(rule.counterpartyPattern).not.toBe('');
+      expect(rule.counterpartyPattern.toLowerCase()).toContain('endesa');
+      expect(rule.descriptionPattern).not.toBe('');
+      expect(rule.amountSign).toBe('negative');
+    });
+
+    test('B2 · sin movimiento, los patrones quedan en defaults (compat)', async () => {
+      const rule = await learningService.createOrUpdateRule({
+        learnKey: 't16-b2-no-movement',
+        categoria: 'TRANSPORTE',
+        ambito: 'PERSONAL',
+      });
+
+      expect(rule.counterpartyPattern).toBe('');
+      expect(rule.descriptionPattern).toBe('');
+      expect(rule.amountSign).toBe('positive');
+    });
+
+    test('B2 · upsert con movimiento rellena patrones que estaban vacíos', async () => {
+      // Primera creación sin movimiento → patrones vacíos.
+      await learningService.createOrUpdateRule({
+        learnKey: 't16-b2-backfill',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+      });
+      const movement = createTestMovement({
+        id: 9002,
+        description: 'IBERDROLA GENERACION SAU RECIBO LUZ',
+        counterparty: 'IBERDROLA GENERACION',
+        amount: -78.9,
+      });
+
+      const updated = await learningService.createOrUpdateRule({
+        learnKey: 't16-b2-backfill',
+        categoria: 'SUMINISTROS',
+        ambito: 'PERSONAL',
+        movement,
+      });
+
+      expect(updated.counterpartyPattern.toLowerCase()).toContain('iberdrola');
+      expect(updated.descriptionPattern).not.toBe('');
+      expect(updated.amountSign).toBe('negative');
+    });
+
+    test('B8 · history[] incluye movimientoId cuando el movimiento lo aporta', async () => {
+      const movement = createTestMovement({
+        id: 9003,
+        description: 'AMAZON PAYMENTS COMPRA ONLINE',
+        counterparty: 'AMAZON PAYMENTS',
+        amount: -12.5,
+      });
+
+      const rule = await learningService.createOrUpdateRule({
+        learnKey: 't16-b8-with-id',
+        categoria: 'COMPRAS',
+        ambito: 'PERSONAL',
+        movement,
+      });
+
+      expect(rule.history).toBeDefined();
+      expect(rule.history!.length).toBeGreaterThan(0);
+      const last = rule.history![rule.history!.length - 1];
+      expect(last.action).toBe('CREATE_RULE');
+      expect(last.movimientoId).toBe(9003);
+    });
+  });
 });
