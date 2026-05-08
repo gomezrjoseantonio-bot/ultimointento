@@ -11,6 +11,7 @@ import {
   showToastV5,
 } from '../../../design-system/v5';
 import type { MiPlanOutletContext } from '../MiPlanContext';
+import { useProyeccionLibertad } from '../../../hooks/useProyeccionLibertad';
 
 type Escenario = 'alquiler' | 'propia';
 
@@ -18,6 +19,9 @@ const LibertadPage: React.FC = () => {
   const { escenario } = useOutletContext<MiPlanOutletContext>();
   const escenarioPersistido = escenario?.modoVivienda ?? 'alquiler';
   const [escenarioActivo, setEscenarioActivo] = useState<Escenario>(escenarioPersistido as Escenario);
+  const { data: libertad, loading: libertadLoading, error: libertadError } = useProyeccionLibertad({
+    enabled: Boolean(escenario),
+  });
 
   if (!escenario) {
     return (
@@ -124,31 +128,29 @@ const LibertadPage: React.FC = () => {
           cruzan las líneas
         </CardV5.Subtitle>
         <CardV5.Body>
-          {(() => {
+          {libertadLoading ? (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
+              calculando trayectoria…
+            </div>
+          ) : libertadError || !libertad ? (
+            <EmptyState
+              title="No hemos podido calcular tu trayectoria"
+              description="Inténtalo de nuevo dentro de unos minutos o revisa los datos de tu plan."
+            />
+          ) : (() => {
             const yearStart = new Date().getFullYear();
             const horizonYears = 18;
-            // Punto de partida 0 € · los hitos van sumando renta pasiva
-            // mensual proyectada hasta cada año.
-            const rentaActual = 0;
-            // Construye serie proyectada · valor inicial + impacto acumulado
-            // de hitos a fecha de cada año.
+            // Adapter local · la serie del servicio es mensual (`isoYM`) ·
+            // el SVG consume snapshots anuales. Tomamos el primer punto
+            // disponible de cada año (enero o, para `yearStart`, el mes
+            // de referencia actual). NO modifica el hook ni el servicio.
             const serie: { year: number; renta: number }[] = [];
             for (let i = 0; i <= horizonYears; i++) {
               const year = yearStart + i;
-              let renta = rentaActual;
-              for (const h of hitos) {
-                if (h.fecha) {
-                  const yh = new Date(h.fecha).getFullYear();
-                  if (!Number.isNaN(yh) && yh <= year) {
-                    renta += h.impactoMensual ?? 0;
-                  }
-                }
-              }
-              serie.push({ year, renta: Math.max(0, renta) });
+              const point =
+                libertad.serie.find((p) => p.isoYM.startsWith(`${year}-`)) ?? null;
+              serie.push({ year, renta: point ? point.rentaPasiva : 0 });
             }
-            // maxY · incluye objetivo + gastosVida + serie con un 20% de
-            // margen · garantiza que ambas líneas (objetivo · gastos vida)
-            // y el cruce "libertad" siempre quedan dentro del viewBox.
             const maxY = Math.max(
               rentaPasivaObjetivo * 1.2,
               gastosVida * 1.2,
@@ -171,10 +173,21 @@ const LibertadPage: React.FC = () => {
             const path = serie
               .map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(s.renta).toFixed(1)}`)
               .join(' ');
-            // Año de "libertad" · primer punto donde renta >= gastosVida.
-            const libertadIdx = serie.findIndex((s) => s.renta >= gastosVida);
+            // Año de "libertad" · usa el cruce calculado por el servicio
+            // (no un findIndex local) para coincidir con LandingPage y PanelPage.
+            const cruceAnio = libertad.cruceLibertad?.anio ?? null;
+            const cruceIsoYM = libertad.cruceLibertad?.isoYM ?? null;
+            const libertadIdx =
+              cruceAnio != null ? serie.findIndex((s) => s.year === cruceAnio) : -1;
             const libertadX = libertadIdx >= 0 ? x(libertadIdx) : null;
-            const libertadY = libertadIdx >= 0 ? y(serie[libertadIdx].renta) : null;
+            const libertadPoint =
+              cruceIsoYM != null
+                ? serie.find((s) => 'isoYM' in s && s.isoYM === cruceIsoYM) ??
+                  (libertadIdx >= 0 ? serie[libertadIdx] : null)
+                : libertadIdx >= 0
+                  ? serie[libertadIdx]
+                  : null;
+            const libertadY = libertadPoint ? y(libertadPoint.renta) : null;
 
             return (
               <svg
