@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar as CalendarIcon, TrendingUp, TrendingDown } from 'lucide-react';
 
 // Import ResumenPresupuesto from the service
 import { ResumenPresupuesto } from '../services/presupuestoService';
+import { initDB } from '../../../../../services/db';
 
 interface PresupuestoCalendarioProps {
   resumen: ResumenPresupuesto;
@@ -13,6 +14,37 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
   resumen,
   year
 }) => {
+  const [realPorMes, setRealPorMes] = useState<number[]>(() => new Array(12).fill(0));
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const db = await initDB();
+        const movements = await db.getAll('movements');
+        const months = new Array(12).fill(0);
+        for (const movement of movements) {
+          if (!movement.date) continue;
+          if (movement.isOpeningBalance) continue;
+          if (movement.type !== 'Ingreso' && movement.type !== 'Gasto') continue;
+          if (movement.unifiedStatus === 'previsto' || movement.unifiedStatus === 'vencido') continue;
+          const date = new Date(movement.date);
+          if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) continue;
+          months[date.getMonth()] += Number(movement.amount || 0);
+        }
+        if (!cancelled) setRealPorMes(months);
+      } catch (error) {
+        console.error('PresupuestoCalendario · failed to load real movements:', error);
+        if (!cancelled) setRealPorMes(new Array(12).fill(0));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [year]);
+
+  const realAnual = realPorMes.reduce((sum, value) => sum + value, 0);
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-ES', {
       style: 'currency',
@@ -43,13 +75,6 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
     return neto >= 0 ? TrendingUp : TrendingDown;
   };
 
-  // Mock real data for comparison (TODO: implement real vs budget comparison)
-  const generateMockReal = (budgeted: number) => {
-    // Generate some realistic variation
-    const variation = (Math.random() - 0.5) * 0.4; // ±20% variation
-    return budgeted * (1 + variation);
-  };
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <div className="flex items-center justify-between mb-6">
@@ -65,7 +90,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {monthNames.map((month, index) => {
           const presupuestado = resumen.breakdown.neto[index];
-          const real = generateMockReal(presupuestado); // TODO: get real data
+          const real = realPorMes[index] || 0;
           const delta = real - presupuestado;
           const bubbleColor = getBubbleColor(index);
           const Icon = getIcon(index);
@@ -89,7 +114,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
                   </span>
                 </div>
                 
-                {/* Real (mock data) */}
+                {/* Real */}
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-gray-600">REAL:</span>
                   <span className="text-sm font-medium">
@@ -129,15 +154,15 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-600 mb-1">Total Real (Mock)</div>
+            <div className="text-xs text-gray-600 mb-1">Total Real</div>
             <div className="text-lg font-bold text-gray-900">
-              {formatCurrency(generateMockReal(resumen.netoAnual))}
+              {formatCurrency(realAnual)}
             </div>
           </div>
           <div>
             <div className="text-xs text-gray-600 mb-1">Desviación</div>
-            <div className="text-lg font-bold text-success-600">
-              +{formatCurrency(Math.abs(generateMockReal(resumen.netoAnual) - resumen.netoAnual))}
+            <div className={`text-lg font-bold ${realAnual - resumen.netoAnual >= 0 ? 'text-success-600' : 'text-error-600'}`}>
+              {realAnual - resumen.netoAnual >= 0 ? '+' : ''}{formatCurrency(realAnual - resumen.netoAnual)}
             </div>
           </div>
         </div>
@@ -151,7 +176,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
           <span className="font-medium"> Δ</span>: Diferencia
         </p>
         <p className="mt-1">
-          Los datos reales se obtendrán de Movimientos + Contratos + OCR (actualmente mock)
+          Los datos reales provienen de Movimientos de Ingreso/Gasto del año (excluyendo previstos, vencidos y saldos iniciales).
         </p>
       </div>
     </div>
