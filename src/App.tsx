@@ -1066,6 +1066,8 @@ function App() {
               } />
               {/* Compat · /personal/supervision legacy redirige a panel */}
               <Route path="supervision" element={<Navigate to="/personal" replace />} />
+              {/* Compat · /personal/importar-nominas legacy (T-NOMINAS-CLEANUP · entrada Excel eliminada) redirige a panel */}
+              <Route path="importar-nominas" element={<Navigate to="/personal" replace />} />
             </Route>
 
             {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
