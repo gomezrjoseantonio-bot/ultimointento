@@ -19,17 +19,24 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const db = await initDB();
-      const movements = await db.getAll('movements');
-      const months = new Array(12).fill(0);
-      for (const movement of movements) {
-        if (!movement.date) continue;
-        if (movement.unifiedStatus === 'previsto' || movement.unifiedStatus === 'vencido') continue;
-        const date = new Date(movement.date);
-        if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) continue;
-        months[date.getMonth()] += Number(movement.amount || 0);
+      try {
+        const db = await initDB();
+        const movements = await db.getAll('movements');
+        const months = new Array(12).fill(0);
+        for (const movement of movements) {
+          if (!movement.date) continue;
+          if (movement.isOpeningBalance) continue;
+          if (movement.type !== 'Ingreso' && movement.type !== 'Gasto') continue;
+          if (movement.unifiedStatus === 'previsto' || movement.unifiedStatus === 'vencido') continue;
+          const date = new Date(movement.date);
+          if (Number.isNaN(date.getTime()) || date.getFullYear() !== year) continue;
+          months[date.getMonth()] += Number(movement.amount || 0);
+        }
+        if (!cancelled) setRealPorMes(months);
+      } catch (error) {
+        console.error('PresupuestoCalendario · failed to load real movements:', error);
+        if (!cancelled) setRealPorMes(new Array(12).fill(0));
       }
-      if (!cancelled) setRealPorMes(months);
     })();
     return () => {
       cancelled = true;
@@ -169,7 +176,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
           <span className="font-medium"> Δ</span>: Diferencia
         </p>
         <p className="mt-1">
-          Los datos reales provienen de Movimientos conciliados/confirmados del año seleccionado.
+          Los datos reales provienen de Movimientos de Ingreso/Gasto del año (excluyendo previstos, vencidos y saldos iniciales).
         </p>
       </div>
     </div>

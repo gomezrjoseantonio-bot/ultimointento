@@ -153,8 +153,9 @@ class ComparativaService {
       return this.getBudgetData(params);
     }
 
-    // Net monthly cash flow from the engine: ingresos - gastos - financiacion.
-    return yearProyeccion.months.map(m => m.tesoreria.flujoCajaMes);
+    // Match budget semantic (ingresos - gastos, without financiacion) so the
+    // forecast/budget/actual are comparable in calculateMonthlyComparisons.
+    return yearProyeccion.months.map(m => m.ingresos.total - m.gastos.total);
   }
 
   private async getActualData(params: ComparativaParams): Promise<number[]> {
