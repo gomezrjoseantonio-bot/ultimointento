@@ -125,6 +125,63 @@ export interface Nomina {
     pdfDocumentoId?: string;
     irpfAcumuladoEjercicio?: number;
   };
+
+  // ─── PR-C4 · historial de cambios retributivos ────────────────────────────
+  /**
+   * PR-C4 · historial de cambios retributivos. Cuando existe, el cálculo
+   * mensual usa el snapshot con `vigenciaDesde <= primerDiaDelMes` más
+   * reciente. Cuando NO existe (registros pre-V70 sin migrar) o está vacío,
+   * el cálculo usa los campos top-level (retrocompatibilidad).
+   *
+   * Migración V70 · `v70-nomina-historial.ts` crea una entrada inicial
+   * para todos los registros existentes con los valores actuales y
+   * `vigenciaDesde = fechaAntiguedad ?? fechaCreacion`.
+   *
+   * El último elemento (mayor `vigenciaDesde`) refleja el estado actual
+   * y debe coincidir con los campos top-level del registro.
+   */
+  historial?: NominaHistorialEntry[];
+}
+
+/**
+ * PR-C4 · entrada del historial de cambios retributivos de una `Nomina`.
+ *
+ * Representa "a partir de `vigenciaDesde` la nómina vale ESTOS campos".
+ * El array `Nomina.historial` debe estar ordenado por `vigenciaDesde` ASC.
+ *
+ * `nominaService.calculateSalary(nomina, year)` resuelve por mes la
+ * entrada con mayor `vigenciaDesde` que sea <= primer día del mes. Si no
+ * hay match (o si no hay historial), cae a los campos top-level de
+ * `Nomina` (retrocompatibilidad).
+ */
+export interface NominaHistorialEntry {
+  /** ID corto, único por entrada (uuid o `${nominaId}-${vigenciaDesde}`). */
+  id: string;
+  /** Fecha ISO YYYY-MM-DD desde la que aplica el snapshot. */
+  vigenciaDesde: string;
+  /** Etiqueta opcional explicada por el usuario (ej. "Subida abril 2026"). */
+  motivo?: string;
+  /** Snapshot de los campos retributivos en el momento del cambio. */
+  snapshot: NominaRetributivoSnapshot;
+  /** ISO timestamp de creación de la entrada. */
+  createdAt: string;
+}
+
+/**
+ * PR-C4 · subconjunto retributivo capturado en cada entrada del historial.
+ * Los campos opcionales se omiten si el original es undefined (no se
+ * "desechan" valores existentes).
+ */
+export interface NominaRetributivoSnapshot {
+  salarioBrutoAnual: number;
+  variables?: Variable[];
+  bonus?: Bonus[];
+  pagasExtra?: NominaPagasExtra;
+  variableObjetivo?: NominaVariableObjetivo;
+  bonusObjetivo?: NominaBonusObjetivo;
+  retribucionEspecieAnual?: number;
+  aportacionEmpresaPlanPensionesAnual?: number;
+  planPensiones?: PlanPensionesNomina;
 }
 
 // ── Sub-objetos de la ampliación v1.1 ───────────────────────────────────────

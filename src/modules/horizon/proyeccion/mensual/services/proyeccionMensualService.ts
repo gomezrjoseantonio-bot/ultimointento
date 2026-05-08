@@ -702,7 +702,8 @@ async function loadBaseData(): Promise<BaseData> {
     const nominas = await nominaService.getNominas(personalDataId);
     const nominasActivas = nominas.filter(n => n.activa);
     for (const nomina of nominasActivas) {
-      const calculo = nominaService.calculateSalary(nomina);
+      // PR-C4 · pasar `year` para que cada mes use el snapshot vigente.
+      const calculo = nominaService.calculateSalary(nomina, year);
 
       for (const mesData of calculo.distribucionMensual) {
         const idx = mesData.mes - 1; // 0-indexed

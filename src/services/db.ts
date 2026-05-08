@@ -25,7 +25,7 @@ import type {
 import type { TipoActivo } from '../types/tipoActivo';
 
 const DB_NAME = 'AtlasHorizonDB';
-const DB_VERSION = 69; // V69 (TAREA 13 v4 · cierre lote B+C · C4 review Copilot): añade índice compuesto `tipo-activo` [tipo_activo, activo_id] en `valoraciones_historicas` · perf · solo schema · sin migración de datos · 40 stores (sin cambio en número)
+const DB_VERSION = 70; // V70 (PR-C4 · sistémico patrón vs real): añade `historial?: NominaHistorialEntry[]` al patrón Nomina (registros con `tipo='nomina'` en store `ingresos`). Bump sin cambio de schema · campo opcional. Backfill idempotente vía `runV70NominaHistorialMigration` (keyval flag). 40 stores (sin cambio en número).
 
 function ensureIndex<
   DBTypes extends DBSchema | unknown,
@@ -4087,6 +4087,18 @@ export const initDB = async () => {
               });
             }
           }
+        }
+
+        if (oldVersion < 70) {
+          // ── V70 (PR-C4 · sistémico patrón vs real) ──
+          // Añade `historial?: NominaHistorialEntry[]` al patrón Nomina
+          // (registros con `tipo='nomina'` en store `ingresos`).
+          //
+          // Solo bump de version · sin cambio de schema (el campo es
+          // opcional sobre el store `ingresos` existente). El backfill
+          // de datos lo hace `runV70NominaHistorialMigration` desde
+          // `App.tsx` la primera vez que arranca la app tras el upgrade
+          // (idempotente vía keyval flag · ver `migrations/v70-nomina-historial.ts`).
         }
       },
       blocked() {

@@ -185,7 +185,9 @@ async function conciliarNominas(
   const nominas = await nominaService.getAllActiveNominas();
 
   for (const nomina of nominas) {
-    const calculo = nominaService.calculateSalary(nomina);
+    // PR-C4 · pasar `ejercicio` para que cada mes use el snapshot del
+    // historial vigente (sin historial · top-level fallback).
+    const calculo = nominaService.calculateSalary(nomina, ejercicio);
 
     // Eventos de tesorería de tipo nómina confirmados/ejecutados para el ejercicio
     const nominaEvents = treasuryEvents.filter((e: any) =>

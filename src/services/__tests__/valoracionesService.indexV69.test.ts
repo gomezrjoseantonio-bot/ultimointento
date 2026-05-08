@@ -44,10 +44,13 @@ describe('valoracionesService · queries con índice tipo-activo (V69)', () => {
     jest.resetModules();
   });
 
-  it('DB inicializa en V69 con índice `tipo-activo`', async () => {
+  it('DB inicializa con índice `tipo-activo` (introducido en V69, persistente en versiones posteriores)', async () => {
     const { initDB } = await import('../db');
     const db = await initDB();
-    expect(db.version).toBe(69);
+    // PR-C4 (V70) · el índice se introdujo en V69 y debe persistir en
+    // versiones posteriores. Aserción >= en lugar de === para evitar
+    // fallos automáticos en cada bump de DB_VERSION sin cambio del índice.
+    expect(db.version).toBeGreaterThanOrEqual(69);
     const tx = db.transaction('valoraciones_historicas');
     const store = tx.objectStore('valoraciones_historicas');
     expect(Array.from(store.indexNames)).toContain('tipo-activo');

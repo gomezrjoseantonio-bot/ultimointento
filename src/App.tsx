@@ -20,6 +20,7 @@ import { migrateKeyvalPlanpagosToPrestamos } from './services/migrations/migrate
 import { cleanupConfigFiscalKeyval } from './services/migrations/cleanupConfigFiscalKeyval';
 import { migrateFinanciacionV2 } from './services/migrations/migrateFinanciacionV2';
 import { runV68TipoFamiliaMigration } from './services/migrations/v68-tipoFamilia';
+import { runV70NominaHistorialMigration } from './services/migrations/v70-nomina-historial';
 import { cleanupCategoriasT34T35Fix2 } from './services/migrations/cleanupCategoriasT34T35fix2';
 import MainLayout from './layouts/MainLayout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -336,6 +337,13 @@ function App() {
       .then(() => limpiarEjerciciosCoordBasura())
       // T38: migración v68 · inferir tipoFamilia en compromisosRecurrentes existentes
       .then(() => runV68TipoFamiliaMigration())
+      // PR-C4 (V70): backfill `historial` inicial en nóminas existentes
+      .then(() => runV70NominaHistorialMigration())
+      .then((v70Report) => {
+        if (!v70Report.skipped && v70Report.migrados > 0) {
+          console.log('[ATLAS] Migración V70 nómina historial:', v70Report);
+        }
+      })
       // T34/T35-fix-2 · cleanup one-shot · categoría aplastada a 'otros.*'
       // en los 2 patrones documentados (dia_a_dia.otros + seguros_cuotas.seguro_otros).
       .then(() => cleanupCategoriasT34T35Fix2())
