@@ -81,14 +81,41 @@ function applySnapshot(
 }
 
 /**
- * PR-C4 · construye un snapshot retributivo desde los campos top-level
- * actuales de una Nomina. Solo serializa campos definidos para evitar
+ * PR-C4 · campos retributivos que componen un `NominaRetributivoSnapshot`.
+ * Subconjunto de `Nomina` aceptado por `buildSnapshotFromNomina` · evita
+ * exigir todos los campos de `Nomina` (incluidos `id`/timestamps) cuando
+ * el caller solo dispone de los datos retributivos.
+ */
+export type NominaRetributivoFields = Pick<
+  Nomina,
+  | 'salarioBrutoAnual'
+  | 'variables'
+  | 'bonus'
+  | 'pagasExtra'
+  | 'variableObjetivo'
+  | 'bonusObjetivo'
+  | 'retribucionEspecieAnual'
+  | 'aportacionEmpresaPlanPensionesAnual'
+  | 'planPensiones'
+>;
+
+/**
+ * PR-C4 · construye un snapshot retributivo desde los campos retributivos
+ * de una Nomina (o cualquier objeto compatible con el subset
+ * `NominaRetributivoFields`). Solo serializa campos definidos para evitar
  * persistir `undefined` en IndexedDB.
  *
  * Exportado para uso desde la UI (NominaWizard) cuando se registra un
- * cambio con vigencia y se necesita capturar el snapshot completo.
+ * cambio con vigencia y se necesita capturar el snapshot completo, sin
+ * tener que castear a `Nomina` ni rellenar campos no retributivos.
+ *
+ * Review Copilot #1296 · firma cambia de `Nomina` a
+ * `NominaRetributivoFields` para eliminar casts y dummy values en los
+ * call sites.
  */
-export function buildSnapshotFromNomina(n: Nomina): NominaRetributivoSnapshot {
+export function buildSnapshotFromNomina(
+  n: NominaRetributivoFields,
+): NominaRetributivoSnapshot {
   const snap: NominaRetributivoSnapshot = {
     salarioBrutoAnual: n.salarioBrutoAnual,
   };

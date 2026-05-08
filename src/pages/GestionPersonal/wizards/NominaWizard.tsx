@@ -459,17 +459,14 @@ const NominaWizard: React.FC = () => {
       if (isEditing && nominaId) {
         if (modoEdicion === 'cambio-con-vigencia') {
           // PR-C4 · crear entrada nueva en el historial sin overwrite.
-          // (review Copilot) · construimos el snapshot COMPLETO desde
-          // los campos retributivos para no perder pagasExtra,
+          // (review Copilot · #1296) · construimos el snapshot COMPLETO
+          // desde los campos retributivos para no perder pagasExtra,
           // variableObjetivo, bonusObjetivo, retribucionEspecieAnual,
           // aportacionEmpresaPlanPensionesAnual.
-          const fullSnapshot: NominaRetributivoSnapshot = buildSnapshotFromNomina({
-            ...nominaData,
-            id: nominaId,
-            personalDataId: pid ?? 0,
-            fechaCreacion: '',
-            fechaActualizacion: '',
-          } as Nomina);
+          // (review Copilot · #1296) · `buildSnapshotFromNomina` acepta
+          // ahora `NominaRetributivoFields` (subset Pick) · no requiere
+          // cast ni dummy values para campos no retributivos.
+          const fullSnapshot: NominaRetributivoSnapshot = buildSnapshotFromNomina(nominaData);
           // (review Copilot) · pasar los campos NO versionados (nombre,
           // fechaAntiguedad, beneficiosSociales, retencion, cuentaAbono,
           // reglaCobroDia, deduccionesAdicionales...) como
