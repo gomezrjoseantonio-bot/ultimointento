@@ -19,7 +19,9 @@ const LibertadPage: React.FC = () => {
   const { escenario } = useOutletContext<MiPlanOutletContext>();
   const escenarioPersistido = escenario?.modoVivienda ?? 'alquiler';
   const [escenarioActivo, setEscenarioActivo] = useState<Escenario>(escenarioPersistido as Escenario);
-  const { data: libertad, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
+  const { data: libertad, loading: libertadLoading, error: libertadError } = useProyeccionLibertad({
+    enabled: Boolean(escenario),
+  });
 
   if (!escenario) {
     return (
