@@ -133,9 +133,10 @@ const LibertadPage: React.FC = () => {
               calculando trayectoria…
             </div>
           ) : libertadError || !libertad ? (
-            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
-              no podemos calcular tu trayectoria de libertad ahora · revisa la consola
-            </div>
+            <EmptyState
+              title="No hemos podido calcular tu trayectoria"
+              description="Inténtalo de nuevo dentro de unos minutos o revisa los datos de tu plan."
+            />
           ) : (() => {
             const yearStart = new Date().getFullYear();
             const horizonYears = 18;
