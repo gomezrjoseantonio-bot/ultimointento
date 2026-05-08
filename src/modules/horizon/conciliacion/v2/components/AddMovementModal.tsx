@@ -9,6 +9,11 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+// PR-C1 hotfix · el modal depende de las clases `cv2-*` definidas en
+// conciliacion-v2.css. Importar aquí garantiza que el modal funcione
+// también cuando se invoca desde /tesoreria/movimientos (donde el
+// stylesheet no se cargaría de otro modo).
+import '../conciliacion-v2.css';
 import { initDB } from '../../../../../services/db';
 import type { Account, Property, TreasuryEvent } from '../../../../../services/db';
 import {
