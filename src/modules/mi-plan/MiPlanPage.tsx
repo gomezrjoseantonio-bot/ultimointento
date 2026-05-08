@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { PageHead, Icons, showToastV5 } from '../../design-system/v5';
 import { initDB } from '../../services/db';
+import { getEscenarioActivo } from '../../services/escenariosService';
 import type {
   Escenario,
   Objetivo,
@@ -53,12 +54,12 @@ const MiPlanPage: React.FC = () => {
     try {
       const db = await initDB();
       const [esc, obj, fon, ret] = await Promise.all([
-        db.get('escenarios', 1) as Promise<Escenario | undefined>,
+        getEscenarioActivo(),
         db.getAll('objetivos') as Promise<Objetivo[]>,
         db.getAll('fondos_ahorro') as Promise<FondoAhorro[]>,
         db.getAll('retos') as Promise<Reto[]>,
       ]);
-      setEscenario(esc ?? null);
+      setEscenario(esc);
       setObjetivos(obj.filter((o) => o.estado !== 'archivado'));
       setFondos(fon.filter((f) => f.activo));
       setRetos(ret);
