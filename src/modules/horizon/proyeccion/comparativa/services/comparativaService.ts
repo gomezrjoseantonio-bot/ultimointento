@@ -156,18 +156,22 @@ class ComparativaService {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0-indexed
+    // The engine outputs consolidated totals (no propertyId filter on `ingresos`/`gastos`/
+    // `financiacion`), so for `inmueble` scope we'd be comparing inmueble-filtered budget/actual
+    // against consolidated forecast. Fall back to budget for future months in that case.
+    const useEngineForFuture = params.scope !== 'inmueble';
 
     const monthlyForecast = new Array(12).fill(0);
     for (let m = 0; m < 12; m++) {
       const isPast = params.year < currentYear || (params.year === currentYear && m < currentMonth);
       if (isPast) {
         monthlyForecast[m] = actualData[m];
-      } else if (yearProjection) {
+      } else if (useEngineForFuture && yearProjection) {
         const row = yearProjection.months[m];
         // Net flow = ingresos - (gastos + financiacion). Same sign convention as getBudgetData.
         monthlyForecast[m] = row.ingresos.total - row.gastos.total - row.financiacion.total;
       } else {
-        // Year out of engine coverage (engine spans current year + 19); fall back to budget.
+        // Year out of engine coverage (engine spans current year + 19) or inmueble scope.
         monthlyForecast[m] = budgetData[m];
       }
     }
@@ -317,10 +321,12 @@ class ComparativaService {
     const latestBudget = await getLatestBudgetByYear(params.year);
 
     // Engine projection (used for the income category 'Alquileres'); null if year is out of range.
+    // The engine reports consolidated totals, so we don't use it under `inmueble` scope.
     const yearProjection = await this.getYearProjection(params.year);
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth(); // 0-indexed
+    const useEngineForFuture = params.scope !== 'inmueble';
 
     for (let month = 0; month < 12; month++) {
       const isPast = params.year < currentYear || (params.year === currentYear && month < currentMonth);
@@ -362,15 +368,18 @@ class ComparativaService {
         // Actual would come from treasury movements - placeholder for now
         const actualAmount = 0;
 
-        // Forecast: real for past months, engine `rentasAlquiler` for future months when available,
-        // budget otherwise. No randomness.
+        // Forecast: budget deterministico salvo en futuro consolidado, donde usamos el motor.
+        // Para meses pasados usamos `budgetAmount` (no `actualAmount`) porque el actual a nivel
+        // de categoría sigue siendo un placeholder = 0; usar 0 como forecast pasado contradice
+        // la semántica "pasado ≈ observado".
         let forecastAmount = budgetAmount;
-        if (catConfig.fiscalCategory === 'ingresos-alquiler') {
-          if (isPast) {
-            forecastAmount = actualAmount;
-          } else if (yearProjection) {
-            forecastAmount = yearProjection.months[month].ingresos.rentasAlquiler;
-          }
+        if (
+          catConfig.fiscalCategory === 'ingresos-alquiler' &&
+          !isPast &&
+          useEngineForFuture &&
+          yearProjection
+        ) {
+          forecastAmount = yearProjection.months[month].ingresos.rentasAlquiler;
         }
 
         const deviation = budgetAmount !== 0 ? ((actualAmount - budgetAmount) / Math.abs(budgetAmount)) * 100 : 0;

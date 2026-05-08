@@ -65,11 +65,15 @@ const PresupuestoNuevo: React.FC = () => {
         db.getAll('movements')
       ]);
 
-      // Net real per month from reconciled movements matched against budget lines.
+      // Net real per month from movements matched against budget lines.
+      // Use canonical `line.type` ('INGRESO'/'COSTE') — same field that
+      // calculateActualAmountsByLine uses to match — with a fallback to legacy `tipo`
+      // only for older records where `type` may be missing.
       const realNeto = new Array(12).fill(0);
       for (const linea of lineasData) {
         const amounts = calculateActualAmountsByLine(linea, currentYear, movements);
-        const sign = linea.tipo === 'Ingreso' ? 1 : -1;
+        const isIncome = linea.type ? linea.type === 'INGRESO' : linea.tipo === 'Ingreso';
+        const sign = isIncome ? 1 : -1;
         for (let m = 0; m < 12; m++) {
           realNeto[m] += sign * amounts[m];
         }

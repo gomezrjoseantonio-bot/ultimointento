@@ -149,7 +149,7 @@ const PresupuestoCalendario: React.FC<PresupuestoCalendarioProps> = ({
           <span className="font-medium"> Δ</span>: Diferencia
         </p>
         <p className="mt-1">
-          Los datos reales provienen de Movimientos conciliados emparejados con las líneas del presupuesto.
+          Los datos reales provienen de los Movimientos no previstos emparejados con las líneas del presupuesto (por referencia o por scope/tipo/categoría).
         </p>
       </div>
     </div>
