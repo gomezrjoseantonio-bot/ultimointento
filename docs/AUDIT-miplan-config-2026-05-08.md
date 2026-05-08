@@ -32,7 +32,15 @@
 | 5 | Horizonte temporal / meta libertad | 🟡 Existe como parámetro `horizonteAnios` (default 25) | Sin UI de edición · no existe campo "fechaJubilacion" / "targetDate" · el cruce libertad se descubre, no se fija | Baja |
 | 6 | Cálculo "113 % cobertura" | ✅ Real · NO ghost | Función pura `proyectarRentaPasivaLibertad` · serie mensual con inflación · cruce real · pctCobertura = renta neta contratos / gastosVida (default 2 500 €) | OK · sin acción |
 
-> **Conclusión 30 s** · el backend de libertad (T27.4.1+T27.4.2) está construido y funciona. Lo que falta es **la UI de configuración**: el botón "Configurar escenario" del header sigue siendo toast, Ajustes no expone ninguno de los campos de `Escenario` ni `LibertadConfig`, y la pestaña Personal · Mi vivienda no aprovecha el store `viviendaHabitual` existente. **Y, sorpresa adversa descubierta tras revisión profunda · la sección Ajustes COMPLETA es un mockup high-fidelity** (ver §3.3) · 0 persistencia · 0 imports de servicios · ~60 botones-toast · esto convierte C-2 (sub-página escenario libertad en Ajustes) en una decisión arquitectónica más amplia que la estimada inicialmente. La incoherencia "landing 113 % vs Libertad financiera 'Sin escenario configurado'" se explica en §7: ambos leen del mismo singleton, pero el `EmptyState` de LibertadPage dispara cuando `escenario === null` (singleton no creado todavía en DB), mientras que la landing usa el wrapper `proyectarLibertadDesdeRepo` que rellena con `ESCENARIO_DEFAULTS` y nunca devuelve null.
+> **Conclusión 30 s · post re-auditoría exhaustiva (§11)** · el backend de libertad (T27.4.1+T27.4.2) está construido y funciona. Lo que falta es **la UI de configuración** y, sorpresivamente, **mucho más mockup del esperado**:
+> - Sección `/ajustes/*` COMPLETA es mockup high-fidelity (§3, §11.A excluido) · 0 persistencia · ~60 botones-toast.
+> - Wizard manual `NuevoContratoWizard.tsx` también es mockup (§11.A · §11.D) · única vía persistente para crear contratos es el importador Rentila · esto impacta directamente al input principal del cálculo 113 %.
+> - Singleton `Escenario` sin escritura UI · ni macro (modoVivienda · gastosVida · estrategia) ni hitos (`addHito` con tests pero cero callers UI).
+> - Pestaña Personal · Mi vivienda no aprovecha el store `viviendaHabitual` existente (comentario header obsoleto).
+> 
+> Lo que sí persiste real · wizards de Préstamos, Gastos personales/inmueble, Objetivos, Fondos. Lectura de DB · landing Mi Plan, Panel V5, todas las páginas de visualización del módulo Mi Plan.
+> 
+> La incoherencia "landing 113 % vs Libertad financiera 'Sin escenario configurado'" se explica en §7: ambos leen del mismo singleton, pero el `EmptyState` de LibertadPage dispara cuando `escenario === null` (singleton no creado todavía en DB), mientras que la landing usa el wrapper `proyectarLibertadDesdeRepo` que rellena con `ESCENARIO_DEFAULTS` y nunca devuelve null.
 
 ---
 
@@ -407,6 +415,8 @@ const pctCoberturaActual =
 | **C-1** | Botón "Configurar escenario" header de Mi Plan + EmptyState Libertad disparan toast `"sub-tarea follow-up"` (2 puntos de entrada) | Alta | **Construir** drawer/wizard (ya catalogado como T27.4.6 en audit predecesor §11) |
 | **C-2** | Sub-pestaña "Escenario libertad" inexistente en `/ajustes/*` · copy del producto promete que la configuración vive en Ajustes | Alta | **Construir** sub-página Ajustes que escriba `Escenario` (modoVivienda · gastosVida · estrategia · KPIs macro) y `LibertadConfig` (alcance · regla · horizonte). Decidir si es una pestaña 8ª o sub-card dentro de Perfil. **Sigue el ADR canónico**: backend ya construido, solo falta UI |
 | **C-2b** | **Sección Ajustes completa es mockup high-fidelity sin persistencia.** 7 páginas · 0 imports de servicios · 0 `db.put` · ~60 handlers disparan `showToastV5` · `useState` locales que se pierden al navegar · botones "Guardar" mienten | **Crítica** | **Decisión arquitectónica con producto** · ¿estado consciente (mockup demo) o deuda técnica? Si lo segundo, requiere cablear cada página a su servicio (perfilService · planService · notificacionesService · plantillasService · perfilFiscalService · seguridadService · `viviendaHabitualService` ya existe). Esfuerzo grande · NO es scope de T-MIPLAN-CONFIG · pero **bloquea cualquier UI de configuración** que se quiera añadir aquí (incluida C-2) hasta que se decida el patrón |
+| **C-7** | `NuevoContratoWizard.tsx` no persiste · botones `showToastV5('selección registrada (follow-up persistencia)')` · única vía persistente es el importador masivo Rentila | Alta | **Investigar más** · fuera del scope original · pero impacta directamente al input principal del cálculo 113 % |
+| **C-8** | Sin wizard de Hitos del escenario libertad · `addHito/updateHito/removeHito` con tests pero cero callers UI · mientras Objetivos y Fondos sí tienen wizards funcionales | Media | **Construir** wizard de Hitos · puede colgarse de la pestaña `/mi-plan/libertad` (CTA "Añadir hito" en la card de tabla de hitos) o de la sub-página de Ajustes (PR-C) |
 | **C-3** | Singleton `escenarios` huérfano de UI de escritura · `saveEscenarioActivo`/`addHito`/`updateHito`/`removeHito` sin caller en `src/modules/` | Media | **Adaptar** · resolver C-1 + C-2 cubre este punto. Adicionalmente exponer CRUD de hitos desde la propia pestaña Libertad financiera (parte de T27.4.3) |
 | **C-4** | `ViviendaPage` no consume `viviendaHabitualService` · documentación header miente afirmando que el store no existe | Alta | **Construir** la ficha vivienda habitual encima del store existente (campos régimen · dirección · ref. catastral). Limpiar comentario header. **No requiere DB nueva.** |
 | **C-4b** | Botones "Crear gasto IBI / Crear gasto recurrente" en Mi vivienda aterrizan en listado, no preconfiguran tipo de gasto | Baja | **Adaptar** · pasar parámetros (`?tipo=ibi`) o navegar directo al wizard `/personal/gastos/nuevo?tipo=ibi`. Inversión 30-60 min |
@@ -457,6 +467,101 @@ const pctCoberturaActual =
 - ✅ Cada hallazgo con archivo:línea verificable.
 - ✅ Stop-and-wait · espera autorización Jose para próximos pasos.
 - ✅ Scope cerrado a las 6 áreas · cables fuera del alcance documentados pero NO investigados.
+
+---
+
+## 11 · Re-auditoría exhaustiva post-feedback Jose
+
+> El audit original marcó como "✅ funcional" varias páginas/rutas tras leer sólo headers/imports superficiales. Tras el descubrimiento de que `/ajustes/*` es mockup completo (§3), Jose pidió aplicar el mismo rigor al resto del scope. Esta sección verifica con grep duro **persistencia real** (`db.put|db.add|service.save|service.create|service.delete`) en cada ruta tocada por el audit.
+
+### 11.A · Rutas destino del Mi vivienda (botones de §5.3)
+
+| Botón → Ruta | Página destino | Persistencia | Veredicto |
+|---|---|---|---|
+| "Ir a Contratos" → `/contratos` | Hub contratos · `src/modules/inmuebles/` (área Inmuebles · contrato vive ahí) | `NuevoContratoWizard.tsx` formulario · botones disparan `showToastV5('selección registrada (follow-up persistencia)')` · **NO escribe `contracts`** | 🟠 **MIXTO crítico** · única vía persistente es importador masivo `src/modules/inmuebles/import/ImportarContratos.tsx` → `contractsImportService.importContractsFromRentilaRows` → `saveContract` (`contractService.ts:72,100`) |
+| "Ir a Financiación" → `/financiacion` | Hub financiación · wizard nuevo préstamo | `WizardCreatePage.tsx` + `PrestamosWizard.tsx:255,260` · `prestamosService.createPrestamo()` · `prestamosService.updatePrestamo()` | ✅ **REAL** · crea préstamo persistente |
+| "Crear gasto IBI" → `/personal/gastos` | Listado gastos personales | `GastosPage.tsx:18,19` · `eliminarCompromiso()` + `regenerateForecastsForward()` · borra real · creación vía sub-ruta `/personal/gastos/nuevo` | ✅ **REAL** (con caveat C-4b · no preconfigura tipo) |
+| "Crear gasto recurrente" → `/personal/gastos` | Idem | Creación funcional vía `NuevoGastoRecurrentePage.tsx:520,522` · `crearCompromiso()` + `actualizarCompromiso()` + `regenerateForecastsForward()` | ✅ **REAL** |
+
+**Veredicto §11.A** · 3 de 4 destinos persisten real. **El destino "Contratos" es el roto** · el wizard manual de UI normal (`NuevoContratoWizard.tsx`) NO persiste · solo importador masivo. Esto cambia la severidad del cable C-4b: el botón "Ir a Contratos" lleva a un wizard mockup salvo que el usuario sepa usar el importador Rentila.
+
+### 11.B · Submódulos Mi Plan (consumidores de `escenario` y otros)
+
+`grep -nE "import.*service|db\.put|db\.add|service\.save|service\.create|service\.delete" src/modules/mi-plan/pages/*.tsx`:
+
+| Página | Lecturas DB | Escrituras DB | Botones reales vs toasts | Veredicto |
+|---|---|---|---|---|
+| `LandingPage.tsx` | ✅ `useProyeccionLibertad` + `computeBudgetProjection12mAsync` + outlet context | ❌ 0 | Cards click → `navigate(...)` · sin toast | ✅ Lectura funcional |
+| `LibertadPage.tsx` | ✅ outlet context (`escenario`) | ❌ 0 | EmptyState CTA → toast `'follow-up'` · toggle → `useState` local sin persist | 🟠 **Lectura · sin escritura · toggle inerte** |
+| `ProyeccionPage.tsx` | ✅ outlet context | ❌ 0 | Sin handlers · render puro de tabla | ✅ Lectura funcional · sin necesidad de escritura |
+| `ObjetivosPage.tsx` | ✅ outlet context (`objetivos`) | ❌ 0 directo · pero dispara `WizardNuevoObjetivo.tsx:324` `createObjetivo()` | "Crear objetivo" → wizard real | ✅ **Lectura + creación funcional vía wizard** |
+| `FondosPage.tsx` | ✅ outlet context (`fondos`) | ❌ 0 directo · pero dispara `WizardNuevoFondo.tsx:306` `createFondo()` | "Crear fondo" → wizard real | ✅ **Lectura + creación funcional vía wizard** |
+| `RetosPage.tsx` | ✅ outlet context (`retos`) | ❌ 0 (oculto si `SHOW_RETOS=false`) | — | 🟡 Página existe · feature flag controla visibilidad |
+| `MiPlanPage.tsx` (header) | ✅ `db.get('escenarios')` + `db.getAll('objetivos'/'fondos_ahorro'/'retos')` (l. 56-59) | ❌ 0 · botón "Configurar escenario" → toast | — | 🟠 Lee real · pero header acción es toast |
+
+**Veredicto §11.B** · El patrón es consistente: páginas de visualización **leen del outletContext** (que carga el singleton + colecciones) y **delegan creación a wizards dedicados**. Los wizards de Objetivos y Fondos sí persisten real. **No existe wizard equivalente para Hitos del Escenario** · `addHito/updateHito/removeHito` siguen sin caller UI (solo tests). Cable suelto **C-3** confirmado y agravado: no es solo "saveEscenarioActivo sin caller UI" sino que **la familia entera de mutaciones del escenario singleton (incluidos los hitos) carece de wizard**.
+
+### 11.C · Tabs de Personal (mencionados en §1, §5)
+
+| Tab | Archivo · líneas | Lecturas DB | Escrituras DB | Veredicto |
+|---|---|---|---|---|
+| Panel | `PanelPage.tsx` | outlet context | ❌ 0 | 🟡 Dashboard read-only |
+| Ingresos | `IngresosPage.tsx` | outlet context (`nominas`, `autonomos`, `otrosIngresos`) | ❌ 0 directo · creación delegada a wizards `nominaService`/`autonomoService`/`otrosIngresosService` (no verificados aquí · fuera de scope) | 🟢 Lectura + delega creación |
+| Gastos | `GastosPage.tsx` | outlet context | ✅ `eliminarCompromiso()` + `regenerateForecastsForward()` directos · creación delegada a `NuevoGastoRecurrentePage.tsx` (real) | ✅ Lectura + borrado + creación real |
+| Mi vivienda | `ViviendaPage.tsx` | ❌ 0 (no usa context · no usa servicio) | ❌ 0 | ❌ **Pura UI estática** · cable C-4 |
+| Presupuesto | `PresupuestoPage.tsx` | outlet context (cálculo derivado) | ❌ 0 | 🟡 Dashboard read-only |
+
+**Veredicto §11.C** · La tab problemática **es la de Mi vivienda** (cable C-4 ya documentado) · el resto leen y, en Ingresos/Gastos, delegan creación a wizards reales.
+
+### 11.D · Inputs del cálculo 113 % · ¿se pueden crear desde UI?
+
+El cálculo `calcularRentaPasivaActual` (libertadService.ts:192-239) lee tres stores:
+
+| Store | UI de creación | Persistencia | Veredicto |
+|---|---|---|---|
+| `contracts` (rentaMensual) | `NuevoContratoWizard.tsx` mockup ("follow-up persistencia") · **importador** `ImportarContratos.tsx` + `contractsImportService:187` `saveContract()` | ✅ Sólo vía importador · ❌ wizard manual mockup | 🟠 **MIXTO crítico** · UI manual rota, importador OK |
+| `prestamos` | `WizardCreatePage.tsx` → `PrestamosWizard.tsx` · `prestamosService.createPrestamo()` | ✅ | ✅ Real |
+| `gastosInmueble` | `NuevoGastoRecurrenteInmueblePage.tsx:515,517` · `crearCompromiso()` + `actualizarCompromiso()` | ✅ | ✅ Real |
+
+`grep -rln 'saveContract|updateContract' src/` confirma que los únicos callers fuera del propio servicio son · `contractsImportService.ts`, `vinculacionFiscalService.ts`, `declaracionOnboardingService.ts`. **Cero callers UI directos** (ningún archivo en `src/modules/`).
+
+**Veredicto §11.D · CRÍTICO** · el cálculo 113 % **funciona si los datos están** · pero la única vía persistente para que un usuario nuevo cree contratos es el importador Rentila o el flujo onboarding fiscal/declaración. Si la cifra "113 %" se observa en producción, los contratos vinieron de uno de esos caminos · **no del wizard manual de "Nuevo contrato"** que es mockup.
+
+### 11.E · Cables sueltos nuevos · derivados de la re-auditoría
+
+> **C-7 · `NuevoContratoWizard.tsx` no persiste.** Botones disparan `showToastV5('selección registrada (follow-up persistencia)')`. Única vía persistente para crear contratos es el importador masivo Rentila/Excel (`ImportarContratos.tsx`). Severidad **alta** · fuera del scope original de T-MIPLAN-CONFIG pero impacta directamente al cálculo 113 % (§7).
+
+> **C-8 · Familia entera de mutaciones del singleton `Escenario` sin UI.** No es solo `saveEscenarioActivo`; también `addHito/updateHito/removeHito` (los 3 con tests pero cero callers UI). Mientras Objetivos y Fondos tienen wizard funcional, los Hitos del escenario libertad no tienen punto de creación. Cubierto parcialmente por C-3, pero distingue el problema: **falta wizard de Hitos** además del wizard de configuración macro del escenario.
+
+### 11.F · Tabla actualizada de severidades por área
+
+| Área | Veredicto inicial (commit 1) | Veredicto post-revisión (este commit) | Razón del cambio |
+|---|---|---|---|
+| 1 · Botón Configurar | ❌ Ghost | ❌ Ghost | Sin cambios · era correcto |
+| 2 · Pestañas Ajustes | ✅ Funcional | ❌ Mockup completo | Verificación grep duro · feedback Jose |
+| 3 · Entidad escenario | 🟡 Backend OK · UI inexistente | 🟡 Backend OK · UI escritura inexistente · **agrava**: ni wizard de Hitos | Re-auditoría exhaustiva confirma + agrava |
+| 4 · Mi vivienda | 🟠 Informativa con redirects | 🟠 Idem · pero **uno de los redirects (Contratos) lleva a wizard mockup** | Cable C-7 nuevo |
+| 5 · Horizonte temporal | 🟡 Existe parámetro · sin UI | 🟡 Idem | Sin cambios |
+| 6 · Cálculo 113 % | ✅ Real | ✅ Real **pero** input `contracts` solo vía importador | Cable C-7 afecta cadena de datos |
+
+### 11.G · Lección operativa
+
+El audit original incurrió en **"creencias" no verificadas** · marcar `✅ funcional` tras leer sólo el header de un componente o confirmar la existencia de la ruta. La regla canónica honesta para futuros audits es:
+
+```bash
+# Verificación de persistencia · ejecutar antes de marcar "funcional"
+grep -nE "import.*services?/|initDB|db\.(put|add|delete|update)|service\.(save|create|delete|update)" \
+     <archivo>
+grep -cE "showToastV5\(|alert\(|console\.log" <archivo>
+# Si imports = 0 y toasts > 5 → MOCKUP
+# Si imports > 0 pero `await ...save|create|put` = 0 → LECTURA PURA (no necesariamente mockup)
+# Si imports > 0 y al menos un await ...save|create → REAL
+```
+
+Aplicar esta regla a las 6 áreas reveló:
+- **§3 Ajustes** · 7 páginas · 0 imports servicios · ~60 toasts → **MOCKUP completo**.
+- **§5.3 Mi vivienda · botón "Ir a Contratos"** · destino con wizard mockup → **MIXTO crítico**.
+- **§7 Cálculo 113 %** · pipeline correcto pero data-entry de contracts cojea → **REAL con caveat**.
 
 ---
 
