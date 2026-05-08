@@ -135,7 +135,7 @@ const LibertadPage: React.FC = () => {
           ) : libertadError || !libertad ? (
             <EmptyState
               title="No hemos podido calcular tu trayectoria"
-              description="Inténtalo de nuevo dentro de unos minutos o revisa los datos de tu plan."
+              sub="Inténtalo de nuevo dentro de unos minutos o revisa los datos de tu plan."
             />
           ) : (() => {
             const yearStart = new Date().getFullYear();
