@@ -9,6 +9,8 @@ export interface EmptyStateProps
   title: React.ReactNode;
   /** Subtítulo · descripción del vacío y siguiente paso. */
   sub?: React.ReactNode;
+  /** Alias de `sub` por compatibilidad con call-sites que usan `description`. */
+  description?: React.ReactNode;
   /** Etiqueta del CTA opcional · ej "+ asigna una cuenta". */
   ctaLabel?: React.ReactNode;
   /** Click del CTA. */
@@ -25,12 +27,14 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
   title,
   sub,
+  description,
   ctaLabel,
   onCtaClick,
   compact = false,
   className,
   ...rest
 }) => {
+  const subContent = sub ?? description;
   const classes = [
     styles.empty,
     compact ? styles.compact : '',
@@ -43,7 +47,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     <div className={classes} {...rest}>
       {icon && <div className={styles.iconWrap}>{icon}</div>}
       <div className={styles.title}>{title}</div>
-      {sub != null && <div className={styles.sub}>{sub}</div>}
+      {subContent != null && <div className={styles.sub}>{subContent}</div>}
       {ctaLabel != null && (
         <button type="button" className={styles.cta} onClick={onCtaClick}>
           {ctaLabel}
