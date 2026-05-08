@@ -137,10 +137,6 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     await Promise.all([import('../modules/mi-plan/MiPlanPage'), subPage]);
     return;
   }
-  if (href.startsWith('/personal/importar-nominas')) {
-    await import('../modules/personal/import/ImportarNominas');
-    return;
-  }
   if (href.startsWith('/personal')) {
     // /personal (panel) + sub-tabs · todas pasan por PersonalPage Outlet.
     const subPage = href.startsWith('/personal/ingresos')
