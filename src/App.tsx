@@ -179,8 +179,6 @@ const InmueblesNuevoGastoRecurrente = lazyWithPreload(
 );
 const PersonalVivienda = lazyWithPreload(() => import('./modules/personal/pages/ViviendaPage'));
 const PersonalPresupuesto = lazyWithPreload(() => import('./modules/personal/pages/PresupuestoPage'));
-// T20 Fase 3b · ImportarNominas re-ubicado per decisión D3 de Jose.
-const ImportarNominasPage = lazyWithPreload(() => import('./modules/personal/import/ImportarNominas'));
 
 // Gestión Personal hub
 const GestionPersonalPage = lazyWithPreload(() => import('./pages/GestionPersonal/GestionPersonalPage'));
@@ -1068,16 +1066,10 @@ function App() {
               } />
               {/* Compat · /personal/supervision legacy redirige a panel */}
               <Route path="supervision" element={<Navigate to="/personal" replace />} />
+              {/* Compat · /personal/importar-nominas legacy (T-NOMINAS-CLEANUP · entrada Excel eliminada) redirige a panel */}
+              <Route path="importar-nominas" element={<Navigate to="/personal" replace />} />
             </Route>
-            <Route path="personal/importar-nominas" element={
-              <React.Suspense fallback={<LoadingSpinner />}>
-                <ImportarNominasPage
-                  onComplete={() => undefined}
-                  onBack={() => window.history.back()}
-                />
-              </React.Suspense>
-            } />
-            
+
             {/* Gestión Personal + Gestión Inversiones + Gestión Inmuebles */}
             <Route path="gestion">
               <Route path="inmuebles" element={
