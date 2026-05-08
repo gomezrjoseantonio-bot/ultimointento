@@ -377,7 +377,7 @@ ViviendaPage.tsx  lines=990  imports=1 awaits=2 toasts=7  (REAL · guardarVivien
 PresupuestoPage   lines=184  imports=0 awaits=0 toasts=0  (LECTURA)
 NuevoGastoRec     lines=1597 imports=4 awaits=2 toasts=5  (REAL · crearCompromiso + actualizarCompromiso)
 DetectarCompromisosPage lines=1051 imports=2 awaits=1 toasts=5 (REAL · createCompromisosFromCandidatos)
-PersonalPage.tsx  lines=145  imports=4 awaits=0 toasts=- (LECTURA · orquestador outlet)
+PersonalPage.tsx  lines=143  imports=5 awaits=0 toasts=2  (LECTURA · orquestador outlet)
 ```
 
 **Bloque 2 · Real Personal:**
