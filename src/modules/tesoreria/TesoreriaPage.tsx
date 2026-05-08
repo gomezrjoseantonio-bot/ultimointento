@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { PageHead, MoneyValue, Icons, showToastV5 } from '../../design-system/v5';
-import { initDB, Account, Movement } from '../../services/db';
+import { initDB, Account, Movement, type Property } from '../../services/db';
 import { cuentasService } from '../../services/cuentasService';
 import {
   necesitaRegenerar,
@@ -22,6 +22,7 @@ const TesoreriaPage: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [movements, setMovements] = useState<Movement[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<any[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [reloadTick, setReloadTick] = useState(0);
   const [regenerating, setRegenerating] = useState(false);
 
@@ -30,10 +31,11 @@ const TesoreriaPage: React.FC = () => {
     const load = async () => {
       try {
         const db = await initDB();
-        const [accs, movs, evts] = await Promise.all([
+        const [accs, movs, evts, props] = await Promise.all([
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('movements') as Promise<Movement[]>,
           db.getAll('treasuryEvents') as Promise<any[]>,
+          db.getAll('properties') as Promise<Property[]>,
         ]);
         if (cancelled) return;
         const activeAccs = accs.filter(
@@ -42,6 +44,7 @@ const TesoreriaPage: React.FC = () => {
         setAccounts(activeAccs);
         setMovements(movs);
         setTreasuryEvents(evts);
+        setProperties(props);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[tesoreria] error cargando datos', err);
@@ -207,7 +210,7 @@ const TesoreriaPage: React.FC = () => {
         }
       />
 
-      <Outlet context={{ accounts, movements, treasuryEvents, reload: () => setReloadTick((t) => t + 1) }} />
+      <Outlet context={{ accounts, movements, treasuryEvents, properties, reload: () => setReloadTick((t) => t + 1) }} />
     </div>
   );
 };
@@ -216,6 +219,9 @@ export interface TesoreriaContext {
   accounts: Account[];
   movements: Movement[];
   treasuryEvents: any[];
+  /** PR-C1 · necesario para que MovimientosTab abra `AddMovementModal` con
+   * el listado de inmuebles disponible (ámbito='inmueble' o financiación). */
+  properties: Property[];
   reload: () => void;
 }
 

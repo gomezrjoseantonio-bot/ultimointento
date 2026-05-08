@@ -68,6 +68,19 @@ export interface CategoryDef {
   requiereInmueble: boolean;
   /** Si muestra selector secundario (p. ej. luz/agua/gas/internet para Suministro). */
   hasSubtype: boolean;
+  /**
+   * PR-C1: marca de retrocompatibilidad. Si true, la entrada se mantiene
+   * para tipar registros históricos pero NO se ofrece en alta nueva
+   * (filtrada en `getCategoriesForModal`).
+   */
+  legacy?: boolean;
+  /**
+   * PR-C1: familias sugeridas para el sub-dropdown `tipoFamilia` de gastos
+   * personales (reutiliza el vocabulario documentado en
+   * `compromisosRecurrentes.tipoFamilia`). Solo se renderiza cuando
+   * `hasSubtype=true` y la categoría es de ámbito 'personal'.
+   */
+  personalFamilias?: ReadonlyArray<{ key: string; label: string }>;
 }
 
 export interface SubtypeDef {
@@ -231,19 +244,93 @@ export const GASTO_INMUEBLE_CATEGORIES: CategoryDef[] = [
 ];
 
 // ══════════════════════════════════════════════════════════
-// GASTOS PERSONALES · 1 categoría
+// GASTOS PERSONALES · 5 macro + 1 legacy
 // ══════════════════════════════════════════════════════════
+// PR-C1 · híbrido: 5 macro-categorías visibles en alta + sub-clasificador
+// `tipoFamilia` opcional reutilizando el vocabulario de
+// `compromisosRecurrentes.tipoFamilia`. La entrada `gasto_personal` se
+// preserva con `legacy=true` para retrocompatibilidad de registros previos.
 
 export const GASTO_PERSONAL_CATEGORIES: CategoryDef[] = [
   {
+    key: 'gasto_personal_vivienda',
+    label: 'Vivienda · alquiler · suministros · IBI · seguros',
+    icon: Home,
+    tipo: 'gasto',
+    ambito: 'personal',
+    availableInOpex: false,
+    requiereInmueble: false,
+    hasSubtype: true,
+    personalFamilias: [
+      { key: 'vivienda', label: 'Vivienda · alquiler' },
+      { key: 'suministros', label: 'Suministros' },
+      { key: 'comunidad', label: 'Comunidad' },
+      { key: 'tributos', label: 'IBI · tributos' },
+      { key: 'seguros', label: 'Seguros' },
+    ],
+  },
+  {
+    key: 'gasto_personal_dia_dia',
+    label: 'Día a día · alimentación · transporte · salud · educación',
+    icon: ShoppingBag,
+    tipo: 'gasto',
+    ambito: 'personal',
+    availableInOpex: false,
+    requiereInmueble: false,
+    hasSubtype: true,
+    personalFamilias: [
+      { key: 'dia_a_dia', label: 'Día a día' },
+    ],
+  },
+  {
+    key: 'gasto_personal_suscripciones',
+    label: 'Suscripciones · streaming · software · gimnasio · prensa',
+    icon: Tag,
+    tipo: 'gasto',
+    ambito: 'personal',
+    availableInOpex: false,
+    requiereInmueble: false,
+    hasSubtype: true,
+    personalFamilias: [
+      { key: 'suscripciones', label: 'Suscripciones' },
+    ],
+  },
+  {
+    key: 'gasto_personal_seguros_cuotas',
+    label: 'Seguros y cuotas · vida · coche · asociaciones',
+    icon: Shield,
+    tipo: 'gasto',
+    ambito: 'personal',
+    availableInOpex: false,
+    requiereInmueble: false,
+    hasSubtype: true,
+    personalFamilias: [
+      { key: 'seguros_cuotas', label: 'Seguros y cuotas' },
+      { key: 'gestion', label: 'Gestión' },
+    ],
+  },
+  {
+    key: 'gasto_personal_otros',
+    label: 'Otros gastos personales',
+    icon: Briefcase,
+    tipo: 'gasto',
+    ambito: 'personal',
+    availableInOpex: false,
+    requiereInmueble: false,
+    hasSubtype: false,
+  },
+  // Legacy · preservada para registros previos a PR-C1. NO se ofrece en
+  // alta nueva (filtrada por `legacy=true` en `getCategoriesForModal`).
+  {
     key: 'gasto_personal',
-    label: 'Gasto personal',
+    label: 'Gasto personal (legacy)',
     icon: ShoppingBag,
     tipo: 'gasto',
     ambito: 'personal',
     availableInOpex: false,
     requiereInmueble: false,
     hasSubtype: false,
+    legacy: true,
   },
 ];
 
@@ -273,24 +360,28 @@ export function getAllCategories(): CategoryDef[] {
 /**
  * Categorías a mostrar en el modal "Añadir movimiento" según tipo + ámbito.
  * Devuelve array vacío para tipo=financiacion o tipo=traspaso (no usan catálogo).
+ *
+ * PR-C1 · entradas con `legacy=true` se filtran (no se ofrecen en alta nueva
+ * pero siguen tipando registros históricos vía `getCategoryByKey`).
  */
 export function getCategoriesForModal(
   tipo: MovementType,
   ambito?: Ambito,
 ): CategoryDef[] {
+  const notLegacy = (c: CategoryDef) => !c.legacy;
   if (tipo === 'ingreso') {
     if (ambito === 'personal') {
-      return INGRESO_CATEGORIES.filter((c) => c.ambito === 'personal' || c.ambito === 'ambos');
+      return INGRESO_CATEGORIES.filter(notLegacy).filter((c) => c.ambito === 'personal' || c.ambito === 'ambos');
     }
     if (ambito === 'inmueble') {
-      return INGRESO_CATEGORIES.filter((c) => c.ambito === 'inmueble' || c.ambito === 'ambos');
+      return INGRESO_CATEGORIES.filter(notLegacy).filter((c) => c.ambito === 'inmueble' || c.ambito === 'ambos');
     }
-    return INGRESO_CATEGORIES;
+    return INGRESO_CATEGORIES.filter(notLegacy);
   }
   if (tipo === 'gasto') {
-    if (ambito === 'personal') return GASTO_PERSONAL_CATEGORIES;
-    if (ambito === 'inmueble') return GASTO_INMUEBLE_CATEGORIES;
-    return [...GASTO_INMUEBLE_CATEGORIES, ...GASTO_PERSONAL_CATEGORIES];
+    if (ambito === 'personal') return GASTO_PERSONAL_CATEGORIES.filter(notLegacy);
+    if (ambito === 'inmueble') return GASTO_INMUEBLE_CATEGORIES.filter(notLegacy);
+    return [...GASTO_INMUEBLE_CATEGORIES, ...GASTO_PERSONAL_CATEGORIES].filter(notLegacy);
   }
   return [];
 }
