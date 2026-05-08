@@ -420,8 +420,9 @@ async function recopilarDatosTrabajo(ejercicio: number): Promise<RendimientosTra
     let totalPPEmpresa = 0;
 
     for (const activa of activas) {
-      // Use the calculation engine for accurate totals
-      const calculo = nominaService.calculateSalary(activa);
+      // PR-C4 · pasar `ejercicio` para que cada mes use el snapshot del
+      // historial vigente (sin historial · top-level fallback).
+      const calculo = nominaService.calculateSalary(activa, ejercicio);
 
       totalBruto += calculo.totalAnualBruto;
       totalEspecie += calculo.totalAnualEspecie;

@@ -20,27 +20,36 @@ const genHistorialEntryId = (): string =>
     : Math.random().toString(36).slice(2) + Date.now().toString(36);
 
 /**
- * PR-C4 · resuelve la entrada del historial vigente para `ymd` (YYYY-MM-DD).
- * Devuelve la entrada con mayor `vigenciaDesde` que sea <= ymd; null si no
- * hay historial o ninguna entrada cualifica.
+ * PR-C4 · resuelve la entrada del historial vigente para `ymd` (YYYY-MM-DD)
+ * sobre un historial **ya ordenado** ascendentemente por `vigenciaDesde`.
+ * Devuelve null si el array está vacío o ninguna entrada cualifica.
  *
- * Asume historial ordenado por `vigenciaDesde` ASC; ordena defensivamente
- * para tolerar inserciones tardías sin re-sort por parte del caller.
+ * El caller es responsable de ordenar una sola vez. Ver
+ * `getSortedHistorial` para el helper que ordena defensivamente.
  */
-function resolveSnapshotForFecha(
-  nomina: Nomina,
+function resolveSnapshotForFechaSorted(
+  ordenado: NominaHistorialEntry[],
   ymd: string,
 ): NominaRetributivoSnapshot | null {
-  if (!nomina.historial || nomina.historial.length === 0) return null;
-  const ordenado = [...nomina.historial].sort((a, b) =>
-    a.vigenciaDesde.localeCompare(b.vigenciaDesde),
-  );
+  if (ordenado.length === 0) return null;
   let activa: NominaHistorialEntry | null = null;
   for (const e of ordenado) {
     if (e.vigenciaDesde <= ymd) activa = e;
     else break;
   }
   return activa ? activa.snapshot : null;
+}
+
+/**
+ * PR-C4 · ordena defensivamente el historial por `vigenciaDesde` ASC.
+ * Devuelve `[]` si la nómina no tiene historial. Llamarse UNA VEZ por
+ * cómputo (perf · evita 12 sorts en `calculateSalary`).
+ */
+function getSortedHistorial(nomina: Nomina): NominaHistorialEntry[] {
+  if (!nomina.historial || nomina.historial.length === 0) return [];
+  return [...nomina.historial].sort((a, b) =>
+    a.vigenciaDesde.localeCompare(b.vigenciaDesde),
+  );
 }
 
 /**
@@ -75,8 +84,11 @@ function applySnapshot(
  * PR-C4 · construye un snapshot retributivo desde los campos top-level
  * actuales de una Nomina. Solo serializa campos definidos para evitar
  * persistir `undefined` en IndexedDB.
+ *
+ * Exportado para uso desde la UI (NominaWizard) cuando se registra un
+ * cambio con vigencia y se necesita capturar el snapshot completo.
  */
-function buildSnapshotFromNomina(n: Nomina): NominaRetributivoSnapshot {
+export function buildSnapshotFromNomina(n: Nomina): NominaRetributivoSnapshot {
   const snap: NominaRetributivoSnapshot = {
     salarioBrutoAnual: n.salarioBrutoAnual,
   };
@@ -342,12 +354,21 @@ class NominaService {
    * top-level NO cambian (es un cambio histórico tardío). Se loguea
    * un warning informativo.
    *
+   * Si la nómina no tiene `historial` previo (pre-V70 sin migrar), se
+   * inserta primero un baseline con los valores top-level actuales para
+   * preservar el cálculo histórico.
+   *
    * @param id ID de la nómina
    * @param cambio entrada del historial sin `id`/`createdAt` (los pone el service)
+   * @param nonVersionedUpdates (review Copilot) · campos no versionados que
+   *   también deben actualizarse al guardar (`nombre`, `fechaAntiguedad`,
+   *   `beneficiosSociales`, `retencion`, `cuentaAbono`, `reglaCobroDia`...)
+   *   · todo lo que la UI haya editado y NO forme parte del snapshot.
    */
   async addCambioNomina(
     id: number,
     cambio: Omit<NominaHistorialEntry, 'id' | 'createdAt'>,
+    nonVersionedUpdates?: Partial<Nomina>,
   ): Promise<Nomina> {
     if (!cambio.vigenciaDesde) {
       throw new Error('addCambioNomina: vigenciaDesde es requerido');
@@ -364,22 +385,56 @@ class NominaService {
       throw new Error(`Nomina ${id} no encontrada`);
     }
 
+    const ahora = new Date().toISOString();
+
+    // PR-C4 (review Copilot · correctness) · si la nómina no tiene
+    // baseline en el historial (registro pre-V70 sin migrar, o historial
+    // borrado manualmente), insertar primero un snapshot de los valores
+    // top-level vigentes con `vigenciaDesde = fechaAntiguedad`. Sin esto,
+    // tras añadir un cambio futuro y sincronizar top-level al snapshot
+    // nuevo, los meses anteriores caerían a top-level (ya actualizado),
+    // destruyendo el histórico.
+    const baseExistente = existing.historial ?? [];
+    const baselineEntries: NominaHistorialEntry[] =
+      baseExistente.length === 0
+        ? [
+            {
+              id: genHistorialEntryId(),
+              vigenciaDesde: (
+                existing.fechaAntiguedad ??
+                existing.fechaCreacion ??
+                '1970-01-01'
+              ).slice(0, 10),
+              motivo: 'Snapshot inicial · auto-baseline en addCambioNomina',
+              snapshot: buildSnapshotFromNomina(existing),
+              createdAt: ahora,
+            },
+          ]
+        : [];
+
     const entrada: NominaHistorialEntry = {
       id: genHistorialEntryId(),
-      createdAt: new Date().toISOString(),
+      createdAt: ahora,
       vigenciaDesde: cambio.vigenciaDesde.slice(0, 10),
       motivo: cambio.motivo,
       snapshot: cambio.snapshot,
     };
 
-    const historial = [...(existing.historial ?? []), entrada].sort(
+    const historial = [...baseExistente, ...baselineEntries, entrada].sort(
       (a, b) => a.vigenciaDesde.localeCompare(b.vigenciaDesde),
     );
 
     const esLaMasReciente =
       historial[historial.length - 1].id === entrada.id;
 
-    const updates: Partial<Nomina> = { historial };
+    // PR-C4 (review Copilot) · campos no versionados (nombre,
+    // fechaAntiguedad, beneficiosSociales, retencion, cuentaAbono,
+    // reglaCobroDia...) deben aplicarse SIEMPRE para que cambios
+    // editados en la UI no se pierdan en modo cambio-con-vigencia.
+    const updates: Partial<Nomina> = {
+      ...(nonVersionedUpdates ?? {}),
+      historial,
+    };
     if (esLaMasReciente) {
       // Sincronizar campos top-level con el snapshot vigente.
       Object.assign(updates, entrada.snapshot);
@@ -466,11 +521,16 @@ class NominaService {
     let totalAnualPPEmpleado = 0;
     let totalAnualPPEmpresa = 0;
 
+    // PR-C4 (review Copilot · perf) · ordenar el historial UNA SOLA VEZ
+    // fuera del loop. Antes hacía hasta 12 sorts por cómputo, lo que se
+    // multiplicaba en pantallas que recalculan muchas nóminas.
+    const historialOrdenado = getSortedHistorial(nomina);
+
     for (let mes = 1; mes <= 12; mes++) {
       // PR-C4 · per-month resolution del snapshot retributivo. Si no hay
       // historial, `efectiva === nomina` (retrocompatibilidad).
       const ymd = `${resolutionYear}-${String(mes).padStart(2, '0')}-01`;
-      const snapshotMes = resolveSnapshotForFecha(nomina, ymd);
+      const snapshotMes = resolveSnapshotForFechaSorted(historialOrdenado, ymd);
       const efectiva = applySnapshot(nomina, snapshotMes);
       const salarioBrutoAnual = efectiva.salarioBrutoAnual;
       const variables = efectiva.variables;

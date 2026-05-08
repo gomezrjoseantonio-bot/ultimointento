@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, X, ChevronLeft, Plus, Trash2 } from 'lucide-react';
-import { nominaService } from '../../../services/nominaService';
+import { nominaService, buildSnapshotFromNomina } from '../../../services/nominaService';
 import { personalDataService } from '../../../services/personalDataService';
 import { cuentasService } from '../../../services/cuentasService';
 import { planesPensionesService } from '../../../services/planesPensionesService';
@@ -459,17 +459,42 @@ const NominaWizard: React.FC = () => {
       if (isEditing && nominaId) {
         if (modoEdicion === 'cambio-con-vigencia') {
           // PR-C4 · crear entrada nueva en el historial sin overwrite.
-          const snapshot: NominaRetributivoSnapshot = {
-            salarioBrutoAnual: nominaData.salarioBrutoAnual,
-            variables: nominaData.variables,
-            bonus: nominaData.bonus,
-            planPensiones: nominaData.planPensiones,
+          // (review Copilot) · construimos el snapshot COMPLETO desde
+          // los campos retributivos para no perder pagasExtra,
+          // variableObjetivo, bonusObjetivo, retribucionEspecieAnual,
+          // aportacionEmpresaPlanPensionesAnual.
+          const fullSnapshot: NominaRetributivoSnapshot = buildSnapshotFromNomina({
+            ...nominaData,
+            id: nominaId,
+            personalDataId: pid ?? 0,
+            fechaCreacion: '',
+            fechaActualizacion: '',
+          } as Nomina);
+          // (review Copilot) · pasar los campos NO versionados (nombre,
+          // fechaAntiguedad, beneficiosSociales, retencion, cuentaAbono,
+          // reglaCobroDia, deduccionesAdicionales...) como
+          // nonVersionedUpdates para que cambios editados en pasos
+          // previos del wizard no se pierdan en este modo.
+          const nonVersionedUpdates: Partial<Nomina> = {
+            nombre: nominaData.nombre,
+            fechaAntiguedad: nominaData.fechaAntiguedad,
+            beneficiosSociales: nominaData.beneficiosSociales,
+            retencion: nominaData.retencion,
+            deduccionesAdicionales: nominaData.deduccionesAdicionales,
+            cuentaAbono: nominaData.cuentaAbono,
+            reglaCobroDia: nominaData.reglaCobroDia,
+            distribucion: nominaData.distribucion,
+            activa: nominaData.activa,
           };
-          await nominaService.addCambioNomina(nominaId, {
-            vigenciaDesde,
-            motivo: motivoCambio.trim() || undefined,
-            snapshot,
-          });
+          await nominaService.addCambioNomina(
+            nominaId,
+            {
+              vigenciaDesde,
+              motivo: motivoCambio.trim() || undefined,
+              snapshot: fullSnapshot,
+            },
+            nonVersionedUpdates,
+          );
         } else {
           await nominaService.updateNomina(nominaId, nominaData);
         }
