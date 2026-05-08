@@ -26,13 +26,13 @@
 | # | Área | Estado global | Cable suelto principal | Severidad |
 |---|---|---|---|---|
 | 1 | Botón "Configurar escenario" header Mi Plan | ❌ Ghost (toast only) | `MiPlanPage.tsx:127` y `LibertadPage.tsx:29` disparan `showToastV5('… sub-tarea follow-up')` · no hay drawer/wizard | Alta |
-| 2 | Pestañas /ajustes/* | ✅ 7 pestañas · todas funcionales | NO existe pestaña ni sub-card para `libertadConfig` · `gastosVidaLibertadMensual` · `modoVivienda` · `estrategia` (todo el bloque "escenario libertad" es invisible para el usuario) | Alta |
+| 2 | Pestañas /ajustes/* | ❌ 7 pestañas · **mockup high-fidelity · cero persistencia** | Toda la sección Ajustes es UI estática · 0 imports de servicios · 0 `db.put` · ~60 handlers disparan `showToastV5` · toggles con `useState` local que se pierden al navegar. NO existe pestaña ni sub-card para `libertadConfig` · `gastosVidaLibertadMensual` · `modoVivienda` · `estrategia` | **Crítica** |
 | 3 | Entidad escenario libertad | 🟡 Backend completo · UI inexistente | Tipo `Escenario` (singleton) + tipo `LibertadConfig` + servicio + función pura + hook → todo cableado · pero NO existe pantalla de edición humana (sólo defaults `ESCENARIO_DEFAULTS` aplicados ciegamente) | Media |
 | 4 | Personal · Mi vivienda | 🟠 Pantalla informativa con 5 redirects · 1 ghost | Comentario header dice "El store `viviendaHabitual` se creará en sub-tarea follow-up" · pero el store **YA existe** desde V60+ con servicio completo `viviendaHabitualService` · la página no lo usa · documentación rota | Alta |
 | 5 | Horizonte temporal / meta libertad | 🟡 Existe como parámetro `horizonteAnios` (default 25) | Sin UI de edición · no existe campo "fechaJubilacion" / "targetDate" · el cruce libertad se descubre, no se fija | Baja |
 | 6 | Cálculo "113 % cobertura" | ✅ Real · NO ghost | Función pura `proyectarRentaPasivaLibertad` · serie mensual con inflación · cruce real · pctCobertura = renta neta contratos / gastosVida (default 2 500 €) | OK · sin acción |
 
-> **Conclusión 30 s** · el backend de libertad (T27.4.1+T27.4.2) está construido y funciona. Lo que falta es **la UI de configuración**: el botón "Configurar escenario" del header sigue siendo toast, Ajustes no expone ninguno de los campos de `Escenario` ni `LibertadConfig`, y la pestaña Personal · Mi vivienda no aprovecha el store `viviendaHabitual` existente. La incoherencia "landing 113 % vs Libertad financiera 'Sin escenario configurado'" se explica en §7: ambos leen del mismo singleton, pero el `EmptyState` de LibertadPage dispara cuando `escenario === null` (singleton no creado todavía en DB), mientras que la landing usa el wrapper `proyectarLibertadDesdeRepo` que rellena con `ESCENARIO_DEFAULTS` y nunca devuelve null.
+> **Conclusión 30 s** · el backend de libertad (T27.4.1+T27.4.2) está construido y funciona. Lo que falta es **la UI de configuración**: el botón "Configurar escenario" del header sigue siendo toast, Ajustes no expone ninguno de los campos de `Escenario` ni `LibertadConfig`, y la pestaña Personal · Mi vivienda no aprovecha el store `viviendaHabitual` existente. **Y, sorpresa adversa descubierta tras revisión profunda · la sección Ajustes COMPLETA es un mockup high-fidelity** (ver §3.3) · 0 persistencia · 0 imports de servicios · ~60 botones-toast · esto convierte C-2 (sub-página escenario libertad en Ajustes) en una decisión arquitectónica más amplia que la estimada inicialmente. La incoherencia "landing 113 % vs Libertad financiera 'Sin escenario configurado'" se explica en §7: ambos leen del mismo singleton, pero el `EmptyState` de LibertadPage dispara cuando `escenario === null` (singleton no creado todavía en DB), mientras que la landing usa el wrapper `proyectarLibertadDesdeRepo` que rellena con `ESCENARIO_DEFAULTS` y nunca devuelve null.
 
 ---
 
@@ -83,35 +83,61 @@ actions={[
 
 ### 3.1 · Estructura de routing
 
-`src/App.tsx:1235-1276` cuelga `/ajustes/*` con index → `/ajustes/perfil`. `src/modules/ajustes/AjustesPage.tsx:14-22` declara la sidebar con 7 ítems:
+`src/App.tsx:1235-1276` cuelga `/ajustes/*` con index → `/ajustes/perfil`. `src/modules/ajustes/AjustesPage.tsx:14-22` declara la sidebar con 7 ítems.
 
-| # | Key | Label | Path | Componente | Archivo | Funcional |
-|---|---|---|---|---|---|---|
-| 1 | `perfil` | Perfil | `/ajustes/perfil` | `AjustesPerfil` | `src/modules/ajustes/pages/PerfilPage.tsx` | ✅ Datos personales · preferencias regionales · preferencias UI |
-| 2 | `plan` | Plan & facturación | `/ajustes/plan` | `AjustesPlan` | `src/modules/ajustes/pages/PlanPage.tsx` | ✅ Método de pago · gestión suscripción (incluye literal "Simulador libertad financiera" entre features del plan, l. 29 — pero como item de la lista de servicios contratables, no como UI configurable) |
-| 3 | `integraciones` | Integraciones | `/ajustes/integraciones` | `AjustesIntegraciones` | `src/modules/ajustes/pages/IntegracionesPage.tsx` | ✅ Bancos · proveedores · APIs |
-| 4 | `notificaciones` | Notificaciones | `/ajustes/notificaciones` | `AjustesNotificaciones` | `src/modules/ajustes/pages/NotificacionesPage.tsx` | ✅ Canales activos · tesorería · contratos · fiscal |
-| 5 | `plantillas` | Plantillas | `/ajustes/plantillas` | `AjustesPlantillas` | `src/modules/ajustes/pages/PlantillasPage.tsx` | ✅ Plantillas contratos alquiler · correos inquilino · fórmulas fiscales (incluye plantilla `'vivienda'` y "Vivienda habitual · 5 años · IPC", refs. l. 42-45 · son plantillas de **contrato** de alquiler para inmuebles, NO configuración de "mi vivienda" del hogar) |
-| 6 | `fiscal` | Perfil fiscal y convivencia | `/ajustes/fiscal` | `AjustesPerfilFiscal` | `src/modules/ajustes/pages/PerfilFiscalPage.tsx` | ✅ Titular · pareja · personas a cargo · CCAA · implicaciones cruzadas |
-| 7 | `seguridad` | Seguridad y datos | `/ajustes/seguridad` | `AjustesSeguridad` | `src/modules/ajustes/pages/SeguridadPage.tsx` | ✅ Acceso · sesiones · datos · zona peligrosa |
+> **Corrección · CRÍTICA.** En primera lectura marqué las 7 páginas como "✅ funcional" tras leer sólo los headers (`PageHead`, `SetSection`, `SetRow`). Verificación profunda posterior demuestra que **toda la sección Ajustes es un mockup high-fidelity sin persistencia**.
 
-Redirects legacy `cuenta/*` → `ajustes/*` confirmados en `App.tsx:1288-1310`.
+### 3.2 · Verificación de persistencia · grep duro
 
-### 3.2 · ¿Alguna pestaña toca "modo vivienda" / "gastos vida" / "estrategia libertad" / "escenario libertad"?
+```bash
+grep -rn "import.*service\|from.*services\|initDB\|db\.put\|db\.get" \
+     src/modules/ajustes/pages/*.tsx src/modules/ajustes/AjustesPage.tsx
+# → 0 resultados
+```
+
+**Cero imports de servicios o DB en TODA la sección Ajustes.** El único `import` de no-design-system es de `react`. La sidebar y todas las sub-páginas son 100 % UI estática.
+
+### 3.3 · Inventario página por página
+
+| # | Path | Archivo · líneas | useState locales | Llamadas DB/servicio | Handlers reales | Botones-toast | Veredicto |
+|---|---|---|---|---|---|---|---|
+| 1 | `/ajustes/perfil` | `PerfilPage.tsx` (218) | 3 (`agrupado`, `tutoriales`, `resumenSemanal`) | 0 | 0 | ~10 (`'Cambiar foto'`, `'Cambiar idioma'`, `'Cambiar zona horaria'`, …, `'Cambios del perfil guardados'`) | ❌ Mockup |
+| 2 | `/ajustes/plan` | `PlanPage.tsx` (245) | 0 | 0 | 0 | ~10 (`'Cambiar tarjeta'`, `'Editar dirección'`, `'Cambiar plan'`, `'Pausar suscripción'`, `'Cancelar suscripción'`, …) | ❌ Mockup puro |
+| 3 | `/ajustes/integraciones` | `IntegracionesPage.tsx` (230) | 0 | 0 | 0 | 4 (cada card pulsada → `data.toast`; "Añadir nueva integración"; "Añadir nuevo banco"; "Próximas · Unihouser · Idealista …") | ❌ Mockup puro |
+| 4 | `/ajustes/notificaciones` | `NotificacionesPage.tsx` (292) | 3 (`concentracion`, `resumenSemanal`, `resumenDiario`) | 0 | 0 | ~17 (cada `SetRow.Link` y el botón "Guardar" disparan toast) | ❌ Mockup |
+| 5 | `/ajustes/plantillas` | `PlantillasPage.tsx` (179) | 0 | 0 | 0 | 2 (`'Editar plantilla · …'`, `'Crear nueva plantilla'`) + `tpl` arrays hardcoded | ❌ Mockup puro |
+| 6 | `/ajustes/fiscal` | `PerfilFiscalPage.tsx` (186) | 1 (`parejaActiva`) | 0 | 0 | ~7 (`'Cambiar nombre'`, `'Cambiar fecha'`, `'Cambiar estado civil'`, `'Cambiar CCAA'`, `'Datos guardados · recalculando IRPF previsto'`, …) | ❌ Mockup |
+| 7 | `/ajustes/seguridad` | `SeguridadPage.tsx` (227) | 2 (`twoFa`, `biometria`) | 0 | 0 | ~10 (`'Cambiar contraseña'`, `'Generar nuevos códigos'`, `'Cerrar sesión · {device}'` con sesiones hardcoded, `'Solicitar exportación'`, `'Iniciar proceso eliminación'`) | ❌ Mockup |
+
+- **Toggles** · cada `Switch` cambia un `useState` local que vive en el componente · **al navegar a otra sub-pestaña y volver, el estado se resetea al default**.
+- **Botones "Guardar"** · disparan `showToastV5('Cambios guardados', 'success')` sin escribir nada en DB. Texto literal en `PerfilPage.tsx:44`, `PerfilFiscalPage.tsx:39`, `NotificacionesPage.tsx:25`.
+- **Sesiones activas en SeguridadPage** · array `sessions` hardcoded en el propio componente (no lee de DB).
+- **Histórico facturas en PlanPage** · array hardcoded.
+- **Plantillas en PlantillasPage** · array hardcoded.
+
+### 3.4 · Lo único que SÍ funciona
+
+- ✅ **Sidebar de 7 ítems** · navegación entre sub-pestañas (`AjustesPage.tsx:24-69`).
+- ✅ **Routing y redirects legacy** `/cuenta/*` → `/ajustes/*` (`App.tsx:1288-1310`).
+
+Eso es todo. La capa de chrome (PageHead, sidebar, layout) está construida; el contenido es mockup.
+
+### 3.5 · ¿Alguna pestaña toca "escenario libertad"?
 
 `grep -rn 'libertad|vivienda|gastos vida|escenario|modoVivienda' src/modules/ajustes/`:
 
-- **0 ocurrencias relevantes para configurar el escenario libertad.** Las matches encontradas son ·
-  - `PerfilFiscalPage.tsx:20` · texto informativo sobre deducción IRPF arrendamiento vivienda habitual.
-  - `PlanPage.tsx:29,64` · "Simulador libertad financiera" como bullet de features del plan PRO (no UI funcional).
-  - `PlantillasPage.tsx:42,45,113` · plantillas contractuales alquiler vivienda (no configuración del hogar).
+- **0 ocurrencias relevantes para escenario libertad.** Las matches encontradas son ·
+  - `PerfilFiscalPage.tsx:20` · texto informativo sobre deducción IRPF arrendamiento vivienda habitual (mockup).
+  - `PlanPage.tsx:29,64` · "Simulador libertad financiera" como bullet de features del plan PRO (mockup).
+  - `PlantillasPage.tsx:42,45,113` · plantillas contractuales alquiler vivienda (mockup).
 
-- ❌ **NO existe** sub-pestaña / sub-card / drawer en `/ajustes/*` que escriba `gastosVidaLibertadMensual`, `modoVivienda`, `estrategia`, `rentaPasivaObjetivo`, `cajaMinima`, `dtiMaximo`, `ltvMaximo`, `yieldMinimaCartera`, `tasaAhorroMinima`, ni `libertadConfig`.
-- `grep -rn 'libertadConfig|saveEscenarioActivo|setLibertadConfig' src/modules/ajustes/` · **0 resultados**.
+`grep -rn 'libertadConfig|saveEscenarioActivo|setLibertadConfig' src/modules/ajustes/` · **0 resultados**.
 
-### 3.3 · Cable suelto · C-2
+### 3.6 · Cables sueltos
 
-> **C-2 · Sub-pestaña "Escenario libertad" inexistente en Ajustes.** Toda la copy del producto (EmptyState `LibertadPage`, ADR canónico §"La UI de Ajustes para exponer estos parámetros se construye a demanda") promete que la configuración vive en Ajustes. La pestaña no existe. El usuario que pulsa el botón header solo ve un toast.
+> **C-2 · Sub-pestaña "Escenario libertad" inexistente en Ajustes.** No es solo que falte la pestaña 8ª — el problema es estructural: la sección entera es mockup, así que no existe ni un patrón de referencia "página Ajustes que persiste" a copiar.
+
+> **C-2b · Sección Ajustes completa es mockup sin persistencia.** Las 7 sub-páginas existentes son UI estática · 0 imports de servicios · 0 escrituras a DB · ~60 botones disparan `showToastV5`. Los `useState` locales (~9 totales) cambian estado volátil que se pierde al navegar. Botones "Guardar" mienten · disparan toast `'Cambios guardados'` sin guardar nada. Esto era invisible en mi audit inicial porque solo verifiqué que los componentes renderizaran headers; la regla operativa correcta es **grep `db.put|service.` antes de marcar "✅ funcional"**.
 
 ---
 
@@ -163,16 +189,19 @@ Redirects legacy `cuenta/*` → `ajustes/*` confirmados en `App.tsx:1288-1310`.
 | Página `/mi-plan/libertad` (KPIStrip + gráfica + hitos) | `LibertadPage.tsx:18-19,34-37` | 🟡 Lee `escenario` del outlet context (singleton) · NO usa el hook ni la función pura · gráfica reconstruye trayectoria inline con `rentaActual = 0` hardcoded (l. 132) | ❌ |
 | **Cualquier pantalla de escritura** | — | — | ❌ **NINGUNA** · `saveEscenarioActivo` no tiene caller en `src/modules/` |
 
-`grep -rn 'saveEscenarioActivo' src/` ·
+`grep -rn 'saveEscenarioActivo|addHito|updateHito|removeHito' src/ --exclude-dir=__tests__` ·
 
 ```
 src/services/escenariosService.ts:56:export async function saveEscenarioActivo(...)
+src/services/escenariosService.ts:87:export async function addHito(...)
 src/services/escenariosService.ts:93:  await saveEscenarioActivo({ hitos: ... });
+src/services/escenariosService.ts:99:export async function updateHito(...)
 src/services/escenariosService.ts:108: await saveEscenarioActivo({ hitos: newHitos });
+src/services/escenariosService.ts:114:export async function removeHito(...)
 src/services/escenariosService.ts:117: await saveEscenarioActivo({ hitos: newHitos });
 ```
 
-**Cero callers fuera del propio servicio.** El singleton solo se escribe si el código (no la UI) llama internamente a `addHito/updateHito/removeHito`, y esos métodos tampoco se invocan desde ningún `src/modules/`.
+**Cero callers en código de producción/UI** (`src/modules/`, `src/hooks/`, `src/pages/`, etc.). Sí existen llamadas desde tests · `src/__tests__/escenariosService.test.ts:19-23,106,120,146,172,193` · que cubren los 4 métodos del servicio. Conclusión · el servicio está cubierto por tests pero ningún componente UI lo invoca · el singleton vive de los defaults aplicados por `getEscenarioActivo()`.
 
 ### 4.6 · Veredicto
 
@@ -377,6 +406,7 @@ const pctCoberturaActual =
 |---|---|---|---|
 | **C-1** | Botón "Configurar escenario" header de Mi Plan + EmptyState Libertad disparan toast `"sub-tarea follow-up"` (2 puntos de entrada) | Alta | **Construir** drawer/wizard (ya catalogado como T27.4.6 en audit predecesor §11) |
 | **C-2** | Sub-pestaña "Escenario libertad" inexistente en `/ajustes/*` · copy del producto promete que la configuración vive en Ajustes | Alta | **Construir** sub-página Ajustes que escriba `Escenario` (modoVivienda · gastosVida · estrategia · KPIs macro) y `LibertadConfig` (alcance · regla · horizonte). Decidir si es una pestaña 8ª o sub-card dentro de Perfil. **Sigue el ADR canónico**: backend ya construido, solo falta UI |
+| **C-2b** | **Sección Ajustes completa es mockup high-fidelity sin persistencia.** 7 páginas · 0 imports de servicios · 0 `db.put` · ~60 handlers disparan `showToastV5` · `useState` locales que se pierden al navegar · botones "Guardar" mienten | **Crítica** | **Decisión arquitectónica con producto** · ¿estado consciente (mockup demo) o deuda técnica? Si lo segundo, requiere cablear cada página a su servicio (perfilService · planService · notificacionesService · plantillasService · perfilFiscalService · seguridadService · `viviendaHabitualService` ya existe). Esfuerzo grande · NO es scope de T-MIPLAN-CONFIG · pero **bloquea cualquier UI de configuración** que se quiera añadir aquí (incluida C-2) hasta que se decida el patrón |
 | **C-3** | Singleton `escenarios` huérfano de UI de escritura · `saveEscenarioActivo`/`addHito`/`updateHito`/`removeHito` sin caller en `src/modules/` | Media | **Adaptar** · resolver C-1 + C-2 cubre este punto. Adicionalmente exponer CRUD de hitos desde la propia pestaña Libertad financiera (parte de T27.4.3) |
 | **C-4** | `ViviendaPage` no consume `viviendaHabitualService` · documentación header miente afirmando que el store no existe | Alta | **Construir** la ficha vivienda habitual encima del store existente (campos régimen · dirección · ref. catastral). Limpiar comentario header. **No requiere DB nueva.** |
 | **C-4b** | Botones "Crear gasto IBI / Crear gasto recurrente" en Mi vivienda aterrizan en listado, no preconfiguran tipo de gasto | Baja | **Adaptar** · pasar parámetros (`?tipo=ibi`) o navegar directo al wizard `/personal/gastos/nuevo?tipo=ibi`. Inversión 30-60 min |
@@ -396,7 +426,7 @@ const pctCoberturaActual =
 
 1. **PR-A · Fix C-6 (incoherencia landing vs pestaña Libertad)** · 1-2 h CC · cambia `MiPlanPage.load` para usar `getEscenarioActivo()` (siempre devuelve singleton, nunca null). La pestaña Libertad pasa a mostrar trayectoria coherente con la landing. **No requiere UI nueva.**
 2. **PR-B · Fix C-4 (ficha vivienda habitual)** · 4-6 h CC · ViviendaPage consume `viviendaHabitualService` · sustituye la card "Configurar (próximamente)" por formulario real (régimen · dirección · ref. catastral). Cierra ghost button C-1 parcial (solo el botón de Mi vivienda) y limpia documentación rota. **No toca DB.**
-3. **PR-C · Construir C-2 + C-3 (Ajustes · sub-página "Escenario libertad")** · 6-10 h CC · añade sidebar item 8ª en `AjustesPage.tsx` (`/ajustes/escenario`) · formulario que escribe `gastosVidaLibertadMensual`, `modoVivienda`, `estrategia`, `rentaPasivaObjetivo` (+ KPIs macro opcionales) · invoca `saveEscenarioActivo`. Mantén `LibertadConfig` (alcance · regla · horizonte) en sub-card "Avanzado". **Cubre C-1 (botón header navega a `/ajustes/escenario`) y C-3 (CRUD del singleton).**
+3. **PR-C · Construir C-2 + C-3 (Ajustes · sub-página "Escenario libertad")** · 6-10 h CC · añade sidebar item 8ª en `AjustesPage.tsx` (`/ajustes/escenario`) · formulario que escribe `gastosVidaLibertadMensual`, `modoVivienda`, `estrategia`, `rentaPasivaObjetivo` (+ KPIs macro opcionales) · invoca `saveEscenarioActivo`. Mantén `LibertadConfig` (alcance · regla · horizonte) en sub-card "Avanzado". **Cubre C-1 (botón header navega a `/ajustes/escenario`) y C-3 (CRUD del singleton).** ⚠️ **Será la primera página de Ajustes con persistencia real** (ver C-2b). Conviene establecer aquí el patrón canónico (hook + servicio + `setLastSavedAt`) que el resto de Ajustes adoptará en limpieza posterior.
 4. **PR-D · Adaptar C-4b** · 1 h CC · `Crear gasto IBI / recurrente` navegan a `/personal/gastos/nuevo?tipo=ibi|recurrente` con preselección.
 5. **PR-E (opcional, depende de roadmap)** · Construir C-5 (entidad "fecha objetivo libertad") · solo si producto lo confirma. Sigue el patrón del ADR · campo nuevo en `LibertadConfig`, UI en sub-página de Ajustes (PR-C).
 
@@ -415,7 +445,7 @@ const pctCoberturaActual =
 - PR-D · 1 h
 - PR-E · 3-5 h (opcional)
 
-**Total `12-19 h CC` para cerrar el escenario libertad **a nivel UI + Mi vivienda**.** Resto del paquete T27.4 es trabajo separado.
+**Total estimado · 12-19 h CC** para cerrar el escenario libertad a nivel UI + Mi vivienda. Resto del paquete T27.4 es trabajo separado.
 
 ---
 
