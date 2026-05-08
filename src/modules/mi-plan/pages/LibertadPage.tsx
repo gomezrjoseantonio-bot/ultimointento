@@ -176,10 +176,18 @@ const LibertadPage: React.FC = () => {
             // Año de "libertad" · usa el cruce calculado por el servicio
             // (no un findIndex local) para coincidir con LandingPage y PanelPage.
             const cruceAnio = libertad.cruceLibertad?.anio ?? null;
+            const cruceIsoYM = libertad.cruceLibertad?.isoYM ?? null;
             const libertadIdx =
               cruceAnio != null ? serie.findIndex((s) => s.year === cruceAnio) : -1;
             const libertadX = libertadIdx >= 0 ? x(libertadIdx) : null;
-            const libertadY = libertadIdx >= 0 ? y(serie[libertadIdx].renta) : null;
+            const libertadPoint =
+              cruceIsoYM != null
+                ? serie.find((s) => 'isoYM' in s && s.isoYM === cruceIsoYM) ??
+                  (libertadIdx >= 0 ? serie[libertadIdx] : null)
+                : libertadIdx >= 0
+                  ? serie[libertadIdx]
+                  : null;
+            const libertadY = libertadPoint ? y(libertadPoint.renta) : null;
 
             return (
               <svg
