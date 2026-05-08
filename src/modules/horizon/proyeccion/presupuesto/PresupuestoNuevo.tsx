@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Calculator, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageLayout from '../../../../components/common/PageLayout';
-import { Presupuesto, PresupuestoLinea, TipoLinea, UUID } from '../../../../services/db';
-import { 
-  getPresupuestosByYear, 
-  createPresupuesto, 
+import { initDB, Presupuesto, PresupuestoLinea, TipoLinea, UUID } from '../../../../services/db';
+import {
+  getPresupuestosByYear,
+  createPresupuesto,
   getPresupuestoLineas,
   calcularResumenPresupuesto,
   sembrarPresupuesto,
@@ -15,6 +15,7 @@ import {
   syncPresupuestoActualFromMovements,
   ResumenPresupuesto
 } from './services/presupuestoService';
+import { calculateActualAmountsByLine } from './services/actualSyncService';
 import PresupuestoHeader from './components/PresupuestoHeader';
 import PresupuestoResumen from './components/PresupuestoResumen';
 import PresupuestoTablaLineas from './components/PresupuestoTablaLineas';
@@ -26,6 +27,7 @@ const PresupuestoNuevo: React.FC = () => {
   const [presupuestoActual, setPresupuestoActual] = useState<Presupuesto | null>(null);
   const [lineas, setLineas] = useState<PresupuestoLinea[]>([]);
   const [resumen, setResumen] = useState<ResumenPresupuesto | null>(null);
+  const [realMensual, setRealMensual] = useState<number[]>(() => new Array(12).fill(0));
   const [loading, setLoading] = useState(true);
   const [selectedInmuebleId, setSelectedInmuebleId] = useState<UUID | 'todos'>('todos');
   const [showLineaModal, setShowLineaModal] = useState(false);
@@ -54,19 +56,32 @@ const PresupuestoNuevo: React.FC = () => {
 
   const loadPresupuestoData = useCallback(async () => {
     if (!presupuestoActual) return;
-    
+
     try {
-      const [lineasData, resumenData] = await Promise.all([
+      const db = await initDB();
+      const [lineasData, resumenData, movements] = await Promise.all([
         getPresupuestoLineas(presupuestoActual.id),
-        calcularResumenPresupuesto(presupuestoActual.id)
+        calcularResumenPresupuesto(presupuestoActual.id),
+        db.getAll('movements')
       ]);
-      
+
+      // Net real per month from reconciled movements matched against budget lines.
+      const realNeto = new Array(12).fill(0);
+      for (const linea of lineasData) {
+        const amounts = calculateActualAmountsByLine(linea, currentYear, movements);
+        const sign = linea.tipo === 'Ingreso' ? 1 : -1;
+        for (let m = 0; m < 12; m++) {
+          realNeto[m] += sign * amounts[m];
+        }
+      }
+
       setLineas(lineasData);
       setResumen(resumenData);
+      setRealMensual(realNeto);
     } catch (error) {
       console.error('Error loading presupuesto data:', error);
     }
-  }, [presupuestoActual]);
+  }, [presupuestoActual, currentYear]);
 
   useEffect(() => {
     loadPresupuestos();
@@ -312,6 +327,7 @@ const PresupuestoNuevo: React.FC = () => {
           <PresupuestoCalendario
             resumen={resumen}
             year={currentYear}
+            realMensual={realMensual}
           />
         )}
       </div>

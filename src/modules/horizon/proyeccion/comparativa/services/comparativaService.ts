@@ -1,6 +1,8 @@
 import { initDB, Property } from '../../../../../services/db';
 import { getLatestBudgetByYear } from '../../presupuesto/services/budgetService';
 import { formatEuro } from '../../../../../utils/formatUtils';
+import { generateProyeccionMensual } from '../../mensual/services/proyeccionMensualService';
+import type { ProyeccionAnual } from '../../mensual/types/proyeccionMensual';
 
 export interface MonthlyData {
   budget: number;
@@ -137,16 +139,40 @@ class ComparativaService {
     return monthlyBudget;
   }
 
+  private async getYearProjection(year: number): Promise<ProyeccionAnual | null> {
+    const proyecciones = await generateProyeccionMensual();
+    return proyecciones.find(p => p.year === year) ?? null;
+  }
+
   private async getForecastData(params: ComparativaParams): Promise<number[]> {
-    // TODO: Implement dynamic forecast calculation from:
-    // - Contract changes (rents, vacancies, IPC updates)
-    // - Property sales/purchases and amortizations  
-    // - OCR classified invoices with predicted dates
-    // - Treasury automation rules
-    
-    // For now, return budget data with some variance as placeholder
-    const budgetData = await this.getBudgetData(params);
-    return budgetData.map(amount => amount * (0.95 + Math.random() * 0.1)); // ±5% variance
+    // Forecast = real (actual) for past months + engine projection for current/future months.
+    // This matches the canonical "Real vs Previsto" semantics: past is observed, future is projected.
+    const [budgetData, actualData, yearProjection] = await Promise.all([
+      this.getBudgetData(params),
+      this.getActualData(params),
+      this.getYearProjection(params.year),
+    ]);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
+    const monthlyForecast = new Array(12).fill(0);
+    for (let m = 0; m < 12; m++) {
+      const isPast = params.year < currentYear || (params.year === currentYear && m < currentMonth);
+      if (isPast) {
+        monthlyForecast[m] = actualData[m];
+      } else if (yearProjection) {
+        const row = yearProjection.months[m];
+        // Net flow = ingresos - (gastos + financiacion). Same sign convention as getBudgetData.
+        monthlyForecast[m] = row.ingresos.total - row.gastos.total - row.financiacion.total;
+      } else {
+        // Year out of engine coverage (engine spans current year + 19); fall back to budget.
+        monthlyForecast[m] = budgetData[m];
+      }
+    }
+
+    return monthlyForecast;
   }
 
   private async getActualData(params: ComparativaParams): Promise<number[]> {
@@ -286,11 +312,18 @@ class ComparativaService {
 
   private async getMonthlyDetails(params: ComparativaParams): Promise<MonthlyDetail[]> {
     const monthlyDetails: MonthlyDetail[] = [];
-    
+
     // Get the latest confirmed budget for the year
     const latestBudget = await getLatestBudgetByYear(params.year);
-    
+
+    // Engine projection (used for the income category 'Alquileres'); null if year is out of range.
+    const yearProjection = await this.getYearProjection(params.year);
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth(); // 0-indexed
+
     for (let month = 0; month < 12; month++) {
+      const isPast = params.year < currentYear || (params.year === currentYear && month < currentMonth);
       const monthDetails: MonthlyDetail = {
         month: month + 1,
         ingresos: [],
@@ -325,16 +358,24 @@ class ComparativaService {
           );
           budgetAmount = relevantLines.reduce((sum, line) => sum + (line.monthlyAmounts[month] || 0), 0);
         }
-        
-        // For now, use budget as forecast (would be calculated dynamically in real implementation)
-        const forecastAmount = budgetAmount * (0.95 + Math.random() * 0.1); // ±5% variance
-        
+
         // Actual would come from treasury movements - placeholder for now
         const actualAmount = 0;
-        
+
+        // Forecast: real for past months, engine `rentasAlquiler` for future months when available,
+        // budget otherwise. No randomness.
+        let forecastAmount = budgetAmount;
+        if (catConfig.fiscalCategory === 'ingresos-alquiler') {
+          if (isPast) {
+            forecastAmount = actualAmount;
+          } else if (yearProjection) {
+            forecastAmount = yearProjection.months[month].ingresos.rentasAlquiler;
+          }
+        }
+
         const deviation = budgetAmount !== 0 ? ((actualAmount - budgetAmount) / Math.abs(budgetAmount)) * 100 : 0;
         const deviationStatus = this.getDeviationStatus(Math.abs(deviation));
-        
+
         monthDetails.ingresos.push({
           category: catConfig.category,
           budget: budgetAmount,
@@ -355,16 +396,19 @@ class ComparativaService {
           );
           budgetAmount = relevantLines.reduce((sum, line) => sum + (line.monthlyAmounts[month] || 0), 0);
         }
-        
-        // For now, use budget as forecast (would be calculated dynamically in real implementation)
-        const forecastAmount = budgetAmount * (0.95 + Math.random() * 0.1); // ±5% variance
-        
+
         // Actual would come from treasury movements - placeholder for now
         const actualAmount = 0;
-        
+
+        // Forecast at the per-budget-category level uses budget deterministically: the engine
+        // exposes totals (gastos.total, financiacion.total) and an `opexDesglose` keyed by
+        // free-form `concepto`, neither of which maps cleanly to budget fiscal categories.
+        // No randomness; the top-level monthly forecast (getForecastData) does use the engine.
+        const forecastAmount = budgetAmount;
+
         const deviation = budgetAmount !== 0 ? ((actualAmount - budgetAmount) / Math.abs(budgetAmount)) * 100 : 0;
         const deviationStatus = this.getDeviationStatus(Math.abs(deviation));
-        
+
         monthDetails.gastos.push({
           category: catConfig.category,
           budget: budgetAmount,
