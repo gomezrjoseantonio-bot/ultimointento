@@ -802,6 +802,6 @@ src/modules/horizon/proyeccion/comparativa/services/comparativaService.ts:141: /
 
 CC abre **un solo PR** que añade `docs/audits/T-PROYECCION-AUDIT-INFORME.md` y nada más.
 
-**NO mergear.** Esperar autorización Jose tras revisión del informe.
+**Requiere revisión antes de merge.** Esperar autorización Jose tras revisión del informe.
 
 **Fin informe T-PROYECCION-AUDIT.**
