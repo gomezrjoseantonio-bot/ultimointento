@@ -1,5 +1,6 @@
 import { initDB, Property } from '../../../../../services/db';
 import { getLatestBudgetByYear } from '../../presupuesto/services/budgetService';
+import { generateProyeccionMensual } from '../../mensual/services/proyeccionMensualService';
 import { formatEuro } from '../../../../../utils/formatUtils';
 
 export interface MonthlyData {
@@ -138,15 +139,22 @@ class ComparativaService {
   }
 
   private async getForecastData(params: ComparativaParams): Promise<number[]> {
-    // TODO: Implement dynamic forecast calculation from:
-    // - Contract changes (rents, vacancies, IPC updates)
-    // - Property sales/purchases and amortizations  
-    // - OCR classified invoices with predicted dates
-    // - Treasury automation rules
-    
-    // For now, return budget data with some variance as placeholder
-    const budgetData = await this.getBudgetData(params);
-    return budgetData.map(amount => amount * (0.95 + Math.random() * 0.1)); // ±5% variance
+    // The monthly engine projects 20 years starting at the current year.
+    // For years outside that window (or for property-scoped views, since the
+    // engine does not currently expose a per-property net cash flow), fall back
+    // to budget data so the public shape stays consistent.
+    if (params.scope === 'inmueble' && params.propertyId) {
+      return this.getBudgetData(params);
+    }
+
+    const proyecciones = await generateProyeccionMensual();
+    const yearProyeccion = proyecciones.find(p => p.year === params.year);
+    if (!yearProyeccion) {
+      return this.getBudgetData(params);
+    }
+
+    // Net monthly cash flow from the engine: ingresos - gastos - financiacion.
+    return yearProyeccion.months.map(m => m.tesoreria.flujoCajaMes);
   }
 
   private async getActualData(params: ComparativaParams): Promise<number[]> {
@@ -325,16 +333,18 @@ class ComparativaService {
           );
           budgetAmount = relevantLines.reduce((sum, line) => sum + (line.monthlyAmounts[month] || 0), 0);
         }
-        
-        // For now, use budget as forecast (would be calculated dynamically in real implementation)
-        const forecastAmount = budgetAmount * (0.95 + Math.random() * 0.1); // ±5% variance
-        
+
+        // Per-category forecast at month level: the monthly engine does not
+        // expose a breakdown for these granular fiscal categories, so the
+        // forecast is anchored to the budget value (deterministic).
+        const forecastAmount = budgetAmount;
+
         // Actual would come from treasury movements - placeholder for now
         const actualAmount = 0;
-        
+
         const deviation = budgetAmount !== 0 ? ((actualAmount - budgetAmount) / Math.abs(budgetAmount)) * 100 : 0;
         const deviationStatus = this.getDeviationStatus(Math.abs(deviation));
-        
+
         monthDetails.ingresos.push({
           category: catConfig.category,
           budget: budgetAmount,
@@ -355,16 +365,18 @@ class ComparativaService {
           );
           budgetAmount = relevantLines.reduce((sum, line) => sum + (line.monthlyAmounts[month] || 0), 0);
         }
-        
-        // For now, use budget as forecast (would be calculated dynamically in real implementation)
-        const forecastAmount = budgetAmount * (0.95 + Math.random() * 0.1); // ±5% variance
-        
+
+        // Per-category forecast at month level: the monthly engine does not
+        // expose a breakdown for these granular fiscal categories, so the
+        // forecast is anchored to the budget value (deterministic).
+        const forecastAmount = budgetAmount;
+
         // Actual would come from treasury movements - placeholder for now
         const actualAmount = 0;
-        
+
         const deviation = budgetAmount !== 0 ? ((actualAmount - budgetAmount) / Math.abs(budgetAmount)) * 100 : 0;
         const deviationStatus = this.getDeviationStatus(Math.abs(deviation));
-        
+
         monthDetails.gastos.push({
           category: catConfig.category,
           budget: budgetAmount,
