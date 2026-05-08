@@ -36,14 +36,14 @@
 | Capa fiscal proyectada | 🟡 ingredientes · 0 cables | `proyeccionMensualService` SÍ importa `fiscalContextService`+`irpfCalculationService`+`fiscalPaymentsService` para 1 año · NO existe proyección fiscal a 20 años · NO modela amortizaciones AEAT que decaen · NO modela plusvalías futuras · NO modela deducción planes pensiones |
 | Sugerencias macro automáticas | ❌ no existe | 0 hits "sugerencia macro" · 0 hits "CPI personal" · `escenarioService` (mock) habla de "Revisión trimestral de supuestos" como string hardcoded · sin lógica |
 
-**Orden recomendado de ataque** (justificado en §17): **C-PROY-1 → C-PROY-2 → C-PROY-3 → C-PROY-5 → C-PROY-4 → C-PROY-6 → C-PROY-7 → C-PROY-8.**
+**Orden recomendado de ataque** (justificado en §13): **C-PROY-1 → C-PROY-2 → C-PROY-3 → C-PROY-5 → C-PROY-4 → C-PROY-6 → C-PROY-7 → C-PROY-8.**
 
-**Hallazgos sorpresa (anticipo · detalle en §15):**
+**Hallazgos sorpresa (anticipo · detalle en §11):**
 
 1. **Dos `escenarioService` distintos coexisten** · `src/services/escenariosService.ts` (REAL · DB store `escenarios` singleton id=1) vs `src/modules/horizon/proyeccion/escenarios/services/escenarioService.ts` (822 líneas · MOCK in-memory · `clone(initialDashboard)`).
 2. **Dos rutas `Comparativa` distintas en proyección** · `comparativa/` (singular · Real vs Budget vs Forecast `Math.random`) y `comparativas/` (plural · 3 escenarios · TODO PDF export). Ambas accesibles vía rutas legacy + activa.
 3. **`ProyeccionSimulaciones` NO persiste · es papelera de borradores** · `useState<Scenario[]>([])` con `id: Date.now()` · comentario explícito "Temporary types until we create the service" línea 8.
-4. **`budgetService.ts` escribe en store FANTASMA `'budgets'`** · ese nombre está en `STORES_OBSOLETOS` (`db.ts:2889`) y se elimina en una migración. El servicio funciona porque IndexedDB lo recrea implícitamente al abrir, pero no es store oficial. Coexiste con `presupuestos`+`presupuestoLineas` (los OFICIALES).
+4. **`budgetService.ts` escribe en store FANTASMA `'budgets'`** · ese nombre está en `STORES_OBSOLETOS` (`db.ts:2889`) y se borra con `deleteObjectStore` en la migración correspondiente. En cualquier DB ya migrada a V69 el store NO existe · cualquier `db.transaction('budgets')` debería lanzar `NotFoundError`. Es decir, el servicio es **probablemente dead code** que solo "funcionaría" en DBs antiguas no migradas. Coexiste con `presupuestos`+`presupuestoLineas` (los OFICIALES) que sí están en el listado activo.
 5. **`LibertadPage` (mi-plan) NO usa `libertadService`** · hace su propia proyección naive (suma `h.impactoMensual` desde 0 · sin `proyectarLibertadDesdeRepo`). En cambio `PanelPage` y `LandingPage` SÍ usan `useProyeccionLibertad`. El simulador "oficial" del mockup es el que se ignora.
 6. **Componentes huérfanos pintando hero patrimonio · sin imports** · `src/components/dashboard/PatrimonioHeader.tsx` (337 líneas) y `src/components/dashboard/ProjectionChart.tsx` (38 líneas) · 0 imports desde panel/mi-plan/App.tsx. Código muerto que recoge expectativa del mockup.
 
@@ -656,6 +656,8 @@ Pero `db.ts:2880-2896` lista `'budgets'` y `'budgetLines'` en `STORES_OBSOLETOS`
 ```
 
 ⚠ El servicio convive con `presupuestoService.ts` (502 líneas · 8 awaits · stores oficiales `presupuestos`+`presupuestoLineas`). Hay **dos servicios de presupuesto en paralelo**, uno apuntando a stores válidos y otro a obsoletos. La página activa según `App.tsx:984` es `PresupuestosView` (la de `presupuestos`). `budgetService` se usa desde `comparativaService.ts:2` y `ProyeccionPresupuesto.tsx:8` · ramas residuales o de transición.
+
+⚠ Importante (matiz técnico): en cualquier DB migrada a V69 los stores `'budgets'` y `'budgetLines'` NO existen (fueron eliminados con `deleteObjectStore` en la migración STORES_OBSOLETOS). Una llamada `db.transaction('budgets')` lanza `NotFoundError` en runtime. Es decir, `budgetService` es **probablemente dead code en producción** — solo serviría en una DB antigua sin migrar. CC en C-PROY-1 debe verificar callsites en runtime antes de borrar y, si están vivos sin tirar errores, investigar por qué (¿se llama desde una rama no ejercida?). NO basta con `grep`.
 
 ### Hallazgo 5 · `LibertadPage` (mi-plan) NO usa `libertadService`
 
