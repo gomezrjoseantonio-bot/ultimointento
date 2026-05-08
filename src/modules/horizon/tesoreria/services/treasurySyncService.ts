@@ -442,7 +442,9 @@ export async function generateMonthlyForecasts(
         continue;
       }
 
-      const calculo = nominaService.calculateSalary(nomina);
+      // PR-C4 · pasar `year` para que el snapshot vigente del mes/año
+      // del forecast sea el aplicado.
+      const calculo = nominaService.calculateSalary(nomina, year);
       const mesData = calculo.distribucionMensual.find(d => d.mes === month);
       if (!mesData || mesData.netoTotal <= 0) continue;
 

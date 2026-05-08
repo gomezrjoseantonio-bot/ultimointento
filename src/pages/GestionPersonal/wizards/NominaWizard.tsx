@@ -8,6 +8,7 @@ import { planesPensionesService } from '../../../services/planesPensionesService
 import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
 import type { Account } from '../../../services/db';
 import type { PlanPensiones } from '../../../types/planesPensiones';
+import type { Nomina, NominaRetributivoSnapshot } from '../../../types/personal';
 
 const FONT = "'IBM Plex Sans', system-ui, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, monospace";
@@ -218,6 +219,18 @@ const NominaWizard: React.FC = () => {
   const [tieneEspecie, setTieneEspecie] = useState(false);
   const [especie, setEspecie] = useState<WizardEspecie[]>([]);
 
+  // PR-C4 · estado del modo de guardado al editar.
+  // 'overwrite' (default · rectificación) sustituye el snapshot vigente
+  // y los campos top-level. 'cambio-con-vigencia' añade entrada nueva
+  // al historial sin destruir el snapshot anterior.
+  const [modoEdicion, setModoEdicion] = useState<'overwrite' | 'cambio-con-vigencia'>('overwrite');
+  const [vigenciaDesde, setVigenciaDesde] = useState<string>(
+    new Date().toISOString().slice(0, 10),
+  );
+  const [motivoCambio, setMotivoCambio] = useState<string>('');
+  // Referencia a la nómina cargada · para mostrar historial existente.
+  const [loadedNomina, setLoadedNomina] = useState<Nomina | null>(null);
+
   useEffect(() => {
     void (async () => {
       // T14.4 · EXCEPCIÓN documentada · NO migra al gateway · necesita
@@ -253,6 +266,7 @@ const NominaWizard: React.FC = () => {
           // Edit mode: load existing nomina and populate all fields
           const nom = await nominaService.getNominaById(nominaId);
           if (nom) {
+            setLoadedNomina(nom);
             setEditingTitular(nom.titular);
             setTitularNombre(
               nom.titular === 'pareja' ? (perfil.spouseName || 'Pareja') : `${perfil.nombre} ${perfil.apellidos}`.trim()
@@ -443,7 +457,22 @@ const NominaWizard: React.FC = () => {
         activa: true,
       };
       if (isEditing && nominaId) {
-        await nominaService.updateNomina(nominaId, nominaData);
+        if (modoEdicion === 'cambio-con-vigencia') {
+          // PR-C4 · crear entrada nueva en el historial sin overwrite.
+          const snapshot: NominaRetributivoSnapshot = {
+            salarioBrutoAnual: nominaData.salarioBrutoAnual,
+            variables: nominaData.variables,
+            bonus: nominaData.bonus,
+            planPensiones: nominaData.planPensiones,
+          };
+          await nominaService.addCambioNomina(nominaId, {
+            vigenciaDesde,
+            motivo: motivoCambio.trim() || undefined,
+            snapshot,
+          });
+        } else {
+          await nominaService.updateNomina(nominaId, nominaData);
+        }
       } else {
         await nominaService.saveNomina(nominaData);
       }
@@ -453,7 +482,7 @@ const NominaWizard: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [pid, titularParam, editingTitular, isEditing, nominaId, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate]);
+  }, [pid, titularParam, editingTitular, isEditing, nominaId, empresa, pagas, fechaInicio, brutoAnual, irpf, solidaridadAnual, variables, especie, tienePP, ppEmpleado, ppEmpresa, ppPlanId, cuentaId, diaCobro, planes, navigate, modoEdicion, vigenciaDesde, motivoCambio]);
 
   const renderStep1 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -870,6 +899,116 @@ const NominaWizard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* PR-C4 · selector de modo de guardado al editar nómina existente. */}
+        {isEditing && (
+          <div style={cardSt}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
+              ¿Cómo registramos este cambio?
+            </h3>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 8, marginBottom: 8, cursor: 'pointer', background: modoEdicion === 'overwrite' ? 'rgba(29,160,186,0.06)' : '#fff' }}>
+              <input
+                type="radio"
+                name="modoEdicion"
+                checked={modoEdicion === 'overwrite'}
+                onChange={() => setModoEdicion('overwrite')}
+                style={{ marginTop: 2 }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
+                  Rectificación · sustituye los datos vigentes
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, marginTop: 2 }}>
+                  Para corregir un error de configuración. Recalcula meses anteriores.
+                </div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', border: '1px solid var(--grey-200, #DDE3EC)', borderRadius: 8, cursor: 'pointer', background: modoEdicion === 'cambio-con-vigencia' ? 'rgba(29,160,186,0.06)' : '#fff' }}>
+              <input
+                type="radio"
+                name="modoEdicion"
+                checked={modoEdicion === 'cambio-con-vigencia'}
+                onChange={() => setModoEdicion('cambio-con-vigencia')}
+                style={{ marginTop: 2 }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
+                  Cambio a partir de fecha · ej. subida abril
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, marginTop: 2 }}>
+                  Mantiene el histórico anterior intacto. Los meses previos a la fecha siguen calculados con los valores antiguos.
+                </div>
+                {modoEdicion === 'cambio-con-vigencia' && (
+                  <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div>
+                      <label style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, display: 'block', marginBottom: 4 }}>
+                        Vigencia desde
+                      </label>
+                      <input
+                        type="date"
+                        value={vigenciaDesde}
+                        onChange={(e) => setVigenciaDesde(e.target.value)}
+                        style={{ ...inputSt, maxWidth: 200 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT, display: 'block', marginBottom: 4 }}>
+                        Motivo (opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={motivoCambio}
+                        onChange={(e) => setMotivoCambio(e.target.value)}
+                        placeholder="ej. Subida salarial abril 2026"
+                        maxLength={200}
+                        style={inputSt}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </label>
+          </div>
+        )}
+
+        {/* PR-C4 · listado de historial de cambios (read-only). */}
+        {isEditing && loadedNomina?.historial && loadedNomina.historial.length > 0 && (
+          <div style={cardSt}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: FONT }}>
+              Historial de cambios ({loadedNomina.historial.length})
+            </h3>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[...loadedNomina.historial]
+                .sort((a, b) => b.vigenciaDesde.localeCompare(a.vigenciaDesde))
+                .map((entry) => (
+                  <li
+                    key={entry.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      border: '1px solid var(--grey-200, #DDE3EC)',
+                      borderRadius: 6,
+                      background: '#fff',
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy-900, #042C5E)', fontFamily: MONO }}>
+                        {entry.vigenciaDesde}
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--grey-500)', fontFamily: FONT }}>
+                        {entry.motivo ?? 'Sin motivo'}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 13, fontFamily: MONO, fontVariantNumeric: 'tabular-nums', color: 'var(--navy-900, #042C5E)' }}>
+                      {fmtEur(entry.snapshot.salarioBrutoAnual)}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   };

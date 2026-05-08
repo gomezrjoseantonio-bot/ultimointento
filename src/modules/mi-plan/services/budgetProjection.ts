@@ -89,11 +89,17 @@ export interface BudgetProjectionData {
  * deducciones). El neto mensual es comparable con los movimientos bancarios
  * reales (Tesorería).
  */
-const ingresoNominaEnMes = (nomina: Nomina, month: number): number => {
+const ingresoNominaEnMes = (
+  nomina: Nomina,
+  month: number,
+  year: number,
+): number => {
   if (!nomina.activa) return 0;
   if (!nomina.salarioBrutoAnual || nomina.salarioBrutoAnual <= 0) return 0;
   try {
-    const calc = nominaService.calculateSalary(nomina);
+    // PR-C4 · pasar `year` para que el snapshot vigente del mes/año sea
+    // el aplicado en el cálculo del neto mensual.
+    const calc = nominaService.calculateSalary(nomina, year);
     const mes = calc.distribucionMensual.find((d) => d.mes === month + 1);
     return mes?.netoTotal ?? 0;
   } catch {
@@ -235,7 +241,7 @@ export const computeBudgetProjectionFromData = (
     let entradas = 0;
     let salidas = 0;
     data.nominas.forEach((n) => {
-      entradas += ingresoNominaEnMes(n, i);
+      entradas += ingresoNominaEnMes(n, i, year);
     });
     data.autonomos.forEach((a) => {
       entradas += ingresoAutonomoEnMes(a, i);

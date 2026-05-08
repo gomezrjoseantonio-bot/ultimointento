@@ -5,10 +5,95 @@ import {
   ReglaDia,
   RetencionNomina,
   CalculoNominaResult,
-  DistribucionMensualResult
+  DistribucionMensualResult,
+  NominaHistorialEntry,
+  NominaRetributivoSnapshot,
 } from '../types/personal';
 import { getBaseMaxima, getSSDefaults } from '../constants/cotizacionSS';
 import { invalidateCachedStores } from './indexedDbCacheService';
+
+// PR-C4 · helpers de resolución del historial retributivo.
+
+const genHistorialEntryId = (): string =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+/**
+ * PR-C4 · resuelve la entrada del historial vigente para `ymd` (YYYY-MM-DD).
+ * Devuelve la entrada con mayor `vigenciaDesde` que sea <= ymd; null si no
+ * hay historial o ninguna entrada cualifica.
+ *
+ * Asume historial ordenado por `vigenciaDesde` ASC; ordena defensivamente
+ * para tolerar inserciones tardías sin re-sort por parte del caller.
+ */
+function resolveSnapshotForFecha(
+  nomina: Nomina,
+  ymd: string,
+): NominaRetributivoSnapshot | null {
+  if (!nomina.historial || nomina.historial.length === 0) return null;
+  const ordenado = [...nomina.historial].sort((a, b) =>
+    a.vigenciaDesde.localeCompare(b.vigenciaDesde),
+  );
+  let activa: NominaHistorialEntry | null = null;
+  for (const e of ordenado) {
+    if (e.vigenciaDesde <= ymd) activa = e;
+    else break;
+  }
+  return activa ? activa.snapshot : null;
+}
+
+/**
+ * PR-C4 · aplica un snapshot retributivo sobre el registro Nomina,
+ * sustituyendo solo los campos versionados. Si `snapshot` es null,
+ * devuelve la nómina sin cambios (retrocompatibilidad pre-V70 · sin
+ * historial · campos top-level rigen).
+ */
+function applySnapshot(
+  nomina: Nomina,
+  snapshot: NominaRetributivoSnapshot | null,
+): Nomina {
+  if (!snapshot) return nomina;
+  return {
+    ...nomina,
+    salarioBrutoAnual: snapshot.salarioBrutoAnual,
+    variables: snapshot.variables ?? nomina.variables,
+    bonus: snapshot.bonus ?? nomina.bonus,
+    pagasExtra: snapshot.pagasExtra ?? nomina.pagasExtra,
+    variableObjetivo: snapshot.variableObjetivo ?? nomina.variableObjetivo,
+    bonusObjetivo: snapshot.bonusObjetivo ?? nomina.bonusObjetivo,
+    retribucionEspecieAnual:
+      snapshot.retribucionEspecieAnual ?? nomina.retribucionEspecieAnual,
+    aportacionEmpresaPlanPensionesAnual:
+      snapshot.aportacionEmpresaPlanPensionesAnual ??
+      nomina.aportacionEmpresaPlanPensionesAnual,
+    planPensiones: snapshot.planPensiones ?? nomina.planPensiones,
+  };
+}
+
+/**
+ * PR-C4 · construye un snapshot retributivo desde los campos top-level
+ * actuales de una Nomina. Solo serializa campos definidos para evitar
+ * persistir `undefined` en IndexedDB.
+ */
+function buildSnapshotFromNomina(n: Nomina): NominaRetributivoSnapshot {
+  const snap: NominaRetributivoSnapshot = {
+    salarioBrutoAnual: n.salarioBrutoAnual,
+  };
+  if (n.variables !== undefined) snap.variables = n.variables;
+  if (n.bonus !== undefined) snap.bonus = n.bonus;
+  if (n.pagasExtra !== undefined) snap.pagasExtra = n.pagasExtra;
+  if (n.variableObjetivo !== undefined) snap.variableObjetivo = n.variableObjetivo;
+  if (n.bonusObjetivo !== undefined) snap.bonusObjetivo = n.bonusObjetivo;
+  if (n.retribucionEspecieAnual !== undefined) {
+    snap.retribucionEspecieAnual = n.retribucionEspecieAnual;
+  }
+  if (n.aportacionEmpresaPlanPensionesAnual !== undefined) {
+    snap.aportacionEmpresaPlanPensionesAnual = n.aportacionEmpresaPlanPensionesAnual;
+  }
+  if (n.planPensiones !== undefined) snap.planPensiones = n.planPensiones;
+  return snap;
+}
 
 class NominaService {
   private db: any = null;
@@ -170,10 +255,28 @@ class NominaService {
 
       const now = new Date().toISOString();
 
+      // PR-C4 · al alta inicializa `historial` con un snapshot anclado a
+      // la fecha de antigüedad (o creación si no la hay). Mantiene el
+      // invariante "última entrada coincide con campos top-level".
+      const vigenciaInicial =
+        (nomina.fechaAntiguedad ?? now).slice(0, 10);
+      const historialInicial: NominaHistorialEntry[] = [
+        {
+          id: genHistorialEntryId(),
+          vigenciaDesde: vigenciaInicial,
+          motivo: 'Snapshot inicial · alta',
+          snapshot: buildSnapshotFromNomina(nomina as Nomina),
+          createdAt: now,
+        },
+      ];
+
       const newNomina: Nomina = {
         ...nomina,
         fechaCreacion: now,
-        fechaActualizacion: now
+        fechaActualizacion: now,
+        historial: nomina.historial && nomina.historial.length > 0
+          ? nomina.historial
+          : historialInicial,
       };
 
       const result = await store.add({ ...newNomina, tipo: this.TIPO } as any);
@@ -229,6 +332,69 @@ class NominaService {
   }
 
   /**
+   * PR-C4 · añade una entrada al historial de la nómina. NO sobrescribe
+   * el último snapshot · NO toca los campos top-level salvo cuando la
+   * entrada nueva sea la más reciente del historial (en cuyo caso los
+   * top-level se sincronizan para que los lectores legacy sigan viendo
+   * el "estado actual").
+   *
+   * Si `vigenciaDesde` < última entrada, el array se reordena y los
+   * top-level NO cambian (es un cambio histórico tardío). Se loguea
+   * un warning informativo.
+   *
+   * @param id ID de la nómina
+   * @param cambio entrada del historial sin `id`/`createdAt` (los pone el service)
+   */
+  async addCambioNomina(
+    id: number,
+    cambio: Omit<NominaHistorialEntry, 'id' | 'createdAt'>,
+  ): Promise<Nomina> {
+    if (!cambio.vigenciaDesde) {
+      throw new Error('addCambioNomina: vigenciaDesde es requerido');
+    }
+    if (
+      typeof cambio.snapshot?.salarioBrutoAnual !== 'number' ||
+      cambio.snapshot.salarioBrutoAnual <= 0
+    ) {
+      throw new Error('addCambioNomina: snapshot.salarioBrutoAnual debe ser > 0');
+    }
+
+    const existing = await this.getNominaById(id);
+    if (!existing) {
+      throw new Error(`Nomina ${id} no encontrada`);
+    }
+
+    const entrada: NominaHistorialEntry = {
+      id: genHistorialEntryId(),
+      createdAt: new Date().toISOString(),
+      vigenciaDesde: cambio.vigenciaDesde.slice(0, 10),
+      motivo: cambio.motivo,
+      snapshot: cambio.snapshot,
+    };
+
+    const historial = [...(existing.historial ?? []), entrada].sort(
+      (a, b) => a.vigenciaDesde.localeCompare(b.vigenciaDesde),
+    );
+
+    const esLaMasReciente =
+      historial[historial.length - 1].id === entrada.id;
+
+    const updates: Partial<Nomina> = { historial };
+    if (esLaMasReciente) {
+      // Sincronizar campos top-level con el snapshot vigente.
+      Object.assign(updates, entrada.snapshot);
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[nominaService] addCambioNomina · entrada con vigenciaDesde anterior al historial existente · ' +
+          'no se sincronizan campos top-level (siguen reflejando el estado actual más reciente)',
+      );
+    }
+
+    return this.updateNomina(id, updates);
+  }
+
+  /**
    * Delete a nomina
    */
   async deleteNomina(id: number): Promise<void> {
@@ -259,12 +425,18 @@ class NominaService {
    * - PP empleado is deducted from líquido
    * - Especie adds to IRPF base (not to líquido)
    * - Handles 14-pagas with explicit pagaExtra field
+   *
+   * PR-C4 · si la nómina tiene `historial`, cada mes se resuelve contra
+   * el snapshot vigente (`vigenciaDesde <= primerDiaDelMes` más reciente).
+   * El parámetro `year` ancla la resolución al ejercicio que se está
+   * calculando; default = año en curso. Con `historial` vacío o ausente,
+   * se usan los campos top-level (retrocompatibilidad pre-V70).
    */
-  calculateSalary(nomina: Nomina): CalculoNominaResult {
-    const { salarioBrutoAnual, distribucion, variables, bonus } = nomina;
+  calculateSalary(nomina: Nomina, year?: number): CalculoNominaResult {
+    const resolutionYear = year ?? new Date().getFullYear();
+    const { distribucion } = nomina;
     const retencion = nomina.retencion;
     const beneficiosSociales = nomina.beneficiosSociales ?? [];
-    const planPensiones = nomina.planPensiones;
     const deduccionesAdicionales = nomina.deduccionesAdicionales ?? [];
 
     // How many salary units to divide the annual base into
@@ -274,8 +446,6 @@ class NominaService {
         : distribucion.tipo === 'catorce'
         ? 14
         : 12;
-
-    const salarioBaseMensual = salarioBrutoAnual / mesesDistribucion;
 
     // SS deductions per month — will be computed inside the loop against totalDevengado
     const { ss, cuotaSolidaridadMensual = 0 } = retencion;
@@ -297,6 +467,17 @@ class NominaService {
     let totalAnualPPEmpresa = 0;
 
     for (let mes = 1; mes <= 12; mes++) {
+      // PR-C4 · per-month resolution del snapshot retributivo. Si no hay
+      // historial, `efectiva === nomina` (retrocompatibilidad).
+      const ymd = `${resolutionYear}-${String(mes).padStart(2, '0')}-01`;
+      const snapshotMes = resolveSnapshotForFecha(nomina, ymd);
+      const efectiva = applySnapshot(nomina, snapshotMes);
+      const salarioBrutoAnual = efectiva.salarioBrutoAnual;
+      const variables = efectiva.variables;
+      const bonus = efectiva.bonus;
+      const planPensiones = efectiva.planPensiones;
+      const salarioBaseMensual = salarioBrutoAnual / mesesDistribucion;
+
       // Base salary per payment unit
       let salarioBase = salarioBaseMensual;
       let pagaExtra = 0;
@@ -323,7 +504,7 @@ class NominaService {
       const bonusDelMes = bonus
         .filter(b => b.mes === mes)
         .reduce((total, b) => total + b.importe, 0);
-      
+
       // Total bruto mensual
       const brutoMensual = salarioBase + variablesDelMes + bonusDelMes;
 
