@@ -459,7 +459,7 @@ const NominaWizard: React.FC = () => {
       if (isEditing && nominaId) {
         if (modoEdicion === 'cambio-con-vigencia') {
           // PR-C4 · crear entrada nueva en el historial sin overwrite.
-          // (review Copilot · #1295) · construimos el snapshot COMPLETO
+          // (review Copilot · #1296) · construimos el snapshot COMPLETO
           // desde los campos retributivos para no perder pagasExtra,
           // variableObjetivo, bonusObjetivo, retribucionEspecieAnual,
           // aportacionEmpresaPlanPensionesAnual.
