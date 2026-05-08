@@ -133,17 +133,25 @@ function fillDataFromForm(
     };
   }
 
+  // Para propietarios la referencia catastral canónica vive en
+  // `data.catastro.referenciaCatastral` (la consume `fiscalContextService`).
+  // Sincronizamos siempre el input con el campo canónico · `direccion.referenciaCatastral`
+  // queda como duplicado para uniformidad con inquilino.
+  const refCatastral = form.referenciaCatastral.trim();
+
   if (regimen === 'propietarioSinHipoteca') {
     const previaProp =
       previa && previa.tipo === 'propietarioSinHipoteca' ? previa : null;
     return {
       tipo: 'propietarioSinHipoteca',
       direccion,
-      catastro: previaProp?.catastro ?? {
-        referenciaCatastral: form.referenciaCatastral.trim(),
-        valorCatastral: 0,
-        superficie: 0,
-        porcentajeTitularidad: 100,
+      catastro: {
+        ...(previaProp?.catastro ?? {
+          valorCatastral: 0,
+          superficie: 0,
+          porcentajeTitularidad: 100,
+        }),
+        referenciaCatastral: refCatastral,
       },
       adquisicion: previaProp?.adquisicion ?? {
         fecha: STUB_FECHA_NEUTRA,
@@ -168,11 +176,13 @@ function fillDataFromForm(
   return {
     tipo: 'propietarioConHipoteca',
     direccion,
-    catastro: previaHip?.catastro ?? {
-      referenciaCatastral: form.referenciaCatastral.trim(),
-      valorCatastral: 0,
-      superficie: 0,
-      porcentajeTitularidad: 100,
+    catastro: {
+      ...(previaHip?.catastro ?? {
+        valorCatastral: 0,
+        superficie: 0,
+        porcentajeTitularidad: 100,
+      }),
+      referenciaCatastral: refCatastral,
     },
     adquisicion: previaHip?.adquisicion ?? {
       fecha: STUB_FECHA_NEUTRA,
@@ -195,13 +205,20 @@ function fillDataFromForm(
 
 function formFromVivienda(v: ViviendaHabitual): FormState {
   const d = v.data.direccion;
+  // Para propietarios la referencia canónica está en `data.catastro.referenciaCatastral`
+  // (consumida por `fiscalContextService`) · cae a `direccion.referenciaCatastral` como
+  // duplicado por compatibilidad. Inquilino sólo tiene el campo en `direccion`.
+  const refCatastral =
+    v.data.tipo === 'inquilino'
+      ? d.referenciaCatastral
+      : v.data.catastro.referenciaCatastral || d.referenciaCatastral;
   return {
     regimen: v.data.tipo,
     direccion: d.calle ?? '',
     cp: d.cp ?? '',
     municipio: d.municipio ?? '',
     provincia: d.provincia ?? '',
-    referenciaCatastral: d.referenciaCatastral ?? '',
+    referenciaCatastral: refCatastral ?? '',
     notas: v.notas ?? '',
   };
 }
@@ -741,7 +758,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
     padding: 4,
-    zIndex: 20,
+    zIndex: 50, /* --atlas-v5-z-dropdown */
   },
   kebabItemDestructive: {
     width: '100%',
@@ -915,7 +932,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 100,
+    zIndex: 100, /* --atlas-v5-z-modal */
     padding: 16,
   },
   modalCard: {
