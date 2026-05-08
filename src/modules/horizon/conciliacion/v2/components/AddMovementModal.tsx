@@ -116,6 +116,8 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   const [inmuebleId, setInmuebleId] = useState<number | undefined>(prefill?.inmuebleId);
   const [categoriaKey, setCategoriaKey] = useState<string | undefined>(prefill?.categoryKey);
   const [subtipoKey, setSubtipoKey] = useState<string | undefined>(prefill?.subtypeKey);
+  // PR-C1 · sub-clasificador opcional para gastos personales (familia).
+  const [tipoFamilia, setTipoFamilia] = useState<string | undefined>(undefined);
   const [prestamoId, setPrestamoId] = useState<string | undefined>(undefined);
   const [esAmortizacionParcial, setEsAmortizacionParcial] = useState(false);
   const [cuentaDestinoId, setCuentaDestinoId] = useState<number | undefined>(undefined);
@@ -153,6 +155,11 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   const showInmueble = (showAmbito && ambito === 'inmueble');
   const showCategoria = tipo === 'ingreso' || tipo === 'gasto';
   const showSubtipo = categoriaKey === 'suministro_inmueble';
+  // PR-C1 · sub-dropdown de familia personal: solo si la categoría seleccionada
+  // pertenece al ámbito personal y declara `personalFamilias`.
+  const showFamiliaPersonal =
+    !!categoriaKey &&
+    !!getCategoryByKey(categoriaKey)?.personalFamilias?.length;
   const showPrestamo = tipo === 'financiacion';
   const showCuentaDestino = tipo === 'traspaso';
   // PR5-HOTFIX v3 · nº factura sólo para gastos + financiación.
@@ -190,6 +197,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     if (!categoriaLocked) {
       setCategoriaKey(undefined);
       setSubtipoKey(undefined);
+      setTipoFamilia(undefined);
     }
     setPrestamoId(undefined);
     setCuentaDestinoId(undefined);
@@ -209,6 +217,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     if (!categoriaLocked) {
       setCategoriaKey(undefined);
       setSubtipoKey(undefined);
+      setTipoFamilia(undefined);
     }
     if (next === 'personal') setInmuebleId(undefined);
   };
@@ -217,6 +226,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
     if (categoriaLocked) return;
     setCategoriaKey(key);
     setSubtipoKey(undefined); // reset sub-tipo al cambiar categoría
+    setTipoFamilia(undefined); // PR-C1 · reset familia personal al cambiar categoría
   };
 
   const handlePrestamoChange = (id: string | undefined) => {
@@ -330,6 +340,13 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
         categoryKey: categoriaKey,
         categoryLabel: categoriaDef?.label,
         subtypeKey: subtipoKey,
+        // PR-C1 · sub-clasificador familia personal (opcional).
+        tipoFamilia: tipoFamilia,
+        // PR-C1 · marca de esporádico: alta manual desde modal sin vínculo
+        // explícito a un compromiso recurrente. Default true para ingresos
+        // y gastos; en financiación es siempre `false` (cuota de préstamo
+        // no es esporádica). El traspaso retorna antes (no llega aquí).
+        isEsporadico: tipo === 'financiacion' ? false : true,
         // PR5-HOTFIX v3 · proveedor estructurado en 3 campos. `counterparty`
         // se mantiene como copia del nombre por retrocompatibilidad (lectores
         // legacy + learning rules).
@@ -580,6 +597,28 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
                   >
                     <st.icon size={14} />
                     {st.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ───── FAMILIA PERSONAL · sub-clasificador opcional (PR-C1) ───── */}
+          {showFamiliaPersonal && (
+            <div className="cv2-form-section">
+              <h3>Familia (opcional)</h3>
+              <div className="cv2-subtipo-pills">
+                {(getCategoryByKey(categoriaKey)?.personalFamilias ?? []).map((fam) => (
+                  <button
+                    key={fam.key}
+                    type="button"
+                    className={`cv2-subtipo-pill ${tipoFamilia === fam.key ? 'active' : ''}`}
+                    onClick={() =>
+                      setTipoFamilia((prev) => (prev === fam.key ? undefined : fam.key))
+                    }
+                    disabled={busy}
+                  >
+                    {fam.label}
                   </button>
                 ))}
               </div>

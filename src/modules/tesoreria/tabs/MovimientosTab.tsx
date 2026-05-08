@@ -26,6 +26,7 @@ import MovimientoDrawer, {
   type MovimientoDrawerData,
   type MovimientoDrawerPatch,
 } from '../../../components/treasury/MovimientoDrawer';
+import AddMovementModal from '../../horizon/conciliacion/v2/components/AddMovementModal';
 import styles from './MovimientosTab.module.css';
 
 type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
@@ -134,12 +135,14 @@ type DateHeaderRow = { kind: 'header'; dateKey: string; label: string };
 type TableRow = DateHeaderRow | UnifiedRow;
 
 const MovimientosTab: React.FC = () => {
-  const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents, properties, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>(''); // 'YYYY-MM' or ''
   const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
+  // PR-C1 · alta de gasto/ingreso esporádico desde Tesorería V5.
+  const [showAddModal, setShowAddModal] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
@@ -416,6 +419,19 @@ const MovimientosTab: React.FC = () => {
             aria-label="Buscar movimientos"
           />
         </span>
+        {/* PR-C1 · alta manual de gasto/ingreso esporádico desde Tesorería V5.
+            Reusa el mismo `AddMovementModal` que /conciliacion (cero
+            duplicación de código). */}
+        <button
+          type="button"
+          className={`${styles.filtChip} ${styles.filtChipPrimary ?? ''}`}
+          onClick={() => setShowAddModal(true)}
+          style={{ marginLeft: 'auto' }}
+          aria-label="Añadir movimiento manual"
+        >
+          <Icons.Plus size={14} strokeWidth={1.8} />
+          Nuevo movimiento
+        </button>
       </div>
 
       {selected.size > 0 && (
@@ -649,6 +665,22 @@ const MovimientosTab: React.FC = () => {
           }
         }}
       />
+
+      {/* PR-C1 · modal compartido con /conciliacion V2 para alta de
+          movimientos esporádicos desde Tesorería V5. */}
+      {showAddModal && (
+        <AddMovementModal
+          accounts={accounts}
+          properties={properties}
+          defaultYear={new Date().getFullYear()}
+          defaultMonth0={new Date().getMonth()}
+          onClose={() => setShowAddModal(false)}
+          onCreated={async () => {
+            invalidateCachedStores(['treasuryEvents', 'movements']);
+            reload();
+          }}
+        />
+      )}
     </>
   );
 };

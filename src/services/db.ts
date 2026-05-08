@@ -1206,6 +1206,21 @@ export interface TreasuryEvent {
   categoryKey?: string;
   // Sub-tipo para categorías con variantes (p. ej. Suministro → luz/agua/gas/internet).
   subtypeKey?: string;
+  /**
+   * PR-C1 · sub-clasificador de gastos personales reutilizando el
+   * vocabulario de `compromisosRecurrentes.tipoFamilia`. Opcional.
+   * Valores convencionales: 'vivienda' | 'suministros' | 'dia_a_dia' |
+   * 'suscripciones' | 'seguros_cuotas' | 'otros' | 'tributos' |
+   * 'comunidad' | 'seguros' | 'gestion' | 'reparacion'.
+   */
+  tipoFamilia?: string;
+  /**
+   * PR-C1 · marca de gasto/ingreso esporádico introducido manualmente
+   * por el cliente desde el modal de alta. Default `true` cuando
+   * `sourceType='manual'` y NO se vincula explícitamente a un compromiso
+   * recurrente. Permite a C2/C3 distinguir esporádico vs. real-de-patrón.
+   */
+  isEsporadico?: boolean;
   // PR5-HOTFIX v2: metadatos de traspaso entre cuentas propias (dos events
   // espejo ligados por `pairEventId`; `targetAccountId` identifica la otra cuenta).
   transferMetadata?: {
