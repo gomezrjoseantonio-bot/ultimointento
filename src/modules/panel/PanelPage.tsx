@@ -14,8 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import { PageHead, Icons, MoneyValue, CompositionBar } from '../../design-system/v5';
 import { initDB } from '../../services/db';
 import type { Property, Account, TreasuryEvent, Contract } from '../../services/db';
-import type { PosicionInversion } from '../../types/inversiones';
 import type { Prestamo } from '../../types/prestamos';
+import { getAllCartaItems } from '../inversiones/adapters/galeriaAdapter';
+import type { CartaItem } from '../inversiones/types/cartaItem';
 import type { Escenario } from '../../types/miPlan';
 import { effectiveTIN } from '../financiacion/helpers';
 import { getFiscalContextSafe } from '../../services/fiscalContextService';
@@ -107,7 +108,7 @@ const PanelPage: React.FC = () => {
   const { data: libertadData, loading: libertadLoading, error: libertadError } = useProyeccionLibertad();
 
   const [properties, setProperties] = useState<Property[]>([]);
-  const [posiciones, setPosiciones] = useState<PosicionInversion[]>([]);
+  const [cartaItems, setCartaItems] = useState<CartaItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [prestamos, setPrestamos] = useState<Prestamo[]>([]);
   const [treasuryEvents, setTreasuryEvents] = useState<TreasuryEvent[]>([]);
@@ -134,9 +135,9 @@ const PanelPage: React.FC = () => {
           initDB(),
           getFiscalContextSafe(),
         ]);
-        const [props, inv, accs, prest, tevents, conts] = await Promise.all([
+        const [props, items, accs, prest, tevents, conts] = await Promise.all([
           db.getAll('properties') as Promise<Property[]>,
-          db.getAll('inversiones') as Promise<PosicionInversion[]>,
+          getAllCartaItems(),
           db.getAll('accounts') as Promise<Account[]>,
           db.getAll('prestamos') as Promise<Prestamo[]>,
           db.getAll('treasuryEvents') as Promise<TreasuryEvent[]>,
@@ -144,7 +145,7 @@ const PanelPage: React.FC = () => {
         ]);
         if (cancelled) return;
         setProperties(props);
-        setPosiciones(inv);
+        setCartaItems(items);
         setAccounts(accs);
         setPrestamos(prest.filter((p) => p.activo !== false && p.estado !== 'cancelado'));
         setTreasuryEvents(tevents);
@@ -249,8 +250,8 @@ const PanelPage: React.FC = () => {
   }, [properties, valoracionMatcher]);
 
   const valorInversiones = useMemo(
-    () => posiciones.reduce((s, p) => s + (p.valor_actual ?? 0), 0),
-    [posiciones],
+    () => cartaItems.reduce((s, p) => s + (p.valor_actual ?? 0), 0),
+    [cartaItems],
   );
 
   const saldoTesoreria = useMemo(
