@@ -71,8 +71,13 @@ export async function guardarVivienda(
     };
     await db.put(STORE_VIVIENDA, saved);
   } else {
+    // Excluye `id` explícito (puede llegar como undefined desde el form);
+    // IndexedDB rechaza keyPath con valor undefined aunque el store sea
+    // autoIncrement.
+    const { id: _omit, ...rest } = vivienda;
+    void _omit;
     const v: ViviendaHabitual = {
-      ...vivienda,
+      ...rest,
       createdAt: ahora,
       updatedAt: ahora,
     };
