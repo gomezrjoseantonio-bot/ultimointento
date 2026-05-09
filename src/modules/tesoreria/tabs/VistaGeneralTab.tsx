@@ -266,12 +266,28 @@ const VistaGeneralTab: React.FC = () => {
           </div>
           <div className={styles.heroSub}>
             <strong>{accounts.length}</strong> cuentas activas ·{' '}
-            <strong>
-              {pendientesPorCuenta.size > 0
-                ? `${Array.from(pendientesPorCuenta.values()).reduce((a, b) => a + b, 0)}`
-                : '0'}
-            </strong>{' '}
-            movimientos pendientes de conciliar
+            <button
+              type="button"
+              onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                font: 'inherit',
+                color: 'inherit',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+              }}
+            >
+              <strong>
+                {pendientesPorCuenta.size > 0
+                  ? `${Array.from(pendientesPorCuenta.values()).reduce((a, b) => a + b, 0)}`
+                  : '0'}
+              </strong>{' '}
+              movimientos pendientes de conciliar
+            </button>
           </div>
         </div>
         <div className={styles.kpiStack}>

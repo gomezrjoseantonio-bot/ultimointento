@@ -137,13 +137,27 @@ type TableRow = DateHeaderRow | UnifiedRow;
 const MovimientosTab: React.FC = () => {
   const { accounts, movements, treasuryEvents, properties, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Init status filter from `?status=...` so navegación desde Vista General
+  // (ej · "N pendientes" → Conciliación filtrada) precarga el filtro.
+  const initialStatus: StatusFilter = (() => {
+    const raw = searchParams.get('status');
+    if (raw === 'pendientes' || raw === 'conciliados' || raw === 'todos') return raw;
+    return 'todos';
+  })();
+  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(initialStatus);
+  const setStatusFilter = (next: StatusFilter) => {
+    setStatusFilterState(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === 'todos') params.delete('status');
+    else params.set('status', next);
+    setSearchParams(params, { replace: true });
+  };
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>(''); // 'YYYY-MM' or ''
   const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
   // PR-C1 · alta de gasto/ingreso esporádico desde Tesorería V5.
   const [showAddModal, setShowAddModal] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
     if (!raw) return null;
