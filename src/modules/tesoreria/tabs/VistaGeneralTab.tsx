@@ -19,7 +19,10 @@ import MovimientoDrawer, {
 } from '../../../components/treasury/MovimientoDrawer';
 import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
-import { updateTreasuryEventFields } from '../../../services/treasuryConfirmationService';
+import {
+  confirmTreasuryEvent,
+  updateTreasuryEventFields,
+} from '../../../services/treasuryConfirmationService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -90,6 +93,11 @@ const VistaGeneralTab: React.FC = () => {
   const movByYearMonth = useMemo(() => {
     const map = new Map<string, { entradas: number; salidas: number }>();
     movements.forEach((m) => {
+      // Excluir el movimiento sintético "Saldo inicial de apertura"
+      // (creado por cuentasService cuando la cuenta tiene openingBalance).
+      // Si se incluyera, el KPI "Entradas · este mes" mentiría sumando
+      // el saldo inicial al flujo real del mes.
+      if (m.isOpeningBalance) return;
       const date = m.date ? new Date(m.date) : null;
       if (!date || Number.isNaN(date.getTime())) return;
       if (date.getFullYear() !== currentYear) return;
@@ -266,12 +274,28 @@ const VistaGeneralTab: React.FC = () => {
           </div>
           <div className={styles.heroSub}>
             <strong>{accounts.length}</strong> cuentas activas ·{' '}
-            <strong>
-              {pendientesPorCuenta.size > 0
-                ? `${Array.from(pendientesPorCuenta.values()).reduce((a, b) => a + b, 0)}`
-                : '0'}
-            </strong>{' '}
-            movimientos pendientes de conciliar
+            <button
+              type="button"
+              onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                font: 'inherit',
+                color: 'inherit',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+              }}
+            >
+              <strong>
+                {pendientesPorCuenta.size > 0
+                  ? `${Array.from(pendientesPorCuenta.values()).reduce((a, b) => a + b, 0)}`
+                  : '0'}
+              </strong>{' '}
+              movimientos pendientes de conciliar
+            </button>
           </div>
         </div>
         <div className={styles.kpiStack}>
@@ -456,6 +480,45 @@ const VistaGeneralTab: React.FC = () => {
         events={treasuryEvents}
         accounts={accounts}
         onClose={() => setDrawerMes(null)}
+        onIrAConciliacionDia={(dayIso, accountId) => {
+          setDrawerMes(null);
+          const params = new URLSearchParams();
+          params.set('day', dayIso);
+          if (accountId != null) params.set('cuenta', String(accountId));
+          navigate(`/tesoreria/movimientos?${params.toString()}`);
+        }}
+        onConciliarSeleccion={async (eventIds) => {
+          // Sub-tarea 4 calendario fixes · conciliar bulk desde el drawer día.
+          // No existe servicio bulk · loop confirmTreasuryEvent por id (Opción A).
+          let ok = 0;
+          let failed = 0;
+          for (const id of eventIds) {
+            try {
+              await confirmTreasuryEvent(id);
+              ok += 1;
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[tesoreria/drawer-dia] confirmar falló', id, err);
+              failed += 1;
+            }
+          }
+          invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
+          reload();
+          if (ok > 0 && failed === 0) {
+            showToastV5(
+              `${ok} movimiento${ok === 1 ? '' : 's'} conciliado${ok === 1 ? '' : 's'}`,
+              'success',
+            );
+          } else if (ok > 0 && failed > 0) {
+            showToastV5(
+              `Conciliados: ${ok} · fallidos: ${failed} · ver consola`,
+              'error',
+            );
+          } else {
+            showToastV5('No se pudo conciliar · ver consola', 'error');
+          }
+          return { ok, failed };
+        }}
       />
 
       <MovimientoDrawer

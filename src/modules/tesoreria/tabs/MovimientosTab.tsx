@@ -154,7 +154,33 @@ type TableRow = DateHeaderRow | UnifiedRow;
 const MovimientosTab: React.FC = () => {
   const { accounts, movements, treasuryEvents, properties, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Status filter derivado de `?status=...` (sin estado local) para que UI y
+  // URL queden sincronizados ante navegación back/forward o cambios externos
+  // del query param.
+  const statusFilter: StatusFilter = (() => {
+    const raw = searchParams.get('status');
+    if (raw === 'pendientes' || raw === 'conciliados' || raw === 'todos') return raw;
+    return 'todos';
+  })();
+  const setStatusFilter = (next: StatusFilter) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === 'todos') params.delete('status');
+    else params.set('status', next);
+    setSearchParams(params, { replace: true });
+  };
+  // `?day=YYYY-MM-DD` filtra por día exacto. Se cablea desde el drawer día
+  // del calendario en Vista General (sub-tarea 3 calendario fixes).
+  const dayFilter: string | null = (() => {
+    const raw = searchParams.get('day');
+    if (!raw) return null;
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+  })();
+  const clearDayFilter = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('day');
+    setSearchParams(params, { replace: true });
+  };
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   // Default scope temporal · mes actual. Sin él, la pantalla cargaba todos los
   // movimientos históricos (~2000 en 2 años) y agobiaba al usuario. El selector
@@ -167,7 +193,6 @@ const MovimientosTab: React.FC = () => {
   const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
   // PR-C1 · alta de gasto/ingreso esporádico desde Tesorería V5.
   const [showAddModal, setShowAddModal] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
   const accountFilter: number | null = (() => {
     const raw = searchParams.get('cuenta');
     if (!raw) return null;
@@ -234,10 +259,18 @@ const MovimientosTab: React.FC = () => {
         return toYearMonth(dateStr) === monthFilter;
       })
       .filter((row) => {
+        if (!dayFilter) return true;
+        const dateStr =
+          row.kind === 'movement'
+            ? (row.data as Movement).date
+            : (row.data as TreasuryEvent).predictedDate;
+        return toDateKey(dateStr) === dayFilter;
+      })
+      .filter((row) => {
         if (row.kind === 'movement') return matchesSearch(row.data, search);
         return matchesSearchEvent(row.data, search);
       });
-  }, [allRows, statusFilter, accountFilter, monthFilter, search]);
+  }, [allRows, statusFilter, accountFilter, monthFilter, dayFilter, search]);
 
   /** Rows with date-group headers injected (for treasury events only). */
   const tableRows = useMemo((): TableRow[] => {
@@ -432,6 +465,17 @@ const MovimientosTab: React.FC = () => {
               })}
             </select>
           </>
+        )}
+        {dayFilter && (
+          <button
+            type="button"
+            className={styles.filtChipClear}
+            onClick={clearDayFilter}
+            aria-label={`Quitar filtro día ${dayFilter}`}
+            title="Quitar filtro día"
+          >
+            Día: {dayFilter.slice(8, 10)}/{dayFilter.slice(5, 7)}/{dayFilter.slice(0, 4)} ✕
+          </button>
         )}
         <span className={styles.filtSearch}>
           <Icons.Search size={14} strokeWidth={1.8} />
