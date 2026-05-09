@@ -26,6 +26,8 @@ import {
 import CalendarioRolling24m from './CalendarioRolling24m';
 import AccountFormModal from '../../modules/horizon/configuracion/cuentas/components/AccountFormModal';
 import { cuentasService } from '../../services/cuentasService';
+import { deleteTreasuryEventCompletely } from '../../services/treasuryConfirmationService';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './treasury-reconciliation.css';
 import './treasury-v4.css';
 
@@ -176,6 +178,10 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
 
   // ── Mutable events state (for optimistic UI) ──
   const [events, setEvents] = useState<TreasuryEventLocal[]>([]);
+
+  // ── Delete movement (treasury event row) confirmation state ──
+  const [pendingDeleteMov, setPendingDeleteMov] = useState<TreasuryEventLocal | null>(null);
+  const [isDeletingMov, setIsDeletingMov] = useState(false);
 
   // ── Histórico wizard + banner ──
   const [showHistoricoWizard, setShowHistoricoWizard] = useState(false);
@@ -790,6 +796,34 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
   };
 
 
+  // ── Delete movement (treasury event) ──
+  const requestDeleteMov = (mov: TreasuryEventLocal): void => {
+    setPendingDeleteMov(mov);
+  };
+
+  const cancelDeleteMov = (): void => {
+    if (isDeletingMov) return;
+    setPendingDeleteMov(null);
+  };
+
+  const confirmDeleteMov = async (): Promise<void> => {
+    if (!pendingDeleteMov?.dbId) return;
+    setIsDeletingMov(true);
+    try {
+      await deleteTreasuryEventCompletely(pendingDeleteMov.dbId);
+      invalidateCachedStores(['treasuryEvents', 'movements', 'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble']);
+      const removedId = pendingDeleteMov.id;
+      setEvents(prev => prev.filter(e => e.id !== removedId));
+      toast.success('Movimiento eliminado');
+      setPendingDeleteMov(null);
+    } catch (err) {
+      console.error('Error al eliminar movimiento', err);
+      toast.error('Error al eliminar el movimiento');
+    } finally {
+      setIsDeletingMov(false);
+    }
+  };
+
   // ── Render movement row ──
   const today = new Date(new Date().toDateString());
 
@@ -895,6 +929,40 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
         }}>
           {isConfirmed ? 'Confirmado' : isVencido ? 'Vencido' : mov.type === 'financing' ? 'Previsto' : 'Previsto'}
         </span>
+
+        {/* Delete (sub-tarea 2 D-CRUD-ALTA · borra event + movement + líneas vinculadas) */}
+        {!isEditing && mov.dbId != null && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); requestDeleteMov(mov); }}
+            title="Eliminar movimiento"
+            aria-label={`Eliminar movimiento ${mov.concept}`}
+            style={{
+              flexShrink: 0,
+              background: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: 6,
+              padding: '4px 6px',
+              cursor: 'pointer',
+              color: 'var(--grey-400)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--error, #b91c1c)';
+              e.currentTarget.style.background = 'var(--grey-50)';
+              e.currentTarget.style.borderColor = 'var(--grey-100)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--grey-400)';
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+            }}
+          >
+            <Trash2 size={12} strokeWidth={1.8} />
+          </button>
+        )}
       </div>
     );
   };
@@ -1612,6 +1680,24 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
           }}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={pendingDeleteMov !== null}
+        onClose={cancelDeleteMov}
+        onConfirm={confirmDeleteMov}
+        title="Eliminar movimiento"
+        message={
+          pendingDeleteMov
+            ? (pendingDeleteMov.status === 'confirmado'
+                ? `Vas a eliminar definitivamente "${pendingDeleteMov.concept}" (${pendingDeleteMov.amount.toFixed(2)} €). El movimiento bancario asociado y cualquier línea de inmueble vinculada (gasto, mejora o mobiliario) también se eliminarán. Esta acción no se puede deshacer.`
+                : `Vas a eliminar el movimiento previsto "${pendingDeleteMov.concept}" (${pendingDeleteMov.amount.toFixed(2)} €). Si tiene líneas de inmueble vinculadas, también se eliminarán. Esta acción no se puede deshacer.`)
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingMov}
+      />
 
     </div>
   );
