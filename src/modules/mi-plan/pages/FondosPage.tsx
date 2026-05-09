@@ -14,6 +14,8 @@ import WizardNuevoFondo from '../wizards/WizardNuevoFondo';
 import wizardStyles from '../wizards/WizardNuevoFondo.module.css';
 import { computeAcumuladoFondo } from '../wizards/utils/computeAcumuladoFondo';
 import { loadSaldosActualesCuentas } from '../wizards/utils/getCurrentSaldoCuenta';
+import { deleteFondo } from '../../../services/fondosService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 const ACCENT_BY_TIPO: Record<FondoTipo, 'brand' | 'gold' | 'gold-soft' | 'neutral'> = {
   colchon: 'brand',
@@ -37,6 +39,24 @@ const FondosPage: React.FC = () => {
   const { fondos, reload } = useOutletContext<MiPlanOutletContext>();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [saldosCuentas, setSaldosCuentas] = useState<Map<number, number>>(new Map());
+  const [pendingDelete, setPendingDelete] = useState<FondoAhorro | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteFondo(pendingDelete.id);
+      showToastV5('Fondo eliminado');
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error al eliminar fondo', err);
+      showToastV5('Error al eliminar el fondo');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // T27.3 · cargamos saldos de cuentas para `computeAcumuladoFondo`. Si falla
   // mostramos los fondos sin acumulado calculado · UI degradada graceful.
@@ -88,6 +108,7 @@ const FondosPage: React.FC = () => {
             fondo={f}
             saldosCuentas={saldosCuentas}
             todosFondos={fondos}
+            onDelete={() => setPendingDelete(f)}
           />
         ))}
         <button
@@ -108,6 +129,25 @@ const FondosPage: React.FC = () => {
         onClose={() => setWizardOpen(false)}
         onCreated={handleCreated}
       />
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!isDeleting) setPendingDelete(null); }}
+        onConfirm={handleDelete}
+        title="Eliminar fondo"
+        message={
+          pendingDelete
+            ? `Vas a eliminar el fondo "${pendingDelete.nombre}". ${
+                pendingDelete.objetivoVinculadoId
+                  ? 'El objetivo vinculado quedará desvinculado (no se borra). '
+                  : ''
+              }Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </>
   );
 };
@@ -116,9 +156,10 @@ interface CardProps {
   fondo: FondoAhorro;
   saldosCuentas: Map<number, number>;
   todosFondos: FondoAhorro[];
+  onDelete: () => void;
 }
 
-const FondoCard: React.FC<CardProps> = ({ fondo, saldosCuentas, todosFondos }) => {
+const FondoCard: React.FC<CardProps> = ({ fondo, saldosCuentas, todosFondos, onDelete }) => {
   const Icon = ICON_BY_TIPO[fondo.tipo];
   const cuentas = fondo.cuentasAsignadas?.length ?? 0;
 
@@ -167,6 +208,34 @@ const FondoCard: React.FC<CardProps> = ({ fondo, saldosCuentas, todosFondos }) =
           <CardV5.Title>{fondo.nombre}</CardV5.Title>
           {fondo.descripcion && <CardV5.Subtitle>{fondo.descripcion}</CardV5.Subtitle>}
         </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          aria-label={`Eliminar fondo ${fondo.nombre}`}
+          title="Eliminar fondo"
+          style={{
+            flexShrink: 0,
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: 6,
+            padding: '4px 6px',
+            cursor: 'pointer',
+            color: 'var(--atlas-v5-ink-4)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--atlas-v5-neg)';
+            e.currentTarget.style.background = 'var(--atlas-v5-bg)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--atlas-v5-ink-4)';
+            e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          <Icons.Delete size={14} strokeWidth={1.8} />
+        </button>
       </div>
 
       <CardV5.Body>
