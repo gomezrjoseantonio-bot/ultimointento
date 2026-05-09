@@ -84,6 +84,11 @@ export interface MesDetalleDrawerProps {
   onConciliarSeleccion?: (
     eventIds: number[],
   ) => Promise<{ ok: number; failed: number }>;
+  /**
+   * S-TESORERIA-FASE-B sub-tarea 4 · clic en un item del listado de
+   * Ingresos/Gastos previstos · abre el drawer de movimiento existente.
+   */
+  onEventClick?: (eventId: number | string) => void;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -152,6 +157,7 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
   onClose,
   onIrAConciliacionDia,
   onConciliarSeleccion,
+  onEventClick,
 }) => {
   const [diaSeleccionado, setDiaSeleccionado] = useState<number | null>(null);
 
@@ -183,7 +189,9 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
       .sort((a, b) => a.predictedDate.localeCompare(b.predictedDate));
   }, [events, year, monthIndex0]);
 
-  // Agregado por día · neto del día
+  // Agregado por día · neto del día + marca dominante (mockup v8)
+  // marca: 'confirmed' si TODOS los eventos del día están conciliados,
+  //        'pending' si hay alguno predicted.
   const netoPorDia = useMemo(() => {
     const map = new Map<number, number>();
     for (const e of eventosMes) {
@@ -191,6 +199,21 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
       if (dia == null) continue;
       const signed = e.type === 'income' ? e.amount : -e.amount;
       map.set(dia, (map.get(dia) ?? 0) + signed);
+    }
+    return map;
+  }, [eventosMes]);
+
+  const marcaPorDia = useMemo(() => {
+    const map = new Map<number, 'confirmed' | 'pending'>();
+    for (const e of eventosMes) {
+      const dia = eventDay(e)?.d;
+      if (dia == null) continue;
+      const isPending =
+        e.status === 'predicted' || (!e.status && e.status !== 'executed');
+      const cur = map.get(dia);
+      // 'pending' tiene prioridad · si hay alguno pending, marca pending.
+      if (cur === 'pending') continue;
+      map.set(dia, isPending ? 'pending' : 'confirmed');
     }
     return map;
   }, [eventosMes]);
@@ -344,8 +367,10 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
               totalSalidas={totalSalidas}
               balanceNeto={balanceNeto}
               netoPorDia={netoPorDia}
+              marcaPorDia={marcaPorDia}
               accounts={accounts}
               onSelectDia={(d) => setDiaSeleccionado(d)}
+              onEventClick={onEventClick}
             />
           ) : (
             <NivelDia
@@ -356,6 +381,7 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
               accounts={accounts}
               onIrAConciliacion={onIrAConciliacionDia}
               onConciliarSeleccion={onConciliarSeleccion}
+              onEventClick={onEventClick}
             />
           )}
         </div>
@@ -378,8 +404,10 @@ interface NivelMesProps {
   totalSalidas: number;
   balanceNeto: number;
   netoPorDia: Map<number, number>;
+  marcaPorDia: Map<number, 'confirmed' | 'pending'>;
   accounts: MesDrawerAccount[];
   onSelectDia: (dia: number) => void;
+  onEventClick?: (eventId: number | string) => void;
 }
 
 const NivelMes: React.FC<NivelMesProps> = ({
@@ -392,8 +420,10 @@ const NivelMes: React.FC<NivelMesProps> = ({
   totalSalidas,
   balanceNeto,
   netoPorDia,
+  marcaPorDia,
   accounts,
   onSelectDia,
+  onEventClick,
 }) => {
   const accountAlias = useMemo(() => {
     const map = new Map<number, string>();
@@ -402,6 +432,28 @@ const NivelMes: React.FC<NivelMesProps> = ({
     }
     return map;
   }, [accounts]);
+
+  // Counters confirmed/pending para los headers de los colapsables
+  const ingresosCounters = useMemo(() => {
+    let conf = 0, pend = 0;
+    for (const e of ingresos) {
+      if (e.status === 'confirmed' || e.status === 'executed') conf += 1;
+      else pend += 1;
+    }
+    return { conf, pend };
+  }, [ingresos]);
+
+  const gastosCounters = useMemo(() => {
+    let conf = 0, pend = 0;
+    for (const e of gastos) {
+      if (e.status === 'confirmed' || e.status === 'executed') conf += 1;
+      else pend += 1;
+    }
+    return { conf, pend };
+  }, [gastos]);
+
+  const [openIngresos, setOpenIngresos] = useState(true);
+  const [openGastos, setOpenGastos] = useState(false);
 
   if (year == null || monthIndex0 == null) return null;
 
@@ -418,45 +470,56 @@ const NivelMes: React.FC<NivelMesProps> = ({
         />
       </KpisGrid>
 
-      {/* Mini calendario día a día */}
+      {/* Mini calendario día a día · marcas conf/pend en cada celda */}
       <SectionHd>Día a día · clic para ver el detalle</SectionHd>
       <MiniCalendario
         year={year}
         monthIndex0={monthIndex0}
         netoPorDia={netoPorDia}
+        marcaPorDia={marcaPorDia}
         onSelectDia={onSelectDia}
       />
 
-      {/* Ingresos previstos */}
+      {/* Ingresos previstos · colapsable (mockup v8) */}
       {ingresos.length > 0 && (
-        <>
-          <SectionHd tone="pos" arrow="up" style={{ marginTop: 22 }}>
-            Ingresos previstos
-          </SectionHd>
+        <Collapsible
+          open={openIngresos}
+          onToggle={() => setOpenIngresos((v) => !v)}
+          title="Ingresos previstos"
+          counter={`${ingresos.length} · ${ingresosCounters.conf} conf · ${ingresosCounters.pend} pend`}
+          amount={`+${formatEur(totalEntradas)} €`}
+          tone="pos"
+        >
           {ingresos.map((e, idx) => (
             <EventoRow
               key={`in-${e.id ?? idx}`}
               evento={e}
               accountAlias={accountAlias}
+              onClick={onEventClick}
             />
           ))}
-        </>
+        </Collapsible>
       )}
 
-      {/* Gastos previstos */}
+      {/* Gastos previstos · colapsable (mockup v8) */}
       {gastos.length > 0 && (
-        <>
-          <SectionHd tone="neg" arrow="down" style={{ marginTop: 22 }}>
-            Gastos previstos
-          </SectionHd>
+        <Collapsible
+          open={openGastos}
+          onToggle={() => setOpenGastos((v) => !v)}
+          title="Gastos previstos"
+          counter={`${gastos.length} · ${gastosCounters.conf} conf · ${gastosCounters.pend} pend`}
+          amount={`−${formatEur(totalSalidas)} €`}
+          tone="neg"
+        >
           {gastos.map((e, idx) => (
             <EventoRow
               key={`out-${e.id ?? idx}`}
               evento={e}
               accountAlias={accountAlias}
+              onClick={onEventClick}
             />
           ))}
-        </>
+        </Collapsible>
       )}
 
       {eventosMes.length === 0 && (
@@ -481,8 +544,9 @@ const MiniCalendario: React.FC<{
   year: number;
   monthIndex0: number;
   netoPorDia: Map<number, number>;
+  marcaPorDia: Map<number, 'confirmed' | 'pending'>;
   onSelectDia: (d: number) => void;
-}> = ({ year, monthIndex0, netoPorDia, onSelectDia }) => {
+}> = ({ year, monthIndex0, netoPorDia, marcaPorDia, onSelectDia }) => {
   const total = daysInMonth(year, monthIndex0);
   const lead = dayOfWeekMon0(year, monthIndex0, 1);
   const cells: Array<{ day: number | null; key: string }> = [];
@@ -527,16 +591,23 @@ const MiniCalendario: React.FC<{
             );
           }
           const neto = netoPorDia.get(c.day) ?? 0;
+          const marca = marcaPorDia.get(c.day);
           const isToday = c.day === diaHoy;
-          const cellBg = isToday
-            ? 'var(--atlas-v5-gold-2)'
-            : 'var(--atlas-v5-card-alt)';
-          const numColor = isToday ? 'var(--atlas-v5-white)' : 'var(--atlas-v5-ink)';
-          const amtColor = isToday
-            ? 'rgba(255,255,255,0.85)'
-            : neto >= 0
-              ? 'var(--atlas-v5-pos)'
-              : 'var(--atlas-v5-neg)';
+          // Today · borde oro 2px (no fill) · resto fondo card-alt (mockup v8)
+          const cellBg = 'var(--atlas-v5-card-alt)';
+          const cellBorder = isToday
+            ? '2px solid var(--atlas-v5-gold)'
+            : '1px solid transparent';
+          const numColor = 'var(--atlas-v5-ink)';
+          const amtColor =
+            neto >= 0 ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)';
+          // Mark dot · navy si confirmed, oro si pending
+          const markColor =
+            marca === 'confirmed'
+              ? 'var(--atlas-v5-brand)'
+              : marca === 'pending'
+                ? 'var(--atlas-v5-gold)'
+                : null;
           return (
             <button
               key={c.key}
@@ -548,7 +619,7 @@ const MiniCalendario: React.FC<{
                 padding: '5px 4px',
                 borderRadius: 5,
                 background: cellBg,
-                border: '1px solid transparent',
+                border: cellBorder,
                 cursor: 'pointer',
                 fontSize: 10,
                 display: 'flex',
@@ -556,11 +627,26 @@ const MiniCalendario: React.FC<{
                 alignItems: 'flex-start',
                 textAlign: 'left',
                 fontFamily: 'inherit',
+                position: 'relative',
               }}
             >
               <span style={{ fontWeight: 700, color: numColor, fontSize: 10.5 }}>
                 {c.day}
               </span>
+              {markColor && (
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    width: 5,
+                    height: 5,
+                    borderRadius: '50%',
+                    background: markColor,
+                  }}
+                />
+              )}
               {neto !== 0 && (
                 <span
                   style={{
@@ -595,6 +681,7 @@ interface NivelDiaProps {
   onConciliarSeleccion?: (
     eventIds: number[],
   ) => Promise<{ ok: number; failed: number }>;
+  onEventClick?: (eventId: number | string) => void;
 }
 
 const NivelDia: React.FC<NivelDiaProps> = ({
@@ -605,15 +692,19 @@ const NivelDia: React.FC<NivelDiaProps> = ({
   accounts,
   onIrAConciliacion,
   onConciliarSeleccion,
+  onEventClick,
 }) => {
   const fechaIso = dayKey(year, monthIndex0, dia);
-  // Sub-tarea 4 · selección bulk para conciliar varios eventos del día.
+  // Sub-tarea 5 · ya no usamos selección bulk multi-banco · cada BankDayCard
+  // ofrece su propio "Conciliar pendientes (N)". Mantenemos el state legacy
+  // por compat (ver render final) pero está vacío.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isConciliando, setIsConciliando] = useState(false);
   // Reset al cambiar de día.
   useEffect(() => {
     setSelectedIds(new Set());
   }, [year, monthIndex0, dia]);
+  void setSelectedIds; // suprime warning · usado por flag legacy
 
   // Saldo proyectado por cuenta a fin del día seleccionado.
   // Sumamos · balance actual + todos los eventos del mes hasta el día (inclusive).
@@ -670,13 +761,15 @@ const NivelDia: React.FC<NivelDiaProps> = ({
     () => eventosMes.filter((e) => e.predictedDate.startsWith(fechaIso)),
     [eventosMes, fechaIso],
   );
-  const accountById = useMemo(() => {
-    const map = new Map<number, MesDrawerAccount>();
-    for (const a of accounts) {
-      if (a.id != null) map.set(a.id, a);
-    }
-    return map;
-  }, [accounts]);
+  // S-TESORERIA-FASE-B sub-tarea 5 · agrupación banco-protagonista
+  // Solo bancos con movimientos ese día se renderizan. Cada uno con su
+  // propia card · header (logo + alias + iban + saldo inicio→fin) +
+  // listado de eventos del día (mark conf/pend + concept + amount) +
+  // acción "Conciliar pendientes (N)" si hay pendientes.
+  const breakdownConMovs = useMemo(
+    () => breakdown.filter((b) => b.entradasDia + b.salidasDia > 0),
+    [breakdown],
+  );
 
   return (
     <>
@@ -699,128 +792,65 @@ const NivelDia: React.FC<NivelDiaProps> = ({
         />
       </KpisGrid>
 
-      {eventosDelDia.length > 0 && (
-        <>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-              marginBottom: 10,
-              paddingBottom: 6,
-              borderBottom: '1px solid var(--atlas-v5-line-2)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10.5,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'var(--atlas-v5-ink-4)',
-              }}
-            >
-              Movimientos del día
-              {selectedIds.size > 0 && (
-                <span style={{ marginLeft: 8, color: 'var(--atlas-v5-ink-3)' }}>
-                  · {selectedIds.size} seleccionado{selectedIds.size === 1 ? '' : 's'}
-                </span>
-              )}
-            </div>
-            {onConciliarSeleccion && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (selectedIds.size === 0 || isConciliando) return;
-                  setIsConciliando(true);
-                  try {
-                    await onConciliarSeleccion(Array.from(selectedIds));
-                    setSelectedIds(new Set());
-                  } finally {
-                    setIsConciliando(false);
-                  }
-                }}
-                disabled={selectedIds.size === 0 || isConciliando}
-                style={{
-                  border: '1px solid var(--atlas-v5-line)',
-                  background:
-                    selectedIds.size === 0
-                      ? 'var(--atlas-v5-card-alt)'
-                      : 'var(--atlas-v5-card)',
-                  borderRadius: 6,
-                  padding: '5px 10px',
-                  fontSize: 11,
-                  color:
-                    selectedIds.size === 0
-                      ? 'var(--atlas-v5-ink-5)'
-                      : 'var(--atlas-v5-ink-2)',
-                  cursor:
-                    selectedIds.size === 0 || isConciliando
-                      ? 'not-allowed'
-                      : 'pointer',
-                  fontFamily: 'inherit',
-                  fontWeight: 600,
-                }}
-                aria-label="Conciliar seleccionados"
-              >
-                {isConciliando
-                  ? 'Conciliando…'
-                  : `Conciliar (${selectedIds.size})`}
-              </button>
-            )}
-          </div>
-          {eventosDelDia.map((e, idx) => {
-            const evtId = typeof e.id === 'number' ? e.id : undefined;
-            // Eventos ya conciliados/ejecutados no son seleccionables · evita
-            // que confirmTreasuryEvent falle sobre eventos no conciliables.
-            const isAlreadyConfirmed =
-              e.status === 'executed' || e.status === 'confirmed';
-            const canSelect =
-              evtId != null && !!onConciliarSeleccion && !isAlreadyConfirmed;
-            const isChecked = evtId != null && selectedIds.has(evtId);
-            return (
-              <EventoDiaRow
-                key={`evt-${e.id ?? idx}`}
-                evento={e}
-                account={
-                  e.accountId != null ? accountById.get(e.accountId) : undefined
-                }
-                onIrAConciliacion={
-                  onIrAConciliacion
-                    ? () => onIrAConciliacion(fechaIso, e.accountId)
-                    : undefined
-                }
-                selectable={canSelect}
-                checked={isChecked}
-                onToggleSelected={
-                  canSelect
-                    ? () =>
-                        setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(evtId!)) next.delete(evtId!);
-                          else next.add(evtId!);
-                          return next;
-                        })
-                    : undefined
-                }
-              />
-            );
-          })}
-        </>
-      )}
-
-      <SectionHd style={{ marginTop: eventosDelDia.length > 0 ? 22 : 0 }}>
-        Saldo proyectado por cuenta · fin de día
-      </SectionHd>
-      {breakdown.length === 0 ? (
-        <div style={{ padding: '20px 0', color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
-          No hay cuentas configuradas.
+      {breakdownConMovs.length === 0 ? (
+        <div
+          style={{
+            padding: '40px 12px',
+            textAlign: 'center',
+            color: 'var(--atlas-v5-ink-4)',
+            fontSize: 13,
+          }}
+        >
+          Sin movimientos en ningún banco para este día.
         </div>
       ) : (
-        breakdown.map((b, idx) => (
-          <CuentaDiaRow key={b.account.id ?? idx} breakdown={b} />
-        ))
+        breakdownConMovs.map((b) => {
+          const accId = b.account.id as number;
+          const eventosBanco = eventosDelDia.filter(
+            (e) => e.accountId === accId,
+          );
+          const pendientes = eventosBanco.filter(
+            (e) => e.status !== 'executed' && e.status !== 'confirmed',
+          );
+          const confirmados = eventosBanco.length - pendientes.length;
+          const netoBanco = b.entradasDia - b.salidasDia;
+          return (
+            <BankDayCard
+              key={accId}
+              account={b.account}
+              saldoInicio={b.saldoInicio}
+              saldoFin={b.saldoFin}
+              warn={b.warn}
+              eventos={eventosBanco}
+              netoBanco={netoBanco}
+              confirmados={confirmados}
+              pendientesCount={pendientes.length}
+              onEventClick={onEventClick}
+              onConciliarPendientes={
+                onConciliarSeleccion && pendientes.length > 0
+                  ? async () => {
+                      const ids = pendientes
+                        .map((p) => (typeof p.id === 'number' ? p.id : null))
+                        .filter((x): x is number => x != null);
+                      if (ids.length === 0) return;
+                      setIsConciliando(true);
+                      try {
+                        await onConciliarSeleccion(ids);
+                      } finally {
+                        setIsConciliando(false);
+                      }
+                    }
+                  : undefined
+              }
+              isConciliando={isConciliando}
+              onIrAConciliacion={
+                onIrAConciliacion
+                  ? () => onIrAConciliacion(fechaIso, accId)
+                  : undefined
+              }
+            />
+          );
+        })
       )}
 
       {cuentasEnRiesgo.length > 0 && (
@@ -845,230 +875,312 @@ const NivelDia: React.FC<NivelDiaProps> = ({
             : `Algunas cuentas quedarían en negativo · considera reagrupar saldos.`}
         </div>
       )}
+
+      {/* Selección bulk · UI legacy preservada via selectedIds (oculta cuando
+          no se usa). Mantenemos el state para no romper integraciones. */}
+      {false && selectedIds.size === 0 && null}
     </>
   );
 };
 
-// ─── Pieza · EventoDiaRow ───────────────────────────────────────────────────
-// Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
-// y acción "Ver en Conciliación" filtrada por día + cuenta. Reutiliza helpers
-// existentes (shortAlias, ibanLast4, bankColor, logoInitials) para mantener
-// coherencia visual con CuentaDiaRow · NO inventa componentes nuevos.
+// ─── Sub-tarea 5 · BankDayCard (mockup v8) ──────────────────────────────────
+// Banco protagonista del día · header con logo + alias + iban + saldo
+// inicio→fin · listado de eventos con mark conf/pend (clic abre drawer del
+// movimiento existente) · acción "Conciliar pendientes" si hay pendientes.
 
-const EventoDiaRow: React.FC<{
-  evento: MesDrawerEvent;
-  account: MesDrawerAccount | undefined;
+const BankDayCard: React.FC<{
+  account: MesDrawerAccount;
+  saldoInicio: number;
+  saldoFin: number;
+  warn: boolean;
+  eventos: MesDrawerEvent[];
+  netoBanco: number;
+  confirmados: number;
+  pendientesCount: number;
+  onEventClick?: (eventId: number | string) => void;
+  onConciliarPendientes?: () => Promise<void> | void;
+  isConciliando: boolean;
   onIrAConciliacion?: () => void;
-  selectable?: boolean;
-  checked?: boolean;
-  onToggleSelected?: () => void;
 }> = ({
-  evento,
   account,
+  saldoInicio,
+  saldoFin,
+  warn,
+  eventos,
+  netoBanco,
+  confirmados,
+  pendientesCount,
+  onEventClick,
+  onConciliarPendientes,
+  isConciliando,
   onIrAConciliacion,
-  selectable,
-  checked,
-  onToggleSelected,
 }) => {
-  const isPos = evento.type === 'income';
+  const movsLabel =
+    pendientesCount > 0 && confirmados > 0
+      ? `${confirmados} conf · ${pendientesCount} pend`
+      : pendientesCount > 0
+        ? `${pendientesCount} pendiente${pendientesCount === 1 ? '' : 's'}`
+        : `${confirmados} confirmado${confirmados === 1 ? '' : 's'}`;
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: selectable
-          ? '20px 28px 1fr auto auto'
-          : '28px 1fr auto auto',
-        gap: 10,
-        padding: '10px 12px',
-        border: '1px solid var(--atlas-v5-line-2)',
-        borderRadius: 8,
-        marginBottom: 6,
-        alignItems: 'center',
-        background: checked ? 'var(--atlas-v5-card-alt)' : 'var(--atlas-v5-card)',
+        border: `1px solid ${warn ? 'var(--atlas-v5-neg)' : 'var(--atlas-v5-line)'}`,
+        borderRadius: 10,
+        marginBottom: 10,
+        background: 'var(--atlas-v5-card)',
+        overflow: 'hidden',
       }}
     >
-      {selectable && (
-        <input
-          type="checkbox"
-          checked={!!checked}
-          onChange={() => onToggleSelected?.()}
-          aria-label={`Seleccionar ${evento.description ?? 'movimiento'}`}
-          style={{ cursor: 'pointer' }}
-        />
-      )}
+      {/* Header · logo + alias + iban + saldo inicio→fin */}
       <div
         style={{
-          width: 26,
-          height: 26,
-          borderRadius: 6,
           display: 'grid',
-          placeItems: 'center',
-          color: 'var(--atlas-v5-white)',
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontSize: 9,
-          fontWeight: 700,
-          background: account ? bankColor(account) : 'var(--atlas-v5-ink-5)',
+          gridTemplateColumns: '36px 1fr auto',
+          gap: 12,
+          padding: '12px 14px',
+          alignItems: 'center',
+          borderBottom: '1px solid var(--atlas-v5-line-2)',
         }}
-        aria-hidden="true"
       >
-        {account ? logoInitials(account) : '—'}
-      </div>
-      <div style={{ minWidth: 0 }}>
         <div
           style={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: 'var(--atlas-v5-ink)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {evento.description || (isPos ? 'Ingreso' : 'Gasto')}
-        </div>
-        <div
-          style={{
-            fontSize: 10.5,
-            color: 'var(--atlas-v5-ink-4)',
-            marginTop: 2,
+            width: 32,
+            height: 32,
+            borderRadius: 7,
+            display: 'grid',
+            placeItems: 'center',
+            color: 'var(--atlas-v5-white)',
             fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          }}
-        >
-          {account
-            ? `${shortAlias(account)}${ibanLast4(account) ? ` · ${ibanLast4(account)}` : ''}`
-            : 'Sin cuenta asociada'}
-        </div>
-      </div>
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontSize: 13,
-          fontWeight: 700,
-          color: isPos ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {isPos ? '+' : '−'}{formatEur(evento.amount)} €
-      </div>
-      {onIrAConciliacion ? (
-        <button
-          type="button"
-          onClick={onIrAConciliacion}
-          aria-label="Ver en Conciliación"
-          title="Ver en Conciliación"
-          style={{
-            border: '1px solid var(--atlas-v5-line)',
-            background: 'var(--atlas-v5-card)',
-            borderRadius: 6,
-            padding: '4px 8px',
-            fontSize: 10.5,
-            color: 'var(--atlas-v5-ink-3)',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          Ver →
-        </button>
-      ) : (
-        <span />
-      )}
-    </div>
-  );
-};
-
-// ─── Pieza · CuentaDiaRow ───────────────────────────────────────────────────
-
-const CuentaDiaRow: React.FC<{
-  breakdown: {
-    account: MesDrawerAccount;
-    saldoInicio: number;
-    entradasDia: number;
-    salidasDia: number;
-    saldoFin: number;
-    warn: boolean;
-  };
-}> = ({ breakdown }) => {
-  const { account, entradasDia, salidasDia, saldoFin, warn } = breakdown;
-  const flowParts: string[] = [];
-  flowParts.push(entradasDia > 0 ? `+ ${formatEur(entradasDia)}` : '—');
-  flowParts.push(salidasDia > 0 ? `− ${formatEur(salidasDia)}` : '—');
-
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '32px 1fr auto auto',
-        gap: 12,
-        padding: '12px 14px',
-        borderBottom: '1px solid var(--atlas-v5-line-2)',
-        alignItems: 'center',
-        fontSize: 12,
-        background: warn ? 'rgba(164,51,40,0.06)' : 'transparent',
-        borderLeft: warn ? '3px solid var(--atlas-v5-neg)' : '3px solid transparent',
-        paddingLeft: warn ? 11 : 14,
-      }}
-    >
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          display: 'grid',
-          placeItems: 'center',
-          color: 'var(--atlas-v5-white)',
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontSize: 9,
-          fontWeight: 700,
-          background: bankColor(account),
-        }}
-      >
-        {logoInitials(account)}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            fontWeight: 600,
-            color: 'var(--atlas-v5-ink)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {shortAlias(account)}
-        </div>
-        <div
-          style={{
             fontSize: 10,
-            color: 'var(--atlas-v5-ink-4)',
-            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-            marginTop: 2,
+            fontWeight: 700,
+            background: bankColor(account),
           }}
         >
-          {ibanLast4(account)}
+          {logoInitials(account)}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 700,
+              color: 'var(--atlas-v5-ink)',
+              fontSize: 13.5,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {shortAlias(account)}
+          </div>
+          <div
+            style={{
+              fontSize: 10.5,
+              color: 'var(--atlas-v5-ink-4)',
+              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+              marginTop: 2,
+            }}
+          >
+            {ibanLast4(account)}
+          </div>
+        </div>
+        <div
+          style={{
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            fontSize: 12,
+            color: 'var(--atlas-v5-ink-3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span>{formatEur(saldoInicio)} €</span>
+          <span style={{ color: 'var(--atlas-v5-ink-5)' }}>→</span>
+          <span
+            style={{
+              fontWeight: 700,
+              color: warn ? 'var(--atlas-v5-neg)' : 'var(--atlas-v5-ink)',
+            }}
+          >
+            {saldoFin < 0 ? '−' : ''}{formatEur(Math.abs(saldoFin))} €
+          </span>
         </div>
       </div>
+
+      {/* Sub-header · contador + neto */}
       <div
         style={{
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontSize: 11.5,
-          color: 'var(--atlas-v5-ink-3)',
-          whiteSpace: 'nowrap',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 14px 6px',
         }}
       >
-        {flowParts[0]} / {flowParts[1]}
+        <span
+          style={{
+            fontSize: 10.5,
+            color: 'var(--atlas-v5-ink-4)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            fontWeight: 600,
+          }}
+        >
+          Movimientos · {movsLabel}
+        </span>
+        <span
+          style={{
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            fontSize: 12,
+            fontWeight: 700,
+            color: netoBanco >= 0 ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
+          }}
+        >
+          {netoBanco >= 0 ? '+' : '−'}{formatEur(Math.abs(netoBanco))} €
+        </span>
       </div>
-      <div
-        style={{
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontWeight: 700,
-          fontSize: 12.5,
-          minWidth: 90,
-          textAlign: 'right',
-          color: warn ? 'var(--atlas-v5-neg)' : 'var(--atlas-v5-ink)',
-        }}
-      >
-        {saldoFin < 0 ? '−' : ''}{formatEur(Math.abs(saldoFin))} €
+
+      {/* Eventos del día · clic abre drawer movimiento */}
+      <div style={{ padding: '0 10px 10px' }}>
+        {eventos.map((e, idx) => {
+          const isPos = e.type === 'income';
+          const isConfirmed =
+            e.status === 'confirmed' || e.status === 'executed';
+          const clickable = onEventClick != null && e.id != null;
+          const baseStyle: React.CSSProperties = {
+            display: 'grid',
+            gridTemplateColumns: '18px 1fr auto',
+            gap: 10,
+            padding: '8px 8px',
+            borderRadius: 6,
+            alignItems: 'center',
+            background: 'transparent',
+            border: 'none',
+            width: '100%',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            cursor: clickable ? 'pointer' : 'default',
+          };
+          const inner = (
+            <>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isConfirmed
+                    ? 'var(--atlas-v5-brand)'
+                    : 'var(--atlas-v5-gold-wash)',
+                  color: isConfirmed
+                    ? 'var(--atlas-v5-white)'
+                    : 'var(--atlas-v5-gold-ink)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {isConfirmed ? '✓' : '⏳'}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: 'var(--atlas-v5-ink)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {e.description || (isPos ? 'Ingreso' : 'Gasto')}
+                </div>
+              </div>
+              <span
+                style={{
+                  fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: isPos ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
+                }}
+              >
+                {isPos ? '+' : '−'}{formatEur(e.amount)} €
+              </span>
+            </>
+          );
+          return clickable ? (
+            <button
+              key={`bev-${e.id ?? idx}`}
+              type="button"
+              style={baseStyle}
+              onClick={() => onEventClick!(e.id!)}
+            >
+              {inner}
+            </button>
+          ) : (
+            <div key={`bev-${e.id ?? idx}`} style={baseStyle}>
+              {inner}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Acción · Conciliar pendientes (N) */}
+      {pendientesCount > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 8,
+            padding: '0 12px 12px',
+          }}
+        >
+          {onIrAConciliacion && (
+            <button
+              type="button"
+              onClick={onIrAConciliacion}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid var(--atlas-v5-line)',
+                background: 'var(--atlas-v5-card)',
+                borderRadius: 7,
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: 'var(--atlas-v5-ink-2)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Ver en Conciliación
+            </button>
+          )}
+          {onConciliarPendientes && (
+            <button
+              type="button"
+              onClick={onConciliarPendientes}
+              disabled={isConciliando}
+              style={{
+                padding: '6px 12px',
+                border: '1px solid var(--atlas-v5-brand)',
+                background: 'var(--atlas-v5-brand)',
+                borderRadius: 7,
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: 'var(--atlas-v5-white)',
+                cursor: isConciliando ? 'not-allowed' : 'pointer',
+                opacity: isConciliando ? 0.7 : 1,
+                fontFamily: 'inherit',
+              }}
+            >
+              {isConciliando
+                ? 'Conciliando…'
+                : `Conciliar pendientes (${pendientesCount})`}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -1166,23 +1278,39 @@ const SectionHd: React.FC<{
 const EventoRow: React.FC<{
   evento: MesDrawerEvent;
   accountAlias: Map<number, string>;
-}> = ({ evento, accountAlias }) => {
+  onClick?: (eventId: number | string) => void;
+}> = ({ evento, accountAlias, onClick }) => {
   const isPos = evento.type === 'income';
   const cuenta = evento.accountId != null ? accountAlias.get(evento.accountId) : undefined;
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr auto',
-        gap: 10,
-        padding: '10px 12px',
-        border: '1px solid var(--atlas-v5-line-2)',
-        borderRadius: 8,
-        marginBottom: 6,
-        alignItems: 'center',
-        background: 'var(--atlas-v5-card)',
-      }}
-    >
+  const isConfirmed =
+    evento.status === 'confirmed' || evento.status === 'executed';
+  const clickable = onClick != null && evento.id != null;
+
+  const content = (
+    <>
+      {/* Mark · ✓ navy si confirmed, ⏳ gold si pending (mockup v8) */}
+      <span
+        aria-hidden="true"
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: '50%',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: isConfirmed
+            ? 'var(--atlas-v5-brand)'
+            : 'var(--atlas-v5-gold-wash)',
+          color: isConfirmed
+            ? 'var(--atlas-v5-white)'
+            : 'var(--atlas-v5-gold-ink)',
+          fontSize: 10,
+          fontWeight: 700,
+          flexShrink: 0,
+        }}
+      >
+        {isConfirmed ? '✓' : '⏳'}
+      </span>
       <div style={{ minWidth: 0 }}>
         <div
           style={{
@@ -1206,7 +1334,6 @@ const EventoRow: React.FC<{
         >
           {formatDateShort(evento.predictedDate)}
           {cuenta ? ` · ${cuenta}` : ''}
-          {evento.status === 'confirmed' || evento.status === 'executed' ? ' · ✓' : ''}
         </div>
       </div>
       <div
@@ -1219,6 +1346,137 @@ const EventoRow: React.FC<{
       >
         {isPos ? '+' : '−'}{formatEur(evento.amount)} €
       </div>
-    </div>
+    </>
   );
+
+  const baseStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: '18px 1fr auto',
+    gap: 10,
+    padding: '10px 12px',
+    border: '1px solid var(--atlas-v5-line-2)',
+    borderRadius: 8,
+    marginBottom: 6,
+    alignItems: 'center',
+    background: 'var(--atlas-v5-card)',
+    width: '100%',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+  };
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        onClick={() => onClick!(evento.id!)}
+        style={{ ...baseStyle, cursor: 'pointer' }}
+      >
+        {content}
+      </button>
+    );
+  }
+  return <div style={baseStyle}>{content}</div>;
 };
+
+// ─── Collapsible (mockup v8 · sub-tarea 4) ──────────────────────────────────
+
+const Collapsible: React.FC<{
+  open: boolean;
+  onToggle: () => void;
+  title: string;
+  counter: string;
+  amount: string;
+  tone: 'pos' | 'neg';
+  children: React.ReactNode;
+}> = ({ open, onToggle, title, counter, amount, tone, children }) => (
+  <div
+    style={{
+      border: '1px solid var(--atlas-v5-line)',
+      borderRadius: 10,
+      marginTop: 16,
+      background: 'var(--atlas-v5-card)',
+      overflow: 'hidden',
+    }}
+  >
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      style={{
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 10,
+        padding: '10px 14px',
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        textAlign: 'left',
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          minWidth: 0,
+        }}
+      >
+        <span
+          aria-hidden="true"
+          style={{
+            display: 'inline-flex',
+            transform: open ? 'rotate(90deg)' : 'none',
+            transition: 'transform .15s',
+            color: 'var(--atlas-v5-ink-3)',
+          }}
+        >
+          <ChevronLeft size={14} style={{ transform: 'rotate(180deg)' }} />
+        </span>
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 700,
+            color: 'var(--atlas-v5-ink)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
+          {title}
+        </span>
+        <span
+          style={{
+            fontSize: 10.5,
+            color: 'var(--atlas-v5-ink-4)',
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            marginLeft: 4,
+          }}
+        >
+          {counter}
+        </span>
+      </span>
+      <span
+        style={{
+          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          color: tone === 'pos' ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
+        }}
+      >
+        {amount}
+      </span>
+    </button>
+    {open && (
+      <div
+        style={{
+          padding: '4px 10px 10px',
+          borderTop: '1px solid var(--atlas-v5-line-2)',
+        }}
+      >
+        {children}
+      </div>
+    )}
+  </div>
+);

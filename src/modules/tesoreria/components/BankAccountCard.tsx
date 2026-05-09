@@ -148,13 +148,11 @@ const BankAccountCard: React.FC<BankAccountCardProps> = ({
       )}
       <div className={styles.pending}>
         <span className={styles.pendingLabel}>
-          {allClear ? 'Todo al día' : 'Pendiente conciliar'}
+          {allClear ? 'Al día' : 'Pendiente conciliar'}
         </span>
-        <span
-          className={`${styles.pendingCount} ${allClear ? styles.ok : ''}`}
-        >
-          {allClear ? '✓' : pendingCount}
-        </span>
+        {!allClear && (
+          <span className={styles.pendingCount}>{pendingCount}</span>
+        )}
       </div>
     </div>
   );

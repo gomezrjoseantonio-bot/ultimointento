@@ -2,57 +2,133 @@
   font-family: var(--atlas-v5-font-ui);
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
-  padding: 22px 32px 48px;
+  padding: 0 0 48px;
   max-width: var(--atlas-v5-main-max-width);
   margin: 0 auto;
   width: 100%;
 }
 
-.tabsBar {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--atlas-v5-line);
-  margin-bottom: 18px;
-  overflow-x: auto;
+/* ─── Banner navy · "Mi Tesorería" + 4 KPIs (mockup v8) ─── */
+.bannerNavy {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  padding: 24px 32px 28px;
 }
 
-.tabsBar button {
-  padding: 11px 18px;
-  font-size: 13.5px;
-  font-weight: var(--atlas-v5-fw-medium);
-  color: var(--atlas-v5-ink-4);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  background: transparent;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  cursor: pointer;
-  font-family: var(--atlas-v5-font-ui);
-  display: inline-flex;
+.bannerRow {
+  display: grid;
+  grid-template-columns: auto repeat(4, minmax(0, 1fr));
+  gap: 28px;
   align-items: center;
-  gap: 7px;
 }
 
-.tabsBar button:hover { color: var(--atlas-v5-ink-2); }
-.tabsBar button.active {
-  color: var(--atlas-v5-ink);
-  border-bottom-color: var(--atlas-v5-gold);
+.bannerSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.bannerSectionTitle h2 {
+  font-size: 13px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--atlas-v5-white);
+  margin: 0;
+}
+
+.goldDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--atlas-v5-gold);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.kpiBanner {
+  min-width: 0;
+}
+
+.kpiBannerLabel {
+  font-size: 10px;
+  color: var(--atlas-v5-navy-text-2);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
   font-weight: var(--atlas-v5-fw-semibold);
 }
 
-.tabCount {
-  margin-left: 4px;
+.kpiBannerValue {
   font-family: var(--atlas-v5-font-mono-num);
-  font-size: 10.5px;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--atlas-v5-bg);
-  color: var(--atlas-v5-ink-3);
+  font-size: 22px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-white);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
 }
 
-.tabsBar button.active .tabCount {
-  background: var(--atlas-v5-gold-wash);
-  color: var(--atlas-v5-gold-ink);
+.kpiBannerValue.pos {
+  color: var(--atlas-v5-pos-bright);
+}
+
+.kpiBannerValue.neg {
+  color: #FF8E83;
+}
+
+.kpiBannerSub {
+  font-size: 11px;
+  color: var(--atlas-v5-navy-text-2);
+  margin-top: 6px;
+}
+
+/* ─── Subcabecera blanca · h1 + subtítulo (mockup v8) ─── */
+.subheader {
+  background: var(--atlas-v5-card);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  padding: 22px 32px 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.subheaderTitle {
+  font-size: 26px;
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.subheaderSub {
+  font-size: 13px;
+  color: var(--atlas-v5-ink-3);
+  margin-top: 6px;
+}
+
+.subheaderLink {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.subheaderLink:hover {
+  color: var(--atlas-v5-ink);
+}
+
+/* Contenedor de contenido tras subheader · respeta padding lateral */
+.content {
+  padding: 0 32px;
 }

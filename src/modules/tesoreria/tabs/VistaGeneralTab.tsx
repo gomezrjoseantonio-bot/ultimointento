@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   CardV5,
@@ -10,41 +10,27 @@ import {
   BankAccountCard,
   BankAccountAddCard,
 } from '../components/BankAccountCard';
-import CashflowChart, { MonthFlow } from '../components/CashflowChart';
 import CalendarioMes12 from '../../../components/treasury/CalendarioMes12';
 import MesDetalleDrawer from '../../../components/treasury/MesDetalleDrawer';
 import MovimientoDrawer, {
   type MovimientoDrawerData,
   type MovimientoDrawerPatch,
 } from '../../../components/treasury/MovimientoDrawer';
-import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
 import {
   confirmTreasuryEvent,
   updateTreasuryEventFields,
 } from '../../../services/treasuryConfirmationService';
 import type { TesoreriaContext } from '../TesoreriaPage';
-import {
-  computeBudgetProjection12mAsync,
-  type BudgetProjection,
-} from '../../mi-plan/services/budgetProjection';
 import styles from './VistaGeneralTab.module.css';
 import AccountFormModal from '../../horizon/configuracion/cuentas/components/AccountFormModal';
 import { cuentasService } from '../../../services/cuentasService';
 import type { Account } from '../../../services/db';
 
-const MONTH_LABELS = [
-  'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-  'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
-];
-const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
-  const { accounts, movements, treasuryEvents, reload } = useOutletContext<TesoreriaContext>();
+  const { accounts, movements, treasuryEvents, totalSaldo, reload } =
+    useOutletContext<TesoreriaContext>();
 
   // Modal nueva/editar cuenta
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -77,146 +63,6 @@ const VistaGeneralTab: React.FC = () => {
   // T31 · paginación carrusel cuentas (5 visibles · mockup v8)
   const [cuentasPage, setCuentasPage] = useState(0);
 
-  const totalSaldo = useMemo(
-    () =>
-      accounts.reduce(
-        (sum, a) => sum + (a.balance ?? a.openingBalance ?? 0),
-        0,
-      ),
-    [accounts],
-  );
-
-  const today = useMemo(() => new Date(), []);
-  const currentYear = today.getFullYear();
-  const currentMonthIdx = today.getMonth();
-
-  const movByYearMonth = useMemo(() => {
-    const map = new Map<string, { entradas: number; salidas: number }>();
-    movements.forEach((m) => {
-      // Excluir el movimiento sintético "Saldo inicial de apertura"
-      // (creado por cuentasService cuando la cuenta tiene openingBalance).
-      // Si se incluyera, el KPI "Entradas · este mes" mentiría sumando
-      // el saldo inicial al flujo real del mes.
-      if (m.isOpeningBalance) return;
-      const date = m.date ? new Date(m.date) : null;
-      if (!date || Number.isNaN(date.getTime())) return;
-      if (date.getFullYear() !== currentYear) return;
-      const key = `${date.getFullYear()}-${date.getMonth()}`;
-      const cur = map.get(key) ?? { entradas: 0, salidas: 0 };
-      if (m.amount > 0) cur.entradas += m.amount;
-      else cur.salidas += m.amount;
-      map.set(key, cur);
-    });
-    return map;
-  }, [movements, currentYear]);
-
-  const entradasMes = movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.entradas ?? 0;
-  const salidasMes = movByYearMonth.get(`${currentYear}-${currentMonthIdx}`)?.salidas ?? 0;
-
-  // T20-01 · Proyección presupuesto desde Mi Plan (cierra TODO formal).
-  // Combina nominas + autonomos + compromisosRecurrentes + contracts para
-  // proyección estructural · sustituye proyección lineal simple.
-  // T-RECONNECT-1 · Hallazgo 5.A · capturamos errores y los exponemos en banner
-  // · NO 0€ silenciosos.
-  const [budgetProjection, setBudgetProjection] = useState<BudgetProjection | null>(null);
-  const [projectionError, setProjectionError] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    computeBudgetProjection12mAsync(currentYear)
-      .then((p) => {
-        if (!cancelled) {
-          setBudgetProjection(p);
-          setProjectionError(null);
-        }
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.error('[tesoreria/vista-general] error proyección · banner UI', err);
-        if (!cancelled) {
-          setBudgetProjection(null);
-          setProjectionError(
-            err instanceof Error ? err.message : 'Error cargando proyección',
-          );
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [currentYear]);
-
-  // Construye la serie 12 meses con saldo proyectado.
-  // Estrategia · `totalSaldo` es el saldo CIERRE del mes actual (cuentas hoy).
-  //   - Meses pasados · saldoReal = totalSaldo − flujo_real(actual..i+1).
-  //     Recorremos hacia atrás restando los flujos de los meses posteriores.
-  //   - Mes actual · saldoReal = totalSaldo (cierre del mes actual).
-  //   - Meses futuros · saldoPrevisto = totalSaldo + acumulado(proyección Mi Plan).
-  const months: MonthFlow[] = useMemo(() => {
-    // 1 · Calcular saldo de cada mes pasado restando flujos posteriores.
-    const saldoReales: number[] = new Array(12);
-    let saldoIter = totalSaldo;
-    saldoReales[currentMonthIdx] = saldoIter;
-    for (let i = currentMonthIdx - 1; i >= 0; i--) {
-      // El saldo a fin del mes i es el saldo a fin de mes (i+1) menos el
-      // flujo real de (i+1).
-      const flowIPlus1 = movByYearMonth.get(`${currentYear}-${i + 1}`);
-      const flujoIPlus1 = (flowIPlus1?.entradas ?? 0) + (flowIPlus1?.salidas ?? 0);
-      saldoIter = saldoIter - flujoIPlus1;
-      saldoReales[i] = saldoIter;
-    }
-
-    // 2 · Para meses futuros · saldo = totalSaldo + acumulado proyección.
-    let acumProyeccion = 0;
-    return Array.from({ length: 12 }, (_, i) => {
-      const isPast = i < currentMonthIdx;
-      const isCurrent = i === currentMonthIdx;
-
-      if (isPast || isCurrent) {
-        const saldoReal = saldoReales[i];
-        return {
-          month: i + 1,
-          label: MONTH_LABELS[i],
-          saldoReal,
-          saldoPrevisto: saldoReal,
-          isCurrent,
-        };
-      }
-
-      // Mes futuro · usa proyección Mi Plan si está disponible.
-      const flujoProyectado = budgetProjection?.months[i]?.flujoNeto ?? 0;
-      acumProyeccion += flujoProyectado;
-      return {
-        month: i + 1,
-        label: MONTH_LABELS[i],
-        saldoReal: undefined,
-        saldoPrevisto: totalSaldo + acumProyeccion,
-        isCurrent,
-      };
-    });
-  }, [movByYearMonth, currentYear, currentMonthIdx, totalSaldo, budgetProjection]);
-
-  // Totales anuales del chart de cashflow · meses pasados/actual = real
-  // (movements) · meses futuros = proyección Mi Plan (budgetProjection). Esto
-  // mantiene "Entradas previstas" / "Salidas previstas" coherentes con la
-  // curva proyectada del chart.
-  const { entradasAnuales, salidasAnuales } = useMemo(() => {
-    let entradas = 0;
-    let salidas = 0;
-    for (let i = 0; i < 12; i++) {
-      const isFuture = i > currentMonthIdx;
-      if (isFuture) {
-        const proj = budgetProjection?.months[i];
-        entradas += proj?.entradas ?? 0;
-        salidas += proj?.salidas ?? 0;
-      } else {
-        const real = movByYearMonth.get(`${currentYear}-${i}`);
-        entradas += real?.entradas ?? 0;
-        salidas += real?.salidas ?? 0;
-      }
-    }
-    return { entradasAnuales: entradas, salidasAnuales: salidas };
-  }, [movByYearMonth, budgetProjection, currentMonthIdx, currentYear]);
-  const saldoInicio = totalSaldo - (entradasAnuales + salidasAnuales);
-
   const pendientesPorCuenta = useMemo(() => {
     const map = new Map<number, number>();
     movements.forEach((m) => {
@@ -231,97 +77,15 @@ const VistaGeneralTab: React.FC = () => {
     return map;
   }, [movements]);
 
+  // S-TESORERIA-FASE-B sub-tarea 2 · click card cuenta navega a vista cuenta
+  // (`/tesoreria/cuenta/:id` · ruta nueva creada en spec siguiente
+  // S-TESORERIA-FASE-B-VISTA-CUENTA · hoy redirige a movimientos filtrado).
   const handleAccountClick = (id: number) => {
-    navigate(`/tesoreria/movimientos?cuenta=${id}`);
+    navigate(`/tesoreria/cuenta/${id}`);
   };
 
   return (
     <>
-      {projectionError && (
-        <div
-          role="alert"
-          style={{
-            background: 'var(--s-neg-bg)',
-            color: 'var(--s-neg)',
-            border: '1px solid var(--s-neg)',
-            borderRadius: 10,
-            padding: '12px 16px',
-            marginBottom: 14,
-            fontSize: 13,
-          }}
-        >
-          <strong>No se pudo calcular la proyección de saldo.</strong>{' '}
-          {projectionError} · los meses futuros no se mostrarán proyectados ·
-          revisa la consola para más detalle.
-        </div>
-      )}
-      <div className={styles.heroRow}>
-        <div className={styles.hero}>
-          <div className={styles.heroTop}>
-            <div className={styles.heroTopLeft}>
-              <span className={styles.scLabel}>Saldo consolidado</span>
-              {totalSaldo > 0 && (
-                <span className={`${styles.delta} ${styles.pos}`}>
-                  ▲ saldo agregado
-                </span>
-              )}
-            </div>
-          </div>
-          <div className={styles.heroBig}>
-            {/* Render directo · NO usar MoneyValue aquí · su size="inline"
-                default forzaba 13px sobre el wrapper de 50px (mockup v8). */}
-            {totalSaldo.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
-          </div>
-          <div className={styles.heroSub}>
-            <strong>{accounts.length}</strong> cuentas activas ·{' '}
-            <button
-              type="button"
-              onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                margin: 0,
-                font: 'inherit',
-                color: 'inherit',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: 2,
-              }}
-            >
-              <strong>
-                {pendientesPorCuenta.size > 0
-                  ? `${Array.from(pendientesPorCuenta.values()).reduce((a, b) => a + b, 0)}`
-                  : '0'}
-              </strong>{' '}
-              movimientos pendientes de conciliar
-            </button>
-          </div>
-        </div>
-        <div className={styles.kpiStack}>
-          <div className={styles.kpi}>
-            <div className={styles.kpiLab}>Entradas · este mes</div>
-            <div className={`${styles.kpiVal} ${styles.pos}`}>
-              {entradasMes >= 0 ? '+' : ''}
-              {entradasMes.toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
-            </div>
-            <div className={styles.kpiHint}>
-              {MONTH_NAMES[currentMonthIdx]} {currentYear}
-            </div>
-          </div>
-          <div className={styles.kpi}>
-            <div className={styles.kpiLab}>Salidas · este mes</div>
-            <div className={`${styles.kpiVal} ${styles.neg}`}>
-              {salidasMes <= 0 ? '−' : '+'}
-              {Math.abs(salidasMes).toLocaleString('es-ES', { maximumFractionDigits: 0 })} €
-            </div>
-            <div className={styles.kpiHint}>
-              {MONTH_NAMES[currentMonthIdx]} {currentYear}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Carrusel cuentas · 5 visibles por página + flechas (mockup v8) */}
       {(() => {
         const PAGE_SIZE = 5;
@@ -401,77 +165,15 @@ const VistaGeneralTab: React.FC = () => {
         );
       })()}
 
-      <CardV5 className={styles.card}>
-        <div className={styles.cardHd}>
-          <div>
-            <div className={styles.cardTitle}>Flujo de caja anual · {currentYear}</div>
-            <div className={styles.cardSub}>
-              proyección 12 meses · línea sólida = real · discontinua = previsto
-            </div>
-          </div>
-        </div>
-        <CashflowChart
-          year={currentYear}
-          months={months}
-          saldoInicio={saldoInicio}
-          entradasAnuales={entradasAnuales}
-          salidasAnuales={salidasAnuales}
-          colchonEmergencia={null}
+      <CardV5 className={styles.card} style={{ marginTop: 14 }}>
+        <CalendarioMes12
+          events={treasuryEvents}
+          movements={movements as unknown as { date: string; amount: number }[]}
+          accounts={accounts}
+          totalSaldo={totalSaldo}
+          onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
         />
       </CardV5>
-
-      {/* Layout 2 columnas · calendario 4×3 + pendientes del día (mockup v8) */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) 360px',
-          gap: 14,
-          marginTop: 14,
-        }}
-        className={styles.calendarRow}
-      >
-        <CardV5 className={styles.card}>
-          <CalendarioMes12
-            events={treasuryEvents}
-            movements={movements as unknown as { date: string; amount: number }[]}
-            onMonthClick={(year, monthIndex0) => setDrawerMes({ year, monthIndex0 })}
-          />
-        </CardV5>
-
-        <CardV5 className={styles.card}>
-          <PendientesDelDia
-            events={treasuryEvents.map((e: any) => ({
-              id: e.id,
-              predictedDate: e.predictedDate,
-              type: e.type,
-              amount: e.amount,
-              description: e.description,
-              status: e.status,
-              accountId: e.accountId,
-            }))}
-            accounts={accounts}
-            onPuntear={async (id) => {
-              try {
-                const dbId = typeof id === 'number' ? id : Number(id);
-                if (Number.isFinite(dbId)) {
-                  const { confirmTreasuryEvent } = await import(
-                    '../../../services/treasuryConfirmationService'
-                  );
-                  await confirmTreasuryEvent(dbId);
-                  invalidateCachedStores(['treasuryEvents', 'movements']);
-                  showToastV5('Movimiento confirmado', 'success');
-                }
-              } catch (err) {
-                // eslint-disable-next-line no-console
-                console.error('[Pendientes] confirmar falló', err);
-                showToastV5('No se pudo confirmar · ver consola', 'error');
-              }
-            }}
-            onClick={(id) => setDrawerMovId(id)}
-            onIrAConciliacion={() => navigate('/tesoreria/movimientos')}
-          />
-        </CardV5>
-      </div>
 
       <MesDetalleDrawer
         open={drawerMes !== null}
@@ -480,6 +182,7 @@ const VistaGeneralTab: React.FC = () => {
         events={treasuryEvents}
         accounts={accounts}
         onClose={() => setDrawerMes(null)}
+        onEventClick={(eventId) => setDrawerMovId(eventId)}
         onIrAConciliacionDia={(dayIso, accountId) => {
           setDrawerMes(null);
           const params = new URLSearchParams();
