@@ -5,7 +5,7 @@
 > **Spec ejecutado** · `docs/audits/T-TESORERIA-AUDIT.md`
 > **Output** · este archivo · 1 solo
 > **Reglas aplicadas** · V11.3 (5 preguntas) · V11.6 (pantallazos = verdad) · V11.7 (audit dedicado por funcionalidad sospechosa) · grep duro
-> **DB** · v70 · 40 stores activos (dato literal sed -n28)
+> **DB** · v70 · 40 stores activos (dato literal `sed -n '28p' src/services/db.ts`)
 > **Branch** · `claude/treasury-audit-execution-i0ZuL`
 > **Commit base** · `11c8a85` (Merge PR #1312)
 
@@ -14,7 +14,7 @@
 ## §0 · Resumen ejecutivo (5 líneas)
 
 1. **Saldos NO se actualizan al confirmar movimiento** · BUG REAL · `confirmTreasuryEvent` (1262 líneas, canónico, llamado desde Conciliación + MovimientosTab + AddMovementModal + LineasAnualesTab) **no contiene una sola referencia a `balance`** (`grep -c balance` = 0) · existen DOS servicios de recálculo (`accountBalanceService.rollForwardAccountBalancesToMonth` y `treasuryEventsService.recalculateAccountBalance`) pero ninguno se invoca tras confirmar · UI lee `account.balance ?? account.openingBalance ?? 0` · queda stale hasta que el usuario abre Dashboard (único punto que dispara `rollForward`).
-2. **Filtros conciliación no listan todas las cuentas** · BUG ARQUITECTÓNICO MENOR · `useMonthConciliacion` hace `db.getAll('accounts')` SIN filtro y `FiltersBar` mapea TODAS las cuentas sin filtro adicional · en cambio `TesoreriaPage` filtra por `status === 'ACTIVE'` · explicación más probable de las 3 cuentas faltantes (Bankinter · Revolut · Carrefour) · Conciliación NO se subscribe a `cuentasService.on('accounts:updated')` mientras Tesorería sí · estado stale tras dar de alta cuentas nuevas.
+2. **Filtros conciliación no listan todas las cuentas** · BUG ARQUITECTÓNICO MENOR · `useMonthConciliacion` hace `db.getAll('accounts')` SIN filtro y `FiltersBar` mapea TODAS las cuentas sin filtro adicional · en cambio `TesoreriaPage` filtra por `status === 'ACTIVE'` · explicación más probable de las 3 cuentas faltantes (Bankinter · Revolut · Carrefour) · Conciliación NO se suscribe a `cuentasService.on('accounts:updated')` mientras Tesorería sí · estado stale tras dar de alta cuentas nuevas.
 3. **Validación manual + Subir extracto = 2 caminos paralelos coexistentes** · ARQUITECTURA · "Nuevo movimiento" (botón en Conciliación + MovimientosTab) → `AddMovementModal` → `db.add('treasuryEvents')` → opcional `confirmTreasuryEvent`. "Subir extracto" → `/tesoreria/importar` → `BankStatementUploadPage` → `bankStatementOrchestrator.processFile + confirmDecisions`. Comparten el primitive `db.put('movements')` pero NO orquestación · resultado · 15 `db.put|add('movements')` repartidos en 11 archivos · ambos caminos válidos pero sin documentación contrastable usuario.
 4. **Heurísticas hardcoded, 6 reglas, 1 fallback inútil** · CONFIGURACIÓN ESTÁTICA · `movementSuggestionService.ts:285-385` define 6 reglas regex (Suministros · Hipoteca · IBI · Comunidad · Bizum · Amazon) · si ninguna casa devuelve `{ kind: 'ignore', description: 'Sin patrón reconocible · puedes ignorarlo o clasificarlo manualmente' }` que es lo que Jose vio · "Aplicar" llama `applySuggestion` (crea treasuryEvent con la categoría sugerida); "Ignorar" marca `statusConciliacion: 'sin_match'` · botón es DOBLE solo en heurísticas con acción ≠ ignore · cuando es ignore el botón solo muestra "Ignorar". NO hay relación con `movementLearningRules` (vías independientes A/B/C en `movementSuggestionService`).
 5. **UX agobio · 3 rutas físicas distintas + 0 tooltips** · `/tesoreria` (Vista general · 553 líneas), `/tesoreria/movimientos` (688 líneas), `/tesoreria/importar` (BankStatementUploadPage · pieza grande), más `/horizon/conciliacion` (módulo aparte · 6 componentes en `v2/components/`) · 0 hits de `Tooltip|InfoIcon|HelpCircle` en ninguna · 1470 LOC solo en `src/modules/tesoreria/` · 4 puntos de entrada para crear/clasificar movements, sin discoverability ni jerarquía clara.
@@ -172,7 +172,7 @@ const unsubscribe = cuentasService.on((event) => {
 ```bash
 $ grep -nE "cuentasService" src/modules/horizon/conciliacion/v2/*.tsx \
     src/modules/horizon/conciliacion/v2/hooks/*.ts src/modules/horizon/conciliacion/v2/components/*.tsx
-(0 matches · Conciliación NO se subscribe a accounts:updated)
+(0 matches · Conciliación NO se suscribe a accounts:updated)
 ```
 
 ### §1.3 · Problema 3 · Validación manual + Subir extracto
@@ -392,7 +392,7 @@ $ grep -nE "Tooltip|InfoIcon|HelpCircle" src/modules/horizon/conciliacion/ -r --
 `treasuryConfirmationService.confirmTreasuryEvent` (1262 LOC, 14 exports) hace 0 referencias a `balance`. Cadena tras `confirmTreasuryEvent`:
 
 1. Crea `movement` (`tx.objectStore('movements').add(payload)`)
-2. Crea `linea` en `gastosInmueble`/`mejorasInmueble`/`capexInmueble` si `ambito === INMUEBLE`
+2. Crea línea en `gastosInmueble`/`mejorasInmueble`/`capexInmueble` si `ambito === INMUEBLE`
 3. Marca `treasuryEvent.status = 'executed'`
 4. Persiste documento adjunto si lo hay
 5. **Termina sin tocar accounts**
@@ -429,10 +429,10 @@ src/components/treasury/treasuryBalanceSummary.ts:138,139,140
 
 Las 3 cuentas faltantes (Bankinter · Revolut · Carrefour) en pantallazo Imagen 5 vs Imagen 4 se explican por una de estas dos rutas, ambas posibles según el código actual:
 
-1. **Ruta A · timing** · si Jose dio de alta Bankinter/Revolut/Carrefour DESPUÉS de abrir Conciliación, esa página NUNCA se entera (no se subscribe a `cuentasService.on('accounts:updated')`). Tesorería sí lo hace y por eso Imagen 1/4 sí las muestran. Reload manual (cambiar mes y volver) recargaría.
+1. **Ruta A · timing** · si Jose dio de alta Bankinter/Revolut/Carrefour DESPUÉS de abrir Conciliación, esa página NUNCA se entera (no se suscribe a `cuentasService.on('accounts:updated')`). Tesorería sí lo hace y por eso Imagen 1/4 sí las muestran. Reload manual (cambiar mes y volver) recargaría.
 2. **Ruta B · DB diferente** · poco probable pero verificable · si una de las 3 cuentas tiene `id == null` o no está en `accounts` por bug de import, `accountsById` no la incluiría. `db.getAll('accounts')` literal es la fuente, sin filtro adicional.
 
-**Tiempo de fix estimado** · **30 min - 1 h CC** · subscribir `useMonthConciliacion` a `cuentasService.on(...)` y disparar `setReloadToken(n => n+1)` al recibir `accounts:updated`. + 1 test verificando que tras alta de account la lista se actualiza sin recargar página. Riesgo nulo.
+**Tiempo de fix estimado** · **30 min - 1 h CC** · suscribir `useMonthConciliacion` a `cuentasService.on(...)` y disparar `setReloadToken(n => n+1)` al recibir `accounts:updated`. + 1 test verificando que tras alta de account la lista se actualiza sin recargar página. Riesgo nulo.
 
 **Sub-problema UX** · aunque el bug se arregle, FiltersBar usa chips horizontales sin scroll · con 9-12 cuentas la barra se desborda visualmente (cv2-filter-group sin overflow declarado).
 
@@ -537,7 +537,7 @@ Catálogo §1.4.bis · las descripciones son INFORMATIVAS pero sin call-to-actio
 
 Aplica también, aunque diferente del caso compromisos:
 
-### §F.1 · Confirmación de evento crea linea SOLO en INMUEBLE
+### §F.1 · Confirmación de evento crea línea SOLO en INMUEBLE
 
 ```typescript
 // treasuryConfirmationService.ts:319-332
@@ -560,7 +560,7 @@ $ grep -nE "gastosPersonal|gastos_personal" src/services/db.ts | head -5
 2162:  // gastosPersonalesReal: ELIMINADO en V62 (sub-tarea 3) — futuro movements + treasuryEvents · 0 registros
 ```
 
-→ El store `gastosPersonalesReal` fue **eliminado en V62** con la justificación "futuro movements + treasuryEvents". Esto es coherente con el modelo: personal no necesita una linea separada porque su único registro vive en `movements`+`treasuryEvents`.
+→ El store `gastosPersonalesReal` fue **eliminado en V62** con la justificación "futuro movements + treasuryEvents". Esto es coherente con el modelo: personal no necesita una línea separada porque su único registro vive en `movements`+`treasuryEvents`.
 
 ### §F.2 · Detectar compromisos sigue siendo solo personal
 
@@ -592,7 +592,7 @@ src/modules/personal/pages/DetectarCompromisosPage.tsx:1051:export default Detec
 | 4a | Fallback heurística "Sin patrón reconocible" inútil | UX + funcionalidad | 30 min - 3 h | 🟠 Alta · es lo que Jose ve constantemente |
 | 4b | Heurísticas hardcoded sesgadas a INMUEBLE | Configuración | 2-4 h (extender catálogo) | 🟡 Media · funcional pero limitado |
 | 5 | Densidad UI · 0 tooltips · 4 puntos entrada | **REDISEÑO UX parcial** | 6-10 h (rediseño full) o 2-3 h (tooltips + jerarquía mínima) | 🟡 Media · "todo eso me agobia" textual de Jose |
-| F1 | Asimetría INMUEBLE/PERSONAL en linea creada al confirmar | Por diseño post-V62 | N/A · documentar | 🟢 Baja · arquitectura intencional |
+| F1 | Asimetría INMUEBLE/PERSONAL en línea creada al confirmar | Por diseño post-V62 | N/A · documentar | 🟢 Baja · arquitectura intencional |
 
 ### Resumen ejecutivo · ruta recomendada
 
@@ -621,8 +621,11 @@ src/modules/personal/pages/DetectarCompromisosPage.tsx:1051:export default Detec
 - [x] §F asimetría inmueble/personal documentada (3 sub-puntos)
 - [x] §G veredicto · ruta R4 · justificada con orden ranking
 - [x] CERO archivos de `src/` modificados
-- [x] PR contra branch desarrollo (no main · spec dice main pero las instrucciones de la sesión obligan a `claude/treasury-audit-execution-i0ZuL`)
 - [x] Resumen ejecutivo · 5 líneas (§0)
+
+### Desviaciones documentadas respecto a la spec
+
+- **PR contra `main`** · NO cumplido por restricción de la sesión · las instrucciones de Claude obligan a desarrollar en `claude/treasury-audit-execution-i0ZuL`. Jose decide al revisar si quiere rebase/merge contra `main` o mantener flujo de branches develop.
 
 ---
 
