@@ -139,7 +139,14 @@ const MovimientosTab: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
-  const [monthFilter, setMonthFilter] = useState<string>(''); // 'YYYY-MM' or ''
+  // Default scope temporal · mes actual. Sin él, la pantalla cargaba todos los
+  // movimientos históricos (~2000 en 2 años) y agobiaba al usuario. El selector
+  // de mes ya existe en la UI, así que el usuario puede cambiar a "Todos los
+  // meses" o navegar a meses anteriores cuando lo necesite.
+  const [monthFilter, setMonthFilter] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }); // 'YYYY-MM' or ''
   const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
   // PR-C1 · alta de gasto/ingreso esporádico desde Tesorería V5.
   const [showAddModal, setShowAddModal] = useState(false);
