@@ -2,7 +2,63 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, ChevronRight, Calculator } from 'lucide-react';
 import { BudgetLine, FiscalCategory, PaymentFrequency } from '../../../../../services/db';
-import { calculateMonthlyAmounts } from '../services/budgetService';
+
+// Inlined desde el extinto budgetService.ts (PR-C-PROY-1-bis · función pura, sin DB)
+const calculateMonthlyAmounts = (
+  amount: number,
+  frequency: BudgetLine['frequency'],
+  startMonth: number,
+  installments?: number
+): number[] => {
+  const months = new Array(12).fill(0);
+
+  switch (frequency) {
+    case 'mensual': {
+      const monthlyAmount = amount / 12;
+      for (let i = 0; i < 12; i++) {
+        months[i] = monthlyAmount;
+      }
+      break;
+    }
+    case 'trimestral': {
+      const quarterlyAmount = amount / 4;
+      const quarterStartMonth = startMonth - 1;
+      for (let i = 0; i < 4; i++) {
+        const monthIndex = (quarterStartMonth + i * 3) % 12;
+        months[monthIndex] = quarterlyAmount;
+      }
+      break;
+    }
+    case 'anual':
+      months[startMonth - 1] = amount;
+      break;
+    case 'fraccionado':
+      if (installments && installments > 0 && installments <= 12) {
+        const installmentAmount = amount / installments;
+        const monthsPerInstallment = Math.floor(12 / installments);
+        if (installments === 2) {
+          months[startMonth - 1] = installmentAmount;
+          months[(startMonth - 1 + 6) % 12] = installmentAmount;
+        } else if (installments === 3) {
+          for (let i = 0; i < installments; i++) {
+            const monthIndex = (startMonth - 1 + i * 4) % 12;
+            months[monthIndex] = installmentAmount;
+          }
+        } else {
+          for (let i = 0; i < installments; i++) {
+            const monthIndex = (startMonth - 1 + i * monthsPerInstallment) % 12;
+            months[monthIndex] = installmentAmount;
+          }
+        }
+      }
+      break;
+    case 'unico':
+      months[startMonth - 1] = amount;
+      break;
+  }
+
+  return months.map(m => Math.round(m * 100) / 100);
+};
 
 interface WizardStepConfiguracionProps {
   year: number;

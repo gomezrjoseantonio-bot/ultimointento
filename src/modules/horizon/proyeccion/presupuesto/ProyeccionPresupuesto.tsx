@@ -1,38 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calculator, Plus, FileText, TrendingUp } from 'lucide-react';
 import PageLayout from '../../../../components/common/PageLayout';
 import BudgetWizard from './components/BudgetWizard';
 import BudgetList from './components/BudgetList';
 import PresupuestoScopeView from './PresupuestoScopeView';
 import { Budget } from '../../../../services/db';
-import { getBudgetsByYear } from './services/budgetService';
 
 const ProyeccionPresupuesto: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [currentYear] = useState(new Date().getFullYear());
-  const [existingBudgets, setExistingBudgets] = useState<Budget[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [existingBudgets] = useState<Budget[]>([]);
+  const [loading] = useState(false);
   const [showOperationalView, setShowOperationalView] = useState(false);
 
-  useEffect(() => {
-    loadBudgets();
-  }, [currentYear]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const loadBudgets = async () => {
-    try {
-      setLoading(true);
-      const budgets = await getBudgetsByYear(currentYear);
-      setExistingBudgets(budgets);
-    } catch (error) {
-      console.error('Error loading budgets:', error);
-    } finally {
-      setLoading(false);
-    }
+  const loadBudgets = () => {
+    // budgetService eliminado (PR-C-PROY-1-bis · store fantasma) — sin recarga hasta presupuestoService Mi Plan v2
   };
 
   const handleWizardComplete = () => {
     setShowWizard(false);
-    loadBudgets(); // Refresh budget list
+    loadBudgets();
   };
 
   const handleCreateBudget = () => {
