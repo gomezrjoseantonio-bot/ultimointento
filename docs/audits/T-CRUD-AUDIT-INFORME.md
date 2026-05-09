@@ -10,11 +10,13 @@
 
 ## §E · Resumen ejecutivo (5 líneas para PR description)
 
-1. **Total entidades persistibles encontradas** · **43 stores activos** en `AtlasHorizonDB` interface (`src/services/db.ts:2072`) · 0 stores en `src/database/initDB.ts` (no existe el directorio · todo está en `db.ts`).
-2. **Total gaps CRUD detectados** · **31 gaps** repartidos · **11 servicios sin caller UI productivo** (🟡 sólo botón falta) · **8 servicios incompletos** (Update sin Delete o sin Create UI) · **9 entidades sin servicio CRUD propio** (sólo lectura o sólo write desde lifecycle) · **3 duplicidades CRUD por entidad** (planes pensión · contratos · ingresos).
-3. **Top 5 gaps prioridad ALTA** · (1) `deleteContract` 0 callers UI · (2) movements sin delete individual UI fuera conciliación · (3) `viviendaHabitual` sin servicio delete público (UI tiene botón "Eliminar vivienda" cableado vía `db.delete` directo o estado) · (4) inmuebles sin `deleteInmueble` IDB local (sólo HTTP fantasma) · (5) `compromisosRecurrentes` sin delete service público (UI inexistente).
-4. **Top duplicidades a sanear** · (a) `planesInversionService` wrapper sobre `planesPensionesService` (ya señalada en T-INACEPTABILIDADES E11) · (b) `traspasosPlanesService` (legacy V5.2 · 4 callers UI vivos) vs `traspasosPlanPensionesService` (V65 nuevo · sin UI viva detectada) · (c) `nominaService` + `autonomoService` + `otrosIngresosService` + `pensionService` operan los 4 sobre el mismo store `ingresos` (V63 unificado) · CRUD fragmentado por tipo.
-5. **Estimación tiempo total D-CRUD-COMPLETAR** · **18-28h CC** repartidas · 6-9h gaps "solo botón falta" (rápidos) · 8-12h gaps "servicio + UI" (medios) · 4-7h saneamiento de las 3 duplicidades (specs separados). Recomendación · spec por dominio · NO mezclar saneamiento con completar CRUD.
+> **Nota correctiva (2026-05-09 post-revisión Jose)** · primera versión del informe contó **43 stores** leyendo la interfaz TypeScript `AtlasHorizonDB`. La realidad en producción (DevTools · DB v70) son **40 stores**. Diferencia · **6 entradas fantasma** en la interfaz que NO existen como `objectStore` real (ver §A revisado). Esta versión del informe corrige los conteos.
+
+1. **Total entidades persistibles encontradas** · **40 stores reales** en producción DB v70 (verificado contra DevTools · captura Jose 2026-05-09). La interfaz TypeScript `AtlasHorizonDB` (`src/services/db.ts:2072`) declara **46 entradas** · 6 son fantasmas · 4 sin `createObjectStore` (`propertyImprovements`, `operacionesFiscales`, `fiscalSummaries`, `gastos` H10) y 2 con `deleteObjectStore` post-creación (`objetivos_financieros` V5.9, `traspasosPlanes` V65). 0 stores en `src/database/initDB.ts` (directorio no existe · todo en `db.ts`).
+2. **Total gaps CRUD detectados** · **31 gaps** + **1 gap GRAVE recién detectado** · `traspasosPlanesService` escribe a `traspasosPlanes` que ya NO existe (eliminado V65 línea 4027) · 4 callers UI vivos según comentario código línea 2148 → posibles writes silenciosamente rotos (verificar). Resto del reparto · **11 servicios sin caller UI productivo** (🟡 sólo botón falta) · **8 servicios incompletos** · **9 entidades sin servicio CRUD propio** · **3 duplicidades CRUD nominales** (planes pensión wrapper · ingresos fragmentado · traspasos legacy ↔ V65).
+3. **Top 5 gaps prioridad ALTA** · (1) **`traspasosPlanesService` con store eliminado** · NUEVO Y GRAVE · (2) `deleteContract` 0 callers UI · (3) movements sin delete individual UI fuera conciliación · (4) inmuebles sin `deleteInmueble` IDB local (sólo HTTP fantasma) · (5) `compromisosRecurrentes` sin delete service público (UI inexistente).
+4. **Top duplicidades a sanear** · (a) `planesInversionService` wrapper sobre `planesPensionesService` (señalada en T-INACEPTABILIDADES E11) · (b) `traspasosPlanesService` apunta a store **eliminado** vs `traspasosPlanPensionesService` V65 sin UI viva · migración pendiente urgente · (c) `nominaService` + `autonomoService` + `otrosIngresosService` + `pensionService` operan 4 sobre `ingresos` (V63 unificado).
+5. **Estimación tiempo total D-CRUD-COMPLETAR** · **18-28h CC** + **3-5h verificación urgente del gap traspasosPlanes** (ver si hay datos perdidos · si los 4 callers fallan silenciosamente · si la migración V65 efectivamente copió antes de borrar). Recomendación · spec por dominio · NO mezclar saneamiento con completar CRUD.
 
 ---
 
@@ -97,11 +99,52 @@ viviendaHabitual · escenarios · objetivos · fondos_ahorro · retos
 
 `find src/database -type f` → directorio NO existe · todo el schema vive en `src/services/db.ts`.
 
-**Total entidades a auditar** · **43** (descritas en §A).
+**Total entidades** · interfaz TypeScript declara **46** entradas · realidad producción DB v70 son **40 stores** (verificado contra DevTools de Jose 2026-05-09 captura · ver §A-real).
 
 ---
 
 ## §A · Inventario completo de entidades persistibles
+
+> **CORRECCIÓN POST-REVISIÓN (2026-05-09)** · primera versión de §A listó las 46 entradas de la interfaz como si todas fueran stores reales. Esto reproduce el sesgo "interfaz miente" que Jose advirtió. Esta sección corregida separa **§A-real** (lo que existe en DB v70 producción · 40 stores) de **§A-fantasmas** (entradas en interfaz sin store real · 6 entradas).
+
+### §A-real · 40 stores reales en producción (verificados contra DevTools)
+
+Lista alfabética (orden DevTools) ·
+
+```
+accounts                       importBatches              prestamos
+aeatCarryForwards              ingresos                   presupuestoLineas
+aportacionesPlan               inversiones                presupuestos
+arrastresIRPF                  keyval                     properties
+compromisosRecurrentes         mejorasInmueble            propertyDays
+contracts                      movementLearningRules      property_sales
+documents                      movements                  proveedores
+ejerciciosFiscalesCoord        mueblesInmueble            resultadosEjercicio
+entidadesAtribucion            objetivos                  retos
+escenarios                     perdidasPatrimonialesAhorro snapshotsDeclaracion
+fondos_ahorro                  personalData               traspasosPlanPensiones
+gastosInmueble                 personalModuleConfig       treasuryEvents
+                               planesPensiones            valoraciones_historicas
+                                                          vinculosAccesorio
+                                                          viviendaHabitual
+```
+
+**40 stores** ✅ (cuadra con `Almacenamiento de objetos: 40` mostrado por DevTools · DB v70 · captura Jose).
+
+### §A-fantasmas · 6 entradas en interfaz `AtlasHorizonDB` SIN store real
+
+| Entrada | ¿Por qué está en la interfaz? | Estado real |
+|---|---|---|
+| `propertyImprovements` | Comentario `db.ts:2082` "H9-FISCAL: Property improvements for AEAT" | **NUNCA tuvo `createObjectStore`** · el store real con esa función es `mejorasInmueble`. Posible alias en interfaz que se quedó. **Limpiar de la interfaz**. |
+| `operacionesFiscales` | Comentario `db.ts:2083` "Flujo fiscal unificado" | **NUNCA tuvo `createObjectStore`** · `operacionFiscalService.ts` proxia todas las ops a `gastosInmuebleService` (sobre store `gastosInmueble`). La interfaz declara un store que no se instancia. **Limpiar de la interfaz**. |
+| `fiscalSummaries` | Comentario `db.ts:2092` "H9: Fiscal summaries by property/year" | **NUNCA tuvo `createObjectStore`** · ninguna creación detectada · `fiscalSummaryService.ts` opera sobre otros stores. **Limpiar de la interfaz**. |
+| `gastos` (H10 Treasury) | Comentario `db.ts:2093` "H10: Treasury expense records" | **NUNCA tuvo `createObjectStore`** · sin escritor productivo. **Limpiar de la interfaz**. |
+| `objetivos_financieros` | `createObjectStore` línea 2452 + `deleteObjectStore` líneas 3222/3326 | **Eliminado en V5.9** · interfaz lo mantiene "para compilar migración" según comentario propio. En DB v70 no existe. |
+| `traspasosPlanes` | `createObjectStore` línea 2711 + `deleteObjectStore` línea 4027 | **Eliminado en V65** · interfaz lo mantiene "porque `traspasosPlanesService.ts` aún lo usa desde 4 componentes UI vivos" (comentario `db.ts:2148-2154`). **GAP GRAVE** · si la migración V65 ya pasó (DB v70 actual) y los 4 callers UI siguen vivos, escriben/leen un store inexistente → posibles writes que fallan silenciosamente o lecturas que devuelven vacío. **Verificar urgentemente** (ver §D nuevo gap #0). |
+
+---
+
+## §A-original (deprecated) · Inventario inicial sin filtrar fantasmas
 
 | # | Store/Entidad | ¿Qué guarda? (1 línea) | Cardinalidad típica | Origen datos |
 |---|---|---|---|---|
@@ -168,15 +211,15 @@ Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 call
 | 4 | `contracts` | ✅ `contractService.saveContract` (1 caller UI · `documentIngestionService` indirect) | ✅ `getContract*` | ✅ `updateContract` (varios callers servicio) | 🟡 `deleteContract` exportado · **0 callers UI productivos** (sólo test mock) | ✅ wizard | ✅ wizard | ❌ **falta botón delete en `ContratosListPage`** |
 | 5 | `aeatCarryForwards` | 🟡 `fiscalSummaryService` (add interno) | ✅ `db.getAll` | 🟡 `db.put` (interno) | ❌ no hay delete | ❌ derivado | ❌ derivado | ❌ derivado |
 | 6 | `propertyDays` | ✅ `propertyOccupancyService.add` | ✅ getAll | ✅ `propertyOccupancyService.put` | ❌ no hay delete | ✅ derivado | ✅ derivado | ❌ no aplica (deriva de contratos) |
-| 7 | `propertyImprovements` | ✅ `mejorasInmuebleService.add` (UI `PropertyImprovements.tsx:205` Editar) | ✅ getByInmueble | ✅ update | 🟡 sin `deleteMejora` exportado · UI tiene Editar pero falta Delete | ✅ | ✅ | ❌ **falta delete UI + service** |
-| 8 | `operacionesFiscales` | ✅ `operacionFiscalService` (proxy a `gastosInmuebleService.add`) | ✅ get/getAll | ✅ update | ✅ `delete` (proxy a `gastosInmuebleService.delete`) | ✅ derivado | ✅ derivado | ✅ derivado |
+| 7 | ~~`propertyImprovements`~~ (FANTASMA · ver §A-fantasmas · alias del store real `mejorasInmueble`) | — | — | — | — | — | — | — |
+| 8 | ~~`operacionesFiscales`~~ (FANTASMA · proxy a `gastosInmueble`) — `operacionFiscalService` opera realmente sobre store `gastosInmueble` (ver fila + `gastosInmueble`) | — | — | — | — | — | — | — |
 | 9 | `proveedores` | ✅ `declaracionDistributorService` (add) | ✅ getAll | ✅ `db.put` (en distributor) | ❌ no hay deleteProveedor · `providerDirectoryService` no expone delete | ✅ inferencia OCR | ❌ falta UI editar | ❌ falta UI delete |
 | 10 | `accounts` | ✅ `treasuryApiService.createAccount` · UI `AccountFormModal` | ✅ getAll/get | ✅ `updateAccount` | ✅ `deleteAccount` con cascade · UI `TesoreriaV4`, `AtlasBancosManagement`, `BancosManagement`, `CuentasManagement` (Trash2 visible) | ✅ | ✅ | ✅ |
 | 11 | `movements` | ✅ `bankStatementOrchestrator.add` · `enhancedTreasuryCreationService.add` | ✅ getAll · get | ✅ `db.put` (varios servicios) + UI conciliación `EditMovementModal` | ✅ `db.delete` (interno cascade) + UI conciliación delete + UI `DayMovementsModal` (Trash2) + `MovementRow` (Trash2) | ✅ derivado import | 🟡 sólo en conciliación v2 | 🟡 sólo conciliación v2 + cascade · **falta delete individual desde `TesoreriaV4` lista** |
 | 12 | `importBatches` | ✅ `treasuryApiService.add` | ✅ get | ✅ `bankStatementOrchestrator.put` | ✅ `bankStatementOrchestrator.delete` (cascade) | ✅ derivado | ❌ N/A | 🟡 sólo cascade |
 | 13 | `treasuryEvents` | ✅ `bankStatementOrchestrator.add` · `treasuryTransferService.add` | ✅ get/getAll | ✅ `treasuryConfirmationService.updateTreasuryEventFields` · `update*` | ✅ `deleteTreasuryEventCompletely` · UI `ConciliacionPageV2:188` + `LineasAnualesTab:428` | ✅ derivado | ✅ conciliación | ✅ conciliación |
-| 14 | `fiscalSummaries` | 🟡 `fiscalSummaryService` (interno · sin UI directa) | ✅ get/getAll | 🟡 `db.put` interno | ❌ no hay delete | ❌ derivado lifecycle | ❌ derivado | ❌ derivado |
-| 15 | `gastos` (Treasury H10) | 🟡 `db.add('gastos')` interno | ✅ getAll | 🟡 `db.put('gastos')` | ❌ no hay deleteGasto exportado para este store | ❌ derivado | ❌ N/A actualmente | ❌ N/A actualmente |
+| 14 | ~~`fiscalSummaries`~~ (FANTASMA · sin `createObjectStore` · ver §A-fantasmas) | — | — | — | — | — | — | — |
+| 15 | ~~`gastos`~~ (FANTASMA H10 Treasury · sin `createObjectStore` · ver §A-fantasmas · NO confundir con `gastosInmueble` real) | — | — | — | — | — | — | — |
 | 16 | `presupuestos` | ✅ `presupuestoService.crearPresupuesto` · UI `PresupuestoNuevo` | ✅ getAll | ✅ `actualizarPresupuesto` | ✅ `deletePresupuesto` · UI `BudgetList` (Trash2) | ✅ | ✅ | ✅ |
 | 17 | `presupuestoLineas` | ✅ `presupuestoService.crearLinea` | ✅ get | ✅ `actualizarLinea` | ✅ `deletePresupuestoLinea` · UI `BudgetTableEditor`, `WizardStepConfiguracion`, `PresupuestoTablaLineas`, `PresupuestoNuevo:154` | ✅ | ✅ | ✅ |
 | 18 | `movementLearningRules` | ✅ `movementLearningService.createOrUpdateRule` | ✅ getAll | ✅ idem | ❌ no hay deleteRule exportado · UI `ReglasAlertas` muestra Trash2 pero ese es de Reglas alertas (no de learningRules) | ✅ derivado | ✅ derivado | ❌ falta deleteRule |
@@ -187,11 +230,11 @@ Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 call
 | 23 | `planesPensiones` | ✅ `planesPensionesService.createPlan` | ✅ getAll/get | ✅ `updatePlan` · UI `PlanFormV5`, `PlanForm`, `ActualizarValorPlanDialog` | ✅ `planesPensionesService.delete*` (cascade aportacionesPlan + traspasosPlanPensiones + valoraciones_historicas) · UI `PlanesManager:328` (Trash2) · `GestionInversionesPage:531` | ✅ | ✅ | ✅ ⚠ wrapper en `planesInversionService` (ver §C) |
 | 24 | `aportacionesPlan` | ✅ `aportacionesPlanService.add` | ✅ getAll | ✅ — (eventos · no se editan) | ✅ `aportacionesPlanService.delete` | ✅ via Excel + UI | ❌ N/A (eventos) | 🟡 cascade desde plan + delete individual |
 | 25 | `traspasosPlanPensiones` (V65 nuevo) | ✅ `traspasosPlanPensionesService.add` | ✅ getAll | ❌ — (eventos) | ✅ `traspasosPlanPensionesService.delete` | 🟡 sin UI productiva V65 detectada | ❌ | 🟡 falta UI |
-| 26 | `traspasosPlanes` (legacy V5.2) | ✅ `traspasosPlanesService.add` | ✅ getAll | ❌ — | ✅ `traspasosPlanesService.delete` | ✅ UI `TraspasosHistorial` Trash2 visible | ❌ | ✅ ⚠ duplicidad con #25 (ver §C) |
+| 26 | ~~`traspasosPlanes`~~ (STORE ELIMINADO V65 · ver §A-fantasmas) | ⚠ servicio escribe a store inexistente | ⚠ idem | ❌ — | ⚠ idem | ✅ UI `TraspasosHistorial` Trash2 visible · pero apunta a servicio roto | ❌ | ⚠ **GAP URGENTE** ver §D #0 |
 | 27 | `prestamos` | ✅ `prestamosService.createPrestamo` · UI `PrestamosWizard` | ✅ getAll/get | ✅ `updatePrestamo` · UI `PrestamosWizard:255` | ✅ `deletePrestamo` · UI 4 callers (`PrestamosList:417` Trash2, `DetallePage:109`, `PrestamoDetailPage:220`, `HeaderSection:112` Trash2) | ✅ | ✅ | ✅ |
 | 28 | `valoraciones_historicas` | ✅ `valoracionesService.guardarValoracionActivo` · `guardarValoracionesMensual` | ✅ getAll · getEvolucion | ✅ `db.put` interno | 🟡 cascade desde `inversionesService.deletePosicion` (interno · `db.delete('valoraciones_historicas')`) · NO hay `deleteValoracion` exportado · UI sin botón delete por valoración | ✅ UI `ActualizacionValoresDrawer` | ✅ UI dialog | 🟡 falta **rectificar/borrar valoración individual** |
 | 29 | `keyval` | — config | — | — | — | — | — | — |
-| 30 | `objetivos_financieros` | — DEPRECATED V5.4 | — | — | — | — | — | — |
+| 30 | ~~`objetivos_financieros`~~ (FANTASMA · `deleteObjectStore` V5.9 · sólo tipo en interfaz para compilar · ver §A-fantasmas) | — | — | — | — | — | — | — |
 | 31 | `resultadosEjercicio` | 🟡 lifecycle interno | ✅ get | ❌ inmutable (snapshot anual) | 🟡 `fiscalHistoryService.delete` (cascade desde año fiscal · UI `HistoricoPage:171` "Eliminar importación") | ❌ derivado | — inmutable | ✅ vía cascade |
 | 32 | `arrastresIRPF` | 🟡 lifecycle | ✅ get | ❌ inmutable | 🟡 cascade `fiscalHistoryService` | ❌ | — | ✅ cascade |
 | 33 | `perdidasPatrimonialesAhorro` | ✅ `compensacionAhorroService.add` | ✅ getAll | ✅ `db.put` | ❌ no hay deletePerdida exportado · UI sin botón | 🟡 derivado | 🟡 derivado | ❌ falta delete |
@@ -232,17 +275,23 @@ Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 call
 
 **Acción propuesta** · documentar en `services/planesInversionService.ts` cabecera por qué existe (semántica · NO duplicidad real) · evaluar si renombrar a `planesInversionFacadeService.ts` · spec saneamiento opcional fuera scope CRUD.
 
-### C2 · `traspasosPlanes` (legacy V5.2) vs `traspasosPlanPensiones` (V65 nuevo)
+### C2 · `traspasosPlanes` (legacy V5.2 · STORE ELIMINADO V65) vs `traspasosPlanPensiones` (V65)
 
-| Pregunta V11.3 | Respuesta |
+> **CORRECCIÓN POST-REVISIÓN** · primera versión describió `traspasosPlanes` como "store activo legacy". Realidad · el store fue **eliminado** en migración V65 (`db.ts:4027 deleteObjectStore('traspasosPlanes')`). Verificación contra DevTools de Jose confirma que NO existe en DB v70.
+
+| Pregunta V11.3 | Respuesta corregida |
 |---|---|
-| 1·¿Existe? | Sí · ambos stores activos |
-| 2·¿Cuántas implementaciones? | **2** · `traspasosPlanesService.ts` (legacy V5.2 · escribe en store `traspasosPlanes`) + `traspasosPlanPensionesService.ts` (V65 · escribe en `traspasosPlanPensiones`) |
-| 3·¿Vivas? | Legacy · 4 callers UI vivos según comentario línea 2148-2154 de `db.ts` · `PlanesManager` · `TraspasoForm` · `TraspasosHistorial` · `GestionInversionesPage`. V65 nuevo · 0 callers UI productivos detectados (sólo servicio). |
-| 4·Canónica · legacy | **Canónica nueva** · `traspasosPlanPensiones` + `traspasosPlanPensionesService` (V65 · diseño actual). **Legacy a migrar** · `traspasosPlanes` + `traspasosPlanesService`. Migración pendiente identificada como T27-pre. |
-| 5·Dead code residual | El nuevo store V65 está vacío de UI · cuando T27-pre cierre · borrar `traspasosPlanesService` y store `traspasosPlanes`. |
+| 1·¿Existe el store? | **NO en DB v70** · sólo el TIPO en interfaz `AtlasHorizonDB` para que compile el servicio legacy. |
+| 2·¿Cuántas implementaciones servicio? | **2** · `traspasosPlanesService.ts` (legacy · apunta a store inexistente · operaciones `db.add('traspasosPlanes')` líneas 294, `db.getAll('traspasosPlanes')` línea 326, `db.delete('traspasosPlanes', id)` línea 357) + `traspasosPlanPensionesService.ts` (V65 nuevo · sobre store real `traspasosPlanPensiones`). |
+| 3·¿Vivas? | Legacy · 4 callers UI según comentario `db.ts:2148-2154` (`PlanesManager` · `TraspasoForm` · `TraspasosHistorial` · `GestionInversionesPage`) · pero como el store no existe → escrituras lanzan error o silently fallan dependiendo del wrapper. V65 nuevo servicio existe · 0 callers UI productivos detectados. |
+| 4·Canónica · legacy | **Canónica** · `traspasosPlanPensiones` + `traspasosPlanPensionesService` (V65). **Roto** · `traspasosPlanes` + `traspasosPlanesService` (escribe a store inexistente). |
+| 5·Dead code residual | El store fue eliminado pero el servicio y los 4 callers UI siguen vivos · es un caso típico V11.4 · "interfaz miente" + "componentes huérfanos referenciando schema obsoleto". |
 
-**Acción propuesta** · spec **T27-pre** ya identificado en código · ejecutarlo migra UI legacy al store V65 · NO mezclar con D-CRUD-COMPLETAR.
+**Acción propuesta** · **URGENTE** · spec **T27-pre** ya identificado · debe ·
+1. Auditar si los 4 callers UI realmente fallan en runtime (test manual o telemetry).
+2. Si fallan · cablear los 4 callers a `traspasosPlanPensionesService` (V65 nuevo).
+3. Si la migración V65 efectivamente preservó los datos antes del `deleteObjectStore` · verificar que los traspasos históricos están en `traspasosPlanPensiones`.
+4. Eliminar `traspasosPlanesService.ts` y la entrada `traspasosPlanes` de la interfaz TypeScript.
 
 ### C3 · `ingresos` con 4 servicios fragmentados (`nomina` · `autonomo` · `otros` · `pension`)
 
@@ -267,6 +316,12 @@ Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 call
 ## §D · Veredicto · prioridad de gaps · ranking
 
 Tabla con **TODOS los gaps detectados** · ordenados por prioridad y dentro de prioridad por coste de implementación (botón > servicio parcial > construir desde cero).
+
+### 🔴 Prioridad URGENTE (descubierto post-revisión Jose 2026-05-09)
+
+| # | Gap | Tipo | Justificación |
+|---|---|---|---|
+| **0** | **`traspasosPlanesService` apunta a store eliminado V65** | Verificación + migración + retirada · 3-5h CC | Comentario `db.ts:2148-2154` afirma que 4 callers UI vivos siguen usando este servicio. El `deleteObjectStore('traspasosPlanes')` ocurre en línea 4027 (V65). DB de Jose en v70. Si los 4 callers escriben/leen → fallo silencioso o pérdida de datos. **Verificación 1ª** · ¿están en `traspasosPlanPensiones` los traspasos históricos? **Verificación 2ª** · ¿qué hace runtime cuando `traspasosPlanesService.add` se invoca con store inexistente? **Acción** · cablear los 4 callers UI al servicio V65 + retirar `traspasosPlanesService` + limpiar tipo en interfaz. |
 
 ### 🔴 Prioridad ALTA (entidades dogfooder usa hoy)
 
