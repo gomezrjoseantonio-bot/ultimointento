@@ -1136,6 +1136,18 @@ export async function updateConfirmedMovement(
   }
 
   await tx.done;
+
+  // Recalcular saldo solo si el cambio afecta al balance (importe o cuenta).
+  // Cambios de descripción/categoría/proveedor no alteran saldos.
+  const importeCambia = updates.amount != null;
+  const cuentaCambia =
+    updates.accountId != null && updates.accountId !== event.accountId;
+  if (importeCambia || cuentaCambia) {
+    scheduleAccountBalanceRecalc([
+      event.accountId,
+      updates.accountId,
+    ]);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
