@@ -30,16 +30,61 @@ interface PopoverState {
   anchor: HTMLElement;
 }
 
+// Persistencia de filtros entre visitas. Versionada por si cambia el shape de
+// `Filters` · una versión vieja se descarta sin propagar campos rotos.
+const FILTERS_STORAGE_KEY = 'atlas:tesoreria:conciliacion:filters';
+const FILTERS_STORAGE_VERSION = 1;
+
+interface PersistedFilters {
+  version: number;
+  filters: Filters;
+}
+
+function readPersistedFilters(): Partial<Filters> | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedFilters;
+    if (parsed?.version !== FILTERS_STORAGE_VERSION) return null;
+    return parsed.filters ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedFilters(filters: Filters): void {
+  try {
+    if (typeof window === 'undefined') return;
+    const payload: PersistedFilters = {
+      version: FILTERS_STORAGE_VERSION,
+      filters,
+    };
+    window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // QuotaExceeded / privacy mode · ignoramos · la persistencia es nice-to-have.
+  }
+}
+
 const ConciliacionPageV2: React.FC = () => {
   const now = useMemo(() => new Date(), []);
-  const [filters, setFilters] = useState<Filters>({
-    year: now.getFullYear(),
-    month0: now.getMonth(),
-    accountId: 'all',
-    ambito: 'all',
-    stateFilter: 'all',
-    search: '',
+  const [filters, setFilters] = useState<Filters>(() => {
+    const defaults: Filters = {
+      year: now.getFullYear(),
+      month0: now.getMonth(),
+      accountId: 'all',
+      ambito: 'all',
+      stateFilter: 'all',
+      search: '',
+    };
+    const persisted = readPersistedFilters();
+    return persisted ? { ...defaults, ...persisted } : defaults;
   });
+
+  // Persistir en cada cambio · localStorage para que sobreviva cierre del tab.
+  useEffect(() => {
+    writePersistedFilters(filters);
+  }, [filters]);
 
   const { loading, days, kpis, accounts, properties, reload } = useMonthConciliacion(filters);
 
