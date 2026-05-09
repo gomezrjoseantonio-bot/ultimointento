@@ -19,7 +19,10 @@ import MovimientoDrawer, {
 } from '../../../components/treasury/MovimientoDrawer';
 import PendientesDelDia from '../../../components/treasury/PendientesDelDia';
 import { invalidateCachedStores } from '../../../services/indexedDbCacheService';
-import { updateTreasuryEventFields } from '../../../services/treasuryConfirmationService';
+import {
+  confirmTreasuryEvent,
+  updateTreasuryEventFields,
+} from '../../../services/treasuryConfirmationService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import {
   computeBudgetProjection12mAsync,
@@ -483,6 +486,38 @@ const VistaGeneralTab: React.FC = () => {
           params.set('day', dayIso);
           if (accountId != null) params.set('cuenta', String(accountId));
           navigate(`/tesoreria/movimientos?${params.toString()}`);
+        }}
+        onConciliarSeleccion={async (eventIds) => {
+          // Sub-tarea 4 calendario fixes · conciliar bulk desde el drawer día.
+          // No existe servicio bulk · loop confirmTreasuryEvent por id (Opción A).
+          let ok = 0;
+          let failed = 0;
+          for (const id of eventIds) {
+            try {
+              await confirmTreasuryEvent(id);
+              ok += 1;
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[tesoreria/drawer-dia] confirmar falló', id, err);
+              failed += 1;
+            }
+          }
+          invalidateCachedStores(['treasuryEvents', 'movements', 'accounts']);
+          reload();
+          if (ok > 0 && failed === 0) {
+            showToastV5(
+              `${ok} movimiento${ok === 1 ? '' : 's'} conciliado${ok === 1 ? '' : 's'}`,
+              'success',
+            );
+          } else if (ok > 0 && failed > 0) {
+            showToastV5(
+              `Conciliados: ${ok} · fallidos: ${failed} · ver consola`,
+              'error',
+            );
+          } else {
+            showToastV5('No se pudo conciliar · ver consola', 'error');
+          }
+          return { ok, failed };
         }}
       />
 

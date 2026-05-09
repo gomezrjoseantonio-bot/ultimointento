@@ -607,6 +607,13 @@ const NivelDia: React.FC<NivelDiaProps> = ({
   onConciliarSeleccion,
 }) => {
   const fechaIso = dayKey(year, monthIndex0, dia);
+  // Sub-tarea 4 · selección bulk para conciliar varios eventos del día.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isConciliando, setIsConciliando] = useState(false);
+  // Reset al cambiar de día.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [year, monthIndex0, dia]);
 
   // Saldo proyectado por cuenta a fin del día seleccionado.
   // Sumamos · balance actual + todos los eventos del mes hasta el día (inclusive).
@@ -694,21 +701,106 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
       {eventosDelDia.length > 0 && (
         <>
-          <SectionHd>Movimientos del día</SectionHd>
-          {eventosDelDia.map((e, idx) => (
-            <EventoDiaRow
-              key={`evt-${e.id ?? idx}`}
-              evento={e}
-              account={
-                e.accountId != null ? accountById.get(e.accountId) : undefined
-              }
-              onIrAConciliacion={
-                onIrAConciliacion
-                  ? () => onIrAConciliacion(fechaIso, e.accountId)
-                  : undefined
-              }
-            />
-          ))}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              marginBottom: 10,
+              paddingBottom: 6,
+              borderBottom: '1px solid var(--atlas-v5-line-2)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                color: 'var(--atlas-v5-ink-4)',
+              }}
+            >
+              Movimientos del día
+              {selectedIds.size > 0 && (
+                <span style={{ marginLeft: 8, color: 'var(--atlas-v5-ink-3)' }}>
+                  · {selectedIds.size} seleccionado{selectedIds.size === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            {onConciliarSeleccion && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (selectedIds.size === 0 || isConciliando) return;
+                  setIsConciliando(true);
+                  try {
+                    await onConciliarSeleccion(Array.from(selectedIds));
+                    setSelectedIds(new Set());
+                  } finally {
+                    setIsConciliando(false);
+                  }
+                }}
+                disabled={selectedIds.size === 0 || isConciliando}
+                style={{
+                  border: '1px solid var(--atlas-v5-line)',
+                  background:
+                    selectedIds.size === 0
+                      ? 'var(--atlas-v5-card-alt)'
+                      : 'var(--atlas-v5-card)',
+                  borderRadius: 6,
+                  padding: '5px 10px',
+                  fontSize: 11,
+                  color:
+                    selectedIds.size === 0
+                      ? 'var(--atlas-v5-ink-5)'
+                      : 'var(--atlas-v5-ink-2)',
+                  cursor:
+                    selectedIds.size === 0 || isConciliando
+                      ? 'not-allowed'
+                      : 'pointer',
+                  fontFamily: 'inherit',
+                  fontWeight: 600,
+                }}
+                aria-label="Conciliar seleccionados"
+              >
+                {isConciliando
+                  ? 'Conciliando…'
+                  : `Conciliar (${selectedIds.size})`}
+              </button>
+            )}
+          </div>
+          {eventosDelDia.map((e, idx) => {
+            const evtId = typeof e.id === 'number' ? e.id : undefined;
+            const isChecked = evtId != null && selectedIds.has(evtId);
+            return (
+              <EventoDiaRow
+                key={`evt-${e.id ?? idx}`}
+                evento={e}
+                account={
+                  e.accountId != null ? accountById.get(e.accountId) : undefined
+                }
+                onIrAConciliacion={
+                  onIrAConciliacion
+                    ? () => onIrAConciliacion(fechaIso, e.accountId)
+                    : undefined
+                }
+                selectable={evtId != null && !!onConciliarSeleccion}
+                checked={isChecked}
+                onToggleSelected={
+                  evtId != null && onConciliarSeleccion
+                    ? () =>
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(evtId)) next.delete(evtId);
+                          else next.add(evtId);
+                          return next;
+                        })
+                    : undefined
+                }
+              />
+            );
+          })}
         </>
       )}
 
@@ -761,22 +853,43 @@ const EventoDiaRow: React.FC<{
   evento: MesDrawerEvent;
   account: MesDrawerAccount | undefined;
   onIrAConciliacion?: () => void;
-}> = ({ evento, account, onIrAConciliacion }) => {
+  selectable?: boolean;
+  checked?: boolean;
+  onToggleSelected?: () => void;
+}> = ({
+  evento,
+  account,
+  onIrAConciliacion,
+  selectable,
+  checked,
+  onToggleSelected,
+}) => {
   const isPos = evento.type === 'income';
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '28px 1fr auto auto',
+        gridTemplateColumns: selectable
+          ? '20px 28px 1fr auto auto'
+          : '28px 1fr auto auto',
         gap: 10,
         padding: '10px 12px',
         border: '1px solid var(--atlas-v5-line-2)',
         borderRadius: 8,
         marginBottom: 6,
         alignItems: 'center',
-        background: 'var(--atlas-v5-card)',
+        background: checked ? 'var(--atlas-v5-card-alt)' : 'var(--atlas-v5-card)',
       }}
     >
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={!!checked}
+          onChange={() => onToggleSelected?.()}
+          aria-label={`Seleccionar ${evento.description ?? 'movimiento'}`}
+          style={{ cursor: 'pointer' }}
+        />
+      )}
       <div
         style={{
           width: 26,
