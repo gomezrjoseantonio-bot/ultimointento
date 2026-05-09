@@ -1265,33 +1265,16 @@ export interface MovementLearningRule {
   updatedAt: string;
   appliedCount: number; // How many times this rule has been applied
   lastAppliedAt?: string;
-  /**
-   * @deprecated T16-cleanup · campo dormido. El subsistema de auditoría
-   * (writes en createOrUpdateRule / applyAllRulesOnImport y getters
-   * `getLearningLogs` / `getLearningRulesStats`) fue eliminado al no tener
-   * lectores de producción. Los registros antiguos conservan `history[]`
-   * intacto en IndexedDB; los nuevos no lo escriben. Pendiente eliminar el
-   * campo del schema en un próximo bump de DB_VERSION.
-   *
-   * Histórico (V60 · TAREA 7 sub-tarea 1): absorbido del store eliminado
-   * `learningLogs` (V64 sub-tarea 5). Cap FIFO 50 sin PII.
-   */
-  history?: HistoryEntry[];
-}
-
-/**
- * @deprecated T16-cleanup · ver `MovementLearningRule.history?`. El tipo se
- * mantiene exportado para que los registros antiguos sigan tipando, pero no
- * se generan nuevas entradas.
- */
-export interface HistoryEntry {
-  action: 'CREATE_RULE' | 'APPLY_RULE' | 'BACKFILL';
-  movimientoId?: number;
-  ts: string; // ISO timestamp
+  // T16-cleanup · B-TAREA8-MINIS sub-tarea 1: campo `history?: HistoryEntry[]`
+  // eliminado del tipo. Sin escritor productivo (solo migración V64 histórica
+  // que usa `Record<string, unknown>`) y sin reader. Los registros antiguos
+  // conservan los datos en IndexedDB; quedan ignorados al no estar tipados.
+  // Bump de DB_VERSION para purgar el campo queda fuera de scope.
 }
 
 // learningLogs: ELIMINADO en V64 (sub-tarea 5) — absorbido en movementLearningRules.history[] · max 50 FIFO
 // LearningLog: interfaz eliminada con el store
+// HistoryEntry: interfaz eliminada en B-TAREA8-MINIS sub-tarea 1 (T16-cleanup)
 
 // H9: Treasury Recommendations
 export interface TreasuryRecommendation {

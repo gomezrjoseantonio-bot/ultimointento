@@ -24,6 +24,7 @@ export async function crearArrastreFiscal(input: {
   importe: number;
   ejercicioCaducidad?: number;
   inmuebleId?: number;
+  origen?: 'manual' | 'aeat' | 'calculado';
 }): Promise<ArrastreIRPF> {
   const now = new Date().toISOString();
   const db = await initDB();
@@ -35,6 +36,7 @@ export async function crearArrastreFiscal(input: {
     importePendiente: round2(input.importe),
     ejercicioCaducidad: input.ejercicioCaducidad,
     inmuebleId: input.inmuebleId,
+    origen: input.origen ?? 'calculado',
     aplicaciones: [],
     estado: 'pendiente',
     createdAt: now,
