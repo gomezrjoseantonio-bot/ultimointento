@@ -27,6 +27,10 @@ import MovimientoDrawer, {
   type MovimientoDrawerPatch,
 } from '../../../components/treasury/MovimientoDrawer';
 import AddMovementModal from '../../horizon/conciliacion/v2/components/AddMovementModal';
+import {
+  matchesAmountQuery,
+  normalizeSearchText,
+} from '../../../utils/tesoreriaSearch';
 import styles from './MovimientosTab.module.css';
 
 type StatusFilter = 'todos' | 'pendientes' | 'conciliados';
@@ -38,24 +42,37 @@ const isReconciled = (m: Movement): boolean =>
 
 const matchesSearch = (m: Movement, search: string): boolean => {
   if (!search) return true;
-  const s = search.toLowerCase();
-  return (
-    (m.description ?? '').toLowerCase().includes(s) ||
-    (m.counterparty ?? '').toLowerCase().includes(s) ||
-    (m.providerName ?? '').toLowerCase().includes(s) ||
-    String(m.amount).includes(s)
-  );
+  const needle = normalizeSearchText(search);
+  if (!needle) return true;
+  const haystack = [
+    m.description,
+    m.counterparty,
+    m.providerName,
+    m.providerNif,
+    m.invoiceNumber,
+  ]
+    .map(normalizeSearchText)
+    .join(' ');
+  if (haystack.includes(needle)) return true;
+  return matchesAmountQuery(m.amount, search);
 };
 
 const matchesSearchEvent = (e: TreasuryEvent, search: string): boolean => {
   if (!search) return true;
-  const s = search.toLowerCase();
-  return (
-    (e.description ?? '').toLowerCase().includes(s) ||
-    (e.counterparty ?? '').toLowerCase().includes(s) ||
-    (e.providerName ?? '').toLowerCase().includes(s) ||
-    String(Math.abs(e.amount)).includes(s)
-  );
+  const needle = normalizeSearchText(search);
+  if (!needle) return true;
+  const haystack = [
+    e.description,
+    e.counterparty,
+    e.providerName,
+    e.providerNif,
+    e.invoiceNumber,
+  ]
+    .map(normalizeSearchText)
+    .join(' ');
+  if (haystack.includes(needle)) return true;
+  const eventAmount = e.actualAmount ?? e.amount;
+  return matchesAmountQuery(eventAmount, search);
 };
 
 const matchesAccount = (accountId: number | undefined, filter: number | null): boolean =>
