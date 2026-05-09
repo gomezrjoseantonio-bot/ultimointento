@@ -6,6 +6,7 @@ import type {
   Property,
   TreasuryEvent,
 } from '../../../../../services/db';
+import { cuentasService } from '../../../../../services/cuentasService';
 import {
   computeDocStatus,
   computeSlotState,
@@ -512,8 +513,14 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
         }),
       );
 
+      // Solo cuentas activas (mismo criterio que TesoreriaPage para que la
+      // lista de selección de cuenta refleje la realidad operativa).
+      const accountsActive = accountsAll.filter(
+        (a) => (a.status ?? 'ACTIVE') === 'ACTIVE',
+      );
+
       setAllRows(rows);
-      setAccounts(accountsAll);
+      setAccounts(accountsActive);
       setProperties(propertiesAll);
       setLoading(false);
     })();
@@ -521,6 +528,17 @@ export function useMonthConciliacion(filters: Filters): UseMonthConciliacionResu
       cancelled = true;
     };
   }, [filters.year, filters.month0, reloadToken]);
+
+  // Suscripción a cambios de cuentas (creación/edición/desactivación) para
+  // que el filtro de cuentas se refresque automáticamente sin recargar.
+  useEffect(() => {
+    const unsubscribe = cuentasService.on((event) => {
+      if (event === 'accounts:updated') setReloadToken((n) => n + 1);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const filteredRows = useMemo(() => applyFilters(allRows, filters), [allRows, filters]);
 
