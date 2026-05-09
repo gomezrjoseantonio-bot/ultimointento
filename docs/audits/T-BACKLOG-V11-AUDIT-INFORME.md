@@ -10,8 +10,8 @@
 
 ## §0 · Resumen ejecutivo (5 líneas)
 
-1. **TAREA 8** · de los 6 campos añadidos en T7 sub-1 · 3 están ✅ ACTIVO (`accounts.balance`, `documents.metadata.tipo`, `prestamos.liquidacion[]`) · 2 ❌ HUÉRFANO (`contracts.historicoRentas[]`, `movementLearningRules.history[]`) · 1 🟡 PARCIAL (`arrastresIRPF.origen` — index + backfill OK, sin reader que filtre).
-2. La cifra "9 campos" del backlog V11 está sobreestimada · la migración V60 sólo añadió 6 campos reales (los 3 stores restantes en sub-1 sólo recibieron JSDoc).
+1. **TAREA 8** · de los 6 campos relevantes afectados por T7 sub-1 · 3 están ✅ ACTIVO (`accounts.balance`, `documents.metadata.tipo`, `prestamos.liquidacion[]`) · 2 ❌ HUÉRFANO (`contracts.historicoRentas[]`, `movementLearningRules.history[]`) · 1 🟡 PARCIAL (`arrastresIRPF.origen` — index + backfill OK, pero el writer runtime `crearArrastreFiscal` no setea el campo y ningún reader filtra por él).
+2. La cifra "9 campos" del backlog V11 está sobreestimada · la migración V60 sólo afectó a 6 campos reales (5 nuevos + `accounts.balance` ya existente y sólo documentado en JSDoc) · los 3 stores restantes en sub-1 sólo recibieron JSDoc sin nuevo campo.
 3. **TAREA 12** · T20 ya saneó la arquitectura · los servicios centralizadores existen para los 3 módulos auditados (Mi Plan · Tesorería · Inmuebles) · los pocos accesos directos restantes son páginas raíz y wizards de import (patrón esperado · no anti-patrón).
 4. **Veredicto** · **R2** · TAREA 8 con 3 fields decisión (2 huérfanos eliminar/activar + 1 parcial completar) · alcance ≈ 1-1.5h CC · TAREA 12 marcar cerrada por T20.
 5. **Bloquea** · spec de implementación TAREA 8 sale con alcance acotado (3 campos · ~30 min cada uno) · spec TAREA 12 queda sin sentido y debe cerrarse en backlog V11 §3 Tabla 1.
@@ -329,7 +329,7 @@ Justificación ·
 ## §E · Reglas cumplidas
 
 - [x] CERO código modificado · CERO migraciones · sólo informe (1 archivo `.md` nuevo)
-- [x] §2 pre-flight ejecutado · output pegado literal (§1.1, §1.2, §1.3)
+- [x] Pre-flight (spec §2) ejecutado · output pegado literal en §1 del informe (§1.1, §1.2, §1.3)
 - [x] V11.4 aplicada · CC descubrió path real `src/modules/mi-plan/` (no existía `horizon/` ni `v5/`) · campos sospechosos descubiertos por grep (no sólo los 6 explícitos)
 - [x] §A · matriz campos · 9 filas (6 campos reales + 3 stores JSDoc)
 - [x] §B · matriz component→data · 3 módulos
