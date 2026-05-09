@@ -1,7 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { CardV5, Icons, showToastV5 } from '../../../design-system/v5';
 import type { FiscalOutletContext } from '../FiscalContext';
+import { perdidasPatrimonialesService } from '../../../services/perdidasPatrimonialesService';
+import type { PerdidaPatrimonialAhorro } from '../../../services/db';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 const ConfiguracionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -245,6 +248,135 @@ const ConfiguracionPage: React.FC = () => {
           </div>
         </CardV5.Body>
       </CardV5>
+
+      <PerdidasPatrimonialesPanel />
+    </>
+  );
+};
+
+const PerdidasPatrimonialesPanel: React.FC = () => {
+  const [items, setItems] = useState<PerdidaPatrimonialAhorro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<PerdidaPatrimonialAhorro | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    perdidasPatrimonialesService
+      .listar()
+      .then(setItems)
+      .catch((err) => {
+        console.error('Error listando pérdidas patrimoniales', err);
+        showToastV5('Error al cargar las pérdidas patrimoniales');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete?.id) return;
+    setWorking(true);
+    try {
+      await perdidasPatrimonialesService.eliminar(pendingDelete.id);
+      showToastV5('Pérdida patrimonial eliminada');
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error eliminando pérdida', err);
+      showToastV5('Error al eliminar la pérdida');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <>
+      <CardV5>
+        <CardV5.Title>Pérdidas patrimoniales del ahorro</CardV5.Title>
+        <CardV5.Subtitle>
+          atrasos compensables · 4 ejercicios · gestiona pérdidas importadas con error
+        </CardV5.Subtitle>
+        <CardV5.Body>
+          {loading ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>Cargando…</div>
+          ) : items.length === 0 ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>
+              Sin pérdidas patrimoniales registradas.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--atlas-v5-line)', color: 'var(--atlas-v5-ink-4)' }}>
+                    {['Ejercicio', 'Origen', 'Estado', 'Original', 'Aplicado', 'Pendiente', 'Caduca', ''].map((c, i) => (
+                      <th key={`${c}-${i}`} style={{
+                        padding: '8px 10px',
+                        textAlign: c === 'Original' || c === 'Aplicado' || c === 'Pendiente' ? 'right' : 'left',
+                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      }}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{p.ejercicioOrigen}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-3)' }}>{p.tipoOrigen}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-3)' }}>{p.estado.replace('_', ' ')}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
+                        {p.importeOriginal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
+                        {p.importeAplicado.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 600 }}>
+                        {p.importePendiente.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-4)' }}>{p.ejercicioCaducidad}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(p)}
+                          aria-label={`Eliminar pérdida ${p.ejercicioOrigen}`}
+                          title="Eliminar pérdida"
+                          style={{
+                            background: 'transparent', border: '1px solid var(--atlas-v5-line)',
+                            borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                            color: 'var(--atlas-v5-neg)', fontSize: 12, fontFamily: 'inherit',
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardV5.Body>
+      </CardV5>
+
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!working) setPendingDelete(null); }}
+        onConfirm={handleDelete}
+        title="Eliminar pérdida patrimonial"
+        message={
+          pendingDelete
+            ? `Vas a eliminar la pérdida del ejercicio ${pendingDelete.ejercicioOrigen} (${pendingDelete.tipoOrigen}, importe original ${pendingDelete.importeOriginal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}). ${
+                pendingDelete.importeAplicado > 0
+                  ? 'ATENCIÓN: tiene importes ya aplicados en ejercicios posteriores · esos cálculos pueden quedar inconsistentes hasta recalcularlos. '
+                  : ''
+              }Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={working}
+      />
     </>
   );
 };
