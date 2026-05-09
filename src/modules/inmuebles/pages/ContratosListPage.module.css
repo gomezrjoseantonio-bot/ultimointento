@@ -147,7 +147,7 @@
   position: absolute;
   right: 8px;
   top: calc(100% - 4px);
-  z-index: 20;
+  z-index: var(--atlas-v5-z-dropdown);
   background: var(--atlas-v5-card);
   border: 1px solid var(--atlas-v5-line);
   border-radius: 8px;

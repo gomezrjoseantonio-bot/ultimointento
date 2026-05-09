@@ -78,8 +78,8 @@ const ContratosListPage: React.FC = () => {
       if (report.treasuryEventsPredictedDeleted > 0) {
         detalle.push(`${report.treasuryEventsPredictedDeleted} eventos previstos`);
       }
-      if (report.treasuryEventsExecutedNullified > 0) {
-        detalle.push(`${report.treasuryEventsExecutedNullified} eventos históricos desvinculados`);
+      if (report.treasuryEventsHistoricUnlinked > 0) {
+        detalle.push(`${report.treasuryEventsHistoricUnlinked} eventos históricos desvinculados`);
       }
       if (report.presupuestoLineasDeleted > 0) {
         detalle.push(`${report.presupuestoLineasDeleted} líneas de presupuesto`);
@@ -287,9 +287,9 @@ const buildDeleteMessage = (
       `${cascade.treasuryEventsPredictedDeleted} eventos previstos de tesorería`,
     );
   }
-  if (cascade.treasuryEventsExecutedNullified > 0) {
+  if (cascade.treasuryEventsHistoricUnlinked > 0) {
     cascadaParts.push(
-      `${cascade.treasuryEventsExecutedNullified} eventos históricos quedarán desvinculados (sin borrar)`,
+      `${cascade.treasuryEventsHistoricUnlinked} eventos históricos quedarán desvinculados (sin borrar)`,
     );
   }
   if (cascade.presupuestoLineasDeleted > 0) {
