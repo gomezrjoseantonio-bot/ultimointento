@@ -10,7 +10,7 @@
 
 ## §0 · Resumen ejecutivo (5 líneas)
 
-1. **Catálogo de plantillas** · No existe un store/JSON de plantillas, pero **sí existen 2 catálogos UI cerrados**: `TIPOS_GASTO_PERSONAL` (5 grupos · 30 subtipos) y `TIPOS_GASTO_INMUEBLE_V2` (7 grupos · ~25 subtipos). El wizard NO empieza desde 0 · empieza por el selector tipoGasto→subtipo de esos catálogos · cubre IBI, comunidad, suministros, seguros, gestión, etc.
+1. **Catálogo de plantillas** · No existe un store/JSON de plantillas, pero **sí existen 2 catálogos UI cerrados**: `TIPOS_GASTO_PERSONAL` (6 grupos · 37 subtipos) y `TIPOS_GASTO_INMUEBLE_V2` (7 grupos · 23 subtipos). El wizard NO empieza desde 0 · empieza por el selector tipoGasto→subtipo de esos catálogos · cubre IBI, comunidad, suministros, seguros, gestión, etc.
 2. **Confirmación al store** · Servicio `personal/compromisosRecurrentesService.ts` expone CRUD completo · `crearCompromiso` valida invariantes, persiste en `compromisosRecurrentes` y **regenera automáticamente `treasuryEvents` predicted** · `actualizarCompromiso` y `eliminarCompromiso` también sincronizan eventos. Estados disponibles · `'activo' | 'pausado' | 'baja'` · NO existen `'sugerido'` ni `'confirmado'` (el flujo "sugerencia → aprobación" se resuelve en pantalla `DetectarCompromisosPage` SIN persistir candidatos · solo crea ya como `activo`).
 3. **Materialización** · La generación de cargos sí ocurre · `generarEventosDesdeCompromiso` + `regenerarEventosCompromiso` escriben en `treasuryEvents` con `sourceType='gasto_recurrente'` y `status='predicted'`. El "Próximo cargo · 29 may" del KPI es runtime sobre `expandirPatron` (NO persistido). Cargos materializados se ven en el `RowExpandedDetail` de cada fila al expandir · **pero NO en una vista agregada de "gastos materializados del mes"** · gap.
 4. **Botón Detectar** · SOLO en personal · navega a `/personal/gastos/detectar-compromisos`. Pantalla `DetectarCompromisosPage` invoca `compromisoDetectionService.detectCompromisos` (algoritmo 5 fases sobre `movements`) → muestra candidatos → usuario aprueba → `compromisoCreationService.createCompromisosFromCandidatos` los persiste como `estado='activo'` directamente. NO existe estado intermedio "sugerido". NO existe en inmueble por decisión spec TAREA 9 (heurística orientada a patrones personales bancarios).
@@ -40,7 +40,7 @@ $ grep -rnE "wizardSteps|stepCatalogo|elegirPlantilla|plantilla[A-Z]" src/module
 (sin matches)
 ```
 
-**Hallazgo no contemplado por la spec** · catálogo NO está como "plantillas" sino como **`TipoGastoSelector` + tablas tipadas** · `src/modules/personal/wizards/utils/tiposDeGastoPersonal.ts` (5 grupos · 30 subtipos) y `src/modules/inmuebles/wizards/utils/tiposDeGastoInmueble.ts` (7 grupos · ~25 subtipos). Ambos importados por sus respectivos `NuevoGastoRecurrente*Page.tsx`.
+**Hallazgo no contemplado por la spec** · catálogo NO está como "plantillas" sino como **`TipoGastoSelector` + tablas tipadas** · `src/modules/personal/wizards/utils/tiposDeGastoPersonal.ts` (6 grupos · 37 subtipos) y `src/modules/inmuebles/wizards/utils/tiposDeGastoInmueble.ts` (7 grupos · 23 subtipos). Ambos importados por sus respectivos `NuevoGastoRecurrente*Page.tsx`.
 
 ### §1.2 · Eje 2 · confirmación al store
 
@@ -218,14 +218,15 @@ $ grep -rnE "patron.*real|comparativaCompromiso|aprenderPatron" src/services/
 
 **SÍ hay catálogo · NO empieza de 0.** Cobertura real:
 
-**Personal** · 5 grupos · 30 subtipos · `tiposDeGastoPersonal.ts`:
+**Personal** · 6 grupos · 37 subtipos · `tiposDeGastoPersonal.ts`:
 - `vivienda` (alquiler · IBI · comunidad · seguro hogar)
 - `suministros` (luz · gas · agua · internet · móvil · otros)
 - `dia_a_dia` (supermercado · transporte · restaurantes · ocio · salud · ropa · cuidado · otros)
 - `suscripciones` (streaming · música · software · cloud · prensa · otros)
-- `seguros_cuotas` (seguro salud · coche · vida · gimnasio · educación · …)
+- `seguros_cuotas` (seguro salud · coche · vida · gimnasio · educación · profesional · ONG · otros)
+- `otros` (impuestos · multas · mantenimiento coche · personalizado)
 
-**Inmueble** · 7 grupos · ~25 subtipos · `tiposDeGastoInmueble.ts`:
+**Inmueble** · 7 grupos · 23 subtipos · `tiposDeGastoInmueble.ts`:
 - `tributos` (IBI · tasa basuras)
 - `comunidad` (cuota ordinaria · derrama)
 - `suministros` (luz · gas · agua · internet)
@@ -285,7 +286,7 @@ $ grep -rnE "patron.*real|comparativaCompromiso|aprenderPatron" src/services/
 > ¿Existe servicio que genere cargos reales desde el patrón? (cron · al abrir app · al cambiar mes · manual)
 
 **Sí · 4 disparadores**:
-1. **Al crear** un compromiso `estado='activo'` ⇒ se generan eventos hasta `HORIZONTE_MESES_DEFECTO` (probablemente 12 · pendiente leer constante)
+1. **Al crear** un compromiso `estado='activo'` ⇒ se generan eventos hasta `HORIZONTE_MESES_DEFECTO = 24` (constante en `compromisosRecurrentesService.ts:34`)
 2. **Al actualizar** un compromiso · se borran eventos futuros y se regeneran
 3. **Manual orquestado** · `regenerateForecastsForward({ force: true })` invocado en `NuevoGastoRecurrente*Page` tras guardar
 4. **Bootstrap inicial** · `treasuryBootstrapService.regenerateForecastsForward` se ejecuta al inicializar tesorería
@@ -335,7 +336,7 @@ NO se duplica en `gastosInmueble` (store legacy de gastos puntuales) ni en `move
 
 > ¿Qué hace el botón en personal? (fuente · output · efecto secundario)
 
-- **Fuente** · `db.movements` (lecto only · todos los movements)
+- **Fuente** · `db.movements` (solo lectura · todos los movements)
 - **Output** · array `CandidatoCompromiso[]` con `propuestaCompromiso` (objeto pre-rellenado), `score` y `motivosScore`
 - **Efecto secundario inmediato** · ninguno (lectura pura)
 - **Efecto secundario al APROBAR** · `compromisoCreationService.createCompromisosFromCandidatos` ⇒ `crearCompromiso` (uno por candidato) ⇒ persiste `compromisosRecurrentes` + regenera `treasuryEvents`. Idempotente · filtro por `cuentaCargo + conceptoBancario` similar contra el store
@@ -413,8 +414,8 @@ NO se duplica en `gastosInmueble` (store legacy de gastos puntuales) ni en `move
 ## §G · Riesgos y notas
 
 1. **Riesgo bajo** · `EditDrawer.tsx` no fue inspeccionado en detalle · solo confirmé que existe y se usa. Si Jose sospecha de comportamiento al editar, audit dedicado.
-2. **Constante `HORIZONTE_MESES_DEFECTO`** · referenciada en `generarEventosDesdeCompromiso:269` · no se leyó valor · presumiblemente 12 (estándar). Si fuese distinto, afectaría a la cola forward.
-3. **Vía A · `movementSuggestionService`** · no se auditó en este informe (fuera de scope · es matching banco→evento) · pero se confirma que se cabela vía `metadata.compromisoId` y `sourceType='gasto_recurrente'`.
+2. **Constante `HORIZONTE_MESES_DEFECTO = 24`** · definida en `compromisosRecurrentesService.ts:34` · usada en `generarEventosDesdeCompromiso:259` (línea 268 · `new Date().getMonth() + HORIZONTE_MESES_DEFECTO`). Cola forward de 24 meses por defecto.
+3. **Vía A · `movementSuggestionService`** · no se auditó en este informe (fuera de scope · es matching banco→evento) · pero se confirma que se cablea vía `metadata.compromisoId` y `sourceType='gasto_recurrente'`.
 4. **NO se ejecutaron tests** · audit es solo informe.
 
 ---
