@@ -20,7 +20,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -1428,7 +1428,7 @@ const Collapsible: React.FC<{
             color: 'var(--atlas-v5-ink-3)',
           }}
         >
-          <ChevronLeft size={14} style={{ transform: 'rotate(180deg)' }} />
+          <ChevronRight size={14} />
         </span>
         <span
           style={{

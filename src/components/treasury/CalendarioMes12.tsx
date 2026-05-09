@@ -52,9 +52,9 @@ export interface CalendarioMes12Props {
   /**
    * Movimientos · reservados para futura compatibilidad. La proyección
    * actual se infiere íntegramente de `events`, pero mantenemos el prop
-   * para no romper integraciones existentes.
+   * (opcional) para no romper integraciones existentes.
    */
-  movements: CalendarMovement[];
+  movements?: CalendarMovement[];
   /** Cuentas activas · usadas para fallback si totalSaldo no se pasa. */
   accounts?: CalendarAccount[];
   /** Saldo consolidado HOY · anchor de la proyección (mockup v8). */
