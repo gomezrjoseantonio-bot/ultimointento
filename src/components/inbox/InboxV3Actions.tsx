@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { MoreVertical, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
 
 interface InboxV3ActionsProps {
   onProcessOCR?: () => void; // opcional — se muestra solo si se pasa
   onAssign: () => void;
+  onEdit?: () => void; // D-CRUD-ALTA sub-tarea 4 · editar metadata
   onDelete: () => void;
   disableActions?: boolean;
 }
@@ -11,6 +12,7 @@ interface InboxV3ActionsProps {
 const InboxV3Actions: React.FC<InboxV3ActionsProps> = ({
   onProcessOCR,
   onAssign,
+  onEdit,
   onDelete,
   disableActions,
 }) => {
@@ -54,8 +56,20 @@ const InboxV3Actions: React.FC<InboxV3ActionsProps> = ({
             borderColor: 'var(--n-200)',
             borderRadius: 'var(--r-md)',
             boxShadow: 'var(--shadow-1)',
+            minWidth: 160,
           }}
         >
+          {onEdit && (
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm"
+              style={{ color: 'var(--n-900)', fontFamily: 'var(--font-base)' }}
+              onClick={() => { setMenuOpen(false); onEdit(); }}
+            >
+              <Pencil size={14} />
+              Editar metadata
+            </button>
+          )}
           <button
             type="button"
             className="w-full flex items-center gap-2 px-3 py-2 text-sm"

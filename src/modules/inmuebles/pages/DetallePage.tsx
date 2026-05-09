@@ -20,6 +20,13 @@ import type { CompromisoRecurrente } from '../../../types/compromisosRecurrentes
 import { getTipoActivoEffective, TIPO_ACTIVO_LABELS } from '../../../types/tipoActivo';
 import { ListadoGastosRecurrentes } from '../../shared/components/ListadoGastos';
 import { TIPOS_GASTO_INMUEBLE_V2 } from '../wizards/utils/tiposDeGastoInmueble';
+import {
+  deleteInmuebleWithCascade,
+  previewDeleteInmuebleCascade,
+  summarizeCascadeReport,
+  type DeleteInmuebleCascadeReport,
+} from '../../../services/inmuebleDeleteService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import styles from './DetallePage.module.css';
 
 
@@ -44,9 +51,11 @@ const DetallePage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const propertyId = Number(id);
-  const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
+  const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
   const [tab, setTab] = useState<Tab>('resumen');
   const [gastos, setGastos] = useState<CompromisoRecurrente[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<DeleteInmuebleCascadeReport | null>(null);
+  const [isDeletingInmueble, setIsDeletingInmueble] = useState(false);
 
   useEffect(() => {
     void listarCompromisos({ ambito: 'inmueble', inmuebleId: propertyId }).then(setGastos);
@@ -177,6 +186,21 @@ const DetallePage: React.FC = () => {
                   variant: 'ghost',
                   icon: <Icons.Edit size={14} strokeWidth={1.8} />,
                   onClick: () => navigate(`/inmuebles/${property.id}/editar`),
+                },
+                {
+                  label: 'Eliminar',
+                  variant: 'ghost',
+                  icon: <Icons.Delete size={14} strokeWidth={1.8} />,
+                  onClick: async () => {
+                    if (property.id == null) return;
+                    try {
+                      const report = await previewDeleteInmuebleCascade(property.id);
+                      setPendingDelete(report);
+                    } catch (err) {
+                      console.error('Error preparing inmueble deletion', err);
+                      showToastV5('No se pudo preparar el borrado del inmueble');
+                    }
+                  },
                 },
                 {
                   label: 'Nuevo contrato',
@@ -413,6 +437,45 @@ const DetallePage: React.FC = () => {
           próxima iteración.
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!isDeletingInmueble) setPendingDelete(null); }}
+        onConfirm={async () => {
+          if (property.id == null) return;
+          setIsDeletingInmueble(true);
+          try {
+            const report = await deleteInmuebleWithCascade(property.id);
+            const summary = summarizeCascadeReport(report);
+            const sufijo = summary.length > 0 ? ` · ${summary.join(' · ')}` : '';
+            showToastV5(`Inmueble eliminado${sufijo}`);
+            setPendingDelete(null);
+            reload();
+            navigate('/inmuebles');
+          } catch (err) {
+            console.error('Error deleting inmueble', err);
+            showToastV5('Error al eliminar el inmueble');
+          } finally {
+            setIsDeletingInmueble(false);
+          }
+        }}
+        title={`Eliminar inmueble · ${property.alias}`}
+        message={
+          pendingDelete
+            ? (() => {
+                const items = summarizeCascadeReport(pendingDelete);
+                if (items.length === 0) {
+                  return `Vas a eliminar el inmueble "${property.alias}". No tiene entidades dependientes. Esta acción no se puede deshacer.`;
+                }
+                return `Vas a eliminar el inmueble "${property.alias}". Se eliminarán también: ${items.join(' · ')}. Esta acción no se puede deshacer.`;
+              })()
+            : ''
+        }
+        confirmText="Eliminar definitivamente"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeletingInmueble}
+      />
     </>
   );
 };

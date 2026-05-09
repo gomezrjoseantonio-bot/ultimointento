@@ -21,6 +21,7 @@ import {
 import toast from 'react-hot-toast';
 import InboxV3DocumentList from '../components/inbox/InboxV3DocumentList';
 import InboxV3Actions from '../components/inbox/InboxV3Actions';
+import EditDocumentMetadataModal from '../components/inbox/EditDocumentMetadataModal';
 import InboxV3ExtractedPanel from '../components/inbox/InboxV3ExtractedPanel';
 
 const PdfPreview = React.lazy(() => import('../components/inbox/PdfPreview'));
@@ -32,6 +33,7 @@ const InboxPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<any[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [showEditMetadataModal, setShowEditMetadataModal] = useState(false);
   const [processingOCR, setProcessingOCR] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<(typeof tabItems)[number]>('Pendientes');
@@ -441,6 +443,7 @@ const InboxPage: React.FC = () => {
                 <InboxV3Actions
                   onAssign={handleAssign}
                   onDelete={requestDelete}
+                  onEdit={() => selectedDocument && setShowEditMetadataModal(true)}
                   onProcessOCR={handleProcessOCR}
                   disableActions={!selectedDocument || processingOCR}
                 />
@@ -480,6 +483,18 @@ const InboxPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <EditDocumentMetadataModal
+        isOpen={showEditMetadataModal}
+        document={selectedDocument}
+        onClose={() => setShowEditMetadataModal(false)}
+        onSaved={(updatedDoc) => {
+          const updatedDocs = documents.map((d) => (d.id === updatedDoc.id ? updatedDoc : d));
+          setDocuments(updatedDocs);
+          setSelectedDocument(updatedDoc);
+          invalidateCachedStores(['documents']);
+        }}
+      />
     </div>
   );
 };
