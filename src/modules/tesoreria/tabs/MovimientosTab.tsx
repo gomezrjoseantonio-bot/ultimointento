@@ -153,6 +153,18 @@ const MovimientosTab: React.FC = () => {
     else params.set('status', next);
     setSearchParams(params, { replace: true });
   };
+  // `?day=YYYY-MM-DD` filtra por día exacto. Se cablea desde el drawer día
+  // del calendario en Vista General (sub-tarea 3 calendario fixes).
+  const dayFilter: string | null = (() => {
+    const raw = searchParams.get('day');
+    if (!raw) return null;
+    return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+  })();
+  const clearDayFilter = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('day');
+    setSearchParams(params, { replace: true });
+  };
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>(''); // 'YYYY-MM' or ''
   const [drawerEventId, setDrawerEventId] = useState<number | null>(null);
@@ -224,10 +236,18 @@ const MovimientosTab: React.FC = () => {
         return toYearMonth(dateStr) === monthFilter;
       })
       .filter((row) => {
+        if (!dayFilter) return true;
+        const dateStr =
+          row.kind === 'movement'
+            ? (row.data as Movement).date
+            : (row.data as TreasuryEvent).predictedDate;
+        return toDateKey(dateStr) === dayFilter;
+      })
+      .filter((row) => {
         if (row.kind === 'movement') return matchesSearch(row.data, search);
         return matchesSearchEvent(row.data, search);
       });
-  }, [allRows, statusFilter, accountFilter, monthFilter, search]);
+  }, [allRows, statusFilter, accountFilter, monthFilter, dayFilter, search]);
 
   /** Rows with date-group headers injected (for treasury events only). */
   const tableRows = useMemo((): TableRow[] => {
@@ -422,6 +442,17 @@ const MovimientosTab: React.FC = () => {
               })}
             </select>
           </>
+        )}
+        {dayFilter && (
+          <button
+            type="button"
+            className={styles.filtChipClear}
+            onClick={clearDayFilter}
+            aria-label={`Quitar filtro día ${dayFilter}`}
+            title="Quitar filtro día"
+          >
+            Día: {dayFilter.slice(8, 10)}/{dayFilter.slice(5, 7)}/{dayFilter.slice(0, 4)} ✕
+          </button>
         )}
         <span className={styles.filtSearch}>
           <Icons.Search size={14} strokeWidth={1.8} />

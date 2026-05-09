@@ -75,6 +75,15 @@ export interface MesDetalleDrawerProps {
   events: MesDrawerEvent[];
   accounts: MesDrawerAccount[];
   onClose: () => void;
+  /** Navegar a Conciliación filtrada por día + cuenta. Sub-tarea 3 calendario fixes. */
+  onIrAConciliacionDia?: (dayIso: string, accountId: number | undefined) => void;
+  /**
+   * Conciliar un treasury event desde el drawer día. Recibe los ids de los
+   * eventos seleccionados y devuelve `{ ok, failed }`. Sub-tarea 4.
+   */
+  onConciliarSeleccion?: (
+    eventIds: number[],
+  ) => Promise<{ ok: number; failed: number }>;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -141,6 +150,8 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
   events,
   accounts,
   onClose,
+  onIrAConciliacionDia,
+  onConciliarSeleccion,
 }) => {
   const [diaSeleccionado, setDiaSeleccionado] = useState<number | null>(null);
 
@@ -343,6 +354,8 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
               dia={diaSeleccionado}
               eventosMes={eventosMes}
               accounts={accounts}
+              onIrAConciliacion={onIrAConciliacionDia}
+              onConciliarSeleccion={onConciliarSeleccion}
             />
           )}
         </div>
@@ -578,6 +591,10 @@ interface NivelDiaProps {
   dia: number;
   eventosMes: MesDrawerEvent[];
   accounts: MesDrawerAccount[];
+  onIrAConciliacion?: (dayIso: string, accountId: number | undefined) => void;
+  onConciliarSeleccion?: (
+    eventIds: number[],
+  ) => Promise<{ ok: number; failed: number }>;
 }
 
 const NivelDia: React.FC<NivelDiaProps> = ({
@@ -586,6 +603,8 @@ const NivelDia: React.FC<NivelDiaProps> = ({
   dia,
   eventosMes,
   accounts,
+  onIrAConciliacion,
+  onConciliarSeleccion,
 }) => {
   const fechaIso = dayKey(year, monthIndex0, dia);
 
@@ -638,6 +657,20 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
   const cuentasEnRiesgo = breakdown.filter((b) => b.warn);
 
+  // Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
+  // y acción "Ver en Conciliación" (filtra por día + cuenta).
+  const eventosDelDia = useMemo(
+    () => eventosMes.filter((e) => e.predictedDate.startsWith(fechaIso)),
+    [eventosMes, fechaIso],
+  );
+  const accountById = useMemo(() => {
+    const map = new Map<number, MesDrawerAccount>();
+    for (const a of accounts) {
+      if (a.id != null) map.set(a.id, a);
+    }
+    return map;
+  }, [accounts]);
+
   return (
     <>
       <KpisGrid>
@@ -659,7 +692,29 @@ const NivelDia: React.FC<NivelDiaProps> = ({
         />
       </KpisGrid>
 
-      <SectionHd>Saldo proyectado por cuenta · fin de día</SectionHd>
+      {eventosDelDia.length > 0 && (
+        <>
+          <SectionHd>Movimientos del día</SectionHd>
+          {eventosDelDia.map((e, idx) => (
+            <EventoDiaRow
+              key={`evt-${e.id ?? idx}`}
+              evento={e}
+              account={
+                e.accountId != null ? accountById.get(e.accountId) : undefined
+              }
+              onIrAConciliacion={
+                onIrAConciliacion
+                  ? () => onIrAConciliacion(fechaIso, e.accountId)
+                  : undefined
+              }
+            />
+          ))}
+        </>
+      )}
+
+      <SectionHd style={{ marginTop: eventosDelDia.length > 0 ? 22 : 0 }}>
+        Saldo proyectado por cuenta · fin de día
+      </SectionHd>
       {breakdown.length === 0 ? (
         <div style={{ padding: '20px 0', color: 'var(--atlas-v5-ink-4)', fontSize: 13 }}>
           No hay cuentas configuradas.
@@ -693,6 +748,112 @@ const NivelDia: React.FC<NivelDiaProps> = ({
         </div>
       )}
     </>
+  );
+};
+
+// ─── Pieza · EventoDiaRow ───────────────────────────────────────────────────
+// Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
+// y acción "Ver en Conciliación" filtrada por día + cuenta. Reutiliza helpers
+// existentes (shortAlias, ibanLast4, bankColor, logoInitials) para mantener
+// coherencia visual con CuentaDiaRow · NO inventa componentes nuevos.
+
+const EventoDiaRow: React.FC<{
+  evento: MesDrawerEvent;
+  account: MesDrawerAccount | undefined;
+  onIrAConciliacion?: () => void;
+}> = ({ evento, account, onIrAConciliacion }) => {
+  const isPos = evento.type === 'income';
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '28px 1fr auto auto',
+        gap: 10,
+        padding: '10px 12px',
+        border: '1px solid var(--atlas-v5-line-2)',
+        borderRadius: 8,
+        marginBottom: 6,
+        alignItems: 'center',
+        background: 'var(--atlas-v5-card)',
+      }}
+    >
+      <div
+        style={{
+          width: 26,
+          height: 26,
+          borderRadius: 6,
+          display: 'grid',
+          placeItems: 'center',
+          color: 'var(--atlas-v5-white)',
+          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          fontSize: 9,
+          fontWeight: 700,
+          background: account ? bankColor(account) : 'var(--atlas-v5-ink-5)',
+        }}
+        aria-hidden="true"
+      >
+        {account ? logoInitials(account) : '—'}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: 'var(--atlas-v5-ink)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {evento.description || (isPos ? 'Ingreso' : 'Gasto')}
+        </div>
+        <div
+          style={{
+            fontSize: 10.5,
+            color: 'var(--atlas-v5-ink-4)',
+            marginTop: 2,
+            fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          }}
+        >
+          {account
+            ? `${shortAlias(account)}${ibanLast4(account) ? ` · ${ibanLast4(account)}` : ''}`
+            : 'Sin cuenta asociada'}
+        </div>
+      </div>
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+          fontSize: 13,
+          fontWeight: 700,
+          color: isPos ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {isPos ? '+' : '−'}{formatEur(evento.amount)} €
+      </div>
+      {onIrAConciliacion ? (
+        <button
+          type="button"
+          onClick={onIrAConciliacion}
+          aria-label="Ver en Conciliación"
+          title="Ver en Conciliación"
+          style={{
+            border: '1px solid var(--atlas-v5-line)',
+            background: 'var(--atlas-v5-card)',
+            borderRadius: 6,
+            padding: '4px 8px',
+            fontSize: 10.5,
+            color: 'var(--atlas-v5-ink-3)',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Ver →
+        </button>
+      ) : (
+        <span />
+      )}
+    </div>
   );
 };
 

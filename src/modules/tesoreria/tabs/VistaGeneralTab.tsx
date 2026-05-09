@@ -477,6 +477,13 @@ const VistaGeneralTab: React.FC = () => {
         events={treasuryEvents}
         accounts={accounts}
         onClose={() => setDrawerMes(null)}
+        onIrAConciliacionDia={(dayIso, accountId) => {
+          setDrawerMes(null);
+          const params = new URLSearchParams();
+          params.set('day', dayIso);
+          if (accountId != null) params.set('cuenta', String(accountId));
+          navigate(`/tesoreria/movimientos?${params.toString()}`);
+        }}
       />
 
       <MovimientoDrawer
