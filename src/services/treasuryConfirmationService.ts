@@ -752,6 +752,13 @@ export async function revertTreasuryConfirmation(
       console.warn('[treasuryConfirmation] cascade revert de traspaso falló', err);
     }
   }
+
+  // Recalcular saldo de la cuenta del movement borrado. Para la pata espejo
+  // de traspaso, la llamada recursiva de arriba dispara su propio recalc.
+  scheduleAccountBalanceRecalc([
+    movement.accountId,
+    revertedEvent?.accountId,
+  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
