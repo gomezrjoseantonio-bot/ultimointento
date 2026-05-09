@@ -1,4 +1,4 @@
-import { initDB, Contract, RentaMensual } from './db';
+import { initDB, Contract, HistoricoRenta, RentaMensual } from './db';
 
 type SignatureMetadata = NonNullable<Contract['firma']>;
 
@@ -136,7 +136,27 @@ export const updateContract = async (id: number, updates: Partial<Contract>): Pr
     firma,
     updatedAt: new Date().toISOString(),
   };
-  
+
+  // B-TAREA8-MINIS sub-tarea 3 (Caso B): si cambia rentaMensual, registrar
+  // entrada en historicoRentas[] con origen='manual'. Activación tras V62
+  // (eliminación store rentaMensual) — el campo era huérfano sin escritor.
+  // No se añade UI ni reader: solo escritura para uso futuro.
+  const newRenta = updates.rentaMensual;
+  if (
+    'rentaMensual' in updates &&
+    typeof newRenta === 'number' &&
+    newRenta !== existing.rentaMensual
+  ) {
+    const previousHistorico = existing.historicoRentas ?? [];
+    const fechaDesde = new Date().toISOString().slice(0, 10);
+    const newEntry: HistoricoRenta = {
+      fechaDesde,
+      importe: newRenta,
+      origen: 'manual',
+    };
+    updatedContract.historicoRentas = [...previousHistorico, newEntry];
+  }
+
   await db.put('contracts', updatedContract);
   
   // If dates, rent, or fiscal data changed, regenerate monthly forecasts
