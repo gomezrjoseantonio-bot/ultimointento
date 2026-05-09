@@ -11,6 +11,12 @@ import {
 } from '../../../design-system/v5';
 import type { Contract } from '../../../services/db';
 import type { InmueblesOutletContext } from '../InmueblesContext';
+import {
+  deleteContractWithCascade,
+  previewDeleteContractCascade,
+  type DeleteContractCascadeReport,
+} from '../../../services/contractService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 import styles from './ContratosListPage.module.css';
 
 type Tab = 'disponibilidad' | 'acciones' | 'activos' | 'historico';
@@ -37,11 +43,58 @@ const isExpiringSoon = (c: Contract, today: Date, daysWindow = 90): boolean => {
 
 const ContratosListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { properties, contracts } = useOutletContext<InmueblesOutletContext>();
+  const { properties, contracts, reload } = useOutletContext<InmueblesOutletContext>();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab: Tab = isValidTab(searchParams.get('tab')) ? (searchParams.get('tab') as Tab) : 'activos';
   const [tab, setTab] = useState<Tab>(initialTab);
   const today = useMemo(() => new Date(), []);
+  const [pendingDelete, setPendingDelete] = useState<{
+    contract: Contract & { id: number };
+    cascade: DeleteContractCascadeReport;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const requestDelete = async (contract: Contract & { id: number }): Promise<void> => {
+    try {
+      const cascade = await previewDeleteContractCascade(contract.id);
+      setPendingDelete({ contract, cascade });
+    } catch (err) {
+      console.error('Error preparing contract deletion', err);
+      showToastV5('No se pudo preparar el borrado del contrato');
+    }
+  };
+
+  const cancelDelete = (): void => {
+    if (isDeleting) return;
+    setPendingDelete(null);
+  };
+
+  const confirmDelete = async (): Promise<void> => {
+    if (!pendingDelete) return;
+    setIsDeleting(true);
+    try {
+      const report = await deleteContractWithCascade(pendingDelete.contract.id);
+      const detalle: string[] = [];
+      if (report.treasuryEventsPredictedDeleted > 0) {
+        detalle.push(`${report.treasuryEventsPredictedDeleted} eventos previstos`);
+      }
+      if (report.treasuryEventsExecutedNullified > 0) {
+        detalle.push(`${report.treasuryEventsExecutedNullified} eventos históricos desvinculados`);
+      }
+      if (report.presupuestoLineasDeleted > 0) {
+        detalle.push(`${report.presupuestoLineasDeleted} líneas de presupuesto`);
+      }
+      const sufijo = detalle.length > 0 ? ` · ${detalle.join(' · ')}` : '';
+      showToastV5(`Contrato eliminado${sufijo}`);
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error deleting contract', err);
+      showToastV5('Error al eliminar el contrato');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Sincronizar tab cuando cambia el query param (navegación externa · back/forward · enlace)
   useEffect(() => {
@@ -157,6 +210,7 @@ const ContratosListPage: React.FC = () => {
           emptyTitle="Sin contratos activos"
           emptySub="No hay contratos en vigor a fecha de hoy."
           onNew={() => navigate('/contratos/nuevo')}
+          onDelete={requestDelete}
         />
       )}
 
@@ -168,6 +222,7 @@ const ContratosListPage: React.FC = () => {
           emptyTitle="Sin contratos registrados"
           emptySub="Aún no hay contratos en la base de datos."
           onNew={() => navigate('/contratos/nuevo')}
+          onDelete={requestDelete}
         />
       )}
 
@@ -187,6 +242,7 @@ const ContratosListPage: React.FC = () => {
               emptyTitle=""
               emptySub=""
               onNew={() => navigate('/contratos/nuevo')}
+              onDelete={requestDelete}
             />
           )}
         </>
@@ -200,8 +256,49 @@ const ContratosListPage: React.FC = () => {
           libres del total de {totalUnidades}.
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Eliminar contrato"
+        message={
+          pendingDelete
+            ? buildDeleteMessage(pendingDelete.contract, pendingDelete.cascade)
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </>
   );
+};
+
+const buildDeleteMessage = (
+  contract: Contract,
+  cascade: DeleteContractCascadeReport,
+): string => {
+  const tenant = `${contract.inquilino.nombre} ${contract.inquilino.apellidos}`.trim();
+  const cascadaParts: string[] = [];
+  if (cascade.treasuryEventsPredictedDeleted > 0) {
+    cascadaParts.push(
+      `${cascade.treasuryEventsPredictedDeleted} eventos previstos de tesorería`,
+    );
+  }
+  if (cascade.treasuryEventsExecutedNullified > 0) {
+    cascadaParts.push(
+      `${cascade.treasuryEventsExecutedNullified} eventos históricos quedarán desvinculados (sin borrar)`,
+    );
+  }
+  if (cascade.presupuestoLineasDeleted > 0) {
+    cascadaParts.push(`${cascade.presupuestoLineasDeleted} líneas de presupuesto`);
+  }
+  const cascadaTexto = cascadaParts.length > 0
+    ? ` Se eliminarán también: ${cascadaParts.join(' · ')}.`
+    : '';
+  return `Vas a eliminar el contrato de ${tenant}.${cascadaTexto} Esta acción no se puede deshacer.`;
 };
 
 interface ContractsTableProps {
@@ -211,6 +308,7 @@ interface ContractsTableProps {
   emptyTitle: string;
   emptySub: string;
   onNew: () => void;
+  onDelete: (contract: Contract & { id: number }) => void;
 }
 
 const ContractsTable: React.FC<ContractsTableProps> = ({
@@ -220,7 +318,17 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
   emptyTitle,
   emptySub,
   onNew,
+  onDelete,
 }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const close = (): void => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
+
   if (contracts.length === 0) {
     return (
       <EmptyState
@@ -245,6 +353,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
             <th>Fin</th>
             <th className="r">Renta</th>
             <th className="c">Estado</th>
+            <th className={styles.actionsCell} aria-label="Acciones" />
           </tr>
         </thead>
         <tbody>
@@ -254,6 +363,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
               const activo = isContractActiveAt(c, today);
               const expiring = isExpiringSoon(c, today, 90);
               const propertyAlias = propertyById.get(c.inmuebleId) ?? `#${c.inmuebleId}`;
+              const menuOpen = openMenuId === c.id;
               return (
                 <tr
                   key={c.id}
@@ -293,6 +403,41 @@ const ContractsTable: React.FC<ContractsTableProps> = ({
                           ? 'Activo'
                           : 'Inactivo'}
                     </Pill>
+                  </td>
+                  <td
+                    className={styles.actionsCell}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      type="button"
+                      className={styles.kebabBtn}
+                      aria-label="Acciones del contrato"
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpen}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenMenuId(menuOpen ? null : c.id);
+                      }}
+                    >
+                      <Icons.More size={16} strokeWidth={1.8} />
+                    </button>
+                    {menuOpen && (
+                      <div className={styles.menuPopover} role="menu">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(null);
+                            onDelete(c);
+                          }}
+                        >
+                          <Icons.Delete size={14} strokeWidth={1.8} />
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

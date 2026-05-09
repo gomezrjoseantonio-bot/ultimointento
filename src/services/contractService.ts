@@ -184,6 +184,97 @@ export const deleteContract = async (id: number): Promise<void> => {
   await db.delete('contracts', id);
 };
 
+export interface DeleteContractCascadeReport {
+  treasuryEventsPredictedDeleted: number;
+  treasuryEventsExecutedNullified: number;
+  presupuestoLineasDeleted: number;
+}
+
+// Cuenta las dependencias que se verían afectadas si se borra el contrato.
+// Útil para mostrar al usuario en la modal de confirmación antes de ejecutar
+// el borrado destructivo.
+export const previewDeleteContractCascade = async (
+  id: number,
+): Promise<DeleteContractCascadeReport> => {
+  const db = await initDB();
+  const report: DeleteContractCascadeReport = {
+    treasuryEventsPredictedDeleted: 0,
+    treasuryEventsExecutedNullified: 0,
+    presupuestoLineasDeleted: 0,
+  };
+
+  if (db.objectStoreNames.contains('treasuryEvents')) {
+    const events = await db.getAll('treasuryEvents');
+    for (const ev of events) {
+      if ((ev as { contratoId?: number }).contratoId !== id) continue;
+      if ((ev as { status?: string }).status === 'predicted') {
+        report.treasuryEventsPredictedDeleted += 1;
+      } else {
+        report.treasuryEventsExecutedNullified += 1;
+      }
+    }
+  }
+
+  if (db.objectStoreNames.contains('presupuestoLineas')) {
+    const lineas = await db.getAll('presupuestoLineas');
+    report.presupuestoLineasDeleted = lineas.filter(
+      (l) => (l as { contratoId?: number }).contratoId === id,
+    ).length;
+  }
+
+  return report;
+};
+
+// Borrado en cascada del contrato.
+// - treasuryEvents.status='predicted' con contratoId === id → borrar (forecast obsoleto)
+// - treasuryEvents.status='confirmed'|'executed' con contratoId === id → conservar pero anular contratoId (histórico real)
+// - presupuestoLineas con contratoId === id → borrar (líneas derivadas)
+// - propertyDays / valoraciones / gastosInmueble → no referencian contratoId, no se tocan
+export const deleteContractWithCascade = async (
+  id: number,
+): Promise<DeleteContractCascadeReport> => {
+  const db = await initDB();
+  const report: DeleteContractCascadeReport = {
+    treasuryEventsPredictedDeleted: 0,
+    treasuryEventsExecutedNullified: 0,
+    presupuestoLineasDeleted: 0,
+  };
+
+  if (db.objectStoreNames.contains('treasuryEvents')) {
+    const events = await db.getAll('treasuryEvents');
+    for (const ev of events) {
+      const contratoId = (ev as { contratoId?: number }).contratoId;
+      if (contratoId !== id) continue;
+      const evId = (ev as { id?: number }).id;
+      const status = (ev as { status?: string }).status;
+      if (evId == null) continue;
+      if (status === 'predicted') {
+        await db.delete('treasuryEvents', evId);
+        report.treasuryEventsPredictedDeleted += 1;
+      } else {
+        const updated = { ...(ev as Record<string, unknown>) };
+        delete (updated as { contratoId?: number }).contratoId;
+        await db.put('treasuryEvents', updated as never);
+        report.treasuryEventsExecutedNullified += 1;
+      }
+    }
+  }
+
+  if (db.objectStoreNames.contains('presupuestoLineas')) {
+    const lineas = await db.getAll('presupuestoLineas');
+    for (const linea of lineas) {
+      if ((linea as { contratoId?: number }).contratoId !== id) continue;
+      const lineaId = (linea as { id?: number | string }).id;
+      if (lineaId == null) continue;
+      await db.delete('presupuestoLineas', lineaId as never);
+      report.presupuestoLineasDeleted += 1;
+    }
+  }
+
+  await db.delete('contracts', id);
+  return report;
+};
+
 export const rescindContract = async (id: number, fechaRescision: string, motivo: string): Promise<void> => {
   const db = await initDB();
   const contract = await db.get('contracts', id);
