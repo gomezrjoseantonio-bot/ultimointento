@@ -30,6 +30,29 @@ import {
   isTransferKey,
   type CategoryDef,
 } from './categoryCatalog';
+import { recalculateAccountBalance } from './treasuryEventsService';
+
+// Fire-and-forget recálculo del saldo de las cuentas afectadas. Errores se
+// loguean pero no rompen la operación principal de tesorería.
+function scheduleAccountBalanceRecalc(
+  accountIds: Array<number | null | undefined>,
+): void {
+  const unique = Array.from(
+    new Set(
+      accountIds.filter(
+        (id): id is number => typeof id === 'number' && Number.isFinite(id),
+      ),
+    ),
+  );
+  for (const accountId of unique) {
+    void recalculateAccountBalance(accountId).catch((err) => {
+      console.warn(
+        `[treasuryConfirmation] recalculateAccountBalance(${accountId}) falló`,
+        err,
+      );
+    });
+  }
+}
 
 export interface ConfirmOverrides {
   amount?: number;
@@ -541,6 +564,14 @@ export async function confirmTreasuryEvent(
       console.warn('[treasuryConfirmation] G-07 hook falló al crear aportación plan', err);
     }
   }
+
+  // Recalcular saldo de la cuenta afectada (la del movement creado · si el
+  // override cambió accountId, recalc también la del event original por si
+  // acaso). Fire-and-forget · errores no rompen la confirmación.
+  scheduleAccountBalanceRecalc([
+    overrides?.accountId ?? existingEvent.accountId,
+    existingEvent.accountId,
+  ]);
 
   return {
     movementId,
