@@ -1323,3 +1323,112 @@ export async function updateTreasuryEventFields(
 
   await (db as any).put('treasuryEvents', updated);
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// S-TESORERIA-FILTROS-V2 ST5 · operaciones bulk · servicios preparados
+// para cuando la UI cablee selección múltiple de previsiones / movimientos.
+// Todas las operaciones acumulan errores sin romper el batch · devuelven
+// `{ ok, failed }` para que la UI pueda mostrar el detalle.
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface BulkResult {
+  ok: number[];
+  failed: Array<{ id: number; error: string }>;
+}
+
+/**
+ * Confirma múltiples previsiones en serie. Cada confirmación delega en
+ * `confirmTreasuryEvent` (que abre su propia tx + recalcula saldos), por lo
+ * que NO se agrupa en una sola transacción IDB · sería peligroso porque
+ * `confirmTreasuryEvent` también escribe en stores condicionales (gastos /
+ * mejoras / muebles) y mantiene su contrato de invariantes.
+ */
+export async function bulkConfirmTreasuryEvents(
+  eventIds: number[],
+): Promise<BulkResult> {
+  const result: BulkResult = { ok: [], failed: [] };
+  for (const id of eventIds) {
+    try {
+      await confirmTreasuryEvent(id);
+      result.ok.push(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error confirmando previsión';
+      result.failed.push({ id, error: msg });
+    }
+  }
+  return result;
+}
+
+/**
+ * Marca múltiples movements como `statusConciliacion: 'sin_match'`. Útil para
+ * descartar en bloque movimientos que el usuario sabe que NO se concilian
+ * con ninguna previsión (ej. cargos administrativos del banco). Una sola
+ * transacción IDB para minimizar writes.
+ */
+export async function bulkMarkMovementsAsSinMatch(
+  movementIds: number[],
+): Promise<BulkResult> {
+  const result: BulkResult = { ok: [], failed: [] };
+  if (movementIds.length === 0) return result;
+  const db = await initDB();
+  const tx = db.transaction('movements', 'readwrite');
+  const store = tx.objectStore('movements') as any;
+  const now = new Date().toISOString();
+  for (const id of movementIds) {
+    try {
+      const movement = (await store.get(id)) as Movement | undefined;
+      if (!movement) {
+        result.failed.push({ id, error: 'Movimiento no encontrado' });
+        continue;
+      }
+      await store.put({
+        ...movement,
+        statusConciliacion: 'sin_match' as const,
+        updatedAt: now,
+      });
+      result.ok.push(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error marcando movimiento';
+      result.failed.push({ id, error: msg });
+    }
+  }
+  await tx.done;
+  return result;
+}
+
+/**
+ * Asigna un contrato a múltiples treasuryEvents en una única transacción.
+ * Útil para alquileres recurrentes que el sistema no asoció automáticamente.
+ * No toca el movement vinculado · solo el event.
+ */
+export async function bulkAssignContratoToEvents(
+  eventIds: number[],
+  contratoId: number,
+): Promise<BulkResult> {
+  const result: BulkResult = { ok: [], failed: [] };
+  if (eventIds.length === 0) return result;
+  const db = await initDB();
+  const tx = db.transaction('treasuryEvents', 'readwrite');
+  const store = tx.objectStore('treasuryEvents') as any;
+  const now = new Date().toISOString();
+  for (const id of eventIds) {
+    try {
+      const event = (await store.get(id)) as TreasuryEvent | undefined;
+      if (!event) {
+        result.failed.push({ id, error: 'Previsión no encontrada' });
+        continue;
+      }
+      await store.put({
+        ...event,
+        contratoId,
+        updatedAt: now,
+      });
+      result.ok.push(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error asignando contrato';
+      result.failed.push({ id, error: msg });
+    }
+  }
+  await tx.done;
+  return result;
+}
