@@ -7,8 +7,10 @@ import {
 import {
   getEntidades,
   guardarEntidad,
+  eliminarEntidad,
 } from '../../../../services/entidadAtribucionService';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../../../../components/common/ConfirmationModal';
 
 const formatEuro = (value: number) => new Intl.NumberFormat('es-ES', {
   style: 'currency',
@@ -46,6 +48,24 @@ const EntidadesAtribucionPage: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Omit<EntidadAtribucionRentas, 'createdAt' | 'updatedAt'>>(emptyEntidad());
+  const [pendingDelete, setPendingDelete] = useState<EntidadAtribucionRentas | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete?.id) return;
+    setDeleting(true);
+    try {
+      await eliminarEntidad(pendingDelete.id);
+      toast.success('Entidad eliminada');
+      setPendingDelete(null);
+      void loadData();
+    } catch (err) {
+      console.error('Error eliminando entidad', err);
+      toast.error('Error al eliminar la entidad');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -223,24 +243,35 @@ const EntidadesAtribucionPage: React.FC = () => {
                     {entidad.nif} · {entidad.tipoEntidad} · {entidad.porcentajeParticipacion}% · {entidad.tipoRenta.replace(/_/g, ' ')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForm({
-                      id: entidad.id,
-                      nif: entidad.nif,
-                      nombre: entidad.nombre,
-                      tipoEntidad: entidad.tipoEntidad,
-                      porcentajeParticipacion: entidad.porcentajeParticipacion,
-                      tipoRenta: entidad.tipoRenta,
-                      ejercicios: entidad.ejercicios.length ? entidad.ejercicios : emptyEntidad().ejercicios,
-                    });
-                    setShowForm(true);
-                  }}
-                  style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.55rem 0.8rem', background: 'white', cursor: 'pointer' }}
-                >
-                  Editar
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({
+                        id: entidad.id,
+                        nif: entidad.nif,
+                        nombre: entidad.nombre,
+                        tipoEntidad: entidad.tipoEntidad,
+                        porcentajeParticipacion: entidad.porcentajeParticipacion,
+                        tipoRenta: entidad.tipoRenta,
+                        ejercicios: entidad.ejercicios.length ? entidad.ejercicios : emptyEntidad().ejercicios,
+                      });
+                      setShowForm(true);
+                    }}
+                    style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.55rem 0.8rem', background: 'white', cursor: 'pointer' }}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(entidad)}
+                    aria-label={`Eliminar entidad ${entidad.nombre}`}
+                    title="Eliminar entidad"
+                    style={{ border: '1px solid var(--hz-neutral-300)', borderRadius: '10px', padding: '0.55rem 0.8rem', background: 'white', cursor: 'pointer', color: 'var(--alert)' }}
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </div>
 
               <table style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
@@ -265,6 +296,21 @@ const EntidadesAtribucionPage: React.FC = () => {
           ))
         )}
       </div>
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!deleting) setPendingDelete(null); }}
+        onConfirm={handleDelete}
+        title="Eliminar entidad"
+        message={
+          pendingDelete
+            ? `Vas a eliminar la entidad "${pendingDelete.nombre}" (${pendingDelete.nif}). Se borrarán también ${pendingDelete.ejercicios.length} ejercicio(s) embebido(s). Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={deleting}
+      />
     </PageLayout>
   );
 };

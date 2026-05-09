@@ -67,6 +67,15 @@ export async function guardarEntidad(
   return crearEntidad(rest);
 }
 
+// D-CRUD-MEDIA sub-tarea 14 · borrar una entidad de atribución de rentas.
+// El registro guarda un array `ejercicios` embebido · al borrar, todos los
+// ejercicios asociados desaparecen con la entidad (no hay tabla separada).
+// No hay foreign keys externas a este store · borrado directo seguro.
+export async function eliminarEntidad(id: number): Promise<void> {
+  const db = await initDB();
+  await db.delete('entidadesAtribucion', id);
+}
+
 export async function getRendimientosAtribuidosEjercicio(ejercicio: number): Promise<{
   capitalInmobiliario: { total: number; retenciones: number; detalle: { entidad: string; importe: number; retencion: number }[] };
   actividadEconomica: { total: number; retenciones: number; detalle: { entidad: string; importe: number; retencion: number }[] };
