@@ -2885,8 +2885,6 @@ export const initDB = async () => {
           'mobiliarioActivo',
           'personalExpenses',
           'movimientosPersonales',
-          'budgetLines',
-          'budgets',
         ];
 
         for (const store of STORES_OBSOLETOS) {

@@ -81,15 +81,16 @@ describe('Complete Data Cleanup', () => {
         'properties', 'documents', 'contracts', 'expenses',
         'accounts', 'movements', 'importBatches',
         'treasuryEvents',
-        'ingresos', 'budgets', 'budgetLines',
+        'ingresos',
         'presupuestos', 'presupuestoLineas',
         'aeatCarryForwards', 'propertyDays',
         'keyval',
         'gastosInmueble', 'mejorasInmueble', 'mueblesInmueble',
       ];
 
-      // Verify we have a comprehensive list of stores (currently 19 stores)
-      expect(expectedStores.length).toBe(19);
+      // Verify we have a comprehensive list of stores (currently 17 stores)
+      // PR-C-PROY-1-bis: 'budgets'/'budgetLines' eliminados (store fantasma, nunca creado)
+      expect(expectedStores.length).toBe(17);
       expect(expectedStores).toContain('accounts');
       expect(expectedStores).toContain('movements');
       expect(expectedStores).toContain('properties');

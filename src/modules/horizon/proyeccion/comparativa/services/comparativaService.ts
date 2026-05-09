@@ -1,8 +1,12 @@
-import { initDB, Property } from '../../../../../services/db';
-import { getLatestBudgetByYear } from '../../presupuesto/services/budgetService';
+import { initDB, Property, Budget } from '../../../../../services/db';
 import { formatEuro } from '../../../../../utils/formatUtils';
 import { generateProyeccionMensual } from '../../mensual/services/proyeccionMensualService';
 import type { ProyeccionAnual } from '../../mensual/types/proyeccionMensual';
+
+// budgetService.ts eliminado en PR-C-PROY-1-bis (store fantasma `'budgets'`).
+// Hasta que `presupuestoService` Mi Plan v2 cierre, no hay fuente de presupuesto confirmado
+// que alimente la comparativa: devolvemos null y los null-guards existentes degradan a ceros.
+const getLatestBudgetByYear = async (_year: number): Promise<Budget | null> => null;
 
 export interface MonthlyData {
   budget: number;
