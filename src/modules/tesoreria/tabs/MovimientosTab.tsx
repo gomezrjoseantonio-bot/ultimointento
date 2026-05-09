@@ -138,16 +138,15 @@ const MovimientosTab: React.FC = () => {
   const { accounts, movements, treasuryEvents, properties, reload } = useOutletContext<TesoreriaContext>();
   const [search, setSearch] = useState('');
   const [searchParams, setSearchParams] = useSearchParams();
-  // Init status filter from `?status=...` so navegación desde Vista General
-  // (ej · "N pendientes" → Conciliación filtrada) precarga el filtro.
-  const initialStatus: StatusFilter = (() => {
+  // Status filter derivado de `?status=...` (sin estado local) para que UI y
+  // URL queden sincronizados ante navegación back/forward o cambios externos
+  // del query param.
+  const statusFilter: StatusFilter = (() => {
     const raw = searchParams.get('status');
     if (raw === 'pendientes' || raw === 'conciliados' || raw === 'todos') return raw;
     return 'todos';
   })();
-  const [statusFilter, setStatusFilterState] = useState<StatusFilter>(initialStatus);
   const setStatusFilter = (next: StatusFilter) => {
-    setStatusFilterState(next);
     const params = new URLSearchParams(searchParams);
     if (next === 'todos') params.delete('status');
     else params.set('status', next);

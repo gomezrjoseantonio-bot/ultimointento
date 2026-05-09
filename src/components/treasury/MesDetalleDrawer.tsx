@@ -772,6 +772,12 @@ const NivelDia: React.FC<NivelDiaProps> = ({
           </div>
           {eventosDelDia.map((e, idx) => {
             const evtId = typeof e.id === 'number' ? e.id : undefined;
+            // Eventos ya conciliados/ejecutados no son seleccionables · evita
+            // que confirmTreasuryEvent falle sobre eventos no conciliables.
+            const isAlreadyConfirmed =
+              e.status === 'executed' || e.status === 'confirmed';
+            const canSelect =
+              evtId != null && !!onConciliarSeleccion && !isAlreadyConfirmed;
             const isChecked = evtId != null && selectedIds.has(evtId);
             return (
               <EventoDiaRow
@@ -785,15 +791,15 @@ const NivelDia: React.FC<NivelDiaProps> = ({
                     ? () => onIrAConciliacion(fechaIso, e.accountId)
                     : undefined
                 }
-                selectable={evtId != null && !!onConciliarSeleccion}
+                selectable={canSelect}
                 checked={isChecked}
                 onToggleSelected={
-                  evtId != null && onConciliarSeleccion
+                  canSelect
                     ? () =>
                         setSelectedIds((prev) => {
                           const next = new Set(prev);
-                          if (next.has(evtId)) next.delete(evtId);
-                          else next.add(evtId);
+                          if (next.has(evtId!)) next.delete(evtId!);
+                          else next.add(evtId!);
                           return next;
                         })
                     : undefined
