@@ -2146,12 +2146,16 @@ interface AtlasHorizonDB {
   aportacionesPlan: AportacionPlan;          // V65: eventos aportación (3 roles)
   traspasosPlanPensiones: TraspasoPlanPensiones; // V65: eventos traspaso fiscal neutro
   /**
-   * @legacy V65 retiró este store del runtime · tipo mantenido porque
-   * `traspasosPlanesService.ts` aún lo usa desde 4 componentes UI vivos
-   * (PlanesManager · TraspasoForm · TraspasosHistorial · GestionInversionesPage).
-   * Migración pendiente · T27-pre · al cerrar puede eliminarse este tipo.
+   * @legacy V65 retiró este store del runtime; D-CRUD-MEDIA sub-tarea 18
+   * eliminó `traspasosPlanesService.ts` y limpió los 3 comentarios que lo
+   * referenciaban (PlanesManager · TraspasoForm · TraspasosHistorial).
+   *
+   * El tipo se mantiene en la interfaz porque la migración V65→V70 todavía
+   * llama `db.deleteObjectStore('traspasosPlanes')` en línea 4027 (idempotente
+   * para DBs viejas que conserven el store). Eliminar el tipo del schema
+   * requiere el siguiente bump de DB_VERSION.
    */
-  traspasosPlanes: TraspasoPlan; // V5.2: Traspasos entre planes de pensiones
+  traspasosPlanes: TraspasoPlan; // V5.2 LEGACY: store retirado en V65
   // otrosIngresos: ELIMINADO en V63 (sub-tarea 4-bis) — destino ingresos.tipo='otro' (+metadata.otro)
   // pensiones: ELIMINADO en V63 (sub-tarea 4) — destino ingresos.tipo='pension'
   // patronGastosPersonales: ELIMINADO en V62 (sub-tarea 3) — futuro compromisosRecurrentes · 7 registros

@@ -1,12 +1,10 @@
 // src/components/personal/planes/TraspasoForm.tsx
-// TAREA 13 v4 · Commit 2 (D) · migrado a servicios V65.
+// V65 · servicios canónicos.
 //
-// Antes: lectura mezcla planesInversionService (legacy) + inversiones[tipo IN
-// PLAN_PENSIONES_TIPOS_INVERSION] + escritura traspasosPlanesService (V62 legacy).
-//
-// Ahora: lectura planesPensionesService (V65) + escritura
-// traspasosPlanPensionesService.registrarTraspaso (que ejecuta los side-effects
-// de §5.8 spec: actualizar plan + crear valoración histórica con valorTraspaso).
+// Lectura planesPensionesService + escritura traspasosPlanPensionesService.registrarTraspaso
+// (que ejecuta los side-effects de §5.8 spec: actualizar plan + crear valoración
+// histórica con valorTraspaso). El service legacy traspasosPlanesService quedó
+// eliminado en D-CRUD-MEDIA sub-tarea 18.
 
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';

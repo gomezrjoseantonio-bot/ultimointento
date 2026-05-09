@@ -1,17 +1,12 @@
 // src/components/personal/planes/TraspasosHistorial.tsx
-// TAREA 13 v4 · Commit 1 (C9) · migrado a V65.
+// V65 · canónico traspasosPlanPensionesService.
 //
-// Antes: leía `TraspasoPlan` del store legacy `traspasosPlanes` vía
-// `traspasosPlanesService` · resultado: traspasos creados con TraspasoForm V65
-// no aparecían en el historial.
+// Lee `TraspasoPlanPensiones` del store V65. La identidad del plan es estable ·
+// cada traspaso muestra "Plan · Gestora origen → Gestora destino".
 //
-// Ahora: lee `TraspasoPlanPensiones` del store V65 vía
-// `traspasosPlanPensionesService`. La identidad del plan es estable · cada
-// traspaso muestra "Plan · Gestora origen → Gestora destino" en vez del
-// modelo legacy "Plan origen → Plan destino" (que asumía planes distintos).
-//
-// El servicio legacy NO se toca (puede tener otros consumidores). Los datos
-// legacy quedan en su store · en futuras tareas se puede unificar.
+// El servicio legacy `traspasosPlanesService` (sobre store legacy
+// `traspasosPlanes`) fue eliminado en D-CRUD-MEDIA sub-tarea 18 al confirmar
+// que no tenía consumidores reales (V65 ya migró el store al boot).
 
 import React from 'react';
 import { ArrowRight, ArrowLeftRight, Trash2 } from 'lucide-react';
