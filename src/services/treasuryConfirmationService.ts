@@ -845,6 +845,16 @@ export async function deleteTreasuryEventCompletely(
 
   const movementId = event.executedMovementId ?? event.movementId ?? null;
 
+  // Capturar el accountId del movement antes de borrarlo · puede diferir del
+  // event.accountId en flujos legacy.
+  let movementAccountId: number | undefined;
+  if (movementId != null) {
+    const movement = (await db.get('movements', movementId)) as
+      | Movement
+      | undefined;
+    movementAccountId = movement?.accountId;
+  }
+
   const stores = ['treasuryEvents', 'movements', ...ALL_LINE_STORES];
   const tx = db.transaction(stores as any, 'readwrite');
 
@@ -877,6 +887,9 @@ export async function deleteTreasuryEventCompletely(
   await (tx.objectStore('treasuryEvents') as any).delete(eventId);
 
   await tx.done;
+
+  // Recalcular saldo de la(s) cuenta(s) afectada(s).
+  scheduleAccountBalanceRecalc([event.accountId, movementAccountId]);
 }
 
 /**
