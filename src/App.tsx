@@ -202,6 +202,8 @@ const TareasPendientes = lazyWithPreload(() => import('./modules/pulse/tareas/pe
 
 // Legacy Pulse (Personal) Module Components - Keep for migration
 const HorizonPreferenciasDatos = lazyWithPreload(() => import('./modules/horizon/configuracion/preferencias-datos/PreferenciasDatos'));
+// D-CRUD-ALTA sub-tarea 9 · Catálogo proveedores
+const ConfigProveedores = lazyWithPreload(() => import('./modules/horizon/configuracion/proveedores/ProveedoresPage'));
 // Development only imports
 const ProfileSeederPage = lazyWithPreload(() =>
   (import.meta as any).env?.DEV 
@@ -1232,6 +1234,12 @@ function App() {
               <Route path="email-entrante" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <EmailEntrante />
+                </React.Suspense>
+              } />
+              {/* D-CRUD-ALTA sub-tarea 9 · Catálogo proveedores */}
+              <Route path="proveedores" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <ConfigProveedores />
                 </React.Suspense>
               } />
               {/* T20 Fase 1 · plan-facturacion legacy redirect a /ajustes/plan */}
