@@ -708,4 +708,55 @@ export const valoracionesService = {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     return `${y}-${m}`;
   },
+
+  // ── D-CRUD-ALTA sub-tarea 6 · CRUD individual sobre valoraciones_historicas
+
+  /**
+   * Listar todas las valoraciones individuales registradas, opcionalmente
+   * filtradas por tipo_activo o por activo_id concreto.
+   */
+  async listarValoraciones(filtro?: {
+    tipo_activo?: 'inmueble' | 'inversion' | 'plan_pensiones';
+    activo_id?: number | string;
+  }): Promise<ValoracionHistorica[]> {
+    const db = await initDB();
+    const all: ValoracionHistorica[] = await db.getAll('valoraciones_historicas');
+    if (!filtro) return all;
+    return all.filter((v) => {
+      if (filtro.tipo_activo && v.tipo_activo !== filtro.tipo_activo) return false;
+      if (filtro.activo_id !== undefined && v.activo_id !== filtro.activo_id) return false;
+      return true;
+    });
+  },
+
+  /**
+   * Editar campos de una valoración individual (valor, fecha, notas, origen).
+   * No permite cambiar tipo_activo ni activo_id (la identidad de la valoración).
+   */
+  async actualizarValoracion(
+    id: number,
+    updates: Partial<Pick<ValoracionHistorica, 'valor' | 'fecha_valoracion' | 'notas' | 'origen'>>,
+  ): Promise<ValoracionHistorica> {
+    const db = await initDB();
+    const existing = (await db.get('valoraciones_historicas', id)) as
+      | ValoracionHistorica
+      | undefined;
+    if (!existing) throw new Error('Valoración no encontrada');
+    const updated: ValoracionHistorica = {
+      ...existing,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    await db.put('valoraciones_historicas', updated);
+    return updated;
+  },
+
+  /**
+   * Borrar una valoración individual del histórico.
+   * No regenera valoraciones_mensuales (store eliminado en V62) · derivable.
+   */
+  async eliminarValoracion(id: number): Promise<void> {
+    const db = await initDB();
+    await db.delete('valoraciones_historicas', id);
+  },
 };

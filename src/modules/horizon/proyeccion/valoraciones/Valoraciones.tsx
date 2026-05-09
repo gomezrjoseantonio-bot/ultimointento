@@ -1,10 +1,11 @@
 // src/modules/horizon/proyeccion/valoraciones/Valoraciones.tsx
-// ATLAS HORIZON: Historical valuations view (read-only)
+// ATLAS HORIZON: Historical valuations view + edit/delete individuales (D-CRUD-ALTA sub-tarea 6)
 
-import React, { useEffect, useState } from 'react';
-import { TrendingUp } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { MoreVertical, Pencil, Trash2, TrendingUp, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { valoracionesService } from '../../../../services/valoracionesService';
-import type { ValoracionesMensuales } from '../../../../types/valoraciones';
+import type { ValoracionesMensuales, ValoracionHistorica } from '../../../../types/valoraciones';
 
 type ValoracionesTab = 'historico' | 'evolucion' | 'detalle';
 
@@ -24,12 +25,18 @@ const formatPercent = (value: number): string => {
 const Valoraciones: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ValoracionesTab>('historico');
   const [snapshots, setSnapshots] = useState<ValoracionesMensuales[]>([]);
+  const [individuales, setIndividuales] = useState<ValoracionHistorica[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const reloadIndividuales = useCallback(() => {
+    valoracionesService.listarValoraciones().then(setIndividuales).catch(console.error);
+  }, []);
+
   useEffect(() => {
-    valoracionesService
-      .getHistoricoCompleto()
-      .then(setSnapshots)
+    Promise.all([
+      valoracionesService.getHistoricoCompleto().then(setSnapshots),
+      valoracionesService.listarValoraciones().then(setIndividuales),
+    ])
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -94,13 +101,16 @@ const Valoraciones: React.FC = () => {
         >
           Cargando histórico...
         </div>
-      ) : snapshots.length === 0 ? (
-        <EmptyState />
       ) : (
         <>
-          {activeTab === 'historico' && <TablaHistorico snapshots={snapshots} />}
-          {activeTab === 'evolucion' && <EvolucionView snapshots={snapshots} />}
-          {activeTab === 'detalle' && <TablaHistorico snapshots={snapshots} />}
+          {activeTab === 'historico' && (snapshots.length === 0 ? <EmptyState /> : <TablaHistorico snapshots={snapshots} />)}
+          {activeTab === 'evolucion' && (snapshots.length === 0 ? <EmptyState /> : <EvolucionView snapshots={snapshots} />)}
+          {activeTab === 'detalle' && (
+            <TablaIndividuales
+              valoraciones={individuales}
+              onChanged={reloadIndividuales}
+            />
+          )}
         </>
       )}
     </div>
@@ -263,6 +273,332 @@ const EvolucionView: React.FC<{ snapshots: ValoracionesMensuales[] }> = ({ snaps
             {s.fecha_cierre.substring(0, 7)}
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+// ── D-CRUD-ALTA sub-tarea 6 · Tabla individuales con kebab edit/delete ───────
+
+const TIPO_LABEL: Record<string, string> = {
+  inmueble: 'Inmueble',
+  inversion: 'Inversión',
+  plan_pensiones: 'Plan pensiones',
+};
+
+interface TablaIndividualesProps {
+  valoraciones: ValoracionHistorica[];
+  onChanged: () => void;
+}
+
+const TablaIndividuales: React.FC<TablaIndividualesProps> = ({ valoraciones, onChanged }) => {
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<ValoracionHistorica | null>(null);
+  const [deleting, setDeleting] = useState<ValoracionHistorica | null>(null);
+
+  useEffect(() => {
+    if (openMenuId === null) return;
+    const close = (): void => setOpenMenuId(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenuId]);
+
+  if (valoraciones.length === 0) return <EmptyState />;
+
+  const ordenadas = [...valoraciones].sort((a, b) =>
+    a.fecha_valoracion < b.fecha_valoracion ? 1 : -1,
+  );
+
+  return (
+    <>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid var(--hz-neutral-300)' }}>
+              {['Fecha', 'Activo', 'Tipo', 'Valor', 'Origen', ''].map((col, idx) => (
+                <th
+                  key={`${col}-${idx}`}
+                  style={{
+                    padding: '10px 16px',
+                    textAlign: col === 'Valor' ? 'right' : 'left',
+                    fontWeight: 600,
+                    color: 'var(--text-gray)',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.03em',
+                  }}
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ordenadas.map((v, i) => {
+              const isOpen = v.id != null && openMenuId === v.id;
+              return (
+                <tr
+                  key={v.id ?? `${v.tipo_activo}-${v.activo_id}-${v.fecha_valoracion}-${i}`}
+                  style={{
+                    borderBottom: '1px solid var(--hz-neutral-300)',
+                    backgroundColor: i % 2 === 0 ? 'var(--bg)' : 'var(--atlas-blue-light, #f9fafb)',
+                  }}
+                >
+                  <td style={{ padding: '10px 16px', color: 'var(--atlas-navy-1)', fontWeight: 500 }}>
+                    {v.fecha_valoracion}
+                  </td>
+                  <td style={{ padding: '10px 16px', color: 'var(--atlas-navy-1)' }}>
+                    {v.activo_nombre}
+                  </td>
+                  <td style={{ padding: '10px 16px', color: 'var(--text-gray)', fontSize: '0.75rem' }}>
+                    {TIPO_LABEL[v.tipo_activo] ?? v.tipo_activo}
+                  </td>
+                  <td
+                    style={{
+                      padding: '10px 16px',
+                      textAlign: 'right',
+                      fontVariantNumeric: 'tabular-nums',
+                      color: 'var(--atlas-navy-1)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {formatCurrency(v.valor)}
+                  </td>
+                  <td style={{ padding: '10px 16px', color: 'var(--text-gray)', fontSize: '0.75rem' }}>
+                    {v.origen}
+                  </td>
+                  <td style={{ padding: '10px 16px', position: 'relative', width: 40 }}>
+                    {v.id != null && (
+                      <button
+                        type="button"
+                        aria-label={`Acciones valoración ${v.activo_nombre} ${v.fecha_valoracion}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(isOpen ? null : (v.id as number));
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid transparent',
+                          padding: '4px 6px',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                          color: 'var(--text-gray)',
+                        }}
+                      >
+                        <MoreVertical size={14} />
+                      </button>
+                    )}
+                    {isOpen && (
+                      <div
+                        role="menu"
+                        style={{
+                          position: 'absolute',
+                          right: 8,
+                          top: 'calc(100% - 4px)',
+                          zIndex: 50,
+                          background: 'var(--surface-card, #fff)',
+                          border: '1px solid var(--hz-neutral-300)',
+                          borderRadius: 8,
+                          boxShadow: '0 6px 18px rgba(15,23,42,.12)',
+                          minWidth: 160,
+                          padding: 4,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setOpenMenuId(null); setEditing(v); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            width: '100%', padding: '8px 10px',
+                            background: 'transparent', border: 'none',
+                            borderRadius: 6, fontSize: 13,
+                            color: 'var(--atlas-navy-1)', cursor: 'pointer',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <Pencil size={14} /> Editar
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => { setOpenMenuId(null); setDeleting(v); }}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            width: '100%', padding: '8px 10px',
+                            background: 'transparent', border: 'none',
+                            borderRadius: 6, fontSize: 13,
+                            color: 'var(--alert)', cursor: 'pointer',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <Trash2 size={14} /> Eliminar
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <EditValoracionModal
+          valoracion={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); onChanged(); }}
+        />
+      )}
+
+      {deleting && (
+        <ConfirmDeleteValoracion
+          valoracion={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => { setDeleting(null); onChanged(); }}
+        />
+      )}
+    </>
+  );
+};
+
+const EditValoracionModal: React.FC<{
+  valoracion: ValoracionHistorica;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ valoracion, onClose, onSaved }) => {
+  const [valor, setValor] = useState(String(valoracion.valor));
+  const [fecha, setFecha] = useState(valoracion.fecha_valoracion);
+  const [notas, setNotas] = useState(valoracion.notas ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (): Promise<void> => {
+    if (valoracion.id == null) return;
+    const parsed = Number(valor.replace(',', '.'));
+    if (Number.isNaN(parsed) || parsed < 0) {
+      toast.error('Valor no válido');
+      return;
+    }
+    if (!/^\d{4}-\d{2}(-\d{2})?$/.test(fecha)) {
+      toast.error('Fecha no válida (YYYY-MM o YYYY-MM-DD)');
+      return;
+    }
+    setSaving(true);
+    try {
+      await valoracionesService.actualizarValoracion(valoracion.id, {
+        valor: parsed,
+        fecha_valoracion: fecha,
+        notas: notas.trim() || undefined,
+      });
+      toast.success('Valoración actualizada');
+      onSaved();
+    } catch (err) {
+      console.error('Error updating valoracion', err);
+      toast.error('Error al actualizar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div role="dialog" aria-modal="true" style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div onClick={() => !saving && onClose()} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
+      <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--hz-neutral-300)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <strong style={{ fontSize: 14, color: 'var(--atlas-navy-1)' }}>Editar valoración</strong>
+          <button type="button" onClick={() => !saving && onClose()} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+        </div>
+        <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-gray)' }}>
+            <strong>{valoracion.activo_nombre}</strong> · {TIPO_LABEL[valoracion.tipo_activo] ?? valoracion.tipo_activo}
+          </div>
+          <label style={{ fontSize: 12, color: 'var(--text-gray)' }}>
+            Valor (€)
+            <input
+              type="number"
+              step="0.01"
+              value={valor}
+              onChange={(e) => setValor(e.target.value)}
+              style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--hz-neutral-300)', borderRadius: 6, fontSize: 13 }}
+            />
+          </label>
+          <label style={{ fontSize: 12, color: 'var(--text-gray)' }}>
+            Fecha (YYYY-MM o YYYY-MM-DD)
+            <input
+              type="text"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              placeholder="2026-01"
+              style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--hz-neutral-300)', borderRadius: 6, fontSize: 13 }}
+            />
+          </label>
+          <label style={{ fontSize: 12, color: 'var(--text-gray)' }}>
+            Notas
+            <textarea
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              rows={2}
+              style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--hz-neutral-300)', borderRadius: 6, fontSize: 13, resize: 'none' }}
+            />
+          </label>
+        </div>
+        <div style={{ padding: '12px 18px', borderTop: '1px solid var(--hz-neutral-300)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" onClick={() => !saving && onClose()} disabled={saving} className="atlas-btn-secondary atlas-btn-sm">Cancelar</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="atlas-btn-primary atlas-btn-sm">
+            {saving ? 'Guardando…' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ConfirmDeleteValoracion: React.FC<{
+  valoracion: ValoracionHistorica;
+  onClose: () => void;
+  onDeleted: () => void;
+}> = ({ valoracion, onClose, onDeleted }) => {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (): Promise<void> => {
+    if (valoracion.id == null) return;
+    setDeleting(true);
+    try {
+      await valoracionesService.eliminarValoracion(valoracion.id);
+      toast.success('Valoración eliminada');
+      onDeleted();
+    } catch (err) {
+      console.error('Error deleting valoracion', err);
+      toast.error('Error al eliminar');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div role="dialog" aria-modal="true" style={{
+      position: 'fixed', inset: 0, zIndex: 100, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', padding: 16,
+    }}>
+      <div onClick={() => !deleting && onClose()} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
+      <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 380, width: '100%', padding: 18 }}>
+        <strong style={{ fontSize: 14, color: 'var(--atlas-navy-1)' }}>Eliminar valoración</strong>
+        <p style={{ fontSize: 13, color: 'var(--text-gray)', marginTop: 8 }}>
+          Vas a eliminar la valoración de <strong>{valoracion.activo_nombre}</strong> ({valoracion.fecha_valoracion}) por {formatCurrency(valoracion.valor)}. Esta acción no se puede deshacer.
+        </p>
+        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" onClick={() => !deleting && onClose()} disabled={deleting} className="atlas-btn-secondary atlas-btn-sm">Cancelar</button>
+          <button type="button" onClick={handleDelete} disabled={deleting} className="atlas-btn-destructive atlas-btn-sm">
+            {deleting ? 'Eliminando…' : 'Eliminar'}
+          </button>
+        </div>
       </div>
     </div>
   );
