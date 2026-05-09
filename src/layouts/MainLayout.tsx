@@ -114,7 +114,7 @@ const MainLayout: React.FC = () => {
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         {/* TopbarV5 · persistente · oculto en /inversiones/* (la cinta de
             inversiones la reemplaza como topbar · mockup atlas-inversiones-v2). */}
-        {!isInversionesRoute && <TopbarV5 />}
+        {!isInversionesRoute && <TopbarV5 showSearch={isPanelRoute} />}
         {isInversionesRoute && <CintaResumenInversiones />}
 
         <main

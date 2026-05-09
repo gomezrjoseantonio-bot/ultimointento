@@ -14,9 +14,11 @@ import { Icons } from './icons';
 export interface TopbarV5Props {
   /** Ancho del sidebar (usado para sincronizar padding si fuera necesario en layout) */
   className?: string;
+  /** Muestra el buscador global. Solo visible en /panel. Default: false. */
+  showSearch?: boolean;
 }
 
-const TopbarV5: React.FC<TopbarV5Props> = ({ className }) => {
+const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) => {
   // TODO: implementar dropdown de búsqueda real (conectar con CommandPalette o servicio de búsqueda)
   const [searchOpen, setSearchOpen] = useState(false);
   // TODO: implementar panel de notificaciones real (conectar con servicio de notificaciones)
@@ -88,64 +90,66 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className }) => {
         background: 'var(--atlas-v5-bg)',
       }}
     >
-      {/* Search box · §Z.5 */}
-      <div style={{ position: 'relative', flex: 1, maxWidth: 440 }}>
-        <button
-          type="button"
-          onClick={handleSearchClick}
-          aria-label="Buscar"
-          aria-expanded={searchOpen}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: 'var(--atlas-v5-card)',
-            border: '1px solid var(--atlas-v5-line)',
-            borderRadius: 'var(--atlas-v5-radius-md)',
-            padding: '8px 12px',
-            cursor: 'text',
-            textAlign: 'left',
-          }}
-        >
-          <Icons.Search
-            size={16}
-            aria-hidden="true"
-            style={{ color: 'var(--atlas-v5-ink-4)', flexShrink: 0 }}
-          />
-          <span
+      {/* Search box · §Z.5 · solo visible cuando showSearch=true (en /panel) */}
+      {showSearch && (
+        <div style={{ position: 'relative', flex: 1, maxWidth: 440 }}>
+          <button
+            type="button"
+            onClick={handleSearchClick}
+            aria-label="Buscar"
+            aria-expanded={searchOpen}
             style={{
-              flex: 1,
-              fontSize: 13,
-              color: 'var(--atlas-v5-ink-4)',
-              background: 'transparent',
-            }}
-          >
-            Buscar inmueble, contrato, movimiento...
-          </span>
-          <kbd
-            style={{
-              fontFamily: 'var(--atlas-v5-font-mono-num)',
-              fontSize: 10,
-              padding: '2px 6px',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: 'var(--atlas-v5-card)',
               border: '1px solid var(--atlas-v5-line)',
-              borderRadius: 4,
-              color: 'var(--atlas-v5-ink-4)',
-              background: 'var(--atlas-v5-bg)',
-              flexShrink: 0,
+              borderRadius: 'var(--atlas-v5-radius-md)',
+              padding: '8px 12px',
+              cursor: 'text',
+              textAlign: 'left',
             }}
           >
-            ⌘K
-          </kbd>
-        </button>
+            <Icons.Search
+              size={16}
+              aria-hidden="true"
+              style={{ color: 'var(--atlas-v5-ink-4)', flexShrink: 0 }}
+            />
+            <span
+              style={{
+                flex: 1,
+                fontSize: 13,
+                color: 'var(--atlas-v5-ink-4)',
+                background: 'transparent',
+              }}
+            >
+              Buscar inmueble, contrato, movimiento...
+            </span>
+            <kbd
+              style={{
+                fontFamily: 'var(--atlas-v5-font-mono-num)',
+                fontSize: 10,
+                padding: '2px 6px',
+                border: '1px solid var(--atlas-v5-line)',
+                borderRadius: 4,
+                color: 'var(--atlas-v5-ink-4)',
+                background: 'var(--atlas-v5-bg)',
+                flexShrink: 0,
+              }}
+            >
+              ⌘K
+            </kbd>
+          </button>
 
-        {/* TODO: stub "Buscar próximamente" · reemplazar con dropdown real */}
-        {searchOpen && (
-          <div style={dropdownStyle}>
-            Buscar próximamente
-          </div>
-        )}
-      </div>
+          {/* TODO: stub "Buscar próximamente" · reemplazar con dropdown real */}
+          {searchOpen && (
+            <div style={dropdownStyle}>
+              Buscar próximamente
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions · Bell + Help · §Z.5 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
