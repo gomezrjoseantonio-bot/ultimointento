@@ -325,3 +325,24 @@ export const learningService = {
   createOrUpdateRule,
   applyAllRulesOnImport,
 };
+
+// ── D-CRUD-MEDIA sub-tarea 16 · listar / borrar reglas individualmente ───────
+
+/**
+ * Lista todas las reglas de aprendizaje persistidas, ordenadas por
+ * fecha de actualización descendente (más recientemente aplicadas primero).
+ */
+export async function listRules(): Promise<MovementLearningRule[]> {
+  const db = await initDB();
+  const all = ((await db.getAll('movementLearningRules')) ?? []) as MovementLearningRule[];
+  return all.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+}
+
+/**
+ * Borra una regla de aprendizaje. La regla deja de aplicarse a futuras
+ * importaciones · los movimientos ya clasificados conservan su categoría.
+ */
+export async function deleteRule(id: number): Promise<void> {
+  const db = await initDB();
+  await db.delete('movementLearningRules', id);
+}

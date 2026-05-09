@@ -254,6 +254,24 @@ export async function reactivateFondo(id: string): Promise<void> {
   await updateFondo(id, { activo: true });
 }
 
+// ── deleteFondo (D-CRUD-MEDIA sub-tarea 11) ───────────────────────────────────
+// Borrado físico del fondo · limpia primero la vinculación inversa con el
+// objetivo (V67 garantiza que objetivo.fondoId quede consistente).
+//
+// Diferencia con archiveFondo:
+//   - archive · marca activo=false · el fondo permanece y puede reactivarse
+//   - delete  · borra el registro · NO se puede deshacer
+
+export async function deleteFondo(id: string): Promise<void> {
+  const db = await initDB();
+  const current = await getFondo(id);
+  if (!current) return; // idempotente · ya no existe
+  if (current.objetivoVinculadoId) {
+    await _limpiarVinculacionObjetivo(current.objetivoVinculadoId);
+  }
+  await db.delete('fondos_ahorro', id);
+}
+
 // ── getSaldoActualFondo ───────────────────────────────────────────────────────
 
 function calcularAportacionAsignacion(asig: CuentaAsignada, saldoCuenta: number): number {

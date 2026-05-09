@@ -1,7 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { CardV5, Icons, showToastV5 } from '../../../design-system/v5';
 import type { FiscalOutletContext } from '../FiscalContext';
+import { perdidasPatrimonialesService } from '../../../services/perdidasPatrimonialesService';
+import { vinculosAccesorioService } from '../../../services/vinculosAccesorioService';
+import type { PerdidaPatrimonialAhorro, VinculoAccesorio } from '../../../services/db';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 const ConfiguracionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -245,6 +249,361 @@ const ConfiguracionPage: React.FC = () => {
           </div>
         </CardV5.Body>
       </CardV5>
+
+      <PerdidasPatrimonialesPanel />
+
+      <VinculosAccesorioPanel />
+    </>
+  );
+};
+
+const VinculosAccesorioPanel: React.FC = () => {
+  const [items, setItems] = useState<VinculoAccesorio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<VinculoAccesorio | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<VinculoAccesorio | null>(null);
+  const [working, setWorking] = useState(false);
+  const [editForm, setEditForm] = useState<{ fechaInicio: string; fechaFin: string; estado: 'activo' | 'inactivo'; ejercicio: number }>({
+    fechaInicio: '', fechaFin: '', estado: 'activo', ejercicio: new Date().getFullYear(),
+  });
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    vinculosAccesorioService
+      .listar()
+      .then(setItems)
+      .catch((err) => {
+        console.error('Error listando vínculos accesorio', err);
+        showToastV5('Error al cargar los vínculos accesorio');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const startEdit = (v: VinculoAccesorio): void => {
+    setEditing(v);
+    setEditForm({
+      fechaInicio: v.fechaInicio,
+      fechaFin: v.fechaFin ?? '',
+      estado: v.estado,
+      ejercicio: v.ejercicio,
+    });
+  };
+
+  const handleSaveEdit = async (): Promise<void> => {
+    if (!editing?.id) return;
+    setWorking(true);
+    try {
+      await vinculosAccesorioService.actualizar(editing.id, {
+        fechaInicio: editForm.fechaInicio,
+        fechaFin: editForm.fechaFin || undefined,
+        estado: editForm.estado,
+        ejercicio: editForm.ejercicio,
+      });
+      showToastV5('Vínculo actualizado');
+      setEditing(null);
+      reload();
+    } catch (err) {
+      console.error('Error actualizando vínculo', err);
+      showToastV5('Error al actualizar el vínculo');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete?.id) return;
+    setWorking(true);
+    try {
+      await vinculosAccesorioService.eliminar(pendingDelete.id);
+      showToastV5('Vínculo eliminado');
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error eliminando vínculo', err);
+      showToastV5('Error al eliminar el vínculo');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <>
+      <CardV5>
+        <CardV5.Title>Vínculos accesorio (parking · trastero)</CardV5.Title>
+        <CardV5.Subtitle>
+          relaciones entre inmueble principal y accesorio por ejercicio · editar o borrar si la importación generó vínculos erróneos
+        </CardV5.Subtitle>
+        <CardV5.Body>
+          {loading ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>Cargando…</div>
+          ) : items.length === 0 ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>
+              Sin vínculos accesorio registrados.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--atlas-v5-line)', color: 'var(--atlas-v5-ink-4)' }}>
+                    {['Ejercicio', 'Principal #', 'Accesorio #', 'Inicio', 'Fin', 'Estado', 'Origen', ''].map((c, i) => (
+                      <th key={`${c}-${i}`} style={{
+                        padding: '8px 10px', textAlign: 'left',
+                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      }}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((v) => (
+                    <tr key={v.id} style={{ borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{v.ejercicio}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'IBM Plex Mono, monospace' }}>{v.inmueblePrincipalId}</td>
+                      <td style={{ padding: '8px 10px', fontFamily: 'IBM Plex Mono, monospace' }}>{v.inmuebleAccesorioId}</td>
+                      <td style={{ padding: '8px 10px' }}>{v.fechaInicio}</td>
+                      <td style={{ padding: '8px 10px' }}>{v.fechaFin || '—'}</td>
+                      <td style={{ padding: '8px 10px', color: v.estado === 'activo' ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-ink-4)' }}>{v.estado}</td>
+                      <td style={{ padding: '8px 10px', fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>{v.origenCreacion}</td>
+                      <td style={{ padding: '8px 10px', display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => startEdit(v)}
+                          aria-label="Editar vínculo"
+                          style={{
+                            background: 'transparent', border: '1px solid var(--atlas-v5-line)',
+                            borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                            color: 'var(--atlas-v5-ink-2)', fontSize: 12, fontFamily: 'inherit',
+                          }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(v)}
+                          aria-label="Eliminar vínculo"
+                          style={{
+                            background: 'transparent', border: '1px solid var(--atlas-v5-line)',
+                            borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                            color: 'var(--atlas-v5-neg)', fontSize: 12, fontFamily: 'inherit',
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardV5.Body>
+      </CardV5>
+
+      {editing && (
+        <div role="dialog" aria-modal="true" style={{
+          position: 'fixed', inset: 0, zIndex: 100, display: 'flex',
+          alignItems: 'center', justifyContent: 'center', padding: 16,
+        }}>
+          <div onClick={() => !working && setEditing(null)} style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,.8)', backdropFilter: 'blur(4px)' }} />
+          <div style={{ position: 'relative', background: '#fff', borderRadius: 8, boxShadow: '0 12px 36px rgba(15,23,42,.18)', maxWidth: 420, width: '100%' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--atlas-v5-line)' }}>
+              <strong style={{ fontSize: 14, color: 'var(--atlas-v5-ink)' }}>
+                Editar vínculo · principal #{editing.inmueblePrincipalId} ← accesorio #{editing.inmuebleAccesorioId}
+              </strong>
+            </div>
+            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <label style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)' }}>
+                Ejercicio
+                <input
+                  type="number"
+                  value={editForm.ejercicio}
+                  onChange={(e) => setEditForm({ ...editForm, ejercicio: Number(e.target.value) })}
+                  style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--atlas-v5-line)', borderRadius: 6, fontSize: 13 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)' }}>
+                Fecha inicio (ISO)
+                <input
+                  type="date"
+                  value={editForm.fechaInicio}
+                  onChange={(e) => setEditForm({ ...editForm, fechaInicio: e.target.value })}
+                  style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--atlas-v5-line)', borderRadius: 6, fontSize: 13 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)' }}>
+                Fecha fin (ISO, opcional)
+                <input
+                  type="date"
+                  value={editForm.fechaFin}
+                  onChange={(e) => setEditForm({ ...editForm, fechaFin: e.target.value })}
+                  style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--atlas-v5-line)', borderRadius: 6, fontSize: 13 }}
+                />
+              </label>
+              <label style={{ fontSize: 12, color: 'var(--atlas-v5-ink-3)' }}>
+                Estado
+                <select
+                  value={editForm.estado}
+                  onChange={(e) => setEditForm({ ...editForm, estado: e.target.value as 'activo' | 'inactivo' })}
+                  style={{ width: '100%', marginTop: 4, padding: '6px 8px', border: '1px solid var(--atlas-v5-line)', borderRadius: 6, fontSize: 13 }}
+                >
+                  <option value="activo">activo</option>
+                  <option value="inactivo">inactivo</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ padding: '12px 18px', borderTop: '1px solid var(--atlas-v5-line)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" onClick={() => !working && setEditing(null)} disabled={working} className="atlas-btn-secondary atlas-btn-sm">Cancelar</button>
+              <button type="button" onClick={handleSaveEdit} disabled={working} className="atlas-btn-primary atlas-btn-sm">
+                {working ? 'Guardando…' : 'Guardar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!working) setPendingDelete(null); }}
+        onConfirm={handleDelete}
+        title="Eliminar vínculo accesorio"
+        message={
+          pendingDelete
+            ? `Vas a eliminar el vínculo del ejercicio ${pendingDelete.ejercicio}: principal #${pendingDelete.inmueblePrincipalId} ← accesorio #${pendingDelete.inmuebleAccesorioId}. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={working}
+      />
+    </>
+  );
+};
+
+const PerdidasPatrimonialesPanel: React.FC = () => {
+  const [items, setItems] = useState<PerdidaPatrimonialAhorro[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState<PerdidaPatrimonialAhorro | null>(null);
+  const [working, setWorking] = useState(false);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    perdidasPatrimonialesService
+      .listar()
+      .then(setItems)
+      .catch((err) => {
+        console.error('Error listando pérdidas patrimoniales', err);
+        showToastV5('Error al cargar las pérdidas patrimoniales');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const handleDelete = async (): Promise<void> => {
+    if (!pendingDelete?.id) return;
+    setWorking(true);
+    try {
+      await perdidasPatrimonialesService.eliminar(pendingDelete.id);
+      showToastV5('Pérdida patrimonial eliminada');
+      setPendingDelete(null);
+      reload();
+    } catch (err) {
+      console.error('Error eliminando pérdida', err);
+      showToastV5('Error al eliminar la pérdida');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  return (
+    <>
+      <CardV5>
+        <CardV5.Title>Pérdidas patrimoniales del ahorro</CardV5.Title>
+        <CardV5.Subtitle>
+          atrasos compensables · 4 ejercicios · gestiona pérdidas importadas con error
+        </CardV5.Subtitle>
+        <CardV5.Body>
+          {loading ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>Cargando…</div>
+          ) : items.length === 0 ? (
+            <div style={{ padding: 12, fontSize: 13, color: 'var(--atlas-v5-ink-4)' }}>
+              Sin pérdidas patrimoniales registradas.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--atlas-v5-line)', color: 'var(--atlas-v5-ink-4)' }}>
+                    {['Ejercicio', 'Origen', 'Estado', 'Original', 'Aplicado', 'Pendiente', 'Caduca', ''].map((c, i) => (
+                      <th key={`${c}-${i}`} style={{
+                        padding: '8px 10px',
+                        textAlign: c === 'Original' || c === 'Aplicado' || c === 'Pendiente' ? 'right' : 'left',
+                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em',
+                      }}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((p) => (
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--atlas-v5-line-2)' }}>
+                      <td style={{ padding: '8px 10px', fontWeight: 600 }}>{p.ejercicioOrigen}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-3)' }}>{p.tipoOrigen}</td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-3)' }}>{p.estado.replace('_', ' ')}</td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
+                        {p.importeOriginal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)' }}>
+                        {p.importeAplicado.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'right', fontFamily: 'var(--atlas-v5-font-mono-num)', fontWeight: 600 }}>
+                        {p.importePendiente.toLocaleString('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
+                      </td>
+                      <td style={{ padding: '8px 10px', color: 'var(--atlas-v5-ink-4)' }}>{p.ejercicioCaducidad}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(p)}
+                          aria-label={`Eliminar pérdida ${p.ejercicioOrigen}`}
+                          title="Eliminar pérdida"
+                          style={{
+                            background: 'transparent', border: '1px solid var(--atlas-v5-line)',
+                            borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+                            color: 'var(--atlas-v5-neg)', fontSize: 12, fontFamily: 'inherit',
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardV5.Body>
+      </CardV5>
+
+      <ConfirmationModal
+        isOpen={pendingDelete !== null}
+        onClose={() => { if (!working) setPendingDelete(null); }}
+        onConfirm={handleDelete}
+        title="Eliminar pérdida patrimonial"
+        message={
+          pendingDelete
+            ? `Vas a eliminar la pérdida del ejercicio ${pendingDelete.ejercicioOrigen} (${pendingDelete.tipoOrigen}, importe original ${pendingDelete.importeOriginal.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' })}). ${
+                pendingDelete.importeAplicado > 0
+                  ? 'ATENCIÓN: tiene importes ya aplicados en ejercicios posteriores · esos cálculos pueden quedar inconsistentes hasta recalcularlos. '
+                  : ''
+              }Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+        isLoading={working}
+      />
     </>
   );
 };

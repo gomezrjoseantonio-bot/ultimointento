@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
   CardV5,
@@ -13,6 +13,8 @@ import type { MiPlanOutletContext } from '../MiPlanContext';
 import type { Objetivo, ObjetivoEstado, ObjetivoTipo } from '../../../types/miPlan';
 import WizardNuevoObjetivo from '../wizards/WizardNuevoObjetivo';
 import wizardStyles from '../wizards/WizardNuevoObjetivo.module.css';
+import { archiveObjetivo, deleteObjetivo } from '../../../services/objetivosService';
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 const ACCENT_BY_TIPO: Record<ObjetivoTipo, 'brand' | 'gold' | 'gold-soft' | 'neutral'> = {
   acumular: 'gold-soft',
@@ -47,9 +49,35 @@ const LABEL_BY_ESTADO: Record<ObjetivoEstado, string> = {
 const ObjetivosPage: React.FC = () => {
   const { objetivos, reload } = useOutletContext<MiPlanOutletContext>();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    objetivo: Objetivo;
+    action: 'archivar' | 'eliminar';
+  } | null>(null);
+  const [working, setWorking] = useState(false);
 
   const handleCreated = (): void => {
     reload();
+  };
+
+  const handleConfirmAction = async (): Promise<void> => {
+    if (!pendingAction) return;
+    setWorking(true);
+    try {
+      if (pendingAction.action === 'archivar') {
+        await archiveObjetivo(pendingAction.objetivo.id);
+        showToastV5('Objetivo archivado');
+      } else {
+        await deleteObjetivo(pendingAction.objetivo.id);
+        showToastV5('Objetivo eliminado');
+      }
+      setPendingAction(null);
+      reload();
+    } catch (err) {
+      console.error('Error en acción objetivo', err);
+      showToastV5('Error al ejecutar la acción');
+    } finally {
+      setWorking(false);
+    }
   };
 
   if (objetivos.length === 0) {
@@ -79,7 +107,12 @@ const ObjetivosPage: React.FC = () => {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
         {[...enProgreso, ...completados, ...enPausa].map((o) => (
-          <ObjetivoCard key={o.id} objetivo={o} />
+          <ObjetivoCard
+            key={o.id}
+            objetivo={o}
+            onArchivar={() => setPendingAction({ objetivo: o, action: 'archivar' })}
+            onEliminar={() => setPendingAction({ objetivo: o, action: 'eliminar' })}
+          />
         ))}
         <button
           type="button"
@@ -99,15 +132,45 @@ const ObjetivosPage: React.FC = () => {
         onClose={() => setWizardOpen(false)}
         onCreated={handleCreated}
       />
+      <ConfirmationModal
+        isOpen={pendingAction !== null}
+        onClose={() => { if (!working) setPendingAction(null); }}
+        onConfirm={handleConfirmAction}
+        title={
+          pendingAction?.action === 'archivar'
+            ? 'Archivar objetivo'
+            : 'Eliminar objetivo'
+        }
+        message={
+          pendingAction
+            ? pendingAction.action === 'archivar'
+              ? `Vas a archivar "${pendingAction.objetivo.nombre}". Podrás eliminarlo definitivamente después o reactivarlo en cualquier momento.`
+              : `Vas a eliminar definitivamente "${pendingAction.objetivo.nombre}". Esta acción no se puede deshacer. Si tenía un fondo vinculado, ese fondo perderá la vinculación inversa (no se borra).`
+            : ''
+        }
+        confirmText={pendingAction?.action === 'archivar' ? 'Archivar' : 'Eliminar'}
+        cancelText="Cancelar"
+        variant={pendingAction?.action === 'archivar' ? 'warning' : 'danger'}
+        isLoading={working}
+      />
     </>
   );
 };
 
 interface CardProps {
   objetivo: Objetivo;
+  onArchivar: () => void;
+  onEliminar: () => void;
 }
 
-const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
+const ObjetivoCard: React.FC<CardProps> = ({ objetivo, onArchivar, onEliminar }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (): void => setMenuOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
   const Icon = ICON_BY_TIPO[objetivo.tipo];
   const today = new Date();
   const fechaCierre = new Date(objetivo.fechaCierre);
@@ -172,6 +235,79 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
         <Pill variant={PILL_BY_ESTADO[objetivo.estado]} asTag>
           {LABEL_BY_ESTADO[objetivo.estado]}
         </Pill>
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
+            aria-label={`Acciones objetivo ${objetivo.nombre}`}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            style={{
+              background: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: 6,
+              padding: '4px 6px',
+              cursor: 'pointer',
+              color: 'var(--atlas-v5-ink-4)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icons.More size={14} strokeWidth={1.8} />
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 4px)',
+                zIndex: 'var(--atlas-v5-z-dropdown)' as React.CSSProperties['zIndex'],
+                background: 'var(--atlas-v5-card)',
+                border: '1px solid var(--atlas-v5-line)',
+                borderRadius: 8,
+                boxShadow: '0 6px 18px rgba(15,23,42,.12)',
+                minWidth: 180,
+                padding: 4,
+              }}
+            >
+              {objetivo.estado !== 'archivado' && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => { setMenuOpen(false); onArchivar(); }}
+                  style={menuItemStyle('var(--atlas-v5-ink)')}
+                >
+                  <Icons.Archivo size={14} strokeWidth={1.8} /> Archivar
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                disabled={objetivo.estado !== 'archivado'}
+                title={
+                  objetivo.estado !== 'archivado'
+                    ? 'Solo se pueden eliminar objetivos archivados · archiva primero'
+                    : 'Eliminar definitivamente'
+                }
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (objetivo.estado === 'archivado') onEliminar();
+                  else showToastV5('Archiva el objetivo antes de eliminarlo');
+                }}
+                style={{
+                  ...menuItemStyle('var(--atlas-v5-neg)'),
+                  opacity: objetivo.estado === 'archivado' ? 1 : 0.55,
+                  cursor: objetivo.estado === 'archivado' ? 'pointer' : 'not-allowed',
+                }}
+              >
+                <Icons.Delete size={14} strokeWidth={1.8} /> Eliminar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <CardV5.Body>
@@ -231,5 +367,21 @@ const ObjetivoCard: React.FC<CardProps> = ({ objetivo }) => {
     </CardV5>
   );
 };
+
+const menuItemStyle = (color: string): React.CSSProperties => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  padding: '8px 10px',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: 6,
+  fontSize: 13,
+  color,
+  cursor: 'pointer',
+  textAlign: 'left',
+  fontFamily: 'inherit',
+});
 
 export default ObjetivosPage;

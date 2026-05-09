@@ -41,9 +41,8 @@ const PlanesManager: React.FC = () => {
         setPersonalDataId(ctx.personalDataId);
         const planesData = await planesPensionesService.getAllPlanes({ personalDataId: ctx.personalDataId });
         setPlanes(planesData);
-        // TAREA 13 v4 · Commit 1 (C9) · lee del store V65 traspasosPlanPensiones
-        // (antes leía del legacy traspasosPlanesService · resultado: traspasos
-        // creados con TraspasoForm V65 no aparecían).
+        // V65 · lee del store traspasosPlanPensiones (legacy traspasosPlanesService
+        // eliminado en D-CRUD-MEDIA sub-tarea 18).
         const traspasosData = await traspasosPlanPensionesService.getTraspasosPorPersonalData(
           ctx.personalDataId,
         );
