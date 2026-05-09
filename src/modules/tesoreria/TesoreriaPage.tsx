@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, Outlet, Navigate } from 'react-router-dom';
-import { PageHead, MoneyValue, Icons, showToastV5 } from '../../design-system/v5';
 import { initDB, Account, Movement, type Property } from '../../services/db';
 import { cuentasService } from '../../services/cuentasService';
 import {
@@ -9,12 +8,13 @@ import {
 } from '../../services/treasuryBootstrapService';
 import styles from './TesoreriaPage.module.css';
 
-interface TabItem {
-  key: 'general' | 'movimientos';
-  label: string;
-  count?: number;
-  path: string;
-}
+const MONTH_NAMES_LONG = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+const formatEur = (v: number): string =>
+  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 const TesoreriaPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,7 +24,6 @@ const TesoreriaPage: React.FC = () => {
   const [treasuryEvents, setTreasuryEvents] = useState<any[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [reloadTick, setReloadTick] = useState(0);
-  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,126 +90,154 @@ const TesoreriaPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── T31 · Regenerar 24 meses forward-only (botón header) ──
-  const handleRegenerarPrevisiones = async (): Promise<void> => {
-    if (regenerating) return;
-    setRegenerating(true);
-    try {
-      const result = await regenerateForecastsForward({ force: true });
-      const partes: string[] = [];
-      if (result.eventosCreados > 0) {
-        partes.push(`${result.eventosCreados} creado${result.eventosCreados === 1 ? '' : 's'}`);
-      }
-      if (result.eventosOmitidos > 0) {
-        partes.push(`${result.eventosOmitidos} omitido${result.eventosOmitidos === 1 ? '' : 's'}`);
-      }
-      const resumen = partes.length > 0
-        ? `Previsiones regeneradas · ${partes.join(' · ')}`
-        : 'Previsiones ya estaban al día';
-      if (result.errores.length > 0) {
-        showToastV5(`${resumen} (con avisos · ver consola)`, 'warn');
-        // eslint-disable-next-line no-console
-        console.warn('[TreasuryBootstrap] errores parciales', result.errores);
-      } else {
-        showToastV5(resumen, 'success');
-      }
-      setReloadTick((t) => t + 1);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[TreasuryBootstrap] regeneración manual falló', err);
-      showToastV5('Error regenerando previsiones · ver consola', 'error');
-    } finally {
-      setRegenerating(false);
-    }
-  };
+  // ── KPIs Banner Navy (mockup v8) ──
+  // Saldo · suma saldos de cuentas activas
+  // Pendiente entrar mes · treasuryEvents tipo 'income' status 'predicted' del mes en curso
+  // Pendiente salir mes · treasuryEvents tipo 'expense'/'financing' status 'predicted' del mes en curso
+  // Saldo final mes · saldo + pendiente entrar − pendiente salir (proyección)
+  const kpis = useMemo(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = today.getMonth();
 
-  const totalSaldo = accounts.reduce(
-    (sum, a) => sum + (a.balance ?? a.openingBalance ?? 0),
-    0,
-  );
-  const pendientesCount =
-    movements.filter(
-      (m) => m.unifiedStatus === 'no_planificado' || m.estado_conciliacion === 'sin_conciliar',
-    ).length +
-    treasuryEvents.filter(
-      (e) => e.status !== 'executed' && !e.executedMovementId,
+    const saldo = accounts.reduce(
+      (sum, a) => sum + (a.balance ?? a.openingBalance ?? 0),
+      0,
+    );
+
+    const eventosMesPredicted = treasuryEvents.filter((e: any) => {
+      if (!e?.predictedDate) return false;
+      if (e.status !== 'predicted') return false;
+      if (e.executedMovementId) return false;
+      const d = new Date(
+        String(e.predictedDate).length > 10
+          ? e.predictedDate
+          : `${e.predictedDate}T00:00:00`,
+      );
+      return (
+        !Number.isNaN(d.getTime()) &&
+        d.getFullYear() === y &&
+        d.getMonth() === m
+      );
+    });
+
+    const ingresos = eventosMesPredicted.filter((e: any) => e.type === 'income');
+    const gastos = eventosMesPredicted.filter(
+      (e: any) => e.type === 'expense' || e.type === 'financing',
+    );
+    const pendienteEntrar = ingresos.reduce(
+      (s: number, e: any) => s + (e.amount ?? 0),
+      0,
+    );
+    const pendienteSalir = gastos.reduce(
+      (s: number, e: any) => s + (e.amount ?? 0),
+      0,
+    );
+    const saldoFinal = saldo + pendienteEntrar - pendienteSalir;
+
+    return {
+      saldo,
+      pendienteEntrar,
+      pendienteSalir,
+      saldoFinal,
+      ingresosCount: ingresos.length,
+      gastosCount: gastos.length,
+      mesNombre: MONTH_NAMES_LONG[m],
+    };
+  }, [accounts, treasuryEvents]);
+
+  const pendientesConciliarCount = useMemo(() => {
+    const fromMovs = movements.filter(
+      (m) =>
+        m.unifiedStatus === 'no_planificado' ||
+        m.estado_conciliacion === 'sin_conciliar',
     ).length;
-
-  const tabs: TabItem[] = [
-    { key: 'general', label: 'Vista general', path: '/tesoreria' },
-    {
-      key: 'movimientos',
-      label: 'Conciliación bancaria',
-      count: pendientesCount,
-      path: '/tesoreria/movimientos',
-    },
-  ];
+    return fromMovs;
+  }, [movements]);
 
   // Default redirect a general
   if (location.pathname === '/tesoreria/') {
     return <Navigate to="/tesoreria" replace />;
   }
 
-  const activeKey: TabItem['key'] = location.pathname.startsWith('/tesoreria/movimientos')
-    ? 'movimientos'
-    : 'general';
-
   return (
     <div className={styles.page}>
-      <PageHead
-        title="Tesorería"
-        sub={
-          <>
-            <strong>{accounts.length}</strong> cuentas <span> · </span>
-            saldo consolidado{' '}
-            <strong>
-              <MoneyValue value={totalSaldo} decimals={0} tone="ink" />
-            </strong>
-          </>
-        }
-        actions={[
-          // PageHead solo renderiza las 2 primeras acciones. Mantenemos
-          // "Regenerar previsiones" (T31) + "Subir extracto" (uso frecuente).
-          // "Importar cuentas" sigue accesible vía /tesoreria/importar-cuentas.
-          {
-            label: regenerating ? 'Regenerando…' : 'Regenerar previsiones',
-            variant: 'ghost',
-            icon: <Icons.Refresh size={14} strokeWidth={1.8} />,
-            onClick: handleRegenerarPrevisiones,
-            disabled: regenerating,
-          },
-          {
-            label: 'Subir extracto',
-            variant: 'gold',
-            icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-            onClick: () => navigate('/tesoreria/importar'),
-          },
-        ]}
-        tabsSlot={
-          <div className={styles.tabsBar} role="group" aria-label="Tabs Tesorería">
-            {tabs.map((tab) => {
-              const isActive = tab.key === activeKey;
-              const cls = isActive ? styles.active : '';
-              return (
-                <button
-                  key={tab.key}
-                  type="button"
-                  className={cls}
-                  aria-pressed={isActive}
-                  onClick={() => navigate(tab.path)}
-                >
-                  {tab.label}
-                  {tab.count != null && tab.count > 0 && (
-                    <span className={styles.tabCount}>{tab.count}</span>
-                  )}
-                </button>
-              );
-            })}
+      {/* Banner navy · "Mi Tesorería" + 4 KPIs (mockup v8) */}
+      <div className={styles.bannerNavy}>
+        <div className={styles.bannerRow}>
+          <div className={styles.bannerSectionTitle}>
+            <span className={styles.goldDot} aria-hidden />
+            <h2>Mi Tesorería</h2>
           </div>
-        }
-      />
+          <div className={styles.kpiBanner}>
+            <div className={styles.kpiBannerLabel}>Saldo</div>
+            <div className={styles.kpiBannerValue}>
+              {formatEur(kpis.saldo)} €
+            </div>
+            <div className={styles.kpiBannerSub}>
+              {accounts.length} cuenta{accounts.length === 1 ? '' : 's'} · hoy
+            </div>
+          </div>
+          <div className={styles.kpiBanner}>
+            <div className={styles.kpiBannerLabel}>Pendiente entrar mes</div>
+            <div className={`${styles.kpiBannerValue} ${styles.pos}`}>
+              +{formatEur(kpis.pendienteEntrar)} €
+            </div>
+            <div className={styles.kpiBannerSub}>
+              {kpis.ingresosCount} movimiento{kpis.ingresosCount === 1 ? '' : 's'} · {kpis.mesNombre}
+            </div>
+          </div>
+          <div className={styles.kpiBanner}>
+            <div className={styles.kpiBannerLabel}>Pendiente salir mes</div>
+            <div className={`${styles.kpiBannerValue} ${styles.neg}`}>
+              −{formatEur(kpis.pendienteSalir)} €
+            </div>
+            <div className={styles.kpiBannerSub}>
+              {kpis.gastosCount} movimiento{kpis.gastosCount === 1 ? '' : 's'} · {kpis.mesNombre}
+            </div>
+          </div>
+          <div className={styles.kpiBanner}>
+            <div className={styles.kpiBannerLabel}>Saldo final mes</div>
+            <div className={styles.kpiBannerValue}>
+              {formatEur(kpis.saldoFinal)} €
+            </div>
+            <div className={styles.kpiBannerSub}>
+              cierre proyectado · {kpis.mesNombre}
+            </div>
+          </div>
+        </div>
+      </div>
 
-      <Outlet context={{ accounts, movements, treasuryEvents, properties, reload: () => setReloadTick((t) => t + 1) }} />
+      {/* Subcabecera blanca · h1 + subtítulo · sin botones (todo es contextual a vista cuenta) */}
+      <div className={styles.subheader}>
+        <div>
+          <h1 className={styles.subheaderTitle}>Tesorería</h1>
+          <div className={styles.subheaderSub}>
+            <strong>{accounts.length}</strong> cuenta{accounts.length === 1 ? '' : 's'} activas ·{' '}
+            <button
+              type="button"
+              className={styles.subheaderLink}
+              onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
+            >
+              <strong>{pendientesConciliarCount}</strong> movimiento
+              {pendientesConciliarCount === 1 ? '' : 's'} pendientes
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.content}>
+        <Outlet
+          context={{
+            accounts,
+            movements,
+            treasuryEvents,
+            properties,
+            reload: () => setReloadTick((t) => t + 1),
+            totalSaldo: kpis.saldo,
+          }}
+        />
+      </div>
     </div>
   );
 };
@@ -223,6 +250,8 @@ export interface TesoreriaContext {
    * el listado de inmuebles disponible (ámbito='inmueble' o financiación). */
   properties: Property[];
   reload: () => void;
+  /** S-TESORERIA-FASE-B · saldo consolidado (calculado en TesoreriaPage). */
+  totalSaldo: number;
 }
 
 export default TesoreriaPage;

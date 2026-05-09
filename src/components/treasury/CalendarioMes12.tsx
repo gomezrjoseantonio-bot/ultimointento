@@ -1,21 +1,19 @@
 // ============================================================================
-// ATLAS · T31 · CalendarioMes12 (mockup atlas-tesoreria-v8)
+// ATLAS · S-TESORERIA-FASE-B · CalendarioMes12 (mockup atlas-tesoreria-v8)
 // ============================================================================
 //
-// Grid 4x3 de 12 meses + paginación entre ventanas de 12 meses (anterior/
-// siguiente). Sustituye al CalendarioRolling24m anterior · misma data
-// pero con UX más cercana al mockup canónico:
+// Grid 4×3 de 12 meses + paginación entre ventanas de 12 meses (anterior/
+// siguiente). Sigue el mockup canónico v8 · cards reformuladas:
 //
-//   · Header · "Calendario · {label-rango}" · sub "12 meses · clic para abrir"
-//   · Footer · cierre previsto · saldo inicio rango
-//   · Grid 4×3 de mes-cards uniformes (misma talla todas)
-//   · Border-left de salud · tag pill · saldo + entradas/salidas
-//   · Botones ← → para hojear ventanas de 12 meses
+//   · Mes en curso · pill "en curso" oro + Saldo HOY + Saldo cierre
+//                    + divider + Pendientes entrar + Pendientes salir
+//   · Resto meses · Saldo cierre + variación vs mes anterior (muted)
+//                   + divider + Pendientes entrar + Pendientes salir
+//   · Cabecera · "Calendario · {mes-actual} – {mes-cierre}" + cierre previsto
+//   · NO etiquetas IRPF · paga extra · tensión (eliminadas en sub-tarea 3)
 //
 // Página 0 (default) = mes en curso + 11 siguientes.
-// Página -1 = 12 meses anteriores · Página 1 = 12 meses adelante (months
-// 12..23 from current month). Saldo acumulado se reinicia desde 0 en la
-// primera página visible · es indicativo, no contable.
+// `totalSaldo` = saldo consolidado HOY (anchor de la proyección acumulada).
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
@@ -24,10 +22,6 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-];
-const MESES_CORTO = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
 ];
 
 const formatEur = (v: number): string =>
@@ -38,16 +32,33 @@ export interface CalendarTreasuryEvent {
   type: 'income' | 'expense' | 'financing';
   amount: number;
   status: 'predicted' | 'confirmed' | 'executed' | string;
+  executedMovementId?: number;
 }
 
 export interface CalendarMovement {
   date: string;
   amount: number;
+  isOpeningBalance?: boolean;
+}
+
+export interface CalendarAccount {
+  id?: number;
+  balance?: number;
+  openingBalance?: number;
 }
 
 export interface CalendarioMes12Props {
   events: CalendarTreasuryEvent[];
-  movements: CalendarMovement[];
+  /**
+   * Movimientos · reservados para futura compatibilidad. La proyección
+   * actual se infiere íntegramente de `events`, pero mantenemos el prop
+   * (opcional) para no romper integraciones existentes.
+   */
+  movements?: CalendarMovement[];
+  /** Cuentas activas · usadas para fallback si totalSaldo no se pasa. */
+  accounts?: CalendarAccount[];
+  /** Saldo consolidado HOY · anchor de la proyección (mockup v8). */
+  totalSaldo?: number;
   onMonthClick: (year: number, monthIndex0: number) => void;
 }
 
@@ -60,50 +71,32 @@ function addMonths(d: Date, months: number): Date {
   return new Date(d.getFullYear(), d.getMonth() + months, 1);
 }
 
-type Estado = 'cerrado' | 'en_curso' | 'previsto';
-type Salud = 'pos' | 'gold' | 'neg';
-type TagVariant = 'default' | 'now' | 'warn' | 'good';
-
 interface DatosMes {
   year: number;
   monthIndex0: number;
-  estado: Estado;
-  salud: Salud;
-  tagLabel: string;
-  tagVariant: TagVariant;
-  saldoFinal: number;
-  entradas: number;
-  salidas: number;
   esMesActual: boolean;
-}
-
-function deriveTag(
-  monthIndex0: number,
-  estado: Estado,
-  esMesActual: boolean,
-  neto: number,
-): { label: string; variant: TagVariant } {
-  if (esMesActual) return { label: 'en curso · hoy', variant: 'now' };
-  if (estado === 'cerrado') return { label: 'cerrado', variant: 'default' };
-  if (monthIndex0 === 5) return { label: 'irpf', variant: 'warn' };
-  if (monthIndex0 === 10) return { label: 'irpf 2º plazo', variant: 'warn' };
-  if (monthIndex0 === 6 || monthIndex0 === 11) return { label: 'paga extra', variant: 'good' };
-  if (neto < -3000) return { label: 'tensión', variant: 'warn' };
-  return { label: 'previsto', variant: 'default' };
-}
-
-function deriveSalud(neto: number, estado: Estado): Salud {
-  if (estado === 'cerrado') return neto >= 0 ? 'pos' : 'neg';
-  if (neto >= 0) return 'pos';
-  if (neto < -3000) return 'neg';
-  return 'gold';
+  esPasado: boolean;
+  /** Saldo proyectado al cierre del mes. */
+  saldoCierre: number;
+  /** Saldo HOY · solo se renderiza para el mes en curso. */
+  saldoHoy?: number;
+  /** Diferencia vs saldo cierre del mes anterior (para meses NO en curso). */
+  variacion: number;
+  /** Suma eventos status='predicted' tipo income en el mes. */
+  pendientesEntrar: number;
+  /** Suma eventos status='predicted' tipo expense/financing en el mes. */
+  pendientesSalir: number;
 }
 
 // ─── Componente ─────────────────────────────────────────────────────────────
 
 const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
   events,
-  movements,
+  // `movements` se mantiene en el tipo público por compat (ver doc en
+  // CalendarioMes12Props) · la proyección se calcula 100% desde `events`.
+  movements: _movements,
+  accounts,
+  totalSaldo,
   onMonthClick,
 }) => {
   const hoy = useMemo(() => new Date(), []);
@@ -117,80 +110,152 @@ const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
     [inicioMesActual, page],
   );
 
+  // Anchor = saldo consolidado HOY · si no se pasa, fallback a accounts.
+  const saldoActual = useMemo(() => {
+    if (typeof totalSaldo === 'number') return totalSaldo;
+    if (!accounts) return 0;
+    return accounts.reduce(
+      (sum, a) => sum + (a.balance ?? a.openingBalance ?? 0),
+      0,
+    );
+  }, [totalSaldo, accounts]);
+
   const meses: DatosMes[] = useMemo(() => {
+    const yActual = hoy.getFullYear();
+    const mActual = hoy.getMonth();
+    const diaHoy = hoy.getDate();
+
+    const computeMonthAggregates = (
+      year: number,
+      monthIndex0: number,
+    ): {
+      neto: number;
+      pendientesEntrar: number;
+      pendientesSalir: number;
+    } => {
+      let neto = 0;
+      let pendientesEntrar = 0;
+      let pendientesSalir = 0;
+      for (const e of events) {
+        if (!e.predictedDate) continue;
+        const d = new Date(
+          e.predictedDate.length > 10
+            ? e.predictedDate
+            : `${e.predictedDate}T00:00:00`,
+        );
+        if (Number.isNaN(d.getTime())) continue;
+        if (d.getFullYear() !== year || d.getMonth() !== monthIndex0) continue;
+        const isExpense = e.type === 'expense' || e.type === 'financing';
+        const signed = isExpense ? -e.amount : e.amount;
+        neto += signed;
+        if (e.status === 'predicted' && !e.executedMovementId) {
+          if (e.type === 'income') pendientesEntrar += e.amount;
+          else if (isExpense) pendientesSalir += e.amount;
+        }
+      }
+      return { neto, pendientesEntrar, pendientesSalir };
+    };
+
+    // Saldo cierre mes actual:
+    //   saldoActual ya refleja todos los movements ejecutados hasta hoy.
+    //   Sumamos los eventos restantes del mes con status='predicted' y
+    //   fecha >= hoy. Eventos ya ejecutados (executedMovementId) NO se
+    //   suman porque ya están en saldoActual.
+    let entradasRestantes = 0;
+    let salidasRestantes = 0;
+    for (const e of events) {
+      if (!e.predictedDate) continue;
+      if (e.status !== 'predicted' || e.executedMovementId) continue;
+      const d = new Date(
+        e.predictedDate.length > 10
+          ? e.predictedDate
+          : `${e.predictedDate}T00:00:00`,
+      );
+      if (Number.isNaN(d.getTime())) continue;
+      if (d.getFullYear() !== yActual || d.getMonth() !== mActual) continue;
+      if (d.getDate() < diaHoy) continue;
+      if (e.type === 'income') entradasRestantes += e.amount;
+      else if (e.type === 'expense' || e.type === 'financing') {
+        salidasRestantes += e.amount;
+      }
+    }
+    const saldoCierreActual =
+      saldoActual + entradasRestantes - salidasRestantes;
+
     const arr: DatosMes[] = [];
-    let saldoAcumulado = 0;
+    let saldoCierreAnterior: number | null = null;
+
     for (let i = 0; i < 12; i++) {
       const fechaInicio = addMonths(inicioPagina, i);
       const year = fechaInicio.getFullYear();
       const m = fechaInicio.getMonth();
 
-      const eventosMes = events.filter((e) => {
-        if (!e.predictedDate) return false;
-        const d = new Date(e.predictedDate);
-        return d.getFullYear() === year && d.getMonth() === m;
-      });
-      const movsMes = movements.filter((mv) => {
-        if (!mv.date) return false;
-        const d = new Date(mv.date);
-        return d.getFullYear() === year && d.getMonth() === m;
-      });
+      const agg = computeMonthAggregates(year, m);
+      const esMesActual = year === yActual && m === mActual;
 
-      const entradas = eventosMes
-        .filter((e) => e.type === 'income')
-        .reduce((s, e) => s + e.amount, 0);
-      const salidas = eventosMes
-        .filter((e) => e.type === 'expense' || e.type === 'financing')
-        .reduce((s, e) => s + e.amount, 0);
-      const neto = entradas - salidas;
-      saldoAcumulado += neto;
+      let saldoCierre: number;
+      if (esMesActual) {
+        saldoCierre = saldoCierreActual;
+      } else if (saldoCierreAnterior != null) {
+        saldoCierre = saldoCierreAnterior + agg.neto;
+      } else {
+        // Primer mes de la ventana NO es el actual · derivar desde ancla.
+        const diff = (year - yActual) * 12 + (m - mActual);
+        if (diff > 0) {
+          let acum = saldoCierreActual;
+          for (let k = 1; k <= diff; k++) {
+            const f = addMonths(inicioMesActual, k);
+            const a = computeMonthAggregates(f.getFullYear(), f.getMonth());
+            acum += a.neto;
+          }
+          saldoCierre = acum;
+        } else {
+          let acum = saldoCierreActual;
+          for (let k = -1; k >= diff; k--) {
+            const f = addMonths(inicioMesActual, k + 1);
+            const a = computeMonthAggregates(f.getFullYear(), f.getMonth());
+            acum -= a.neto;
+          }
+          saldoCierre = acum;
+        }
+      }
 
-      const tieneMov = movsMes.length > 0;
-      const tienePredicted = eventosMes.some((e) => e.status === 'predicted');
-      let estado: Estado;
-      if (tieneMov && !tienePredicted) estado = 'cerrado';
-      else if (tieneMov && tienePredicted) estado = 'en_curso';
-      else estado = 'previsto';
+      const variacion =
+        saldoCierreAnterior != null ? saldoCierre - saldoCierreAnterior : 0;
 
-      const esMesActual = year === hoy.getFullYear() && m === hoy.getMonth();
-      if (esMesActual) estado = 'en_curso';
-
-      const tag = deriveTag(m, estado, esMesActual, neto);
-      const salud = deriveSalud(neto, estado);
+      const esPasado = year < yActual || (year === yActual && m < mActual);
 
       arr.push({
         year,
         monthIndex0: m,
-        estado,
-        salud,
-        tagLabel: tag.label,
-        tagVariant: tag.variant,
-        saldoFinal: saldoAcumulado,
-        entradas,
-        salidas,
         esMesActual,
+        esPasado,
+        saldoCierre,
+        saldoHoy: esMesActual ? saldoActual : undefined,
+        variacion,
+        pendientesEntrar: agg.pendientesEntrar,
+        pendientesSalir: agg.pendientesSalir,
       });
+
+      saldoCierreAnterior = saldoCierre;
     }
+
+    void _movements; // `movements` reservado para compat · ver tipo público
     return arr;
-  }, [events, movements, inicioPagina, hoy]);
+  }, [events, _movements, inicioPagina, hoy, inicioMesActual, saldoActual]);
 
   const primerMes = meses[0];
   const ultimoMes = meses[meses.length - 1];
   const rangoLabel =
     primerMes && ultimoMes
-      ? primerMes.year === ultimoMes.year
-        ? `${primerMes.year}`
-        : `${MESES_CORTO[primerMes.monthIndex0]} ${primerMes.year} – ${MESES_CORTO[ultimoMes.monthIndex0]} ${ultimoMes.year}`
+      ? `${MESES[primerMes.monthIndex0]} ${primerMes.year} – ${MESES[ultimoMes.monthIndex0]} ${ultimoMes.year}`
       : '';
 
-  const totalEntradas = meses.reduce((s, m) => s + m.entradas, 0);
-  const totalSalidas = meses.reduce((s, m) => s + m.salidas, 0);
-  const resultado = totalEntradas - totalSalidas;
-  const cierrePrevisto = ultimoMes?.saldoFinal ?? 0;
+  const cierrePrevisto = ultimoMes?.saldoCierre ?? 0;
 
   return (
     <div>
-      {/* Header con rango + paginación */}
+      {/* Header con rango + cierre previsto + paginación */}
       <div
         style={{
           display: 'flex',
@@ -202,8 +267,8 @@ const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
         <div>
           <div
             style={{
-              fontSize: 14,
-              fontWeight: 600,
+              fontSize: 16,
+              fontWeight: 700,
               color: 'var(--atlas-v5-ink)',
               letterSpacing: '-0.01em',
             }}
@@ -220,18 +285,31 @@ const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
             12 meses · clic en uno para abrir el desglose
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-              fontSize: 12.5,
-              color: 'var(--atlas-v5-ink-3)',
-            }}
-          >
-            cierre previsto ·{' '}
-            <strong style={{ color: 'var(--atlas-v5-ink)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16 }}>
+          <div style={{ textAlign: 'right' }}>
+            <div
+              style={{
+                fontSize: 10,
+                color: 'var(--atlas-v5-ink-4)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                fontWeight: 600,
+              }}
+            >
+              Cierre previsto
+            </div>
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--atlas-v5-ink)',
+                marginTop: 2,
+                letterSpacing: '-0.02em',
+              }}
+            >
               {formatEur(cierrePrevisto)} €
-            </strong>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
@@ -270,69 +348,6 @@ const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
           />
         ))}
       </div>
-
-      {/* Footer con totales */}
-      <div
-        style={{
-          marginTop: 16,
-          paddingTop: 14,
-          borderTop: '1px solid var(--atlas-v5-line-2)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-end',
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontSize: 10,
-              color: 'var(--atlas-v5-ink-4)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-              fontWeight: 600,
-            }}
-          >
-            Resultado previsto
-          </div>
-          <div
-            style={{
-              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-              fontWeight: 700,
-              fontSize: 18,
-              color: resultado >= 0 ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
-              marginTop: 4,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {resultado >= 0 ? '+ ' : '− '}{formatEur(Math.abs(resultado))} €
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div
-            style={{
-              fontSize: 10,
-              color: 'var(--atlas-v5-ink-4)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.12em',
-              fontWeight: 600,
-            }}
-          >
-            Cierre previsto
-          </div>
-          <div
-            style={{
-              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-              fontWeight: 700,
-              fontSize: 18,
-              color: 'var(--atlas-v5-ink)',
-              marginTop: 4,
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {formatEur(cierrePrevisto)} €
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -354,40 +369,12 @@ const pageBtnStyle: React.CSSProperties = {
   color: 'var(--atlas-v5-ink-3)',
 };
 
-interface MesCardProps {
+const MesCard: React.FC<{
   datos: DatosMes;
   onClick: (year: number, monthIndex0: number) => void;
-}
-
-const TAG_STYLES: Record<TagVariant, React.CSSProperties> = {
-  default: {
-    background: 'var(--atlas-v5-bg)',
-    color: 'var(--atlas-v5-ink-4)',
-  },
-  now: {
-    background: 'var(--atlas-v5-gold-2)',
-    color: 'var(--atlas-v5-white)',
-  },
-  warn: {
-    background: 'var(--atlas-v5-warn-wash)',
-    color: 'var(--atlas-v5-gold-ink)',
-  },
-  good: {
-    background: 'var(--atlas-v5-pos-wash)',
-    color: 'var(--atlas-v5-pos)',
-  },
-};
-
-const SALUD_BORDER: Record<Salud, string> = {
-  pos: 'var(--atlas-v5-pos)',
-  gold: 'var(--atlas-v5-gold-2)',
-  neg: 'var(--atlas-v5-neg)',
-};
-
-const MesCard: React.FC<MesCardProps> = ({ datos, onClick }) => {
+}> = ({ datos, onClick }) => {
   const handle = (): void => onClick(datos.year, datos.monthIndex0);
   const isCurrent = datos.esMesActual;
-  const isPast = datos.estado === 'cerrado';
 
   const cardStyle: React.CSSProperties = {
     background: isCurrent
@@ -396,25 +383,14 @@ const MesCard: React.FC<MesCardProps> = ({ datos, onClick }) => {
     border: `1px solid ${
       isCurrent ? 'var(--atlas-v5-gold-2)' : 'var(--atlas-v5-line)'
     }`,
-    borderLeft: `3px solid ${SALUD_BORDER[datos.salud]}`,
     borderRadius: 10,
-    padding: '12px 14px 12px 11px',
+    padding: '12px 14px',
     cursor: 'pointer',
     transition: 'border-color .12s, transform .12s, box-shadow .12s',
-    opacity: isPast ? 0.78 : 1,
-  };
-
-  const tagStyle: React.CSSProperties = {
-    display: 'inline-block',
-    fontSize: 9.5,
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    padding: '2px 6px',
-    borderRadius: 4,
-    fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-    marginBottom: 10,
-    ...TAG_STYLES[datos.tagVariant],
+    opacity: datos.esPasado ? 0.78 : 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
   };
 
   return (
@@ -433,52 +409,155 @@ const MesCard: React.FC<MesCardProps> = ({ datos, onClick }) => {
     >
       <div
         style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: 'var(--atlas-v5-ink)',
-          marginBottom: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 8,
         }}
       >
-        {MESES[datos.monthIndex0]}
+        <span
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'var(--atlas-v5-ink)',
+          }}
+        >
+          {MESES[datos.monthIndex0]}
+        </span>
+        {isCurrent && (
+          <span
+            style={{
+              background: 'var(--atlas-v5-gold)',
+              color: 'var(--atlas-v5-brand-ink)',
+              padding: '2px 7px',
+              borderRadius: 8,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+            }}
+          >
+            en curso
+          </span>
+        )}
       </div>
-      <div style={tagStyle}>{datos.tagLabel}</div>
+
+      {isCurrent && datos.saldoHoy != null ? (
+        <>
+          <PrimaryRow lbl="Saldo hoy" val={formatEur(datos.saldoHoy)} />
+          <PrimaryRow lbl="Saldo cierre" val={formatEur(datos.saldoCierre)} />
+        </>
+      ) : (
+        <>
+          <PrimaryRow lbl="Saldo cierre" val={formatEur(datos.saldoCierre)} />
+          <MutedRow
+            lbl="vs mes ant."
+            val={`${datos.variacion >= 0 ? '+' : '−'}${formatEur(Math.abs(datos.variacion))} €`}
+          />
+        </>
+      )}
+
       <div
         style={{
-          fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-          fontSize: 18,
-          fontWeight: 700,
-          color: 'var(--atlas-v5-ink)',
-          letterSpacing: '-0.025em',
-          marginBottom: 8,
+          height: 1,
+          background: 'var(--atlas-v5-line-2)',
+          margin: '4px 0 2px',
         }}
-      >
-        {formatEur(datos.saldoFinal)} €
-      </div>
-      <div style={cardRowStyle}>
-        <span>Entradas</span>
-        <span style={{ ...cardRowAmtStyle, color: 'var(--atlas-v5-pos)' }}>
-          +{formatEur(datos.entradas)}
-        </span>
-      </div>
-      <div style={cardRowStyle}>
-        <span>Salidas</span>
-        <span style={{ ...cardRowAmtStyle, color: 'var(--atlas-v5-neg)' }}>
-          −{formatEur(datos.salidas)}
-        </span>
-      </div>
+      />
+
+      <MiniRow
+        lbl="Pendientes entrar"
+        val={
+          datos.pendientesEntrar > 0
+            ? `+${formatEur(datos.pendientesEntrar)} €`
+            : '0 €'
+        }
+        tone="pos"
+      />
+      <MiniRow
+        lbl="Pendientes salir"
+        val={
+          datos.pendientesSalir > 0
+            ? `−${formatEur(datos.pendientesSalir)} €`
+            : '0 €'
+        }
+        tone="neg"
+      />
     </div>
   );
 };
 
-const cardRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  fontSize: 10.5,
-  color: 'var(--atlas-v5-ink-4)',
-  padding: '2px 0',
-};
-const cardRowAmtStyle: React.CSSProperties = {
-  fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
-  fontWeight: 600,
-  fontSize: 11,
-};
+const PrimaryRow: React.FC<{ lbl: string; val: string }> = ({ lbl, val }) => (
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'baseline',
+      gap: 6,
+    }}
+  >
+    <span style={{ fontSize: 11, color: 'var(--atlas-v5-ink-4)' }}>{lbl}</span>
+    <span
+      style={{
+        fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+        fontSize: 16,
+        fontWeight: 700,
+        color: 'var(--atlas-v5-ink)',
+        letterSpacing: '-0.025em',
+      }}
+    >
+      {val} €
+    </span>
+  </div>
+);
+
+const MutedRow: React.FC<{ lbl: string; val: string }> = ({ lbl, val }) => (
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 6,
+      alignItems: 'baseline',
+    }}
+  >
+    <span style={{ fontSize: 10.5, color: 'var(--atlas-v5-ink-5)' }}>{lbl}</span>
+    <span
+      style={{
+        fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+        fontSize: 11.5,
+        fontWeight: 600,
+        color: 'var(--atlas-v5-ink-4)',
+      }}
+    >
+      {val}
+    </span>
+  </div>
+);
+
+const MiniRow: React.FC<{ lbl: string; val: string; tone: 'pos' | 'neg' }> = ({
+  lbl,
+  val,
+  tone,
+}) => (
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: 6,
+      alignItems: 'baseline',
+    }}
+  >
+    <span style={{ fontSize: 10.5, color: 'var(--atlas-v5-ink-4)' }}>{lbl}</span>
+    <span
+      style={{
+        fontFamily: "'JetBrains Mono', 'IBM Plex Mono', monospace",
+        fontSize: 11.5,
+        fontWeight: 600,
+        color: tone === 'pos' ? 'var(--atlas-v5-pos)' : 'var(--atlas-v5-neg)',
+      }}
+    >
+      {val}
+    </span>
+  </div>
+);

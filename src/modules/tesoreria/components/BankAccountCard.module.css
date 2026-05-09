@@ -95,7 +95,15 @@
   font-size: 11.5px;
 }
 
-.pendingLabel { color: var(--atlas-v5-ink-3); }
+.pendingLabel {
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: var(--atlas-v5-fw-medium);
+}
 
 .pendingCount {
   background: var(--atlas-v5-gold-wash);
