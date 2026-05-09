@@ -90,6 +90,11 @@ const VistaGeneralTab: React.FC = () => {
   const movByYearMonth = useMemo(() => {
     const map = new Map<string, { entradas: number; salidas: number }>();
     movements.forEach((m) => {
+      // Excluir el movimiento sintético "Saldo inicial de apertura"
+      // (creado por cuentasService cuando la cuenta tiene openingBalance).
+      // Si se incluyera, el KPI "Entradas · este mes" mentiría sumando
+      // el saldo inicial al flujo real del mes.
+      if (m.isOpeningBalance) return;
       const date = m.date ? new Date(m.date) : null;
       if (!date || Number.isNaN(date.getTime())) return;
       if (date.getFullYear() !== currentYear) return;
