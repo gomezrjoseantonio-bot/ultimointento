@@ -30,6 +30,29 @@ import {
   isTransferKey,
   type CategoryDef,
 } from './categoryCatalog';
+import { recalculateAccountBalance } from './treasuryEventsService';
+
+// Fire-and-forget recálculo del saldo de las cuentas afectadas. Errores se
+// loguean pero no rompen la operación principal de tesorería.
+function scheduleAccountBalanceRecalc(
+  accountIds: Array<number | null | undefined>,
+): void {
+  const unique = Array.from(
+    new Set(
+      accountIds.filter(
+        (id): id is number => typeof id === 'number' && Number.isFinite(id),
+      ),
+    ),
+  );
+  for (const accountId of unique) {
+    void recalculateAccountBalance(accountId).catch((err) => {
+      console.warn(
+        `[treasuryConfirmation] recalculateAccountBalance(${accountId}) falló`,
+        err,
+      );
+    });
+  }
+}
 
 export interface ConfirmOverrides {
   amount?: number;
@@ -542,6 +565,14 @@ export async function confirmTreasuryEvent(
     }
   }
 
+  // Recalcular saldo de la cuenta afectada (la del movement creado · si el
+  // override cambió accountId, recalc también la del event original por si
+  // acaso). Fire-and-forget · errores no rompen la confirmación.
+  scheduleAccountBalanceRecalc([
+    overrides?.accountId ?? existingEvent.accountId,
+    existingEvent.accountId,
+  ]);
+
   return {
     movementId,
     lineaId,
@@ -721,6 +752,13 @@ export async function revertTreasuryConfirmation(
       console.warn('[treasuryConfirmation] cascade revert de traspaso falló', err);
     }
   }
+
+  // Recalcular saldo de la cuenta del movement borrado. Para la pata espejo
+  // de traspaso, la llamada recursiva de arriba dispara su propio recalc.
+  scheduleAccountBalanceRecalc([
+    movement.accountId,
+    revertedEvent?.accountId,
+  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -807,6 +845,16 @@ export async function deleteTreasuryEventCompletely(
 
   const movementId = event.executedMovementId ?? event.movementId ?? null;
 
+  // Capturar el accountId del movement antes de borrarlo · puede diferir del
+  // event.accountId en flujos legacy.
+  let movementAccountId: number | undefined;
+  if (movementId != null) {
+    const movement = (await db.get('movements', movementId)) as
+      | Movement
+      | undefined;
+    movementAccountId = movement?.accountId;
+  }
+
   const stores = ['treasuryEvents', 'movements', ...ALL_LINE_STORES];
   const tx = db.transaction(stores as any, 'readwrite');
 
@@ -839,6 +887,9 @@ export async function deleteTreasuryEventCompletely(
   await (tx.objectStore('treasuryEvents') as any).delete(eventId);
 
   await tx.done;
+
+  // Recalcular saldo de la(s) cuenta(s) afectada(s).
+  scheduleAccountBalanceRecalc([event.accountId, movementAccountId]);
 }
 
 /**
@@ -1085,6 +1136,18 @@ export async function updateConfirmedMovement(
   }
 
   await tx.done;
+
+  // Recalcular saldo solo si el cambio afecta al balance (importe o cuenta).
+  // Cambios de descripción/categoría/proveedor no alteran saldos.
+  const importeCambia = updates.amount != null;
+  const cuentaCambia =
+    updates.accountId != null && updates.accountId !== event.accountId;
+  if (importeCambia || cuentaCambia) {
+    scheduleAccountBalanceRecalc([
+      event.accountId,
+      updates.accountId,
+    ]);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
