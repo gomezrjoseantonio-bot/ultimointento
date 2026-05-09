@@ -208,12 +208,14 @@ const MesDetalleDrawer: React.FC<MesDetalleDrawerProps> = ({
     for (const e of eventosMes) {
       const dia = eventDay(e)?.d;
       if (dia == null) continue;
-      const isPending =
-        e.status === 'predicted' || (!e.status && e.status !== 'executed');
+      // Un evento se considera "pending" cuando NO está conciliado/ejecutado.
+      // status='predicted' o status ausente → pending. Solo 'confirmed' o
+      // 'executed' cuentan como definitivamente conciliados.
+      const isConfirmed = e.status === 'confirmed' || e.status === 'executed';
       const cur = map.get(dia);
       // 'pending' tiene prioridad · si hay alguno pending, marca pending.
       if (cur === 'pending') continue;
-      map.set(dia, isPending ? 'pending' : 'confirmed');
+      map.set(dia, isConfirmed ? 'confirmed' : 'pending');
     }
     return map;
   }, [eventosMes]);
@@ -695,16 +697,13 @@ const NivelDia: React.FC<NivelDiaProps> = ({
   onEventClick,
 }) => {
   const fechaIso = dayKey(year, monthIndex0, dia);
-  // Sub-tarea 5 · ya no usamos selección bulk multi-banco · cada BankDayCard
-  // ofrece su propio "Conciliar pendientes (N)". Mantenemos el state legacy
-  // por compat (ver render final) pero está vacío.
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isConciliando, setIsConciliando] = useState(false);
-  // Reset al cambiar de día.
+  // Reset al cambiar de día (placeholder · no hay estado mutable por día
+  // tras eliminar la selección bulk multi-banco · cada BankDayCard tiene
+  // su propio "Conciliar pendientes (N)").
   useEffect(() => {
-    setSelectedIds(new Set());
+    /* noop · hook reservado para futuro reset de UI por día */
   }, [year, monthIndex0, dia]);
-  void setSelectedIds; // suprime warning · usado por flag legacy
 
   // Saldo proyectado por cuenta a fin del día seleccionado.
   // Sumamos · balance actual + todos los eventos del mes hasta el día (inclusive).
@@ -875,10 +874,6 @@ const NivelDia: React.FC<NivelDiaProps> = ({
             : `Algunas cuentas quedarían en negativo · considera reagrupar saldos.`}
         </div>
       )}
-
-      {/* Selección bulk · UI legacy preservada via selectedIds (oculta cuando
-          no se usa). Mantenemos el state para no romper integraciones. */}
-      {false && selectedIds.size === 0 && null}
     </>
   );
 };

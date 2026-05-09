@@ -49,6 +49,11 @@ export interface CalendarAccount {
 
 export interface CalendarioMes12Props {
   events: CalendarTreasuryEvent[];
+  /**
+   * Movimientos · reservados para futura compatibilidad. La proyección
+   * actual se infiere íntegramente de `events`, pero mantenemos el prop
+   * para no romper integraciones existentes.
+   */
   movements: CalendarMovement[];
   /** Cuentas activas · usadas para fallback si totalSaldo no se pasa. */
   accounts?: CalendarAccount[];
@@ -87,7 +92,9 @@ interface DatosMes {
 
 const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
   events,
-  movements,
+  // `movements` se mantiene en el tipo público por compat (ver doc en
+  // CalendarioMes12Props) · la proyección se calcula 100% desde `events`.
+  movements: _movements,
   accounts,
   totalSaldo,
   onMonthClick,
@@ -233,9 +240,9 @@ const CalendarioMes12: React.FC<CalendarioMes12Props> = ({
       saldoCierreAnterior = saldoCierre;
     }
 
-    void movements; // disponible por compat · no se usa actualmente
+    void _movements; // `movements` reservado para compat · ver tipo público
     return arr;
-  }, [events, movements, inicioPagina, hoy, inicioMesActual, saldoActual]);
+  }, [events, _movements, inicioPagina, hoy, inicioMesActual, saldoActual]);
 
   const primerMes = meses[0];
   const ultimoMes = meses[meses.length - 1];
