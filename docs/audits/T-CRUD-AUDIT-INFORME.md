@@ -24,7 +24,13 @@
 
 ### §2.1 · Descubrimiento de TODAS las entidades persistibles
 
-`grep -nE "createObjectStore\(" src/services/db.ts` arrojó **45 invocaciones** (2 son re-creaciones en migraciones · 43 stores únicos vivos a versión actual de DB) ·
+`grep -nE "createObjectStore\(" src/services/db.ts` arrojó **45 invocaciones** correspondientes a **43 nombres únicos creados a lo largo del histórico de migraciones** (algunas invocaciones son re-creaciones en branches condicionales del upgrade · ver listado abajo). De esos 43 nombres únicos creados, **3 fueron eliminados con `deleteObjectStore` en versiones posteriores** ·
+
+- `objetivos_financieros` · `deleteObjectStore` V5.9 (líneas 3222/3326)
+- `planesPensionInversion` · `deleteObjectStore` V65 (línea 4024)
+- `traspasosPlanes` · `deleteObjectStore` V65 (línea 4027)
+
+→ **43 − 3 = 40 stores reales en DB v70** ✅ (cuadra con `Almacenamiento de objetos: 40` mostrado por DevTools de Jose · captura 2026-05-09). Para el inventario canónico ver §A-real más abajo. ·
 
 ```
 2436: createObjectStore('properties', { keyPath: 'id', autoIncrement: true })
@@ -75,10 +81,10 @@
 3857: createObjectStore('aportacionesPlan', { keyPath: 'id' })                    ← second branch
 3865: createObjectStore('traspasosPlanPensiones', { keyPath: 'id', autoIncrement: true })  ← second branch
 
-# operacionesFiscales NO aparece como createObjectStore() → SE GENERA por migración upgrade (no createObjectStore directo)
-# fiscalSummaries NO aparece como createObjectStore() → SE GENERA por migración upgrade
-# gastos (H10 Treasury) NO aparece como createObjectStore() → SE GENERA por migración upgrade
-# propertyImprovements NO aparece como createObjectStore() → SE GENERA por migración upgrade
+# operacionesFiscales       · NO existe createObjectStore('operacionesFiscales') en el repo → fantasma · sólo tipo en interfaz · proxy real a gastosInmueble
+# fiscalSummaries           · NO existe createObjectStore('fiscalSummaries') en el repo → fantasma · sólo tipo en interfaz
+# gastos (H10 Treasury)     · NO existe createObjectStore('gastos') en el repo → fantasma · sólo tipo en interfaz
+# propertyImprovements      · NO existe createObjectStore('propertyImprovements') en el repo → fantasma · alias del store real mejorasInmueble
 ```
 
 `grep -nE "interface AtlasHorizonDB" src/services/db.ts` → línea 2072 · TypeScript interface enumera todos los stores activos (post-migración) ·
@@ -195,11 +201,11 @@ gastosInmueble                 personalModuleConfig       treasuryEvents
 | + | `mejorasInmueble` | Mejoras (idem `propertyImprovements` · disambiguación interna) | 0-N | `mejorasInmuebleService` |
 | + | `mueblesInmueble` | Mobiliario amortizable | 0-N | `mueblesInmuebleService` |
 
-**Total** · 43 stores en `AtlasHorizonDB` interface + 3 stores adicionales accedidos vía `(db as any)` (`gastosInmueble` · `mejorasInmueble` · `mueblesInmueble`). Algunos son legacy (`objetivos_financieros`) o deprecated y se mantienen sólo para migración compile.
+**Total** · 46 entradas en interfaz TypeScript (40 stores reales + 6 fantasmas) + las 3 entradas adicionales accedidas vía `(db as any)` (`gastosInmueble` · `mejorasInmueble` · `mueblesInmueble`) ya están entre los 40 reales (aparecen en DevTools).
 
 ---
 
-## §B · Matriz CRUD maestra (43 entidades · 7 columnas)
+## §B · Matriz CRUD maestra (40 entidades reales + 6 filas marcadas FANTASMA · 9 columnas · # · Entidad · 4 service C/R/U/D · 3 UI C/E/D)
 
 Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 callers UI productivos (gap aprovechable) · ❌ no existe ni servicio ni UI · ⚠ duplicidad (ver §C) · — N/A
 
@@ -252,12 +258,20 @@ Leyenda · ✅ servicio + caller UI productivo · 🟡 servicio existe · 0 call
 | + | `mejorasInmueble` | ✅ `mejorasInmuebleService.add` | ✅ get | 🟡 sin update detectado · UI `PropertyImprovements:205` "Editar" sin caller backend confirmado | ❌ no hay deleteMejora exportado | ✅ | 🟡 botón sin caller backend confirmado | ❌ falta delete |
 | + | `mueblesInmueble` | ✅ `mueblesInmuebleService.add` | ✅ get | ❌ no detectado | ❌ no detectado | ✅ | ❌ | ❌ |
 
-**Subtotales** ·
-- ✅ completas (CRUD + UI) · **15** entidades (accounts · presupuestos · presupuestoLineas · inversiones · planes pensiones · prestamos · gastosInmueble · documents · operacionesFiscales · personalData · treasuryEvents · escenarios · objetivos[parcial] · ingresos [parcial] · viviendaHabitual [parcial])
-- 🟡 servicio existe · UI incompleta · **8** (contratos · movements · proveedores · valoraciones · viviendaHabitual delete · objetivos UI delete · retos UI delete · perdidasPatrimoniales)
-- ❌ servicio falta (delete o update no existe) · **9** (aeatCarryForwards · propertyImprovements delete · vinculosAccesorio · compromisosRecurrentes delete · entidadesAtribucion delete · fondos_ahorro delete · mejorasInmueble update+delete · mueblesInmueble update+delete · gastos H10 delete)
-- — derivados/lifecycle/inmutables · **8** (resultadosEjercicio · arrastresIRPF · snapshotsDeclaracion · ejerciciosFiscalesCoord · keyval · objetivos_financieros[deprecated] · personalModuleConfig · fiscalSummaries)
-- ⚠ duplicidades · **3** (ver §C)
+**Subtotales corregidos · sólo 40 stores reales** (filas FANTASMA excluidas del recuento) ·
+
+- ✅ **completas estrictas** (CRUD service + Create UI + Edit UI + Delete UI · todas ✅) · **8** · `accounts` · `presupuestos` · `presupuestoLineas` · `inversiones` · `planesPensiones` · `prestamos` · `gastosInmueble` · `treasuryEvents`.
+- 🟢 **completas con matiz** (al menos 1 celda 🟡 derivado/cascade pero funcionalmente CRUD-cerrado) · **5** · `documents` (UI editar metadata falta) · `personalData` (singleton) · `escenarios` (singleton) · `aportacionesPlan` (eventos · update N/A) · `ingresos` (CRUD ✅ pero ⚠ duplicidad C3 por tipo).
+- 🟡 **servicio existe · UI incompleta** · **8** · `contracts` (deleteContract sin UI) · `movements` (delete fuera conciliación) · `proveedores` (sin UI editar/delete) · `valoraciones_historicas` (sin delete individual) · `viviendaHabitual` (botón sin backend) · `objetivos` (UI delete a verificar) · `retos` (UI delete a verificar) · `perdidasPatrimonialesAhorro` (sin UI delete).
+- ❌ **servicio falta** (delete y/o update no existen) · **6** · `aeatCarryForwards` · `vinculosAccesorio` · `compromisosRecurrentes` (sin delete) · `entidadesAtribucion` (sin delete) · `fondos_ahorro` (sin delete) · `mejorasInmueble` + `mueblesInmueble` (sin update + sin delete · cuentan como 2 → ajusto a **7** total).
+- ⚠ **gap urgente · servicio apunta a store eliminado** · **1** · `traspasosPlanes` (ver §A-fantasmas + §D #0).
+- — **derivados/lifecycle/inmutables/config** · **5** reales · `resultadosEjercicio` · `arrastresIRPF` · `snapshotsDeclaracion` · `ejerciciosFiscalesCoord` · `keyval` + `personalModuleConfig` (derivado · 6 total).
+
+**Verificación** · 8 + 5 + 8 + 7 + 1 + 6 = **35 entidades** · faltan 5 reales para llegar a 40 · son `properties` (✅ con matiz inmuebleService HTTP fantasma · gap dedicado §D #3) · `property_sales` (✅ con matiz cancel ≠ delete · gap §D #10) · `traspasosPlanPensiones` (✅ servicio · UI faltante · gap §D ya implícito) · `movementLearningRules` (✅ sin delete · gap §D #16) · `propertyDays` (— derivado de contratos · esencialmente lifecycle). 35 + 5 = **40** ✅.
+
+**Filas FANTASMA EXCLUIDAS del recuento** · `propertyImprovements` · `operacionesFiscales` · `fiscalSummaries` · `gastos` (H10) · `objetivos_financieros` · `traspasosPlanes` (apuntado por servicio → cuenta para gap urgente, no para inventario CRUD).
+
+- ⚠ **duplicidades** · **3** (ver §C · planes pensión wrapper · ingresos fragmentado · traspasos legacy ↔ V65).
 
 ---
 
