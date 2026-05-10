@@ -23,7 +23,7 @@ import {
 } from '../../../services/treasuryConfirmationService';
 import type { TesoreriaContext } from '../TesoreriaPage';
 import styles from './VistaGeneralTab.module.css';
-import AccountFormModal from '../../horizon/configuracion/cuentas/components/AccountFormModal';
+import CuentaWizard from '../../../components/cuenta/CuentaWizard';
 import { cuentasService } from '../../../services/cuentasService';
 import type { Account } from '../../../services/db';
 
@@ -308,7 +308,7 @@ const VistaGeneralTab: React.FC = () => {
         }}
       />
 
-      <AccountFormModal
+      <CuentaWizard
         open={showAccountModal}
         onClose={() => {
           setShowAccountModal(false);

@@ -25,7 +25,7 @@ import {
   regenerateForecastsForward,
 } from '../../services/treasuryBootstrapService';
 import CalendarioRolling24m from './CalendarioRolling24m';
-import AccountFormModal from '../../modules/horizon/configuracion/cuentas/components/AccountFormModal';
+import CuentaWizard from '../cuenta/CuentaWizard';
 import { cuentasService } from '../../services/cuentasService';
 import { deleteTreasuryEventCompletely } from '../../services/treasuryConfirmationService';
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -1419,8 +1419,8 @@ const TesoreriaV4: React.FC<TesoreriaV4Props> = ({ conciliacionMode = false }) =
 
       </div>}
 
-      {/* ══ MODAL — NUEVA/EDITAR CUENTA BANCARIA ══ */}
-      <AccountFormModal
+      {/* ══ S-WIZARD-CUENTA-V3 · pantalla única ATLAS v8 ══ */}
+      <CuentaWizard
         open={showAccountModal}
         onClose={() => { setShowAccountModal(false); setEditingAccount(null); }}
         onSuccess={reloadAfterAccountChange}
