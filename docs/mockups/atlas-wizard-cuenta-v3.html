@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS · Cuenta · pantalla única · v1</title>
+<style>
+  :root {
+    --bg-page: #faf8f3;
+    --bg-card: #ffffff;
+    --bg-soft: #f5f1e8;
+    --bg-hover: #f0ebde;
+    --bg-selected: #fdf4dc;
+    --bg-navy: #0a1f3d;
+    --txt-navy: #0a1f3d;
+    --txt-default: #1a1a1a;
+    --txt-muted: #6b7280;
+    --txt-soft: #9ca3af;
+    --txt-on-navy: #f5f1e8;
+    --txt-on-navy-muted: #aab3c4;
+    --gold: #c8a04a;
+    --gold-soft: #e0c479;
+    --gold-bg: #fdf4dc;
+    --teal: #0d6868;
+    --amber-bg: #fef4e0;
+    --amber-text: #8a5a00;
+    --amber-border: #f5d99e;
+    --border: #e5dfd0;
+    --border-strong: #d4cdb8;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-page); color: var(--txt-default); font-size: 13px; line-height: 1.5; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 13px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(10,31,61,0.4); display: grid; place-items: center; z-index: 100; padding: 24px; }
+  .modal { width: 100%; max-width: 1200px; max-height: calc(100vh - 48px); background: var(--bg-page); border-radius: var(--radius-lg); display: grid; grid-template-rows: auto 1fr auto; box-shadow: 0 20px 60px rgba(10,31,61,0.25); overflow: hidden; }
+
+  /* header navy */
+  .header { background: var(--bg-navy); color: var(--txt-on-navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-info { display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 38px; height: 38px; background: rgba(200,160,74,0.15); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--gold-soft); }
+  .header-icon svg { width: 19px; height: 19px; }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .header-close { width: 32px; height: 32px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--txt-on-navy-muted); border: 1px solid rgba(255,255,255,0.1); }
+  .header-close:hover { background: rgba(255,255,255,0.06); color: var(--txt-on-navy); }
+
+  /* body 2 columnas */
+  .body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; overflow: hidden; min-height: 0; }
+  .col-form { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+  .col-preview { padding: 20px 24px; overflow-y: auto; background: var(--bg-soft); }
+  .col-form::-webkit-scrollbar, .col-preview::-webkit-scrollbar { width: 6px; }
+  .col-form::-webkit-scrollbar-thumb, .col-preview::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* bloques */
+  .block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden; }
+  .block-hd { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .block-hd-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--txt-navy); display: flex; align-items: center; gap: 8px; }
+  .block-hd-title .count { color: var(--txt-muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .block-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
+
+  /* toggle */
+  .toggle { width: 34px; height: 19px; border-radius: 10px; background: var(--border-strong); position: relative; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: white; border-radius: 50%; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+  .toggle.on { background: var(--bg-navy); }
+  .toggle.on::after { transform: translateX(15px); }
+
+  /* selector tipo */
+  .type-selector { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .type-card { background: white; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.1s; }
+  .type-card:hover { background: var(--bg-soft); }
+  .type-card.selected { background: var(--gold-bg); border-color: var(--gold); }
+  .type-card svg { width: 22px; height: 22px; color: var(--txt-muted); transition: color 0.1s; }
+  .type-card.selected svg { color: var(--bg-navy); }
+  .type-card-label { font-size: 12px; font-weight: 600; color: var(--txt-default); }
+  .type-card.selected .type-card-label { color: var(--bg-navy); }
+
+  /* fields */
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .field-label .req { color: #b91c1c; font-weight: 700; }
+  .field-label .hint { font-weight: 400; color: var(--txt-soft); }
+  .input, .select { width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--txt-default); font-size: 13px; transition: border-color 0.1s, box-shadow 0.1s; min-width: 0; }
+  .input:focus, .select:focus { outline: none; border-color: var(--bg-navy); box-shadow: 0 0 0 3px rgba(10,31,61,0.06); }
+  .input.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .input-suffix { position: relative; }
+  .input-suffix .input { padding-right: 30px; }
+  .input-suffix .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--txt-muted); font-size: 11px; pointer-events: none; }
+
+  .fields-row { display: grid; gap: 10px; align-items: end; }
+  .row-identif { grid-template-columns: 1.2fr 1fr 0.6fr; }
+  .row-bancarios { grid-template-columns: 2fr 1fr; }
+  .row-saldo { grid-template-columns: 1fr 1fr; }
+  .row-remunerada { grid-template-columns: 0.8fr 1fr 1.2fr; }
+
+  .hint-note { font-size: 11px; color: var(--txt-muted); margin-top: 9px; line-height: 1.5; }
+  .hint-note b { color: var(--txt-navy); font-weight: 600; }
+
+  /* checkbox/toggle inline en la fila */
+  .principal-toggle { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+  .principal-toggle-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; }
+
+  /* ─── PREVIEW ─── */
+  .preview-title { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--txt-muted); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .preview-title svg { width: 12px; height: 12px; }
+
+  .preview-kpi-main { background: var(--bg-navy); color: var(--txt-on-navy); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 14px; }
+  .preview-kpi-main-label { font-size: 10px; color: var(--txt-on-navy-muted); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-main-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; margin-top: 7px; }
+  .preview-kpi-main-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 6px; }
+
+  /* preview card · cómo se verá la cuenta en listados */
+  .preview-account-card { background: white; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 12px; }
+  .pa-avatar { width: 44px; height: 44px; border-radius: 10px; background: var(--bg-navy); color: var(--gold-soft); display: grid; place-items: center; font-weight: 800; font-size: 16px; flex-shrink: 0; }
+  .pa-info { flex: 1; min-width: 0; }
+  .pa-name { font-size: 13px; font-weight: 700; color: var(--txt-navy); }
+  .pa-meta { font-size: 11px; color: var(--txt-muted); margin-top: 2px; }
+  .pa-saldo { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; color: var(--txt-navy); text-align: right; flex-shrink: 0; }
+
+  /* badges */
+  .preview-badges { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+  .badge-row { padding: 9px 12px; background: var(--gold-bg); border: 1px solid var(--gold); border-radius: var(--radius-sm); font-size: 11px; color: var(--bg-navy); display: flex; align-items: center; gap: 8px; line-height: 1.4; }
+  .badge-row svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--gold); }
+  .badge-row b { font-weight: 700; }
+  .badge-row.teal { background: rgba(13,104,104,0.08); border-color: rgba(13,104,104,0.3); color: var(--teal); }
+  .badge-row.teal svg { color: var(--teal); }
+
+  /* KPI mini */
+  .preview-kpi-mini { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 14px; }
+  .preview-kpi-mini-label { font-size: 10px; color: var(--txt-muted); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-mini-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--txt-navy); margin-top: 5px; line-height: 1; }
+  .preview-kpi-mini-sub { font-size: 10px; color: var(--txt-muted); margin-top: 4px; }
+
+  /* footer */
+  .footer { background: var(--bg-card); border-top: 1px solid var(--border); padding: 11px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .footer-meta { font-size: 11px; color: var(--txt-muted); display: flex; align-items: center; gap: 6px; }
+  .footer-meta svg { width: 13px; height: 13px; color: var(--gold); }
+  .footer-actions { display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.1s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--txt-default); }
+  .btn-ghost:hover { background: var(--bg-soft); }
+  .btn-primary { background: var(--gold); border: 1px solid var(--gold); color: var(--bg-navy); font-weight: 700; }
+  .btn-primary:hover { background: var(--gold-soft); }
+  .btn svg { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="modal">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-info">
+        <div class="header-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        </div>
+        <div>
+          <div class="header-title">Editar cuenta · Santander principal</div>
+          <div class="header-sub">Corriente · IBAN ES61 ···· 2715 · vinculada a nómina Orange</div>
+        </div>
+      </div>
+      <button class="header-close" title="Cerrar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- BODY 2 columnas -->
+    <div class="body">
+
+      <!-- COLUMNA IZQUIERDA · FORM -->
+      <div class="col-form">
+
+        <!-- BLOQUE 1 · Tipo de cuenta -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Tipo de cuenta</div>
+          </div>
+          <div class="block-body">
+            <div class="type-selector">
+              <div class="type-card selected">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <span class="type-card-label">Corriente</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
+                <span class="type-card-label">Ahorro</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+                <span class="type-card-label">Tarjeta crédito</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 2 · Identificación -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Identificación</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-identif">
+              <div class="field">
+                <label class="field-label">Alias <span class="req">*</span></label>
+                <input class="input" value="Santander principal">
+              </div>
+              <div class="field">
+                <label class="field-label">Banco / proveedor</label>
+                <select class="select">
+                  <option selected>Santander</option>
+                  <option>BBVA</option>
+                  <option>Sabadell</option>
+                  <option>ING</option>
+                  <option>Unicaja</option>
+                  <option>Abanca</option>
+                  <option>Bankinter</option>
+                  <option>Revolut</option>
+                  <option>Carrefour Card</option>
+                  <option>Otro · escribir</option>
+                </select>
+              </div>
+              <div class="field principal-toggle">
+                <span class="principal-toggle-label">Cuenta principal</span>
+                <div class="toggle on" title="Activado · domiciliaciones por defecto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 3 · Datos bancarios (varía según tipo · aquí Corriente) -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Datos bancarios</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-bancarios">
+              <div class="field">
+                <label class="field-label">IBAN</label>
+                <input class="input mono" value="ES61 0049 0052 6322 1041 2715">
+              </div>
+              <div class="field">
+                <label class="field-label">BIC / SWIFT <span class="hint">opcional</span></label>
+                <input class="input mono" value="BSCHESMM">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 4 · Saldo inicial -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Saldo inicial</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-saldo">
+              <div class="field">
+                <label class="field-label">Importe <span class="req">*</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="30.000,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">A fecha <span class="req">*</span></label>
+                <input class="input" type="date" value="2026-05-10">
+              </div>
+            </div>
+            <div class="hint-note">
+              El saldo inicial es el punto de partida desde el que ATLAS calcula el cashflow. Los movimientos posteriores se acumulan a este saldo.
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 5 · Cuenta remunerada (toggle OFF) -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Cuenta remunerada</div>
+            <div class="toggle" title="Desactivado"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA · PREVIEW -->
+      <div class="col-preview">
+
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Vista previa · cómo aparece la cuenta
+        </div>
+
+        <!-- KPI principal · saldo -->
+        <div class="preview-kpi-main">
+          <div class="preview-kpi-main-label">Saldo inicial</div>
+          <div class="preview-kpi-main-value">30.000,00 €</div>
+          <div class="preview-kpi-main-sub">a fecha 10 may 2026 · cuenta corriente</div>
+        </div>
+
+        <!-- Cómo se verá en listados -->
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          En el listado de Tesorería
+        </div>
+        <div class="preview-account-card">
+          <div class="pa-avatar">SA</div>
+          <div class="pa-info">
+            <div class="pa-name">Santander principal</div>
+            <div class="pa-meta">Corriente · ···· 2715</div>
+          </div>
+          <div class="pa-saldo">30.000,00 €</div>
+        </div>
+
+        <!-- Badges · roles especiales -->
+        <div class="preview-badges">
+          <div class="badge-row">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span><b>Cuenta principal</b> · domiciliaciones por defecto · destino selectores nuevos</span>
+          </div>
+          <div class="badge-row teal">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <span>Recibe la <b>nómina Orange</b> · 4.007,99 € / mes</span>
+          </div>
+        </div>
+
+        <!-- Aviso sobre saldo (si remunerada estuviera ON, aparecería aquí intereses estimados) -->
+        <div class="preview-kpi-mini">
+          <div class="preview-kpi-mini-label">Movimientos vinculados</div>
+          <div class="preview-kpi-mini-value">0</div>
+          <div class="preview-kpi-mini-sub">Cuenta nueva · sin movimientos aún · al guardar quedará lista para conciliar extractos</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-meta">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Cambios sin guardar · al guardar la cuenta aparece en Tesorería y selectores
+      </div>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar cuenta
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
