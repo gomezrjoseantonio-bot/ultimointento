@@ -28,7 +28,7 @@ import ActualizarValorPlanDialog from '../components/ActualizarValorPlanDialog';
 import AportacionPlanDialog from '../components/AportacionPlanDialog';
 import FichaShell from '../components/FichaShell';
 import PlanFormV5 from '../components/wizard/PlanFormV5';
-import TraspasoForm from '../../../components/personal/planes/TraspasoForm';
+import TraspasoPlanDialog from '../components/TraspasoPlanDialog';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import styles from './FichaPosicion.module.css';
 
@@ -882,22 +882,14 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
         />
       )}
 
-      {/* T13 lote B · sub-tarea 2 · TraspasoForm con plan origen pre-rellenado. */}
-      <TraspasoForm
-        isOpen={showTraspaso}
-        onClose={() => setShowTraspaso(false)}
-        personalDataId={plan.personalDataId}
-        planOrigen={{
-          id: plan.id,
-          nombre: plan.nombre,
-          entidad: plan.gestoraActual,
-          saldo: plan.valorActual ?? 0,
-        }}
-        onSaved={() => {
-          setShowTraspaso(false);
-          void load();
-        }}
-      />
+      {/* T13 lote B · TraspasoPlanDialog v5 · plan origen pre-rellenado. */}
+      {showTraspaso && (
+        <TraspasoPlanDialog
+          plan={plan}
+          onSaved={() => void load()}
+          onClose={() => setShowTraspaso(false)}
+        />
+      )}
     </>
   );
 };
