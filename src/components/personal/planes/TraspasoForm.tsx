@@ -114,50 +114,45 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   const isinDestinoFinal =
     planDestinoSeleccionado?.isinActual ?? (isinDestino.trim() || undefined);
 
+  // TAREA 13 lote B · sub-tarea 4 (C6) · validación en tiempo real ·
+  // si hay error el botón "Registrar traspaso" queda deshabilitado y el
+  // mensaje aparece inline. Cubre los 2 casos exigidos por el spec:
+  //   · importeTraspasado ≤ valorTraspaso
+  //   · importeTraspasado ≤ saldo origen del plan
+  // (más coherencia básica: origen, gestora destino, valor > 0, margen 10 %).
+  const valorNumLive = parseFloat(valorTraspaso.replace(',', '.'));
+  const importeNumLive =
+    tipo === 'total'
+      ? valorNumLive
+      : parseFloat(importeTraspasado.replace(',', '.'));
+
+  let validationError: string | null = null;
+  if (!effectiveOrigen) {
+    validationError = 'Selecciona el plan origen.';
+  } else if (!gestoraDestinoFinal) {
+    validationError = 'Indica la gestora destino (selecciona un plan o escríbela).';
+  } else if (!Number.isFinite(valorNumLive) || valorNumLive <= 0) {
+    validationError = 'Indica el valor del plan en el momento del traspaso.';
+  } else if (saldoOrigen > 0 && valorNumLive > saldoOrigen * 1.1) {
+    validationError = `El valor del traspaso (${formatCurrency(valorNumLive)}) supera en >10 % el saldo registrado del plan (${formatCurrency(saldoOrigen)}). Actualiza la valoración del plan antes de registrar el traspaso.`;
+  } else if (tipo === 'parcial') {
+    if (!Number.isFinite(importeNumLive) || importeNumLive <= 0) {
+      validationError = 'Indica el importe a traspasar.';
+    } else if (importeNumLive > valorNumLive) {
+      validationError = `El importe traspasado no puede superar el valor del traspaso (${formatCurrency(valorNumLive)} €).`;
+    } else if (saldoOrigen > 0 && importeNumLive > saldoOrigen) {
+      validationError = `El importe traspasado supera el saldo disponible del plan origen (${formatCurrency(saldoOrigen)} €).`;
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!effectiveOrigen) {
-      toast.error('Selecciona el plan origen.');
+    if (validationError || !effectiveOrigen) {
+      if (validationError) toast.error(validationError);
       return;
     }
-    if (!gestoraDestinoFinal) {
-      toast.error('Indica la gestora destino (selecciona un plan o escríbela).');
-      return;
-    }
-    const valorNum = parseFloat(valorTraspaso.replace(',', '.'));
-    if (!Number.isFinite(valorNum) || valorNum <= 0) {
-      toast.error('Indica el valor del plan en el momento del traspaso.');
-      return;
-    }
-    // TAREA 13 v4 · Commit 2 (C6) · validar valor coherente con saldo origen.
-    // Permitimos un margen del 10 % para acomodar movimientos de mercado
-    // entre la última valoración y la fecha de ejecución del traspaso.
-    if (saldoOrigen > 0 && valorNum > saldoOrigen * 1.1) {
-      toast.error(
-        `El valor del traspaso (${formatCurrency(valorNum)}) supera en >10 % el saldo registrado del plan (${formatCurrency(saldoOrigen)}). Actualiza la valoración del plan antes de registrar el traspaso.`,
-      );
-      return;
-    }
-    const importeNum =
-      tipo === 'total' ? valorNum : parseFloat(importeTraspasado.replace(',', '.'));
-    if (tipo === 'parcial' && (!Number.isFinite(importeNum) || importeNum <= 0)) {
-      toast.error('Indica el importe a traspasar.');
-      return;
-    }
-    if (tipo === 'parcial') {
-      if (importeNum > valorNum) {
-        toast.error(
-          `El importe a traspasar (${formatCurrency(importeNum)}) no puede exceder el valor del plan en el momento del traspaso (${formatCurrency(valorNum)}).`,
-        );
-        return;
-      }
-      if (saldoOrigen > 0 && importeNum > saldoOrigen) {
-        toast.error(
-          `El importe a traspasar (${formatCurrency(importeNum)}) no puede exceder el saldo registrado del plan origen (${formatCurrency(saldoOrigen)}).`,
-        );
-        return;
-      }
-    }
+    const valorNum = valorNumLive;
+    const importeNum = importeNumLive;
 
     setLoading(true);
     try {
@@ -419,6 +414,15 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           />
         </div>
 
+        {validationError && (
+          <div
+            role="alert"
+            className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-800"
+          >
+            {validationError}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
           <button
             type="button"
@@ -430,8 +434,8 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           </button>
           <button
             type="submit"
-            disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand-navy rounded-md disabled:opacity-60"
+            disabled={loading || validationError !== null}
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-navy rounded-md disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Registrando…' : 'Registrar traspaso'}
           </button>
