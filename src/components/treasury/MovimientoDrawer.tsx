@@ -20,13 +20,17 @@
 import React, { useEffect, useState } from 'react';
 import { Check, X, Pencil, Save } from 'lucide-react';
 import type { Account } from '../../services/db';
+import { intlOpts } from '../../utils/intlNumber';
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    useGrouping: 'always',
-  } as Intl.NumberFormatOptions);
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: 'always',
+    }),
+  );
 
 const formatDateLong = (iso?: string): string => {
   if (!iso) return '—';

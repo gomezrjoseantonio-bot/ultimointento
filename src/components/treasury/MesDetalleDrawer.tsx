@@ -21,6 +21,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -28,11 +29,14 @@ const MESES = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-    useGrouping: 'always',
-  } as Intl.NumberFormatOptions);
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  );
 
 const formatCompact = (v: number): string => {
   const abs = Math.abs(v);

@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3, TrendingUp } from 'lucide-react';
+import { intlOpts } from '../../utils/intlNumber';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -46,13 +47,27 @@ ChartJS.register(
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmtEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  ) + ' €';
 
 const fmtK = (v: number): string => (v / 1000).toFixed(0) + 'K €';
 
 const fmtSign = (v: number): string =>
   (v >= 0 ? '+' : '') +
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' €';
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  ) + ' €';
 
 const cssVar = (name: string, fallback: string): string => {
   if (typeof window === 'undefined') return fallback;

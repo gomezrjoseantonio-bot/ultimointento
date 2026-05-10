@@ -6,6 +6,7 @@ import {
   necesitaRegenerar,
   regenerateForecastsForward,
 } from '../../services/treasuryBootstrapService';
+import { intlOpts } from '../../utils/intlNumber';
 import styles from './TesoreriaPage.module.css';
 
 const MONTH_NAMES_LONG = [
@@ -14,13 +15,17 @@ const MONTH_NAMES_LONG = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+  v.toLocaleString(
+    'es-ES',
     // es-ES por defecto usa minimumGroupingDigits=2 · 4 cifras (p.ej. 4473)
-    // se quedaban sin separador. El mockup v8 muestra siempre "4.473 €".
-    useGrouping: 'always',
-  } as Intl.NumberFormatOptions);
+    // se quedaban sin separador. El mockup v8 espera "4.473" (el sufijo " €"
+    // se concatena en el JSX, esta función solo formatea el número).
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  );
 
 const TesoreriaPage: React.FC = () => {
   const navigate = useNavigate();

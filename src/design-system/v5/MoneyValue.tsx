@@ -1,4 +1,5 @@
 import React from 'react';
+import { intlOpts } from '../../utils/intlNumber';
 import styles from './MoneyValue.module.css';
 
 export type MoneyTone =
@@ -56,16 +57,19 @@ const MoneyValue: React.FC<MoneyValueProps> = ({
           : 'muted'
       : tone;
 
-  const formatter = new Intl.NumberFormat(locale, {
-    style: showCurrency ? 'currency' : 'decimal',
-    currency: 'EUR',
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-    signDisplay: showSign ? 'exceptZero' : 'auto',
+  const formatter = new Intl.NumberFormat(
+    locale,
     // es-ES por defecto omite el separador para 4 cifras (minimumGroupingDigits=2)
     // Forzamos el agrupamiento para que "4396" se renderice como "4.396 €".
-    useGrouping: 'always',
-  } as Intl.NumberFormatOptions);
+    intlOpts({
+      style: showCurrency ? 'currency' : 'decimal',
+      currency: 'EUR',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+      signDisplay: showSign ? 'exceptZero' : 'auto',
+      useGrouping: 'always',
+    }),
+  );
 
   const text = formatter.format(value);
 

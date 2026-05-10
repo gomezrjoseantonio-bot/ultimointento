@@ -11,6 +11,7 @@ import HistoricoWizard from '../../modules/horizon/tesoreria/HistoricoWizard';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../shared/PageHeader';
 import toast from 'react-hot-toast';
 import { normalizeText } from '../../utils/normalizeText';
+import { intlOpts } from '../../utils/intlNumber';
 import { initDB } from '../../services/db';
 import type { Account as DBAccount, Movement as DBMovement } from '../../services/db';
 import { prestamosService } from '../../services/prestamosService';
@@ -103,7 +104,14 @@ const MESES = [
 const MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 const formatEur = (v: number) =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: 'always',
+    }),
+  );
 
 const toNumId = (v: unknown): number | undefined => {
   if (typeof v === 'number' && Number.isFinite(v)) return v;

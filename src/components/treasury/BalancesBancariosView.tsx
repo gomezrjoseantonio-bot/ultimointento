@@ -11,11 +11,19 @@ import { useNavigate } from 'react-router-dom';
 import { Landmark } from 'lucide-react';
 import { initDB } from '../../services/db';
 import type { Account } from '../../services/db';
+import { intlOpts } from '../../utils/intlNumber';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmtEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: 'always',
+    }),
+  ) + ' €';
 
 const getAccountDisplayName = (acc: Account): string =>
   acc.alias ?? acc.name ?? acc.banco?.name ?? 'Cuenta';
