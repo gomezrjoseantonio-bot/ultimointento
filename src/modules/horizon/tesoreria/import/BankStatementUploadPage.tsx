@@ -92,31 +92,35 @@ const BankStatementUploadPage: React.FC = () => {
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
-    void loadAccounts();
-  }, []);
-
-  async function loadAccounts() {
-    try {
-      const db = await initDB();
-      const list = ((await db.getAll('accounts')) ?? []) as Account[];
-      const active = list.filter(isActiveAccount);
-      setAccounts(active);
-      // Pre-seleccionar la cuenta indicada en `?accountId=N` cuando exista.
-      // Fallback · primera cuenta activa.
-      if (
-        preselectAccountId != null &&
-        active.some((a) => a.id === preselectAccountId)
-      ) {
-        setAccountId(preselectAccountId);
-      } else if (active.length > 0 && active[0].id != null) {
-        setAccountId(active[0].id);
+    let cancelled = false;
+    async function loadAccounts() {
+      try {
+        const db = await initDB();
+        const list = ((await db.getAll('accounts')) ?? []) as Account[];
+        if (cancelled) return;
+        const active = list.filter(isActiveAccount);
+        setAccounts(active);
+        // Pre-seleccionar la cuenta indicada en `?accountId=N` cuando exista.
+        // Fallback · primera cuenta activa.
+        if (
+          preselectAccountId != null &&
+          active.some((a) => a.id === preselectAccountId)
+        ) {
+          setAccountId(preselectAccountId);
+        } else if (active.length > 0 && active[0].id != null) {
+          setAccountId(active[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to load accounts', error);
+      } finally {
+        if (!cancelled) setAccountsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load accounts', error);
-    } finally {
-      setAccountsLoading(false);
     }
-  }
+    void loadAccounts();
+    return () => {
+      cancelled = true;
+    };
+  }, [preselectAccountId]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
