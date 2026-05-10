@@ -24,6 +24,8 @@ interface TraspasoFormProps {
   isOpen: boolean;
   onClose: () => void;
   personalDataId: number;
+  // Si se invoca desde la cabecera global ("Nuevo traspaso") · puede venir
+  // null y el usuario escoge el plan origen dentro del formulario.
   planOrigen: PlanOrigenInput | null;
   onSaved: () => void;
 }
@@ -44,7 +46,10 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   onSaved,
 }) => {
   const [loading, setLoading] = useState(false);
-  const [destinos, setDestinos] = useState<PlanPensiones[]>([]);
+  const [planesActivos, setPlanesActivos] = useState<PlanPensiones[]>([]);
+  // TAREA 13 lote B · sub-tarea 2 · cuando planOrigen viene null (entrada
+  // por botón global "Nuevo traspaso"), el usuario selecciona el origen aquí.
+  const [planOrigenSeleccionadoId, setPlanOrigenSeleccionadoId] = useState<string>('');
   const [planDestinoId, setPlanDestinoId] = useState<string>('');
   const [gestoraDestinoManual, setGestoraDestinoManual] = useState<string>('');
   const [isinDestino, setIsinDestino] = useState<string>('');
@@ -56,13 +61,14 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
   const [notas, setNotas] = useState<string>('');
 
   useEffect(() => {
-    if (!isOpen || !planOrigen) return;
+    if (!isOpen) return;
+    setPlanOrigenSeleccionadoId('');
     setPlanDestinoId('');
     setGestoraDestinoManual('');
     setIsinDestino('');
     setTipo('total');
     setImporteTraspasado('');
-    setValorTraspaso(planOrigen.saldo > 0 ? String(planOrigen.saldo) : '');
+    setValorTraspaso(planOrigen && planOrigen.saldo > 0 ? String(planOrigen.saldo) : '');
     setFechaSolicitud('');
     setFechaEjecucion(today());
     setNotas('');
@@ -73,17 +79,35 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
           personalDataId,
           estado: 'activo',
         });
-        // Excluir el propio plan origen del listado de destinos
-        setDestinos(planes.filter((p) => p.id !== planOrigen.id));
+        setPlanesActivos(planes);
       } catch (e) {
-        console.error('[TraspasoForm] error cargando destinos:', e);
+        console.error('[TraspasoForm] error cargando planes:', e);
       }
     })();
   }, [isOpen, personalDataId, planOrigen]);
 
-  if (!planOrigen) return null;
+  if (!isOpen) return null;
 
-  const saldoOrigen = planOrigen.saldo;
+  // Origen efectivo · si llega por prop se usa; si no, el seleccionado en el
+  // selector interno (botón global "Nuevo traspaso").
+  const planOrigenInternoSeleccionado = planesActivos.find(
+    (p) => p.id === planOrigenSeleccionadoId,
+  );
+  const effectiveOrigen: PlanOrigenInput | null =
+    planOrigen ??
+    (planOrigenInternoSeleccionado
+      ? {
+          id: planOrigenInternoSeleccionado.id,
+          nombre: planOrigenInternoSeleccionado.nombre,
+          entidad: planOrigenInternoSeleccionado.gestoraActual,
+          saldo: planOrigenInternoSeleccionado.valorActual ?? 0,
+        }
+      : null);
+
+  const saldoOrigen = effectiveOrigen?.saldo ?? 0;
+  const destinos = effectiveOrigen
+    ? planesActivos.filter((p) => p.id !== effectiveOrigen.id)
+    : planesActivos;
   const planDestinoSeleccionado = destinos.find((d) => d.id === planDestinoId);
   const gestoraDestinoFinal =
     planDestinoSeleccionado?.gestoraActual ?? gestoraDestinoManual.trim();
@@ -92,6 +116,10 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!effectiveOrigen) {
+      toast.error('Selecciona el plan origen.');
+      return;
+    }
     if (!gestoraDestinoFinal) {
       toast.error('Indica la gestora destino (selecciona un plan o escríbela).');
       return;
@@ -116,9 +144,6 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
       toast.error('Indica el importe a traspasar.');
       return;
     }
-    // TAREA 13 v4 · Commit 2 (C6) · importe parcial no puede exceder el valor
-    // del plan ni el saldo registrado · datos incoherentes desajustarían la
-    // rentabilidad por bloque y el saldo restante en gestora origen.
     if (tipo === 'parcial') {
       if (importeNum > valorNum) {
         toast.error(
@@ -137,13 +162,13 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
     setLoading(true);
     try {
       // Plan origen actual · necesario para snapshot de tipo y política
-      const planOrigenActual = await planesPensionesService.getPlan(planOrigen.id);
+      const planOrigenActual = await planesPensionesService.getPlan(effectiveOrigen.id);
       if (!planOrigenActual) {
-        throw new Error(`Plan origen ${planOrigen.id} no encontrado`);
+        throw new Error(`Plan origen ${effectiveOrigen.id} no encontrado`);
       }
 
       await traspasosPlanPensionesService.registrarTraspaso({
-        planId: planOrigen.id,
+        planId: effectiveOrigen.id,
         planIdDestino: planDestinoSeleccionado?.id,
         fechaSolicitud: fechaSolicitud || undefined,
         fechaEjecucion,
@@ -185,14 +210,58 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Plan origen</label>
-          <div className="border rounded-md px-3 py-2 bg-gray-50 text-sm">
-            <span className="font-medium">{planOrigen.nombre}</span>
-            {planOrigen.entidad && <span className="text-gray-500"> · {planOrigen.entidad}</span>}
-            <span className="block text-xs text-gray-600 mt-0.5">
-              Saldo registrado: {formatCurrency(saldoOrigen)}
-            </span>
-          </div>
+          <label
+            htmlFor={planOrigen ? undefined : 'planOrigenSelect'}
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Plan origen{planOrigen ? '' : ' *'}
+          </label>
+          {planOrigen ? (
+            <div className="border rounded-md px-3 py-2 bg-gray-50 text-sm">
+              <span className="font-medium">{planOrigen.nombre}</span>
+              {planOrigen.entidad && (
+                <span className="text-gray-500"> · {planOrigen.entidad}</span>
+              )}
+              <span className="block text-xs text-gray-600 mt-0.5">
+                Saldo registrado: {formatCurrency(saldoOrigen)}
+              </span>
+            </div>
+          ) : planesActivos.length === 0 ? (
+            <p className="text-xs text-gray-500">
+              No tienes planes activos · crea un plan antes de registrar un traspaso.
+            </p>
+          ) : (
+            <>
+              <select
+                id="planOrigenSelect"
+                value={planOrigenSeleccionadoId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setPlanOrigenSeleccionadoId(id);
+                  // Pre-rellenar el valor del plan al seleccionar origen
+                  const sel = planesActivos.find((p) => p.id === id);
+                  setValorTraspaso(sel && (sel.valorActual ?? 0) > 0 ? String(sel.valorActual) : '');
+                  // Si el destino coincide con el nuevo origen, limpiar
+                  if (id === planDestinoId) setPlanDestinoId('');
+                }}
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                required
+              >
+                <option value="">— Selecciona el plan origen —</option>
+                {planesActivos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nombre}
+                    {p.gestoraActual ? ` (${p.gestoraActual})` : ''}
+                  </option>
+                ))}
+              </select>
+              {effectiveOrigen && (
+                <p className="text-xs text-gray-600 mt-1">
+                  Saldo registrado: {formatCurrency(saldoOrigen)}
+                </p>
+              )}
+            </>
+          )}
         </div>
 
         <div>
@@ -298,7 +367,7 @@ const TraspasoForm: React.FC<TraspasoFormProps> = ({
               type="number"
               step="0.01"
               min="0"
-              max={saldoOrigen}
+              max={saldoOrigen > 0 ? saldoOrigen : undefined}
               value={importeTraspasado}
               onChange={(e) => setImporteTraspasado(e.target.value)}
               className="w-full border rounded-md px-3 py-2 text-sm"
