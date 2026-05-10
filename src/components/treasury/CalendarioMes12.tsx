@@ -18,6 +18,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -25,7 +26,15 @@ const MESES = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Forzar separador de millares también para 4 cifras (mockup v8).
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  );
 
 export interface CalendarTreasuryEvent {
   predictedDate: string;

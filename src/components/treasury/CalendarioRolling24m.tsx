@@ -20,6 +20,7 @@
 // ============================================================================
 
 import React, { useMemo } from 'react';
+import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -31,7 +32,14 @@ const MESES_CORTO = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  );
 
 export interface CalendarTreasuryEvent {
   predictedDate: string;

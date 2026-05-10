@@ -14,9 +14,17 @@
 
 import React, { useMemo } from 'react';
 import { Check, CheckCircle2 } from 'lucide-react';
+import { intlOpts } from '../../utils/intlNumber';
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  v.toLocaleString(
+    'es-ES',
+    intlOpts({
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: 'always',
+    }),
+  );
 
 const formatDateTodayLabel = (): string => {
   const dias = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
