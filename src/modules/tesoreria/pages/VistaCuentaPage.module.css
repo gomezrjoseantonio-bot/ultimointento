@@ -1,7 +1,10 @@
 /* S-TESORERIA-FASE-B-VISTA-CUENTA · página `/tesoreria/cuenta/:accountId`.
  * Banner navy específico de cuenta + toolbar acciones + filtros 3 ejes +
  * tabla 5 columnas con día agrupador iconos + bulk action bar sobrio.
- * Tokens v5 (sin hex literales) salvo gradients de logo banco. */
+ * Tokens v5 únicamente · únicas excepciones: rgba() sobre navy para hovers
+ * sutiles del pager y un literal `#FF8E83` para texto negativo sobre fondo
+ * navy (no existe token `atlas-v5-neg-bright`; se sigue el precedente de
+ * `src/modules/tesoreria/TesoreriaPage.module.css:79`). */
 
 .page {
   font-family: var(--atlas-v5-font-ui);

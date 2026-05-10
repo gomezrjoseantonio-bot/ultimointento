@@ -24,7 +24,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useNavigate,
   useParams,
-  useSearchParams,
 } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -279,7 +278,6 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 const VistaCuentaPage: React.FC = () => {
   const navigate = useNavigate();
   const { accountId: accountIdParam } = useParams<{ accountId: string }>();
-  const [, setSearchParams] = useSearchParams();
 
   const accountId = useMemo(() => {
     const parsed = Number(accountIdParam);
@@ -884,10 +882,6 @@ const VistaCuentaPage: React.FC = () => {
       navigate(`/tesoreria/movimientos?${params.toString()}`);
     }
   };
-
-  // Suprime el warning de unused `setSearchParams` cuando algún día se use
-  // para persistir filtros en URL. Lo dejamos disponible para evolutivos.
-  void setSearchParams;
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (loading) {
