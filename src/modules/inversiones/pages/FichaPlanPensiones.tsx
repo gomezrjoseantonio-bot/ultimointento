@@ -28,6 +28,7 @@ import ActualizarValorPlanDialog from '../components/ActualizarValorPlanDialog';
 import AportacionPlanDialog from '../components/AportacionPlanDialog';
 import FichaShell from '../components/FichaShell';
 import PlanFormV5 from '../components/wizard/PlanFormV5';
+import TraspasoForm from '../../../components/personal/planes/TraspasoForm';
 import { getEntidadLogoConfig } from '../utils/entidadLogo';
 import styles from './FichaPosicion.module.css';
 
@@ -228,6 +229,8 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
   const [showActualizarValor, setShowActualizarValor] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
   const [showEditar, setShowEditar] = useState(false);
+  // T13 lote B · sub-tarea 2 · entrada per-plan al TraspasoForm.
+  const [showTraspaso, setShowTraspaso] = useState(false);
 
   // ── Carga plan + aportaciones + valoraciones ──────────────────────────────
 
@@ -505,6 +508,12 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
             variant: 'ghost',
             icon: <Icons.Plus size={14} strokeWidth={1.8} />,
             onClick: () => setShowAportar(true),
+          },
+          {
+            label: 'Traspasar',
+            variant: 'ghost',
+            icon: <Icons.ArrowRight size={14} strokeWidth={1.8} />,
+            onClick: () => setShowTraspaso(true),
           },
           {
             label: 'Editar',
@@ -872,6 +881,23 @@ const FichaPlanPensiones: React.FC<Props> = ({ planId, onBack }) => {
           onClose={() => setShowEditar(false)}
         />
       )}
+
+      {/* T13 lote B · sub-tarea 2 · TraspasoForm con plan origen pre-rellenado. */}
+      <TraspasoForm
+        isOpen={showTraspaso}
+        onClose={() => setShowTraspaso(false)}
+        personalDataId={plan.personalDataId}
+        planOrigen={{
+          id: plan.id,
+          nombre: plan.nombre,
+          entidad: plan.gestoraActual,
+          saldo: plan.valorActual ?? 0,
+        }}
+        onSaved={() => {
+          setShowTraspaso(false);
+          void load();
+        }}
+      />
     </>
   );
 };
