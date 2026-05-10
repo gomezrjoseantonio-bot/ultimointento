@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS · Inmueble · pantalla única · v1</title>
+<style>
+  :root {
+    --bg-page: #faf8f3;
+    --bg-card: #ffffff;
+    --bg-soft: #f5f1e8;
+    --bg-hover: #f0ebde;
+    --bg-selected: #fdf4dc;
+    --bg-navy: #0a1f3d;
+    --txt-navy: #0a1f3d;
+    --txt-default: #1a1a1a;
+    --txt-muted: #6b7280;
+    --txt-soft: #9ca3af;
+    --txt-on-navy: #f5f1e8;
+    --txt-on-navy-muted: #aab3c4;
+    --gold: #c8a04a;
+    --gold-soft: #e0c479;
+    --gold-bg: #fdf4dc;
+    --teal: #0d6868;
+    --amber-bg: #fef4e0;
+    --amber-text: #8a5a00;
+    --amber-border: #f5d99e;
+    --border: #e5dfd0;
+    --border-strong: #d4cdb8;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-page); color: var(--txt-default); font-size: 13px; line-height: 1.5; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 13px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(10,31,61,0.4); display: grid; place-items: center; z-index: 100; padding: 24px; }
+  .modal { width: 100%; max-width: 1320px; max-height: calc(100vh - 48px); background: var(--bg-page); border-radius: var(--radius-lg); display: grid; grid-template-rows: auto 1fr auto; box-shadow: 0 20px 60px rgba(10,31,61,0.25); overflow: hidden; }
+
+  /* header navy */
+  .header { background: var(--bg-navy); color: var(--txt-on-navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-info { display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 38px; height: 38px; background: rgba(200,160,74,0.15); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--gold-soft); }
+  .header-icon svg { width: 19px; height: 19px; }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .header-close { width: 32px; height: 32px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--txt-on-navy-muted); border: 1px solid rgba(255,255,255,0.1); }
+  .header-close:hover { background: rgba(255,255,255,0.06); color: var(--txt-on-navy); }
+
+  /* body 2 columnas */
+  .body { display: grid; grid-template-columns: 1.35fr 1fr; gap: 0; overflow: hidden; min-height: 0; }
+  .col-form { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+  .col-preview { padding: 20px 24px; overflow-y: auto; background: var(--bg-soft); }
+  .col-form::-webkit-scrollbar, .col-preview::-webkit-scrollbar { width: 6px; }
+  .col-form::-webkit-scrollbar-thumb, .col-preview::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* bloques */
+  .block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden; }
+  .block-hd { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .block-hd-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--txt-navy); display: flex; align-items: center; gap: 8px; }
+  .block-hd-title .count { color: var(--txt-muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .block-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
+
+  /* toggle */
+  .toggle { width: 34px; height: 19px; border-radius: 10px; background: var(--border-strong); position: relative; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: white; border-radius: 50%; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+  .toggle.on { background: var(--bg-navy); }
+  .toggle.on::after { transform: translateX(15px); }
+
+  /* selector visual tipo */
+  .type-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .type-card { background: white; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.1s; }
+  .type-card:hover { background: var(--bg-soft); }
+  .type-card.selected { background: var(--gold-bg); border-color: var(--gold); border-width: 1.5px; }
+  .type-card svg { width: 22px; height: 22px; color: var(--txt-muted); transition: color 0.1s; }
+  .type-card.selected svg { color: var(--bg-navy); }
+  .type-card-label { font-size: 12px; font-weight: 600; color: var(--txt-default); }
+  .type-card.selected .type-card-label { color: var(--bg-navy); }
+
+  /* fields */
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .field-label .req { color: #b91c1c; font-weight: 700; }
+  .field-label .hint { font-weight: 400; color: var(--txt-soft); }
+  .input, .select { width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--txt-default); font-size: 13px; transition: border-color 0.1s, box-shadow 0.1s; min-width: 0; }
+  .input:focus, .select:focus { outline: none; border-color: var(--bg-navy); box-shadow: 0 0 0 3px rgba(10,31,61,0.06); }
+  .input.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .input-suffix { position: relative; }
+  .input-suffix .input { padding-right: 30px; }
+  .input-suffix .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--txt-muted); font-size: 11px; pointer-events: none; }
+
+  /* filas */
+  .fields-row { display: grid; gap: 10px; align-items: end; }
+  .row-identif { grid-template-columns: 1.1fr 1.5fr 1.4fr; }
+  .row-ubicac { grid-template-columns: 0.7fr 1.2fr 1fr 1.3fr; }
+  .row-compra-1 { grid-template-columns: 1fr 1fr 1fr 0.9fr; }
+  .row-compra-2 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+  .row-fisicas { grid-template-columns: 0.7fr 0.7fr 0.6fr 0.7fr 1fr 0.7fr; }
+  .row-catastro { grid-template-columns: 1fr 1fr 0.6fr 1fr; }
+
+  /* radio inline · usada/nueva */
+  .radio-inline { display: flex; align-items: center; gap: 14px; padding: 7px 0; }
+  .radio-opt { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+  .radio-opt input { accent-color: var(--gold); }
+
+  /* hint nota */
+  .hint-note { font-size: 11px; color: var(--txt-muted); margin-top: 9px; line-height: 1.5; }
+  .hint-note b { color: var(--txt-navy); font-weight: 600; }
+
+  /* anexos parking/trastero */
+  .anexos-row { margin-top: 12px; padding: 10px 12px; background: var(--bg-soft); border-radius: var(--radius-sm); display: flex; flex-direction: column; gap: 8px; }
+  .anexos-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .anexos-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; min-width: 60px; }
+  .anexo-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; }
+  .anexo-check input { accent-color: var(--gold); }
+  .anexo-ref-input { padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; width: 220px; }
+
+  /* checkbox inline */
+  .check-inline { margin-top: 10px; display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12px; color: var(--txt-default); }
+  .check-inline input { accent-color: var(--gold); }
+
+  /* uso · cards horizontal selectable */
+  .uso-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .uso-card { background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 10px; cursor: pointer; transition: all 0.1s; display: flex; flex-direction: column; gap: 2px; }
+  .uso-card:hover { background: var(--bg-soft); }
+  .uso-card.selected { background: var(--gold-bg); border-color: var(--gold); }
+  .uso-card-label { font-size: 12px; font-weight: 600; color: var(--txt-default); }
+  .uso-card.selected .uso-card-label { color: var(--bg-navy); }
+  .uso-card-sub { font-size: 10px; color: var(--txt-muted); line-height: 1.3; }
+
+  /* sub-bloque por habitaciones */
+  .sub-block { margin-top: 10px; padding: 9px 12px; background: var(--bg-soft); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .sub-block-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; }
+
+  /* lista compacta CAPEX/muebles */
+  .row-list { display: flex; flex-direction: column; gap: 7px; }
+  .capex-row { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr 28px; gap: 7px; align-items: center; }
+  .capex-row .input, .capex-row .select { padding: 7px 9px; font-size: 12px; }
+  .capex-row .del { width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center; color: var(--txt-soft); border: 1px solid var(--border); background: white; }
+  .capex-row .del:hover { color: #b91c1c; border-color: #f0b3ad; }
+  .row-add { width: 100%; padding: 8px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: transparent; color: var(--txt-muted); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.1s; }
+  .row-add:hover { background: var(--bg-soft); color: var(--txt-navy); border-color: var(--bg-navy); }
+
+  /* catastro lookup button */
+  .input-btn-group { display: flex; gap: 6px; }
+  .input-btn-group .input { flex: 1; }
+  .lookup-btn { padding: 7px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--txt-navy); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .lookup-btn:hover { background: var(--bg-soft); border-color: var(--bg-navy); }
+  .lookup-btn svg { width: 12px; height: 12px; }
+
+  /* ─── PREVIEW ─── */
+  .preview-title { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--txt-muted); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .preview-title svg { width: 12px; height: 12px; }
+
+  .preview-kpi-main { background: var(--bg-navy); color: var(--txt-on-navy); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 14px; }
+  .preview-kpi-main-label { font-size: 10px; color: var(--txt-on-navy-muted); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-main-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; margin-top: 7px; }
+  .preview-kpi-main-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 6px; }
+
+  .preview-desglose { padding: 11px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; }
+  .preview-desglose-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .preview-desglose-row + .preview-desglose-row { border-top: 1px dashed var(--border); }
+  .preview-desglose-row.total { padding-top: 7px; margin-top: 4px; border-top: 1px solid var(--bg-navy); font-weight: 700; }
+  .preview-desglose-row.total .label { color: var(--txt-navy); }
+  .preview-desglose-row.total .value { color: var(--teal); font-size: 13px; }
+  .preview-desglose .label { color: var(--txt-muted); }
+  .preview-desglose .value { font-family: 'JetBrains Mono', monospace; color: var(--txt-default); font-weight: 600; }
+
+  /* secondary KPIs */
+  .preview-kpi-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .preview-kpi-mini { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .preview-kpi-mini-label { font-size: 10px; color: var(--txt-muted); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-mini-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--txt-navy); margin-top: 5px; line-height: 1; }
+  .preview-kpi-mini-sub { font-size: 10px; color: var(--txt-muted); margin-top: 4px; }
+
+  /* hint amarillo si % construcción mal */
+  .preview-warn { padding: 9px 12px; background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: var(--radius-sm); font-size: 11px; color: var(--amber-text); margin-bottom: 14px; line-height: 1.5; }
+  .preview-warn b { font-weight: 700; }
+
+  /* ─── footer ─── */
+  .footer { background: var(--bg-card); border-top: 1px solid var(--border); padding: 11px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .footer-meta { font-size: 11px; color: var(--txt-muted); display: flex; align-items: center; gap: 6px; }
+  .footer-meta svg { width: 13px; height: 13px; color: var(--gold); }
+  .footer-actions { display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.1s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--txt-default); }
+  .btn-ghost:hover { background: var(--bg-soft); }
+  .btn-primary { background: var(--gold); border: 1px solid var(--gold); color: var(--bg-navy); font-weight: 700; }
+  .btn-primary:hover { background: var(--gold-soft); }
+  .btn svg { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="modal">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-info">
+        <div class="header-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <div>
+          <div class="header-title">Editar inmueble · Piso Centro</div>
+          <div class="header-sub">Madrid · adquirido 15 jun 2020 · activo</div>
+        </div>
+      </div>
+      <button class="header-close" title="Cerrar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- BODY 2 columnas -->
+    <div class="body">
+
+      <!-- COLUMNA IZQUIERDA · FORM -->
+      <div class="col-form">
+
+        <!-- BLOQUE 1 · Tipo de activo -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Tipo de activo</div>
+          </div>
+          <div class="block-body">
+            <div class="type-selector">
+              <div class="type-card selected">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <span class="type-card-label">Piso</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6h-4"/></svg>
+                <span class="type-card-label">Parking</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+                <span class="type-card-label">Trastero</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21V11l9-7 9 7v10M3 21h18M9 21v-6h6v6"/></svg>
+                <span class="type-card-label">Local</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="type-card-label">Otro</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 2 · Identificación -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Identificación</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-identif">
+              <div class="field">
+                <label class="field-label">Alias <span class="req">*</span></label>
+                <input class="input" value="Piso Centro">
+              </div>
+              <div class="field">
+                <label class="field-label">Dirección</label>
+                <input class="input" value="c/ Mayor 15, 4º D">
+              </div>
+              <div class="field">
+                <label class="field-label">Ref. catastral</label>
+                <input class="input mono" value="9872023XJ7898H0001QR" style="font-size: 11px;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 3 · Ubicación -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Ubicación</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-ubicac">
+              <div class="field">
+                <label class="field-label">CP <span class="req">*</span></label>
+                <input class="input mono" value="28013">
+              </div>
+              <div class="field">
+                <label class="field-label">Población</label>
+                <input class="input" value="Madrid">
+              </div>
+              <div class="field">
+                <label class="field-label">Provincia</label>
+                <input class="input" value="Madrid">
+              </div>
+              <div class="field">
+                <label class="field-label">Comunidad autónoma</label>
+                <input class="input" value="Comunidad de Madrid" readonly style="background: var(--bg-soft);">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 4 · Compra y coste -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Compra y coste</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-compra-1">
+              <div class="field">
+                <label class="field-label">Fecha compra <span class="req">*</span></label>
+                <input class="input" type="date" value="2020-06-15">
+              </div>
+              <div class="field">
+                <label class="field-label">Precio compra <span class="req">*</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="245.000,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Valor referencia <span class="hint">base ITP</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="245.000,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Estado</label>
+                <div class="radio-inline">
+                  <label class="radio-opt"><input type="radio" name="estado" checked> Usada</label>
+                  <label class="radio-opt"><input type="radio" name="estado"> Nueva</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="fields-row row-compra-2" style="margin-top: 12px;">
+              <div class="field">
+                <label class="field-label">Notaría</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="1.250,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Registro</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="850,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Gestoría</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="600,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Otros gastos</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="350,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Impuestos <span class="hint">ITP / AJD</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="14.700,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hint-note">
+              <b>Coste total</b> 262.750,00 € · precio + 3.050,00 € formalización + 14.700,00 € impuestos · usado para cálculo de plusvalía y base amortizable. <b>Valor referencia</b> auto-rellenado con el precio · modifícalo si tu valor de referencia catastral es distinto (Ley 11/2021 · ITP desde 2022).
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 5 · Características físicas -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Características físicas</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-fisicas">
+              <div class="field">
+                <label class="field-label">m² útiles</label>
+                <input class="input mono" value="78">
+              </div>
+              <div class="field">
+                <label class="field-label">Habitaciones</label>
+                <input class="input mono" value="2">
+              </div>
+              <div class="field">
+                <label class="field-label">Baños</label>
+                <input class="input mono" value="1">
+              </div>
+              <div class="field">
+                <label class="field-label">Año construcción</label>
+                <input class="input mono" value="1985">
+              </div>
+              <div class="field">
+                <label class="field-label">Tipo</label>
+                <div class="radio-inline">
+                  <label class="radio-opt"><input type="radio" name="tipo" checked> Urbana</label>
+                  <label class="radio-opt"><input type="radio" name="tipo"> Rústica</label>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">% propiedad</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="100">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="anexos-row">
+              <div class="anexos-line">
+                <span class="anexos-label">Anexos</span>
+                <label class="anexo-check"><input type="checkbox" checked> Parking</label>
+                <label class="anexo-check"><input type="checkbox"> Trastero</label>
+              </div>
+              <div class="hint-note" style="margin-top: 4px;">
+                Marcar solo si el anexo <b>comparte RC con el piso</b>. Si el parking o trastero tiene <b>RC propia</b> · se da de alta como inmueble separado y se vincula en el contrato de alquiler.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Datos fiscales</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-catastro">
+              <div class="field">
+                <label class="field-label">Valor catastral total</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="89.500,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">V. cat. construcción</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="53.700,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">% construcción <span class="hint">auto</span></label>
+                <input class="input mono" value="60,00 %" readonly style="background: var(--bg-soft); color: var(--teal); font-weight: 700;">
+              </div>
+              <div class="field">
+                <label class="field-label">Días arrendado año</label>
+                <input class="input mono" value="365">
+              </div>
+            </div>
+            <label class="check-inline">
+              <input type="checkbox">
+              Valor catastral revisado en el último año (afecta a imputación de rentas)
+            </label>
+          </div>
+        </div>
+
+        <!-- BLOQUE 7 · Uso y alquiler -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Uso y alquiler</div>
+          </div>
+          <div class="block-body">
+            <div class="uso-cards">
+              <div class="uso-card selected">
+                <span class="uso-card-label">Larga estancia</span>
+                <span class="uso-card-sub">Reducción 50-90% según contrato</span>
+              </div>
+              <div class="uso-card">
+                <span class="uso-card-label">Temporada</span>
+                <span class="uso-card-sub">Sin reducción</span>
+              </div>
+              <div class="uso-card">
+                <span class="uso-card-label">Turístico</span>
+                <span class="uso-card-sub">Actividad económica · IVA</span>
+              </div>
+              <div class="uso-card">
+                <span class="uso-card-label">Mixto</span>
+                <span class="uso-card-sub">Larga + temporada · habitaciones</span>
+              </div>
+              <div class="uso-card">
+                <span class="uso-card-label">Vivienda habitual</span>
+                <span class="uso-card-sub">Tu residencia · no genera renta</span>
+              </div>
+              <div class="uso-card">
+                <span class="uso-card-label">Disponible</span>
+                <span class="uso-card-sub">Sin uso · imputación rentas</span>
+              </div>
+            </div>
+
+            <div class="sub-block">
+              <span class="sub-block-label">Alquiler por habitaciones</span>
+              <label class="radio-opt"><input type="radio" name="hab" checked> No · piso completo</label>
+              <label class="radio-opt"><input type="radio" name="hab"> Sí</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 8 · CAPEX previo · toggle ON -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Mejoras previas <span class="count">· 1 registrada · CAPEX 8.500 €</span></div>
+            <div class="toggle on" title="Activado"></div>
+          </div>
+          <div class="block-body">
+            <div class="row-list">
+              <div class="capex-row">
+                <input class="input" value="Reforma cocina">
+                <input class="input mono" type="date" value="2021-09-12">
+                <div class="input-suffix"><input class="input mono" value="8.500,00"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Mejora · amortizable</option><option>Reparación · gasto</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <button class="row-add">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir mejora previa
+              </button>
+            </div>
+            <div class="hint-note">
+              Las mejoras suman al coste de adquisición y aumentan la base amortizable. Las reparaciones son gasto deducible del año.
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 9 · Muebles · toggle OFF -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Mobiliario</div>
+            <div class="toggle" title="Desactivado"></div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 10 · Foto -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Foto del inmueble <span class="count">· opcional</span></div>
+            <div class="toggle" title="Desactivado"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA · PREVIEW -->
+      <div class="col-preview">
+
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Cálculo fiscal · vista previa
+        </div>
+
+        <!-- KPI principal coste base -->
+        <div class="preview-kpi-main">
+          <div class="preview-kpi-main-label">Coste base · adquisición</div>
+          <div class="preview-kpi-main-value">262.750,00 €</div>
+          <div class="preview-kpi-main-sub">+ 8.500,00 € de mejoras posteriores · base de cálculo plusvalía</div>
+        </div>
+
+        <!-- desglose -->
+        <div class="preview-desglose">
+          <div class="preview-desglose-row">
+            <span class="label">Precio compra</span>
+            <span class="value">245.000,00 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Notaría · Registro · Gestoría · Otros</span>
+            <span class="value">3.050,00 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Impuestos ITP / AJD</span>
+            <span class="value">14.700,00 €</span>
+          </div>
+          <div class="preview-desglose-row total">
+            <span class="label">Coste base adquisición</span>
+            <span class="value">262.750,00 €</span>
+          </div>
+        </div>
+
+        <!-- KPIs secundarios · base amortizable + amortización -->
+        <div class="preview-kpi-secondary">
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">Base amortizable</div>
+            <div class="preview-kpi-mini-value">157.650 €</div>
+            <div class="preview-kpi-mini-sub">Mayor de coste construcción (60% del coste) o V.cat construcción</div>
+          </div>
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">Amortización 3 % / año</div>
+            <div class="preview-kpi-mini-value">4.729,50 €</div>
+            <div class="preview-kpi-mini-sub">Casilla 0115 IRPF · prorrateado por días arrendado</div>
+          </div>
+        </div>
+
+        <!-- KPIs · % construcción + días arrendado -->
+        <div class="preview-kpi-secondary">
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">% construcción</div>
+            <div class="preview-kpi-mini-value">60 %</div>
+            <div class="preview-kpi-mini-sub">53.700 € de 89.500 € catastral</div>
+          </div>
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">Días arrendado</div>
+            <div class="preview-kpi-mini-value">365 / 365</div>
+            <div class="preview-kpi-mini-sub">100 % ocupación · sin imputación de rentas</div>
+          </div>
+        </div>
+
+        <!-- Estado financiación · lectura desde prestamos -->
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Financiación vinculada
+        </div>
+        <div class="preview-desglose" style="margin-bottom: 0;">
+          <div class="preview-desglose-row">
+            <span class="label">Préstamo BBVA · ···· 4127</span>
+            <span class="value">147.230,00 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">% afectación a este inmueble</span>
+            <span class="value">100 %</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">Intereses año previstos · casilla 0105</span>
+            <span class="value">3.182,40 €</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-meta">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Cambios sin guardar · al guardar se recalculan amortización y arrastres del ejercicio actual
+      </div>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar inmueble
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
