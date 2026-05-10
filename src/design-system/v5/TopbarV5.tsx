@@ -16,9 +16,11 @@ export interface TopbarV5Props {
   className?: string;
   /** Muestra el buscador global. Solo visible en /panel. Default: false. */
   showSearch?: boolean;
+  /** Muestra las acciones (campana de notificaciones y ayuda). Solo visible en /panel. Default: false. */
+  showActions?: boolean;
 }
 
-const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) => {
+const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false, showActions = false }) => {
   // TODO: implementar dropdown de búsqueda real (conectar con CommandPalette o servicio de búsqueda)
   const [searchOpen, setSearchOpen] = useState(false);
   // TODO: implementar panel de notificaciones real (conectar con servicio de notificaciones)
@@ -151,7 +153,8 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) =>
         </div>
       )}
 
-      {/* Actions · Bell + Help · §Z.5 */}
+      {/* Actions · Bell + Help · §Z.5 · solo visible cuando showActions=true (en /panel) */}
+      {showActions && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 
         {/* Bell · badge hardcoded 12 · TODO dinámico */}
@@ -236,6 +239,7 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) =>
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };
