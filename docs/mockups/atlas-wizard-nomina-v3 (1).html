@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS · Nómina · pantalla única · v2</title>
+<style>
+  /* ─── tokens ATLAS v8 ─── */
+  :root {
+    --bg-page: #faf8f3;
+    --bg-card: #ffffff;
+    --bg-soft: #f5f1e8;
+    --bg-hover: #f0ebde;
+    --bg-selected: #fdf4dc;
+    --bg-navy: #0a1f3d;
+    --bg-navy-soft: #14294f;
+    --txt-navy: #0a1f3d;
+    --txt-default: #1a1a1a;
+    --txt-muted: #6b7280;
+    --txt-soft: #9ca3af;
+    --txt-on-navy: #f5f1e8;
+    --txt-on-navy-muted: #aab3c4;
+    --gold: #c8a04a;
+    --gold-soft: #e0c479;
+    --gold-bg: #fdf4dc;
+    --teal: #0d6868;
+    --amber-bg: #fef4e0;
+    --amber-text: #8a5a00;
+    --amber-border: #f5d99e;
+    --border: #e5dfd0;
+    --border-strong: #d4cdb8;
+    --shadow-card: 0 1px 2px rgba(10,31,61,0.04), 0 4px 12px rgba(10,31,61,0.04);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-page); color: var(--txt-default); font-size: 13px; line-height: 1.5; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: hidden; }
+  .mono { font-family: 'JetBrains Mono', 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 13px; }
+
+  /* ─── overlay ─── */
+  .overlay { position: fixed; inset: 0; background: rgba(10,31,61,0.4); display: grid; place-items: center; z-index: 100; padding: 24px; }
+  .modal { width: 100%; max-width: 1320px; max-height: calc(100vh - 48px); background: var(--bg-page); border-radius: var(--radius-lg); display: grid; grid-template-rows: auto 1fr auto; box-shadow: 0 20px 60px rgba(10,31,61,0.25); overflow: hidden; }
+
+  /* ─── header navy ─── */
+  .header { background: var(--bg-navy); color: var(--txt-on-navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-info { display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 38px; height: 38px; background: rgba(200,160,74,0.15); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--gold-soft); }
+  .header-icon svg { width: 19px; height: 19px; }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .header-close { width: 32px; height: 32px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--txt-on-navy-muted); border: 1px solid rgba(255,255,255,0.1); }
+  .header-close:hover { background: rgba(255,255,255,0.06); color: var(--txt-on-navy); }
+
+  /* ─── body 2 columnas ─── */
+  .body { display: grid; grid-template-columns: 1.25fr 1fr; gap: 0; overflow: hidden; min-height: 0; }
+  .col-form { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+  .col-preview { padding: 20px 24px; overflow-y: auto; background: var(--bg-soft); }
+  .col-form::-webkit-scrollbar, .col-preview::-webkit-scrollbar { width: 6px; }
+  .col-form::-webkit-scrollbar-thumb, .col-preview::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* ─── bloques form (sin subtítulos · más compactos) ─── */
+  .block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden; }
+  .block-hd { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .block-hd-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--txt-navy); display: flex; align-items: center; gap: 8px; }
+  .block-hd-title .count { color: var(--txt-muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .block-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
+  .block.collapsed .block-body { display: none; }
+
+  /* toggle switch */
+  .toggle { width: 34px; height: 19px; border-radius: 10px; background: var(--border-strong); position: relative; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: white; border-radius: 50%; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+  .toggle.on { background: var(--bg-navy); }
+  .toggle.on::after { transform: translateX(15px); }
+
+  /* ─── inputs · más compactos ─── */
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .field-label .hint { font-weight: 400; color: var(--txt-soft); }
+  .input, .select { width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--txt-default); font-size: 13px; transition: border-color 0.1s, box-shadow 0.1s; min-width: 0; }
+  .input:focus, .select:focus { outline: none; border-color: var(--bg-navy); box-shadow: 0 0 0 3px rgba(10,31,61,0.06); }
+  .input.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .input-suffix { position: relative; }
+  .input-suffix .input { padding-right: 30px; }
+  .input-suffix .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--txt-muted); font-size: 11px; pointer-events: none; }
+
+  /* fila de campos (1 línea · ancho repartido) */
+  .fields-row { display: grid; gap: 10px; align-items: end; }
+  /* bloque 1 · empresa: empresa | cuenta | desde | día */
+  .row-empresa { grid-template-columns: 1.6fr 1.3fr 1fr 0.5fr; }
+  /* bloque 2 · sueldo: bruto | nº pagas | IRPF | SS | solidaridad */
+  .row-sueldo { grid-template-columns: 1.4fr 0.7fr 1.2fr 0.7fr 0.9fr; }
+  /* bloque 4 · plan pensiones: plan | tuya | empresa */
+  .row-plan { grid-template-columns: 1.7fr 0.8fr 0.8fr; }
+
+  /* hint nota dentro del bloque */
+  .hint-note { font-size: 11px; color: var(--txt-muted); margin-top: 9px; line-height: 1.5; }
+  .hint-note b { color: var(--txt-navy); font-weight: 600; }
+
+  /* atlas estima badge inline */
+  .atlas-badge { display: inline-flex; align-items: center; padding: 1px 7px; background: var(--bg-soft); color: var(--teal); border-radius: 9px; font-size: 9px; font-weight: 700; letter-spacing: 0.2px; }
+
+  /* sub-bloque pagas extras (visible solo si nº pagas ≥ 14) */
+  .pagas-extras { margin-top: 10px; padding: 9px 12px; background: var(--bg-soft); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pagas-extras-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; }
+  .month-chip { padding: 4px 11px; background: white; border: 1px solid var(--border-strong); border-radius: 13px; font-size: 11px; font-weight: 600; color: var(--txt-default); display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .month-chip.selected { background: var(--gold-bg); color: var(--bg-navy); border-color: var(--gold); }
+  .month-chip:hover { border-color: var(--bg-navy); }
+  .month-chip svg { width: 11px; height: 11px; }
+
+  /* lista variables */
+  .row-list { display: flex; flex-direction: column; gap: 7px; }
+  .row-item { display: grid; grid-template-columns: 1.5fr 1fr 0.85fr 1.2fr 1fr 28px; gap: 7px; align-items: center; }
+  .row-item .input, .row-item .select { padding: 7px 9px; font-size: 12px; }
+  .row-item .calc { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--teal); font-weight: 700; text-align: right; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-item .del { width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center; color: var(--txt-soft); border: 1px solid var(--border); background: white; }
+  .row-item .del:hover { color: #b91c1c; border-color: #f0b3ad; }
+  .row-add { width: 100%; padding: 8px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: transparent; color: var(--txt-muted); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.1s; }
+  .row-add:hover { background: var(--bg-soft); color: var(--txt-navy); border-color: var(--bg-navy); }
+
+  /* especie chips catálogo */
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .chip { padding: 4px 10px; border: 1px solid var(--border-strong); border-radius: 13px; font-size: 11px; color: var(--txt-default); background: white; cursor: pointer; }
+  .chip:hover { background: var(--bg-soft); border-color: var(--bg-navy); }
+
+  /* especie row */
+  .specie-row { display: grid; grid-template-columns: 1.6fr 0.9fr 0.9fr 28px; gap: 7px; align-items: center; }
+  .specie-row .input, .specie-row .select { padding: 7px 9px; font-size: 12px; }
+
+  /* radios */
+  .radio-group { display: flex; gap: 9px; }
+  .radio-card { flex: 1; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); display: flex; gap: 9px; align-items: flex-start; cursor: pointer; transition: all 0.1s; }
+  .radio-card:hover { background: var(--bg-soft); }
+  .radio-card.selected { background: var(--gold-bg); border-color: var(--gold); }
+  .radio-dot { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--border-strong); flex-shrink: 0; margin-top: 1px; position: relative; background: white; }
+  .radio-card.selected .radio-dot { border-color: var(--gold); }
+  .radio-card.selected .radio-dot::after { content: ''; position: absolute; inset: 2px; border-radius: 50%; background: var(--gold); }
+  .radio-text { display: flex; flex-direction: column; gap: 2px; }
+  .radio-title { font-size: 12px; font-weight: 600; color: var(--txt-navy); }
+  .radio-sub { font-size: 11px; color: var(--txt-muted); line-height: 1.4; }
+
+  /* ─── PREVIEW ─── */
+  .preview-title { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--txt-muted); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .preview-title svg { width: 12px; height: 12px; }
+
+  .preview-kpi-main { background: var(--bg-navy); color: var(--txt-on-navy); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 14px; }
+  .preview-kpi-main-label { font-size: 10px; color: var(--txt-on-navy-muted); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-main-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; margin-top: 7px; }
+  .preview-kpi-main-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 6px; }
+
+  .preview-desglose { padding: 11px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; }
+  .preview-desglose-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .preview-desglose-row + .preview-desglose-row { border-top: 1px dashed var(--border); }
+  .preview-desglose-row.total { padding-top: 7px; margin-top: 4px; border-top: 1px solid var(--bg-navy); font-weight: 700; }
+  .preview-desglose-row.total .label { color: var(--txt-navy); }
+  .preview-desglose-row.total .value { color: var(--teal); font-size: 13px; }
+  .preview-desglose .label { color: var(--txt-muted); }
+  .preview-desglose .value { font-family: 'JetBrains Mono', monospace; color: var(--txt-default); font-weight: 600; }
+  .preview-desglose .value.neg { color: var(--teal); }
+
+  .preview-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 14px; }
+  .preview-month { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 9px; }
+  .preview-month.bonus { border-color: var(--gold); background: var(--gold-bg); }
+  .preview-month.extra { border-color: var(--bg-navy); background: var(--bg-card); }
+  .preview-month-name { font-size: 9px; color: var(--txt-muted); font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+  .preview-month-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--txt-navy); margin-top: 3px; }
+  .preview-month-tag { font-size: 8px; color: var(--gold); font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; margin-top: 3px; }
+  .preview-month-tag.extra { color: var(--bg-navy); }
+  .preview-month-pp { font-size: 9px; color: var(--txt-muted); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ─── footer ─── */
+  .footer { background: var(--bg-card); border-top: 1px solid var(--border); padding: 11px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .footer-meta { font-size: 11px; color: var(--txt-muted); display: flex; align-items: center; gap: 6px; }
+  .footer-meta svg { width: 13px; height: 13px; color: var(--gold); }
+  .footer-actions { display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.1s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--txt-default); }
+  .btn-ghost:hover { background: var(--bg-soft); }
+  .btn-primary { background: var(--gold); border: 1px solid var(--gold); color: var(--bg-navy); font-weight: 700; }
+  .btn-primary:hover { background: var(--gold-soft); }
+  .btn svg { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="modal">
+
+    <!-- HEADER navy -->
+    <div class="header">
+      <div class="header-info">
+        <div class="header-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div>
+          <div class="header-title">Editar nómina · Orange</div>
+          <div class="header-sub">Jose Antonio Gómez Ramírez · vigente desde enero 2026</div>
+        </div>
+      </div>
+      <button class="header-close" title="Cerrar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- BODY 2 columnas -->
+    <div class="body">
+
+      <!-- COLUMNA IZQUIERDA · FORM -->
+      <div class="col-form">
+
+        <!-- BLOQUE 1 · Empresa y vigencia · 4 campos en 1 fila -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Empresa y vigencia</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-empresa">
+              <div class="field">
+                <label class="field-label">Empresa</label>
+                <input class="input" value="Orange Espagne SAU">
+              </div>
+              <div class="field">
+                <label class="field-label">Cuenta destino</label>
+                <select class="select">
+                  <option selected>Santander · ···· 2715</option>
+                  <option>BBVA · ···· 4012</option>
+                  <option>Sabadell · ···· 7891</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Vigente desde</label>
+                <input class="input" type="month" value="2026-01">
+              </div>
+              <div class="field">
+                <label class="field-label">Día cobro</label>
+                <input class="input mono" value="25">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 2 · Sueldo y retenciones · 5 campos en 1 fila -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Sueldo y retenciones</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-sueldo">
+              <div class="field">
+                <label class="field-label">Bruto anual fijo</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="95.178,16">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Nº pagas</label>
+                <select class="select">
+                  <option>12</option>
+                  <option selected>14</option>
+                  <option>15</option>
+                  <option>16</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">% IRPF <span class="atlas-badge">ATLAS 36,4%</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="34,25">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">% SS empleado</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="6,50">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Cuota solidaridad</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="91,80">
+                  <span class="suffix">€/año</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sub-bloque pagas extras visible solo si nº pagas ≥ 14 -->
+            <div class="pagas-extras">
+              <span class="pagas-extras-label">Pagas extras en</span>
+              <button class="month-chip">Ene</button>
+              <button class="month-chip">Feb</button>
+              <button class="month-chip">Mar</button>
+              <button class="month-chip">Abr</button>
+              <button class="month-chip">May</button>
+              <button class="month-chip selected">
+                Jun
+                <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+              <button class="month-chip">Jul</button>
+              <button class="month-chip">Ago</button>
+              <button class="month-chip">Sep</button>
+              <button class="month-chip">Oct</button>
+              <button class="month-chip">Nov</button>
+              <button class="month-chip selected">
+                Dic
+                <svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              </button>
+            </div>
+
+            <div class="hint-note">
+              <b>Paga normal</b> 6.798,44 € · <b>Base SS/mes</b> 5.101,20 € · <b>IRPF/mes</b> 2.328,47 € · SS 4,70% + Desempleo 1,55% + FP 0,10% + MEI 0,15%
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 3 · Variables y bonus -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Variables y bonus <span class="count">· 2 configurados</span></div>
+          </div>
+          <div class="block-body">
+            <div class="row-list">
+              <div class="row-item">
+                <input class="input" value="Variable 60%">
+                <select class="select"><option selected>% bruto</option><option>Importe fijo</option></select>
+                <div class="input-suffix">
+                  <input class="input mono" value="14,28">
+                  <span class="suffix">%</span>
+                </div>
+                <div class="calc">= 13.591,44 €</div>
+                <select class="select"><option>Enero</option><option>Febrero</option><option selected>Marzo</option><option>Abril</option><option>Mayo</option><option>Junio</option><option>Julio</option><option>Agosto</option><option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="row-item">
+                <input class="input" value="Variable 40%">
+                <select class="select"><option selected>% bruto</option><option>Importe fijo</option></select>
+                <div class="input-suffix">
+                  <input class="input mono" value="9,52">
+                  <span class="suffix">%</span>
+                </div>
+                <div class="calc">= 9.060,96 €</div>
+                <select class="select"><option>Enero</option><option>Febrero</option><option>Marzo</option><option>Abril</option><option>Mayo</option><option selected>Junio</option><option>Julio</option><option>Agosto</option><option>Septiembre</option><option>Octubre</option><option>Noviembre</option><option>Diciembre</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <button class="row-add">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir variable / bonus
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 4 · Plan pensiones · todo en 1 fila · sin sub-label -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Plan de pensiones</div>
+            <div class="toggle on" title="Activado"></div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-plan">
+              <div class="field">
+                <label class="field-label">Plan vinculado</label>
+                <select class="select">
+                  <option selected>PPC DE OSP Y OSFI · BBVA</option>
+                  <option>+ Vincular plan nuevo</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Tu aportación / mes</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="122,76">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Empresa / mes</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="163,68">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+            </div>
+            <div class="hint-note">
+              Total anual al plan · <b>3.437,28 €</b> (1.473,12 € tuyos + 1.964,16 € empresa) · dentro del límite 10.000 € PPE
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 5 · Beneficios en especie -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Beneficios en especie <span class="count">· 6 configurados · 468,93 €/mes</span></div>
+            <div class="toggle on" title="Activado"></div>
+          </div>
+          <div class="block-body">
+            <div class="chips">
+              <button class="chip">+ Seguro vida</button>
+              <button class="chip">+ Seguro médico</button>
+              <button class="chip">+ Vehículo / gasolina</button>
+              <button class="chip">+ Teléfono móvil</button>
+              <button class="chip">+ Cheque restaurante</button>
+              <button class="chip">+ Guardería</button>
+              <button class="chip">+ Otro</button>
+            </div>
+            <div class="row-list">
+              <div class="specie-row">
+                <input class="input" value="Seguro vida">
+                <div class="input-suffix"><input class="input mono" value="13,36"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="specie-row">
+                <input class="input" value="Seguro médico">
+                <div class="input-suffix"><input class="input mono" value="93,58"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="specie-row">
+                <input class="input" value="Vehículo / gasolina">
+                <div class="input-suffix"><input class="input mono" value="60,00"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="specie-row">
+                <input class="input" value="Teléfono móvil">
+                <div class="input-suffix"><input class="input mono" value="140,20"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="specie-row">
+                <input class="input" value="Cheque restaurante">
+                <div class="input-suffix"><input class="input mono" value="160,00"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <div class="specie-row">
+                <input class="input" value="Otro · conciliación">
+                <div class="input-suffix"><input class="input mono" value="1,79"><span class="suffix">€</span></div>
+                <select class="select"><option selected>Exento IRPF</option><option>Suma IRPF</option></select>
+                <button class="del" title="Eliminar"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+            </div>
+            <div class="hint-note">
+              La especie suma a tu base IRPF pero <b>NO llega a tu cuenta</b>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 6 · Cómo registramos cambio · 2 columnas -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">¿Cómo registramos este cambio?</div>
+          </div>
+          <div class="block-body">
+            <div class="radio-group">
+              <div class="radio-card selected">
+                <div class="radio-dot"></div>
+                <div class="radio-text">
+                  <div class="radio-title">Rectificación</div>
+                  <div class="radio-sub">Sustituye los datos vigentes. Recalcula meses anteriores.</div>
+                </div>
+              </div>
+              <div class="radio-card">
+                <div class="radio-dot"></div>
+                <div class="radio-text">
+                  <div class="radio-title">Cambio desde fecha</div>
+                  <div class="radio-sub">Mantiene el histórico anterior. Aplica desde la fecha indicada.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA · PREVIEW -->
+      <div class="col-preview">
+
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Vista previa · lo que llega cada mes
+        </div>
+
+        <div class="preview-kpi-main">
+          <div class="preview-kpi-main-label">Neto anual a tu cuenta · 2026</div>
+          <div class="preview-kpi-main-value">71.929,74 €</div>
+          <div class="preview-kpi-main-sub">+ 3.437,28 € en plan de pensiones (tuyo + empresa)</div>
+        </div>
+
+        <div class="preview-desglose">
+          <div class="preview-desglose-row">
+            <span class="label">Bruto fijo</span>
+            <span class="value">95.178,16 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Variables / bonus</span>
+            <span class="value">22.652,40 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">− IRPF retenido (34,25%)</span>
+            <span class="value neg">−40.356,97 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">− SS empleado + solidaridad</span>
+            <span class="value neg">−4.070,74 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">− Tu aportación PP</span>
+            <span class="value neg">−1.473,12 €</span>
+          </div>
+          <div class="preview-desglose-row total">
+            <span class="label">Total neto en cuenta</span>
+            <span class="value">71.929,74 €</span>
+          </div>
+        </div>
+
+        <div class="preview-title" style="margin-top: 4px;">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Mes a mes
+        </div>
+        <div class="preview-months">
+          <div class="preview-month"><div class="preview-month-name">Ene</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">Feb</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month bonus"><div class="preview-month-name">Mar</div><div class="preview-month-value">12.944,36</div><div class="preview-month-tag">Variable 60%</div></div>
+          <div class="preview-month"><div class="preview-month-name">Abr</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">May</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month extra"><div class="preview-month-name">Jun</div><div class="preview-month-value">14.435,54</div><div class="preview-month-tag extra">Paga extra + Var 40%</div></div>
+          <div class="preview-month"><div class="preview-month-name">Jul</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">Ago</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">Sep</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">Oct</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month"><div class="preview-month-name">Nov</div><div class="preview-month-value">4.007,99</div><div class="preview-month-pp">PP +122,76</div></div>
+          <div class="preview-month extra"><div class="preview-month-name">Dic</div><div class="preview-month-value">8.477,96</div><div class="preview-month-tag extra">Paga extra</div></div>
+        </div>
+
+        <div class="preview-desglose" style="margin-bottom: 0;">
+          <div class="preview-desglose-row">
+            <span class="label">Mes normal sin variables</span>
+            <span class="value">4.007,99 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">Histórico</span>
+            <span class="value" style="color: var(--txt-muted); font-weight:500">Ene 2026 · configuración inicial</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-meta">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Cambios sin guardar · al guardar se actualizan los pagos previstos del año en Tesorería
+      </div>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar nómina
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
