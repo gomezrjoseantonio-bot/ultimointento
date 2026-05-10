@@ -1001,6 +1001,20 @@ export interface Account {
     retencionFiscal: number;
     fechaInicio: string;
   };
+
+  // S-WIZARD-CUENTA-V3 · campos opcionales sin tocar DB_VERSION (sigue v70).
+  // Cuentas bancarias (Corriente / Ahorro)
+  bic?: string;                          // BIC / SWIFT · 8 u 11 chars
+  taeAnual?: number;                     // alias plano · espejo de remuneracion.tinAnual
+  frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+  cuentaDestinoIntereses?: number;       // FK a otra account
+  // Tarjetas crédito
+  ultimosCuatro?: string;                // últimos 4 dígitos visibles
+  bancoEmisor?: string;                  // banco emisor (puede diferir del de la cuenta de cargo)
+  limiteCredito?: number;                // límite de crédito €
+  deudaActual?: number;                  // deuda actual €
+  diaCierre?: number;                    // día del mes en que cierra el ciclo (1-31)
+  diaPago?: number;                      // día del mes en que se carga (1-31) · espejo de cardConfig.settlementDay
 }
 
 // H8: Movement types - enhanced to match treasury_transactions requirements
