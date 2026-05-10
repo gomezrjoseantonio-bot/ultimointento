@@ -39,14 +39,16 @@ import { planesPensionesService } from '../../../services/planesPensionesService
 import { limitesFiscalesPlanesService } from '../../../services/limitesFiscalesPlanesService';
 import { getBaseMaxima, getSSDefaults } from '../../../constants/cotizacionSS';
 import { calcularNomina, type CalcularNominaInput } from '../../../services/nominaCalculatorService';
+import {
+  buildNominaPayload,
+  validarFormNomina,
+  type NominaFormState,
+  type FormVariableState,
+  type FormEspecieState,
+} from '../../../services/nominaFormToPayload';
 import type { Account } from '../../../services/db';
 import type { PlanPensiones } from '../../../types/planesPensiones';
-import type {
-  Nomina,
-  Variable,
-  BeneficioSocial,
-  PlanPensionesNomina,
-} from '../../../types/personal';
+import type { Nomina, BeneficioSocial } from '../../../types/personal';
 import styles from './NominaPage.module.css';
 
 // ─── Constantes ─────────────────────────────────────────────────────────────
@@ -99,22 +101,8 @@ const accountLabel = (a: Account): string => {
 };
 
 // ─── Tipos del form state ───────────────────────────────────────────────────
-interface FormVariable {
-  id: string;
-  nombre: string;
-  tipo: 'porcentaje' | 'importe';
-  valorRaw: string;
-  mes: number;
-}
-
-interface FormEspecie {
-  id: string;
-  concepto: string;
-  importeRaw: string;
-  sumaIRPF: boolean;
-  tipo?: BeneficioSocial['tipo'];
-}
-
+type FormVariable = FormVariableState;
+type FormEspecie = FormEspecieState;
 type ModoEdicion = 'rectificacion' | 'cambio-desde-fecha';
 
 // ─── Componente ─────────────────────────────────────────────────────────────
@@ -403,20 +391,14 @@ const NominaPage: React.FC = () => {
     return { tuyaTotal, empresaTotal, total, limiteEur, tipoLabel };
   }, [planActivo, planAportTuya, planAportEmpresa, planVinculadoId, planes]);
 
-  // ─── Validaciones ─────────────────────────────────────────────────────────
-  const validacion = useMemo(() => {
-    const errs: string[] = [];
-    if (!empresa.trim()) errs.push('Empresa es obligatoria');
-    if (cuentaId === null) errs.push('Cuenta destino es obligatoria');
-    if (parseNum(brutoRaw) <= 0) errs.push('Bruto anual debe ser mayor que 0');
-    const dia = parseInt(diaCobro, 10);
-    if (!Number.isFinite(dia) || dia < 1 || dia > 31) errs.push('Día cobro fuera de rango');
-    const extrasNecesarias = Math.max(0, numeroPagas - 12);
-    if (mesesExtra.length !== extrasNecesarias) {
-      errs.push(`Selecciona ${extrasNecesarias} mes${extrasNecesarias === 1 ? '' : 'es'} de paga extra`);
-    }
-    return { errs, ok: errs.length === 0 };
-  }, [empresa, cuentaId, brutoRaw, diaCobro, numeroPagas, mesesExtra.length]);
+  // ─── Validaciones (helper extraído · sub-tarea 4) ─────────────────────────
+  const [showErrors, setShowErrors] = useState(false);
+  const validacion = useMemo(
+    () => validarFormNomina({ empresa, cuentaId, brutoRaw, diaCobro, numeroPagas, mesesExtra }),
+    [empresa, cuentaId, brutoRaw, diaCobro, numeroPagas, mesesExtra],
+  );
+  const invalidCls = (field: string): string =>
+    showErrors && validacion.errFields.has(field) ? styles.invalid : '';
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const markTouched = useCallback(() => setTouched(true), []);
@@ -461,91 +443,36 @@ const NominaPage: React.FC = () => {
   };
 
   // ─── Submit ───────────────────────────────────────────────────────────────
-  const buildNominaPayload = useCallback((): Omit<Nomina, 'id' | 'fechaCreacion' | 'fechaActualizacion'> | null => {
-    if (pid === null) return null;
-    const dia = parseInt(diaCobro, 10);
-    const fecha = `${vigenteDesde}-${String(Math.min(28, Number.isFinite(dia) ? dia : 1)).padStart(2, '0')}`;
-    const distribucionMeses = (mes: number) => [{ mes, porcentaje: 100 }];
-
-    const formVars: Variable[] = variables
-      .filter((v) => v.tipo === 'porcentaje' || (v.tipo === 'importe' && parseNum(v.valorRaw) > 0))
-      .map((v) => ({
-        id: v.id,
-        nombre: v.nombre || 'Variable',
-        tipo: v.tipo,
-        valor: parseNum(v.valorRaw),
-        distribucionMeses: distribucionMeses(v.mes),
-      }));
-
-    const beneficios: BeneficioSocial[] = especieActivo
-      ? especies.map((e) => ({
-          id: e.id,
-          concepto: e.concepto || 'Beneficio',
-          tipo: e.tipo ?? 'otro',
-          importeMensual: parseNum(e.importeRaw),
-          incrementaBaseIRPF: e.sumaIRPF,
-        }))
-      : [];
-
-    const ssPctTotal = parseNum(ssRaw);
-    // Mantenemos el desglose por defecto y aplicamos el delta sobre MEI para
-    // que la suma coincida con el % introducido (preserva los pesos
-    // históricos de contingencias/desempleo/FP).
-    const sumDefault = ssPctSugerido;
-    const meiAjustado = (ssDef.mei.trabajador ?? 0) + (ssPctTotal - sumDefault);
-
-    const nomina: Omit<Nomina, 'id' | 'fechaCreacion' | 'fechaActualizacion'> = {
-      personalDataId: pid,
+  const formState: NominaFormState = useMemo(
+    () => ({
+      pid: pid ?? (null as unknown as number),
       titular,
-      nombre: empresa,
-      fechaAntiguedad: fecha,
-      salarioBrutoAnual: parseNum(brutoRaw),
-      distribucion: numeroPagas === 12
-        ? { tipo: 'doce', meses: 12 }
-        : numeroPagas === 14
-          ? { tipo: 'catorce', meses: 14 }
-          : { tipo: 'personalizado', meses: numeroPagas },
-      variables: formVars,
-      bonus: [],
-      beneficiosSociales: beneficios,
-      retencion: {
-        irpfPorcentaje: parseNum(irpfRaw),
-        ss: {
-          baseCotizacionMensual: ssTope,
-          contingenciasComunes: ssDef.contingenciasComunes.trabajador,
-          desempleo: ssDef.desempleo.trabajador,
-          formacionProfesional: ssDef.formacionProfesional.trabajador,
-          mei: Math.max(0, meiAjustado),
-          overrideManual: false,
-        },
-        cuotaSolidaridadMensual: parseNum(solidaridadRaw) / 12,
-      },
-      planPensiones: planActivo && planVinculadoId
-        ? ({
-            aportacionEmpleado: { tipo: 'importe', valor: parseNum(planAportTuya) },
-            aportacionEmpresa:  { tipo: 'importe', valor: parseNum(planAportEmpresa) },
-            productoDestinoId: planVinculadoId,
-            productoDestinoNombre: planes.find((p) => p.id === planVinculadoId)?.nombre,
-          } satisfies PlanPensionesNomina)
-        : undefined,
-      deduccionesAdicionales: [],
-      cuentaAbono: cuentaId ?? 0,
-      reglaCobroDia: parseInt(diaCobro, 10) === 31
-        ? { tipo: 'ultimo-habil' }
-        : { tipo: 'fijo', dia: parseInt(diaCobro, 10) },
-      activa: true,
-      pagasExtra: numeroPagas > 12
-        ? { mesesExtra: mesesExtra.slice() }
-        : undefined,
-      cuotaSolidaridadMensual: parseNum(solidaridadRaw) / 12,
-    };
-    return nomina;
-  }, [
-    pid, titular, empresa, vigenteDesde, diaCobro, brutoRaw, numeroPagas, mesesExtra,
-    variables, irpfRaw, ssRaw, ssTope, ssDef, ssPctSugerido, solidaridadRaw,
-    planActivo, planVinculadoId, planAportTuya, planAportEmpresa, planes,
-    especieActivo, especies, cuentaId,
-  ]);
+      empresa,
+      cuentaId,
+      vigenteDesde,
+      diaCobro,
+      brutoRaw,
+      numeroPagas,
+      mesesExtra,
+      irpfRaw,
+      ssRaw,
+      solidaridadRaw,
+      variables,
+      planActivo,
+      planVinculadoId,
+      planVinculadoNombre: planes.find((p) => p.id === planVinculadoId)?.nombre,
+      planAportTuyaRaw: planAportTuya,
+      planAportEmpresaRaw: planAportEmpresa,
+      especieActivo,
+      especies,
+    }),
+    [
+      pid, titular, empresa, cuentaId, vigenteDesde, diaCobro, brutoRaw,
+      numeroPagas, mesesExtra, irpfRaw, ssRaw, solidaridadRaw, variables,
+      planActivo, planVinculadoId, planAportTuya, planAportEmpresa, planes,
+      especieActivo, especies,
+    ],
+  );
 
   const handleClose = () => {
     if (touched) {
@@ -557,11 +484,16 @@ const NominaPage: React.FC = () => {
 
   const handleSave = async () => {
     setErrorMsg(null);
+    setShowErrors(true);
     if (!validacion.ok) {
       setErrorMsg(validacion.errs.join(' · '));
       return;
     }
-    const payload = buildNominaPayload();
+    const payload = buildNominaPayload(formState, {
+      ssTope,
+      ssDefaults: ssDef,
+      ssPctSugerido,
+    });
     if (!payload) {
       setErrorMsg('Falta información personal · configura tu perfil antes de crear nóminas');
       return;
@@ -685,7 +617,7 @@ const NominaPage: React.FC = () => {
                       <label className={styles.fieldLabel} htmlFor="np-empresa">Empresa</label>
                       <input
                         id="np-empresa"
-                        className={styles.input}
+                        className={`${styles.input} ${invalidCls('empresa')}`}
                         value={empresa}
                         onChange={(e) => { setEmpresa(e.target.value); markTouched(); }}
                         placeholder="Orange Espagne SAU"
@@ -695,7 +627,7 @@ const NominaPage: React.FC = () => {
                       <label className={styles.fieldLabel} htmlFor="np-cuenta">Cuenta destino</label>
                       <select
                         id="np-cuenta"
-                        className={styles.select}
+                        className={`${styles.select} ${invalidCls('cuenta')}`}
                         value={cuentaId ?? ''}
                         onChange={(e) => {
                           const v = e.target.value;
@@ -725,7 +657,7 @@ const NominaPage: React.FC = () => {
                       </label>
                       <input
                         id="np-dia"
-                        className={`${styles.input} ${styles.inputMono}`}
+                        className={`${styles.input} ${styles.inputMono} ${invalidCls('dia')}`}
                         value={diaCobro}
                         onChange={(e) => { setDiaCobro(e.target.value); markTouched(); }}
                         inputMode="numeric"
@@ -747,7 +679,7 @@ const NominaPage: React.FC = () => {
                       <div className={styles.inputSuffix}>
                         <input
                           id="np-bruto"
-                          className={`${styles.input} ${styles.inputMono}`}
+                          className={`${styles.input} ${styles.inputMono} ${invalidCls('bruto')}`}
                           value={brutoRaw}
                           onChange={(e) => { setBrutoRaw(e.target.value); markTouched(); }}
                           placeholder="0,00"
