@@ -24,10 +24,9 @@ interface Props {
   onClose: () => void;
 }
 
-const today = (): string => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// Unificado con el resto de dialogs v5 (AportacionPlanDialog,
+// ActualizarValorPlanDialog) · ISO YYYY-MM-DD.
+const today = (): string => new Date().toISOString().split('T')[0];
 
 const fmt = (n: number): string =>
   new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(n);
@@ -131,7 +130,8 @@ const TraspasoPlanDialog: React.FC<Props> = ({ plan, onSaved, onClose }) => {
             type="button"
             className={styles.closeBtn}
             aria-label="Cerrar"
-            onClick={saving ? undefined : onClose}
+            onClick={onClose}
+            disabled={saving}
           >
             <Icons.Close size={16} strokeWidth={1.8} />
           </button>
@@ -208,12 +208,24 @@ const TraspasoPlanDialog: React.FC<Props> = ({ plan, onSaved, onClose }) => {
                 min="0"
                 value={valorTraspaso}
                 onChange={(e) => setValorTraspaso(e.target.value)}
-                placeholder="0,00"
+                placeholder="0.00"
                 required
               />
-              <span className={styles.err} style={{ color: 'var(--atlas-v5-ink-4)' }}>
-                Cierra el bloque de la gestora origen y abre el de la destino · imprescindible para la rentabilidad por bloque.
-              </span>
+              {/* Solo en traspaso total · registrarTraspaso solo cierra/abre
+                  bloques (y crea valoración histórica) cuando esTotal=true.
+                  En parcial el plan origen sigue existiendo en la gestora
+                  original · este texto sería engañoso. */}
+              {tipo === 'total' && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--atlas-v5-ink-4)',
+                    marginTop: 4,
+                  }}
+                >
+                  Cierra el bloque de la gestora origen y abre el de la destino · imprescindible para la rentabilidad por bloque.
+                </span>
+              )}
             </div>
 
             {tipo === 'parcial' && (
@@ -227,7 +239,7 @@ const TraspasoPlanDialog: React.FC<Props> = ({ plan, onSaved, onClose }) => {
                   max={saldoOrigen > 0 ? saldoOrigen : undefined}
                   value={importeTraspasado}
                   onChange={(e) => setImporteTraspasado(e.target.value)}
-                  placeholder="0,00"
+                  placeholder="0.00"
                   required
                 />
               </div>
