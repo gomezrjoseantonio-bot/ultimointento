@@ -71,6 +71,10 @@ interface AddMovementModalProps {
   prefill?: AddMovementModalPrefill;
   locked?: AddMovementModalLocked;
   restrictCategoriesTo?: 'opex' | 'all';
+  // S-TESORERIA-FASE-B-VISTA-CUENTA · sub-tarea 2 · cuando se invoca desde
+  // la página de cuenta, el accountId ya se conoce por contexto. El modal
+  // pre-rellena el selector de cuenta y el usuario no tiene que elegir.
+  defaultAccountId?: number;
 }
 
 const TIPO_PILLS: { value: MovementType; label: string; Icon: React.ElementType }[] = [
@@ -107,6 +111,7 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   prefill,
   locked,
   restrictCategoriesTo = 'all',
+  defaultAccountId,
 }) => {
   // PR5-HOTFIX v2 · fecha default = hoy (no el primer día del mes navegado).
   const today = new Date().toISOString().slice(0, 10);
@@ -114,9 +119,14 @@ const AddMovementModal: React.FC<AddMovementModalProps> = ({
   const [tipo, setTipo] = useState<MovementType>(prefill?.tipo ?? 'gasto');
   const [fecha, setFecha] = useState(prefill?.fecha ?? today);
   const [importeStr, setImporteStr] = useState('');
-  const [cuentaId, setCuentaId] = useState<number | undefined>(
-    accounts.length > 0 ? accounts[0].id : undefined,
-  );
+  const [cuentaId, setCuentaId] = useState<number | undefined>(() => {
+    // S-TESORERIA-FASE-B-VISTA-CUENTA · si se ha indicado defaultAccountId
+    // y existe en el listado, lo usamos; si no, primer cuenta como fallback.
+    if (defaultAccountId != null && accounts.some((a) => a.id === defaultAccountId)) {
+      return defaultAccountId;
+    }
+    return accounts.length > 0 ? accounts[0].id : undefined;
+  });
   const [ambito, setAmbito] = useState<Ambito | undefined>(prefill?.ambito ?? 'inmueble');
   const [inmuebleId, setInmuebleId] = useState<number | undefined>(prefill?.inmuebleId);
   const [categoriaKey, setCategoriaKey] = useState<string | undefined>(prefill?.categoryKey);

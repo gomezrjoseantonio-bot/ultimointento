@@ -116,13 +116,11 @@ const BankStatementUploadPage = lazyWithPreload(() => import('./modules/horizon/
 // T20 Fase 2 · ImportarCuentas re-ubicado per decisión D3 de Jose.
 const ImportarCuentasPage = lazyWithPreload(() => import('./modules/tesoreria/import/ImportarCuentas'));
 
-// T20 Fase 2 · redirect compat para `/tesoreria/cuenta/:id` legacy hacia
-// `/tesoreria/movimientos?cuenta=:id` (la ruta nueva sigue el patrón de
-// query params para que el filtro re-sincronice al cambiar URL).
-const RedirectCuentaToMovimientos: React.FC = () => {
-  const { id } = useParams();
-  return <Navigate to={`/tesoreria/movimientos?cuenta=${id ?? ''}`} replace />;
-};
+// S-TESORERIA-FASE-B-VISTA-CUENTA · página dedicada de cuenta. Sustituye el
+// redirect legacy `/tesoreria/cuenta/:id → /tesoreria/movimientos?cuenta=:id`
+// por una vista cuenta-céntrica completa (banner navy + filtros + tabla).
+const VistaCuentaPage = lazyWithPreload(() => import('./modules/tesoreria/pages/VistaCuentaPage'));
+
 const RedirectFiscalDeclaracion: React.FC = () => {
   const { anio } = useParams();
   return <Navigate to={`/fiscal/ejercicio/${anio ?? ''}`} replace />;
@@ -776,8 +774,12 @@ function App() {
                   <TesoreriaMovimientos />
                 </React.Suspense>
               } />
-              <Route path="cuenta/:id" element={<RedirectCuentaToMovimientos />} />
             </Route>
+            <Route path="tesoreria/cuenta/:accountId" element={
+              <React.Suspense fallback={<LoadingSpinner />}>
+                <VistaCuentaPage />
+              </React.Suspense>
+            } />
             <Route path="tesoreria/importar" element={
               <React.Suspense fallback={<LoadingSpinner />}>
                 <BankStatementUploadPage />

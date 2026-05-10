@@ -1,0 +1,671 @@
+/* S-TESORERIA-FASE-B-VISTA-CUENTA · página `/tesoreria/cuenta/:accountId`.
+ * Banner navy específico de cuenta + toolbar acciones + filtros 3 ejes +
+ * tabla 5 columnas con día agrupador iconos + bulk action bar sobrio.
+ * Tokens v5 únicamente · únicas excepciones: rgba() sobre navy para hovers
+ * sutiles del pager y un literal `#FF8E83` para texto negativo sobre fondo
+ * navy (no existe token `atlas-v5-neg-bright`; se sigue el precedente de
+ * `src/modules/tesoreria/TesoreriaPage.module.css:79`). */
+
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  background: var(--atlas-v5-bg);
+  color: var(--atlas-v5-ink-2);
+  padding: 0 0 48px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ─── Banner navy de cuenta ─── */
+.bannerNavy {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  padding: 24px 32px 28px;
+}
+
+.bannerRow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 20px;
+  align-items: end;
+}
+
+.bannerIdCompact {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.bankLogoMd {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--atlas-v5-white);
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: var(--atlas-v5-brand);
+}
+
+.bannerIdInfo {
+  min-width: 0;
+}
+
+.accountNameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.accountName {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+  color: var(--atlas-v5-white);
+  margin: 0;
+}
+
+.accountIban {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  color: var(--atlas-v5-navy-text-2);
+  margin-top: 3px;
+}
+
+.pagerArrows {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.pagerArrow {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--atlas-v5-navy-text-2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+
+.pagerArrow:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--atlas-v5-white);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.pagerArrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pagerCounter {
+  font-size: 11px;
+  color: var(--atlas-v5-navy-text-2);
+  margin-left: 6px;
+  letter-spacing: 0.5px;
+}
+
+.kpiBanner {
+  padding-left: 20px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  min-width: 0;
+}
+
+.kpiBannerLabel {
+  font-size: 10px;
+  color: var(--atlas-v5-navy-text-2);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.kpiBannerValue {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  color: var(--atlas-v5-white);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiBannerValuePos {
+  color: var(--atlas-v5-pos-bright);
+}
+
+.kpiBannerValueNeg {
+  color: #FF8E83;
+}
+
+.kpiBannerSub {
+  font-size: 11px;
+  color: var(--atlas-v5-navy-text-2);
+  margin-top: 6px;
+}
+
+/* ─── Content ─── */
+.content {
+  padding: 16px 32px 0;
+}
+
+/* ─── Toolbar acciones ─── */
+.actionsBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 0;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.btnGhost,
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.12s;
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.btnGhost {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink-2);
+}
+
+.btnGhost:hover {
+  background: var(--atlas-v5-card-alt);
+  border-color: var(--atlas-v5-ink-5);
+}
+
+.btnPrimary {
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-gold);
+}
+
+.btnPrimary:hover {
+  background: var(--atlas-v5-gold-2);
+  border-color: var(--atlas-v5-gold-2);
+}
+
+/* ─── Filter toolbar · 3 ejes ─── */
+.toolbar {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(20, 27, 46, 0.04);
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbarRow + .toolbarRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.toolbarLabel {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.chipGroup {
+  display: inline-flex;
+  background: var(--atlas-v5-card-alt);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 1px;
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.chip {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  border-radius: 6px;
+  transition: all 0.12s;
+  font-weight: 500;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.chipActive {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(10, 31, 61, 0.05);
+}
+
+.pillGroup {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.pill {
+  padding: 5px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card);
+  transition: all 0.12s;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.pill:hover {
+  border-color: var(--atlas-v5-ink-5);
+  color: var(--atlas-v5-ink);
+}
+
+.pillActive {
+  background: var(--atlas-v5-ink);
+  color: var(--atlas-v5-white);
+  border-color: var(--atlas-v5-ink);
+}
+
+.pillCount {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 600;
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 240px;
+  position: relative;
+}
+
+.searchInput input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 8px;
+  background: var(--atlas-v5-card);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--atlas-v5-ink-2);
+}
+
+.searchInput input:focus {
+  outline: none;
+  border-color: var(--atlas-v5-gold);
+}
+
+.searchInputIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--atlas-v5-ink-4);
+  pointer-events: none;
+  display: inline-flex;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ─── Bulk bar sobrio ─── */
+.bulkBar {
+  background: var(--atlas-v5-card-alt);
+  border: 1px solid var(--atlas-v5-line);
+  color: var(--atlas-v5-ink);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bulkInfo {
+  font-size: 13px;
+  color: var(--atlas-v5-ink);
+}
+
+.bulkInfo b {
+  color: var(--atlas-v5-ink);
+  font-weight: 700;
+}
+
+.bulkActions {
+  display: flex;
+  gap: 8px;
+}
+
+.bulkBtn,
+.bulkBtnPrimary {
+  padding: 7px 14px;
+  font-size: 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.bulkBtn {
+  color: var(--atlas-v5-ink-3);
+  border: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card);
+}
+
+.bulkBtn:hover:not(:disabled) {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink);
+}
+
+.bulkBtnPrimary {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  border: 1px solid var(--atlas-v5-brand-ink);
+  font-weight: 600;
+  padding: 7px 16px;
+}
+
+.bulkBtnPrimary:hover:not(:disabled) {
+  background: var(--atlas-v5-brand-2);
+}
+
+.bulkBtn:disabled,
+.bulkBtnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Mov list (tabla) ─── */
+.movList {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(20, 27, 46, 0.04);
+  margin-bottom: 32px;
+}
+
+.movHeader,
+.movRow {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 2fr) minmax(0, 1.4fr) 110px 110px;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px 10px 16px;
+  font-size: 13px;
+}
+
+.movHeader {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.movHeaderImporte {
+  text-align: right;
+}
+
+.movRow {
+  border-bottom: 1px solid var(--atlas-v5-line);
+  transition: background 0.1s;
+  cursor: pointer;
+  background: var(--atlas-v5-card);
+}
+
+.movRow:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.movRowSelected {
+  background: var(--atlas-v5-gold-wash-2);
+}
+
+.daySep {
+  background: var(--atlas-v5-card-alt);
+  padding: 8px 24px 8px 16px;
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  letter-spacing: 0.3px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dayLabel {
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.dayStats {
+  display: flex;
+  gap: 16px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.dayStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dayStatIn {
+  color: var(--atlas-v5-ink);
+}
+
+.dayStatOut {
+  color: var(--atlas-v5-pos);
+}
+
+.movConcepto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.movConceptoMain {
+  font-weight: 600;
+  color: var(--atlas-v5-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+}
+
+.movConceptoSub {
+  font-size: 11px;
+  color: var(--atlas-v5-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.movTag {
+  background: var(--atlas-v5-card-alt);
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+  border: 1px solid var(--atlas-v5-line);
+}
+
+.movContraparte {
+  font-size: 12px;
+  color: var(--atlas-v5-ink-2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.movImporte {
+  font-family: var(--atlas-v5-font-mono-num);
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.movImporteIn {
+  color: var(--atlas-v5-ink);
+}
+
+.movImporteOut {
+  color: var(--atlas-v5-pos);
+}
+
+.statePill {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 700;
+  text-align: center;
+  display: inline-block;
+}
+
+.statePillPendiente {
+  background: var(--atlas-v5-warn-wash);
+  color: var(--atlas-v5-warn);
+  border: 1px solid var(--atlas-v5-warn-border);
+}
+
+.statePillConciliado {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+  border: 1px solid var(--atlas-v5-brand-ink);
+}
+
+.movFooter {
+  padding: 14px 24px 14px 16px;
+  background: var(--atlas-v5-card-alt);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--atlas-v5-ink-3);
+  border-top: 1px solid var(--atlas-v5-line);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.movFooterTotals {
+  display: flex;
+  gap: 24px;
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+
+.movFooterLbl {
+  color: var(--atlas-v5-ink-3);
+  font-weight: 500;
+  margin-right: 6px;
+  font-family: var(--atlas-v5-font-ui);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.movFooterIn {
+  color: var(--atlas-v5-ink);
+}
+
+.movFooterOut {
+  color: var(--atlas-v5-pos);
+}
+
+.pagerFooter {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagerFooter button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--atlas-v5-ink-3);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.pagerFooter button:hover:not(:disabled) {
+  background: var(--atlas-v5-card);
+  color: var(--atlas-v5-ink);
+}
+
+.pagerFooter button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pagerFooterPos {
+  padding: 4px 8px;
+}
+
+/* ─── Empty state ─── */
+.emptyRow {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: 13px;
+}
+
+.loadingState {
+  padding: 80px 16px;
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: 14px;
+}
