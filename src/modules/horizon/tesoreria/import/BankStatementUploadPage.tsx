@@ -11,7 +11,7 @@
 // All visual tokens come from src/index.css (var(--navy-900), var(--grey-N),
 // etc.). No hex literals — per spec §4.6 v5 checklist.
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Upload,
   ArrowLeft,
@@ -66,6 +66,17 @@ function isActiveAccount(acc: Account): boolean {
 
 const BankStatementUploadPage: React.FC = () => {
   const navigate = useNavigate();
+  // S-TESORERIA-FASE-B-VISTA-CUENTA · sub-tarea 2 · cuando se invoca desde
+  // la página de cuenta (`/tesoreria/cuenta/:id`), la URL trae `?accountId=N`
+  // para que el extracto se asocie automáticamente a esa cuenta sin que el
+  // usuario tenga que volver a seleccionarla.
+  const [searchParams] = useSearchParams();
+  const preselectAccountId: number | null = (() => {
+    const raw = searchParams.get('accountId');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  })();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [accountId, setAccountId] = useState<number | ''>('');
@@ -90,7 +101,16 @@ const BankStatementUploadPage: React.FC = () => {
       const list = ((await db.getAll('accounts')) ?? []) as Account[];
       const active = list.filter(isActiveAccount);
       setAccounts(active);
-      if (active.length > 0 && active[0].id != null) setAccountId(active[0].id);
+      // Pre-seleccionar la cuenta indicada en `?accountId=N` cuando exista.
+      // Fallback · primera cuenta activa.
+      if (
+        preselectAccountId != null &&
+        active.some((a) => a.id === preselectAccountId)
+      ) {
+        setAccountId(preselectAccountId);
+      } else if (active.length > 0 && active[0].id != null) {
+        setAccountId(active[0].id);
+      }
     } catch (error) {
       console.error('Failed to load accounts', error);
     } finally {
