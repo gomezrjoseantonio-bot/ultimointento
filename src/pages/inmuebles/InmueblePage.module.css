@@ -1,6 +1,11 @@
-/* S-WIZARD-INMUEBLE-V4 · pantalla única estilo ATLAS v8.
- * Mapeo de tokens del mockup a tokens reales del design-system v5.
- * Mockup → atlas-v5:
+/* S-WIZARD-INMUEBLE-V4 · pantalla única.
+ *
+ * El mockup (docs/mockups/atlas-wizard-inmueble-v4.html) lo nombra Jose como
+ * "ATLAS v8" — es la iteración visual nº 8 del lenguaje. El design-system
+ * en código sigue siendo `atlas-v5` (src/design-system/v5/tokens.css);
+ * NO existen tokens `--atlas-v8-*` en el repo, ni se inventan aquí.
+ *
+ * Mapeo mockup-v8 → tokens reales atlas-v5:
  *   --bg-page    → --atlas-v5-bg
  *   --bg-card    → --atlas-v5-card
  *   --bg-soft    → --atlas-v5-line-3
@@ -10,7 +15,7 @@
  *   --teal       → --atlas-v5-chart-accent
  *   --amber-*    → --atlas-v5-warn*
  *   borde / línea → --atlas-v5-line
- * Cero hex hardcoded · todo viene del design-system.
+ * Cero hex hardcoded · todo viene del design-system v5.
  */
 
 .overlay {
