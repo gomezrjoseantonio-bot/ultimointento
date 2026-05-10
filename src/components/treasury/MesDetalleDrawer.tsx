@@ -114,6 +114,13 @@ function eventDay(e: MesDrawerEvent): { y: number; m: number; d: number } | null
   return { y: dt.getFullYear(), m: dt.getMonth(), d: dt.getDate() };
 }
 
+// Día efectivo de cada evento (TZ-local). Necesario porque predictedDate
+// puede venir en UTC ("2026-05-17T22:00:00Z" → 18 mayo en Europe/Madrid),
+// y comparar como string da falsos negativos. Misma fuente que la mini-calendar.
+function eventLocalDay(e: MesDrawerEvent): number | null {
+  return eventDay(e)?.d ?? null;
+}
+
 function daysInMonth(year: number, monthIndex0: number): number {
   return new Date(year, monthIndex0 + 1, 0).getDate();
 }
@@ -713,12 +720,6 @@ const NivelDia: React.FC<NivelDiaProps> = ({
     /* noop · hook reservado para futuro reset de UI por día */
   }, [year, monthIndex0, dia]);
 
-  // Día efectivo de cada evento (TZ-local). Necesario porque predictedDate
-  // puede venir en UTC ("2026-05-17T22:00:00Z" → 18 mayo en Europe/Madrid),
-  // y comparar como string da falsos negativos. Mismo criterio que la
-  // mini-calendar (`eventDay`).
-  const dayOf = (e: MesDrawerEvent): number | null => eventDay(e)?.d ?? null;
-
   // Saldo proyectado por cuenta a fin del día seleccionado.
   // Sumamos · balance actual + todos los eventos del mes hasta el día (inclusive).
   // Para días previos al mes en curso esto es aproximación visual.
@@ -728,9 +729,9 @@ const NivelDia: React.FC<NivelDiaProps> = ({
       .map((a) => {
         const accId = a.id as number;
         const eventosCuenta = eventosMes.filter((e) => e.accountId === accId);
-        const eventosDelDia = eventosCuenta.filter((e) => dayOf(e) === dia);
+        const eventosDelDia = eventosCuenta.filter((e) => eventLocalDay(e) === dia);
         const eventosPrevios = eventosCuenta.filter((e) => {
-          const d = dayOf(e);
+          const d = eventLocalDay(e);
           return d != null && d < dia;
         });
 
@@ -758,7 +759,7 @@ const NivelDia: React.FC<NivelDiaProps> = ({
           warn: saldoFin < 0,
         };
       });
-  }, [accounts, eventosMes, fechaIso]);
+  }, [accounts, eventosMes, dia]);
 
   const saldoInicioTotal = breakdown.reduce((s, b) => s + b.saldoInicio, 0);
   const entradasDiaTotal = breakdown.reduce((s, b) => s + b.entradasDia, 0);
@@ -769,11 +770,11 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
   // Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
   // y acción "Ver en Conciliación" (filtra por día + cuenta).
-  // Ojo · usar día efectivo TZ-local (eventDay) en vez de startsWith(fechaIso),
-  // que falla cuando predictedDate viene en UTC y cae en otro día local.
+  // Ojo · usar día efectivo TZ-local (eventLocalDay) en vez de
+  // startsWith(fechaIso), que falla cuando predictedDate viene en UTC y cae
+  // en otro día local.
   const eventosDelDia = useMemo(
-    () => eventosMes.filter((e) => dayOf(e) === dia),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => eventosMes.filter((e) => eventLocalDay(e) === dia),
     [eventosMes, dia],
   );
   // S-TESORERIA-FASE-B sub-tarea 5 · agrupación banco-protagonista

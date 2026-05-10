@@ -282,8 +282,13 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
                 previsto · pendiente de confirmación
               </div>
 
-              {/* Concepto · ya está en el header (titulo) · solo se muestra en
-                  modo edición para no duplicar el dato en read mode. */}
+              {/* Concepto · NO se renderiza como Field. La descripción ya
+                  aparece como `titulo` en el header y duplicarla aquí provocaba
+                  ruido en el drawer. La edición de description tampoco está
+                  soportada por `MovimientoDrawerPatch` (sólo amount/date/account),
+                  así que tampoco se muestra en editMode. Si en el futuro se
+                  necesita editar el concepto, extender el Patch + reintroducir
+                  el Field con `editMode` como input. */}
 
               {/* ── Fecha prevista ── (editable) ── */}
               <Field label="Fecha de cargo prevista">

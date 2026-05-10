@@ -52,9 +52,16 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const isPanelRoute = location.pathname === '/panel';
   const isInversionesRoute = location.pathname === '/inversiones' || location.pathname.startsWith('/inversiones/');
-  // S-TESORERIA-FASE-B · sin topbar global. Cada página de Tesorería renderiza
-  // su propio banner navy (igual patrón visual que CintaResumenInversiones).
-  const isTesoreriaRoute = location.pathname === '/tesoreria' || location.pathname.startsWith('/tesoreria/');
+  // S-TESORERIA-FASE-B · sin topbar global en las páginas de Tesorería que
+  // renderizan su propio banner navy (vista general · vista cuenta · tab
+  // movimientos). NO aplica a `/tesoreria/importar` ni `/tesoreria/importar-cuentas`,
+  // que son flujos de import sin banner y sí necesitan TopbarV5 + el contenedor
+  // estándar con padding/max-width.
+  const tesoreriaPath = location.pathname;
+  const isTesoreriaRoute =
+    tesoreriaPath === '/tesoreria' ||
+    tesoreriaPath === '/tesoreria/movimientos' ||
+    tesoreriaPath.startsWith('/tesoreria/cuenta/');
   const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute;
   
   // Sprint 5: Command Palette (Cmd+K)
