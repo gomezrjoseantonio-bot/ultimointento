@@ -157,7 +157,8 @@ const InformesPage = lazyWithPreload(() => import('./modules/horizon/informes/In
 const PresupuestosView = lazyWithPreload(() => import('./modules/horizon/proyeccion/presupuesto/PresupuestosView'));
 const UsuariosRoles = lazyWithPreload(() => import('./modules/horizon/configuracion/usuarios-roles/UsuariosRoles'));
 const EmailEntrante = lazyWithPreload(() => import('./modules/horizon/configuracion/email-entrante/EmailEntrante'));
-const PropertyForm = lazyWithPreload(() => import('./modules/horizon/inmuebles/cartera/PropertyForm'));
+// S-WIZARD-INMUEBLE-V4 · pantalla única estilo ATLAS v8 · reemplaza PropertyForm legacy.
+const InmueblePage = lazyWithPreload(() => import('./pages/inmuebles/InmueblePage'));
 // T20 Fase 3a · PropertyDetail legacy eliminado · sustituido por src/modules/inmuebles/pages/DetallePage.
 
 // T20 Fase 3b · Personal v5 module (sustituye horizon/personal/* + supervision)
@@ -650,12 +651,12 @@ function App() {
             {/* Inmuebles · sub-rutas fuera del Outlet · forms y supervision legacy */}
             <Route path="inmuebles/nuevo" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <PropertyForm mode="create" />
+                <InmueblePage mode="create" />
               </React.Suspense>
             } />
             <Route path="inmuebles/:id/editar" element={
               <React.Suspense fallback={<LoadingSpinner />}>
-                <PropertyForm mode="edit" />
+                <InmueblePage mode="edit" />
               </React.Suspense>
             } />
             {/* T20 Phase 4 · /inmuebles/supervision purgado · redirige a /inmuebles. */}
@@ -1091,7 +1092,7 @@ function App() {
               } />
               <Route path="inmuebles/nuevo" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="create" />
+                  <InmueblePage mode="create" />
                 </React.Suspense>
               } />
               <Route path="inmuebles/:id" element={
@@ -1101,7 +1102,7 @@ function App() {
               } />
               <Route path="inmuebles/:id/editar" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
-                  <PropertyForm mode="edit" />
+                  <InmueblePage mode="edit" />
                 </React.Suspense>
               } />
               <Route path="inmuebles/:id/vender" element={
