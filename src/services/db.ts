@@ -111,6 +111,26 @@ export interface Property {
   tipoActivo?: TipoActivo;
   /** T29 · foto principal del inmueble · base64 data URL · max 500KB tras compresión · undefined si no hay */
   foto?: string;
+  /** S-WIZARD-INMUEBLE-V4 · base ITP/AJD desde Ley 11/2021 · auto-rellena con `acquisitionCosts.price` salvo edición manual */
+  valorReferencia?: number;
+  /** S-WIZARD-INMUEBLE-V4 · anexos físicos · sólo si comparten RC con el piso (si tienen RC propia se dan de alta como inmueble separado) */
+  anexos?: {
+    tieneParking: boolean;
+    tieneTrastero: boolean;
+  };
+  /** S-WIZARD-INMUEBLE-V4 · uso fiscal del inmueble · `vendido` no entra (flujo aparte) */
+  usoTipo?:
+    | 'larga_estancia'
+    | 'temporada'
+    | 'turistico'
+    | 'mixto'
+    | 'vivienda_habitual'
+    | 'disponible';
+  /** S-WIZARD-INMUEBLE-V4 · alquiler por habitaciones (sólo Piso · usos larga/temporada/turístico/mixto) */
+  alquilerPorHabitaciones?: {
+    activo: boolean;
+    numeroHabitaciones?: number;
+  };
   // H9-FISCAL: AEAT Amortization data
   aeatAmortization?: {
     // Acquisition type and dates

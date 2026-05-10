@@ -22,7 +22,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
     return;
   }
   if (href.startsWith('/inmuebles/nuevo') || href.match(/^\/inmuebles\/\d+\/editar/)) {
-    await import('../modules/horizon/inmuebles/cartera/PropertyForm');
+    await import('../pages/inmuebles/InmueblePage');
     return;
   }
   if (href.startsWith('/inmuebles/importar-valoraciones')) {
