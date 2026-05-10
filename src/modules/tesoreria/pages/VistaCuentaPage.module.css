@@ -11,17 +11,20 @@
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
   padding: 0 0 48px;
-  max-width: var(--atlas-v5-main-max-width);
-  margin: 0 auto;
   width: 100%;
   min-height: 100vh;
 }
 
 /* ─── Banner navy de cuenta ─── */
+/* Full-bleed para unificar visualmente con el sidebar navy (mismo patrón
+   que CintaResumenInversiones · MainLayout oculta TopbarV5 en /tesoreria/*). */
 .bannerNavy {
   background: var(--atlas-v5-brand-ink);
   color: var(--atlas-v5-white);
   padding: 24px 32px 28px;
+  position: sticky;
+  top: 0;
+  z-index: var(--atlas-v5-z-sticky);
 }
 
 .bannerRow {
@@ -29,6 +32,8 @@
   grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
   gap: 20px;
   align-items: end;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
 }
 
 .bannerIdCompact {
@@ -157,8 +162,12 @@
 }
 
 /* ─── Content ─── */
+/* Aplica el max-width canónico aquí porque .page es ahora full-bleed para
+   permitir que el banner navy lo sea. */
 .content {
   padding: 16px 32px 0;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
 }
 
 /* ─── Toolbar acciones ─── */
@@ -293,7 +302,10 @@
   color: var(--atlas-v5-ink);
 }
 
-.pillActive {
+/* Especificidad aumentada (.pill.pillActive) para asegurar que el color
+   blanco gane a .pill:hover cuando el pill activo recibe hover. */
+.pill.pillActive,
+.pill.pillActive:hover {
   background: var(--atlas-v5-ink);
   color: var(--atlas-v5-white);
   border-color: var(--atlas-v5-ink);
@@ -304,6 +316,12 @@
   font-weight: 600;
   margin-left: 4px;
   opacity: 0.7;
+  color: inherit;
+}
+
+/* Cuando el pill está activo (fondo navy) el contador debe seguir legible. */
+.pill.pillActive .pillCount {
+  opacity: 0.85;
 }
 
 .searchInput {

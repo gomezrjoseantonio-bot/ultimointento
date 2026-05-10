@@ -3,16 +3,19 @@
   background: var(--atlas-v5-bg);
   color: var(--atlas-v5-ink-2);
   padding: 0 0 48px;
-  max-width: var(--atlas-v5-main-max-width);
-  margin: 0 auto;
   width: 100%;
 }
 
 /* ─── Banner navy · "Mi Tesorería" + 4 KPIs (mockup v8) ─── */
+/* Full-bleed (sin max-width) · sustituye al TopbarV5 igual que la
+   CintaResumen de Inversiones · queda visualmente unido al sidebar navy. */
 .bannerNavy {
   background: var(--atlas-v5-brand-ink);
   color: var(--atlas-v5-white);
   padding: 24px 32px 28px;
+  position: sticky;
+  top: 0;
+  z-index: var(--atlas-v5-z-sticky);
 }
 
 .bannerRow {
@@ -20,6 +23,8 @@
   grid-template-columns: auto repeat(4, minmax(0, 1fr));
   gap: 28px;
   align-items: center;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
 }
 
 .bannerSectionTitle {
@@ -90,11 +95,17 @@
   background: var(--atlas-v5-card);
   border-bottom: 1px solid var(--atlas-v5-line);
   padding: 22px 32px 20px;
+  margin-bottom: 22px;
+}
+
+.subheaderInner {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
+  width: 100%;
 }
 
 .subheaderTitle {
@@ -128,7 +139,11 @@
   color: var(--atlas-v5-ink);
 }
 
-/* Contenedor de contenido tras subheader · respeta padding lateral */
+/* Contenedor de contenido tras subheader · respeta padding lateral
+   y aplica el max-width canónico (antes lo aplicaba .page · ahora .page
+   es full-bleed para que el banner navy lo sea también). */
 .content {
   padding: 0 32px;
+  max-width: var(--atlas-v5-main-max-width);
+  margin: 0 auto;
 }

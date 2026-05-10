@@ -676,6 +676,14 @@ const VistaCuentaPage: React.FC = () => {
     if (!ev) return null;
     const accountAlias =
       account?.alias ?? account?.banco?.name ?? account?.name;
+    // Hidratar inmueble desde properties si el evento no trae alias
+    // denormalizado.
+    const inmuebleId = (ev as any).inmuebleId;
+    const inmuebleAlias =
+      ev.inmuebleAlias ||
+      (inmuebleId != null
+        ? properties.find((p) => p.id === inmuebleId)?.alias
+        : undefined);
     return {
       id: ev.id!,
       description: ev.description,
@@ -684,11 +692,11 @@ const VistaCuentaPage: React.FC = () => {
       amount: ev.amount,
       status: ev.status,
       accountAlias,
-      inmuebleAlias: ev.inmuebleAlias,
+      inmuebleAlias,
       contratoAlias: (ev as any).contratoAlias,
       categoryLabel: ev.categoryLabel,
     };
-  }, [drawerEventId, treasuryEvents, account]);
+  }, [drawerEventId, treasuryEvents, account, properties]);
 
   const handleSaveEvent = async (
     id: number | string,

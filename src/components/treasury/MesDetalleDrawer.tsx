@@ -20,7 +20,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, Clock } from 'lucide-react';
 import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
@@ -112,6 +112,13 @@ function eventDay(e: MesDrawerEvent): { y: number; m: number; d: number } | null
   const dt = new Date(e.predictedDate.length > 10 ? e.predictedDate : `${e.predictedDate}T00:00:00`);
   if (Number.isNaN(dt.getTime())) return null;
   return { y: dt.getFullYear(), m: dt.getMonth(), d: dt.getDate() };
+}
+
+// Día efectivo de cada evento (TZ-local). Necesario porque predictedDate
+// puede venir en UTC ("2026-05-17T22:00:00Z" → 18 mayo en Europe/Madrid),
+// y comparar como string da falsos negativos. Misma fuente que la mini-calendar.
+function eventLocalDay(e: MesDrawerEvent): number | null {
+  return eventDay(e)?.d ?? null;
 }
 
 function daysInMonth(year: number, monthIndex0: number): number {
@@ -722,12 +729,11 @@ const NivelDia: React.FC<NivelDiaProps> = ({
       .map((a) => {
         const accId = a.id as number;
         const eventosCuenta = eventosMes.filter((e) => e.accountId === accId);
-        const eventosDelDia = eventosCuenta.filter(
-          (e) => e.predictedDate.startsWith(fechaIso),
-        );
-        const eventosPrevios = eventosCuenta.filter(
-          (e) => e.predictedDate < fechaIso,
-        );
+        const eventosDelDia = eventosCuenta.filter((e) => eventLocalDay(e) === dia);
+        const eventosPrevios = eventosCuenta.filter((e) => {
+          const d = eventLocalDay(e);
+          return d != null && d < dia;
+        });
 
         const saldoBase = a.balance ?? a.openingBalance ?? 0;
         const flujoPrevio = eventosPrevios.reduce(
@@ -753,7 +759,7 @@ const NivelDia: React.FC<NivelDiaProps> = ({
           warn: saldoFin < 0,
         };
       });
-  }, [accounts, eventosMes, fechaIso]);
+  }, [accounts, eventosMes, dia]);
 
   const saldoInicioTotal = breakdown.reduce((s, b) => s + b.saldoInicio, 0);
   const entradasDiaTotal = breakdown.reduce((s, b) => s + b.entradasDia, 0);
@@ -764,9 +770,12 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
   // Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
   // y acción "Ver en Conciliación" (filtra por día + cuenta).
+  // Ojo · usar día efectivo TZ-local (eventLocalDay) en vez de
+  // startsWith(fechaIso), que falla cuando predictedDate viene en UTC y cae
+  // en otro día local.
   const eventosDelDia = useMemo(
-    () => eventosMes.filter((e) => e.predictedDate.startsWith(fechaIso)),
-    [eventosMes, fechaIso],
+    () => eventosMes.filter((e) => eventLocalDay(e) === dia),
+    [eventosMes, dia],
   );
   // S-TESORERIA-FASE-B sub-tarea 5 · agrupación banco-protagonista
   // Solo bancos con movimientos ese día se renderizan. Cada uno con su
@@ -1080,12 +1089,14 @@ const BankDayCard: React.FC<{
                   color: isConfirmed
                     ? 'var(--atlas-v5-white)'
                     : 'var(--atlas-v5-gold-ink)',
-                  fontSize: 10,
-                  fontWeight: 700,
                   flexShrink: 0,
                 }}
               >
-                {isConfirmed ? '✓' : '⏳'}
+                {isConfirmed ? (
+                  <Check size={11} strokeWidth={3} />
+                ) : (
+                  <Clock size={11} strokeWidth={2.4} />
+                )}
               </span>
               <div style={{ minWidth: 0 }}>
                 <div
@@ -1291,7 +1302,7 @@ const EventoRow: React.FC<{
 
   const content = (
     <>
-      {/* Mark · ✓ navy si confirmed, ⏳ gold si pending (mockup v8) */}
+      {/* Mark · navy+Check si confirmed · gold+Clock si pending (mockup v8) */}
       <span
         aria-hidden="true"
         style={{
@@ -1307,12 +1318,14 @@ const EventoRow: React.FC<{
           color: isConfirmed
             ? 'var(--atlas-v5-white)'
             : 'var(--atlas-v5-gold-ink)',
-          fontSize: 10,
-          fontWeight: 700,
           flexShrink: 0,
         }}
       >
-        {isConfirmed ? '✓' : '⏳'}
+        {isConfirmed ? (
+          <Check size={11} strokeWidth={3} />
+        ) : (
+          <Clock size={11} strokeWidth={2.4} />
+        )}
       </span>
       <div style={{ minWidth: 0 }}>
         <div

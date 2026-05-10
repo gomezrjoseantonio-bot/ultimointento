@@ -52,6 +52,17 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const isPanelRoute = location.pathname === '/panel';
   const isInversionesRoute = location.pathname === '/inversiones' || location.pathname.startsWith('/inversiones/');
+  // S-TESORERIA-FASE-B · sin topbar global en las páginas de Tesorería que
+  // renderizan su propio banner navy (vista general · vista cuenta · tab
+  // movimientos). NO aplica a `/tesoreria/importar` ni `/tesoreria/importar-cuentas`,
+  // que son flujos de import sin banner y sí necesitan TopbarV5 + el contenedor
+  // estándar con padding/max-width.
+  const tesoreriaPath = location.pathname;
+  const isTesoreriaRoute =
+    tesoreriaPath === '/tesoreria' ||
+    tesoreriaPath === '/tesoreria/movimientos' ||
+    tesoreriaPath.startsWith('/tesoreria/cuenta/');
+  const isFullBleedRoute = isInversionesRoute || isTesoreriaRoute;
   
   // Sprint 5: Command Palette (Cmd+K)
   const { isOpen: isCommandPaletteOpen, close: closeCommandPalette } = useCommandPalette();
@@ -114,7 +125,7 @@ const MainLayout: React.FC = () => {
       <div className="flex flex-col flex-1 overflow-hidden min-h-0">
         {/* TopbarV5 · persistente · oculto en /inversiones/* (la cinta de
             inversiones la reemplaza como topbar · mockup atlas-inversiones-v2). */}
-        {!isInversionesRoute && <TopbarV5 showSearch={isPanelRoute} showActions={isPanelRoute} />}
+        {!isFullBleedRoute && <TopbarV5 showSearch={isPanelRoute} />}
         {isInversionesRoute && <CintaResumenInversiones />}
 
         <main
@@ -122,13 +133,13 @@ const MainLayout: React.FC = () => {
           className={`flex-1 overflow-x-hidden overflow-y-auto min-h-0 ${
             isPanelRoute
               ? 'px-8 pb-12'
-              : isInversionesRoute
+              : isFullBleedRoute
                 ? ''
                 : 'p-3 sm:p-4 lg:p-6'
           }`}
           tabIndex={-1}
         >
-          {isPanelRoute || isInversionesRoute ? (
+          {isPanelRoute || isFullBleedRoute ? (
             <Outlet />
           ) : (
             <div className="container mx-auto h-full max-w-7xl">
