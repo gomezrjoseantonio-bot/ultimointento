@@ -12,7 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { cuentasService } from '../../../../../services/cuentasService';
 import { Account } from '../../../../../services/db';
-import AccountFormModal from './AccountFormModal';
+import CuentaWizard from '../../../../../components/cuenta/CuentaWizard';
 import { 
   maskIban, 
   generateHashColor, 
@@ -434,8 +434,8 @@ const AtlasBancosManagement = React.forwardRef<AtlasBancosManagementRef>((props,
         )}
       </div>
 
-      {/* Create/Edit Modal */}
-      <AccountFormModal
+      {/* Create/Edit · S-WIZARD-CUENTA-V3 pantalla única */}
+      <CuentaWizard
         open={showModal}
         onClose={handleCloseModal}
         onSuccess={loadAccounts}
