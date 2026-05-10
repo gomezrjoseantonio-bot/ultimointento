@@ -187,7 +187,7 @@ const GestionInversionesPage = lazyWithPreload(() => import('./pages/GestionInve
 const GestionInmueblesList = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmueblesList'));
 const GestionInmuebleDetail = lazyWithPreload(() => import('./pages/GestionInmuebles/GestionInmuebleDetail'));
 const VentaWizard = lazyWithPreload(() => import('./pages/GestionInmuebles/VentaWizard'));
-const NominaWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/NominaWizard'));
+const NominaWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/NominaPage'));
 const AutonomoWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/AutonomoWizard'));
 const OtrosIngresosWizardPage = lazyWithPreload(() => import('./pages/GestionPersonal/wizards/OtrosIngresosWizard'));
 
