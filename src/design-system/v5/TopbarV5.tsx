@@ -8,7 +8,7 @@
  * Iconos · §AA.2 (Search · Bell · HelpCircle) · 16×16.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Icons } from './icons';
 
 export interface TopbarV5Props {
@@ -16,15 +16,29 @@ export interface TopbarV5Props {
   className?: string;
   /** Muestra el buscador global. Solo visible en /panel. Default: false. */
   showSearch?: boolean;
+  /** Muestra las acciones (campana de notificaciones y ayuda). Solo visible en /panel. Default: false. */
+  showActions?: boolean;
 }
 
-const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) => {
+const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false, showActions = false }) => {
   // TODO: implementar dropdown de búsqueda real (conectar con CommandPalette o servicio de búsqueda)
   const [searchOpen, setSearchOpen] = useState(false);
   // TODO: implementar panel de notificaciones real (conectar con servicio de notificaciones)
   const [bellOpen, setBellOpen] = useState(false);
   // TODO: implementar centro de ayuda real (conectar con documentación / intercom / etc.)
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // El topbar persiste entre rutas: si la sección se oculta, cerramos el dropdown
+  // para que no reaparezca abierto al volver a /panel.
+  useEffect(() => {
+    if (!showSearch) setSearchOpen(false);
+  }, [showSearch]);
+  useEffect(() => {
+    if (!showActions) {
+      setBellOpen(false);
+      setHelpOpen(false);
+    }
+  }, [showActions]);
 
   const handleSearchClick = () => {
     // TODO: abrir búsqueda real · por ahora stub "Buscar próximamente"
@@ -151,91 +165,93 @@ const TopbarV5: React.FC<TopbarV5Props> = ({ className, showSearch = false }) =>
         </div>
       )}
 
-      {/* Actions · Bell + Help · §Z.5 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {/* Actions · Bell + Help · §Z.5 · solo visible cuando showActions=true (en /panel) */}
+      {showActions && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 
-        {/* Bell · badge hardcoded 12 · TODO dinámico */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            onClick={handleBellClick}
-            aria-label="Notificaciones"
-            aria-expanded={bellOpen}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 'var(--atlas-v5-radius-icon)',
-              background: 'var(--atlas-v5-card)',
-              border: '1px solid var(--atlas-v5-line)',
-              color: 'var(--atlas-v5-ink-2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              position: 'relative',
-            }}
-          >
-            <Icons.Bell size={16} aria-hidden="true" />
-            {/* TODO: badge count dinámico desde store de notificaciones */}
-            <span
-              aria-label="12 notificaciones"
+          {/* Bell · badge hardcoded 12 · TODO dinámico */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={handleBellClick}
+              aria-label="Notificaciones"
+              aria-expanded={bellOpen}
               style={{
-                position: 'absolute',
-                top: -4,
-                right: -4,
-                background: 'var(--atlas-v5-gold)',
-                color: 'var(--atlas-v5-white)',
-                fontSize: 10,
-                fontWeight: 700,
-                padding: '1px 5px',
-                borderRadius: 8,
-                lineHeight: 1.4,
-                pointerEvents: 'none',
+                width: 38,
+                height: 38,
+                borderRadius: 'var(--atlas-v5-radius-icon)',
+                background: 'var(--atlas-v5-card)',
+                border: '1px solid var(--atlas-v5-line)',
+                color: 'var(--atlas-v5-ink-2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                position: 'relative',
               }}
             >
-              12
-            </span>
-          </button>
+              <Icons.Bell size={16} aria-hidden="true" />
+              {/* TODO: badge count dinámico desde store de notificaciones */}
+              <span
+                aria-label="12 notificaciones"
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  background: 'var(--atlas-v5-gold)',
+                  color: 'var(--atlas-v5-white)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 8,
+                  lineHeight: 1.4,
+                  pointerEvents: 'none',
+                }}
+              >
+                12
+              </span>
+            </button>
 
-          {/* TODO: stub "Sin notificaciones" · reemplazar con panel real */}
-          {bellOpen && (
-            <div style={bellHelpDropdownStyle}>
-              Sin notificaciones
-            </div>
-          )}
+            {/* TODO: stub "Sin notificaciones" · reemplazar con panel real */}
+            {bellOpen && (
+              <div style={bellHelpDropdownStyle}>
+                Sin notificaciones
+              </div>
+            )}
+          </div>
+
+          {/* Help */}
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={handleHelpClick}
+              aria-label="Ayuda"
+              aria-expanded={helpOpen}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 'var(--atlas-v5-radius-icon)',
+                background: 'var(--atlas-v5-card)',
+                border: '1px solid var(--atlas-v5-line)',
+                color: 'var(--atlas-v5-ink-2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <Icons.Help size={16} aria-hidden="true" />
+            </button>
+
+            {/* TODO: stub "Centro de ayuda · próximamente" · reemplazar con modal/link real */}
+            {helpOpen && (
+              <div style={bellHelpDropdownStyle}>
+                Centro de ayuda · próximamente
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Help */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            onClick={handleHelpClick}
-            aria-label="Ayuda"
-            aria-expanded={helpOpen}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 'var(--atlas-v5-radius-icon)',
-              background: 'var(--atlas-v5-card)',
-              border: '1px solid var(--atlas-v5-line)',
-              color: 'var(--atlas-v5-ink-2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-            }}
-          >
-            <Icons.Help size={16} aria-hidden="true" />
-          </button>
-
-          {/* TODO: stub "Centro de ayuda · próximamente" · reemplazar con modal/link real */}
-          {helpOpen && (
-            <div style={bellHelpDropdownStyle}>
-              Centro de ayuda · próximamente
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
