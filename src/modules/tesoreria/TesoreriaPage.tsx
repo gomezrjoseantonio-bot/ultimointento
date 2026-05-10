@@ -14,7 +14,13 @@ const MONTH_NAMES_LONG = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  v.toLocaleString('es-ES', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    // es-ES por defecto usa minimumGroupingDigits=2 · 4 cifras (p.ej. 4473)
+    // se quedaban sin separador. El mockup v8 muestra siempre "4.473 €".
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions);
 
 const TesoreriaPage: React.FC = () => {
   const navigate = useNavigate();

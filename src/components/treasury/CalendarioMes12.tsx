@@ -25,7 +25,12 @@ const MESES = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  v.toLocaleString('es-ES', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    // Forzar separador de millares también para 4 cifras (mockup v8).
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions);
 
 export interface CalendarTreasuryEvent {
   predictedDate: string;

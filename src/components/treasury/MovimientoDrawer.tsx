@@ -22,7 +22,11 @@ import { Check, X, Pencil, Save } from 'lucide-react';
 import type { Account } from '../../services/db';
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  v.toLocaleString('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions);
 
 const formatDateLong = (iso?: string): string => {
   if (!iso) return '—';

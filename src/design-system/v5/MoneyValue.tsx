@@ -62,7 +62,10 @@ const MoneyValue: React.FC<MoneyValueProps> = ({
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
     signDisplay: showSign ? 'exceptZero' : 'auto',
-  });
+    // es-ES por defecto omite el separador para 4 cifras (minimumGroupingDigits=2)
+    // Forzamos el agrupamiento para que "4396" se renderice como "4.396 €".
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions);
 
   const text = formatter.format(value);
 

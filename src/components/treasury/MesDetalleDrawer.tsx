@@ -28,7 +28,11 @@ const MESES = [
 ];
 
 const formatEur = (v: number): string =>
-  v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  v.toLocaleString('es-ES', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+    useGrouping: 'always',
+  } as Intl.NumberFormatOptions);
 
 const formatCompact = (v: number): string => {
   const abs = Math.abs(v);
