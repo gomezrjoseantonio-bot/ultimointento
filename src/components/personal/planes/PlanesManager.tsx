@@ -29,6 +29,9 @@ const PlanesManager: React.FC = () => {
   // TAREA 13 v4 · Commit 1 (C9) · historial leído del store V65.
   const [traspasos, setTraspasos] = useState<TraspasoPlanPensiones[]>([]);
   const [traspasoOrigen, setTraspasoOrigen] = useState<PlanOrigenInput | null>(null);
+  // TAREA 13 lote B · sub-tarea 2 · botón global "Nuevo traspaso" abre el
+  // modal sin pre-rellenar el origen · el usuario lo elige dentro del form.
+  const [showTraspasoGlobal, setShowTraspasoGlobal] = useState(false);
   // TAREA 13 v4 · Commit 8 · KPIs por plan (aportado, TWR, rentab. acumulada)
   const [kpisPorPlan, setKpisPorPlan] = useState<Record<string, KpisPlan>>({});
 
@@ -153,13 +156,28 @@ const PlanesManager: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900">Planes de Pensiones</h3>
           <p className="text-gray-500">Gestiona tus planes de pensiones (PPI, PPE, PPES, PPA)</p>
         </div>
-        <button
-          onClick={handleCreatePlan}
-          className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Plan PP
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (planes.length === 0) {
+                toast.error('Crea primero un plan de pensiones para poder registrar traspasos.');
+                return;
+              }
+              setShowTraspasoGlobal(true);
+            }}
+            className="inline-flex items-center px-4 py-2 border border-brand-navy text-brand-navy text-sm font-medium rounded hover:bg-indigo-50"
+          >
+            <ArrowLeftRight className="w-4 h-4 mr-2" />
+            Nuevo traspaso
+          </button>
+          <button
+            onClick={handleCreatePlan}
+            className="inline-flex items-center px-4 py-2 bg-brand-navy text-white text-sm font-medium rounded"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Plan PP
+          </button>
+        </div>
       </div>
 
       {/* Summary */}
@@ -346,11 +364,16 @@ const PlanesManager: React.FC = () => {
         onSaved={handlePlanSaved}
       />
 
-      {/* Traspaso Modal */}
+      {/* Traspaso Modal · soporta entrada per-plan (icono ArrowLeftRight ·
+          planOrigen pre-rellenado) y entrada global (botón cabecera ·
+          planOrigen null · selector dentro del form). */}
       {personalDataId !== null && (
         <TraspasoForm
-          isOpen={traspasoOrigen !== null}
-          onClose={() => setTraspasoOrigen(null)}
+          isOpen={traspasoOrigen !== null || showTraspasoGlobal}
+          onClose={() => {
+            setTraspasoOrigen(null);
+            setShowTraspasoGlobal(false);
+          }}
           personalDataId={personalDataId}
           planOrigen={traspasoOrigen}
           onSaved={loadData}
