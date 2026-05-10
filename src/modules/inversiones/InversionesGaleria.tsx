@@ -18,11 +18,13 @@ import { Icons, PageHead, showToastV5 } from '../../design-system/v5';
 import { inversionesService } from '../../services/inversionesService';
 import { rendimientosService } from '../../services/rendimientosService';
 import { migrateInversionesToNewModel } from '../../services/migrations/migrateInversiones';
+import { getFiscalContextSafe } from '../../services/fiscalContextService';
 import type { Aportacion, PosicionInversion } from '../../types/inversiones';
 import CartaPosicion from './components/CartaPosicion';
 import CartaAddPosicion from './components/CartaAddPosicion';
 import WizardNuevaPosicion from './components/WizardNuevaPosicion';
 import DialogAportar from './components/DialogAportar';
+import TraspasoForm from '../../components/personal/planes/TraspasoForm';
 import {
   calcularKpisCerradas,
   getPosicionesCerradas,
@@ -48,6 +50,10 @@ const InversionesGaleria: React.FC = () => {
 
   const [showWizard, setShowWizard] = useState(false);
   const [showAportar, setShowAportar] = useState(false);
+  // T13 lote B · sub-tarea 2 · entrada global al TraspasoForm (planOrigen=null
+  // · selector de plan origen dentro del propio form).
+  const [showTraspaso, setShowTraspaso] = useState(false);
+  const [personalDataId, setPersonalDataId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -77,6 +83,13 @@ const InversionesGaleria: React.FC = () => {
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('[inversiones] init', err);
+      }
+      try {
+        const ctx = await getFiscalContextSafe();
+        if (!cancelled && ctx) setPersonalDataId(ctx.personalDataId);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[inversiones] fiscalContext', err);
       }
       if (!cancelled) await load();
     };
@@ -114,6 +127,24 @@ const InversionesGaleria: React.FC = () => {
       return;
     }
     setShowAportar(true);
+  };
+
+  // T13 lote B · sub-tarea 2 · solo hay traspaso entre planes de pensiones.
+  const tieneAlMenosUnPlanPP = useMemo(
+    () => cartaItems.some((item) => item._origen === 'planesPensiones'),
+    [cartaItems],
+  );
+
+  const openTraspaso = () => {
+    if (!personalDataId) {
+      showToastV5('No se pudo cargar el contexto fiscal.');
+      return;
+    }
+    if (!tieneAlMenosUnPlanPP) {
+      showToastV5('Aún no tienes planes de pensiones · crea uno con "Nueva posición".');
+      return;
+    }
+    setShowTraspaso(true);
   };
 
   const handleSavePosicion = async (
@@ -167,6 +198,12 @@ const InversionesGaleria: React.FC = () => {
             variant: 'ghost',
             icon: <Icons.Plus size={14} strokeWidth={1.8} />,
             onClick: openAportar,
+          },
+          {
+            label: 'Nuevo traspaso',
+            variant: 'ghost',
+            icon: <Icons.ArrowRight size={14} strokeWidth={1.8} />,
+            onClick: openTraspaso,
           },
           {
             label: 'Nueva posición',
@@ -271,6 +308,21 @@ const InversionesGaleria: React.FC = () => {
           posiciones={posicionesParaAportar}
           onSave={handleSaveAportacion}
           onClose={() => setShowAportar(false)}
+        />
+      )}
+
+      {/* T13 lote B · sub-tarea 2 · entrada global · planOrigen=null · el form
+          muestra selector de plan origen entre los planes activos. */}
+      {personalDataId !== null && (
+        <TraspasoForm
+          isOpen={showTraspaso}
+          onClose={() => setShowTraspaso(false)}
+          personalDataId={personalDataId}
+          planOrigen={null}
+          onSaved={() => {
+            setShowTraspaso(false);
+            void load();
+          }}
         />
       )}
     </div>
