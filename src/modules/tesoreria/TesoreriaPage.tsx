@@ -221,18 +221,20 @@ const TesoreriaPage: React.FC = () => {
 
       {/* Subcabecera blanca · h1 + subtítulo · sin botones (todo es contextual a vista cuenta) */}
       <div className={styles.subheader}>
-        <div>
-          <h1 className={styles.subheaderTitle}>Tesorería</h1>
-          <div className={styles.subheaderSub}>
-            <strong>{accounts.length}</strong> cuenta{accounts.length === 1 ? '' : 's'} activas ·{' '}
-            <button
-              type="button"
-              className={styles.subheaderLink}
-              onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
-            >
-              <strong>{pendientesConciliarCount}</strong> movimiento
-              {pendientesConciliarCount === 1 ? '' : 's'} pendientes
-            </button>
+        <div className={styles.subheaderInner}>
+          <div>
+            <h1 className={styles.subheaderTitle}>Tesorería</h1>
+            <div className={styles.subheaderSub}>
+              <strong>{accounts.length}</strong> cuenta{accounts.length === 1 ? '' : 's'} activas ·{' '}
+              <button
+                type="button"
+                className={styles.subheaderLink}
+                onClick={() => navigate('/tesoreria/movimientos?status=pendientes')}
+              >
+                <strong>{pendientesConciliarCount}</strong> movimiento
+                {pendientesConciliarCount === 1 ? '' : 's'} pendientes
+              </button>
+            </div>
           </div>
         </div>
       </div>

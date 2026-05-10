@@ -713,6 +713,12 @@ const NivelDia: React.FC<NivelDiaProps> = ({
     /* noop · hook reservado para futuro reset de UI por día */
   }, [year, monthIndex0, dia]);
 
+  // Día efectivo de cada evento (TZ-local). Necesario porque predictedDate
+  // puede venir en UTC ("2026-05-17T22:00:00Z" → 18 mayo en Europe/Madrid),
+  // y comparar como string da falsos negativos. Mismo criterio que la
+  // mini-calendar (`eventDay`).
+  const dayOf = (e: MesDrawerEvent): number | null => eventDay(e)?.d ?? null;
+
   // Saldo proyectado por cuenta a fin del día seleccionado.
   // Sumamos · balance actual + todos los eventos del mes hasta el día (inclusive).
   // Para días previos al mes en curso esto es aproximación visual.
@@ -722,12 +728,11 @@ const NivelDia: React.FC<NivelDiaProps> = ({
       .map((a) => {
         const accId = a.id as number;
         const eventosCuenta = eventosMes.filter((e) => e.accountId === accId);
-        const eventosDelDia = eventosCuenta.filter(
-          (e) => e.predictedDate.startsWith(fechaIso),
-        );
-        const eventosPrevios = eventosCuenta.filter(
-          (e) => e.predictedDate < fechaIso,
-        );
+        const eventosDelDia = eventosCuenta.filter((e) => dayOf(e) === dia);
+        const eventosPrevios = eventosCuenta.filter((e) => {
+          const d = dayOf(e);
+          return d != null && d < dia;
+        });
 
         const saldoBase = a.balance ?? a.openingBalance ?? 0;
         const flujoPrevio = eventosPrevios.reduce(
@@ -764,9 +769,12 @@ const NivelDia: React.FC<NivelDiaProps> = ({
 
   // Sub-tarea 3 calendario fixes · listado de eventos del día con cuenta afectada
   // y acción "Ver en Conciliación" (filtra por día + cuenta).
+  // Ojo · usar día efectivo TZ-local (eventDay) en vez de startsWith(fechaIso),
+  // que falla cuando predictedDate viene en UTC y cae en otro día local.
   const eventosDelDia = useMemo(
-    () => eventosMes.filter((e) => e.predictedDate.startsWith(fechaIso)),
-    [eventosMes, fechaIso],
+    () => eventosMes.filter((e) => dayOf(e) === dia),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [eventosMes, dia],
   );
   // S-TESORERIA-FASE-B sub-tarea 5 · agrupación banco-protagonista
   // Solo bancos con movimientos ese día se renderizan. Cada uno con su
