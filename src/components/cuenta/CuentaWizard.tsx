@@ -32,12 +32,15 @@ import {
 
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Account, initDB } from '../../services/db';
-import { cuentasService } from '../../services/cuentasService';
+import {
+  cuentasService,
+  type CreateAccountData,
+  type UpdateAccountData,
+} from '../../services/cuentasService';
 import { nominaService } from '../../services/nominaService';
 import {
   validateIbanEs,
   formatIban,
-  normalizeIban,
 } from '../../utils/accountHelpers';
 import {
   calcularCuentaResumen,
@@ -258,7 +261,6 @@ const Block: React.FC<{
           type="button"
           className={`${styles.toggle} ${toggle.on ? styles.toggleOn : ''}`}
           onClick={() => toggle.onChange(!toggle.on)}
-          aria-pressed={toggle.on}
           aria-label={toggle.label ?? (toggle.on ? 'Desactivar' : 'Activar')}
           role="switch"
           aria-checked={toggle.on}
@@ -358,8 +360,9 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
       }
       try {
         const db = await initDB();
-        const movs = (await db.getAll('movements')) as Array<{ accountId?: number }>;
-        const count = movs.filter((m) => m.accountId === editingAccount.id).length;
+        // Usa el índice 'accountId' del store 'movements' (db.ts:2602) ·
+        // mucho más barato que getAll + filter en memoria · review #4.
+        const count = await db.countFromIndex('movements', 'accountId', editingAccount.id);
         if (alive) setMovimientosCount(count);
       } catch (err) {
         console.warn('[CuentaWizard] no se pudo contar movimientos', err);
@@ -462,10 +465,20 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     setSaving(true);
     try {
       const isCard = form.tipo === 'TARJETA_CREDITO';
-      const cuentaCargoIdNum = form.cuentaCargoId ? parseInt(form.cuentaCargoId, 10) : undefined;
-      const cuentaDestinoNum = form.cuentaDestinoIntereses
-        ? parseInt(form.cuentaDestinoIntereses, 10)
-        : undefined;
+
+      // chargeAccountId puede provenir como '' (= NaN tras parseInt) si
+      // alguien bypassea la validación · forzamos número finito o undefined.
+      const cuentaCargoIdRaw = parseInt(form.cuentaCargoId, 10);
+      const cuentaCargoIdNum = Number.isFinite(cuentaCargoIdRaw) ? cuentaCargoIdRaw : undefined;
+      const cuentaDestinoRaw = parseInt(form.cuentaDestinoIntereses, 10);
+      const cuentaDestinoNum = Number.isFinite(cuentaDestinoRaw) ? cuentaDestinoRaw : undefined;
+
+      if (isCard && cuentaCargoIdNum === undefined) {
+        // No debería llegar aquí · validate() ya bloquea · defensivo.
+        toast.error('Cuenta de cargo inválida');
+        setSaving(false);
+        return;
+      }
 
       // openingBalance · para tarjeta crédito guardamos crédito disponible
       // (límite − deuda) en `openingBalance` para mantener compat con la
@@ -474,38 +487,14 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         ? (parseNum(form.limiteCredito) - parseNum(form.deudaActual))
         : parseNum(form.saldoInicial);
 
-      const tipoForBackend = form.tipo;
+      // Banco · override del autodetect cuando el usuario elige catálogo o
+      // escribe un nombre propio.
+      const bancoOverride = bancoFinal ? { name: bancoFinal } : undefined;
 
-      // Construir banco{name} para que cuentasService lo persista (override
-      // del autodetect cuando el usuario elige uno del catálogo).
-      const bancoName = bancoFinal || undefined;
-      const bancoNamePayload = bancoName ? { banco: { name: bancoName } } : {};
-
-      const payload = {
-        alias: form.alias.trim() || undefined,
-        iban: isCard ? undefined : (form.iban || undefined),
-        tipo: tipoForBackend,
-        cardConfig: isCard
-          ? {
-              settlementDay: parseInt31(form.diaPago),
-              chargeAccountId: cuentaCargoIdNum ?? 0,
-            }
-          : undefined,
-        openingBalance: openingBalanceNum,
-        openingBalanceDate: form.fechaSaldo
-          ? new Date(form.fechaSaldo).toISOString()
-          : undefined,
-        esRemunerada: !isCard && form.esRemunerada,
-        remuneracion: !isCard && form.esRemunerada
-          ? {
-              tinAnual: parseNum(form.taeAnual),
-              frecuenciaPagos: form.frecuenciaLiquidacion,
-              base: 'saldo' as const,
-              retencionFiscal: 0,
-              fechaInicio: form.fechaSaldo || todayISO(),
-            }
-          : undefined,
-        // Campos extendidos opcionales (sub-tarea 4 los añade al tipo Account)
+      // Campos extendidos comunes a create/update (cuentasService los
+      // persiste en localStorage + IndexedDB vía syncAccountToIndexedDB).
+      const extendedFields = {
+        ...(bancoOverride && { banco: bancoOverride }),
         bic: !isCard ? (form.bic || undefined) : undefined,
         ultimosCuatro: isCard ? form.ultimosCuatro : undefined,
         bancoEmisor: isCard ? form.bancoEmisor : undefined,
@@ -513,16 +502,55 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
         diaPago: isCard ? parseInt31(form.diaPago) : undefined,
         limiteCredito: isCard ? parseNum(form.limiteCredito) : undefined,
         deudaActual: isCard ? parseNum(form.deudaActual) : undefined,
+        taeAnual: !isCard && form.esRemunerada ? parseNum(form.taeAnual) : undefined,
+        frecuenciaLiquidacion: !isCard && form.esRemunerada ? form.frecuenciaLiquidacion : undefined,
         cuentaDestinoIntereses: cuentaDestinoNum,
-        ...bancoNamePayload,
-      } as any;
+      };
+
+      const remuneracionPayload = !isCard && form.esRemunerada
+        ? {
+            tinAnual: parseNum(form.taeAnual),
+            frecuenciaPagos: form.frecuenciaLiquidacion,
+            base: 'saldo' as const,
+            retencionFiscal: 0,
+            fechaInicio: form.fechaSaldo || todayISO(),
+          }
+        : undefined;
 
       let savedAccountId: number | undefined;
       if (editingAccount?.id) {
-        const updated = await cuentasService.update(editingAccount.id, payload);
+        // IBAN no es editable en update (cuentasService.update no lo
+        // soporta · ver review #1) · por eso no lo enviamos. El input
+        // queda disabled en modo edit.
+        const updateData: UpdateAccountData = {
+          alias: form.alias.trim() || undefined,
+          tipo: form.tipo,
+          cardConfig: isCard
+            ? { settlementDay: parseInt31(form.diaPago), chargeAccountId: cuentaCargoIdNum! }
+            : undefined,
+          openingBalance: openingBalanceNum,
+          openingBalanceDate: form.fechaSaldo ? new Date(form.fechaSaldo).toISOString() : undefined,
+          esRemunerada: !isCard && form.esRemunerada,
+          remuneracion: remuneracionPayload,
+          ...extendedFields,
+        };
+        const updated = await cuentasService.update(editingAccount.id, updateData);
         savedAccountId = updated.id;
       } else {
-        const created = await cuentasService.create(payload);
+        const createData: CreateAccountData = {
+          alias: form.alias.trim() || undefined,
+          iban: isCard ? undefined : (form.iban || undefined),
+          tipo: form.tipo,
+          cardConfig: isCard
+            ? { settlementDay: parseInt31(form.diaPago), chargeAccountId: cuentaCargoIdNum! }
+            : undefined,
+          openingBalance: openingBalanceNum,
+          openingBalanceDate: form.fechaSaldo ? new Date(form.fechaSaldo).toISOString() : undefined,
+          esRemunerada: !isCard && form.esRemunerada,
+          remuneracion: remuneracionPayload,
+          ...extendedFields,
+        };
+        const created = await cuentasService.create(createData);
         savedAccountId = created.id;
       }
 
@@ -762,12 +790,17 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
               <Block title="Datos bancarios">
                 {form.tipo !== 'TARJETA_CREDITO' ? (
                   <div className={`${styles.fieldsRow} ${styles.rowBancarios}`}>
-                    <Field label="IBAN" hint="opcional" error={errors.iban}>
+                    <Field
+                      label="IBAN"
+                      hint={isEditing ? 'no editable' : 'opcional'}
+                      error={errors.iban}
+                    >
                       <input
                         className={`${styles.input} ${styles.inputMono} ${errors.iban ? styles.inputError : ''}`}
                         value={form.iban}
                         onChange={(e) => set('iban', e.target.value)}
                         placeholder="ES61 0049 0052 6322 1041 2715"
+                        disabled={isEditing}
                       />
                     </Field>
                     <Field label="BIC / SWIFT" hint="opcional">
@@ -1062,9 +1095,5 @@ const CuentaWizard: React.FC<CuentaWizardProps> = ({
     </div>
   );
 };
-
-// Suprimir aviso linter sobre `normalizeIban` no-usado (lo importamos por si
-// la futura integración con servicio quiere normalizar antes de mostrar).
-void normalizeIban;
 
 export default CuentaWizard;

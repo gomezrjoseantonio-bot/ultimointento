@@ -19,7 +19,23 @@ type RemuneracionData = {
   fechaInicio: string;
 };
 
-export interface CreateAccountData {
+// S-WIZARD-CUENTA-V3 · campos extendidos · todos opcionales · DB sigue v70.
+// Detallados en interface Account (db.ts §wizard-cuenta-v3 fields).
+export interface AccountExtendedFields {
+  banco?: { code?: string; name?: string; brand?: { logoUrl?: string; color?: string } };
+  bic?: string;
+  taeAnual?: number;
+  frecuenciaLiquidacion?: 'mensual' | 'trimestral' | 'semestral' | 'anual';
+  cuentaDestinoIntereses?: number;
+  ultimosCuatro?: string;
+  bancoEmisor?: string;
+  limiteCredito?: number;
+  deudaActual?: number;
+  diaCierre?: number;
+  diaPago?: number;
+}
+
+export interface CreateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is now optional
   iban?: string;
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
@@ -35,7 +51,7 @@ export interface CreateAccountData {
   remuneracion?: RemuneracionData;
 }
 
-export interface UpdateAccountData {
+export interface UpdateAccountData extends AccountExtendedFields {
   alias?: string;  // ATLAS: alias is optional
   tipo?: 'CORRIENTE' | 'AHORRO' | 'OTRA' | 'TARJETA_CREDITO';
   cardConfig?: {
@@ -51,6 +67,22 @@ export interface UpdateAccountData {
   esRemunerada?: boolean;
   remuneracion?: RemuneracionData;
 }
+
+// Aplica los campos extendidos sobre una cuenta existente sólo si están
+// explícitamente presentes en el payload (undefined = "no tocar").
+const applyExtendedFields = (account: Account, data: AccountExtendedFields): void => {
+  if (data.banco !== undefined) account.banco = data.banco;
+  if (data.bic !== undefined) account.bic = data.bic || undefined;
+  if (data.taeAnual !== undefined) account.taeAnual = data.taeAnual;
+  if (data.frecuenciaLiquidacion !== undefined) account.frecuenciaLiquidacion = data.frecuenciaLiquidacion;
+  if (data.cuentaDestinoIntereses !== undefined) account.cuentaDestinoIntereses = data.cuentaDestinoIntereses;
+  if (data.ultimosCuatro !== undefined) account.ultimosCuatro = data.ultimosCuatro || undefined;
+  if (data.bancoEmisor !== undefined) account.bancoEmisor = data.bancoEmisor || undefined;
+  if (data.limiteCredito !== undefined) account.limiteCredito = data.limiteCredito;
+  if (data.deudaActual !== undefined) account.deudaActual = data.deudaActual;
+  if (data.diaCierre !== undefined) account.diaCierre = data.diaCierre;
+  if (data.diaPago !== undefined) account.diaPago = data.diaPago;
+};
 
 class CuentasService {
   private accounts: Account[] = [];
@@ -122,6 +154,17 @@ class CuentasService {
         deleted_at: account.deleted_at, // Preserve deletion status
         esRemunerada: account.esRemunerada ?? false,
         remuneracion: account.remuneracion,
+        // S-WIZARD-CUENTA-V3 · campos extendidos opcionales (DB sigue v70)
+        bic: account.bic,
+        taeAnual: account.taeAnual,
+        frecuenciaLiquidacion: account.frecuenciaLiquidacion,
+        cuentaDestinoIntereses: account.cuentaDestinoIntereses,
+        ultimosCuatro: account.ultimosCuatro,
+        bancoEmisor: account.bancoEmisor,
+        limiteCredito: account.limiteCredito,
+        deudaActual: account.deudaActual,
+        diaCierre: account.diaCierre,
+        diaPago: account.diaPago,
         createdAt: account.createdAt,
         updatedAt: account.updatedAt
       };
@@ -289,10 +332,12 @@ class CuentasService {
       this.saveAccounts();
     }
 
-    // Detect bank information using new function
-    const bankInfo = isCreditCard
-      ? { name: 'Tarjeta de crédito' }
-      : detectBankByIBAN(normalizedIban);
+    // Detect bank information using new function · respeta override del wizard
+    const bankInfo = data.banco
+      ? data.banco
+      : (isCreditCard
+        ? { name: 'Tarjeta de crédito' }
+        : detectBankByIBAN(normalizedIban));
 
     // Create new account
     const newAccount: Account = {
@@ -316,6 +361,9 @@ class CuentasService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // S-WIZARD-CUENTA-V3 · campos extendidos opcionales
+    applyExtendedFields(newAccount, data);
 
     // Sync to IndexedDB first (authoritative store) before writing to localStorage
     const dbAccountId = await this.syncAccountToIndexedDB(newAccount);
@@ -439,6 +487,9 @@ class CuentasService {
       account.esRemunerada = data.esRemunerada;
       account.remuneracion = data.esRemunerada ? data.remuneracion : undefined;
     }
+
+    // S-WIZARD-CUENTA-V3 · campos extendidos opcionales
+    applyExtendedFields(account, data);
 
     account.updatedAt = new Date().toISOString();
     this.saveAccounts();
