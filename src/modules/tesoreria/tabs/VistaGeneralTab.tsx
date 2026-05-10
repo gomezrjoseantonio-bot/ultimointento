@@ -29,7 +29,7 @@ import type { Account } from '../../../services/db';
 
 const VistaGeneralTab: React.FC = () => {
   const navigate = useNavigate();
-  const { accounts, movements, treasuryEvents, totalSaldo, reload } =
+  const { accounts, movements, treasuryEvents, properties, totalSaldo, reload } =
     useOutletContext<TesoreriaContext>();
 
   // Modal nueva/editar cuenta
@@ -234,6 +234,14 @@ const VistaGeneralTab: React.FC = () => {
           if (!ev) return null;
           const acc = accounts.find((a) => a.id === (ev as any).accountId);
           const accountAlias = acc?.alias || acc?.banco?.name || acc?.name;
+          // Hidratar inmueble desde properties si el evento no trae alias
+          // denormalizado (caso común en eventos antiguos / sin sync).
+          const inmuebleId = (ev as any).inmuebleId;
+          const inmuebleAlias =
+            ev.inmuebleAlias ||
+            (inmuebleId != null
+              ? properties.find((p) => p.id === inmuebleId)?.alias
+              : undefined);
           const drawerData: MovimientoDrawerData = {
             id: ev.id,
             description: (ev as any).description,
@@ -242,7 +250,7 @@ const VistaGeneralTab: React.FC = () => {
             amount: (ev as any).amount,
             status: (ev as any).status,
             accountAlias,
-            inmuebleAlias: ev.inmuebleAlias,
+            inmuebleAlias,
             contratoAlias: (ev as any).contratoAlias,
             categoryLabel: (ev as any).categoryLabel,
             origenTexto:

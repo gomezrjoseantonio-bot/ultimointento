@@ -20,7 +20,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Check, Clock } from 'lucide-react';
 import { intlOpts } from '../../utils/intlNumber';
 
 const MESES = [
@@ -1088,12 +1088,14 @@ const BankDayCard: React.FC<{
                   color: isConfirmed
                     ? 'var(--atlas-v5-white)'
                     : 'var(--atlas-v5-gold-ink)',
-                  fontSize: 10,
-                  fontWeight: 700,
                   flexShrink: 0,
                 }}
               >
-                {isConfirmed ? '✓' : '⏳'}
+                {isConfirmed ? (
+                  <Check size={11} strokeWidth={3} />
+                ) : (
+                  <Clock size={11} strokeWidth={2.4} />
+                )}
               </span>
               <div style={{ minWidth: 0 }}>
                 <div
@@ -1299,7 +1301,7 @@ const EventoRow: React.FC<{
 
   const content = (
     <>
-      {/* Mark · ✓ navy si confirmed, ⏳ gold si pending (mockup v8) */}
+      {/* Mark · navy+Check si confirmed · gold+Clock si pending (mockup v8) */}
       <span
         aria-hidden="true"
         style={{
@@ -1315,12 +1317,14 @@ const EventoRow: React.FC<{
           color: isConfirmed
             ? 'var(--atlas-v5-white)'
             : 'var(--atlas-v5-gold-ink)',
-          fontSize: 10,
-          fontWeight: 700,
           flexShrink: 0,
         }}
       >
-        {isConfirmed ? '✓' : '⏳'}
+        {isConfirmed ? (
+          <Check size={11} strokeWidth={3} />
+        ) : (
+          <Clock size={11} strokeWidth={2.4} />
+        )}
       </span>
       <div style={{ minWidth: 0 }}>
         <div

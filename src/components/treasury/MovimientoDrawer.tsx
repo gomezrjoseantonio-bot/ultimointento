@@ -282,11 +282,10 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
                 previsto · pendiente de confirmación
               </div>
 
-              <Field label="Concepto">
-                <ReadOnlyValue value={data.description ?? '—'} />
-              </Field>
+              {/* Concepto · ya está en el header (titulo) · solo se muestra en
+                  modo edición para no duplicar el dato en read mode. */}
 
-              {/* ── Fecha prevista ── */}
+              {/* ── Fecha prevista ── (editable) ── */}
               <Field label="Fecha de cargo prevista">
                 {editMode ? (
                   <input
@@ -301,9 +300,10 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
                 )}
               </Field>
 
-              {/* ── Importe ── */}
-              <Field label="Importe (EUR)">
-                {editMode ? (
+              {/* ── Importe ── solo visible en modo edición (en read mode el
+                  importe ya aparece como titular grande arriba). */}
+              {editMode && (
+                <Field label="Importe (EUR)">
                   <input
                     type="number"
                     min="0"
@@ -313,10 +313,8 @@ const MovimientoDrawer: React.FC<MovimientoDrawerProps> = ({
                     aria-label="Importe en euros"
                     style={inputStyle}
                   />
-                ) : (
-                  <ReadOnlyValue value={`${formatEur(data.amount)} €`} />
-                )}
-              </Field>
+                </Field>
+              )}
 
               {/* ── Cuenta ── */}
               <Field label="Cuenta de cargo">
