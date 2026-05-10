@@ -40,6 +40,7 @@ import {
   getCCAAFromProvince,
 } from '../../utils/locationUtils';
 import { calcularInmuebleResumen } from '../../services/inmuebleCalculatorService';
+import { parseIsoDateAsUTC } from '../../utils/recurrenceDateUtils';
 import styles from './InmueblePage.module.css';
 
 interface InmueblePageProps {
@@ -160,8 +161,6 @@ const USO_OPTIONS_LOCAL: { value: UsoTipo; label: string; sub: string }[] = [
   { value: 'disponible', label: 'Disponible', sub: 'Sin uso · imputación rentas' },
 ];
 
-const today = (): string => new Date().toISOString().slice(0, 10);
-
 const formatCurrency = (n: number): string =>
   new Intl.NumberFormat('es-ES', {
     minimumFractionDigits: 2,
@@ -174,14 +173,34 @@ const formatInt = (n: number): string =>
 const formatPct = (n: number): string =>
   `${new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(n)} %`;
 
+// Fechas tratadas como civiles (sin shift por timezone) · usa parseIsoDateAsUTC.
 const formatDateLong = (iso: string): string => {
   if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-  } catch {
-    return iso;
+  const d = parseIsoDateAsUTC(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+};
+
+// today en formato ISO civil YYYY-MM-DD · sin tocar timezone.
+const today = (): string => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const ejercicioFromDate = (iso: string): number => {
+  if (iso) {
+    const d = parseIsoDateAsUTC(iso);
+    if (!isNaN(d.getTime())) return d.getUTCFullYear();
   }
+  return new Date().getFullYear();
 };
 
 const initialForm = (): FormState => ({
@@ -238,6 +257,10 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [prestamosVinculados, setPrestamosVinculados] = useState<Prestamo[]>([]);
   const [purchaseDateOriginal, setPurchaseDateOriginal] = useState<string>('');
+  // En edición · conservamos los `documents` ya asociados al inmueble (la
+  // pestaña Documentos de DetallePage los lee). Este wizard no los gestiona,
+  // así que NO debe pisarlos al guardar.
+  const existingDocumentsRef = useRef<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ─── carga inicial ───
@@ -285,6 +308,22 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             ) || 0;
           const impuestos = prop.acquisitionCosts.itp ?? prop.acquisitionCosts.iva ?? 0;
           const ccaaResolved = prop.ccaa || fallbackCCAA;
+          // Inferir si la CCAA fue editada manualmente: comparar contra la
+          // CCAA inferida desde la provincia. Si coinciden, asumimos auto.
+          // Property.ccaa es obligatorio · usar `!!prop.ccaa` lo dejaba
+          // siempre como manual y desactivaba el auto-fill.
+          const inferredCCAA = prop.province
+            ? getCCAAFromProvince(prop.province) ?? ''
+            : '';
+          const ccaaIsManualInit = ccaaResolved !== '' && ccaaResolved !== inferredCCAA;
+          // Inferir si valorReferencia fue editado manualmente: comparar
+          // contra el precio (con tolerancia de 1 céntimo). Persistir siempre
+          // el valor en DB requiere esta heurística para no quedar bloqueado.
+          const precio = prop.acquisitionCosts.price || 0;
+          const vRef = prop.valorReferencia ?? precio;
+          const valorRefIsManualInit =
+            typeof prop.valorReferencia === 'number' && Math.abs(vRef - precio) > 0.01;
+          existingDocumentsRef.current = Array.isArray(prop.documents) ? prop.documents : [];
           const next: FormState = {
             tipoActivo: prop.tipoActivo ?? 'piso',
             alias: prop.alias || '',
@@ -294,11 +333,11 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             municipality: prop.municipality || '',
             province: prop.province || '',
             ccaa: ccaaResolved,
-            ccaaIsManual: !!prop.ccaa,
+            ccaaIsManual: ccaaIsManualInit,
             fechaCompra: prop.purchaseDate || '',
-            precioCompra: prop.acquisitionCosts.price || 0,
-            valorReferencia: prop.valorReferencia ?? prop.acquisitionCosts.price ?? 0,
-            valorReferenciaIsManual: typeof prop.valorReferencia === 'number',
+            precioCompra: precio,
+            valorReferencia: vRef,
+            valorReferenciaIsManual: valorRefIsManualInit,
             estado: prop.transmissionRegime === 'obra-nueva' ? 'obra-nueva' : 'usada',
             notaria: prop.acquisitionCosts.notary || 0,
             registro: prop.acquisitionCosts.registry || 0,
@@ -354,18 +393,19 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, propertyId]);
 
-  // ─── ESC cierra ───
+  // ─── ESC cierra · listener registrado UNA sola vez ───
+  // Usa una ref a handleCancel para no re-suscribir en cada render.
+  const cancelRef = useRef<() => void>(() => {});
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        handleCancel();
+        cancelRef.current();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form]);
+  }, []);
 
   // ─── auto-rellenar ubicación desde CP ───
   useEffect(() => {
@@ -598,8 +638,13 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
             ? { itp: form.impuestos || 0 }
             : { iva: form.impuestos || 0 }),
         },
-        documents: [],
-        valorReferencia: form.valorReferencia || form.precioCompra,
+        // Preserva los `documents` ya asociados (DetallePage los lee). Este
+        // wizard no los gestiona · NO debe pisarlos.
+        documents: existingDocumentsRef.current.length > 0 ? existingDocumentsRef.current : [],
+        // Sólo persistir valorReferencia si fue editado manualmente. Así, al
+        // recargar, valorReferenciaIsManual se infiere correctamente y el
+        // auto-fill desde precioCompra sigue funcionando.
+        valorReferencia: form.valorReferenciaIsManual ? form.valorReferencia : undefined,
         anexos: showAnexos
           ? { tieneParking: form.tieneParking, tieneTrastero: form.tieneTrastero }
           : undefined,
@@ -630,10 +675,6 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
       }
 
       // mejoras · upsert uno-a-uno (los servicios no exponen bulkUpsert)
-      const ejercicioFromDate = (iso: string): number => {
-        const d = iso ? new Date(iso) : new Date();
-        return isFinite(d.getTime()) ? d.getFullYear() : new Date().getFullYear();
-      };
       if (form.mejorasOn) {
         for (const m of form.mejoras) {
           if (m._deleted && m.id) {
@@ -701,6 +742,8 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
   const handleCancel = () => {
     navigate('/inmuebles?tab=cartera');
   };
+  // Mantener cancelRef actualizado para el listener de Esc.
+  cancelRef.current = handleCancel;
 
   // ─── render ───
   if (isLoading) {
@@ -827,15 +870,17 @@ const InmueblePage: React.FC<InmueblePageProps> = ({ mode }) => {
                     onChange={(e) => set('province', e.target.value)}
                   />
                 </Field>
-                <Field label="Comunidad autónoma">
+                <Field
+                  label="Comunidad autónoma"
+                  hint={form.ccaaIsManual ? 'manual' : 'auto'}
+                >
                   <input
-                    className={`${styles.input} ${styles.inputReadonly}`}
+                    className={styles.input}
                     value={form.ccaa}
                     onChange={(e) => {
                       set('ccaa', e.target.value);
                       set('ccaaIsManual', true);
                     }}
-                    readOnly={!form.ccaaIsManual}
                   />
                 </Field>
               </div>
