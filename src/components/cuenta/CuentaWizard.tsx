@@ -130,7 +130,14 @@ const fmtEur = (v: number, dec = 2): string =>
 
 const parseNum = (raw: string): number => {
   if (!raw || typeof raw !== 'string') return 0;
-  const normalized = raw.replace(/\./g, '').replace(',', '.').trim();
+  const trimmed = raw.trim();
+  // type="number" inputs siempre devuelven formato canónico "1938.92"
+  // (punto decimal, sin comas). Sólo aplicamos la conversión es-ES
+  // ("1.938,92" → "1938.92") cuando hay coma; si sólo hay punto · es
+  // canónico y NO debemos quitarlo (eso multiplicaba por 100 — bug PR #1330).
+  const normalized = trimmed.includes(',')
+    ? trimmed.replace(/\./g, '').replace(',', '.')
+    : trimmed;
   const n = parseFloat(normalized);
   return Number.isFinite(n) ? n : 0;
 };

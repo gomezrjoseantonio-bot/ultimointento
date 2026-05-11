@@ -146,7 +146,15 @@ class CuentasService {
         currency: 'EUR',
         titular: account.titular,
         isDefault: account.isDefault || false,
-        balance: existingAccount?.balance ?? account.openingBalance ?? account.balance ?? 0,
+        // ATLAS-FIX (2026-05) · La precedencia anterior era
+        //   `existingAccount?.balance ?? account.openingBalance ?? account.balance ?? 0`
+        // El operador `??` NO cortocircuita en 0, así que cuando una cuenta
+        // existente con balance cacheado a 0 se editaba para subir el saldo
+        // inicial, el balance persistido seguía a 0 (la card de Tesorería
+        // mostraba 0 € aunque openingBalance fuera distinto).
+        // update() ya actualiza account.balance al nuevo openingBalance ·
+        // por tanto in-memory account es la fuente de verdad para la sync.
+        balance: account.balance ?? existingAccount?.balance ?? account.openingBalance ?? 0,
         openingBalance: account.openingBalance ?? existingAccount?.openingBalance ?? 0,
         openingBalanceDate: account.openingBalanceDate ?? existingAccount?.openingBalanceDate ?? account.createdAt,
         includeInConsolidated: true,

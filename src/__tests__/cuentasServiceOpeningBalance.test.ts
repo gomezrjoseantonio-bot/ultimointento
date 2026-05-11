@@ -152,6 +152,39 @@ describe('cuentasService.create() - opening balance movement', () => {
     expect(updated.openingBalanceDate).toBe('2024-02-01T00:00:00.000Z');
   });
 
+  it('persists new balance after update when existing IndexedDB record had balance 0 (regression PR #1331)', async () => {
+    // Repro · cuenta antigua en IndexedDB con balance cacheado a 0
+    // (típico de cuentas creadas vía el modal legacy con saldo 0). El usuario
+    // las edita subiendo el saldo inicial · syncAccountToIndexedDB hacía
+    //   balance: existingAccount?.balance ?? account.openingBalance ?? ...
+    // y como `0 ?? X` = 0 (?? no cortocircuita en 0), el balance persistido
+    // se quedaba en 0 aunque update() hubiera puesto account.balance = 9000.
+    // Tras el fix · account.balance prevalece sobre existingAccount.balance.
+    const iban = uniqueIban();
+
+    // Crear (registra la cuenta en this.accounts cache · necesario para findIndexById)
+    const created = await cuentasService.create({
+      alias: 'Cuenta antigua',
+      iban,
+      openingBalance: 0,
+    });
+
+    // Mock IndexedDB devolviendo la versión vieja con balance 0
+    mockDB.put.mockClear();
+    mockDB.getAll.mockResolvedValue([
+      { id: created.id, iban, balance: 0, openingBalance: 0, activa: true, status: 'ACTIVE' },
+    ]);
+
+    // Editar subiendo el saldo a 9000
+    await cuentasService.update(created.id!, { openingBalance: 9000 });
+
+    // El put a IndexedDB debe llevar balance: 9000 (no 0)
+    expect(mockDB.put).toHaveBeenCalledWith(
+      'accounts',
+      expect.objectContaining({ balance: 9000, openingBalance: 9000 })
+    );
+  });
+
   it('uses the dbAccountId returned by syncAccountToIndexedDB (no second getAll)', async () => {
     await cuentasService.create({
       alias: 'Cuenta Nómina',
