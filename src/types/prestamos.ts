@@ -146,6 +146,34 @@ export interface Prestamo {
   // Intereses anuales declarados por ejercicio fiscal (ej: { 2023: 1200.50 })
   interesesAnualesDeclarados?: Record<number, number>;
 
+  // ── S-WIZARD-PRESTAMO-V2 · campos extendidos (opcionales · sin breaking changes) ──
+  /** Tipo comercial del préstamo · independiente de la garantía. */
+  tipoPrestamoV2?: 'hipotecario' | 'personal' | 'linea_credito' | 'otro';
+  /** Nombre del banco emisor (display). */
+  banco?: string;
+  /** Número de contrato (referencia comercial). */
+  numeroContrato?: string;
+  /**
+   * Interés de demora pactado (TIN anual %, p.ej. 6.99 = 6,99%).
+   * Solo informativo · no afecta al cuadro principal.
+   */
+  interesDemoraPct?: number;
+  /** Comisión de modificación de condiciones · %. */
+  comisionModificacionCondiciones?: number;
+  /** Gasto de reclamación de impago (€ · típico 49 €). */
+  gastoReclamacionImpago?: number;
+  /**
+   * Carencia técnica detectada al guardar el préstamo desde el wizard v2.
+   * Calculada como días entre la fecha de firma y el primer día de cobro
+   * del mes siguiente · genera un cargo separado en tesorería.
+   * `null` si NO existe; objeto si existe.
+   */
+  carenciaTecnica?: {
+    dias: number;
+    fechaLiquidacion: string;        // ISO date
+    intereses: number;               // €
+  } | null;
+
   // Importación
   origenCreacion: 'MANUAL' | 'FEIN' | 'IMPORTACION';
   cuotasPagadasAlImportar?: number;

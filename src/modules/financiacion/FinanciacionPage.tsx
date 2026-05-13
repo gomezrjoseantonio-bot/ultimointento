@@ -154,17 +154,15 @@ const FinanciacionPage: React.FC = () => {
               onClick: () => navigate('/financiacion/importar'),
             },
             {
-              label: 'Crear desde FEIN',
-              variant: 'ghost',
-              icon: <Icons.Upload size={14} strokeWidth={1.8} />,
-              onClick: () => navigate('/financiacion/nuevo-fein'),
-            },
-            {
               label: 'Nuevo préstamo',
               variant: 'gold',
               icon: <Icons.Plus size={14} strokeWidth={1.8} />,
               onClick: () => navigate('/financiacion/nuevo'),
             },
+            // "Crear desde FEIN" se oculta del header de página (PageHead recorta
+            // a 2 acciones). Sigue accesible via la ruta /financiacion/nuevo-fein
+            // y desde el propio wizard de creación si se decide reintroducir
+            // un punto de entrada secundario.
           ]}
           tabsSlot={
             showTabs ? (

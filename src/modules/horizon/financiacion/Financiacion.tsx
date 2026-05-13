@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { CreditCard, Plus } from 'lucide-react';
 import PageHeader, { HeaderPrimaryButton, HeaderSecondaryButton } from '../../../components/shared/PageHeader';
-import PrestamosWizard from './components/PrestamosWizard';
+import PrestamoPageV2 from '../../financiacion/wizards/PrestamoPageV2';
 import PrestamosList from './components/PrestamosList';
 import PrestamoDetailPage from './components/PrestamoDetailPage';
 import FEINUploader from '../../../components/financiacion/FEINUploader';
@@ -78,16 +78,15 @@ const Financiacion: React.FC = () => {
     switch (currentView) {
       case 'create':
         return (
-          <PrestamosWizard
-            prestamoId={selectedPrestamoId}
-            initialData={feinInitialData || undefined} // Pass mapped FEIN data if available
+          <PrestamoPageV2
+            initialData={feinInitialData || undefined}
             onSuccess={handleBackToList}
             onCancel={handleBackToList}
           />
         );
       case 'edit':
         return (
-          <PrestamosWizard
+          <PrestamoPageV2
             prestamoId={selectedPrestamoId}
             onSuccess={handleBackToList}
             onCancel={handleBackToList}
