@@ -35,10 +35,6 @@ export interface PrestamoCalculatorInput {
   fechaFirma: string;          // ISO date (YYYY-MM-DD)
   primerCargoCuadro: string;   // ISO date (YYYY-MM-DD)
   diaCobro: number;            // 1-31
-  carenciaInicial?: {
-    tipo: TipoCarenciaInicialV2;
-    meses: number;
-  };
   comisiones?: {
     apertura?: number;             // % sobre capital
     mantenimiento?: number;        // €/mes
@@ -46,6 +42,11 @@ export interface PrestamoCalculatorInput {
     modifCondiciones?: number;     // %
     reclamacionImpago?: number;    // € (49 típico)
   };
+  // NOTA · `carenciaInicial` (solo_capital / total) NO se admite todavía en
+  // el motor v2 — el cuadro francés se genera siempre sin modificaciones por
+  // carencia inicial. Se almacena por separado en el `Prestamo` legacy
+  // (`carencia` / `carenciaMeses`) pero el cuadro generado aquí lo ignora.
+  // Pendiente refinamiento (§7 spec).
 }
 
 export interface CarenciaTecnicaInfo {

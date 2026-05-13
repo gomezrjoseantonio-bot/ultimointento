@@ -243,9 +243,15 @@ function mapGarantiaV2ToLegacy(t: TipoGarantiaV2): Garantia['tipo'] {
 }
 
 // ─── Estado inicial ─────────────────────────────────────────────────────────
+// ISO YYYY-MM-DD construido desde componentes LOCALES (evita drift por UTC).
+function localIsoToday(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function emptyFormState(): FormState {
-  const today = new Date();
-  const isoToday = today.toISOString().slice(0, 10);
+  const isoToday = localIsoToday();
   return {
     tipoPrestamo: 'personal',
     alias: '',
@@ -453,15 +459,32 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     return Math.max(1, Math.min(31, d));
   }, [form.diaCobroRaw]);
 
+  // TIN base aplicable según tipo de interés (a t=0).
+  //   fijo     · TIN fijo.
+  //   variable · euríbor + diferencial.
+  //   mixto    · TIN del tramo fijo (durante el período fijo · que es lo que
+  //              se carga al inicio del préstamo y por tanto lo correcto
+  //              para el cuadro inicial y los eventos de tesorería).
+  // El motor financiero v2 sigue calculando con cuota CONSTANTE — los
+  // ajustes en revisiones futuras (variable/mixto) son spec aparte (§7).
+  const tinBasePct = useMemo(() => {
+    if (form.tipoInteres === 'fijo') return tinFijoPct;
+    if (form.tipoInteres === 'variable') {
+      return parseNum(form.euriborRaw) + parseNum(form.diferencialRaw);
+    }
+    if (form.tipoInteres === 'mixto') return parseNum(form.tinTramoFijoRaw);
+    return 0;
+  }, [form.tipoInteres, tinFijoPct, form.euriborRaw, form.diferencialRaw, form.tinTramoFijoRaw]);
+
   // TIN efectivo (con bonificaciones activas)
   const tinEfectivoPct = useMemo(() => {
-    const base = tinFijoPct;
+    const base = tinBasePct;
     if (!form.bonificacionesActivas) return base;
     const totalBonif = form.bonificaciones
       .filter((b) => b.activa)
       .reduce((sum, b) => sum + b.ppDescuento, 0);
     return Math.max(0, base - totalBonif);
-  }, [tinFijoPct, form.bonificacionesActivas, form.bonificaciones]);
+  }, [tinBasePct, form.bonificacionesActivas, form.bonificaciones]);
 
   const cuadro: CuadroAmortizacionV2 | null = useMemo(() => {
     if (capital <= 0 || numCuotas <= 0 || tinEfectivoPct < 0 || !form.fechaFirma || !form.fechaPrimerCargo) {
@@ -618,13 +641,22 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
           }))
         : [];
 
-      const carenciaInfo = cuadro && cuadro.resumen.interesesCarenciaTecnica > 0 && carencia?.existe
+      // NO aplicar detección retroactiva a préstamos pre-v2:
+      // si estamos editando y el préstamo existente NO trae el campo
+      // `carenciaTecnica` (undefined ≡ creado antes del wizard v2 o
+      // importado), preservamos null para no inyectar un cargo nuevo.
+      // Si el campo viene de v2 (objeto o null explícito), recalculamos.
+      const existingPrestamo = prestamoId
+        ? await prestamosService.getPrestamoById(prestamoId)
+        : null;
+      const esPreV2 = Boolean(existingPrestamo) && existingPrestamo?.carenciaTecnica === undefined;
+      const carenciaInfo = !esPreV2 && cuadro && cuadro.resumen.interesesCarenciaTecnica > 0 && carencia?.existe
         ? {
             dias: carencia.dias,
             fechaLiquidacion: carencia.fechaLiquidacion as string,
             intereses: cuadro.resumen.interesesCarenciaTecnica,
           }
-        : null;
+        : (esPreV2 ? (existingPrestamo?.carenciaTecnica ?? null) : null);
 
       const payload: Omit<Prestamo, 'id' | 'createdAt' | 'updatedAt'> = {
         ambito,
@@ -668,10 +700,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
       let saved: Prestamo | null;
       if (prestamoId) {
-        const existing = await prestamosService.getPrestamoById(prestamoId);
-        if (existing) {
-          payload.principalVivo = existing.principalVivo;
-          payload.cuotasPagadas = existing.cuotasPagadas;
+        if (existingPrestamo) {
+          payload.principalVivo = existingPrestamo.principalVivo;
+          payload.cuotasPagadas = existingPrestamo.cuotasPagadas;
         }
         saved = await prestamosService.updatePrestamo(prestamoId, payload as Partial<Prestamo>);
       } else {
@@ -682,8 +713,10 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         throw new Error('No se ha podido guardar el préstamo.');
       }
 
-      // Treasury events · regenerar desde cero (sub-tarea 6)
-      await regenerarTreasuryEvents(saved);
+      // Treasury events · regenerar desde cero (sub-tarea 6). Si el préstamo
+      // es pre-v2 (no admitimos detección retroactiva) excluimos la línea
+      // de carencia técnica del flujo de eventos.
+      await regenerarTreasuryEvents(saved, { incluirCarencia: !esPreV2 });
 
       toast.success(prestamoId ? 'Préstamo actualizado' : 'Préstamo creado');
       onSuccess();
@@ -698,13 +731,18 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   };
 
   // ─── Treasury events · regenerar al guardar ──────────────────────────────
-  const regenerarTreasuryEvents = async (prestamo: Prestamo) => {
+  // `incluirCarencia=false` (préstamos pre-v2) excluye la línea 0 de
+  // carencia técnica · el resto se persisten igual.
+  const regenerarTreasuryEvents = async (
+    prestamo: Prestamo,
+    options: { incluirCarencia: boolean } = { incluirCarencia: true },
+  ) => {
     if (!cuadro) return;
     const db = await initDB();
     const accountIdNum = parseInt(prestamo.cuentaCargoId, 10);
     const accountId = Number.isFinite(accountIdNum) ? accountIdNum : undefined;
 
-    // 1. borrar eventos existentes con prestamoId
+    // 1. borrar eventos previstos existentes con prestamoId · respetar executed
     const todos = await db.getAll('treasuryEvents');
     const aBorrar = (todos as TreasuryEvent[]).filter(
       (e) => e.prestamoId === prestamo.id && e.status !== 'executed',
@@ -715,7 +753,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       }
     }
 
-    // 2. generar descriptores y persistir
+    // 2. generar descriptores y persistir · TIN según tipo de interés (no
+    //    sólo el fijo) para que variable/mixto produzcan eventos coherentes.
     const descriptors = generarTreasuryEventDescriptors({
       id: prestamo.id,
       alias: prestamo.nombre,
@@ -727,11 +766,15 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       numCuotas: prestamo.plazoMesesTotal,
       cuentaCargoId: accountId,
     });
+    const descriptorsAPersistir = options.incluirCarencia
+      ? descriptors
+      : descriptors.filter((d) => !d.esCarenciaTecnica);
+
     const now = new Date().toISOString();
     const isHipoteca = prestamo.ambito === 'INMUEBLE';
-    for (const d of descriptors) {
+    for (const d of descriptorsAPersistir) {
       const event: Omit<TreasuryEvent, 'id'> = {
-        type: d.tipo === 'ingreso' ? 'income' : (isHipoteca ? 'financing' : 'financing'),
+        type: d.tipo === 'ingreso' ? 'income' : 'financing',
         amount: d.importe,
         predictedDate: d.fecha,
         description: d.concepto,
@@ -741,6 +784,9 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
         numeroCuota: d.numeroCuota,
         status: 'predicted',
         ambito: prestamo.ambito,
+        // Marker explícito para que la UI de tesorería pueda surfacear la
+        // línea de carencia técnica · NO depender del texto del concepto.
+        notes: d.esCarenciaTecnica ? 'carencia_tecnica' : undefined,
         createdAt: now,
         updatedAt: now,
         generadoPor: 'treasurySyncService',
