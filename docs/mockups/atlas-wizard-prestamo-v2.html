@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATLAS · Préstamo · pantalla única · v1</title>
+<style>
+  :root {
+    --bg-page: #faf8f3;
+    --bg-card: #ffffff;
+    --bg-soft: #f5f1e8;
+    --bg-hover: #f0ebde;
+    --bg-selected: #fdf4dc;
+    --bg-navy: #0a1f3d;
+    --txt-navy: #0a1f3d;
+    --txt-default: #1a1a1a;
+    --txt-muted: #6b7280;
+    --txt-soft: #9ca3af;
+    --txt-on-navy: #f5f1e8;
+    --txt-on-navy-muted: #aab3c4;
+    --gold: #c8a04a;
+    --gold-soft: #e0c479;
+    --gold-bg: #fdf4dc;
+    --teal: #0d6868;
+    --amber-bg: #fef4e0;
+    --amber-text: #8a5a00;
+    --amber-border: #f5d99e;
+    --border: #e5dfd0;
+    --border-strong: #d4cdb8;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg-page); color: var(--txt-default); font-size: 13px; line-height: 1.5; min-height: 100vh; width: 100%; max-width: 100%; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select { font-family: inherit; font-size: 13px; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(10,31,61,0.4); display: grid; place-items: center; z-index: 100; padding: 24px; }
+  .modal { width: 100%; max-width: 1340px; max-height: calc(100vh - 48px); background: var(--bg-page); border-radius: var(--radius-lg); display: grid; grid-template-rows: auto 1fr auto; box-shadow: 0 20px 60px rgba(10,31,61,0.25); overflow: hidden; }
+
+  /* header */
+  .header { background: var(--bg-navy); color: var(--txt-on-navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  .header-info { display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 38px; height: 38px; background: rgba(200,160,74,0.15); border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--gold-soft); }
+  .header-icon svg { width: 19px; height: 19px; }
+  .header-title { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; line-height: 1.2; }
+  .header-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 2px; letter-spacing: 0.3px; }
+  .header-close { width: 32px; height: 32px; border-radius: var(--radius-sm); display: grid; place-items: center; color: var(--txt-on-navy-muted); border: 1px solid rgba(255,255,255,0.1); }
+  .header-close:hover { background: rgba(255,255,255,0.06); color: var(--txt-on-navy); }
+
+  /* body 2 columnas */
+  .body { display: grid; grid-template-columns: 1.4fr 1fr; gap: 0; overflow: hidden; min-height: 0; }
+  .col-form { padding: 20px 24px; overflow-y: auto; border-right: 1px solid var(--border); }
+  .col-preview { padding: 20px 24px; overflow-y: auto; background: var(--bg-soft); }
+  .col-form::-webkit-scrollbar, .col-preview::-webkit-scrollbar { width: 6px; }
+  .col-form::-webkit-scrollbar-thumb, .col-preview::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  /* bloques */
+  .block { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); margin-bottom: 12px; overflow: hidden; }
+  .block-hd { padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .block-hd-title { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--txt-navy); display: flex; align-items: center; gap: 8px; }
+  .block-hd-title .count { color: var(--txt-muted); font-weight: 500; text-transform: none; letter-spacing: 0; font-size: 11px; }
+  .block-body { padding: 12px 14px 14px; border-top: 1px solid var(--border); }
+
+  .toggle { width: 34px; height: 19px; border-radius: 10px; background: var(--border-strong); position: relative; cursor: pointer; transition: background 0.15s; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; background: white; border-radius: 50%; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+  .toggle.on { background: var(--bg-navy); }
+  .toggle.on::after { transform: translateX(15px); }
+
+  /* selector tipo · 4 cards */
+  .type-selector-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .type-card { background: white; border: 1.5px solid var(--border-strong); border-radius: var(--radius-sm); padding: 14px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: all 0.1s; }
+  .type-card:hover { background: var(--bg-soft); }
+  .type-card.selected { background: var(--gold-bg); border-color: var(--gold); }
+  .type-card svg { width: 22px; height: 22px; color: var(--txt-muted); transition: color 0.1s; }
+  .type-card.selected svg { color: var(--bg-navy); }
+  .type-card-label { font-size: 12px; font-weight: 600; color: var(--txt-default); }
+  .type-card.selected .type-card-label { color: var(--bg-navy); }
+
+  /* selector 3 cards (interés · carencia · garantía) */
+  .seg-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .seg-3 .seg { padding: 9px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; font-size: 12px; font-weight: 600; color: var(--txt-default); cursor: pointer; text-align: center; transition: all 0.1s; }
+  .seg-3 .seg:hover { background: var(--bg-soft); }
+  .seg-3 .seg.selected { background: var(--gold-bg); border-color: var(--gold); color: var(--bg-navy); }
+
+  /* fields */
+  .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--txt-muted); letter-spacing: 0.2px; line-height: 1.3; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .field-label .req { color: #b91c1c; font-weight: 700; }
+  .field-label .hint { font-weight: 400; color: var(--txt-soft); }
+  .input, .select { width: 100%; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: white; color: var(--txt-default); font-size: 13px; transition: border-color 0.1s, box-shadow 0.1s; min-width: 0; }
+  .input:focus, .select:focus { outline: none; border-color: var(--bg-navy); box-shadow: 0 0 0 3px rgba(10,31,61,0.06); }
+  .input.mono { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .input.readonly { background: var(--bg-soft); color: var(--teal); font-weight: 700; }
+  .input-suffix { position: relative; }
+  .input-suffix .input { padding-right: 30px; }
+  .input-suffix .suffix { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--txt-muted); font-size: 11px; pointer-events: none; }
+
+  .fields-row { display: grid; gap: 10px; align-items: end; }
+  .row-identif { grid-template-columns: 1.2fr 1fr 1.2fr 1fr; }
+  .row-importe { grid-template-columns: 1fr 0.7fr 0.5fr 1fr 1fr 0.5fr; }
+  .row-tin-fijo { grid-template-columns: 1fr 1fr; }
+  .row-tin-variable { grid-template-columns: 0.8fr 0.6fr 0.8fr 0.8fr 0.8fr; }
+  .row-tin-mixto { grid-template-columns: 0.5fr 1fr 0.7fr 0.7fr 0.8fr; }
+  .row-comisiones { grid-template-columns: repeat(5, 1fr); }
+  .row-carencia { grid-template-columns: 2fr 0.6fr 0.6fr; }
+  .row-destino { grid-template-columns: 1.5fr 1.3fr 0.9fr 0.7fr 28px; }
+
+  .hint-note { font-size: 11px; color: var(--txt-muted); margin-top: 9px; line-height: 1.5; }
+  .hint-note b { color: var(--txt-navy); font-weight: 600; }
+
+  /* bonificaciones grid */
+  .bonif-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .bonif-card { padding: 11px 12px; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.1s; display: flex; flex-direction: column; gap: 3px; }
+  .bonif-card:hover { background: var(--bg-soft); }
+  .bonif-card.active { background: var(--gold-bg); border-color: var(--gold); }
+  .bonif-card-title { font-size: 12px; font-weight: 700; color: var(--txt-navy); }
+  .bonif-card-sub { font-size: 10px; color: var(--txt-muted); line-height: 1.3; }
+  .bonif-card-pp { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800; color: var(--teal); margin-top: 4px; }
+  .bonif-add { width: 100%; padding: 9px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: transparent; color: var(--txt-muted); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.1s; margin-top: 8px; }
+  .bonif-add:hover { background: var(--bg-soft); color: var(--txt-navy); border-color: var(--bg-navy); }
+
+  /* destino multi-line */
+  .destino-row { display: grid; grid-template-columns: 1.5fr 1.3fr 0.8fr 0.6fr 28px; gap: 7px; align-items: center; }
+  .destino-row .input, .destino-row .select { padding: 7px 9px; font-size: 12px; }
+  .destino-row .del { width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center; color: var(--txt-soft); border: 1px solid var(--border); background: white; }
+  .destino-row .del:hover { color: #b91c1c; border-color: #f0b3ad; }
+  .destino-banner { padding: 8px 12px; background: rgba(13,104,104,0.08); border: 1px solid rgba(13,104,104,0.3); border-radius: var(--radius-sm); font-size: 11px; color: var(--teal); margin-top: 8px; display: flex; align-items: center; gap: 8px; }
+  .destino-banner.error { background: rgba(185,28,28,0.06); border-color: rgba(185,28,28,0.3); color: #b91c1c; }
+  .destino-banner svg { width: 13px; height: 13px; flex-shrink: 0; }
+  .destino-banner b { font-weight: 700; }
+
+  /* garantía cards · 3 tipos */
+  .garantia-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .garantia-card { padding: 12px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); cursor: pointer; background: white; transition: all 0.1s; display: flex; flex-direction: column; gap: 3px; }
+  .garantia-card:hover { background: var(--bg-soft); }
+  .garantia-card.selected { background: var(--gold-bg); border-color: var(--gold); }
+  .garantia-card svg { width: 18px; height: 18px; color: var(--txt-muted); margin-bottom: 4px; }
+  .garantia-card.selected svg { color: var(--bg-navy); }
+  .garantia-card-title { font-size: 12px; font-weight: 700; color: var(--txt-navy); }
+  .garantia-card-sub { font-size: 10px; color: var(--txt-muted); line-height: 1.3; }
+
+  /* ─── PREVIEW ─── */
+  .preview-title { font-size: 10px; font-weight: 800; letter-spacing: 0.5px; color: var(--txt-muted); text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .preview-title svg { width: 12px; height: 12px; }
+
+  .preview-kpi-main { background: var(--bg-navy); color: var(--txt-on-navy); border-radius: var(--radius-md); padding: 16px 18px; margin-bottom: 14px; }
+  .preview-kpi-main-label { font-size: 10px; color: var(--txt-on-navy-muted); letter-spacing: 0.5px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-main-value { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 800; letter-spacing: -1px; line-height: 1; margin-top: 7px; }
+  .preview-kpi-main-sub { font-size: 11px; color: var(--txt-on-navy-muted); margin-top: 6px; }
+
+  .preview-desglose { padding: 11px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 14px; font-size: 12px; }
+  .preview-desglose-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+  .preview-desglose-row + .preview-desglose-row { border-top: 1px dashed var(--border); }
+  .preview-desglose-row.total { padding-top: 7px; margin-top: 4px; border-top: 1px solid var(--bg-navy); font-weight: 700; }
+  .preview-desglose-row.total .label { color: var(--txt-navy); }
+  .preview-desglose-row.total .value { color: var(--teal); font-size: 13px; }
+  .preview-desglose .label { color: var(--txt-muted); }
+  .preview-desglose .value { font-family: 'JetBrains Mono', monospace; color: var(--txt-default); font-weight: 600; }
+
+  /* preview KPIs secundarios */
+  .preview-kpi-secondary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .preview-kpi-mini { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .preview-kpi-mini-label { font-size: 10px; color: var(--txt-muted); letter-spacing: 0.4px; text-transform: uppercase; font-weight: 700; }
+  .preview-kpi-mini-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 800; color: var(--txt-navy); margin-top: 5px; line-height: 1; }
+  .preview-kpi-mini-sub { font-size: 10px; color: var(--txt-muted); margin-top: 4px; }
+
+  /* alerta info dentro de preview */
+  .preview-info { padding: 9px 12px; background: var(--amber-bg); border: 1px solid var(--amber-border); border-radius: var(--radius-sm); font-size: 11px; color: var(--amber-text); margin-bottom: 14px; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
+  .preview-info svg { width: 13px; height: 13px; flex-shrink: 0; margin-top: 1px; }
+  .preview-info b { font-weight: 700; }
+
+  /* gráfico mini (mock visual con CSS) */
+  .preview-chart { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px 8px; margin-bottom: 14px; }
+  .preview-chart-label { font-size: 10px; color: var(--txt-muted); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 8px; }
+  .preview-chart-svg { width: 100%; height: 60px; }
+
+  /* botón ver amortización completa */
+  .btn-amort { width: 100%; padding: 10px 14px; background: white; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--txt-navy); font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  .btn-amort:hover { background: var(--bg-soft); border-color: var(--bg-navy); }
+  .btn-amort svg { width: 14px; height: 14px; }
+
+  /* footer */
+  .footer { background: var(--bg-card); border-top: 1px solid var(--border); padding: 11px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .footer-meta { font-size: 11px; color: var(--txt-muted); display: flex; align-items: center; gap: 6px; }
+  .footer-meta svg { width: 13px; height: 13px; color: var(--gold); }
+  .footer-actions { display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.1s; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border-strong); color: var(--txt-default); }
+  .btn-ghost:hover { background: var(--bg-soft); }
+  .btn-primary { background: var(--gold); border: 1px solid var(--gold); color: var(--bg-navy); font-weight: 700; }
+  .btn-primary:hover { background: var(--gold-soft); }
+  .btn svg { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay">
+  <div class="modal">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div class="header-info">
+        <div class="header-icon">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>
+        </div>
+        <div>
+          <div class="header-title">Editar préstamo · Santander preconcedido</div>
+          <div class="header-sub">78.500 € · personal · 96 cuotas · firma 12 may 2026</div>
+        </div>
+      </div>
+      <button class="header-close" title="Cerrar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- BODY -->
+    <div class="body">
+
+      <!-- COLUMNA IZQUIERDA · FORM -->
+      <div class="col-form">
+
+        <!-- BLOQUE 1 · Tipo de préstamo -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Tipo de préstamo</div>
+          </div>
+          <div class="block-body">
+            <div class="type-selector-4">
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <span class="type-card-label">Hipotecario</span>
+              </div>
+              <div class="type-card selected">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span class="type-card-label">Personal</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                <span class="type-card-label">Línea crédito</span>
+              </div>
+              <div class="type-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span class="type-card-label">Otro</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 2 · Identificación -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Identificación</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-identif">
+              <div class="field">
+                <label class="field-label">Alias <span class="req">*</span></label>
+                <input class="input" value="Santander preconcedido">
+              </div>
+              <div class="field">
+                <label class="field-label">Banco</label>
+                <select class="select">
+                  <option selected>Santander</option>
+                  <option>BBVA</option>
+                  <option>Sabadell</option>
+                  <option>ING</option>
+                  <option>Unicaja</option>
+                  <option>Abanca</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Cuenta cargo <span class="req">*</span></label>
+                <select class="select">
+                  <option selected>Santander · ···· 2715</option>
+                  <option>BBVA · ···· 4012</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Nº contrato <span class="hint">opcional</span></label>
+                <input class="input mono" value="00490052611430005465" style="font-size: 11px;">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 3 · Importe y plazo -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Importe y plazo</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-importe">
+              <div class="field">
+                <label class="field-label">Capital inicial <span class="req">*</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="78.500,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Plazo</label>
+                <input class="input mono" value="96">
+              </div>
+              <div class="field">
+                <label class="field-label">&nbsp;</label>
+                <select class="select">
+                  <option selected>Meses</option>
+                  <option>Años</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Fecha firma <span class="req">*</span></label>
+                <input class="input" type="date" value="2026-05-12">
+              </div>
+              <div class="field">
+                <label class="field-label">Primer cargo</label>
+                <input class="input" type="date" value="2026-07-01">
+              </div>
+              <div class="field">
+                <label class="field-label">Día cobro</label>
+                <input class="input mono" value="1">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 4 · Tipo de interés -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Tipo de interés</div>
+          </div>
+          <div class="block-body">
+            <div class="seg-3" style="margin-bottom: 12px;">
+              <button class="seg selected">Fijo</button>
+              <button class="seg">Variable</button>
+              <button class="seg">Mixto</button>
+            </div>
+            <!-- Para tipo Fijo · 1 campo -->
+            <div class="fields-row row-tin-fijo">
+              <div class="field">
+                <label class="field-label">TIN fijo <span class="req">*</span></label>
+                <div class="input-suffix">
+                  <input class="input mono" value="4,99">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Interés demora</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="6,99">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 5 · Comisiones -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Comisiones</div>
+          </div>
+          <div class="block-body">
+            <div class="fields-row row-comisiones">
+              <div class="field">
+                <label class="field-label">Apertura</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="0,00">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Mantenimiento</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="0,00">
+                  <span class="suffix">€/mes</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Amort. anticipada</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="0,00">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Modif. condiciones</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="0,00">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="field">
+                <label class="field-label">Reclamación impago</label>
+                <div class="input-suffix">
+                  <input class="input mono" value="49,00">
+                  <span class="suffix">€</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 6 · Bonificaciones (toggle OFF · personal sin bonif) -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Bonificaciones <span class="count">· 0 activas</span></div>
+            <div class="toggle" title="Desactivado"></div>
+          </div>
+          <div class="block-body" style="display: none;">
+            <div class="bonif-grid">
+              <div class="bonif-card">
+                <div class="bonif-card-title">Nómina</div>
+                <div class="bonif-card-sub">≥ 1.200 €/mes domiciliada</div>
+                <div class="bonif-card-pp">−0,30 p.p.</div>
+              </div>
+              <div class="bonif-card">
+                <div class="bonif-card-title">Seguro hogar</div>
+                <div class="bonif-card-sub">Contratado con el banco</div>
+                <div class="bonif-card-pp">−0,20 p.p.</div>
+              </div>
+              <div class="bonif-card">
+                <div class="bonif-card-title">Seguro vida</div>
+                <div class="bonif-card-sub">Contratado con el banco</div>
+                <div class="bonif-card-pp">−0,20 p.p.</div>
+              </div>
+              <div class="bonif-card">
+                <div class="bonif-card-title">Uso tarjeta</div>
+                <div class="bonif-card-sub">≥ 6 operaciones/mes</div>
+                <div class="bonif-card-pp">−0,10 p.p.</div>
+              </div>
+            </div>
+            <button class="bonif-add">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Añadir bonificación personalizada
+            </button>
+          </div>
+        </div>
+
+        <!-- BLOQUE 7 · Carencia -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Carencia inicial <span class="count">· opcional</span></div>
+          </div>
+          <div class="block-body">
+            <div class="seg-3">
+              <button class="seg selected">Ninguna</button>
+              <button class="seg">Solo capital</button>
+              <button class="seg">Total</button>
+            </div>
+            <div class="hint-note">
+              <b>Solo capital</b> · pagas solo intereses durante N meses · útil en obra nueva. <b>Total</b> · sin pagos durante N meses · los intereses se capitalizan.
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 8 · Destino del capital -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Destino del capital <span class="count">· determina deducibilidad fiscal</span></div>
+          </div>
+          <div class="block-body">
+            <div style="display: flex; flex-direction: column; gap: 7px;">
+              <div class="destino-row">
+                <select class="select">
+                  <option selected>Adquisición inmueble</option>
+                  <option>Reforma · mejora inmueble</option>
+                  <option>Cancelar deuda anterior</option>
+                  <option>Inversión</option>
+                  <option>Personal</option>
+                  <option>Otro</option>
+                </select>
+                <select class="select">
+                  <option selected>— sin inmueble vinculado —</option>
+                  <option>FA32 · Fuertes Acevedo 32</option>
+                  <option>T64-4D</option>
+                  <option>T64-4IZ</option>
+                </select>
+                <div class="input-suffix">
+                  <input class="input mono" value="78.500,00">
+                  <span class="suffix">€</span>
+                </div>
+                <div class="input-suffix">
+                  <input class="input mono" value="100,00">
+                  <span class="suffix">%</span>
+                </div>
+                <button class="del" style="width: 28px; height: 28px; border-radius: 5px; display: grid; place-items: center; color: var(--txt-soft); border: 1px solid var(--border); background: white;"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg></button>
+              </div>
+              <button class="bonif-add" style="margin-top: 0;">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir otro destino
+              </button>
+            </div>
+            <div class="destino-banner">
+              <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Destinos cuadran con el capital · <b>78.500,00 € / 78.500,00 €</b>
+            </div>
+          </div>
+        </div>
+
+        <!-- BLOQUE 9 · Garantía -->
+        <div class="block">
+          <div class="block-hd">
+            <div class="block-hd-title">Garantía <span class="count">· informativa · no afecta a cálculos</span></div>
+          </div>
+          <div class="block-body">
+            <div class="garantia-grid">
+              <div class="garantia-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                <div class="garantia-card-title">Hipotecaria</div>
+                <div class="garantia-card-sub">Un inmueble responde como garantía</div>
+              </div>
+              <div class="garantia-card selected">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <div class="garantia-card-title">Personal</div>
+                <div class="garantia-card-sub">El titular responde con su patrimonio</div>
+              </div>
+              <div class="garantia-card">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                <div class="garantia-card-title">Pignoraticia</div>
+                <div class="garantia-card-sub">Activo financiero pignorado</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- COLUMNA DERECHA · PREVIEW -->
+      <div class="col-preview">
+
+        <div class="preview-title">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Cálculo financiero · vista previa
+        </div>
+
+        <!-- KPI principal · cuota mensual -->
+        <div class="preview-kpi-main">
+          <div class="preview-kpi-main-label">Cuota mensual</div>
+          <div class="preview-kpi-main-value">993,43 €</div>
+          <div class="preview-kpi-main-sub">96 cuotas · sistema francés · fin 1 jun 2034</div>
+        </div>
+
+        <!-- KPIs secundarios -->
+        <div class="preview-kpi-secondary">
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">TIN efectivo</div>
+            <div class="preview-kpi-mini-value">4,99 %</div>
+            <div class="preview-kpi-mini-sub">sin bonificaciones aplicadas</div>
+          </div>
+          <div class="preview-kpi-mini">
+            <div class="preview-kpi-mini-label">TAE</div>
+            <div class="preview-kpi-mini-value">5,10 %</div>
+            <div class="preview-kpi-mini-sub">incluye carencia técnica</div>
+          </div>
+        </div>
+
+        <!-- desglose costes -->
+        <div class="preview-desglose">
+          <div class="preview-desglose-row">
+            <span class="label">Capital prestado</span>
+            <span class="value">78.500,00 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Intereses período amortización (96 cuotas)</span>
+            <span class="value">16.869,32 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Liquidación carencia técnica (20 días · 01/06/2026)</span>
+            <span class="value">214,64 €</span>
+          </div>
+          <div class="preview-desglose-row">
+            <span class="label">+ Comisión apertura</span>
+            <span class="value">0,00 €</span>
+          </div>
+          <div class="preview-desglose-row total">
+            <span class="label">Total a pagar</span>
+            <span class="value">95.583,96 €</span>
+          </div>
+        </div>
+
+        <!-- gráfico mini · capital pendiente vs años -->
+        <div class="preview-chart">
+          <div class="preview-chart-label">Capital pendiente · 8 años</div>
+          <svg class="preview-chart-svg" viewBox="0 0 300 60" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="grad1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#0a1f3d;stop-opacity:0.25"/>
+                <stop offset="100%" style="stop-color:#0a1f3d;stop-opacity:0.02"/>
+              </linearGradient>
+            </defs>
+            <!-- línea suave decrecimiento -->
+            <path d="M0,5 Q75,12 150,25 T300,55 L300,60 L0,60 Z" fill="url(#grad1)"/>
+            <path d="M0,5 Q75,12 150,25 T300,55" fill="none" stroke="#0a1f3d" stroke-width="1.5"/>
+            <!-- ticks años -->
+            <text x="0" y="60" font-size="7" fill="#9ca3af" font-family="JetBrains Mono">2026</text>
+            <text x="146" y="60" font-size="7" fill="#9ca3af" font-family="JetBrains Mono" text-anchor="middle">2030</text>
+            <text x="300" y="60" font-size="7" fill="#9ca3af" font-family="JetBrains Mono" text-anchor="end">2034</text>
+          </svg>
+        </div>
+
+        <!-- alerta sobre dato fiscal -->
+        <div class="preview-info">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Destino <b>personal</b> · los intereses <b>NO son deducibles fiscalmente</b>. Si el préstamo financia un inmueble en alquiler · cambia el destino para activar la deducibilidad en casilla 0105.</span>
+        </div>
+
+        <!-- botón cuadro amortización -->
+        <button class="btn-amort">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Ver cuadro de amortización completo · 97 líneas (1 carencia + 96 cuotas)
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="footer-meta">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Cambios sin guardar · al guardar se generan los cargos previstos en Tesorería y el cuadro de amortización completo
+      </div>
+      <div class="footer-actions">
+        <button class="btn btn-ghost">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Amortizar anticipado
+        </button>
+        <button class="btn btn-ghost">Cancelar</button>
+        <button class="btn btn-primary">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Guardar préstamo
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
