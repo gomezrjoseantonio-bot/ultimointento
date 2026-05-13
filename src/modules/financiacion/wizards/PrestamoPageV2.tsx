@@ -292,7 +292,8 @@ function buildPlanPagosFromCuadroV2(
     const esCarenciaTecnica = linea.tipo === 'carencia_tecnica';
     const esVencida = new Date(linea.fecha) <= today;
     const pagado = prev?.pagado ?? esVencida;
-    const fechaPagoReal = prev?.fechaPagoReal ?? (pagado ? (prev?.fechaCargo ?? linea.fecha) : undefined);
+    const fallbackFechaPagoReal = prev?.fechaCargo ?? linea.fecha;
+    const fechaPagoReal = prev?.fechaPagoReal ?? (pagado ? fallbackFechaPagoReal : undefined);
     periodos.push({
       periodo: linea.numero,
       devengoDesde,
