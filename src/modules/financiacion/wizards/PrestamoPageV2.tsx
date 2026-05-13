@@ -58,7 +58,7 @@ import {
   type TipoInteresV2,
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
-import type { Bonificacion, DestinoCapital, Garantia, Prestamo } from '../../../types/prestamos';
+import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, PlanPagos, Prestamo } from '../../../types/prestamos';
 import type { PrestamoFinanciacion } from '../../../types/financiacion';
 import styles from './PrestamoPageV2.module.css';
 
@@ -250,6 +250,50 @@ function mapGarantiaV2ToLegacy(t: TipoGarantiaV2): Garantia['tipo'] {
     case 'personal':
     default:             return 'PERSONAL';
   }
+}
+
+// ─── Mapeo cuadro v2 → PlanPagos persistido ─────────────────────────────────
+// `prestamosService` ejecuta automáticamente el motor LEGACY al guardar y
+// persiste en `prestamo.planPagos` un cuadro que NO incluye línea 0 de
+// carencia técnica (la mete como suplemento en la cuota #1). Para mantener
+// coherencia con el motor v2 (preview + tesorería), reescribimos el plan
+// con esta función · llamada tras cada create/update.
+function buildPlanPagosFromCuadroV2(
+  prestamo: Prestamo,
+  cuadro: CuadroAmortizacionV2,
+): PlanPagos {
+  const periodos: PeriodoPago[] = [];
+  // Devengo · usamos la fecha de la línea anterior (o la firma) como
+  // `devengoDesde` para que el rango cubra el período completo.
+  let prevFecha = prestamo.fechaFirma;
+  for (const linea of cuadro.lineas) {
+    const devengoDesde = prevFecha;
+    const devengoHasta = linea.fecha;
+    periodos.push({
+      periodo: linea.numero,
+      devengoDesde,
+      devengoHasta,
+      fechaCargo: linea.fecha,
+      cuota: linea.cuota,
+      interes: linea.intereses,
+      amortizacion: linea.capitalAmortizado,
+      principalFinal: linea.capitalPendiente,
+      esSoloIntereses: linea.tipo === 'carencia_tecnica' ? true : undefined,
+      pagado: false,
+    });
+    prevFecha = linea.fecha;
+  }
+  return {
+    prestamoId: prestamo.id,
+    fechaGeneracion: new Date().toISOString(),
+    periodos,
+    resumen: {
+      totalIntereses: cuadro.resumen.totalIntereses,
+      totalCuotas: cuadro.resumen.totalCuotas,
+      fechaFinalizacion: cuadro.resumen.fechaUltimaCuota,
+    },
+    metadata: { source: 'generated' },
+  };
 }
 
 // ─── Estado inicial ─────────────────────────────────────────────────────────
@@ -745,6 +789,18 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
       if (!saved) {
         throw new Error('No se ha podido guardar el préstamo.');
+      }
+
+      // Sobreescribir el plan de pagos persistido con el cuadro v2
+      // (línea 0 de carencia técnica + N cuotas constantes). Sin este
+      // override, `prestamosService.{create,update}Prestamo` deja en
+      // `prestamo.planPagos` la versión del motor LEGACY que mete la
+      // carencia técnica como suplemento de la cuota #1 · contradice
+      // el spec §4 regla 6 ("la carencia técnica es cargo SEPARADO").
+      // Aplicamos sólo a préstamos v2 (no a pre-v2 sin carenciaTecnica).
+      if (!esPreV2 && cuadro) {
+        const plan = buildPlanPagosFromCuadroV2(saved, cuadro);
+        await prestamosService.savePaymentPlan(saved.id, plan);
       }
 
       // Treasury events · regenerar desde cero (sub-tarea 6). Si el préstamo
