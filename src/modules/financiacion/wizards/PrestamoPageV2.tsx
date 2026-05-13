@@ -58,7 +58,7 @@ import {
   type TipoInteresV2,
   type TipoPrestamoV2,
 } from '../../../services/prestamoCalculatorService';
-import type { Bonificacion, DestinoCapital, Garantia, Prestamo } from '../../../types/prestamos';
+import type { Bonificacion, DestinoCapital, Garantia, PeriodoPago, PlanPagos, Prestamo } from '../../../types/prestamos';
 import type { PrestamoFinanciacion } from '../../../types/financiacion';
 import styles from './PrestamoPageV2.module.css';
 
@@ -250,6 +250,81 @@ function mapGarantiaV2ToLegacy(t: TipoGarantiaV2): Garantia['tipo'] {
     case 'personal':
     default:             return 'PERSONAL';
   }
+}
+
+// ─── Mapeo cuadro v2 → PlanPagos persistido ─────────────────────────────────
+// `prestamosService` ejecuta automáticamente el motor LEGACY al guardar y
+// persiste en `prestamo.planPagos` un cuadro que NO incluye línea 0 de
+// carencia técnica (la mete como suplemento en la cuota #1). Para mantener
+// coherencia con el motor v2 (preview + tesorería), reescribimos el plan
+// con esta función · llamada tras cada create/update.
+//
+// `existingPlan` se usa para fusionar el estado de pago ya marcado
+// (`pagado`, `fechaPagoReal`, `movimientoTesoreriaId`) y NO desmarcar
+// cuotas históricas tras una edición.
+function buildPlanPagosFromCuadroV2(
+  prestamo: Prestamo,
+  cuadro: CuadroAmortizacionV2,
+  existingPlan: PlanPagos | null,
+): PlanPagos {
+  // Índice del plan existente · clave por fechaCargo (YYYY-MM-DD) y, como
+  // fallback, por número de periodo para preservar estado pagado en cambios
+  // leves de calendario.
+  const prevByFecha = new Map<string, PeriodoPago>();
+  const prevByPeriodo = new Map<number, PeriodoPago>();
+  for (const prev of existingPlan?.periodos ?? []) {
+    if (prev.fechaCargo) prevByFecha.set(prev.fechaCargo.slice(0, 10), prev);
+    prevByPeriodo.set(prev.periodo, prev);
+  }
+
+  // Auto-marca cuotas con fechaCargo <= hoy como pagadas (replica el
+  // comportamiento de prestamosService.createPrestamo/updatePrestamo).
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  const periodos: PeriodoPago[] = [];
+  let prevFecha = prestamo.fechaFirma;
+  for (const linea of cuadro.lineas) {
+    const devengoDesde = prevFecha;
+    const devengoHasta = linea.fecha;
+    const fechaKey = linea.fecha.slice(0, 10);
+    const prev = prevByFecha.get(fechaKey) ?? prevByPeriodo.get(linea.numero);
+    const esCarenciaTecnica = linea.tipo === 'carencia_tecnica';
+    const esVencida = new Date(linea.fecha) <= today;
+    const pagado = prev?.pagado ?? esVencida;
+    const fallbackFechaPagoReal = prev?.fechaCargo ?? linea.fecha;
+    const fechaPagoReal = prev?.fechaPagoReal ?? (pagado ? fallbackFechaPagoReal : undefined);
+    periodos.push({
+      periodo: linea.numero,
+      devengoDesde,
+      devengoHasta,
+      fechaCargo: linea.fecha,
+      cuota: linea.cuota,
+      interes: linea.intereses,
+      amortizacion: linea.capitalAmortizado,
+      principalFinal: linea.capitalPendiente,
+      esSoloIntereses: esCarenciaTecnica ? true : prev?.esSoloIntereses,
+      esProrrateado: prev?.esProrrateado,
+      diasDevengo: prev?.diasDevengo,
+      pagado,
+      fechaPagoReal,
+      movimientoTesoreriaId: prev?.movimientoTesoreriaId,
+    });
+    prevFecha = linea.fecha;
+  }
+  return {
+    prestamoId: prestamo.id,
+    fechaGeneracion: new Date().toISOString(),
+    periodos,
+    resumen: {
+      totalIntereses: cuadro.resumen.totalIntereses,
+      totalCuotas: cuadro.resumen.totalCuotas,
+      fechaFinalizacion: cuadro.resumen.fechaUltimaCuota,
+    },
+    // 'wizard_v2_generated' indica a `prestamosService.needsPlanRegeneration`
+    // que NO regenere desde el motor legacy · ese plan es el v2 canónico.
+    metadata: { source: 'wizard_v2_generated' },
+  };
 }
 
 // ─── Estado inicial ─────────────────────────────────────────────────────────
@@ -745,6 +820,29 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
       if (!saved) {
         throw new Error('No se ha podido guardar el préstamo.');
+      }
+
+      // Sobreescribir el plan de pagos persistido con el cuadro v2
+      // (línea 0 de carencia técnica + N cuotas constantes). Sin este
+      // override, `prestamosService.{create,update}Prestamo` deja en
+      // `prestamo.planPagos` la versión del motor LEGACY que mete la
+      // carencia técnica como suplemento de la cuota #1 · contradice
+      // el spec §4 regla 6 ("la carencia técnica es cargo SEPARADO").
+      //
+      // NO sobreescribimos si:
+      //   · El préstamo es pre-v2 (regla §4.7 · no detección retroactiva).
+      //   · El plan actual tiene `metadata.source` 'loan_settlement' o
+      //     'property_sale' · son planes custom inmutables que se
+      //     deben preservar (evitamos perder trazabilidad de
+      //     amortizaciones / ventas de inmueble).
+      if (!esPreV2 && cuadro) {
+        const existingPlan = await prestamosService.getPaymentPlan(saved.id);
+        const customSource = existingPlan?.metadata?.source;
+        const isCustomPlan = customSource === 'loan_settlement' || customSource === 'property_sale';
+        if (!isCustomPlan) {
+          const plan = buildPlanPagosFromCuadroV2(saved, cuadro, existingPlan);
+          await prestamosService.savePaymentPlan(saved.id, plan);
+        }
       }
 
       // Treasury events · regenerar desde cero (sub-tarea 6). Si el préstamo

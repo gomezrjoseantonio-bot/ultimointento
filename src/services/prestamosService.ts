@@ -408,6 +408,21 @@ export class PrestamosService {
       return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
     }
 
+    // S-WIZARD-PRESTAMO-V2 · planes generados por el wizard v2 incluyen
+    // la línea 0 de carencia técnica (N+1 líneas). El motor legacy no la
+    // produce (N líneas) · sin este short-circuit, las comprobaciones de
+    // longitud / cuota más abajo invalidarían el plan en cada lectura y
+    // lo regenerarían desde legacy perdiendo la carencia técnica.
+    if (customPlanSource === 'wizard_v2_generated') {
+      const amortizadoCentimos = plan.periodos.reduce(
+        (sum, p) => sum + Math.round(p.amortizacion * 100),
+        0,
+      );
+      const principalInicialCentimos = Math.round(prestamo.principalInicial * 100);
+      const finalPrincipalCentimos = Math.round((lastPeriod?.principalFinal || 0) * 100);
+      return amortizadoCentimos !== principalInicialCentimos || finalPrincipalCentimos !== 0;
+    }
+
     if (this.hasIrregularMonthlyCadence(plan)) return true;
 
     // Date sequence must match current generation rules exactly.
