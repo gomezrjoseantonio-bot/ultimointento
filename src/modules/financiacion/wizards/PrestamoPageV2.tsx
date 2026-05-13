@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { initDB, type Account, type TreasuryEvent } from '../../../services/db';
 import { inmuebleService } from '../../../services/inmuebleService';
+import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettlementModal';
 import type { Inmueble } from '../../../types/inmueble';
 import type { LucideIcon } from 'lucide-react';
 import { prestamosService } from '../../../services/prestamosService';
@@ -171,8 +172,17 @@ const accountLabel = (a: Account): string => {
   return `${banco} · ···· ${last4}`;
 };
 
-// Catálogo banco · sentence case
-const BANCOS = ['Santander', 'BBVA', 'Sabadell', 'ING', 'Unicaja', 'Abanca', 'CaixaBank', 'Otro'];
+// Lista de bancos derivada de las cuentas reales del usuario · sin
+// catálogo inventado. Se rellena en runtime con los nombres únicos
+// presentes en `accounts[].banco.name` / `accounts[].bank`.
+function deriveBancosFromAccounts(accs: Account[]): string[] {
+  const set = new Set<string>();
+  for (const a of accs) {
+    const name = (a.banco?.name || a.bank || '').trim();
+    if (name) set.add(name);
+  }
+  return Array.from(set).sort((x, y) => x.localeCompare(y, 'es'));
+}
 
 // Catálogo destinos · spec §2.6
 const DESTINOS_OPCIONES: Array<{ value: TipoDestinoV2; label: string }> = [
@@ -255,7 +265,7 @@ function emptyFormState(): FormState {
   return {
     tipoPrestamo: 'personal',
     alias: '',
-    banco: 'Santander',
+    banco: '',
     cuentaCargoId: '',
     numeroContrato: '',
     capitalRaw: '',
@@ -318,6 +328,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   const [saving, setSaving] = useState(false);
   const [showCuadroCompleto, setShowCuadroCompleto] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loadedPrestamo, setLoadedPrestamo] = useState<Prestamo | null>(null);
+  const [showAmortizarModal, setShowAmortizarModal] = useState(false);
 
   const isEditing = Boolean(prestamoId);
 
@@ -345,12 +357,20 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
         if (prestamoId) {
           const prestamo = await prestamosService.getPrestamoById(prestamoId);
-          if (prestamo && !cancelled) hydrateFromPrestamo(prestamo, activeAccs);
+          if (prestamo && !cancelled) {
+            setLoadedPrestamo(prestamo);
+            hydrateFromPrestamo(prestamo, activeAccs);
+          }
         } else if (initialData) {
           hydrateFromFEIN(initialData);
         } else if (activeAccs.length > 0 && !cancelled) {
           const def = activeAccs.find((a) => a.isDefault) ?? activeAccs[0];
-          setForm((prev) => ({ ...prev, cuentaCargoId: String(def.id ?? '') }));
+          const defBanco = (def.banco?.name || def.bank || '').trim();
+          setForm((prev) => ({
+            ...prev,
+            cuentaCargoId: String(def.id ?? ''),
+            banco: prev.banco || defBanco,
+          }));
         }
       } catch (e) {
         console.error('[PrestamoPageV2] error carga inicial', e);
@@ -396,7 +416,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     setForm({
       tipoPrestamo: (p.tipoPrestamoV2 as TipoPrestamoV2) || (p.inmuebleId ? 'hipotecario' : 'personal'),
       alias: p.nombre || '',
-      banco: p.banco || 'Santander',
+      banco: p.banco || '',
       cuentaCargoId: p.cuentaCargoId || '',
       numeroContrato: p.numeroContrato || '',
       capitalRaw: fmtNumeroEs(p.principalInicial),
@@ -458,6 +478,15 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     const d = parseInt(form.diaCobroRaw, 10) || 1;
     return Math.max(1, Math.min(31, d));
   }, [form.diaCobroRaw]);
+
+  // Bancos disponibles · derivados de las cuentas del usuario (no de un
+  // catálogo hardcoded). Si el préstamo trae un banco que ya no existe en
+  // accounts (caso edit · cuenta eliminada), lo añadimos para no perderlo.
+  const bancosDisponibles = useMemo(() => {
+    const list = deriveBancosFromAccounts(accounts);
+    if (form.banco && !list.includes(form.banco)) list.unshift(form.banco);
+    return list;
+  }, [accounts, form.banco]);
 
   // TIN base aplicable según tipo de interés (a t=0).
   //   fijo     · TIN fijo.
@@ -937,7 +966,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                         value={form.banco}
                         onChange={(e) => update('banco', e.target.value)}
                       >
-                        {BANCOS.map((b) => (
+                        <option value="">— Selecciona —</option>
+                        {bancosDisponibles.map((b) => (
                           <option key={b} value={b}>{b}</option>
                         ))}
                       </select>
@@ -947,7 +977,19 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                       <select
                         className={styles.select}
                         value={form.cuentaCargoId}
-                        onChange={(e) => update('cuentaCargoId', e.target.value)}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          const acc = accounts.find((a) => String(a.id) === newId);
+                          const newBanco = (acc?.banco?.name || acc?.bank || '').trim();
+                          setForm((prev) => ({
+                            ...prev,
+                            cuentaCargoId: newId,
+                            // Si el banco está vacío o coincide con el de la cuenta previa,
+                            // lo sincronizamos con la nueva cuenta.
+                            banco: newBanco && (!prev.banco || prev.banco === '') ? newBanco : prev.banco,
+                          }));
+                          setSubmitError(null);
+                        }}
                       >
                         <option value="">— Selecciona —</option>
                         {accounts.map((a) => (
@@ -1546,7 +1588,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               )}
             </div>
             <div className={styles.footerActions}>
-              <button className={`${styles.btn} ${styles.btnGhost}`} type="button" disabled>
+              <button
+                className={`${styles.btn} ${styles.btnGhost}`}
+                type="button"
+                onClick={() => setShowAmortizarModal(true)}
+                disabled={!loadedPrestamo}
+                title={loadedPrestamo ? 'Amortizar anticipadamente' : 'Guarda el préstamo antes de amortizar'}
+              >
                 <Check size={14} /> Amortizar anticipado
               </button>
               <button
@@ -1569,6 +1617,23 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
 
         </div>
       </div>
+
+      {loadedPrestamo && (
+        <LoanSettlementModal
+          prestamo={loadedPrestamo}
+          isOpen={showAmortizarModal}
+          onClose={() => setShowAmortizarModal(false)}
+          onConfirmed={async () => {
+            setShowAmortizarModal(false);
+            // Tras amortizar, recargar el préstamo desde DB y rehidratar el form.
+            const fresh = await prestamosService.getPrestamoById(loadedPrestamo.id);
+            if (fresh) {
+              setLoadedPrestamo(fresh);
+              hydrateFromPrestamo(fresh, accounts);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

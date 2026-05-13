@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { CardV5, Icons, MoneyValue, showToastV5 } from '../../../design-system/v5';
 import { prestamosService } from '../../../services/prestamosService';
+import LoanSettlementModal from '../../horizon/financiacion/components/LoanSettlementModal';
 import type { FinanciacionOutletContext } from '../FinanciacionContext';
 import {
   formatPct,
@@ -32,6 +33,7 @@ const DetallePage: React.FC = () => {
   const { rows, planes, prestamos, reload } = useOutletContext<FinanciacionOutletContext>();
   const [tab, setTab] = useState<DetailTab>('resumen');
   const [cuadroFilter, setCuadroFilter] = useState<'mes' | 'trimestre' | 'anio' | 'all'>('mes');
+  const [showAmortizarModal, setShowAmortizarModal] = useState(false);
 
   const row = useMemo(() => rows.find((r) => r.id === id), [rows, id]);
   const prestamo = useMemo(() => prestamos.find((p) => p.id === id), [prestamos, id]);
@@ -95,7 +97,13 @@ const DetallePage: React.FC = () => {
   const totalDestino = destinos.reduce((s, d) => s + d.importe, 0);
 
   const handleAmortizar = () => {
-    showToastV5('Amortización · sub-tarea follow-up');
+    setShowAmortizarModal(true);
+  };
+
+  const handleAmortizarConfirmed = async () => {
+    setShowAmortizarModal(false);
+    await reload();
+    showToastV5('Amortización aplicada.');
   };
 
   const handleEditar = () => {
@@ -528,6 +536,13 @@ const DetallePage: React.FC = () => {
           </CardV5.Body>
         </CardV5>
       )}
+
+      <LoanSettlementModal
+        prestamo={prestamo}
+        isOpen={showAmortizarModal}
+        onClose={() => setShowAmortizarModal(false)}
+        onConfirmed={handleAmortizarConfirmed}
+      />
     </>
   );
 };
