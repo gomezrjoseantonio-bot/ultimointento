@@ -589,6 +589,11 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
     if (diaCobro < 1 || diaCobro > 31) return 'El día de cobro debe estar entre 1 y 31.';
     if (form.tipoInteres === 'fijo' && tinFijoPct <= 0) return 'Introduce el TIN fijo.';
     if (form.tipoInteres === 'variable' && parseNum(form.diferencialRaw) <= 0) return 'Introduce el diferencial.';
+    if (form.tipoInteres === 'mixto') {
+      if (parseNum(form.tinTramoFijoRaw) <= 0) return 'Introduce el TIN del tramo fijo.';
+      if ((parseInt(form.tramoFijoMesesRaw, 10) || 0) <= 0) return 'Introduce los meses del tramo fijo.';
+    }
+    if (tinBasePct <= 0) return 'Introduce un TIN válido.';
     if (!destinosCuadre.ok) {
       return `Los importes (${fmtEur(destinosCuadre.total)}) deben sumar el capital inicial (${fmtEur(capital)}).`;
     }
@@ -731,13 +736,47 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
   };
 
   // ─── Treasury events · regenerar al guardar ──────────────────────────────
+  // Derivamos el TIN aplicable directamente del `prestamo` guardado (no del
+  // memo de form state) para asegurarnos de que NO dependemos de un cuadro
+  // memoizado · vale para fijo/variable/mixto a tipos no-cero.
   // `incluirCarencia=false` (préstamos pre-v2) excluye la línea 0 de
   // carencia técnica · el resto se persisten igual.
+  const tinEfectivoFromPrestamo = (p: Prestamo): number => {
+    let base = 0;
+    switch (p.tipo) {
+      case 'FIJO':
+        base = p.tipoNominalAnualFijo ?? 0;
+        break;
+      case 'VARIABLE':
+        base = (p.valorIndiceActual ?? 0) + (p.diferencial ?? 0);
+        break;
+      case 'MIXTO':
+        // Cuadro inicial · período fijo del mixto.
+        base = p.tipoNominalAnualMixtoFijo ?? 0;
+        break;
+    }
+    const bonifSum = (p.bonificaciones ?? [])
+      .filter((b) => b.estado !== 'INACTIVO')
+      .reduce((s, b) => s + (b.reduccionPuntosPorcentuales ?? 0), 0);
+    return Math.max(0, base - bonifSum);
+  };
+
   const regenerarTreasuryEvents = async (
     prestamo: Prestamo,
     options: { incluirCarencia: boolean } = { incluirCarencia: true },
   ) => {
-    if (!cuadro) return;
+    const tinPct = tinEfectivoFromPrestamo(prestamo);
+    if (
+      prestamo.principalInicial <= 0 ||
+      prestamo.plazoMesesTotal <= 0 ||
+      tinPct <= 0 ||
+      !prestamo.fechaFirma ||
+      !prestamo.fechaPrimerCargo
+    ) {
+      // Datos incompletos · NO regeneramos eventos.
+      return;
+    }
+
     const db = await initDB();
     const accountIdNum = parseInt(prestamo.cuentaCargoId, 10);
     const accountId = Number.isFinite(accountIdNum) ? accountIdNum : undefined;
@@ -753,8 +792,8 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       }
     }
 
-    // 2. generar descriptores y persistir · TIN según tipo de interés (no
-    //    sólo el fijo) para que variable/mixto produzcan eventos coherentes.
+    // 2. generar descriptores y persistir · TIN derivado del prestamo
+    //    (no del memo del form) · variable/mixto coherentes.
     const descriptors = generarTreasuryEventDescriptors({
       id: prestamo.id,
       alias: prestamo.nombre,
@@ -762,7 +801,7 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       fechaFirma: prestamo.fechaFirma,
       primerCargoCuadro: prestamo.fechaPrimerCargo,
       diaCobro: prestamo.diaCargoMes,
-      tinAnual: tinEfectivoPct / 100,
+      tinAnual: tinPct / 100,
       numCuotas: prestamo.plazoMesesTotal,
       cuentaCargoId: accountId,
     });
