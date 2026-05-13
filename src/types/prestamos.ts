@@ -284,7 +284,7 @@ export interface PlanPagos {
     fechaFinalizacion: string;
   };
   metadata?: {
-    source?: 'generated' | 'property_sale' | 'loan_settlement';
+    source?: 'generated' | 'property_sale' | 'loan_settlement' | 'wizard_v2_generated';
     operationType?: 'TOTAL' | 'PARTIAL';
     operationDate?: string;
     partialMode?: 'REDUCIR_PLAZO' | 'REDUCIR_CUOTA';

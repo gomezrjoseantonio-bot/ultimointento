@@ -258,17 +258,38 @@ function mapGarantiaV2ToLegacy(t: TipoGarantiaV2): Garantia['tipo'] {
 // carencia técnica (la mete como suplemento en la cuota #1). Para mantener
 // coherencia con el motor v2 (preview + tesorería), reescribimos el plan
 // con esta función · llamada tras cada create/update.
+//
+// `existingPlan` se usa para fusionar el estado de pago ya marcado
+// (`pagado`, `fechaPagoReal`, `movimientoTesoreriaId`) y NO desmarcar
+// cuotas históricas tras una edición.
 function buildPlanPagosFromCuadroV2(
   prestamo: Prestamo,
   cuadro: CuadroAmortizacionV2,
+  existingPlan: PlanPagos | null,
 ): PlanPagos {
+  // Índice del plan existente · clave por fechaCargo (YYYY-MM-DD) para
+  // alinear los periodos aunque el número haya cambiado (ej. añadir
+  // línea 0 de carencia técnica vs plan legacy sin ella).
+  const prevByFecha = new Map<string, PeriodoPago>();
+  for (const prev of existingPlan?.periodos ?? []) {
+    if (prev.fechaCargo) prevByFecha.set(prev.fechaCargo.slice(0, 10), prev);
+  }
+
+  // Auto-marca cuotas con fechaCargo <= hoy como pagadas (replica el
+  // comportamiento de prestamosService.createPrestamo/updatePrestamo).
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
   const periodos: PeriodoPago[] = [];
-  // Devengo · usamos la fecha de la línea anterior (o la firma) como
-  // `devengoDesde` para que el rango cubra el período completo.
   let prevFecha = prestamo.fechaFirma;
   for (const linea of cuadro.lineas) {
     const devengoDesde = prevFecha;
     const devengoHasta = linea.fecha;
+    const fechaKey = linea.fecha.slice(0, 10);
+    const prev = prevByFecha.get(fechaKey);
+    const esCarenciaTecnica = linea.tipo === 'carencia_tecnica';
+    const esVencida = new Date(linea.fecha) <= today;
+    const pagado = prev?.pagado ?? esVencida;
     periodos.push({
       periodo: linea.numero,
       devengoDesde,
@@ -278,8 +299,12 @@ function buildPlanPagosFromCuadroV2(
       interes: linea.intereses,
       amortizacion: linea.capitalAmortizado,
       principalFinal: linea.capitalPendiente,
-      esSoloIntereses: linea.tipo === 'carencia_tecnica' ? true : undefined,
-      pagado: false,
+      esSoloIntereses: esCarenciaTecnica ? true : prev?.esSoloIntereses,
+      esProrrateado: prev?.esProrrateado,
+      diasDevengo: prev?.diasDevengo,
+      pagado,
+      fechaPagoReal: prev?.fechaPagoReal ?? (esVencida ? linea.fecha : undefined),
+      movimientoTesoreriaId: prev?.movimientoTesoreriaId,
     });
     prevFecha = linea.fecha;
   }
@@ -292,7 +317,9 @@ function buildPlanPagosFromCuadroV2(
       totalCuotas: cuadro.resumen.totalCuotas,
       fechaFinalizacion: cuadro.resumen.fechaUltimaCuota,
     },
-    metadata: { source: 'generated' },
+    // 'wizard_v2_generated' indica a `prestamosService.needsPlanRegeneration`
+    // que NO regenere desde el motor legacy · ese plan es el v2 canónico.
+    metadata: { source: 'wizard_v2_generated' },
   };
 }
 
@@ -797,10 +824,21 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
       // `prestamo.planPagos` la versión del motor LEGACY que mete la
       // carencia técnica como suplemento de la cuota #1 · contradice
       // el spec §4 regla 6 ("la carencia técnica es cargo SEPARADO").
-      // Aplicamos sólo a préstamos v2 (no a pre-v2 sin carenciaTecnica).
+      //
+      // NO sobreescribimos si:
+      //   · El préstamo es pre-v2 (regla §4.7 · no detección retroactiva).
+      //   · El plan actual tiene `metadata.source` 'loan_settlement' o
+      //     'property_sale' · son planes custom inmutables que se
+      //     deben preservar (evitamos perder trazabilidad de
+      //     amortizaciones / ventas de inmueble).
       if (!esPreV2 && cuadro) {
-        const plan = buildPlanPagosFromCuadroV2(saved, cuadro);
-        await prestamosService.savePaymentPlan(saved.id, plan);
+        const existingPlan = await prestamosService.getPaymentPlan(saved.id);
+        const customSource = existingPlan?.metadata?.source;
+        const isCustomPlan = customSource === 'loan_settlement' || customSource === 'property_sale';
+        if (!isCustomPlan) {
+          const plan = buildPlanPagosFromCuadroV2(saved, cuadro, existingPlan);
+          await prestamosService.savePaymentPlan(saved.id, plan);
+        }
       }
 
       // Treasury events · regenerar desde cero (sub-tarea 6). Si el préstamo
