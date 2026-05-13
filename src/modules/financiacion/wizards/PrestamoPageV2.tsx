@@ -267,12 +267,14 @@ function buildPlanPagosFromCuadroV2(
   cuadro: CuadroAmortizacionV2,
   existingPlan: PlanPagos | null,
 ): PlanPagos {
-  // Índice del plan existente · clave por fechaCargo (YYYY-MM-DD) para
-  // alinear los periodos aunque el número haya cambiado (ej. añadir
-  // línea 0 de carencia técnica vs plan legacy sin ella).
+  // Índice del plan existente · clave por fechaCargo (YYYY-MM-DD) y, como
+  // fallback, por número de periodo para preservar estado pagado en cambios
+  // leves de calendario.
   const prevByFecha = new Map<string, PeriodoPago>();
+  const prevByPeriodo = new Map<number, PeriodoPago>();
   for (const prev of existingPlan?.periodos ?? []) {
     if (prev.fechaCargo) prevByFecha.set(prev.fechaCargo.slice(0, 10), prev);
+    prevByPeriodo.set(prev.periodo, prev);
   }
 
   // Auto-marca cuotas con fechaCargo <= hoy como pagadas (replica el
@@ -286,10 +288,11 @@ function buildPlanPagosFromCuadroV2(
     const devengoDesde = prevFecha;
     const devengoHasta = linea.fecha;
     const fechaKey = linea.fecha.slice(0, 10);
-    const prev = prevByFecha.get(fechaKey);
+    const prev = prevByFecha.get(fechaKey) ?? prevByPeriodo.get(linea.numero);
     const esCarenciaTecnica = linea.tipo === 'carencia_tecnica';
     const esVencida = new Date(linea.fecha) <= today;
     const pagado = prev?.pagado ?? esVencida;
+    const fechaPagoReal = prev?.fechaPagoReal ?? (pagado && esVencida ? linea.fecha : undefined);
     periodos.push({
       periodo: linea.numero,
       devengoDesde,
@@ -303,7 +306,7 @@ function buildPlanPagosFromCuadroV2(
       esProrrateado: prev?.esProrrateado,
       diasDevengo: prev?.diasDevengo,
       pagado,
-      fechaPagoReal: prev?.fechaPagoReal ?? (esVencida ? linea.fecha : undefined),
+      fechaPagoReal,
       movimientoTesoreriaId: prev?.movimientoTesoreriaId,
     });
     prevFecha = linea.fecha;
