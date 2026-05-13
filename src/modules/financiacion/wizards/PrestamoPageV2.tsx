@@ -979,15 +979,21 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
                         value={form.cuentaCargoId}
                         onChange={(e) => {
                           const newId = e.target.value;
-                          const acc = accounts.find((a) => String(a.id) === newId);
-                          const newBanco = (acc?.banco?.name || acc?.bank || '').trim();
-                          setForm((prev) => ({
-                            ...prev,
-                            cuentaCargoId: newId,
-                            // Si el banco está vacío o coincide con el de la cuenta previa,
-                            // lo sincronizamos con la nueva cuenta.
-                            banco: newBanco && (!prev.banco || prev.banco === '') ? newBanco : prev.banco,
-                          }));
+                          const newAcc = accounts.find((a) => String(a.id) === newId);
+                          const newBanco = (newAcc?.banco?.name || newAcc?.bank || '').trim();
+                          setForm((prev) => {
+                            // Sincronizamos `banco` con la nueva cuenta sólo si NO fue
+                            // editado manualmente · detectamos eso comparando el banco
+                            // actual con el de la cuenta previamente seleccionada.
+                            const prevAcc = accounts.find((a) => String(a.id) === prev.cuentaCargoId);
+                            const prevBancoFromAcc = (prevAcc?.banco?.name || prevAcc?.bank || '').trim();
+                            const userEditedBank = Boolean(prev.banco) && prev.banco !== prevBancoFromAcc;
+                            return {
+                              ...prev,
+                              cuentaCargoId: newId,
+                              banco: userEditedBank ? prev.banco : (newBanco || prev.banco),
+                            };
+                          });
                           setSubmitError(null);
                         }}
                       >
@@ -1588,15 +1594,26 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
               )}
             </div>
             <div className={styles.footerActions}>
-              <button
-                className={`${styles.btn} ${styles.btnGhost}`}
-                type="button"
-                onClick={() => setShowAmortizarModal(true)}
-                disabled={!loadedPrestamo}
-                title={loadedPrestamo ? 'Amortizar anticipadamente' : 'Guarda el préstamo antes de amortizar'}
-              >
-                <Check size={14} /> Amortizar anticipado
-              </button>
+              {(() => {
+                const yaCancelado = loadedPrestamo?.activo === false || loadedPrestamo?.estado === 'cancelado';
+                const disabled = !loadedPrestamo || yaCancelado;
+                const title = !loadedPrestamo
+                  ? 'Guarda el préstamo antes de amortizar'
+                  : yaCancelado
+                  ? 'Préstamo ya cancelado · no se puede amortizar'
+                  : 'Amortizar anticipadamente';
+                return (
+                  <button
+                    className={`${styles.btn} ${styles.btnGhost}`}
+                    type="button"
+                    onClick={() => setShowAmortizarModal(true)}
+                    disabled={disabled}
+                    title={title}
+                  >
+                    <Check size={14} /> Amortizar anticipado
+                  </button>
+                );
+              })()}
               <button
                 className={`${styles.btn} ${styles.btnGhost}`}
                 onClick={onCancel}
@@ -1624,13 +1641,13 @@ const PrestamoPageV2: React.FC<PrestamoPageV2Props> = ({
           isOpen={showAmortizarModal}
           onClose={() => setShowAmortizarModal(false)}
           onConfirmed={async () => {
+            // Tras confirmar la amortización, cerramos el wizard.
+            // Si NO cerráramos, el botón "Guardar préstamo" volvería a
+            // ejecutar regenerarTreasuryEvents() borrando los eventos
+            // recién creados por la liquidación · perderíamos el cargo
+            // y el cuadro recalculado.
             setShowAmortizarModal(false);
-            // Tras amortizar, recargar el préstamo desde DB y rehidratar el form.
-            const fresh = await prestamosService.getPrestamoById(loadedPrestamo.id);
-            if (fresh) {
-              setLoadedPrestamo(fresh);
-              hydrateFromPrestamo(fresh, accounts);
-            }
+            onSuccess();
           }}
         />
       )}

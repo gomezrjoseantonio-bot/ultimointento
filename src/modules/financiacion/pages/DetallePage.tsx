@@ -103,7 +103,19 @@ const DetallePage: React.FC = () => {
   const handleAmortizarConfirmed = async () => {
     setShowAmortizarModal(false);
     await reload();
-    showToastV5('Amortización aplicada.');
+    // `LoanSettlementModal` ya emite su propio toast de éxito · no duplicamos.
+    // Si la liquidación fue total, el préstamo queda `activo=false` /
+    // `estado='cancelado'` y se excluye del listado activo (FinanciacionPage
+    // filtra cancelados). En ese caso, `row` quedaría undefined y la página
+    // mostraría "Préstamo no encontrado" pese a haberse cancelado bien.
+    // Comprobamos el estado real en DB y, si quedó cancelado, navegamos al
+    // listado · si fue parcial, nos quedamos en el detalle con el cuadro nuevo.
+    if (id) {
+      const fresh = await prestamosService.getPrestamoById(id);
+      if (!fresh || fresh.activo === false || fresh.estado === 'cancelado') {
+        navigate('/financiacion/listado');
+      }
+    }
   };
 
   const handleEditar = () => {
