@@ -911,6 +911,8 @@ export interface AEATCarryForward {
   excessAmount: number; // financingAndRepair - limitApplied
   expirationYear: number; // taxYear + 4
   remainingAmount: number; // Current remaining amount that can be used
+  // S-FISCAL-FIXES Fix 1 · proporción del exceso por concepto cuando aplica
+  carryForwardType?: 'excess_0105' | 'excess_0106' | 'excess_mixed';
   createdAt: string;
   updatedAt: string;
 }
@@ -1617,6 +1619,13 @@ export interface FiscalSummary {
   reduccionVivienda?: number; // Reducción por vivienda habitual (60%, 50%, etc.)
   rendimientoNetoReducido?: number; // Neto después de reducción
   gastosPendientesGenerados?: number; // Excedente de gastos → arrastre
+  // S-FISCAL-FIXES Fix 1 · arrastres entrantes y aplicación del tope N4
+  box0103?: number; // Arrastres entrantes disponibles
+  box0104?: number; // Arrastres entrantes aplicados este ejercicio
+  box0107?: number; // Intereses+reparación aplicados (con tope)
+  box0108?: number; // Exceso intereses+reparación arrastrable
+  // S-FISCAL-FIXES Fix 3 · imputación renta a disposición
+  box0089?: number; // Imputación renta días a disposición
   // AEAT Box totals
   box0105: number; // Interests/financing (manual docs + auto loans)
   box0105_auto?: number; // Interests auto-calculated from linked loans (subset of box0105)

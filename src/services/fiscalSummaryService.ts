@@ -13,6 +13,11 @@ import {
 import { gastosInmuebleService } from './gastosInmuebleService';
 import { calculateAEATLimits } from '../utils/aeatUtils';
 import { getEjercicio } from './ejercicioResolverService';
+import {
+  getCarryForwardsDisponibles,
+  consumirArrastresAplicados,
+} from './carryForwardService';
+import { calcularImputacion } from './imputacionRentaService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
@@ -27,6 +32,11 @@ function extraerSummaryDeSnapshot(
   return {
     propertyId,
     exerciseYear,
+    box0089: snapshot[`${propertyId}_0089`] ?? snapshot['0089'],
+    box0103: snapshot[`${propertyId}_0103`] ?? snapshot['0103'],
+    box0104: snapshot[`${propertyId}_0104`] ?? snapshot['0104'],
+    box0107: snapshot[`${propertyId}_0107`] ?? snapshot['0107'],
+    box0108: snapshot[`${propertyId}_0108`] ?? snapshot['0108'],
     box0105: snapshot[`${propertyId}_0105`] ?? snapshot['0105'] ?? 0,
     box0106: snapshot[`${propertyId}_0106`] ?? snapshot['0106'] ?? 0,
     box0109: snapshot[`${propertyId}_0109`] ?? snapshot['0109'] ?? 0,
@@ -137,32 +147,96 @@ export const calculateFiscalSummary = async (
   }
   summary.box0102 = ingresosIntegros;
 
-  // Deductible excess calculation
-  const { excess } = calculateAEATLimits(ingresosIntegros, summary.box0105, summary.box0106);
-  summary.deductibleExcess = excess;
+  // ═══ S-FISCAL-FIXES Fix 3 · N3 imputación renta a disposición → box0089 ═══
+  try {
+    const imp = await calcularImputacion(propertyId, exerciseYear);
+    summary.box0089 = imp.imputacion;
+  } catch {
+    summary.box0089 = 0;
+  }
 
-  // Persist carryforward records (these go to aeatCarryForwards, not fiscalSummaries)
-  if (excess > 0) {
+  // ═══ S-FISCAL-FIXES Fix 1 · N4 tope intereses+reparación ═══
+  // 1. Arrastres entrantes disponibles (ejercicios previos, no caducados, no consumidos)
+  const cfsDisponibles = await getCarryForwardsDisponibles(propertyId, exerciseYear);
+  const arrastresEntrantesDisponibles = cfsDisponibles.total;
+
+  // 2. Aplicar arrastres entrantes primero (tope = ingresos íntegros)
+  const arrastresAplicados = Math.min(arrastresEntrantesDisponibles, ingresosIntegros);
+
+  // 3. Tope efectivo restante para intereses+reparación
+  const topeEfectivo = Math.max(0, ingresosIntegros - arrastresAplicados);
+
+  // 4. Aplicar intereses+reparación hasta tope efectivo
+  const interesesReparacionTotal = (summary.box0105 || 0) + (summary.box0106 || 0);
+  const interesesReparacionAplicados = Math.min(interesesReparacionTotal, topeEfectivo);
+
+  // 5. Exceso de intereses+reparación que arrastra a 4 ejercicios siguientes
+  const excesoArrastre = Math.max(0, interesesReparacionTotal - interesesReparacionAplicados);
+
+  summary.box0103 = arrastresEntrantesDisponibles;
+  summary.box0104 = arrastresAplicados;
+  summary.box0107 = interesesReparacionAplicados;
+  summary.box0108 = excesoArrastre;
+
+  // Backwards compat: keep `deductibleExcess` and call to calculateAEATLimits
+  // to derive desgloses por concepto (financiación vs reparación) que algunos
+  // consumidores legados pueden usar.
+  const { appliedFinancing, appliedRepairs } = calculateAEATLimits(
+    topeEfectivo,
+    summary.box0105 || 0,
+    summary.box0106 || 0,
+  );
+  summary.deductibleExcess = excesoArrastre;
+
+  // 6. Consumir arrastres entrantes en FIFO
+  if (arrastresAplicados > 0) {
+    await consumirArrastresAplicados(cfsDisponibles.detalle, arrastresAplicados);
+  }
+
+  // 7. Persistir exceso saliente como nuevo arrastre (expira en ejercicio + 4)
+  const existingCfsThisYear = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
+  const existingCf = (existingCfsThisYear as AEATCarryForward[]).find((cf) => cf.taxYear === exerciseYear);
+  if (excesoArrastre > 0) {
+    const carryForwardType: 'excess_0105' | 'excess_0106' | 'excess_mixed' =
+      (summary.box0105 || 0) > 0 && (summary.box0106 || 0) > 0
+        ? 'excess_mixed'
+        : (summary.box0105 || 0) > 0
+          ? 'excess_0105'
+          : 'excess_0106';
     const cfRecord: Omit<AEATCarryForward, 'id'> = {
       propertyId,
       taxYear: exerciseYear,
       totalIncome: ingresosIntegros,
-      financingAndRepair: summary.box0105 + summary.box0106,
-      limitApplied: ingresosIntegros,
-      excessAmount: excess,
+      financingAndRepair: interesesReparacionTotal,
+      limitApplied: interesesReparacionAplicados,
+      excessAmount: excesoArrastre,
       expirationYear: exerciseYear + 4,
-      remainingAmount: excess,
+      remainingAmount: excesoArrastre,
+      carryForwardType,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    const allCfs = await db.getAllFromIndex('aeatCarryForwards', 'propertyId', propertyId);
-    const existingCf = (allCfs as AEATCarryForward[]).find((cf) => cf.taxYear === exerciseYear);
     if (existingCf) {
       await db.put('aeatCarryForwards', { ...cfRecord, id: existingCf.id, createdAt: existingCf.createdAt });
     } else {
       await db.add('aeatCarryForwards', cfRecord);
     }
+  } else if (existingCf && existingCf.remainingAmount !== 0) {
+    // Ya no genera exceso: marcar el arrastre anterior como consumido sin importe
+    await db.put('aeatCarryForwards', {
+      ...existingCf,
+      totalIncome: ingresosIntegros,
+      financingAndRepair: interesesReparacionTotal,
+      limitApplied: interesesReparacionAplicados,
+      excessAmount: 0,
+      remainingAmount: 0,
+      updatedAt: new Date().toISOString(),
+    });
   }
+
+  // Silenciar no-uso de variables (mantenidas por compatibilidad downstream)
+  void appliedFinancing;
+  void appliedRepairs;
 
   return summary;
 };
