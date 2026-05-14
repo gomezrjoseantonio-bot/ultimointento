@@ -162,7 +162,6 @@ export const calculateAEATAmortization = async (
   const historicalImprovements = baseAmortResult.desglose.mejorasAcumuladas;
   const baseAmount = baseAmortResult.base;
   const baseConstructionCost = constructionCost + historicalImprovements;
-  const cadastralBase = cadastralConstructionValue + historicalImprovements;
   const selectedBase: 'construction-cost' | 'cadastral-value' =
     baseAmortResult.metodo === 'por_coste' ? 'construction-cost' : 'cadastral-value';
   // Referencia legacy `unified` mantenida para casos especiales más abajo
