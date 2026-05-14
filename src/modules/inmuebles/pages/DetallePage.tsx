@@ -202,6 +202,17 @@ const DetallePage: React.FC = () => {
                     }
                   },
                 },
+                ...(property.state !== 'vendido'
+                  ? [
+                      {
+                        label: 'Vender',
+                        variant: 'ghost' as const,
+                        icon: <Icons.HandCoins size={14} strokeWidth={1.8} />,
+                        onClick: () =>
+                          navigate(`/gestion/inmuebles/${property.id}/vender`),
+                      },
+                    ]
+                  : []),
                 {
                   label: 'Nuevo contrato',
                   variant: 'gold',
