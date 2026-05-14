@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import {
-  PageHead,
   MoneyValue,
   DateLabel,
   EmptyState,
@@ -9,6 +8,7 @@ import {
   Icons,
   showToastV5,
 } from '../../../design-system/v5';
+import pageHeadStyles from '../../../design-system/v5/PageHead.module.css';
 import {
   listarCompromisos,
   eliminarCompromiso,
@@ -178,50 +178,49 @@ const DetallePage: React.FC = () => {
           </div>
           </div>
           <div className={styles.heroActions}>
-            <PageHead
-              title=""
-              actions={[
-                {
-                  label: 'Editar',
-                  variant: 'ghost',
-                  icon: <Icons.Edit size={14} strokeWidth={1.8} />,
-                  onClick: () => navigate(`/inmuebles/${property.id}/editar`),
-                },
-                {
-                  label: 'Eliminar',
-                  variant: 'ghost',
-                  icon: <Icons.Delete size={14} strokeWidth={1.8} />,
-                  onClick: async () => {
-                    if (property.id == null) return;
-                    try {
-                      const report = await previewDeleteInmuebleCascade(property.id);
-                      setPendingDelete(report);
-                    } catch (err) {
-                      console.error('Error preparing inmueble deletion', err);
-                      showToastV5('No se pudo preparar el borrado del inmueble');
-                    }
-                  },
-                },
-                ...(property.state !== 'vendido'
-                  ? [
-                      {
-                        label: 'Vender',
-                        variant: 'ghost' as const,
-                        icon: <Icons.HandCoins size={14} strokeWidth={1.8} />,
-                        onClick: () =>
-                          navigate(`/gestion/inmuebles/${property.id}/vender`),
-                      },
-                    ]
-                  : []),
-                {
-                  label: 'Nuevo contrato',
-                  variant: 'gold',
-                  icon: <Icons.Plus size={14} strokeWidth={2} />,
-                  onClick: () =>
-                    navigate(`/contratos/nuevo?inmueble=${property.id}`),
-                },
-              ]}
-            />
+            <button
+              type="button"
+              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+              onClick={() => navigate(`/inmuebles/${property.id}/editar`)}
+            >
+              <Icons.Edit size={14} strokeWidth={1.8} />
+              Editar
+            </button>
+            <button
+              type="button"
+              className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+              onClick={async () => {
+                if (property.id == null) return;
+                try {
+                  const report = await previewDeleteInmuebleCascade(property.id);
+                  setPendingDelete(report);
+                } catch (err) {
+                  console.error('Error preparing inmueble deletion', err);
+                  showToastV5('No se pudo preparar el borrado del inmueble');
+                }
+              }}
+            >
+              <Icons.Delete size={14} strokeWidth={1.8} />
+              Eliminar
+            </button>
+            {property.state !== 'vendido' && (
+              <button
+                type="button"
+                className={`${pageHeadStyles.btn} ${pageHeadStyles.ghost}`}
+                onClick={() => navigate(`/gestion/inmuebles/${property.id}/vender`)}
+              >
+                <Icons.HandCoins size={14} strokeWidth={1.8} />
+                Vender
+              </button>
+            )}
+            <button
+              type="button"
+              className={`${pageHeadStyles.btn} ${pageHeadStyles.gold}`}
+              onClick={() => navigate(`/contratos/nuevo?inmueble=${property.id}`)}
+            >
+              <Icons.Plus size={14} strokeWidth={2} />
+              Nuevo contrato
+            </button>
           </div>
         </div>
       </div>
