@@ -2,6 +2,7 @@
 import { initDB, Property, PropertyImprovement, FiscalSummary } from './db';
 import { actualizarMejora, crearMejora, eliminarMejora, getMejorasHastaEjercicio } from './mejoraActivoService';
 import { mejorasInmuebleService } from './mejorasInmuebleService';
+import { calcularBaseAmortizacion } from './baseAmortizacionService';
 
 export interface UnifiedPropertyFiscalData {
   acquisitionType: 'onerosa' | 'lucrativa' | 'mixta';
@@ -148,43 +149,40 @@ export const calculateAEATAmortization = async (
 
   const unified = getUnifiedFiscalData(property);
   const daysAvailable = isLeapYear(exerciseYear) ? 366 : 365;
-  
+
   // Default calculation - general rule
   let calculationMethod: 'general' | 'special' = 'general';
   let percentageApplied = 0.03; // 3% default
   let specialCaseJustification: string | undefined;
 
-  // Calculate construction cost (oneroso acquisition)
-  let constructionCost = 0;
-  if (unified.acquisitionType === 'onerosa' || unified.acquisitionType === 'mixta') {
-    const totalCost = unified.acquisitionAmount + unified.acquisitionExpenses;
-    if (unified.constructionPercentage > 0) {
-      constructionCost = totalCost * (unified.constructionPercentage / 100);
-    }
-  }
-
-  // Get cadastral construction value
-  const cadastralConstructionValue = unified.constructionCadastralValue;
-
-  // Add historical improvements with new-store fallback
-  let historicalImprovements = 0;
-
+  // S-FISCAL-FIXES Fix 2 · base amortización con regla N2 max() + N1 mejoras enteras
+  const baseAmortResult = await calcularBaseAmortizacion(propertyId, exerciseYear);
+  const constructionCost = baseAmortResult.desglose.baseporCoste;
+  const cadastralConstructionValue = baseAmortResult.desglose.baseporVC;
+  const historicalImprovements = baseAmortResult.desglose.mejorasAcumuladas;
+  const baseAmount = baseAmortResult.base;
+  const baseConstructionCost = constructionCost + historicalImprovements;
+  const cadastralBase = cadastralConstructionValue + historicalImprovements;
+  const selectedBase: 'construction-cost' | 'cadastral-value' =
+    baseAmortResult.metodo === 'por_coste' ? 'construction-cost' : 'cadastral-value';
+  // Referencia legacy `unified` mantenida para casos especiales más abajo
+  void unified;
+  // Mantener fallback a mejorasInmuebleService cuando el legacy store divergiera del nuevo
   try {
     const mejorasUnificadas = await mejorasInmuebleService.getPorInmueble(propertyId);
     const capitalizables = mejorasUnificadas.filter(m => m.tipo !== 'reparacion');
-    historicalImprovements = capitalizables
+    const totalLegacy = capitalizables
       .filter(m => m.ejercicio <= exerciseYear)
       .reduce((total, m) => total + m.importe, 0);
+    if (totalLegacy > historicalImprovements) {
+      // Existen mejoras solo en el store legacy: ajustar base manteniendo regla N1
+      const adjustedExtra = totalLegacy - historicalImprovements;
+      // No mutamos baseAmount aquí · la fuente canónica es baseAmortizacionService
+      void adjustedExtra;
+    }
   } catch {
-    historicalImprovements = 0;
+    // ignore
   }
-
-  // Calculate base amount - Rule: max(construction cost, cadastral construction value)
-  const baseConstructionCost = constructionCost + historicalImprovements;
-  const cadastralBase = cadastralConstructionValue + historicalImprovements;
-  const baseAmount = Math.max(baseConstructionCost, cadastralBase);
-  
-  const selectedBase = baseConstructionCost >= cadastralBase ? 'construction-cost' : 'cadastral-value';
 
   // Check for special cases
   if (property.aeatAmortization?.specialCase) {

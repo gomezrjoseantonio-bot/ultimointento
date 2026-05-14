@@ -562,9 +562,24 @@ async function procesarInmuebles(db: DB, decl: DeclaracionCompleta): Promise<Res
         camposNuevos.push('VC construcción');
         modificado = true;
       }
-      if (inm.porcentajeConstruccion && inm.porcentajeConstruccion > 0 && next.fiscalData.constructionPercentage !== inm.porcentajeConstruccion) {
-        next.fiscalData.constructionPercentage = inm.porcentajeConstruccion;
-        if (next.aeatAmortization) next.aeatAmortization.constructionPercentage = inm.porcentajeConstruccion;
+      // S-FISCAL-FIXES Fix 4 · si tenemos VC total y VC construcción, recalcular el %
+      // con 4 decimales internos en lugar de usar el % declarado (truncado a 2 decimales por AEAT).
+      const vcTotalUsable = next.fiscalData.cadastralValue ?? inm.valorCatastral ?? 0;
+      const vcConstrUsable =
+        next.fiscalData.constructionCadastralValue ?? inm.valorCatastralConstruccion ?? 0;
+      let pctConstruccionAUsar = inm.porcentajeConstruccion;
+      if (vcTotalUsable > 0 && vcConstrUsable > 0) {
+        // 4 decimales internos · ejemplo · 54.5503
+        pctConstruccionAUsar = Math.round((vcConstrUsable / vcTotalUsable) * 100 * 10000) / 10000;
+      }
+      if (
+        pctConstruccionAUsar &&
+        pctConstruccionAUsar > 0 &&
+        next.fiscalData.constructionPercentage !== pctConstruccionAUsar
+      ) {
+        next.fiscalData.constructionPercentage = pctConstruccionAUsar;
+        if (next.aeatAmortization)
+          next.aeatAmortization.constructionPercentage = pctConstruccionAUsar;
         camposNuevos.push('% construcción');
         modificado = true;
       }

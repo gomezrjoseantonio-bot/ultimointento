@@ -8,6 +8,8 @@ import {
   calcularReduccionArrendamientoVivienda,
 } from './irpfCalculationService';
 import { calcularGananciaPatrimonialVentaSimulada } from './propertyDisposalTaxService';
+import { computeImputacion, esBisiesto } from './imputacionRentaService';
+import { initDB } from './db';
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -276,16 +278,42 @@ export async function ejecutarSimulacion(
         const inmueble = sim.baseGeneral.rendimientosInmuebles[idx];
         // Remove from rented
         sim.baseGeneral.rendimientosInmuebles.splice(idx, 1);
-        // Add imputación
+
+        // S-FISCAL-FIXES Fix 3 · usar VC real e imputación correcta (no placeholder)
         const mesesVacio = parametros.mesesVacio ?? 12;
-        const imputacion = round2(100000 * 0.02 * (mesesVacio * 30 / 365));
+        const anioSim = new Date().getFullYear();
+        const diasAnio = esBisiesto(anioSim) ? 366 : 365;
+        const diasDisposicion = Math.min(diasAnio, Math.round(mesesVacio * 30));
+        let valorCatastral = 0;
+        let revisado = false;
+        try {
+          const db = await initDB();
+          const prop = await db.get('properties', inmueble.inmuebleId);
+          if (prop) {
+            valorCatastral =
+              (prop as any).fiscalData?.cadastralValue ??
+              (prop as any).aeatAmortization?.cadastralValue ??
+              0;
+            revisado =
+              Boolean((prop as any).fiscalData?.cadastralRevised) ||
+              Boolean((prop as any).fiscalidad?.catastro_revisado_post_1994);
+          }
+        } catch {
+          // Mantener VC = 0 → imputación = 0 + alerta
+        }
+        const r = computeImputacion({
+          diasDisposicion,
+          valorCatastral,
+          revisado,
+          anio: anioSim,
+        });
         sim.baseGeneral.imputacionRentas.push({
           inmuebleId: inmueble.inmuebleId,
           alias: inmueble.alias,
-          valorCatastral: 100000, // Placeholder
-          porcentajeImputacion: 0.02,
-          diasVacio: mesesVacio * 30,
-          imputacion,
+          valorCatastral,
+          porcentajeImputacion: r.desglose.tipoAplicable / 100,
+          diasVacio: diasDisposicion,
+          imputacion: r.imputacion,
         });
         sim.baseGeneral.total = round2(
           (sim.baseGeneral.rendimientosTrabajo?.rendimientoNeto ?? 0) +
