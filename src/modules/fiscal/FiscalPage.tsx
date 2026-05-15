@@ -99,7 +99,13 @@ const FiscalPage: React.FC = () => {
     || /^\/fiscal\/ejercicio\/[^/]+\/inmueble\/[^/]+$/.test(location.pathname)
     || /^\/fiscal\/ejercicio\/[^/]+\/venta\/[^/]+$/.test(location.pathname)
     // Sub-tarea 6 · F6 acciones es standalone con su propio breadcrumb/header
-    || /^\/fiscal\/acciones(\/.*)?$/.test(location.pathname);
+    || /^\/fiscal\/acciones(\/.*)?$/.test(location.pathname)
+    // Wizards v1 (importar · corrección/paralela · borrador IRPF) tienen su
+    // propio breadcrumb · ocultamos PageHead + tabs del shell para evitar
+    // doble header (verificación visual Jose · 15/05/2026).
+    || /^\/fiscal\/importar\/[^/]+$/.test(location.pathname)
+    || /^\/fiscal\/correccion\/[^/]+$/.test(location.pathname)
+    || /^\/fiscal\/borrador\/[^/]+$/.test(location.pathname);
 
   // SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2 · la página F1 v2
   // (`/fiscal` index) trae su propio header + KPI strip + tabs.

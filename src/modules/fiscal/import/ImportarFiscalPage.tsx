@@ -10,18 +10,56 @@
 // ejercicio · breadcrumb implícito) · todo lo demás se delega al
 // wizard legacy hasta que se migre profundamente.
 
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { Icons } from '../../../design-system/v5';
 import ImportarDeclaracionWizard from '../../horizon/fiscalidad/historico/ImportarDeclaracionWizard';
 import type { FiscalOutletContext } from '../FiscalContext';
 import styles from './ImportarFiscalPage.module.css';
 
+interface ImportNavState {
+  /** Lista de archivos pasada desde F6 dropzone (multi-archivo). */
+  archivosImportados?: File[];
+  /** Primer archivo · compat backward para consumidores legacy. */
+  archivoImportado?: File;
+  nombres?: string[];
+  nombre?: string;
+}
+
 const ImportarFiscalPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { anio } = useParams<{ anio: string }>();
   const { reload } = useOutletContext<FiscalOutletContext>();
+
+  // Lee los archivos pre-seleccionados desde F6 (sub-tarea 6) · si
+  // venimos de `/fiscal/acciones` con drag&drop, el wizard arranca
+  // directamente con el archivo cargado.
+  const navState = (location.state ?? {}) as ImportNavState;
+  const archivos = useMemo<File[]>(() => {
+    if (Array.isArray(navState.archivosImportados) && navState.archivosImportados.length > 0) {
+      return navState.archivosImportados;
+    }
+    if (navState.archivoImportado) return [navState.archivoImportado];
+    return [];
+  }, [navState.archivosImportados, navState.archivoImportado]);
+
+  const initialFile = archivos[0] ?? null;
+  const archivosExtra = archivos.length - 1;
+
+  // Si el usuario soltó varios archivos en la dropzone de F6, informamos
+  // que solo se procesa el primero en este wizard (los demás se pueden
+  // subir uno a uno tras este). Sin esta nota la UX sería confusa.
+  useEffect(() => {
+    if (archivosExtra > 0) {
+      toast(`Procesando el primer archivo · los otros ${archivosExtra} podrás subirlos tras éste.`, {
+        icon: 'ℹ️',
+      });
+    }
+    // run-once on mount with the navigation state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // El wizard llama `onImported` tras distribuir y luego `onClose`. Para
   // evitar doble navegación · `onImported` sólo recarga el contexto y
@@ -86,6 +124,7 @@ const ImportarFiscalPage: React.FC = () => {
         onImported={handleImported}
         defaultMethod="xml"
         embedded
+        initialFile={initialFile}
       />
     </div>
   );
