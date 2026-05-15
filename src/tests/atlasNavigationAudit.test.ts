@@ -97,7 +97,9 @@ describe('Atlas Navigation Audit · v5', () => {
   test('Fiscal expone sus 4 sub-páginas v5', () => {
     const fiscal = navigation.find((item) => item.name === 'Fiscal');
     const subs = fiscal?.subTabs?.map((t) => t.name) ?? [];
-    expect(subs).toEqual(['Calendario', 'Ejercicios', 'Deudas', 'Configuración']);
+    // Sub-tarea 6 SPEC-CC-FISCAL-UI-REPLACE-v1 · "Configuración" renombrado
+    // a "Acciones" alineado con F6 del mockup atlas-fiscal-v3.
+    expect(subs).toEqual(['Calendario', 'Ejercicios', 'Deudas', 'Acciones']);
   });
 
   test('Archivo y Ajustes en sección documentation', () => {

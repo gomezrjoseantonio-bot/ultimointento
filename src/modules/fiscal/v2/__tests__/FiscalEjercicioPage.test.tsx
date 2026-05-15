@@ -335,7 +335,7 @@ describe('FiscalEjercicioPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 3', () =
     const accionesLink = screen.getByRole('button', { name: /Acciones fiscales/i });
     expect(accionesLink).toBeInTheDocument();
     fireEvent.click(accionesLink);
-    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/configuracion?ejercicio=2024');
+    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/acciones?ejercicio=2024');
   });
 
   it('renderiza el KPI strip con 4 valores cuadrando al céntimo (FA32 Jose 2024)', async () => {

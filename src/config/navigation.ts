@@ -111,7 +111,7 @@ export const navigationConfig: NavigationItem[] = [
       { name: 'Calendario', href: '/fiscal' },
       { name: 'Ejercicios', href: '/fiscal/ejercicios' },
       { name: 'Deudas', href: '/fiscal/deudas' },
-      { name: 'Configuración', href: '/fiscal/configuracion' },
+      { name: 'Acciones', href: '/fiscal/acciones' },
     ],
   },
   {

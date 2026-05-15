@@ -283,7 +283,7 @@ const FiscalEjercicioPage: React.FC = () => {
         esPrescrito={esPrescrito}
         onBack={() => navigate('/fiscal')}
         onGoDashboard={() => navigate('/fiscal')}
-        onGoAcciones={() => navigate(`/fiscal/configuracion?ejercicio=${año}`)}
+        onGoAcciones={() => navigate(`/fiscal/acciones?ejercicio=${año}`)}
       />
 
       <EjercicioKpiStrip

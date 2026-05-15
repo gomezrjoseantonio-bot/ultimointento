@@ -178,7 +178,7 @@ describe('FiscalDashboardPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2', () =
     const link = await screen.findByRole('button', { name: /Acciones fiscales/i });
     expect(link).toBeInTheDocument();
     fireEvent.click(link);
-    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/configuracion');
+    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/acciones');
   });
 
   it('renderiza los 4 KPIs con los importes de getResumenGlobal', async () => {
@@ -208,10 +208,10 @@ describe('FiscalDashboardPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2', () =
     expect(mockNavigate).toHaveBeenCalledWith(`/fiscal/ejercicio/${añoActual - 1}`);
 
     fireEvent.click(screen.getByLabelText(/Deuda abierta/i));
-    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/configuracion?section=deudas');
+    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/acciones?section=deudas');
 
     fireEvent.click(screen.getByLabelText(/Arrastres vivos/i));
-    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/configuracion?section=arrastres');
+    expect(mockNavigate).toHaveBeenCalledWith('/fiscal/acciones?section=arrastres');
   });
 
   it('renderiza 3 tabs SIN iconos (texto + contador) y permite cambiar', async () => {
