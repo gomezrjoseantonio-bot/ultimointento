@@ -109,3 +109,42 @@ export async function getArrastresVivos(añoActual: number): Promise<ArrastresVi
 
   return { rows, totalPendiente };
 }
+
+// ─── Helper compartido · perdidas patrimoniales del ahorro vivas ────────
+// Centraliza la query a `perdidasPatrimonialesAhorro` que necesitan tanto
+// el F1 dashboard (tab Arrastres), como el F4 venta (Step 4 compensación)
+// y la nota informativa del F4. Devuelve la lista ordenada por caducidad
+// (FIFO · más antiguos primero) para que el consumidor pueda iterar y
+// aplicar el saldo.
+
+export interface PerdidaPatrimonialViva {
+  origen: number;
+  importePendiente: number;
+  ejercicioCaducidad: number;
+}
+
+export async function getPerdidasPatrimonialesVivas(añoCorte: number): Promise<PerdidaPatrimonialViva[]> {
+  const db = await initDB();
+  try {
+    const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as Array<{
+      ejercicioOrigen: number;
+      ejercicioCaducidad: number;
+      importePendiente: number;
+      estado: string;
+    }>;
+    return todas
+      .filter((p) =>
+        p.importePendiente > 0
+        && p.ejercicioCaducidad >= añoCorte
+        && p.estado !== 'caducado',
+      )
+      .map((p) => ({
+        origen: p.ejercicioOrigen,
+        importePendiente: p.importePendiente,
+        ejercicioCaducidad: p.ejercicioCaducidad,
+      }))
+      .sort((a, b) => a.ejercicioCaducidad - b.ejercicioCaducidad);
+  } catch {
+    return [];
+  }
+}

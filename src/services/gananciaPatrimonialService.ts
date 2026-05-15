@@ -188,17 +188,22 @@ export async function calcularAmortizacionAcumulada(
  *  50.000 – 200.000 € → 23%
  * 200.000 – 300.000 € → 27%
  * 300.000 + → 28%
+ *
+ * Exportado como readonly para que vistas (p.ej. F4 venta · sub-tarea 5)
+ * puedan reutilizar los tramos al desglosar el cálculo · evita drift.
  */
+export const TRAMOS_BASE_AHORRO_2025: ReadonlyArray<{ hasta: number; tipo: number }> = [
+  { hasta: 6000, tipo: 0.19 },
+  { hasta: 50000, tipo: 0.21 },
+  { hasta: 200000, tipo: 0.23 },
+  { hasta: 300000, tipo: 0.27 },
+  { hasta: Number.POSITIVE_INFINITY, tipo: 0.28 },
+];
+
 export function calcularIrpfBaseAhorro2025(ganancia: number): number {
   if (ganancia <= 0) return 0;
 
-  const tramos: Array<{ hasta: number; tipo: number }> = [
-    { hasta: 6000, tipo: 0.19 },
-    { hasta: 50000, tipo: 0.21 },
-    { hasta: 200000, tipo: 0.23 },
-    { hasta: 300000, tipo: 0.27 },
-    { hasta: Number.POSITIVE_INFINITY, tipo: 0.28 },
-  ];
+  const tramos = TRAMOS_BASE_AHORRO_2025;
 
   let restante = ganancia;
   let prev = 0;
