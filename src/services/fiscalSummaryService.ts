@@ -18,6 +18,7 @@ import {
   consumirArrastresAplicados,
 } from './carryForwardService';
 import { calcularImputacion } from './imputacionRentaService';
+import { getRendimientoFiscal } from './rendimientoActivoService';
 
 const isLeapYear = (year: number): boolean => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
 
@@ -416,4 +417,191 @@ export const getCarryForwardsAppliedThisYear = async (propertyId?: number): Prom
   }
 
   return totalApplied;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SPEC-CC-FISCAL-UI-REPLACE-v1 · sub-tarea 1 · hueco 1
+// calculateFiscalSummaryExtended — extiende calculateFiscalSummary con
+// las casillas de rendimiento (0149/0150/0154) y metadatos del ejercicio.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type ModoDeclaracionFiscal = 'I' | 'II' | 'III' | 'IV' | 'V';
+export type MetodoProrrateoFiscal = 'dias_habitacion' | 'superficie' | 'ingresos' | null;
+
+export interface FiscalSummaryExtended extends FiscalSummary {
+  box0101: number;
+  box0102: number;
+  box0103: number;
+  box0104: number;
+  box0107: number;
+  box0108: number;
+  box0149: number;
+  box0150: number;
+  box0154: number;
+
+  modoDeclaracion: ModoDeclaracionFiscal;
+  diasArrendado: number;
+  diasDisposicion: number;
+  porcentajeReduccion: number;
+  metodoProrrateo?: MetodoProrrateoFiscal;
+}
+
+const round2 = (n: number): number => Math.round(n * 100) / 100;
+
+function detectarModoDeclaracion(
+  property: { usoTipo?: string; alquilerPorHabitaciones?: { activo: boolean } } | null,
+  contractsDelAño: Array<{ modalidad?: string; unidadTipo?: string; fechaInicio?: string; fechaFin?: string }>,
+  diasArrendado: number,
+  diasTotal: number,
+): ModoDeclaracionFiscal {
+  if (property?.usoTipo === 'vivienda_habitual') return 'IV';
+
+  const habitaciones = contractsDelAño.some((c) => c.unidadTipo === 'habitacion');
+  const modalidades = new Set(contractsDelAño.map((c) => c.modalidad).filter(Boolean));
+  const tieneCorta = modalidades.has('vacacional') || modalidades.has('temporada');
+  const tieneLarga = modalidades.has('habitual');
+
+  if (property?.alquilerPorHabitaciones?.activo || habitaciones) return 'III';
+  if (tieneLarga && tieneCorta) return 'III';
+  if (tieneCorta && !tieneLarga) return 'V';
+  if (tieneLarga && !tieneCorta) {
+    if (diasArrendado > 0 && diasArrendado < diasTotal - 7) return 'II';
+    return 'I';
+  }
+  if (property?.usoTipo === 'mixto') return 'III';
+  if (property?.usoTipo === 'turistico' || property?.usoTipo === 'temporada') return 'V';
+  if (property?.usoTipo === 'larga_estancia') return 'I';
+  if (diasArrendado > 0 && diasArrendado < diasTotal - 7) return 'II';
+  return 'I';
+}
+
+function detectarPorcentajeReduccion(
+  modo: ModoDeclaracionFiscal,
+  contractsDelAño: Array<{ modalidad?: string; reduccionLeyVivienda?: number }>,
+): number {
+  if (modo === 'IV') return 0;
+  if (modo === 'V') return 0;
+  const explicit = contractsDelAño
+    .map((c) => c.reduccionLeyVivienda)
+    .filter((v): v is number => typeof v === 'number' && v > 0);
+  if (explicit.length > 0) return Math.max(...explicit);
+  if (modo === 'I' || modo === 'II' || modo === 'III') return 60;
+  return 0;
+}
+
+function detectarMetodoProrrateo(
+  modo: ModoDeclaracionFiscal,
+  property: { alquilerPorHabitaciones?: { activo: boolean } } | null,
+): MetodoProrrateoFiscal {
+  if (modo !== 'III' && modo !== 'II') return null;
+  if (property?.alquilerPorHabitaciones?.activo) return 'dias_habitacion';
+  return 'dias_habitacion';
+}
+
+export const calculateFiscalSummaryExtended = async (
+  propertyId: number,
+  exerciseYear: number,
+): Promise<FiscalSummaryExtended> => {
+  const db = await initDB();
+  const property = await db.get('properties', propertyId);
+  const refCatastral = property?.cadastralReference ?? '';
+
+  const summary = await calculateFiscalSummary(propertyId, exerciseYear);
+  const rendimiento = await getRendimientoFiscal(propertyId, refCatastral, exerciseYear);
+
+  const diasTotal = isLeapYear(exerciseYear) ? 366 : 365;
+  const diasArrendado = rendimiento.diasArrendado > 0
+    ? rendimiento.diasArrendado
+    : await getRentalDaysForYear(propertyId, exerciseYear);
+  const diasDisposicion = rendimiento.diasDisposicion > 0
+    ? rendimiento.diasDisposicion
+    : Math.max(0, diasTotal - diasArrendado);
+
+  const allContracts = (await db.getAll('contracts')) as any[];
+  const contractsDelAño = allContracts.filter((c: any) => {
+    const matchesProperty = (c.inmuebleId === propertyId) || (c.propertyId === propertyId);
+    if (!matchesProperty) return false;
+    const inicio = new Date(c.fechaInicio ?? c.startDate ?? `${exerciseYear}-01-01`);
+    const fin = new Date(c.fechaFin ?? c.endDate ?? `${exerciseYear}-12-31`);
+    return inicio.getFullYear() <= exerciseYear && fin.getFullYear() >= exerciseYear;
+  });
+
+  const modoDeclaracion = detectarModoDeclaracion(property as any, contractsDelAño, diasArrendado, diasTotal);
+  const porcentajeReduccion = detectarPorcentajeReduccion(modoDeclaracion, contractsDelAño);
+  const metodoProrrateo = detectarMetodoProrrateo(modoDeclaracion, property as any);
+
+  // ── 0149 / 0150 / 0154 ────────────────────────────────────────────────
+  // Si rendimientoActivoService devuelve datos de XML AEAT (fuente='xml_aeat'),
+  // usar esos valores tal cual (snapshot del Modelo 100 ya calculado).
+  // En otro caso, calcular según la fórmula del spec §3.2:
+  //   0149 = 0102 − 0104 − 0107 − Σ(0109..0117) − amortizacionInmueble − amortizacionMobiliario − amortizacionMejoras
+  //   0150 = reducción Ley Vivienda aplicada (rendimientoActivoService.reduccionVivienda
+  //          en modo XML; en modo atlas: % × 0149 si el modo lo permite, default 60% del rendimiento positivo).
+  //   0154 = 0149 − 0150
+  let box0149: number;
+  let box0150: number;
+  let box0154: number;
+
+  if (rendimiento.fuente === 'xml_aeat') {
+    box0149 = round2(rendimiento.rendimientoNeto);
+    box0150 = round2(rendimiento.reduccionVivienda);
+    box0154 = round2(rendimiento.rendimientoNetoReducido);
+
+    // Cuando el snapshot XML AEAT está disponible, los ingresos íntegros del
+    // inmueble (0102) reflejan el dato declarado (rentasDeclaradas + imputada),
+    // no el recálculo en vivo desde contratos. Esto evita drift cuando los
+    // contratos en Atlas no reproducen exactamente lo declarado.
+    const ingresosXML = round2(rendimiento.rentasDeclaradas + rendimiento.rentaImputada);
+    if (ingresosXML > 0) {
+      summary.box0102 = ingresosXML;
+    }
+  } else {
+    const ingresos = summary.box0102 ?? 0;
+    const arrastresAplicados = summary.box0104 ?? 0;
+    const interesesReparacion = summary.box0107 ?? 0;
+    const otrosGastos =
+      (summary.box0109 ?? 0) +
+      (summary.box0112 ?? 0) +
+      (summary.box0113 ?? 0) +
+      (summary.box0114 ?? 0) +
+      (summary.box0115 ?? 0);
+    const amortizacionInmueble = summary.box0131 ?? 0;
+    const amortizacionMobiliario = summary.box0117 ?? 0;
+    const amortizacionMejoras = summary.box0129 ?? 0;
+
+    box0149 = round2(
+      ingresos
+        - arrastresAplicados
+        - interesesReparacion
+        - otrosGastos
+        - amortizacionInmueble
+        - amortizacionMobiliario
+        - amortizacionMejoras,
+    );
+
+    if (porcentajeReduccion > 0 && box0149 > 0) {
+      box0150 = round2(box0149 * (porcentajeReduccion / 100));
+    } else {
+      box0150 = 0;
+    }
+    box0154 = round2(box0149 - box0150);
+  }
+
+  return {
+    ...summary,
+    box0101: diasArrendado,
+    box0102: summary.box0102 ?? 0,
+    box0103: summary.box0103 ?? 0,
+    box0104: summary.box0104 ?? 0,
+    box0107: summary.box0107 ?? 0,
+    box0108: summary.box0108 ?? 0,
+    box0149,
+    box0150,
+    box0154,
+    modoDeclaracion,
+    diasArrendado,
+    diasDisposicion,
+    porcentajeReduccion,
+    metodoProrrateo,
+  };
 };
