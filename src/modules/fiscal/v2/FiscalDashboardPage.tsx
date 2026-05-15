@@ -134,9 +134,9 @@ const FiscalDashboardPage: React.FC = () => {
   );
 
   const goEjercicio = (año: number) => navigate(`/fiscal/ejercicio/${año}`);
-  const goAcciones = () => navigate('/fiscal/configuracion');
-  const goAccionesDeudas = () => navigate('/fiscal/configuracion?section=deudas');
-  const goAccionesArrastres = () => navigate('/fiscal/configuracion?section=arrastres');
+  const goAcciones = () => navigate('/fiscal/acciones');
+  const goAccionesDeudas = () => navigate('/fiscal/acciones?section=deudas');
+  const goAccionesArrastres = () => navigate('/fiscal/acciones?section=arrastres');
 
   const campañaText = resumen ? fmtCampaña(resumen.campañaActual) : null;
 

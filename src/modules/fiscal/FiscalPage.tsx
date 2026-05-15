@@ -45,8 +45,8 @@ const tabs: TabItem[] = [
   },
   {
     key: 'configuracion',
-    label: 'Configuración',
-    path: '/fiscal/configuracion',
+    label: 'Acciones',
+    path: '/fiscal/acciones',
     icon: Icons.Ajustes,
   },
 ];
@@ -97,7 +97,9 @@ const FiscalPage: React.FC = () => {
   const isDetail =
     /^\/fiscal\/ejercicio\/[^/]+$/.test(location.pathname)
     || /^\/fiscal\/ejercicio\/[^/]+\/inmueble\/[^/]+$/.test(location.pathname)
-    || /^\/fiscal\/ejercicio\/[^/]+\/venta\/[^/]+$/.test(location.pathname);
+    || /^\/fiscal\/ejercicio\/[^/]+\/venta\/[^/]+$/.test(location.pathname)
+    // Sub-tarea 6 · F6 acciones es standalone con su propio breadcrumb/header
+    || /^\/fiscal\/acciones(\/.*)?$/.test(location.pathname);
 
   // SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2 · la página F1 v2
   // (`/fiscal` index) trae su propio header + KPI strip + tabs.
@@ -109,7 +111,8 @@ const FiscalPage: React.FC = () => {
     if (location.pathname === '/fiscal' || location.pathname === '/fiscal/') return 'dashboard';
     if (location.pathname.startsWith('/fiscal/ejercicios')) return 'ejercicios';
     if (location.pathname.startsWith('/fiscal/deudas')) return 'deudas';
-    if (location.pathname.startsWith('/fiscal/configuracion')) return 'configuracion';
+    if (location.pathname.startsWith('/fiscal/acciones')
+      || location.pathname.startsWith('/fiscal/configuracion')) return 'configuracion';
     return 'dashboard';
   })();
 
@@ -152,7 +155,7 @@ const FiscalPage: React.FC = () => {
               label: 'Configuración',
               variant: 'ghost',
               icon: <Icons.Ajustes size={14} strokeWidth={1.8} />,
-              onClick: () => navigate('/fiscal/configuracion'),
+              onClick: () => navigate('/fiscal/acciones'),
             },
           ]}
           tabsSlot={

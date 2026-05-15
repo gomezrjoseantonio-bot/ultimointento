@@ -1,0 +1,348 @@
+/* ============================================================
+   ATLAS · F6 Fiscal Acciones v2
+   SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 6
+   Mockup canónico · docs/audit-inputs/atlas-fiscal-v3.html#page-config
+   Tokens · solo --atlas-v5-* (cero hex hardcoded)
+   ============================================================ */
+
+/* ── Layout base · breadcrumb · page-head (mismo patrón que F2-F5
+   pero local a F6 · evita acoplamiento con FiscalEjercicioPage.module.css) ── */
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-bg);
+  min-height: 100%;
+  padding: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  color: var(--atlas-v5-ink-3);
+  font-size: var(--atlas-v5-fs-chip);
+  margin-bottom: var(--atlas-v5-sp-4);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a,
+.breadcrumb button {
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.breadcrumb a:hover,
+.breadcrumb button:hover {
+  color: var(--atlas-v5-ink-2);
+}
+
+.breadcrumbSep {
+  opacity: 0.5;
+}
+
+.breadcrumbCurrent {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.backBtn:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.pageHead {
+  padding-bottom: var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: var(--atlas-v5-sp-8);
+}
+
+.pageHeadTitle {
+  font-size: 24px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-h1);
+  color: var(--atlas-v5-ink);
+}
+
+.metaLine {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  margin-top: var(--atlas-v5-sp-1);
+}
+
+/* ── Acordeón genérico ─────────────────────────────────────── */
+.accItem {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-3);
+  overflow: hidden;
+}
+
+.accHd {
+  padding: var(--atlas-v5-sp-5) var(--atlas-v5-sp-7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--atlas-v5-sp-5);
+  background: none;
+  border: none;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.accHd:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.accTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: 15px;
+  color: var(--atlas-v5-ink);
+}
+
+.accSub {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 2px;
+}
+
+.accChevron {
+  color: var(--atlas-v5-ink-3);
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.accChevronOpen {
+  transform: rotate(90deg);
+}
+
+.accBd {
+  padding: 0 var(--atlas-v5-sp-7) var(--atlas-v5-sp-7);
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.accBdContent {
+  padding-top: var(--atlas-v5-sp-4);
+}
+
+/* ── Campos ────────────────────────────────────────────────── */
+.fld {
+  margin-bottom: var(--atlas-v5-sp-4);
+}
+
+.fldLab {
+  display: block;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: 5px;
+}
+
+.fldSelect,
+.fldInput {
+  width: 100%;
+  padding: var(--atlas-v5-sp-2) var(--atlas-v5-sp-3);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: 6px;
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card);
+  font-family: var(--atlas-v5-font-mono-num);
+}
+
+.fldSelect:focus,
+.fldInput:focus {
+  outline: 2px solid var(--atlas-v5-gold);
+  outline-offset: -1px;
+  border-color: var(--atlas-v5-gold);
+}
+
+/* ── Botones ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--atlas-v5-sp-2) 14px;
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all .15s;
+  cursor: pointer;
+  font-family: inherit;
+  background: none;
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: var(--atlas-v5-line);
+  color: var(--atlas-v5-ink-2);
+}
+
+.btnGhost:hover {
+  border-color: var(--atlas-v5-ink-4);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-card-alt);
+}
+
+.btnPrimary {
+  background: var(--atlas-v5-gold);
+  color: var(--atlas-v5-white);
+}
+
+.btnPrimary:hover {
+  background: var(--atlas-v5-gold-ink);
+}
+
+.btnGroup {
+  display: flex;
+  gap: var(--atlas-v5-sp-2);
+  flex-wrap: wrap;
+}
+
+/* ── Dropzone ─────────────────────────────────────────────── */
+.dropzone {
+  border: 2px dashed var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: var(--atlas-v5-sp-9);
+  text-align: center;
+  background: var(--atlas-v5-card-alt);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: var(--atlas-v5-gold);
+  background: var(--atlas-v5-gold-wash);
+}
+
+.dropzoneIcon {
+  margin: 0 auto var(--atlas-v5-sp-2);
+  color: var(--atlas-v5-ink-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropzoneTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink-2);
+  margin-bottom: 4px;
+}
+
+.dropzoneSub {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+}
+
+.dropzoneHidden {
+  display: none;
+}
+
+/* ── Tablas internas (histórico importaciones · paralelas · etc) ── */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--atlas-v5-fs-sub);
+}
+
+.tbl td {
+  padding: 9px var(--atlas-v5-sp-3);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  vertical-align: top;
+}
+
+.tbl tr:last-child td {
+  border-bottom: none;
+}
+
+.tdRight { text-align: right; }
+.mono { font-family: var(--atlas-v5-font-mono-num); font-feature-settings: 'tnum' 1, 'lnum' 1; }
+.tStrong { font-weight: var(--atlas-v5-fw-semibold); color: var(--atlas-v5-ink); }
+.tdAmount {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-align: right;
+}
+.tdAmount.pos { color: var(--atlas-v5-pos); }
+.tdAmount.neg { color: var(--atlas-v5-neg); }
+
+/* ── Perfil fiscal · grid de 2 columnas con campos label/value ── */
+.perfilGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--atlas-v5-sp-5);
+  margin-bottom: var(--atlas-v5-sp-4);
+}
+
+@media (max-width: 640px) {
+  .perfilGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.perfilLab {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.perfilVal {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-2);
+}
+
+.perfilVal strong {
+  color: var(--atlas-v5-ink);
+}
+
+/* ── Body text genérico ────────────────────────────────────── */
+.bodyText {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.6;
+  margin-bottom: var(--atlas-v5-sp-4);
+}
+
+.bodyText strong {
+  color: var(--atlas-v5-ink);
+}
+
+.bodyText .negText {
+  color: var(--atlas-v5-neg);
+}
+
+.sectionLabel {
+  font-size: var(--atlas-v5-fs-label-sm);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 1px;
+  margin: var(--atlas-v5-sp-5) 0 var(--atlas-v5-sp-2);
+  text-transform: uppercase;
+}
+
+.emptyBlock {
+  padding: var(--atlas-v5-sp-5);
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: var(--atlas-v5-fs-sub);
+  background: var(--atlas-v5-card-alt);
+  border-radius: var(--atlas-v5-radius-sm);
+}
