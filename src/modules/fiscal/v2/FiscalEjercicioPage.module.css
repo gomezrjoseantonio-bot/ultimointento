@@ -293,6 +293,12 @@
   flex-shrink: 0;
 }
 
+/* Variantes de color del chip de letra · F3 inmueble (5 secciones) */
+.boxSectionLetterGold { background: var(--atlas-v5-gold); }
+.boxSectionLetterWarn { background: var(--atlas-v5-warn); }
+.boxSectionLetterNeg { background: var(--atlas-v5-neg); }
+.boxSectionLetterPos { background: var(--atlas-v5-pos); }
+
 .boxSectionTitle {
   font-weight: var(--atlas-v5-fw-bold);
   font-size: var(--atlas-v5-fs-h3);

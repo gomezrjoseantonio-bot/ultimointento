@@ -140,6 +140,9 @@ const FiscalEjercicios = lazyWithPreload(() => import('./modules/fiscal/pages/Ej
 // `pages/DetalleEjercicioPage` (dependiente del FiscalOutletContext)
 // por la página v2 standalone.
 const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/v2/FiscalEjercicioPage'));
+// SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 4 · F3 inmueble fiscal del año
+// página nueva · ruta /fiscal/ejercicio/:anio/inmueble/:id
+const FiscalInmuebleDetalle = lazyWithPreload(() => import('./modules/fiscal/v2/FiscalInmueblePage'));
 const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));
 const FiscalConfiguracion = lazyWithPreload(() => import('./modules/fiscal/pages/ConfiguracionPage'));
 const FiscalCalendarioCompleto = lazyWithPreload(() => import('./modules/fiscal/pages/CalendarioFiscalPage'));
@@ -834,6 +837,11 @@ function App() {
               <Route path="ejercicio/:anio" element={
                 <React.Suspense fallback={<LoadingSpinner />}>
                   <FiscalDetalleEjercicio />
+                </React.Suspense>
+              } />
+              <Route path="ejercicio/:anio/inmueble/:id" element={
+                <React.Suspense fallback={<LoadingSpinner />}>
+                  <FiscalInmuebleDetalle />
                 </React.Suspense>
               } />
               <Route path="deudas" element={

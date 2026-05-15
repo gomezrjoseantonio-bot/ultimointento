@@ -15,15 +15,31 @@ export interface BoxRowCasillaProps {
   row: BoxRow;
 }
 
-function fmtEuros(n: number | null, negativeSign?: boolean): string {
+function fmtAmount(row: BoxRow): string {
+  const n = row.importe;
   if (n === null || !Number.isFinite(n)) return '—';
+
+  // Unidad días · entero sin decimales · sin signo de euro
+  if (row.unit === 'dias') {
+    return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 }).format(n);
+  }
+  // Unidad porcentaje · 2 decimales · sufijo %
+  if (row.unit === 'pct') {
+    const fmt = new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Math.abs(n));
+    return `${fmt} %`;
+  }
+
+  // Default · euros
   if (n === 0) return '0,00 €';
   const fixed = Math.abs(n);
   const formatted = new Intl.NumberFormat('es-ES', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(fixed);
-  const sign = negativeSign ? '−' : (n < 0 ? '−' : '');
+  const sign = row.negativeSign ? '−' : (n < 0 ? '−' : '');
   return `${sign}${formatted} €`;
 }
 
@@ -46,7 +62,7 @@ const BoxRowCasilla: React.FC<BoxRowCasillaProps> = ({ row }) => {
         )}
       </div>
       <div className={`${styles.boxRowAmount} ${row.importe === null ? styles.muted : ''}`}>
-        {fmtEuros(row.importe, row.negativeSign)}
+        {fmtAmount(row)}
       </div>
     </div>
   );
