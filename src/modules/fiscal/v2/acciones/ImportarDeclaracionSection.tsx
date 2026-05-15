@@ -61,21 +61,27 @@ const ImportarDeclaracionSection: React.FC = () => {
     })();
   }, []);
 
-  // Pasamos el File al wizard via `navigate state` · evita doble selección
-  // de archivo. El wizard puede leer `useLocation().state.archivoImportado`
-  // y arrancar la importación directamente (compat backward · si no hay
-  // state, el wizard abre su propio selector como antes).
-  const navegarConArchivo = (file: File | null) => {
+  // Pasamos los archivos al wizard via `navigate state` · evita doble
+  // selección. El wizard lee `useLocation().state.archivosImportados`
+  // (siempre array · soporta drag&drop de varios ficheros a la vez). Se
+  // mantiene `archivoImportado` (singular) con el primer File por
+  // compat backward para consumidores legacy.
+  const navegarConArchivos = (files: File[]) => {
     navigate(`/fiscal/importar/${añoDestino}`, {
-      state: file ? { archivoImportado: file, nombre: file.name } : undefined,
+      state: files.length > 0 ? {
+        archivosImportados: files,
+        archivoImportado: files[0],
+        nombres: files.map((f) => f.name),
+        nombre: files[0].name,
+      } : undefined,
     });
   };
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragActive(false);
-    const file = e.dataTransfer.files?.[0] ?? null;
-    if (file) navegarConArchivo(file);
+    const files = Array.from(e.dataTransfer.files ?? []);
+    if (files.length > 0) navegarConArchivos(files);
   };
 
   const onSelectFile = () => {
@@ -83,11 +89,11 @@ const ImportarDeclaracionSection: React.FC = () => {
   };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    // Reset input para permitir re-seleccionar el mismo archivo (p.ej.
-    // tras un error en el wizard) y disparar onChange de nuevo.
+    const files = Array.from(e.target.files ?? []);
+    // Reset input para permitir re-seleccionar los mismos archivos
+    // (p.ej. tras un error en el wizard) y disparar onChange de nuevo.
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (file) navegarConArchivo(file);
+    if (files.length > 0) navegarConArchivos(files);
   };
 
   const añosDisponibles = (() => {
@@ -131,11 +137,12 @@ const ImportarDeclaracionSection: React.FC = () => {
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
         </div>
-        <div className={styles.dropzoneTitle}>Arrastra aquí XML · PDF · TXT del Modelo 100</div>
-        <div className={styles.dropzoneSub}>o haz click para seleccionar archivo</div>
+        <div className={styles.dropzoneTitle}>Arrastra aquí uno o varios archivos XML · PDF · TXT del Modelo 100</div>
+        <div className={styles.dropzoneSub}>o haz click para seleccionar (puedes elegir varios)</div>
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className={styles.dropzoneHidden}
           accept=".xml,.pdf,.txt"
           onChange={onFileChange}
