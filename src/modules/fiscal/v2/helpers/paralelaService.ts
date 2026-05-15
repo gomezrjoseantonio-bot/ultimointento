@@ -30,11 +30,22 @@ export async function getParalelaInfo(año: number): Promise<ParalelaInfo> {
     const decl = coord?.aeat?.declaracionCompleta as
       | { meta?: { esComplementaria?: boolean; declaracionPrevia?: { justificante?: string } } }
       | undefined;
-    const esComplementaria = Boolean(decl?.meta?.esComplementaria);
+    const flag = Boolean(decl?.meta?.esComplementaria);
+    const justAnterior = decl?.meta?.declaracionPrevia?.justificante?.trim();
+    // Requerimos AMBOS para considerar la declaración "Complementaria":
+    // (1) el flag `esComplementaria` que el parser XML deriva de los nodos
+    //     `Z9`/`Z24` en `OtraDeclaracion`, y
+    // (2) un `declaracionPrevia.justificante` no vacío (toda complementaria
+    //     real corrige una previa identificada por justificante).
+    // Z9/Z24 también puede aparecer en declaraciones con autoliquidación
+    // rectificativa parcial sin que sea realmente una complementaria — sin
+    // justificante anterior no la marcamos. Esto evita la falsa positiva
+    // observada en la 2024 de Jose (cuyas paralelas reales son 2022 y 2023).
+    const esComplementaria = flag && Boolean(justAnterior);
     if (!esComplementaria) return DEFAULT_INFO;
     return {
       esComplementaria: true,
-      justificanteAnterior: decl?.meta?.declaracionPrevia?.justificante,
+      justificanteAnterior: justAnterior,
       versionLabel: 'v2',
     };
   } catch {

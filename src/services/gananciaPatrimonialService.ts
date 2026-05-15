@@ -77,8 +77,12 @@ const yearFromIso = (iso: string | undefined | null): number | null => {
  * Cuenta los días del año `anio` en que el inmueble estaba arrendado.
  * En el año de venta cuenta solo hasta `sellDate`.
  * Se apoya en `contracts` filtrando por (fechaInicio | startDate, fechaFin | endDate).
+ *
+ * Exportado para que el helper de UI `amortizacionAcumuladaService` pueda
+ * prorratear la fila del año de venta usando exactamente la misma lógica
+ * que el motor (la suma de filas debe coincidir con el total del snapshot).
  */
-const calcularDiasArrendadoAno = (
+export const calcularDiasArrendadoAno = (
   contratos: Contract[],
   anio: number,
   sellDate: string,

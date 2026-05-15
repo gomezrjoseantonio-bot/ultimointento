@@ -16,9 +16,10 @@
  */
 
 import { initDB } from '../../../../services/db';
-import type { Property } from '../../../../services/db';
+import type { Property, Contract } from '../../../../services/db';
 import { getRentalDaysForYear } from '../../../../services/aeatAmortizationService';
 import { calcularAmortizacionMobiliarioAnual } from '../../../../services/mobiliarioActivoService';
+import { calcularDiasArrendadoAno } from '../../../../services/gananciaPatrimonialService';
 
 export interface AmortRow {
   año: number;
@@ -56,6 +57,16 @@ function getPositiveNumber(n: unknown): number | null {
 export async function getAmortizacionAcumulada(
   propertyId: number,
   añoCorte: number,
+  /**
+   * Fecha de venta (ISO) opcional. Cuando se proporciona, todas las filas
+   * se calculan con `calcularDiasArrendadoAno` (la misma lógica del motor
+   * que construye `snapshot.amortizacionAcumulada*` en
+   * `gananciaPatrimonialService.calcularAmortizacionAcumulada`), de modo
+   * que `Σ filas = total`. Sin `sellDate` (caso `FiscalInmueblePage`) se
+   * usa `getRentalDaysForYear` que mira `propertyDays` + contratos
+   * activos pero NO recorta por fecha de venta.
+   */
+  sellDate?: string,
 ): Promise<AmortizacionAcumuladaData> {
   const db = await initDB();
   const property = (await db.get('properties', propertyId)) as Property | undefined;
@@ -87,15 +98,41 @@ export async function getAmortizacionAcumulada(
   const desde = Math.min(purchaseYear, añoCorte);
   const hasta = añoCorte + 1;
 
+  // Modo venta: si `sellDate` está dentro del rango iterado [desde..hasta]
+  // cargamos los contratos del inmueble UNA sola vez y los reutilizamos
+  // para todas las filas con `calcularDiasArrendadoAno`. Replicamos el
+  // patrón `getAll + filter (inmuebleId || propertyId)` del motor para
+  // capturar también contratos legacy que sólo tienen `inmuebleId`
+  // (el índice IDB `contracts/propertyId` los perdería).
+  const añoVenta = yearFromIso(sellDate);
+  const modoVenta = añoVenta !== null && añoVenta >= desde && añoVenta <= hasta;
+  let contratosDelInmueble: Contract[] = [];
+  if (modoVenta) {
+    const allContracts = (await db.getAll('contracts')) as Contract[];
+    contratosDelInmueble = allContracts.filter(
+      (c) => c.inmuebleId === propertyId || c.propertyId === propertyId,
+    );
+  }
+
   const rows: AmortRow[] = [];
   let acumulado = 0;
 
   for (let año = desde; año <= hasta; año++) {
     const diasAño = isLeapYear(año) ? 366 : 365;
     let dias = 0;
-    try {
-      dias = await getRentalDaysForYear(propertyId, año);
-    } catch { dias = 0; }
+    // En modo venta usamos `calcularDiasArrendadoAno` para TODOS los años
+    // — no sólo el de venta — para alinear el desglose por años con el
+    // total que el motor produce en `snapshot.amortizacionAcumulada*`.
+    // `getRentalDaysForYear` puede divergir (prioriza `propertyDays` y,
+    // al caer a contratos, toma el máximo entre contratos activos en vez
+    // de la unión, lo que infracontaría con contratos secuenciales).
+    if (modoVenta) {
+      dias = calcularDiasArrendadoAno(contratosDelInmueble, año, sellDate as string);
+    } else {
+      try {
+        dias = await getRentalDaysForYear(propertyId, año);
+      } catch { dias = 0; }
+    }
     if (!Number.isFinite(dias) || dias < 0) dias = 0;
 
     let amortInmueble = 0;
