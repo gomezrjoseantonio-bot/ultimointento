@@ -18,6 +18,7 @@ import {
   loadVentaConSnapshot,
   type VentaCalculoData,
 } from './helpers/ventaCalculoService';
+import { getPerdidasPatrimonialesVivas } from './helpers/arrastresVivosService';
 import type { GananciaPatrimonialResult } from '../../../services/gananciaPatrimonialService';
 import VentaHeader from './VentaHeader';
 import VentaKpiStrip from './VentaKpiStrip';
@@ -112,30 +113,16 @@ const FiscalVentaPage: React.FC = () => {
       setSnapshot(loaded.snapshot);
 
       // Snapshot de arrastres ANTES de aplicar (informativo para la nota)
+      // · reutiliza el mismo helper compartido que `buildVentaCalculo`
+      //   para que no haya drift entre la lista que se muestra en la nota
+      //   y la que efectivamente se compensa en el Step 4.
       const año = isoYear(loaded.sale.saleDate) ?? añoEjercicio;
-      const arrastresPre: Array<{ origen: number; caduca: number; importe: number }> = [];
-      try {
-        const { initDB } = await import('../../../services/db');
-        const db = await initDB();
-        const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as Array<{
-          ejercicioOrigen: number;
-          ejercicioCaducidad: number;
-          importePendiente: number;
-          estado: string;
-        }>;
-        for (const p of todas) {
-          if (p.importePendiente <= 0) continue;
-          if (p.ejercicioCaducidad < año) continue;
-          if (p.estado === 'caducado') continue;
-          arrastresPre.push({
-            origen: p.ejercicioOrigen,
-            caduca: p.ejercicioCaducidad,
-            importe: p.importePendiente,
-          });
-        }
-        arrastresPre.sort((a, b) => a.caduca - b.caduca);
-      } catch { /* sin arrastres · OK */ }
-      setArrastresAntes(arrastresPre);
+      const perdidasVivas = await getPerdidasPatrimonialesVivas(año);
+      setArrastresAntes(perdidasVivas.map((p) => ({
+        origen: p.origen,
+        caduca: p.ejercicioCaducidad,
+        importe: p.importePendiente,
+      })));
 
       const data = await buildVentaCalculo({
         sale: loaded.sale,
@@ -170,10 +157,17 @@ const FiscalVentaPage: React.FC = () => {
   }
 
   if (notFound || !sale || !property || !snapshot || !calculo) {
+    // Usamos los strings raw de la ruta (no `Number(...)`) para no
+    // mostrar "NaN" cuando los params son inválidos · si están vacíos
+    // mostramos un mensaje genérico.
+    const ventaTxt = ventaId && Number.isFinite(Number(ventaId)) ? ventaId : 'desconocida';
+    const añoTxt = anio && Number.isFinite(Number(anio)) ? anio : 'desconocido';
     return (
       <div className={ejercStyles.page}>
         <div className={ejercStyles.empty}>
-          No se encontró la venta {idVenta} del ejercicio {añoEjercicio}.
+          {ventaTxt === 'desconocida' || añoTxt === 'desconocido'
+            ? 'Ruta de venta inválida.'
+            : `No se encontró la venta ${ventaTxt} del ejercicio ${añoTxt}.`}
         </div>
       </div>
     );
@@ -210,7 +204,7 @@ const FiscalVentaPage: React.FC = () => {
 
       {optimizaciones.length > 0 && (
         <OptimizacionesNote
-          inmuebleId={sale.id ?? sale.propertyId}
+          inmuebleId={sale.propertyId}
           año={añoEjercicio}
           lineas={optimizaciones}
         />

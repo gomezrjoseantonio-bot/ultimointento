@@ -122,65 +122,9 @@
   font-weight: var(--atlas-v5-fw-bold);
 }
 
-/* Nota descartable · reutiliza estructura de F3 */
-.noteBlock {
-  background: var(--atlas-v5-card);
-  border: 1px solid var(--atlas-v5-gold-soft);
-  border-left: 3px solid var(--atlas-v5-gold);
-  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
-  border-radius: var(--atlas-v5-radius-md);
-  margin-bottom: var(--atlas-v5-sp-4);
-  position: relative;
-}
-
-.noteClose {
-  position: absolute;
-  top: 10px;
-  right: var(--atlas-v5-sp-3);
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--atlas-v5-ink-3);
-  font-size: 14px;
-  cursor: pointer;
-  line-height: 1;
-  background: none;
-  border: none;
-}
-
-.noteClose:hover {
-  background: var(--atlas-v5-gold-wash);
-  color: var(--atlas-v5-ink);
-}
-
-.noteTitle {
-  font-weight: var(--atlas-v5-fw-bold);
-  color: var(--atlas-v5-brand-ink);
-  font-size: var(--atlas-v5-fs-sub);
-  margin-bottom: var(--atlas-v5-sp-1);
-}
-
-.noteBody {
-  font-size: 12.5px;
-  color: var(--atlas-v5-ink-2);
-  line-height: 1.6;
-  padding-right: 28px;
-}
-
-.noteBody p {
-  margin: 0 0 var(--atlas-v5-sp-1);
-}
-
-.noteBody p:last-child {
-  margin-bottom: 0;
-}
-
-.noteBody strong {
-  color: var(--atlas-v5-ink);
-}
+/* Nota descartable · estilos centralizados en FiscalInmueblePage.module.css
+   (importados desde OptimizacionesNote.tsx) · no duplicamos las reglas
+   `.noteBlock`/`.noteClose`/`.noteTitle`/`.noteBody` aquí. */
 
 .pillBorrador {
   background: var(--atlas-v5-gold-wash);

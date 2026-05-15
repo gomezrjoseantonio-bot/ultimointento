@@ -11,9 +11,11 @@
 import { initDB, type PropertySale, type Property } from '../../../../services/db';
 import {
   calcularGananciaPatrimonial,
+  TRAMOS_BASE_AHORRO_2025,
   type GananciaPatrimonialResult,
 } from '../../../../services/gananciaPatrimonialService';
 import { getAmortizacionAcumulada } from './amortizacionAcumuladaService';
+import { getPerdidasPatrimonialesVivas } from './arrastresVivosService';
 
 export interface VentaCalcLine {
   /** Operador visible · '+', '−', '×', '=' · '' para indent puro */
@@ -48,45 +50,9 @@ export interface VentaCalculoData {
   arrastresCompensados: number;
 }
 
-interface ArrastrePerdidaVivo {
-  origen: number;
-  importePendiente: number;
-  caduca: number;
-}
-
-async function getArrastresParaCompensar(añoVenta: number): Promise<ArrastrePerdidaVivo[]> {
-  const db = await initDB();
-  try {
-    const todas = (await db.getAll('perdidasPatrimonialesAhorro')) as Array<{
-      ejercicioOrigen: number;
-      importePendiente: number;
-      ejercicioCaducidad: number;
-      estado: string;
-    }>;
-    return todas
-      .filter((p) => p.importePendiente > 0 && p.ejercicioCaducidad >= añoVenta && p.estado !== 'caducado')
-      .sort((a, b) => a.ejercicioCaducidad - b.ejercicioCaducidad) // FIFO por caducidad
-      .map((p) => ({
-        origen: p.ejercicioOrigen,
-        importePendiente: p.importePendiente,
-        caduca: p.ejercicioCaducidad,
-      }));
-  } catch {
-    return [];
-  }
-}
-
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
-
-const TRAMOS_2025 = [
-  { hasta: 6000, tipo: 0.19 },
-  { hasta: 50000, tipo: 0.21 },
-  { hasta: 200000, tipo: 0.23 },
-  { hasta: 300000, tipo: 0.27 },
-  { hasta: Number.POSITIVE_INFINITY, tipo: 0.28 },
-];
 
 interface TramoAplicado {
   desde: number;
@@ -101,7 +67,8 @@ function desglosarImpuestoPorTramos(ganancia: number): TramoAplicado[] {
   const aplicados: TramoAplicado[] = [];
   let restante = ganancia;
   let prev = 0;
-  for (const tramo of TRAMOS_2025) {
+  // Reutiliza la constante única del motor · evita drift si AEAT cambia tramos
+  for (const tramo of TRAMOS_BASE_AHORRO_2025) {
     const slice = Math.min(restante, tramo.hasta - prev);
     if (slice <= 0) break;
     aplicados.push({
@@ -280,7 +247,7 @@ export async function buildVentaCalculo(opts: BuildOpts): Promise<VentaCalculoDa
   };
 
   // ─── Step 4 · Compensación con arrastres (casillas 1264-1269) ──────────
-  const arrastres = await getArrastresParaCompensar(añoVenta);
+  const arrastres = await getPerdidasPatrimonialesVivas(añoVenta);
   let saldoACompensar = snapshot.gananciaPatrimonial;
   const lineasArrastres: VentaCalcLine[] = [];
   let totalCompensado = 0;
@@ -289,7 +256,7 @@ export async function buildVentaCalculo(opts: BuildOpts): Promise<VentaCalculoDa
     const aplicar = Math.min(ar.importePendiente, saldoACompensar);
     lineasArrastres.push({
       op: '−',
-      text: `Saldo ${ar.origen} (caduca 31/12/${ar.caduca})`,
+      text: `Saldo ${ar.origen} (caduca 31/12/${ar.ejercicioCaducidad})`,
       amount: aplicar,
       negativeAmount: true,
     });
