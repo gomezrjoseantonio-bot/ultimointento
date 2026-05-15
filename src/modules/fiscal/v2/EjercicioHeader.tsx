@@ -41,8 +41,13 @@ function fuenteLabel(fuente: DatosFiscalesEjercicio['fuente']): string | null {
 
 function formatIsoDateAsEs(iso?: string | null): string | null {
   if (!iso) return null;
-  const [y, m, d] = iso.split('-');
+  // Tolera ISO completos (`2026-05-15T20:56:56.404Z`): truncamos a la
+  // parte YYYY-MM-DD antes de partir. Sin slice, los segundos arrastran
+  // hasta el componente `d` y la fecha se renderizaba como
+  // "15T20:56:56.404Z/05/2026".
+  const [y, m, d] = iso.slice(0, 10).split('-');
   if (!y || !m || !d) return null;
+  if (y.length !== 4 || m.length !== 2 || d.length !== 2) return null;
   return `${d}/${m}/${y}`;
 }
 

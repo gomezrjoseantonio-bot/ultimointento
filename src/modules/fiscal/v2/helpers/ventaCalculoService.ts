@@ -146,7 +146,11 @@ export async function buildVentaCalculo(opts: BuildOpts): Promise<VentaCalculoDa
   // ─── Step 2 · Valor adquisición actualizado (casilla 0317) ──────────────
   let amortPorAño: Array<{ año: number; diasArrendado: number; importeInmueble: number; importeMobiliario: number }> = [];
   try {
-    const acum = await getAmortizacionAcumulada(property.id!, añoVenta);
+    // Pasamos `sale.saleDate` para que la fila del año de venta prorratee
+    // los días hasta la fecha real de la transmisión (la misma lógica que
+    // el motor aplica al calcular el total). Sin esto, la fila de 2025
+    // del caso Jose sumaba 365 días completos y descuadraba el total.
+    const acum = await getAmortizacionAcumulada(property.id!, añoVenta, sale.saleDate);
     amortPorAño = acum.rows
       .filter((r) => !r.esFuturo)
       .map((r) => ({
