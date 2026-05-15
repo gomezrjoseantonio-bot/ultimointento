@@ -1,0 +1,188 @@
+/* ============================================================
+   ATLAS · F4 Fiscal Venta v2
+   SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 5
+   Mockup canónico · docs/audit-inputs/atlas-fiscal-v3.html#page-venta
+   Solo añade clases específicas de calc-step · reutiliza tokens y
+   layout del FiscalEjercicioPage.module.css.
+   ============================================================ */
+
+.calcStep {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-4);
+  overflow: hidden;
+}
+
+.calcStepHd {
+  padding: var(--atlas-v5-sp-3) var(--atlas-v5-sp-6);
+  background: var(--atlas-v5-card-alt);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-sub);
+  gap: var(--atlas-v5-sp-3);
+}
+
+.casillaRef {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  white-space: nowrap;
+}
+
+.calcLine {
+  display: grid;
+  grid-template-columns: 24px 1fr 140px;
+  align-items: center;
+  padding: 9px var(--atlas-v5-sp-6);
+  gap: var(--atlas-v5-sp-3);
+  font-size: var(--atlas-v5-fs-sub);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+}
+
+.calcLine:last-child {
+  border-bottom: none;
+}
+
+.calcLine.indent1 {
+  padding-left: 46px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card-alt);
+}
+
+.calcLine.indent2 {
+  padding-left: 66px;
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  background: var(--atlas-v5-card-alt);
+  font-style: italic;
+}
+
+.calcOp {
+  font-family: var(--atlas-v5-font-mono-num);
+  color: var(--atlas-v5-ink-3);
+  font-weight: var(--atlas-v5-fw-semibold);
+  font-size: var(--atlas-v5-fs-base);
+  text-align: center;
+}
+
+.calcText {
+  color: var(--atlas-v5-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calcAmt {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-align: right;
+  color: var(--atlas-v5-ink);
+  white-space: nowrap;
+}
+
+.calcAmt.negOp {
+  color: var(--atlas-v5-neg);
+}
+
+.calcAmt.pend {
+  color: var(--atlas-v5-ink-3);
+  font-style: italic;
+  font-weight: var(--atlas-v5-fw-regular);
+}
+
+.calcLine.subtotal {
+  background: var(--atlas-v5-card-alt);
+  font-weight: var(--atlas-v5-fw-bold);
+  border-top: 1px solid var(--atlas-v5-line);
+}
+
+.calcLine.subtotal .calcAmt {
+  font-size: var(--atlas-v5-fs-base);
+  color: var(--atlas-v5-ink);
+}
+
+.calcLine.final {
+  background: var(--atlas-v5-brand-ink);
+  color: var(--atlas-v5-white);
+}
+
+.calcLine.final .calcOp,
+.calcLine.final .calcText,
+.calcLine.final .calcAmt {
+  color: var(--atlas-v5-white);
+}
+
+.calcLine.final .calcAmt {
+  font-size: var(--atlas-v5-fs-h3);
+  font-weight: var(--atlas-v5-fw-bold);
+}
+
+/* Nota descartable · reutiliza estructura de F3 */
+.noteBlock {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-left: 3px solid var(--atlas-v5-gold);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-4);
+  position: relative;
+}
+
+.noteClose {
+  position: absolute;
+  top: 10px;
+  right: var(--atlas-v5-sp-3);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+.noteClose:hover {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-ink);
+}
+
+.noteTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-brand-ink);
+  font-size: var(--atlas-v5-fs-sub);
+  margin-bottom: var(--atlas-v5-sp-1);
+}
+
+.noteBody {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.6;
+  padding-right: 28px;
+}
+
+.noteBody p {
+  margin: 0 0 var(--atlas-v5-sp-1);
+}
+
+.noteBody p:last-child {
+  margin-bottom: 0;
+}
+
+.noteBody strong {
+  color: var(--atlas-v5-ink);
+}
+
+.pillBorrador {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}

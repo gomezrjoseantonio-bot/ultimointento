@@ -91,11 +91,13 @@ const FiscalPage: React.FC = () => {
 
   // Detalle de ejercicio · `/fiscal/ejercicio/:anio` (sub-tarea 3)
   // Detalle de inmueble · `/fiscal/ejercicio/:anio/inmueble/:id` (sub-tarea 4)
-  // Ambas son standalone · ocultamos las tabs principales y dejamos que
+  // Detalle de venta · `/fiscal/ejercicio/:anio/venta/:ventaId` (sub-tarea 5)
+  // Todas son standalone · ocultamos las tabs principales y dejamos que
   // la página renderice su propio breadcrumb.
   const isDetail =
     /^\/fiscal\/ejercicio\/[^/]+$/.test(location.pathname)
-    || /^\/fiscal\/ejercicio\/[^/]+\/inmueble\/[^/]+$/.test(location.pathname);
+    || /^\/fiscal\/ejercicio\/[^/]+\/inmueble\/[^/]+$/.test(location.pathname)
+    || /^\/fiscal\/ejercicio\/[^/]+\/venta\/[^/]+$/.test(location.pathname);
 
   // SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2 · la página F1 v2
   // (`/fiscal` index) trae su propio header + KPI strip + tabs.
