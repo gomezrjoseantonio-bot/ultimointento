@@ -365,8 +365,12 @@ export function buildSeccionG(d: DatosFiscalesEjercicio): BoxSection {
   const r = d.resumen;
   const liq = d.declaracionCompleta?.liquidacion;
 
-  const box0435 = getCasilla(c, '0435') ?? safeNum(r.baseLiquidableGeneral) ?? safeNum(liq?.baseImponibleGeneral);
-  const box0460 = getCasilla(c, '0460') ?? safeNum(r.baseLiquidableAhorro) ?? safeNum(liq?.baseImponibleAhorro);
+  // 0435 es la base imponible general · NO la liquidable. El bug histórico
+  // mezclaba ambas y mostraba la BL (147.665,23 para Jose 2024) en lugar de
+  // la BIG (150.924,07). `d.baseImponibleGeneral` viene del coord vía
+  // `resumenCoord.baseImponibleGeneral` que escribe `guardarEjercicioFiscal`.
+  const box0435 = getCasilla(c, '0435') ?? safeNum(d.baseImponibleGeneral) ?? safeNum(liq?.baseImponibleGeneral);
+  const box0460 = getCasilla(c, '0460') ?? safeNum(d.baseImponibleAhorro) ?? safeNum(liq?.baseImponibleAhorro);
   const box0500 = getCasilla(c, '0500') ?? safeNum(r.baseLiquidableGeneral);
   const box0510 = getCasilla(c, '0510') ?? safeNum(r.baseLiquidableAhorro);
 

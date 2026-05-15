@@ -14,6 +14,12 @@ import { getDeclaracion, getEjercicio, getTodosLosEjercicios } from './ejercicio
 import type { EjercicioFiscalCoord, ResumenFiscal } from './ejercicioResolverService';
 import { obtenerDeclaracionParaEjercicio } from './declaracionResolverService';
 import type { DeclaracionIRPF } from './irpfCalculationService';
+import {
+  declaracionCompletaToIRPF,
+  buildPropertyMap,
+} from './declaracionCompletaToIRPFAdapter';
+import type { DeclaracionCompleta } from '../types/declaracionCompleta';
+import type { Property } from './db';
 
 // ═══════════════════════════════════════════════
 // TIPOS
@@ -172,6 +178,44 @@ function buildEmptyResult(año: number): DatosFiscalesEjercicio {
 }
 
 // ═══════════════════════════════════════════════
+// Lectura de declaracionCompleta desde el coord
+// ═══════════════════════════════════════════════
+
+/**
+ * Recupera la `DeclaracionIRPF` (forma motor Atlas) para un ejercicio
+ * declarado, leyéndola del coord en `aeat.declaracionCompleta` y pasándola
+ * por el adapter `declaracionCompletaToIRPF`. Si el coord no la tiene,
+ * cae al store legacy `snapshotsDeclaracion` vía `obtenerDeclaracionParaEjercicio`.
+ *
+ * Devuelve `null` cuando ninguna fuente aporta datos · el caller debe
+ * tolerarlo y pintar la sección como vacía.
+ */
+async function resolverDeclaracionCompletaDelCoord(
+  coordEj: EjercicioFiscalCoord | null,
+  año: number,
+): Promise<DeclaracionIRPF | null> {
+  const declCompletaRaw = coordEj?.aeat?.declaracionCompleta as DeclaracionCompleta | undefined;
+  if (declCompletaRaw) {
+    try {
+      const db = await initDB();
+      const properties = (await db.getAll('properties')) as Property[];
+      const propertyMap = buildPropertyMap(properties);
+      return declaracionCompletaToIRPF(declCompletaRaw, propertyMap);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[fiscalResolverService] adapter falló para', año, err);
+    }
+  }
+  try {
+    const result = await obtenerDeclaracionParaEjercicio(año);
+    if (result.fuente === 'declarado' || result.fuente === 'importado') {
+      return result.declaracion;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+// ═══════════════════════════════════════════════
 // Desde snapshot AEAT (casillas) — AÑOS DECLARADOS
 // ═══════════════════════════════════════════════
 
@@ -324,15 +368,11 @@ export async function resolverDatosEjercicio(año: number): Promise<DatosFiscale
   if (estado === 'declarado' || (estado === 'pendiente' && (coordEj?.aeat || hasPDF))) {
     // AEAT snapshot from coordEj takes priority
     if (coordSnapshot && Object.keys(coordSnapshot).length > 0) {
-      // Try to also get declaracionCompleta from snapshotsDeclaracion store
-      let declCompleta: DeclaracionIRPF | null = null;
-      try {
-        const result = await obtenerDeclaracionParaEjercicio(año);
-        if (result.fuente === 'declarado' || result.fuente === 'importado') {
-          declCompleta = result.declaracion;
-        }
-      } catch { /* ignore */ }
-
+      // Source of truth para el desglose A–F: `aeat.declaracionCompleta`
+      // del coord (forma `DeclaracionCompleta`, schema XML). El adapter la
+      // convierte a `DeclaracionIRPF` para los builders de UI. Si no está,
+      // caemos al store antiguo `snapshotsDeclaracion` por compatibilidad.
+      const declCompleta = await resolverDeclaracionCompletaDelCoord(coordEj, año);
       return resolverDesdeSnapshot(año, coordSnapshot, fuente, coordResumen, declCompleta);
     }
 
