@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Upload, CheckCircle2 } from 'lucide-react';
 import { parseIrpfXml } from '../../../../services/irpfXmlParserService';
@@ -14,6 +14,13 @@ interface ImportarDeclaracionWizardProps {
   defaultMethod?: MetodoEntrada;
   embedded?: boolean;
   onBack?: () => void;
+  /**
+   * Archivo preseleccionado · se carga directamente en el step 1 sin
+   * que el usuario tenga que volver a soltar el archivo. Útil cuando se
+   * navega al wizard desde F6 (`/fiscal/acciones`) con drag&drop ya
+   * realizado en la dropzone de la página de acciones.
+   */
+  initialFile?: File | null;
 }
 
 // ─── Design tokens V4 ────────────────────────────────────────────────────────
@@ -924,15 +931,28 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({
   defaultMethod = 'xml',
   embedded = false,
   onBack,
+  initialFile = null,
 }) => {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [metodo, setMetodo] = useState<MetodoEntrada>(defaultMethod === 'formulario' ? 'xml' : defaultMethod);
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile);
   const [error, setError] = useState<string | null>(null);
   const [declaracion, setDeclaracion] = useState<DeclaracionCompleta | null>(null);
   const [informe, setInforme] = useState<InformeDistribucion | null>(null);
   const [distribuyendo, setDistribuyendo] = useState(false);
   const [confirming, setConfirming] = useState(false);
+
+  // Si el caller monta el wizard con un `initialFile` (caso típico: F6
+  // dropzone preselecciona el archivo y navega aquí) lo aplicamos como
+  // selección inicial para que el usuario no tenga que volver a
+  // soltarlo. Solo lo aplicamos al montar/cambiar de archivo entrante,
+  // no se resetea si el usuario luego cambia de selección manualmente.
+  useEffect(() => {
+    if (initialFile) {
+      setFile(initialFile);
+      setError(null);
+    }
+  }, [initialFile]);
 
   const handleFile = (f: File) => {
     setFile(f);
