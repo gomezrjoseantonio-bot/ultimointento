@@ -84,7 +84,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
       : href.startsWith('/fiscal/borrador/')
         ? import('../modules/fiscal/pages/BorradorIRPFPage')
         : href.startsWith('/fiscal/ejercicio/')
-          ? import('../modules/fiscal/pages/DetalleEjercicioPage')
+          ? import('../modules/fiscal/v2/FiscalEjercicioPage')
           : href.startsWith('/fiscal/ejercicios')
             ? import('../modules/fiscal/pages/EjerciciosPage')
             : href.startsWith('/fiscal/deudas')
