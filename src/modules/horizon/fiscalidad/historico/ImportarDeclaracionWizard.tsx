@@ -305,8 +305,10 @@ function Paso1({
     setDragging(false);
     const f = e.dataTransfer.files[0];
     if (!f) return;
-    if (f.name.toLowerCase().endsWith('.xml')) setMetodo('xml');
-    else if (f.name.toLowerCase().endsWith('.pdf')) setMetodo('pdf');
+    // .xml y .txt comparten parser (export AEAT en texto plano)
+    const lower = f.name.toLowerCase();
+    if (lower.endsWith('.xml') || lower.endsWith('.txt')) setMetodo('xml');
+    else if (lower.endsWith('.pdf')) setMetodo('pdf');
     onFile(f);
   };
 
@@ -422,17 +424,17 @@ function Paso1({
             <div>
               <Upload size={28} color={GREY_400} style={{ marginBottom: '0.5rem' }} />
               <div style={{ fontWeight: 500, color: GREY_700, fontSize: '0.88rem' }}>
-                Arrastra tu fichero {metodo === 'xml' ? '.xml' : '.pdf'} aquí o haz clic
+                Arrastra tu fichero {metodo === 'xml' ? '.xml o .txt' : '.pdf'} aquí o haz clic
               </div>
               <div style={{ fontSize: '0.75rem', color: GREY_400, marginTop: '0.25rem' }}>
-                {metodo === 'xml' ? 'Fichero XML de la AEAT (Modelo 100)' : 'Fichero PDF de la declaración'}
+                {metodo === 'xml' ? 'Fichero XML o TXT de la AEAT (Modelo 100)' : 'Fichero PDF de la declaración'}
               </div>
             </div>
           )}
           <input
             ref={inputRef}
             type="file"
-            accept={metodo === 'xml' ? '.xml' : '.pdf'}
+            accept={metodo === 'xml' ? '.xml,.txt' : '.pdf'}
             style={{ display: 'none' }}
             onChange={handleInputChange}
           />
@@ -948,13 +950,13 @@ const ImportarDeclaracionWizard: React.FC<ImportarDeclaracionWizardProps> = ({
   // soltarlo. Solo lo aplicamos al montar/cambiar de archivo entrante,
   // no se resetea si el usuario luego cambia de selección manualmente.
   // Replicamos el comportamiento del drop handler interno (líneas
-  // 308-310) · derivamos `metodo` desde la extensión del archivo para
-  // que un PDF entrante no quede en flujo XML y `handleNext` no intente
-  // parsearlo con `parseIrpfXml`.
+  // 308-310) · derivamos `metodo` desde la extensión del archivo:
+  //   · .xml / .txt → 'xml' (export AEAT en plano texto · mismo parser)
+  //   · .pdf        → 'pdf'
   useEffect(() => {
     if (initialFile) {
       const name = initialFile.name.toLowerCase();
-      if (name.endsWith('.xml')) setMetodo('xml');
+      if (name.endsWith('.xml') || name.endsWith('.txt')) setMetodo('xml');
       else if (name.endsWith('.pdf')) setMetodo('pdf');
       setFile(initialFile);
       setError(null);
