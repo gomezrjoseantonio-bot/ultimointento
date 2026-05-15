@@ -567,7 +567,15 @@ export const calculateFiscalSummaryExtended = async (
       (summary.box0115 ?? 0);
     const amortizacionInmueble = summary.box0131 ?? 0;
     const amortizacionMobiliario = summary.box0117 ?? 0;
-    const amortizacionMejoras = summary.box0129 ?? 0;
+    // box0129 = "Mejoras realizadas en el ejercicio" (CAPEX completo, no
+    // amortización deducible). La amortización anual de mejoras se reparte
+    // a 3% durante la vida útil y se acumula vía `aeatAmortizationService` /
+    // `getTotalMejorasHastaEjercicio`, pero el desglose por año aún no se
+    // expone como casilla independiente. Usamos 0 aquí para no restar el
+    // CAPEX completo (lo que distorsionaría el rendimiento neto). Cuando
+    // exista un servicio que devuelva el cargo anual de amortización de
+    // mejoras del ejercicio, sustituir este 0.
+    const amortizacionMejoras = 0;
 
     box0149 = round2(
       ingresos

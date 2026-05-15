@@ -446,10 +446,19 @@ export interface TimelineAño {
 const PRESCRIPCION_AÑOS = 4;
 
 function calcularFechaPrescripcion(añoEjercicio: number): string {
-  const finCampaña = new Date(añoEjercicio + 1, 5, 30);
-  const fechaPrescripcion = new Date(finCampaña);
-  fechaPrescripcion.setFullYear(finCampaña.getFullYear() + PRESCRIPCION_AÑOS);
+  // Construir en UTC para que toISOString().slice(0,10) no haga shift de día
+  // por timezone local (off-by-one en zonas distintas de UTC).
+  const fechaPrescripcion = new Date(Date.UTC(
+    añoEjercicio + 1 + PRESCRIPCION_AÑOS,
+    5, // junio (0-indexed)
+    30,
+  ));
   return fechaPrescripcion.toISOString().slice(0, 10);
+}
+
+function yaPrescrito(añoEjercicio: number, hoy: Date): boolean {
+  const fechaPrescripcion = calcularFechaPrescripcion(añoEjercicio);
+  return new Date(fechaPrescripcion) < hoy;
 }
 
 function fechaLimiteIRPFAnual(añoEjercicio: number): string {
@@ -472,7 +481,6 @@ export async function getTimelineMultiAño(minAño: number, maxAño: number): Pr
   if (minAño > maxAño) return [];
   const años = Array.from({ length: maxAño - minAño + 1 }, (_, i) => minAño + i);
   const hoy = new Date();
-  const añoActual = hoy.getFullYear();
 
   const results = await Promise.all(
     años.map(async (año) => {
@@ -489,10 +497,16 @@ export async function getTimelineMultiAño(minAño: number, maxAño: number): Pr
         importe: datos.resultado ?? undefined,
       });
 
-      // Prescripción · 4 años desde fin de campaña (30/06)
-      const prescribe = año < añoActual - PRESCRIPCION_AÑOS
-        ? null
-        : calcularFechaPrescripcion(año);
+      // Prescripción · 4 años desde fin de campaña (30/06).
+      // prescribe = ISO date · null si el ejercicio ya prescribió o está en curso.
+      let prescribe: string | null;
+      if (datos.estado === 'en_curso') {
+        prescribe = null;
+      } else if (yaPrescrito(año, hoy)) {
+        prescribe = null;
+      } else {
+        prescribe = calcularFechaPrescripcion(año);
+      }
 
       return {
         año,
@@ -606,8 +620,10 @@ export async function getResumenGlobal(): Promise<ResumenGlobalFiscal> {
     if (ej.estado === 'en_curso') enCurso++;
     else if (ej.estado === 'pendiente') pendientes++;
     else if (ej.estado === 'declarado') {
-      // ejercicios > 4 años atrás = prescritos
-      if (ej.año <= añoActual - PRESCRIPCION_AÑOS - 1) prescritos++;
+      // Prescritos = la fecha de prescripción real ya ha pasado
+      // (30/06 del año siguiente al ejercicio + 4 años). Los demás
+      // declarados no prescritos se cuentan como `declarados`.
+      if (yaPrescrito(ej.año, hoy)) prescritos++;
       else declarados++;
     }
   }

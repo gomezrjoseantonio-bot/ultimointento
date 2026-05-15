@@ -121,6 +121,24 @@ describe('fiscalResolverService · sub-tarea 1', () => {
       expect(r.enCurso + r.pendientes + r.declarados + r.prescritos).toBe(r.totalEjercicios);
     });
 
+    it('distribución coherente con la ventana de 7 años (enCurso=1 · pendientes ≤ 1 · declarados+prescritos = 5 o 6)', async () => {
+      const r = await getResumenGlobal();
+      const hoy = new Date();
+      const finCampaña = new Date(Date.UTC(hoy.getUTCFullYear(), 5, 30));
+      const esperaPendiente = hoy <= finCampaña;
+      // Año actual siempre en_curso
+      expect(r.enCurso).toBe(1);
+      // Año anterior · pendiente solo durante la campaña (hasta 30/06)
+      expect(r.pendientes).toBe(esperaPendiente ? 1 : 0);
+      // Resto · 5 o 6 ejercicios reparten entre declarados / prescritos según
+      // si la fecha de prescripción real (30/06 año + 5) ha pasado o no.
+      const restoEsperado = 7 - r.enCurso - r.pendientes;
+      expect(r.declarados + r.prescritos).toBe(restoEsperado);
+      // Garantías de tipo · ningún count negativo
+      expect(r.declarados).toBeGreaterThanOrEqual(0);
+      expect(r.prescritos).toBeGreaterThanOrEqual(0);
+    });
+
     it('proyeccionAñoActual viene de estimacionFiscalEnCursoService', async () => {
       const r = await getResumenGlobal();
       expect(r.proyeccionAñoActual).not.toBeNull();
