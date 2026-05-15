@@ -1,0 +1,442 @@
+/* ============================================================
+   ATLAS · F1 Fiscal Dashboard v2
+   SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2
+   Mockup canónico · docs/audit-inputs/atlas-fiscal-v3.html#page-dashboard
+   Tokens · solo --atlas-v5-* (cero hex hardcoded · checklist v4 §22)
+   ============================================================ */
+
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-bg);
+  min-height: 100%;
+  padding: 0;
+}
+
+.loading {
+  padding: var(--atlas-v5-sp-10);
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  text-align: center;
+}
+
+/* ── Page head ─────────────────────────────────────────────── */
+.pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--atlas-v5-sp-7);
+  padding-bottom: var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: var(--atlas-v5-sp-8);
+}
+
+.pageHeadTitle {
+  font-size: 24px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-h1);
+  color: var(--atlas-v5-ink);
+}
+
+.pageHeadSub {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  margin-top: var(--atlas-v5-sp-1);
+}
+
+.pageHeadSub strong {
+  color: var(--atlas-v5-ink);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.pageActionLink {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-semibold);
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.pageActionLink:hover {
+  color: var(--atlas-v5-gold-ink);
+}
+
+/* ── KPI strip ─────────────────────────────────────────────── */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--atlas-v5-sp-3);
+  margin-bottom: var(--atlas-v5-sp-9);
+}
+
+.kpi {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-5);
+  position: relative;
+  transition: border-color .15s;
+}
+
+.kpi.clickable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.kpi.clickable:hover {
+  border-color: var(--atlas-v5-ink-4);
+}
+
+.kpiAccentGold { border-left: 3px solid var(--atlas-v5-gold); padding-left: 13px; }
+.kpiAccentPos { border-left: 3px solid var(--atlas-v5-pos); padding-left: 13px; }
+.kpiAccentNeg { border-left: 3px solid var(--atlas-v5-neg); padding-left: 13px; }
+.kpiAccentNeutral { border-left: 3px solid var(--atlas-v5-ink-4); padding-left: 13px; }
+
+.kpiLab {
+  font-size: var(--atlas-v5-fs-label-sm);
+  letter-spacing: var(--atlas-v5-ls-chip);
+  color: var(--atlas-v5-ink-3);
+  text-transform: uppercase;
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: var(--atlas-v5-sp-1);
+}
+
+.kpiVal {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-size: var(--atlas-v5-fs-kpi);
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-ink);
+  letter-spacing: var(--atlas-v5-ls-kpi);
+}
+
+.kpiVal.pos { color: var(--atlas-v5-pos); }
+.kpiVal.neg { color: var(--atlas-v5-neg); }
+.kpiVal.warn { color: var(--atlas-v5-warn); }
+.kpiVal.muted { color: var(--atlas-v5-ink-3); }
+
+.kpiHint {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-3);
+  margin-top: var(--atlas-v5-sp-1);
+}
+
+.kpiCta {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-gold);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-top: var(--atlas-v5-sp-2);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: var(--atlas-v5-sp-6);
+}
+
+.tab {
+  padding: 10px var(--atlas-v5-sp-6);
+  font-size: var(--atlas-v5-fs-sub);
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink-3);
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  margin-bottom: -1px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tab:hover {
+  color: var(--atlas-v5-ink-2);
+}
+
+.tab.tabActive {
+  color: var(--atlas-v5-gold);
+  border-bottom-color: var(--atlas-v5-gold);
+}
+
+.tabCount {
+  background: var(--atlas-v5-card-alt);
+  color: var(--atlas-v5-ink-3);
+  padding: 1px 7px;
+  border-radius: var(--atlas-v5-radius-pill);
+  font-size: var(--atlas-v5-fs-label-sm);
+}
+
+.tab.tabActive .tabCount {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-gold-ink);
+}
+
+/* ── Card ──────────────────────────────────────────────────── */
+.card {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-line);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-5);
+  overflow: hidden;
+}
+
+.cardHd {
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line);
+}
+
+.cardTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-h3);
+  color: var(--atlas-v5-ink);
+}
+
+.cardSub {
+  font-size: var(--atlas-v5-fs-sub-sm);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 2px;
+}
+
+/* ── Pills ─────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--atlas-v5-radius-pill);
+  font-size: var(--atlas-v5-fs-chip);
+  font-weight: var(--atlas-v5-fw-semibold);
+  letter-spacing: 0.3px;
+}
+
+.pillDeclarado { background: var(--atlas-v5-pos-wash); color: var(--atlas-v5-pos); }
+.pillPendiente { background: var(--atlas-v5-warn-wash); color: var(--atlas-v5-warn); }
+.pillCurso { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); }
+.pillPrescrito { background: var(--atlas-v5-card-alt); color: var(--atlas-v5-ink-3); }
+.pillDeuda { background: var(--atlas-v5-neg-wash); color: var(--atlas-v5-neg); }
+/* paralela ahora gold · NO lila (spec) */
+.pillParalela { background: var(--atlas-v5-gold-wash); color: var(--atlas-v5-gold-ink); margin-left: 6px; }
+
+/* ── Tab Ejercicios · ej-row ───────────────────────────────── */
+.ejRow {
+  display: grid;
+  grid-template-columns: 80px 130px 1fr 150px 130px 40px;
+  align-items: center;
+  gap: var(--atlas-v5-sp-5);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  cursor: pointer;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.ejRow:hover {
+  background: var(--atlas-v5-card-alt);
+}
+
+.ejRow:last-child {
+  border-bottom: none;
+}
+
+.ejRowPrescrito {
+  opacity: 0.6;
+}
+
+.ejYear {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: 800;
+  font-size: var(--atlas-v5-fs-h3);
+  color: var(--atlas-v5-brand-ink);
+}
+
+.ejTitle {
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.ejMeta {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 2px;
+}
+
+.ejResult {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-bold);
+  font-size: var(--atlas-v5-fs-sub);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ejResult.pos { color: var(--atlas-v5-pos); }
+.ejResult.neg { color: var(--atlas-v5-neg); }
+.ejResult.muted { color: var(--atlas-v5-ink-3); }
+
+.ejChevron {
+  color: var(--atlas-v5-ink-3);
+  text-align: center;
+}
+
+.ejEmpty {
+  padding: var(--atlas-v5-sp-8) var(--atlas-v5-sp-6);
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: var(--atlas-v5-fs-sub);
+}
+
+/* ── Tabla genérica (Deudas · Arrastres) ───────────────────── */
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--atlas-v5-fs-sub);
+}
+
+.tbl th {
+  text-align: left;
+  font-size: var(--atlas-v5-fs-label-sm);
+  letter-spacing: 1.2px;
+  color: var(--atlas-v5-ink-3);
+  text-transform: uppercase;
+  font-weight: var(--atlas-v5-fw-semibold);
+  padding: 10px var(--atlas-v5-sp-5);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  background: var(--atlas-v5-card-alt);
+}
+
+.tbl td {
+  padding: 11px var(--atlas-v5-sp-5);
+  border-bottom: 1px solid var(--atlas-v5-line-2);
+  vertical-align: top;
+}
+
+.tbl tr:last-child td {
+  border-bottom: none;
+}
+
+.tbl tr.tblClickable {
+  cursor: pointer;
+}
+
+.tbl tr.tblClickable:hover td {
+  background: var(--atlas-v5-card-alt);
+}
+
+.tbl td.tdRight { text-align: right; }
+.tbl td.tdCenter { text-align: center; }
+
+.mono {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-feature-settings: 'tnum' 1, 'lnum' 1;
+}
+
+.tStrong {
+  font-weight: var(--atlas-v5-fw-semibold);
+  color: var(--atlas-v5-ink);
+}
+
+.tMuted {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-ink-3);
+  margin-top: 1px;
+}
+
+.tdAmount {
+  font-family: var(--atlas-v5-font-mono-num);
+  font-weight: var(--atlas-v5-fw-semibold);
+  text-align: right;
+}
+
+.tdAmount.neg { color: var(--atlas-v5-neg); }
+.tdAmount.pos { color: var(--atlas-v5-pos); }
+
+/* ── Empty states ──────────────────────────────────────────── */
+.empty {
+  padding: var(--atlas-v5-sp-9) var(--atlas-v5-sp-6);
+  text-align: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: var(--atlas-v5-fs-sub);
+}
+
+.emptyTitle {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+  margin-bottom: var(--atlas-v5-sp-2);
+}
+
+/* ── Note descartable (tab Arrastres) ──────────────────────── */
+.noteBlock {
+  background: var(--atlas-v5-card);
+  border: 1px solid var(--atlas-v5-gold-soft);
+  border-left: 3px solid var(--atlas-v5-gold);
+  padding: var(--atlas-v5-sp-4) var(--atlas-v5-sp-6);
+  border-radius: var(--atlas-v5-radius-md);
+  margin-bottom: var(--atlas-v5-sp-3);
+  position: relative;
+}
+
+.noteClose {
+  position: absolute;
+  top: 10px;
+  right: var(--atlas-v5-sp-3);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--atlas-v5-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+}
+
+.noteClose:hover {
+  background: var(--atlas-v5-gold-wash);
+  color: var(--atlas-v5-ink);
+}
+
+.noteTitle {
+  font-weight: var(--atlas-v5-fw-bold);
+  color: var(--atlas-v5-brand-ink);
+  font-size: var(--atlas-v5-fs-sub);
+  margin-bottom: var(--atlas-v5-sp-1);
+}
+
+.noteBody {
+  font-size: 12.5px;
+  color: var(--atlas-v5-ink-2);
+  line-height: 1.6;
+  padding-right: 28px;
+}
+
+.noteBody strong {
+  color: var(--atlas-v5-ink);
+}
+
+/* ── Caduca este año badge ─────────────────────────────────── */
+.caducaWarn {
+  font-size: var(--atlas-v5-fs-chip);
+  color: var(--atlas-v5-warn);
+  margin-top: 1px;
+}

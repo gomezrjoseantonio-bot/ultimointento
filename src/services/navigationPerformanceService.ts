@@ -93,7 +93,7 @@ const preloadRouteChunk = async (href: string): Promise<void> => {
                 ? import('../modules/fiscal/pages/ConfiguracionPage')
                 : href.startsWith('/fiscal/calendario')
                   ? import('../modules/fiscal/pages/CalendarioFiscalPage')
-                  : import('../modules/fiscal/pages/DashboardPage');
+                  : import('../modules/fiscal/v2/FiscalDashboardPage');
     await Promise.all([import('../modules/fiscal/FiscalPage'), subPage]);
     return;
   }

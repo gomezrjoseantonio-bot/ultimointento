@@ -132,7 +132,9 @@ const ConciliacionPage = lazyWithPreload(() => import('./modules/horizon/concili
 //   Sub-rutas · /fiscal/ejercicio/:anio (DetalleEjercicioPage).
 //   Wizard de Corrección/paralela AEAT llega en 3f-B (próximo PR).
 const FiscalPage = lazyWithPreload(() => import('./modules/fiscal/FiscalPage'));
-const FiscalDashboard = lazyWithPreload(() => import('./modules/fiscal/pages/DashboardPage'));
+// SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2 · F1 dashboard reemplaza
+// `pages/DashboardPage` (calendario placeholder) por la página v2 standalone.
+const FiscalDashboard = lazyWithPreload(() => import('./modules/fiscal/v2/FiscalDashboardPage'));
 const FiscalEjercicios = lazyWithPreload(() => import('./modules/fiscal/pages/EjerciciosPage'));
 const FiscalDetalleEjercicio = lazyWithPreload(() => import('./modules/fiscal/pages/DetalleEjercicioPage'));
 const FiscalDeudas = lazyWithPreload(() => import('./modules/fiscal/pages/DeudasPage'));

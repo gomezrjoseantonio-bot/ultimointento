@@ -93,6 +93,12 @@ const FiscalPage: React.FC = () => {
   // principales y dejamos que la página renderice su propio breadcrumb.
   const isDetail = /^\/fiscal\/ejercicio\/[^/]+$/.test(location.pathname);
 
+  // SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 2 · la página F1 v2
+  // (`/fiscal` index) trae su propio header + KPI strip + tabs.
+  // Ocultamos el shell aquí para evitar duplicar header/tabs.
+  const isDashboardV2 =
+    location.pathname === '/fiscal' || location.pathname === '/fiscal/';
+
   const activeKey: TabItem['key'] = (() => {
     if (location.pathname === '/fiscal' || location.pathname === '/fiscal/') return 'dashboard';
     if (location.pathname.startsWith('/fiscal/ejercicios')) return 'ejercicios';
@@ -113,7 +119,7 @@ const FiscalPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      {!isDetail && (
+      {!isDetail && !isDashboardV2 && (
         <PageHead
           title="Fiscal"
           sub={
