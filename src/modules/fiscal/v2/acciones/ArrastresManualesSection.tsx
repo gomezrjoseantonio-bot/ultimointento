@@ -52,10 +52,29 @@ const ArrastresManualesSection: React.FC<ArrastresManualesSectionProps> = ({ sho
       notify('Indica un importe pendiente válido (>0 €).');
       return;
     }
+    // El arrastre caduca a los 4 ejercicios desde el de origen. Si ya
+    // caducó · avisamos al usuario en lugar de crear un registro que
+    // `getCarryForwardsDisponibles` filtrará silenciosamente.
+    const añoActual = new Date().getFullYear();
+    const expirationYear = añoOrigen + 4;
+    if (expirationYear < añoActual) {
+      notify(`El arrastre de ${añoOrigen} ya caducó (31/12/${expirationYear}) · no podrá aplicarse.`);
+      return;
+    }
     setSubmitting(true);
     try {
-      await registrarArrastre(propertyId, añoOrigen, 0, importe, importe);
-      notify(`Arrastre manual registrado · ${importe.toFixed(2)} € · ejercicio ${añoOrigen}.`);
+      // Semántica correcta de registrarArrastre(propId, año, totalIncome,
+      // financingAndRepair, excessAmount):
+      // · totalIncome = importe   (tope para limitApplied)
+      // · financingAndRepair = importe   (mismo importe · es lo arrastrado)
+      // · excessAmount = importe   (importe pendiente a deducir)
+      // Resultado · limitApplied = min(importe, importe) = importe ·
+      // coherente con arrastres generados desde el motor (S-FISCAL-FIXES Fix 1).
+      await registrarArrastre(propertyId, añoOrigen, importe, importe, importe);
+      notify(
+        `Arrastre manual registrado · ${importe.toFixed(2)} € · ejercicio ${añoOrigen}` +
+        ` · caduca 31/12/${expirationYear}.`,
+      );
       setShowForm(false);
       setImporteExceso('');
     } catch (err) {

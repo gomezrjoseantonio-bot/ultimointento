@@ -150,12 +150,13 @@ describe('FiscalAccionesPage · SPEC-CC-FISCAL-UI-REPLACE-v1 sub-tarea 6', () =>
     expect(addBtn).toBeDisabled();
   });
 
-  it('bloque 7 · 3 botones export presentes (JSON · ZIP · CSV)', async () => {
+  it('bloque 7 · 3 botones export presentes (JSON config · JSON declaraciones · CSV)', async () => {
     renderPage('?section=exportar');
     expect(await screen.findByRole('button', { name: /Exportar config \(JSON\)/i })).toBeInTheDocument();
-    // El subtítulo del acordeón también menciona "ZIP declaraciones" · usar AllBy
-    expect(screen.getAllByRole('button', { name: /^ZIP declaraciones$/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: /^CSV casillas por año$/i }).length).toBeGreaterThan(0);
+    // El botón cambió de "ZIP declaraciones" a "Exportar declaraciones (JSON)"
+    // para no engañar al usuario (no es ZIP real · es un JSON único).
+    expect(screen.getByRole('button', { name: /Exportar declaraciones \(JSON\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /CSV casillas por año/i })).toBeInTheDocument();
   });
 
   it('breadcrumb "‹ Volver" navega a /fiscal', async () => {

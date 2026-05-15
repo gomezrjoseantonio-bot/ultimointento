@@ -20,35 +20,36 @@ const PerfilFiscalSection: React.FC = () => {
   const situacionPersonal = (() => {
     if (!personal) return '—';
     const partes: string[] = [];
-    const tributacion = (personal as any).tributacion;
-    partes.push(tributacion === 'conjunta' ? 'Tributación conjunta' : 'Tributación individual');
-    const desc = (personal as any).descendientes ?? [];
-    if (Array.isArray(desc) && desc.length > 0) partes.push(`${desc.length} descendiente${desc.length === 1 ? '' : 's'}`);
+    partes.push(personal.tributacion === 'conjunta' ? 'Tributación conjunta' : 'Tributación individual');
+    const desc = personal.descendientes ?? [];
+    if (desc.length > 0) partes.push(`${desc.length} descendiente${desc.length === 1 ? '' : 's'}`);
     else partes.push('sin descendientes');
-    const asc = (personal as any).ascendientes ?? [];
-    if (Array.isArray(asc) && asc.length > 0) partes.push(`${asc.length} ascendiente${asc.length === 1 ? '' : 's'}`);
+    const asc = personal.ascendientes ?? [];
+    if (asc.length > 0) partes.push(`${asc.length} ascendiente${asc.length === 1 ? '' : 's'}`);
     return partes.join(' · ');
   })();
 
-  const ccaa = (() => {
-    if (!personal) return '—';
-    const region = (personal as any).comunidadAutonoma ?? (personal as any).codigoCCAA ?? null;
-    return region ?? '—';
+  const ccaa = personal?.comunidadAutonoma ?? '—';
+
+  // `situacionLaboral` es `SituacionLaboral[]` según types/personal.ts ·
+  // mantenemos guarda runtime por si datos legacy llegan como string.
+  const situacionLaboralArr = (() => {
+    if (!personal) return [];
+    const sl: unknown = personal.situacionLaboral;
+    if (Array.isArray(sl)) return sl.map((s) => String(s));
+    if (typeof sl === 'string' && sl.length > 0) return [sl];
+    return [];
   })();
 
-  const situacionLaboral = (() => {
-    if (!personal) return '—';
-    const sl = (personal as any).situacionLaboral;
-    if (typeof sl === 'string') return sl;
-    if (Array.isArray(sl)) return sl.join(' + ');
-    return '—';
-  })();
+  const situacionLaboral = situacionLaboralArr.length > 0
+    ? situacionLaboralArr.join(' + ')
+    : '—';
 
   const modelosActivos = (() => {
     if (!personal) return '100';
-    const sl = String((personal as any).situacionLaboral ?? '').toLowerCase();
+    const labels = situacionLaboralArr.map((s) => s.toLowerCase()).join(' ');
     const modelos = ['100'];
-    if (sl.includes('autonomo')) {
+    if (labels.includes('autonomo')) {
       modelos.push('130');
       modelos.push('303');
     }

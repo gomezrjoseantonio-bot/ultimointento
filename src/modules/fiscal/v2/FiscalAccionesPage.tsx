@@ -20,8 +20,9 @@
  * redirect + esta página puede abrir un acordeón según query).
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { showToastV5 } from '../../../design-system/v5';
 import AccionAccordion from './AccionAccordion';
 import PerfilFiscalSection from './acciones/PerfilFiscalSection';
 import ImportarDeclaracionSection from './acciones/ImportarDeclaracionSection';
@@ -30,7 +31,7 @@ import ReImportarExportarSection from './acciones/ReImportarExportarSection';
 import ArrastresManualesSection from './acciones/ArrastresManualesSection';
 import HistoricoDeclaracionesSection from './acciones/HistoricoDeclaracionesSection';
 import ExportarTodoSection from './acciones/ExportarTodoSection';
-import styles from './FiscalEjercicioPage.module.css';
+import styles from './FiscalAccionesPage.module.css';
 
 type SectionKey =
   | 'perfil'
@@ -51,28 +52,10 @@ function mapQueryToDefaultOpen(search: URLSearchParams): SectionKey {
   return 'perfil';
 }
 
-// Toast helper · usa showToastV5 si está disponible en el design system
-// (lo está · ver design-system/v5/index.ts) · fallback a console.info.
-function makeToast(): (msg: string) => void {
-  return (msg: string) => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const ds = require('../../../design-system/v5');
-      if (ds.showToastV5) {
-        ds.showToastV5(msg);
-        return;
-      }
-    } catch { /* ignore */ }
-    // eslint-disable-next-line no-console
-    console.info('[fiscal acciones]', msg);
-  };
-}
-
 const FiscalAccionesPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultOpen = useMemo(() => mapQueryToDefaultOpen(searchParams), [searchParams]);
-  const [showToast] = useState(() => makeToast());
 
   // Scroll hacia el acordeón abierto por query · UX suave para los
   // links de los KPIs del F1 dashboard (Deuda · Arrastres) y de los
@@ -143,7 +126,7 @@ const FiscalAccionesPage: React.FC = () => {
           subtitle="re-importar declaración existente · exportar PDF · comparar versiones"
           defaultOpen={defaultOpen === 'reimport'}
         >
-          <ReImportarExportarSection showToast={showToast} />
+          <ReImportarExportarSection showToast={showToastV5} />
         </AccionAccordion>
       </div>
 
@@ -153,7 +136,7 @@ const FiscalAccionesPage: React.FC = () => {
           subtitle="añadir arrastres de años no importados"
           defaultOpen={defaultOpen === 'arrastres'}
         >
-          <ArrastresManualesSection showToast={showToast} />
+          <ArrastresManualesSection showToast={showToastV5} />
         </AccionAccordion>
       </div>
 
@@ -170,10 +153,10 @@ const FiscalAccionesPage: React.FC = () => {
       <div id="acordeon-exportar">
         <AccionAccordion
           title="Exportar todo"
-          subtitle="JSON configuración · ZIP declaraciones · CSV casillas"
+          subtitle="JSON configuración · JSON declaraciones · CSV casillas"
           defaultOpen={defaultOpen === 'exportar'}
         >
-          <ExportarTodoSection showToast={showToast} />
+          <ExportarTodoSection showToast={showToastV5} />
         </AccionAccordion>
       </div>
     </div>

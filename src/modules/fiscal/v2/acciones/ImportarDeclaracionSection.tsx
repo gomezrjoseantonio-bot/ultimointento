@@ -61,22 +61,33 @@ const ImportarDeclaracionSection: React.FC = () => {
     })();
   }, []);
 
+  // Pasamos el File al wizard via `navigate state` · evita doble selección
+  // de archivo. El wizard puede leer `useLocation().state.archivoImportado`
+  // y arrancar la importación directamente (compat backward · si no hay
+  // state, el wizard abre su propio selector como antes).
+  const navegarConArchivo = (file: File | null) => {
+    navigate(`/fiscal/importar/${añoDestino}`, {
+      state: file ? { archivoImportado: file, nombre: file.name } : undefined,
+    });
+  };
+
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragActive(false);
-    // El wizard de importación gestiona el archivo · aquí solo navegamos
-    // (futuras versiones pueden poblar el wizard con el File via state).
-    if (e.dataTransfer.files.length > 0) {
-      navigate(`/fiscal/importar/${añoDestino}`);
-    }
+    const file = e.dataTransfer.files?.[0] ?? null;
+    if (file) navegarConArchivo(file);
   };
 
   const onSelectFile = () => {
     fileInputRef.current?.click();
   };
 
-  const onFileChange = () => {
-    navigate(`/fiscal/importar/${añoDestino}`);
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    // Reset input para permitir re-seleccionar el mismo archivo (p.ej.
+    // tras un error en el wizard) y disparar onChange de nuevo.
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (file) navegarConArchivo(file);
   };
 
   const añosDisponibles = (() => {

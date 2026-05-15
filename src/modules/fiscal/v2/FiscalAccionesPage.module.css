@@ -5,6 +5,80 @@
    Tokens · solo --atlas-v5-* (cero hex hardcoded)
    ============================================================ */
 
+/* ── Layout base · breadcrumb · page-head (mismo patrón que F2-F5
+   pero local a F6 · evita acoplamiento con FiscalEjercicioPage.module.css) ── */
+.page {
+  font-family: var(--atlas-v5-font-ui);
+  color: var(--atlas-v5-ink);
+  background: var(--atlas-v5-bg);
+  min-height: 100%;
+  padding: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--atlas-v5-sp-2);
+  color: var(--atlas-v5-ink-3);
+  font-size: var(--atlas-v5-fs-chip);
+  margin-bottom: var(--atlas-v5-sp-4);
+  flex-wrap: wrap;
+}
+
+.breadcrumb a,
+.breadcrumb button {
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
+
+.breadcrumb a:hover,
+.breadcrumb button:hover {
+  color: var(--atlas-v5-ink-2);
+}
+
+.breadcrumbSep {
+  opacity: 0.5;
+}
+
+.breadcrumbCurrent {
+  color: var(--atlas-v5-ink-2);
+  font-weight: var(--atlas-v5-fw-semibold);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--atlas-v5-ink-3);
+}
+
+.backBtn:hover {
+  color: var(--atlas-v5-ink);
+}
+
+.pageHead {
+  padding-bottom: var(--atlas-v5-sp-6);
+  border-bottom: 1px solid var(--atlas-v5-line);
+  margin-bottom: var(--atlas-v5-sp-8);
+}
+
+.pageHeadTitle {
+  font-size: 24px;
+  font-weight: var(--atlas-v5-fw-bold);
+  letter-spacing: var(--atlas-v5-ls-h1);
+  color: var(--atlas-v5-ink);
+}
+
+.metaLine {
+  font-size: var(--atlas-v5-fs-sub);
+  color: var(--atlas-v5-ink-3);
+  margin-top: var(--atlas-v5-sp-1);
+}
+
 /* ── Acordeón genérico ─────────────────────────────────────── */
 .accItem {
   background: var(--atlas-v5-card);

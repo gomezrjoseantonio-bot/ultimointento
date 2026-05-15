@@ -62,7 +62,7 @@ const ExportarTodoSection: React.FC<ExportarTodoSectionProps> = ({ showToast }) 
     }
   };
 
-  const exportZipDeclaraciones = async () => {
+  const exportDeclaracionesJSON = async () => {
     setWorking('zip');
     try {
       const db = await initDB();
@@ -77,8 +77,8 @@ const ExportarTodoSection: React.FC<ExportarTodoSectionProps> = ({ showToast }) 
           snapshot: e.aeat!.snapshot,
           resumen: e.aeat!.resumen,
         }));
-      // Single JSON con todas las declaraciones · evita dependencia jszip
-      // por ahora · una versión ZIP real pasaría por jszip (ya en deps)
+      // JSON único con todas las declaraciones · ZIP real con un fichero
+      // por declaración llegará cuando se cablee jszip a este export.
       const blob = new Blob(
         [JSON.stringify({ exportadoEl: new Date().toISOString(), declaraciones }, null, 2)],
         { type: 'application/json' },
@@ -88,7 +88,7 @@ const ExportarTodoSection: React.FC<ExportarTodoSectionProps> = ({ showToast }) 
     } catch (err) {
       notify('Error exportando declaraciones · ver consola.');
       // eslint-disable-next-line no-console
-      console.error('[fiscal acciones] export ZIP falló:', err);
+      console.error('[fiscal acciones] export declaraciones falló:', err);
     } finally {
       setWorking(null);
     }
@@ -108,16 +108,20 @@ const ExportarTodoSection: React.FC<ExportarTodoSectionProps> = ({ showToast }) 
       }
       const casillas = Array.from(casillasSet).sort();
 
-      const header = ['casilla', ...declarados.map((e) => String(e.año))].join(',');
+      // CSV locale es-ES · separador de columna `;` · coma decimal · BOM
+      // UTF-8 al inicio para que Excel respete acentos al abrir.
+      const fmtNumeroEs = (n: number): string =>
+        n.toFixed(2).replace('.', ',');
+      const header = ['casilla', ...declarados.map((e) => String(e.año))].join(';');
       const lines = casillas.map((c) => {
         const valores = declarados.map((e) => {
           const v = e.aeat!.snapshot[c];
-          if (typeof v === 'number') return v.toFixed(2);
+          if (typeof v === 'number' && Number.isFinite(v)) return fmtNumeroEs(v);
           return '';
         });
-        return [c, ...valores].join(',');
+        return [c, ...valores].join(';');
       });
-      const csv = [header, ...lines].join('\n');
+      const csv = '﻿' + [header, ...lines].join('\r\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       downloadBlob(`atlas-fiscal-casillas-${new Date().toISOString().slice(0, 10)}.csv`, blob);
       notify(`CSV con ${casillas.length} casillas exportado.`);
@@ -143,10 +147,10 @@ const ExportarTodoSection: React.FC<ExportarTodoSectionProps> = ({ showToast }) 
       <button
         type="button"
         className={`${styles.btn} ${styles.btnGhost}`}
-        onClick={exportZipDeclaraciones}
+        onClick={exportDeclaracionesJSON}
         disabled={working !== null}
       >
-        {working === 'zip' ? 'Exportando…' : 'ZIP declaraciones'}
+        {working === 'zip' ? 'Exportando…' : 'Exportar declaraciones (JSON)'}
       </button>
       <button
         type="button"
